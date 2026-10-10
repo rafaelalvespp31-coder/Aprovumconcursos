@@ -1,0 +1,135 @@
+"use server";
+
+import { z } from "zod";
+import { requireUser } from "@/server/auth";
+import { createUserClient } from "@/server/supabase";
+import { submitAnswer, type AnswerFeedback } from "@/server/services/study";
+import { clarify, type Clarification } from "@/server/services/tools";
+import { UserFacingError } from "@/server/services/trails";
+import { logEvent } from "@/server/observability";
+import { AIError } from "@/ai/provider";
+
+export type Result<T> = { ok: true; data: T } | { ok: false; error: string };
+
+async function guard<T>(name: string, fn: () => Promise<T>): Promise<Result<T>> {
+  try {
+    return { ok: true, data: await fn() };
+  } catch (e) {
+    if (e instanceof UserFacingError) return { ok: false, error: e.message };
+    if (e instanceof AIError) return { ok: false, error: e.kind === "not_configured" ? "Recurso de IA indisponível no momento." : e.message };
+    await logEvent(`${name}.failed`, { error: (e as Error).message });
+    return { ok: false, error: "Não foi possível concluir. Verifique a conexão e tente novamente." };
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Respostas
+// ---------------------------------------------------------------------------
+export async function answerQuestion(input: {
+  questionId: string;
+  optionId?: string;
+  answerTrue?: boolean;
+  context: "fixacao" | "revisao" | "simulado";
+  confidence?: number;
+  seconds?: number;
+}): Promise<Result<AnswerFeedback>> {
+  const user = await requireUser();
+  return guard("answer", () => submitAnswer(user.id, input));
+}
+
+/** Gabarito de questão já respondida (rever explicações depois). */
+export async function reviewAnsweredQuestion(questionId: string): Promise<Result<AnswerFeedback | null>> {
+  await requireUser();
+  return guard("review_answer", async () => {
+    const db = await createUserClient();
+    const { data, error } = await db.rpc("answered_question_review", { p_question: z.uuid().parse(questionId) });
+    if (error) throw new Error(error.message);
+    return data ? ({ correct: false, ...(data as object) } as AnswerFeedback) : null;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Resolver depois
+// ---------------------------------------------------------------------------
+export async function toggleQuestionMark(questionId: string, marked: boolean): Promise<Result<boolean>> {
+  await requireUser();
+  return guard("question_mark", async () => {
+    const id = z.uuid().parse(questionId);
+    const db = await createUserClient();
+    const r = marked
+      ? await db.from("question_marks").upsert({ question_id: id }, { onConflict: "user_id,question_id", ignoreDuplicates: true })
+      : await db.from("question_marks").delete().eq("question_id", id);
+    if (r.error) throw new Error(r.error.message);
+    return marked;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Anotações na aula (nota, revisar, dúvida) — gravadas com a sessão do aluno (RLS)
+// ---------------------------------------------------------------------------
+const annotationSchema = z.object({
+  lessonId: z.uuid(),
+  sectionId: z.uuid().nullable(),
+  sectionTitle: z.string().max(160).nullable(),
+  kind: z.enum(["nota", "revisar", "duvida"]),
+  body: z.string().trim().max(4000, "Use no máximo 4.000 caracteres."),
+});
+
+export interface Annotation {
+  id: string;
+  section_id: string | null;
+  section_title: string | null;
+  kind: "nota" | "revisar" | "duvida";
+  body: string;
+  resolved: boolean;
+  updated_at: string;
+}
+
+const ANN_COLS = "id, section_id, section_title, kind, body, resolved, updated_at";
+
+export async function createAnnotation(input: z.input<typeof annotationSchema>): Promise<Result<Annotation>> {
+  await requireUser();
+  return guard("annotation_create", async () => {
+    const parsed = annotationSchema.safeParse(input);
+    if (!parsed.success) throw new UserFacingError(parsed.error.issues[0]?.message ?? "Anotação inválida.", "invalid_input");
+    const a = parsed.data;
+    if (a.kind === "nota" && !a.body) throw new UserFacingError("Escreva a anotação.", "invalid_input");
+    const db = await createUserClient();
+    const { data, error } = await db
+      .from("lesson_annotations")
+      .insert({ lesson_id: a.lessonId, section_id: a.sectionId, section_title: a.sectionTitle, kind: a.kind, body: a.body })
+      .select(ANN_COLS)
+      .single();
+    if (error) throw new Error(error.message);
+    return data as Annotation;
+  });
+}
+
+export async function updateAnnotation(id: string, patch: { body?: string; resolved?: boolean }): Promise<Result<Annotation>> {
+  await requireUser();
+  return guard("annotation_update", async () => {
+    const p = z.object({ body: z.string().trim().max(4000).optional(), resolved: z.boolean().optional() }).parse(patch);
+    const db = await createUserClient();
+    const { data, error } = await db.from("lesson_annotations").update(p).eq("id", z.uuid().parse(id)).select(ANN_COLS).single();
+    if (error) throw new Error(error.message);
+    return data as Annotation;
+  });
+}
+
+export async function deleteAnnotation(id: string): Promise<Result<true>> {
+  await requireUser();
+  return guard("annotation_delete", async () => {
+    const db = await createUserClient();
+    const { error } = await db.from("lesson_annotations").delete().eq("id", z.uuid().parse(id));
+    if (error) throw new Error(error.message);
+    return true as const;
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Esclarecer conceito
+// ---------------------------------------------------------------------------
+export async function askClarification(input: { lessonId: string; sectionId: string | null; question: string }): Promise<Result<Clarification>> {
+  const user = await requireUser();
+  return guard("clarify", () => clarify(user.id, input));
+}

@@ -18,6 +18,10 @@
   --color-azul: #1f4fd8;
   --color-azul-escuro: #173aa3;
   --color-nevoa: #e6ecfb;
+  /* Camadas de aprendizagem (validadas para daltonismo e contraste): estudado → praticado → dominado */
+  --color-planejado: #d3dcf6;
+  --color-estudado: #6f8fe6;
+  --color-praticado: #1f4fd8;
   --color-dominado: #0e7a55;
   --color-dominado-fundo: #e3f4ec;
   --color-alerta: #b26a00;

@@ -5,7 +5,7 @@ import { createServerClient } from "@supabase/ssr";
  * Renova a sessão do Supabase a cada requisição e protege as rotas privadas.
  * A autorização definitiva acontece no servidor (requireUser) e no banco (RLS).
  */
-const PRIVATE_PREFIXES = ["/painel", "/trilhas", "/nova-trilha", "/aula", "/desempenho", "/perfil", "/admin", "/revisoes"];
+const PRIVATE_PREFIXES = ["/questoes", "/painel", "/trilhas", "/nova-trilha", "/aula", "/desempenho", "/perfil", "/admin", "/revisoes"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

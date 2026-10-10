@@ -1,24 +1,14 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCoverage, getTrail, getTrailPlan, rulerStateOf } from "@/server/queries";
+import { getCoverage, getTrail, getTrailPlan, moduleProgress, rulerStateOf } from "@/server/queries";
+import { TrailMap } from "./trail-map";
+import { ArchiveTrail } from "./archive";
 import { CoverageRuler, RulerLegend } from "@/components/coverage-ruler";
-import { Button, ButtonLink, Notice, Tag } from "@/components/ui";
+import { Button, ButtonLink, Notice } from "@/components/ui";
 import { boardDisplayName, CONTENT_TYPE_OPTIONS, type ExamBoardSlug } from "@/domain/trail-input";
-import { STATE_LABELS, type UnitState } from "@/domain/progress/state-machine";
-import { archiveTrailAction, startTrailAction } from "./actions";
+import { startTrailAction } from "./actions";
 
 export const metadata = { title: "Trilha" };
-
-const STATE_TONE: Partial<Record<UnitState, "azul" | "verde" | "ambar" | "neutro">> = {
-  disponivel: "azul",
-  em_andamento: "azul",
-  aula_concluida: "azul",
-  em_revisao: "ambar",
-  aguardando_dominio: "azul",
-  dominada: "verde",
-  necessita_atualizacao: "ambar",
-  pendente_validacao: "ambar",
-};
 
 function minutes(total: number) {
   const h = Math.floor(total / 60);
@@ -138,59 +128,14 @@ export default async function TrailPage({
       )}
 
       <section className="mt-8">
-        <h2 className="t-h2">Módulos e aulas</h2>
-        <div className="mt-3 flex flex-col gap-3">
-          {modules.map((m, mi) => (
-            <details key={m.id} open={mi === 0 || review} className="group rounded-lg border border-linha bg-superficie">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 px-4 py-3">
-                <span className="t-h3">{m.title}</span>
-                <span className="shrink-0 t-tiny text-tinta-fraca">{m.lessons.length} aula(s)</span>
-              </summary>
-              <ol className="divide-y divide-linha border-t border-linha">
-                {m.lessons.map((l) => {
-                  const locked = !l.state || l.state === "nao_iniciada";
-                  return (
-                    <li key={l.id} className="px-4 py-3">
-                      <div className="flex flex-wrap items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          {review || locked ? (
-                            <p className="font-semibold">{l.title}</p>
-                          ) : (
-                            <Link href={`/aula/${l.id}`} className="font-semibold text-azul underline-offset-2 hover:underline">{l.title}</Link>
-                          )}
-                          <p className="t-small text-tinta-suave">{l.objective}</p>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2">
-                          {l.state && <Tag tone={STATE_TONE[l.state] ?? "neutro"}>{STATE_LABELS[l.state]}</Tag>}
-                          <span className="t-tiny text-tinta-fraca">~{l.estimated_minutes} min</span>
-                        </div>
-                      </div>
-                      <details className="mt-2 t-small">
-                        <summary className="cursor-pointer text-tinta-suave">{l.nodeKeys.length} item(ns) do conteúdo nesta aula</summary>
-                        <ul className="mt-1 list-disc pl-5 text-tinta-suave">
-                          {l.nodeKeys.map((k) => <li key={k}>{titleByKey.get(k) ?? k}</li>)}
-                        </ul>
-                      </details>
-                      {l.supplementary.length > 0 && (
-                        <div className="mt-2 rounded-md bg-papel px-3 py-2 t-small">
-                          <p className="font-semibold">Apoio pedagógico (fora do conteúdo informado)</p>
-                          <ul className="list-disc pl-5 text-tinta-suave">
-                            {l.supplementary.map((s) => <li key={s.title}>{s.title} — {s.justification}</li>)}
-                          </ul>
-                        </div>
-                      )}
-                    </li>
-                  );
-                })}
-              </ol>
-            </details>
-          ))}
-        </div>
+        <h2 className="t-h2">Mapa da trilha</h2>
+        <p className="mt-1 mb-3 t-small text-tinta-suave">Cada nível libera o seguinte quando você demonstra o aprendizado. Aulas já liberadas ficam sempre disponíveis para consulta.</p>
+        <TrailMap modules={modules} progress={new Map(moduleProgress(modules, coverage).map((m) => [m.id, m]))} titleByKey={titleByKey} review={review} />
       </section>
 
-      <form action={archiveTrailAction.bind(null, id, !trail.archived_at)} className="mt-10">
-        <Button type="submit" variant="secundario">{trail.archived_at ? "Reativar trilha" : "Arquivar trilha"}</Button>
-      </form>
+      <div className="mt-10">
+        <ArchiveTrail trailId={id} archived={!!trail.archived_at} />
+      </div>
     </div>
   );
 }

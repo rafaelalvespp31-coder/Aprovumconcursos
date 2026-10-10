@@ -18,7 +18,7 @@ export default async function ProfilePage() {
       <section className="mt-8">
         <h2 className="t-h2">Dados e metas</h2>
         <div className="mt-3">
-          <ProfileForm displayName={profile?.display_name ?? ""} dailyGoal={profile?.daily_goal_minutes ?? null} />
+          <ProfileForm displayName={profile?.display_name ?? ""} dailyQuestions={profile?.daily_questions_goal ?? null} weeklyLessons={profile?.weekly_lessons_goal ?? null} />
         </div>
       </section>
 

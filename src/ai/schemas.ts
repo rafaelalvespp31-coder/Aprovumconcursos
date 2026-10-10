@@ -111,3 +111,10 @@ export const questionsSchema = z.object({
     .max(15),
 });
 export type QuestionsOutput = z.infer<typeof questionsSchema>;
+
+// ---- Esclarecimento de conceito durante a aula -----------------------------
+export const clarificationSchema = z.object({
+  answerMarkdown: z.string().min(10).max(6000),
+  unverifiedClaims: z.array(z.string().min(5).max(300)).max(10),
+});
+export type ClarificationOutput = z.infer<typeof clarificationSchema>;

@@ -124,7 +124,10 @@ const answerSchema = z.object({
   questionId: z.uuid(),
   optionId: z.uuid().optional(),
   answerTrue: z.boolean().optional(),
-  context: z.enum(["fixacao", "revisao"]).default("fixacao"),
+  context: z.enum(["fixacao", "revisao", "simulado"]).default("fixacao"),
+  /** Confiança declarada (1 baixa, 2 média, 3 alta). Registrada, mas nunca usada como prova de domínio. */
+  confidence: z.number().int().min(1).max(3).optional(),
+  seconds: z.number().int().min(0).max(86_400).optional(),
 });
 
 export interface AnswerFeedback {
@@ -132,6 +135,7 @@ export interface AnswerFeedback {
   justification: string;
   correctAnswerTrue: boolean | null;
   options: Array<{ id: string; label: string; isCorrect: boolean; explanation: string }>;
+  attempts?: number;
 }
 
 /** Correção determinística no banco; o gabarito só sai daqui após a resposta. */
@@ -146,6 +150,8 @@ export async function submitAnswer(userId: string, input: unknown): Promise<Answ
     p_option: a.optionId ?? null,
     p_bool: a.answerTrue ?? null,
     p_context: a.context,
+    p_confidence: a.confidence ?? null,
+    p_seconds: a.seconds ?? null,
   });
   if (r.error) {
     if (r.error.code === "P0002" || r.error.code === "22023") throw new UserFacingError("Resposta inválida para esta questão.", "invalid_answer");

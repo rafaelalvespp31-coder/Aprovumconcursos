@@ -6,9 +6,9 @@ export type RulerState = "pendente" | "planejado" | "ensinado" | "praticado" | "
 
 const fill: Record<RulerState, string> = {
   pendente: "bg-linha",
-  planejado: "bg-[#b9c7f2]",
-  ensinado: "bg-azul",
-  praticado: "bg-azul-escuro",
+  planejado: "bg-planejado",
+  ensinado: "bg-estudado",
+  praticado: "bg-praticado",
   dominado: "bg-dominado",
   nao_verificado: "bg-alerta",
 };
@@ -16,7 +16,7 @@ const fill: Record<RulerState, string> = {
 export const RULER_LABELS: Record<RulerState, string> = {
   pendente: "Sem aula",
   planejado: "Planejado",
-  ensinado: "Ensinado",
+  ensinado: "Estudado",
   praticado: "Praticado",
   dominado: "Dominado",
   nao_verificado: "Não verificado",

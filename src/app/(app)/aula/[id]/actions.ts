@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { requireUser } from "@/server/auth";
 import { requestLessonGeneration, UserFacingError } from "@/server/services/trails";
-import { completeReading, evaluateLessonQuiz, startLesson, submitAnswer, type AnswerFeedback } from "@/server/services/study";
+import { completeReading, evaluateLessonQuiz, startLesson } from "@/server/services/study";
 import { logEvent } from "@/server/observability";
 
 export async function generateLessonAction(lessonId: string) {
@@ -33,19 +33,6 @@ export async function completeReadingAction(lessonId: string) {
   const t = await completeReading(user.id, lessonId);
   revalidatePath(`/aula/${lessonId}`);
   return { explanation: t.explanation };
-}
-
-export type AnswerResult = { ok: true; feedback: AnswerFeedback } | { ok: false; error: string };
-
-export async function submitAnswerAction(input: { questionId: string; optionId?: string; answerTrue?: boolean; context: "fixacao" | "revisao" }): Promise<AnswerResult> {
-  const user = await requireUser();
-  try {
-    return { ok: true, feedback: await submitAnswer(user.id, input) };
-  } catch (e) {
-    if (e instanceof UserFacingError) return { ok: false, error: e.message };
-    await logEvent("answer.failed", { error: (e as Error).message });
-    return { ok: false, error: "Não foi possível registrar a resposta. Verifique a conexão e tente novamente." };
-  }
 }
 
 export interface QuizResult {

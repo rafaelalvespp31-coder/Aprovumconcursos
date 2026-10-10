@@ -4,6 +4,7 @@ import { createUserClient } from "./supabase";
 import type { AuditReport } from "@/domain/content/audit";
 import type { UnitState } from "@/domain/progress/state-machine";
 import type { RulerState } from "@/components/coverage-ruler";
+import { summarizePerformance, type AttemptRecord } from "@/domain/progress/performance";
 
 /**
  * Leituras das telas. Usam o cliente com a sessão do aluno: a RLS garante no banco
@@ -108,11 +109,14 @@ export interface LessonListItem {
   verification_pending: boolean;
   state: UnitState | null;
   nodeKeys: string[];
+  prerequisiteIds: string[];
+  questionCount: number;
+  reviewDue: boolean;
 }
 
 export async function getTrailPlan(trailId: string) {
   const db = await createUserClient();
-  const [mods, lessons, progress] = await Promise.all([
+  const [mods, lessons, progress, prereqs, questions, reviews] = await Promise.all([
     db.from("learning_modules").select("id, key, title, sort_order").eq("trail_id", trailId).order("sort_order"),
     db
       .from("lessons")
@@ -120,17 +124,30 @@ export async function getTrailPlan(trailId: string) {
       .eq("trail_id", trailId)
       .order("sort_order"),
     db.from("learning_progress").select("lesson_id, state").eq("trail_id", trailId),
+    db.from("lesson_prerequisites").select("lesson_id, prerequisite_lesson_id, lessons!lesson_prerequisites_lesson_id_user_id_fkey!inner(trail_id)").eq("lessons.trail_id", trailId),
+    db.from("questions").select("lesson_id, lessons!inner(trail_id)").eq("active", true).eq("lessons.trail_id", trailId),
+    db.from("review_schedules").select("lesson_id, due_at").eq("trail_id", trailId).lte("due_at", new Date().toISOString()),
   ]);
   if (mods.error || lessons.error) throw new Error((mods.error ?? lessons.error)!.message);
   const stateBy = new Map((progress.data ?? []).map((p) => [p.lesson_id as string, p.state as UnitState]));
+  const prereqBy = new Map<string, string[]>();
+  for (const p of prereqs.data ?? []) {
+    prereqBy.set(p.lesson_id as string, [...(prereqBy.get(p.lesson_id as string) ?? []), p.prerequisite_lesson_id as string]);
+  }
+  const qCount = new Map<string, number>();
+  for (const q of questions.data ?? []) qCount.set(q.lesson_id as string, (qCount.get(q.lesson_id as string) ?? 0) + 1);
+  const due = new Set((reviews.data ?? []).map((r) => r.lesson_id as string));
   const items: LessonListItem[] = (lessons.data ?? []).map((l) => {
-    const { lesson_nodes, ...rest } = l as unknown as Omit<LessonListItem, "state" | "nodeKeys"> & {
+    const { lesson_nodes, ...rest } = l as unknown as Omit<LessonListItem, "state" | "nodeKeys" | "prerequisiteIds" | "questionCount" | "reviewDue"> & {
       lesson_nodes: Array<{ content_nodes: { key: string } | null }>;
     };
     return {
       ...rest,
       state: stateBy.get(rest.id) ?? null,
       nodeKeys: lesson_nodes.map((x) => x.content_nodes?.key).filter((k): k is string => !!k),
+      prerequisiteIds: prereqBy.get(rest.id) ?? [],
+      questionCount: qCount.get(rest.id) ?? 0,
+      reviewDue: due.has(rest.id),
     };
   });
   return (mods.data ?? []).map((m) => ({
@@ -149,7 +166,7 @@ export async function getLessonForStudy(lessonId: string) {
     .eq("id", lessonId)
     .maybeSingle();
   if (!lesson) notFound();
-  const [sections, refs, questions, progress, nodes, siblings] = await Promise.all([
+  const [sections, refs, questions, progress, nodes, siblings, annotations, clarifications, marks] = await Promise.all([
     db.from("lesson_sections").select("id, kind, title, body_markdown, sort_order, node_keys, verification_status").eq("lesson_id", lessonId).order("sort_order"),
     db.from("source_references").select("kind, citation, verified").eq("lesson_id", lessonId),
     db
@@ -159,9 +176,17 @@ export async function getLessonForStudy(lessonId: string) {
       .eq("active", true)
       .order("created_at"),
     db.from("learning_progress").select("state, reading_completed_at, passed_at, mastered_at").eq("lesson_id", lessonId).maybeSingle(),
-    db.from("lesson_nodes").select("taught, content_nodes(key, marker, title, path, kind)").eq("lesson_id", lessonId),
+    db.from("lesson_nodes").select("taught, content_nodes(id, key, marker, title, path, kind)").eq("lesson_id", lessonId),
     db.from("lessons").select("id, title, sort_order").eq("trail_id", lesson.trail_id as string).order("sort_order"),
+    db.from("lesson_annotations").select("id, section_id, section_title, kind, body, resolved, updated_at").eq("lesson_id", lessonId).order("created_at", { ascending: false }),
+    db.from("concept_clarifications").select("id, section_id, question, answer_markdown, verification_pending").eq("lesson_id", lessonId).order("created_at"),
+    db.from("question_marks").select("question_id"),
   ]);
+  const nodeList = (nodes.data ?? [])
+    .map((n) => ({ taught: n.taught as boolean, ...(n.content_nodes as unknown as { id: string; key: string; marker: string | null; title: string; path: string; kind: string }) }))
+    .sort((a, b) => a.key.localeCompare(b.key));
+  const keyById = new Map(nodeList.map((n) => [n.id, n.key]));
+  const titleById = new Map(nodeList.map((n) => [n.id, n.title]));
   return {
     lesson: lesson as unknown as {
       id: string; trail_id: string; key: string; title: string; objective: string; sort_order: number; estimated_minutes: number;
@@ -171,13 +196,26 @@ export async function getLessonForStudy(lessonId: string) {
     },
     sections: (sections.data ?? []) as Array<{ id: string; kind: string; title: string; body_markdown: string; node_keys: string[]; verification_status: string }>,
     references: (refs.data ?? []) as Array<{ kind: string; citation: string; verified: boolean }>,
-    questions: (questions.data ?? []).map((q) => ({
-      ...(q as unknown as { id: string; type: "multipla_escolha" | "certo_errado" | "situacional" | "discursiva"; statement: string; difficulty: number; essential: boolean; origin: string; board_style: string | null; depends_on_external_source: boolean }),
-      options: ((q.question_options ?? []) as Array<{ id: string; label: string; text: string; sort_order: number }>).sort((a, b) => a.sort_order - b.sort_order),
-    })),
+    questions: (questions.data ?? []).map((q) => {
+      const row = q as unknown as {
+        id: string; type: "multipla_escolha" | "certo_errado" | "situacional" | "discursiva"; statement: string; difficulty: number; essential: boolean;
+        origin: string; board_style: string | null; depends_on_external_source: boolean; node_id: string;
+        question_options: Array<{ id: string; label: string; text: string; sort_order: number }> | null;
+      };
+      const { question_options, ...rest } = row;
+      return {
+        ...rest,
+        nodeKey: keyById.get(row.node_id) ?? null,
+        topic: titleById.get(row.node_id) ?? null,
+        options: (question_options ?? []).sort((a, b) => a.sort_order - b.sort_order),
+      };
+    }),
     progress: progress.data as { state: UnitState; reading_completed_at: string | null; passed_at: string | null; mastered_at: string | null } | null,
-    nodes: (nodes.data ?? []).map((n) => ({ taught: n.taught as boolean, ...(n.content_nodes as unknown as { key: string; marker: string | null; title: string; path: string; kind: string }) })),
+    nodes: nodeList,
     siblings: (siblings.data ?? []) as Array<{ id: string; title: string; sort_order: number }>,
+    annotations: (annotations.data ?? []) as Array<{ id: string; section_id: string | null; section_title: string | null; kind: "nota" | "revisar" | "duvida"; body: string; resolved: boolean; updated_at: string }>,
+    clarifications: (clarifications.data ?? []) as Array<{ id: string; section_id: string | null; question: string; answer_markdown: string; verification_pending: boolean }>,
+    markedQuestionIds: (marks.data ?? []).map((m) => m.question_id as string),
   };
 }
 
@@ -195,8 +233,256 @@ export async function getDueReviews() {
 export async function getProfile() {
   const db = await createUserClient();
   const [p, s] = await Promise.all([
-    db.from("profiles").select("display_name, daily_goal_minutes, onboarding_completed").maybeSingle(),
+    db.from("profiles").select("display_name, daily_questions_goal, weekly_lessons_goal, onboarding_completed").maybeSingle(),
     db.from("subscriptions").select("status, plan_id, plans(name, max_active_trails, max_trail_builds_per_month, max_lesson_generations_per_month)").maybeSingle(),
   ]);
   return { profile: p.data, subscription: s.data };
+}
+
+// ---------------------------------------------------------------------------
+// Banco de questões
+// ---------------------------------------------------------------------------
+export interface BankFilters {
+  trilha?: string;
+  banca?: string;
+  materia?: string;
+  assunto?: string;
+  dificuldade?: string;
+  situacao?: "todas" | "nao_respondidas" | "erradas" | "acertadas" | "marcadas";
+}
+
+export interface BankQuestion {
+  id: string;
+  type: "multipla_escolha" | "certo_errado" | "situacional" | "discursiva";
+  statement: string;
+  difficulty: number;
+  essential: boolean;
+  board_style: string | null;
+  depends_on_external_source: boolean;
+  options: Array<{ id: string; label: string; text: string }>;
+  topic: string | null;
+  lessonId: string;
+  lessonTitle: string;
+  moduleId: string;
+  moduleTitle: string;
+  trailId: string;
+  trailTitle: string;
+  board: string;
+  marked: boolean;
+  history: Array<{ correct: boolean; at: string; context: string; confidence: number | null }>;
+}
+
+export async function getQuestionBank(f: BankFilters) {
+  const db = await createUserClient();
+  const [qs, attempts, marks, trails] = await Promise.all([
+    db
+      .from("questions")
+      .select(
+        "id, type, statement, difficulty, essential, board_style, depends_on_external_source, question_options(id, label, text, sort_order), content_nodes(title), lessons!inner(id, title, sort_order, learning_modules(id, title), study_trails!inner(id, title, board_slug, other_board_name, archived_at))",
+      )
+      .eq("active", true)
+      .is("lessons.study_trails.archived_at", null)
+      .limit(2000),
+    db.from("answer_attempts").select("question_id, is_correct, created_at, context, confidence").order("created_at", { ascending: false }).limit(5000),
+    db.from("question_marks").select("question_id"),
+    db.from("study_trails").select("id, title, board_slug, other_board_name").is("archived_at", null).order("updated_at", { ascending: false }),
+  ]);
+  if (qs.error) throw new Error(qs.error.message);
+  const hist = new Map<string, BankQuestion["history"]>();
+  for (const a of attempts.data ?? []) {
+    const list = hist.get(a.question_id as string) ?? [];
+    list.push({ correct: a.is_correct as boolean, at: a.created_at as string, context: a.context as string, confidence: (a.confidence as number | null) ?? null });
+    hist.set(a.question_id as string, list);
+  }
+  const marked = new Set((marks.data ?? []).map((m) => m.question_id as string));
+
+  const all: BankQuestion[] = (qs.data ?? []).map((raw) => {
+    const q = raw as unknown as {
+      id: string; type: BankQuestion["type"]; statement: string; difficulty: number; essential: boolean; board_style: string | null;
+      depends_on_external_source: boolean; question_options: Array<{ id: string; label: string; text: string; sort_order: number }> | null;
+      content_nodes: { title: string } | null;
+      lessons: { id: string; title: string; sort_order: number; learning_modules: { id: string; title: string } | null; study_trails: { id: string; title: string; board_slug: string; other_board_name: string | null } };
+    };
+    return {
+      id: q.id,
+      type: q.type,
+      statement: q.statement,
+      difficulty: q.difficulty,
+      essential: q.essential,
+      board_style: q.board_style,
+      depends_on_external_source: q.depends_on_external_source,
+      options: (q.question_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(({ id, label, text }) => ({ id, label, text })),
+      topic: q.content_nodes?.title ?? null,
+      lessonId: q.lessons.id,
+      lessonTitle: q.lessons.title,
+      moduleId: q.lessons.learning_modules?.id ?? "",
+      moduleTitle: q.lessons.learning_modules?.title ?? "",
+      trailId: q.lessons.study_trails.id,
+      trailTitle: q.lessons.study_trails.title,
+      board: q.lessons.study_trails.board_slug === "outra" ? (q.lessons.study_trails.other_board_name ?? "outra") : q.lessons.study_trails.board_slug,
+      marked: marked.has(q.id),
+      history: hist.get(q.id) ?? [],
+    };
+  });
+
+  const norm = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+  const filtered = all.filter((q) => {
+    if (f.trilha && q.trailId !== f.trilha) return false;
+    if (f.banca && q.board !== f.banca) return false;
+    if (f.materia && q.moduleId !== f.materia) return false;
+    if (f.assunto && !norm(`${q.topic ?? ""} ${q.lessonTitle}`).includes(norm(f.assunto))) return false;
+    if (f.dificuldade && String(q.difficulty) !== f.dificuldade) return false;
+    const last = q.history[0];
+    switch (f.situacao) {
+      case "nao_respondidas": return !last;
+      case "erradas": return !!last && !last.correct;
+      case "acertadas": return !!last && last.correct;
+      case "marcadas": return q.marked;
+      default: return true;
+    }
+  });
+
+  const modules = new Map<string, string>();
+  for (const q of all) if (!f.trilha || q.trailId === f.trilha) modules.set(q.moduleId, `${q.moduleTitle}`);
+  return {
+    questions: filtered,
+    total: all.length,
+    trails: (trails.data ?? []) as Array<{ id: string; title: string; board_slug: string; other_board_name: string | null }>,
+    boards: [...new Set(all.map((q) => q.board))],
+    modules: [...modules.entries()].map(([id, title]) => ({ id, title })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Painel: todas as métricas derivadas de dados reais
+// ---------------------------------------------------------------------------
+export interface ModuleProgress {
+  id: string;
+  title: string;
+  total: number;
+  studied: number;
+  practiced: number;
+  mastered: number;
+}
+
+/** Contagens estudado/praticado/dominado por módulo a partir da cobertura real. */
+export function moduleProgress(
+  plan: Awaited<ReturnType<typeof getTrailPlan>>,
+  coverage: Awaited<ReturnType<typeof getCoverage>>,
+): ModuleProgress[] {
+  const byKey = new Map(coverage.filter((c) => c.coverage?.requires_direct_coverage).map((c) => [c.key, c.coverage]));
+  return plan.map((m) => {
+    const keys = new Set(m.lessons.flatMap((l) => l.nodeKeys).filter((k) => byKey.has(k)));
+    let studied = 0, practiced = 0, mastered = 0;
+    for (const k of keys) {
+      const c = byKey.get(k)!;
+      if (c.taught) studied++;
+      if (c.taught && c.questions_answered > 0) practiced++;
+      if (c.mastered) mastered++;
+    }
+    return { id: m.id, title: m.title, total: keys.size, studied, practiced, mastered };
+  });
+}
+
+export async function getDashboard() {
+  const db = await createUserClient();
+  const now = new Date();
+  const weekStart = new Date(now);
+  weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7)); // segunda-feira
+  weekStart.setHours(0, 0, 0, 0);
+
+  const [profile, activity, weekLessons, lastProgress, qCount, attempted, marks] = await Promise.all([
+    db.from("profiles").select("display_name, daily_questions_goal, weekly_lessons_goal, onboarding_completed").maybeSingle(),
+    db.rpc("my_daily_activity", { p_days: 14 }),
+    db.rpc("my_lessons_completed_since", { p_since: weekStart.toISOString() }),
+    db
+      .from("learning_progress")
+      .select("lesson_id, state, updated_at, lessons(title, objective), study_trails(title, archived_at)")
+      .in("state", ["em_andamento", "aula_concluida", "em_revisao", "disponivel"])
+      .order("updated_at", { ascending: false })
+      .limit(5),
+    db.from("questions").select("id").eq("active", true).limit(5000),
+    db.from("answer_attempts").select("question_id").limit(5000),
+    db.from("question_marks").select("question_id", { count: "exact", head: true }),
+  ]);
+  const days = ((activity.data ?? []) as Array<{ day: string; correct: number; wrong: number }>).map((d) => ({
+    day: d.day,
+    correct: d.correct,
+    wrong: d.wrong,
+  }));
+  const today = days.at(-1) ?? { day: "", correct: 0, wrong: 0 };
+  const continueRow = (lastProgress.data ?? []).find((r) => !(r.study_trails as unknown as { archived_at: string | null } | null)?.archived_at);
+  const answeredIds = new Set((attempted.data ?? []).map((a) => a.question_id as string));
+  const totalAnswered = days.reduce((s, d) => s + d.correct + d.wrong, 0);
+  const totalCorrect = days.reduce((s, d) => s + d.correct, 0);
+
+  return {
+    profile: profile.data as { display_name: string | null; daily_questions_goal: number | null; weekly_lessons_goal: number | null; onboarding_completed: boolean } | null,
+    days,
+    today: { answered: today.correct + today.wrong, correct: today.correct },
+    weekLessonsCompleted: (weekLessons.data as number | null) ?? 0,
+    accuracy14d: totalAnswered ? totalCorrect / totalAnswered : null,
+    answered14d: totalAnswered,
+    continueLesson: continueRow
+      ? {
+          id: continueRow.lesson_id as string,
+          state: continueRow.state as UnitState,
+          title: (continueRow.lessons as unknown as { title: string }).title,
+          objective: (continueRow.lessons as unknown as { objective: string }).objective,
+          trailTitle: (continueRow.study_trails as unknown as { title: string }).title,
+        }
+      : null,
+    questions: (() => {
+      const active = (qCount.data ?? []).map((q) => q.id as string);
+      return { total: active.length, unanswered: active.filter((id) => !answeredIds.has(id)).length, marked: marks.count ?? 0 };
+    })(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Desempenho (somente tentativas reais do aluno; RLS garante que são dele)
+// ---------------------------------------------------------------------------
+export async function getPerformance(days = 30) {
+  const db = await createUserClient();
+  const [attempts, activity] = await Promise.all([
+    db
+      .from("answer_attempts")
+      .select(
+        "question_id, is_correct, created_at, context, confidence, questions!inner(statement, difficulty, board_style, content_nodes(title), lessons!inner(id, title, learning_modules(id, title)))",
+      )
+      .order("created_at", { ascending: false })
+      .limit(5000),
+    db.rpc("my_daily_activity", { p_days: days }),
+  ]);
+  if (attempts.error) throw new Error(attempts.error.message);
+  const records: AttemptRecord[] = (attempts.data ?? []).map((raw) => {
+    const r = raw as unknown as {
+      question_id: string; is_correct: boolean; created_at: string; context: string; confidence: number | null;
+      questions: {
+        statement: string; difficulty: number; board_style: string | null; content_nodes: { title: string } | null;
+        lessons: { id: string; title: string; learning_modules: { id: string; title: string } | null };
+      };
+    };
+    return {
+      questionId: r.question_id,
+      correct: r.is_correct,
+      at: r.created_at,
+      context: r.context,
+      confidence: r.confidence,
+      difficulty: r.questions.difficulty,
+      board: r.questions.board_style,
+      subjectId: r.questions.lessons.learning_modules?.id ?? r.questions.lessons.id,
+      subjectTitle: r.questions.lessons.learning_modules?.title ?? r.questions.lessons.title,
+      topic: r.questions.content_nodes?.title ?? null,
+      lessonId: r.questions.lessons.id,
+      lessonTitle: r.questions.lessons.title,
+      statement: r.questions.statement,
+    };
+  });
+  const daily = ((activity.data ?? []) as Array<{ day: string; correct: number; wrong: number }>).map((d) => ({
+    day: d.day,
+    correct: d.correct,
+    wrong: d.wrong,
+  }));
+  return { summary: summarizePerformance(records), daily, truncated: (attempts.data?.length ?? 0) >= 5000 };
 }

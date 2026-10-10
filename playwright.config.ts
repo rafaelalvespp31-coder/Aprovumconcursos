@@ -26,5 +26,12 @@ export default defineConfig({
   ],
   webServer: process.env.E2E_BASE_URL
     ? undefined
-    : { command: "npx next start -p 3100", url: baseURL, reuseExistingServer: true, timeout: 60_000 },
+    : {
+        command: "npx next start -p 3100",
+        url: baseURL,
+        reuseExistingServer: true,
+        timeout: 60_000,
+        // Galeria de design com dados de exemplo: habilitada só no servidor de teste.
+        env: { ENABLE_DESIGN_GALLERY: "1" },
+      },
 });

@@ -13,6 +13,8 @@ import {
   lessonSchema,
   planSchema,
   questionsSchema,
+  clarificationSchema,
+  type ClarificationOutput,
   type AnalysisOutput,
   type LessonOutput,
   type QuestionsOutput,
@@ -34,6 +36,7 @@ export const AI_LIMITS = {
     plan_lessons: 8_000,
     generate_lesson: 12_000,
     generate_questions: 8_000,
+    clarify: 2_500,
   },
 } as const;
 
@@ -400,4 +403,43 @@ export function validateQuestions(
     return true;
   });
   return { data: { questions }, warnings };
+}
+
+// ---------------------------------------------------------------------------
+// Esclarecimento de conceito (sem sair da aula)
+// ---------------------------------------------------------------------------
+
+export async function clarifyConcept(
+  provider: AIProvider,
+  ctx: { board: string; lessonTitle: string; sectionTitle: string | null; sectionMarkdown: string; sourceText: string; question: string },
+): Promise<ServiceResult<ClarificationOutput & { verificationPending: boolean }>> {
+  const q = wrapUntrusted(ctx.question.slice(0, 500), "pergunta_do_aluno");
+  const material = wrapUntrusted(`${ctx.sourceText.slice(0, 6000)}\n\n---\n\n${ctx.sectionMarkdown.slice(0, 12000)}`, "material_da_aula");
+  const res = await provider.generateStructured({
+    task: "review_content",
+    schemaName: "registrar_esclarecimento",
+    system: `${BASE_SYSTEM}\nVocê responde dúvidas pontuais de um aluno durante a aula, de forma curta, didática e precisa.`,
+    maxOutputTokens: AI_LIMITS.maxOutputTokens.clarify,
+    temperature: 0.3,
+    schema: clarificationSchema,
+    prompt: `Aula: "${ctx.lessonTitle}"${ctx.sectionTitle ? `, seção "${ctx.sectionTitle}"` : ""}. Banca de referência: ${ctx.board}.
+Responda à pergunta do aluno em até ~250 palavras, com um exemplo concreto quando ajudar.
+Use o material da aula como base. Se a pergunta fugir do assunto da aula, diga isso em uma frase e oriente o aluno.
+Não invente normas, números de artigos, súmulas ou julgados; liste em "unverifiedClaims" o que depende de fonte externa.
+
+${material.text}
+
+${q.text}`,
+  });
+  const m = res.data.answerMarkdown.match(CITATION_LIKE);
+  const unverified = [...res.data.unverifiedClaims];
+  if (m) unverified.push(`Citação "${m[0]}" precisa ser conferida na fonte oficial.`);
+  const warnings: Warning[] = q.suspicious ? [{ code: "prompt_injection_suspect", message: "Pergunta contém padrões de instrução; tratada como dado." }] : [];
+  return {
+    data: { ...res.data, unverifiedClaims: unverified, verificationPending: unverified.length > 0 },
+    usage: res.usage,
+    model: res.model,
+    provider: res.provider,
+    warnings,
+  };
 }

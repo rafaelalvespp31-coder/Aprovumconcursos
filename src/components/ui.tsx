@@ -109,3 +109,27 @@ export function Spinner({ label }: { label: string }) {
     </span>
   );
 }
+
+export function Skeleton({ className = "h-4 w-full" }: { className?: string }) {
+  return <div className={`animate-pulse rounded-sm bg-linha/70 ${className}`} aria-hidden />;
+}
+
+/** Cartão funcional: quando tem href, o cartão inteiro leva à funcionalidade. */
+export function Card({ href, children, className = "" }: { href?: string; children: ReactNode; className?: string }) {
+  const cls = `block rounded-lg border border-linha bg-superficie p-4 sm:p-5 ${className}`;
+  if (!href) return <section className={cls}>{children}</section>;
+  return (
+    <Link href={href} className={`${cls} transition-colors hover:border-azul focus-visible:border-azul`}>
+      {children}
+    </Link>
+  );
+}
+
+export function SectionTitle({ title, action }: { title: string; action?: ReactNode }) {
+  return (
+    <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+      <h2 className="t-h2">{title}</h2>
+      {action}
+    </div>
+  );
+}

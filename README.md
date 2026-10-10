@@ -4,9 +4,9 @@ PWA de estudos para concursos públicos: transforma o conteúdo programático in
 
 > Do edital à aprovação, um nível de cada vez.
 
-## Estado atual (entrega 1 — 10/10/2026)
+## Estado atual (entrega 2 — 10/10/2026)
 
-Núcleo pedagógico, banco com RLS, pipeline de IA, telas principais e PWA implementados e testados localmente. **Não foi publicado** e **não foi testado contra um Supabase real nem contra a API de IA real** (não havia credenciais neste ambiente). Veja [Critérios do MVP](#critérios-do-mvp) para o status de cada item.
+Núcleo pedagógico, banco com RLS, pipeline de IA, PWA e a camada de design/UX (painel, mapa da trilha, aula interativa, modo de questões, simulado e desempenho) implementados e testados localmente. **Não foi publicado** e **não foi testado contra um Supabase real nem contra a API de IA real** (não havia credenciais neste ambiente). Veja [Critérios do MVP](#critérios-do-mvp) para o status de cada item.
 
 ## Stack
 
@@ -58,6 +58,27 @@ Jobs persistidos (`ai_generation_jobs`) executados **um passo por requisição**
 
 Estados: não iniciada → disponível → em andamento → aula concluída → (em revisão) → aguardando domínio → dominada (+ necessita atualização, pendente de validação). Passar nas questões **libera a próxima aula**, mas "dominada" exige uma revisão bem-sucedida após o intervalo mínimo de retenção. Critérios configuráveis por trilha (`study_trails.mastery_criteria`).
 
+## Design e experiência
+
+**Design system** (`src/app/globals.css`, `src/components/`): tokens de cor, tipografia (Public Sans na interface; Source Serif 4 na leitura), raios e estados; ícones próprios consistentes; componentes reutilizáveis (botões, campos, avisos, cards, confirmação de ações destrutivas, indicador de salvamento, cronômetro, teclas de atalho, estados vazio/carregando/erro).
+
+**Camadas de aprendizagem** — nunca uma barra genérica: *estudado* (leu a aula), *praticado* (respondeu questões), *dominado* (passou e manteve o acerto numa revisão). Cores validadas para daltonismo e contraste (`--color-estudado/praticado/dominado`), as mesmas na régua de cobertura e no medidor de progresso.
+
+| Tela | O que faz |
+|---|---|
+| Painel | saudação e metas (diária de questões, semanal de aulas), continuar última aula, revisões pendentes, questões a resolver, últimos 14 dias, trilhas com domínio por matéria. Todos os números vêm do banco; cada card leva à função correspondente. |
+| Mapa da trilha | módulos expansíveis, aulas por nível, estado de cada aula, pré-requisitos visíveis, questões por aula, revisão pendente, conteúdo incompleto/não verificado, régua de cobertura. |
+| Aula | índice navegável (lateral no desktop, folha inferior no celular), progresso de leitura, seções com quadros comparativos, exemplos expansíveis, pegadinhas e exceções destacadas, texto legal com fonte, "Esclarecer" (resposta da IA sem sair da aula), "Revisar depois", anotações pessoais, dúvidas, perguntas rápidas intercaladas, conclusão de leitura e resultado da unidade. |
+| Questões | filtros (trilha, banca, matéria, assunto, dificuldade, situação), lista navegável com acerto/erro/"para depois", marcar para resolver depois, cronômetro opcional, histórico de tentativas, rever explicação, autoavaliação de confiança, atalhos (A–E, C/E, Enter, J/K). |
+| Simulado | quantidade escolhida, tempo corrido, gabarito só no final, análise dos erros por assunto, erros com certeza, gabarito comentado. |
+| Desempenho | acerto atual (última tentativa) × atividade (todas), 30 dias, por matéria, assunto, dificuldade e estilo de banca, erros recorrentes, calibração da confiança. |
+
+Confiança declarada é registrada e exibida como calibração ("errou com certeza", "acertou no chute"), **nunca** como prova de domínio. Questões são sempre identificadas como originais de treino.
+
+### Galeria de design (`/dev/galeria`)
+
+Renderiza as telas autenticadas com **dados de exemplo identificados como tal**, usando uma implementação em memória das ações (`src/app/dev/galeria/demo-api.tsx`) injetada pelo contexto `StudyApi`. Em produção a galeria responde **404**, a menos que `ENABLE_DESIGN_GALLERY=1` (definido apenas no servidor de testes E2E). Nunca defina essa variável na Vercel.
+
 ## Segurança
 
 - **RLS em todas as tabelas de aluno**; o cliente (navegador) só **lê** os próprios dados. Toda escrita de conteúdo, progresso, respostas e cotas passa pelo servidor, que verifica a sessão (`auth.getUser()`) e sempre filtra por `user_id`.
@@ -75,7 +96,7 @@ Estados: não iniciada → disponível → em andamento → aula concluída → 
 ## Configuração
 
 1. `npm ci`
-2. Crie um projeto no Supabase e aplique as migrações em ordem (`supabase db push` com a CLI, ou cole os arquivos de `supabase/migrations/` no SQL Editor).
+2. Crie um projeto no Supabase e aplique as **5 migrações** de `supabase/migrations/`, em ordem (`supabase db push` com a CLI, ou cole cada arquivo no SQL Editor): `…0100_schema`, `…0200_security`, `…0300_seed`, `…0400_functions`, `…0500_study_tools`.
 3. Em *Authentication → URL Configuration*, adicione `https://SEU-DOMINIO/auth/callback` (e `http://localhost:3000/auth/callback`) às URLs de redirecionamento.
 4. Copie `.env.example` para `.env.local` e preencha (veja os comentários no arquivo).
 5. `npm run dev`
@@ -117,12 +138,16 @@ Os testes de banco aplicam as **migrações de produção** num Postgres real co
 |---|---|
 | TypeScript (`tsc --noEmit`) | sem erros |
 | ESLint (`--max-warnings=0`) | sem erros |
-| Unitários (66) | 66 aprovados |
-| Banco — RLS, integridade, cotas, persistência (24) | 24 aprovados (PostgreSQL 16) |
+| Unitários (73) | 73 aprovados |
+| Banco — RLS, integridade, cotas, persistência, ferramentas de estudo (34) | 34 aprovados (PostgreSQL 16) |
 | Build de produção | sucesso |
-| E2E públicos, mobile + desktop (12) | 12 aprovados |
+| E2E públicos + interações da galeria, celular e desktop (50) | 50 aprovados |
 | E2E autenticados (4) | **pulados** — sem Supabase/IA/conta de teste |
-| `npm audit --omit=dev` | 0 vulnerabilidades (5 altas em dependência de desenvolvimento `braces`, via ESLint) |
+| Galeria em produção sem a variável | 404 (verificado) |
+| Segredos no bundle do navegador | nenhum (verificado) |
+| `npm audit --omit=dev` | 0 vulnerabilidades |
+
+Os E2E de interação clicam em cada controle e verificam o efeito: responder e ver a explicação de cada alternativa, atalhos de teclado, marcar para depois, navegar pela lista, simulado com gabarito só no final, índice da aula (nav no desktop, folha no celular), revisar depois, anotar, esclarecer sem sair da aula, pergunta rápida, concluir leitura e resultado, links do painel, módulo expansível, desempenho.
 
 Cobertura dos testes inclui: extração de editais em linha e em lista, texto de lei, PDF quebrado, entrada grande (800 tópicos) e malformada; lacunas de numeração; auditoria (omissão, pai≠filhos, chaves inventadas, pré-requisito fora de ordem, aula gerada incompleta); correção automática; agregação de cobertura; máquina de estados; revisão espaçada; isolamento de prompt injection; validação de aula/questões; pipeline com falha temporária, falha definitiva, retomada, IA não configurada; acesso cruzado entre contas; cliente sem permissão de escrita; gabarito oculto; cotas e rate limit.
 
@@ -150,7 +175,7 @@ Importe o repositório na Vercel, defina as variáveis de ambiente e faça o dep
 | 14 | Dados isolados por usuário | Testado (RLS) |
 | 15 | Chaves privadas não expostas | Verificado (bundle + `server-only`) |
 | 16 | Testes executados e documentados | Sim (acima) |
-| 17 | Mobile e desktop | Páginas públicas verificadas; páginas autenticadas não renderizadas sem backend |
+| 17 | Mobile e desktop | Públicas e autenticadas verificadas (autenticadas via galeria com dados de exemplo), sem rolagem horizontal |
 | 18 | Instalação PWA | Manifest, ícones, service worker e página offline verificados; instalação em aparelho **não testada** |
 | 19 | Limites de consumo no servidor | Testado |
 | 20 | Documentação | Este README |
@@ -159,13 +184,15 @@ Importe o repositório na Vercel, defina as variáveis de ambiente e faça o dep
 
 ## Pendências
 
+- Validação ponta a ponta com Supabase e IA reais (fluxo autenticado).
 - Área administrativa (usuários, planos, falhas, custos) — permissões e políticas já existem.
-- Tela de desempenho (acertos por tópico/banca, evolução).
-- Explicação adicional de um conceito sem sair da aula; questões discursivas com correção.
-- Recomendações de revisão usando erros recentes por tópico (hoje: vencimento, esquecimentos e dificuldade).
-- Fila offline de respostas com sincronização posterior.
+- Interatividade "progressiva" ainda não feita: flashcards, completar lacunas, desafios de aplicação e conquistas.
+- Calendário de estudos.
+- Fila offline de respostas e anotações com sincronização posterior (hoje: leitura offline de aulas já abertas e aviso claro do que exige internet).
+- Questões discursivas com correção.
 - Verificação de fontes oficiais (RAG) para marcar conteúdo como "verificado".
 - Importação de PDF (arquitetura preparada: `source_documents.kind/storage_path`).
 - Troca de banca após a criação; edição dos critérios de domínio pela interface.
 - LGPD: exclusão de conta e exportação de dados pela interface.
 - Pagamentos (planos e cotas já modelados; nenhum gateway integrado).
+- A cota de esclarecimento é consumida antes da chamada à IA; se a IA falhar, a unidade não é devolvida.

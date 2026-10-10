@@ -1,0 +1,170 @@
+/** Dados de EXEMPLO para a galeria de design (nunca usados em produção). */
+import type { DashboardData } from "@/app/(app)/painel/view";
+import type { ReaderProps } from "@/app/(app)/aula/[id]/reader";
+import type { BankQuestion, LessonListItem } from "@/server/queries";
+import { summarizePerformance, type AttemptRecord } from "@/domain/progress/performance";
+
+const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+
+export const dashboard: DashboardData = {
+  name: "Rafael",
+  goals: { dailyQuestions: 20, weeklyLessons: 5 },
+  today: { answered: 13, correct: 10 },
+  weekLessonsCompleted: 3,
+  days: Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(Date.UTC(2026, 8, 27 + i));
+    const c = [6, 9, 0, 12, 8, 4, 0, 10, 14, 7, 11, 0, 9, 10][i]!;
+    return { day: d.toISOString().slice(0, 10), correct: c, wrong: Math.round(c * 0.35) };
+  }),
+  accuracy14d: 0.74,
+  answered14d: 136,
+  continueLesson: { id: id(1), state: "em_andamento", title: "Anulação, revogação e convalidação", objective: "Distinguir as formas de extinção do ato administrativo, seus fundamentos e efeitos.", trailTitle: "Polícia Penal MG — Direito Administrativo" },
+  questions: { total: 84, unanswered: 31, marked: 4 },
+  reviews: [
+    { unitId: id(2), title: "Atributos do ato administrativo", reasons: ["Revisão atrasada há 2 dia(s).", "3 erro(s) recente(s) neste assunto."] },
+    { unitId: id(3), title: "Poder de polícia", reasons: ["Revisão programada para hoje."] },
+  ],
+  trails: [
+    {
+      id: id(10),
+      title: "Polícia Penal MG — Direito Administrativo",
+      modules: [
+        { id: id(11), title: "Ato administrativo", total: 14, studied: 12, practiced: 9, mastered: 5 },
+        { id: id(12), title: "Poderes administrativos", total: 8, studied: 5, practiced: 3, mastered: 1 },
+        { id: id(13), title: "Licitações e contratos", total: 11, studied: 1, practiced: 0, mastered: 0 },
+      ],
+    },
+    {
+      id: id(20),
+      title: "Língua Portuguesa — FGV",
+      modules: [{ id: id(21), title: "Coesão e coerência", total: 9, studied: 9, practiced: 9, mastered: 7 }],
+    },
+  ],
+  pendingTrails: [{ id: id(30), title: "Lei 7.210/1984 — Execução Penal", status: "review" }],
+};
+
+const lessonBase = (n: number, over: Partial<LessonListItem>): LessonListItem => ({
+  id: id(100 + n), key: `L${n}`, title: "", objective: "", sort_order: n, estimated_minutes: 35, status: "ready",
+  supplementary: [], module_id: id(11), verification_pending: false, state: "nao_iniciada", nodeKeys: [],
+  prerequisiteIds: [], questionCount: 6, reviewDue: false, ...over,
+});
+
+export const trailModules: Array<{ id: string; title: string; lessons: LessonListItem[] }> = [
+  {
+    id: id(11),
+    title: "Ato administrativo",
+    lessons: [
+      lessonBase(1, { title: "Conceito e requisitos do ato administrativo", objective: "Identificar competência, finalidade, forma, motivo e objeto.", state: "dominada", nodeKeys: ["N0003", "N0004"] }),
+      lessonBase(2, { title: "Atributos do ato administrativo", objective: "Reconhecer presunção de legitimidade, imperatividade, autoexecutoriedade e tipicidade.", state: "em_revisao", reviewDue: true, prerequisiteIds: [id(101)], nodeKeys: ["N0005"] }),
+      lessonBase(3, { title: "Anulação, revogação e convalidação", objective: "Distinguir as formas de extinção do ato, seus fundamentos e efeitos.", state: "em_andamento", verification_pending: true, prerequisiteIds: [id(101)], nodeKeys: ["N0006", "N0007"] }),
+      lessonBase(4, { title: "Classificação e espécies de atos", objective: "Classificar atos quanto aos destinatários, ao alcance e à formação.", state: "nao_iniciada", status: "planned", questionCount: 0, nodeKeys: ["N0008"] }),
+    ],
+  },
+  {
+    id: id(12),
+    title: "Poderes administrativos",
+    lessons: [
+      lessonBase(5, { module_id: id(12), title: "Poder hierárquico e disciplinar", objective: "Diferenciar a organização interna da aplicação de sanções a servidores.", state: "nao_iniciada", status: "planned", questionCount: 0 }),
+      lessonBase(6, { module_id: id(12), title: "Poder de polícia", objective: "Compreender atributos e limites do poder de polícia.", state: "nao_iniciada", status: "pending_validation", supplementary: [{ title: "Direitos fundamentais e restrições", justification: "Ajuda a entender os limites do poder de polícia." }] }),
+    ],
+  },
+];
+
+export const trailTitles = new Map([
+  ["N0003", "2.1 Conceito"], ["N0004", "requisitos"], ["N0005", "atributos"], ["N0006", "2.2 Invalidação, anulação e revogação"], ["N0007", "convalidação"], ["N0008", "classificação e espécies"],
+]);
+
+const q = (n: number, over: Partial<BankQuestion>): BankQuestion => ({
+  id: id(500 + n), type: "multipla_escolha", statement: "", difficulty: 2, essential: false, board_style: "FGV", depends_on_external_source: false,
+  options: [], topic: "Anulação e revogação", lessonId: id(103), lessonTitle: "Anulação, revogação e convalidação", moduleId: id(11), moduleTitle: "Ato administrativo",
+  trailId: id(10), trailTitle: "Polícia Penal MG — Direito Administrativo", board: "fgv", marked: false, history: [], ...over,
+});
+const opts = (n: number, texts: string[]) => texts.map((t, i) => ({ id: id(900 + n * 10 + i), label: String.fromCharCode(65 + i), text: t }));
+
+export const bank: BankQuestion[] = [
+  q(1, {
+    statement: "Um servidor obteve licença com base em documento que, descobriu-se depois, era falso. Ao identificar o vício, a Administração deve:",
+    essential: true,
+    options: opts(1, [
+      "revogar a licença, por conveniência e oportunidade, com efeitos a partir da revogação",
+      "anular a licença, por ilegalidade, com efeitos, em regra, retroativos",
+      "convalidar a licença, pois todo vício de ato administrativo é sanável",
+      "aguardar decisão judicial, pois a Administração não pode rever os próprios atos",
+    ]),
+    history: [{ correct: false, at: "2026-10-08T14:00:00Z", context: "fixacao", confidence: 3 }],
+  }),
+  q(2, { type: "certo_errado", statement: "A revogação de ato administrativo pode ser feita pelo Poder Judiciário no exercício de sua função jurisdicional.", difficulty: 1, history: [{ correct: true, at: "2026-10-09T10:00:00Z", context: "fixacao", confidence: 2 }] }),
+  q(3, { statement: "Sobre a convalidação de atos administrativos, é correto afirmar que:", difficulty: 3, marked: true, options: opts(3, ["alcança qualquer vício de finalidade", "só é possível para vícios sanáveis, sem prejuízo a terceiros nem ao interesse público", "depende sempre de autorização legislativa", "produz efeitos apenas a partir da data da convalidação, nunca retroagindo"]) }),
+  ...Array.from({ length: 9 }, (_, k) => q(10 + k, { statement: `Questão de exemplo ${k + 4}.`, options: opts(10 + k, ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"]), history: k % 3 === 0 ? [{ correct: k % 2 === 0, at: "2026-10-07T10:00:00Z", context: "fixacao", confidence: null }] : [] })),
+];
+
+const LEI = "Art. 53. A Administração deve anular seus próprios atos, quando eivados de vício de legalidade, e pode revogá-los por motivo de conveniência ou oportunidade, respeitados os direitos adquiridos.";
+
+export const reader: ReaderProps = {
+  lesson: { id: id(103), title: "Anulação, revogação e convalidação", objective: "Distinguir as formas de extinção do ato administrativo, seus fundamentos e efeitos.", trailId: id(10), trailTitle: "Polícia Penal MG — Direito Administrativo", estimatedMinutes: 35, stateLabel: "Em andamento" },
+  nodes: [
+    { key: "N0006", marker: "2.2", title: "Invalidação, anulação e revogação", taught: true },
+    { key: "N0007", marker: null, title: "convalidação", taught: true },
+    { key: "N0009", marker: "Art. 53", title: "Lei 9.784/1999", taught: true },
+  ],
+  sections: [
+    { id: id(201), kind: "introducao", title: "Introdução", node_keys: ["N0006"], verification_status: "nao_aplicavel", body_markdown: "Um ato administrativo pode deixar de produzir efeitos por razões muito diferentes. Às vezes ele **nasceu com defeito**; outras vezes era válido, mas **deixou de ser conveniente**. Separar essas duas situações é o que a banca mais cobra neste tema." },
+    { id: id(202), kind: "texto_legal", title: "Texto legal", node_keys: ["N0009"], verification_status: "nao_aplicavel", body_markdown: `> ${LEI}` },
+    { id: id(203), kind: "quadro_comparativo", title: "Anulação × revogação", node_keys: ["N0006"], verification_status: "nao_aplicavel", body_markdown: "| | Anulação | Revogação |\n|---|---|---|\n| Motivo | Ilegalidade | Conveniência e oportunidade |\n| Quem pode | Administração e Judiciário | Somente a Administração |\n| Efeitos | Em regra, retroativos (*ex tunc*) | Daqui para a frente (*ex nunc*) |\n| Alcança | Ato ilegal | Ato válido e discricionário |" },
+    { id: id(204), kind: "exemplos", title: "Exemplos", node_keys: ["N0006"], verification_status: "nao_aplicavel", body_markdown: "- **Anulação:** licença concedida com base em documento falso. O ato nasceu viciado.\n- **Revogação:** autorização de uso de calçada para mesas de bar retirada porque a rua virou rota de ônibus. O ato era válido, mas deixou de atender ao interesse público." },
+    { id: id(205), kind: "pegadinhas", title: "Pegadinhas", node_keys: ["N0006"], verification_status: "nao_aplicavel", body_markdown: "O Judiciário **não revoga** atos de outro Poder no exercício da função jurisdicional: ele só anula por ilegalidade. Revogar é juízo de mérito, exclusivo de quem praticou o ato." },
+    { id: id(206), kind: "conceitos_fundamentais", title: "Convalidação", node_keys: ["N0007"], verification_status: "nao_aplicavel", body_markdown: "Convalidar é **corrigir um vício sanável** e manter o ato, com efeitos retroativos. Só cabe quando o defeito é sanável e não há prejuízo ao interesse público nem a terceiros." },
+    { id: id(207), kind: "jurisprudencia", title: "Entendimento dos tribunais", node_keys: ["N0006"], verification_status: "pendente", body_markdown: "A orientação consolidada é de que a Administração pode anular os próprios atos ilegais e revogá-los por conveniência, respeitados os direitos adquiridos e ressalvada a apreciação judicial." },
+    { id: id(208), kind: "resumo", title: "Resumo", node_keys: ["N0006", "N0007"], verification_status: "nao_aplicavel", body_markdown: "1. Ilegal → **anula** (retroage).\n2. Válido, mas inconveniente → **revoga** (não retroage).\n3. Vício sanável, sem prejuízo → pode **convalidar**." },
+  ],
+  questions: bank.slice(0, 3).map((b, i) => ({ ...b, nodeKey: i === 2 ? "N0007" : "N0006" })),
+  markedQuestionIds: [id(503)],
+  annotations: [
+    { id: id(301), section_id: id(203), section_title: "Anulação × revogação", kind: "revisar", body: "", resolved: false, updated_at: "2026-10-10T12:00:00Z" },
+    { id: id(302), section_id: id(206), section_title: "Convalidação", kind: "duvida", body: "Vício de competência sempre pode ser convalidado?", resolved: false, updated_at: "2026-10-10T12:05:00Z" },
+  ],
+  clarifications: [
+    { id: id(401), section_id: id(205), question: "Então o juiz nunca pode revogar ato nenhum?", answer_markdown: "Pode revogar **os próprios atos administrativos** do Judiciário (por exemplo, uma portaria interna do tribunal), porque aí ele atua como Administração. O que não pode é revogar, ao julgar um processo, ato de outro Poder.", verification_pending: false },
+  ],
+  readingDone: false,
+  context: "fixacao",
+  prevId: id(102),
+  nextId: id(104),
+  notices: null,
+};
+
+// ---- Desempenho (EXEMPLO): tentativas sintéticas processadas pela mesma função de produção ----
+
+const SUBJECTS = [
+  { id: id(11), title: "Ato administrativo", topics: ["Anulação e revogação", "Atributos", "Convalidação"] },
+  { id: id(12), title: "Poderes administrativos", topics: ["Poder de polícia", "Poder disciplinar"] },
+  { id: id(21), title: "Coesão e coerência", topics: ["Conectivos", "Referenciação"] },
+];
+const sampleAttempts: AttemptRecord[] = Array.from({ length: 60 }, (_, k) => {
+  const s = SUBJECTS[k % 3]!;
+  const correct = s.id === id(12) ? k % 3 === 0 : k % 4 !== 0;
+  return {
+    questionId: `q${k % 40}`,
+    correct,
+    at: new Date(Date.UTC(2026, 8, 12 + (k % 28), 10, k)).toISOString(),
+    context: "fixacao",
+    confidence: k % 5 === 0 ? 3 : k % 7 === 0 ? 1 : null,
+    difficulty: (k % 4) + 1,
+    board: k % 3 === 2 ? "FGV" : "CEBRASPE",
+    subjectId: s.id,
+    subjectTitle: s.title,
+    topic: s.topics[k % s.topics.length]!,
+    lessonId: id(103),
+    lessonTitle: "Anulação, revogação e convalidação",
+    statement: `Questão de exemplo ${(k % 40) + 1}: enunciado ilustrativo para a galeria de design.`,
+  };
+});
+
+export const performance = {
+  summary: summarizePerformance(sampleAttempts),
+  daily: Array.from({ length: 30 }, (_, i) => {
+    const c = [6, 9, 0, 12, 8, 4, 0, 10, 14, 7][i % 10]!;
+    return { day: new Date(Date.UTC(2026, 8, 11 + i)).toISOString().slice(0, 10), correct: c, wrong: Math.round(c * 0.35) };
+  }),
+  truncated: false,
+};
