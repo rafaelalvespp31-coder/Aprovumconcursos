@@ -62,13 +62,17 @@ export function MiniBars({
   max?: number;
 }) {
   const top = max ?? Math.max(1, ...data.map((d) => d.value + (d.secondary ?? 0)));
+  // Séries longas (ex.: 30 dias) precisam caber em 320px: espaço menor e rótulo semanal.
+  const dense = data.length > 20;
+  const gap = dense ? "gap-[2px]" : "gap-1.5";
+  const showLabel = (i: number) => !dense || (data.length - 1 - i) % 7 === 0;
   return (
-    <figure>
-      <div className="flex h-28 items-end gap-1.5" role="img" aria-label={label}>
+    <figure className="min-w-0">
+      <div className={`flex h-28 items-end ${gap}`} role="img" aria-label={label}>
         {data.map((d) => {
           const total = d.value + (d.secondary ?? 0);
           return (
-            <div key={d.key} className="flex h-full flex-1 flex-col justify-end" title={`${d.hint ?? d.label}: ${d.value} acerto(s), ${d.secondary ?? 0} erro(s)`}>
+            <div key={d.key} className="flex h-full min-w-0 flex-1 flex-col justify-end" title={`${d.hint ?? d.label}: ${d.value} acerto(s), ${d.secondary ?? 0} erro(s)`}>
               {total === 0 ? (
                 <div className="h-px bg-linha-forte" />
               ) : (
@@ -81,9 +85,11 @@ export function MiniBars({
           );
         })}
       </div>
-      <div className="mt-1.5 flex gap-1.5 t-tiny text-tinta-fraca" aria-hidden>
-        {data.map((d) => (
-          <span key={d.key} className="flex-1 text-center">{d.label}</span>
+      <div className={`mt-1.5 flex ${gap} t-tiny text-tinta-fraca`} aria-hidden>
+        {data.map((d, i) => (
+          <span key={d.key} className="min-w-0 flex-1 overflow-visible whitespace-nowrap text-center">
+            {showLabel(i) ? (dense ? (d.hint ?? d.label).slice(0, 5) : d.label) : ""}
+          </span>
         ))}
       </div>
       <figcaption className="mt-2 flex gap-4 t-tiny text-tinta-suave">

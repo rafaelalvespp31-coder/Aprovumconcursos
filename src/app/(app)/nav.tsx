@@ -5,12 +5,13 @@ import { usePathname } from "next/navigation";
 import { Icon, type IconName } from "@/components/icons";
 
 // No celular, o Perfil fica no cabeçalho para manter 5 destinos de estudo na barra inferior.
-const ITEMS: Array<{ href: string; label: string; icon: IconName; also?: string[]; mobile: boolean }> = [
+// `short`: rótulo da barra inferior do celular, que precisa caber em 64px (telas de 320px).
+const ITEMS: Array<{ href: string; label: string; short?: string; icon: IconName; also?: string[]; mobile: boolean }> = [
   { href: "/painel", label: "Painel", icon: "painel", mobile: true },
   { href: "/trilhas", label: "Trilhas", icon: "trilhas", also: ["/aula", "/nova-trilha"], mobile: true },
   { href: "/questoes", label: "Questões", icon: "questoes", mobile: true },
   { href: "/revisoes", label: "Revisões", icon: "revisoes", mobile: true },
-  { href: "/desempenho", label: "Desempenho", icon: "grafico", mobile: true },
+  { href: "/desempenho", label: "Desempenho", short: "Evolução", icon: "grafico", mobile: true },
   { href: "/perfil", label: "Perfil", icon: "perfil", mobile: false },
 ];
 
@@ -46,10 +47,10 @@ export function AppNav({ variant }: { variant: "lateral" | "inferior" }) {
           key={i.href}
           href={i.href}
           aria-current={active(i) ? "page" : undefined}
-          className="flex h-16 flex-col items-center justify-center gap-1 t-tiny font-semibold text-tinta-fraca aria-[current=page]:text-azul"
+          className="flex h-16 min-w-0 flex-col items-center justify-center gap-1 text-[0.6875rem] font-semibold leading-tight tracking-[-0.01em] text-tinta-fraca aria-[current=page]:text-azul"
         >
           <Icon name={i.icon} />
-          {i.label}
+          {i.short ?? i.label}
         </Link>
       ))}
     </nav>
