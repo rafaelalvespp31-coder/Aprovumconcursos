@@ -16,7 +16,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="t-h1">Questões</h1>
+          <h1 className="sr-only">Questões</h1>
           <p className="mt-1 text-tinta-suave">
             {bank.questions.length} de {bank.total} questão(ões). Todas são originais, elaboradas para treino a partir das suas aulas.
           </p>

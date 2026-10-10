@@ -24,7 +24,7 @@ export default async function ReviewsPage() {
 
   return (
     <div>
-      <h1 className="t-h1">Revisões</h1>
+      <h1 className="sr-only">Revisões</h1>
       <p className="mt-1 max-w-2xl text-tinta-suave">
         As revisões voltam em intervalos que crescem quando você acerta e diminuem quando erra. A ordem abaixo explica por que cada uma foi priorizada.
       </p>

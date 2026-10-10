@@ -36,6 +36,8 @@ export const STATE_LABELS: Record<UnitState, string> = {
 export interface MasteryCriteria {
   /** Exige leitura da aula antes de contabilizar questões. */
   requireLessonCompletion: boolean;
+  /** Exige responder TODAS as questões de fixação do tema antes de avançar. */
+  requireAllQuestions: boolean;
   /** Mínimo de questões distintas respondidas na unidade. */
   minQuestions: number;
   /** Proporção mínima de acertos (0–1) para avançar. */
@@ -50,6 +52,7 @@ export interface MasteryCriteria {
 
 export const DEFAULT_CRITERIA: MasteryCriteria = {
   requireLessonCompletion: true,
+  requireAllQuestions: true,
   minQuestions: 4,
   minAccuracy: 0.75,
   minEssentialAccuracy: 1,
@@ -61,6 +64,8 @@ export interface QuizOutcome {
   answered: number;
   correct: number;
   essentialAnswered: number;
+  /** Questões de fixação disponíveis no tema (quando conhecido). */
+  total?: number;
   essentialCorrect: number;
 }
 
@@ -120,7 +125,9 @@ export interface QuizVerdict {
 export function evaluateQuiz(o: QuizOutcome, c: MasteryCriteria, minAccuracy = c.minAccuracy): QuizVerdict {
   const reasons: string[] = [];
   const accuracy = o.answered ? o.correct / o.answered : 0;
-  if (o.answered < c.minQuestions) {
+  if (c.requireAllQuestions && o.total !== undefined && o.answered < o.total) {
+    reasons.push(`Responda todas as ${o.total} questões de fixação do tema (faltam ${o.total - o.answered}).`);
+  } else if (o.answered < c.minQuestions) {
     reasons.push(`Responda pelo menos ${c.minQuestions} questões (você respondeu ${o.answered}).`);
   }
   if (accuracy < minAccuracy) {
@@ -236,7 +243,8 @@ export function transition(
       if (s === "aguardando_dominio" || s === "dominada") {
         const v = evaluateQuiz(
           { ...event.outcome },
-          { ...criteria, minQuestions: Math.min(criteria.minQuestions, 2) },
+          // Revisão usa uma amostra: não exige todas as questões.
+          { ...criteria, requireAllQuestions: false, minQuestions: Math.min(criteria.minQuestions, 2) },
           criteria.minReviewAccuracy,
         );
         const waited = p.passedAt ? (event.at.getTime() - p.passedAt.getTime()) / DAY : 0;

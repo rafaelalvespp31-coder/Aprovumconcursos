@@ -66,7 +66,7 @@ export function PerformanceView({ data }: { data: PerformanceData }) {
   if (s.attempts === 0) {
     return (
       <div>
-        <h1 className="t-h1">Desempenho</h1>
+        <h1 className="sr-only">Desempenho</h1>
         <div className="mt-6">
           <EmptyState title="Ainda não há respostas para analisar" action={<ButtonLink href="/questoes">Resolver questões</ButtonLink>}>
             Seus indicadores aparecem aqui a partir das questões que você responder nas aulas ou no modo de questões.
@@ -80,7 +80,7 @@ export function PerformanceView({ data }: { data: PerformanceData }) {
   return (
     <div className="flex flex-col gap-8">
       <div>
-        <h1 className="t-h1">Desempenho</h1>
+        <h1 className="sr-only">Desempenho</h1>
         <p className="mt-1 max-w-2xl text-tinta-suave">
           Calculado só a partir das suas respostas. &quot;Acerto atual&quot; considera a última tentativa de cada questão, ou seja, o que você sabe hoje.
         </p>

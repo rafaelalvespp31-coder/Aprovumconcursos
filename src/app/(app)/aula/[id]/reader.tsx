@@ -10,6 +10,7 @@ import { QuestionCard, type QuestionData } from "@/components/question-card";
 import { SECTION_LABELS, type LessonSectionKind } from "@/ai/pedagogy";
 import type { Annotation } from "../../study-actions";
 import type { QuizResult } from "./actions";
+import { useStored } from "@/components/use-stored";
 import { useStudyApi } from "@/components/study-api";
 
 export interface ReaderSection {
@@ -76,6 +77,24 @@ export function LessonReader(props: ReaderProps) {
     return () => obs.disconnect();
   }, [sections]);
 
+  // Seções percorridas: conta quando o FIM da seção passa pela tela. Pular pelo índice
+  // não conta — a leitura só pode ser concluída depois de passar por todas as formas de ensino.
+  const [seenList, setSeenList] = useStored<string[]>(`na:secoes-vistas:${lesson.id}`, []);
+  const seen = useMemo(() => new Set(seenList), [seenList]);
+  useEffect(() => {
+    if (readingDone) return;
+    const els = [...document.querySelectorAll<HTMLElement>("[data-fim-secao]")];
+    const obs = new IntersectionObserver((entries) => {
+      const hit = entries.filter((e) => e.isIntersecting).map((e) => (e.target as HTMLElement).dataset.fimSecao!);
+      const fresh = hit.filter((id) => !seen.has(id));
+      if (fresh.length) setSeenList([...seen, ...fresh]);
+    });
+    els.forEach((e) => obs.observe(e));
+    return () => obs.disconnect();
+  }, [sections, readingDone, seen, setSeenList]);
+  const seenCount = readingDone ? sections.length : sections.filter((s) => seen.has(s.id)).length;
+  const unseen = readingDone ? [] : sections.filter((s) => !seen.has(s.id));
+
   // Distribui questões: a primeira questão de cada item aparece logo após a seção que o ensina.
   const { interleaved, remaining } = useMemo(() => {
     const placed = new Set<string>();
@@ -124,6 +143,7 @@ export function LessonReader(props: ReaderProps) {
               className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left t-small text-tinta-suave hover:bg-nevoa aria-[current=location]:bg-nevoa aria-[current=location]:font-semibold aria-[current=location]:text-azul-escuro"
             >
               <span className="flex-1">{s.title || SECTION_LABELS[s.kind as LessonSectionKind]}</span>
+              {(readingDone || seen.has(s.id)) && <Icon name="check" className="mt-0.5 size-3.5 text-dominado" label="Seção percorrida" />}
               {anns.some((a) => a.kind === "revisar") && <Icon name="bookmark" className="mt-0.5 size-3.5 text-azul" label="Marcado para revisar" />}
               {anns.some((a) => a.kind === "duvida" && !a.resolved) && <Icon name="duvida" className="mt-0.5 size-3.5 text-alerta" label="Dúvida aberta" />}
               {anns.some((a) => a.kind === "nota") && <Icon name="nota" className="mt-0.5 size-3.5 text-tinta-fraca" label="Tem anotação" />}
@@ -160,7 +180,9 @@ export function LessonReader(props: ReaderProps) {
               <Icon name="chevronLeft" className="size-4" /> {lesson.trailTitle}
             </Link>
             <nav aria-label="Índice da aula">
-              <p className="mb-1 px-2 t-tiny font-semibold text-tinta-fraca">Nesta aula</p>
+              <p className="mb-1 px-2 t-tiny font-semibold text-tinta-fraca">
+                Nesta aula · <span className="tabular-nums" data-testid="secoes-vistas">{seenCount} de {sections.length}</span> seções
+              </p>
               {toc}
             </nav>
             <button type="button" onClick={() => notesRef.current?.showModal()} className="mx-2 inline-flex items-center gap-2 t-small font-semibold text-tinta-suave hover:text-azul">
@@ -208,6 +230,7 @@ export function LessonReader(props: ReaderProps) {
                     setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : [a, ...list.filter((x) => x.id !== a.id)]))
                   }
                 />
+                <span data-fim-secao={s.id} aria-hidden className="block h-px" />
                 {(interleaved.get(s.id) ?? []).map((q) => (
                   <div key={q.id} className="my-6" onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
                     <p className="mb-2 inline-flex items-center gap-1.5 t-small font-semibold text-azul-escuro">
@@ -220,7 +243,15 @@ export function LessonReader(props: ReaderProps) {
             ))}
           </div>
 
-          <ReadingDone lessonId={lesson.id} done={readingDone} onDone={() => setReadingDone(true)} />
+          <ReadingDone
+            lessonId={lesson.id}
+            done={readingDone}
+            onDone={() => setReadingDone(true)}
+            seenCount={seenCount}
+            total={sections.length}
+            nextUnseen={unseen[0] ? { id: unseen[0].id, title: unseen[0].title || SECTION_LABELS[unseen[0].kind as LessonSectionKind] } : null}
+            onGo={goTo}
+          />
 
           <section id="questoes" className="mt-10 scroll-mt-6" aria-labelledby="questoes-titulo">
             <h2 id="questoes-titulo" className="t-h2">{context === "revisao" ? "Revisão da aula" : "Questões de fixação"}</h2>
@@ -234,7 +265,7 @@ export function LessonReader(props: ReaderProps) {
                 </div>
               ))}
             </div>
-            <UnitResult lessonId={lesson.id} context={context} readingDone={readingDone} nextId={props.nextId} hasQuestions={questions.length > 0} />
+            <UnitResult lessonId={lesson.id} context={context} readingDone={readingDone} nextId={props.nextId} total={questions.length} />
           </section>
 
           <nav aria-label="Aulas" className="mt-12 flex flex-wrap justify-between gap-3 border-t border-linha pt-5">
@@ -521,24 +552,54 @@ function SectionActions({
 // Conclusão da leitura e resultado da unidade
 // ---------------------------------------------------------------------------
 
-function ReadingDone({ lessonId, done, onDone }: { lessonId: string; done: boolean; onDone: () => void }) {
+function ReadingDone({
+  lessonId,
+  done,
+  onDone,
+  seenCount,
+  total,
+  nextUnseen,
+  onGo,
+}: {
+  lessonId: string;
+  done: boolean;
+  onDone: () => void;
+  seenCount: number;
+  total: number;
+  nextUnseen: { id: string; title: string } | null;
+  onGo: (id: string) => void;
+}) {
   const api = useStudyApi();
   const [pending, start] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
   if (done) {
     return (
       <div className="mt-8">
-        <Notice tone="sucesso" title="Leitura concluída">Agora resolva as questões para demonstrar o que aprendeu.</Notice>
+        <Notice tone="sucesso" title="Leitura concluída">Agora resolva todas as questões de fixação para liberar o próximo tema.</Notice>
       </div>
     );
   }
+  const complete = seenCount >= total;
   return (
     <div className="mt-8 flex flex-col gap-2 rounded-lg border border-linha bg-superficie p-4">
       <p className="font-semibold">Chegou ao fim da leitura?</p>
-      <p className="t-small text-tinta-suave">Marcar a leitura libera a avaliação da unidade. Ler não conta como domínio: isso vem das questões e da revisão.</p>
+      <p className="t-small text-tinta-suave">
+        O tema só avança depois de passar por todas as formas de ensino. Ler não conta como domínio: isso vem das questões e da revisão.
+      </p>
+      <div className="flex items-center gap-3">
+        <div className="h-2 flex-1 overflow-hidden rounded-full bg-nevoa" role="progressbar" aria-label="Seções percorridas" aria-valuemin={0} aria-valuemax={total} aria-valuenow={seenCount}>
+          <div className="h-full rounded-full bg-azul transition-[width] duration-500" style={{ width: `${total ? (seenCount / total) * 100 : 0}%` }} />
+        </div>
+        <span className="t-small tabular-nums text-tinta-suave">{seenCount} de {total} seções</span>
+      </div>
+      {!complete && nextUnseen && (
+        <button type="button" onClick={() => onGo(nextUnseen.id)} className="self-start t-small font-semibold text-azul underline underline-offset-2">
+          Falta percorrer: {nextUnseen.title}
+        </button>
+      )}
       <Button
         className="self-start"
-        disabled={pending}
+        disabled={pending || !complete}
         onClick={() =>
           start(async () => {
             const r = await api.completeReading(lessonId);
@@ -554,7 +615,8 @@ function ReadingDone({ lessonId, done, onDone }: { lessonId: string; done: boole
   );
 }
 
-function UnitResult({ lessonId, context, readingDone, nextId, hasQuestions }: { lessonId: string; context: "fixacao" | "revisao"; readingDone: boolean; nextId: string | null; hasQuestions: boolean }) {
+function UnitResult({ lessonId, context, readingDone, nextId, total }: { lessonId: string; context: "fixacao" | "revisao"; readingDone: boolean; nextId: string | null; total: number }) {
+  const hasQuestions = total > 0;
   const api = useStudyApi();
   const [result, setResult] = useState<QuizResult | null>(null);
   const [pending, start] = useTransition();
@@ -565,7 +627,11 @@ function UnitResult({ lessonId, context, readingDone, nextId, hasQuestions }: { 
       {!readingDone && context === "fixacao" ? (
         <p className="t-small text-tinta-suave">Conclua a leitura para calcular o resultado. Você já pode responder às questões.</p>
       ) : (
-        <p className="t-small text-tinta-suave">O cálculo usa sua última resposta em cada questão desta aula.</p>
+        <p className="t-small text-tinta-suave">
+          {context === "fixacao"
+            ? `Para liberar o próximo tema: responda as ${total} questões, com pelo menos 75% de acerto e todas as essenciais corretas. Vale sua última resposta em cada questão.`
+            : "O cálculo usa sua última resposta em cada questão desta aula."}
+        </p>
       )}
       {!result?.ok && (
         <Button

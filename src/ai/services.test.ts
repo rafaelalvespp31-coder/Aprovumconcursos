@@ -9,6 +9,8 @@ import {
   chunkNodes,
   clarifyConcept,
   planChunk,
+  questionCountFor,
+  questionGaps,
   removeCycles,
   validateLesson,
   validateQuestions,
@@ -148,6 +150,44 @@ describe("validação de aula", () => {
   });
 });
 
+describe("formas de ensino obrigatórias", () => {
+  const nodes = extract(EDITAL_INLINE);
+  const keys = nodes.filter((n) => n.requiresDirectCoverage).slice(0, 2).map((n) => n.key);
+  const lesson: PlannedLesson = {
+    key: "L1", title: "Tema", objective: "x", nodeKeys: keys, supplementary: [], prerequisiteLessonKeys: [], estimatedMinutes: 30,
+  };
+  const sec = (kind: LessonOutput["sections"][number]["kind"], body = `Texto ${kind}`) => ({ kind, title: kind, bodyMarkdown: body, nodeKeys: keys });
+  const data = (kinds: Array<LessonOutput["sections"][number]["kind"]>): LessonOutput => ({
+    title: "Tema", objective: "Objetivo", sections: kinds.map((k) => sec(k)), taughtNodeKeys: keys, references: [], unverifiedClaims: [],
+  });
+
+  it("aponta as formas que faltaram, remove repetidas e ordena do básico ao avançado", () => {
+    const r = validateLesson(data(["resumo", "explicacao", "introducao", "explicacao"]), {
+      lesson, nodes, required: ["introducao", "explicacao", "exemplos", "resumo"],
+    });
+    expect(r.data.sections.map((s) => s.kind)).toEqual(["introducao", "explicacao", "resumo"]);
+    expect(r.data.missingKinds).toEqual(["exemplos"]);
+    expect(r.warnings.map((w) => w.code)).toEqual(expect.arrayContaining(["duplicate_section", "missing_sections"]));
+  });
+
+  it("sem exigência explícita não acusa falta", () => {
+    const r = validateLesson(data(["explicacao", "resumo"]), { lesson, nodes });
+    expect(r.data.missingKinds).toEqual([]);
+  });
+});
+
+describe("cobertura das questões de fixação", () => {
+  it("exige níveis 1 a 5 e ao menos uma questão por item", () => {
+    const qs = [1, 2, 3].map((difficulty) => ({ nodeKey: "N0001", difficulty })) as QuestionsOutput["questions"];
+    expect(questionGaps(qs, ["N0001", "N0002"])).toEqual({ missingLevels: [4, 5], uncoveredNodeKeys: ["N0002"] });
+  });
+  it("quantidade: mínimo 10, uma por item, máximo 15", () => {
+    expect(questionCountFor(3)).toBe(10);
+    expect(questionCountFor(12)).toBe(12);
+    expect(questionCountFor(40)).toBe(15);
+  });
+});
+
 describe("validação de questões", () => {
   const opt = (text: string, correct: boolean) => ({ label: "x", text, correct, explanation: "Explicação da alternativa." });
   const q = (over: Partial<QuestionsOutput["questions"][number]>): QuestionsOutput["questions"][number] => ({
@@ -182,6 +222,11 @@ describe("validação de questões", () => {
     );
     expect(r.data.questions).toHaveLength(1);
     expect(r.warnings).toHaveLength(4);
+  });
+
+  it("rodada complementar não aceita enunciado já existente", () => {
+    const r = validateQuestions({ questions: [q({ statement: "Enunciado  da questão de TESTE" })] }, new Set(["N0001"]), ["Enunciado da questão de teste"]);
+    expect(r.data.questions).toHaveLength(0);
   });
 });
 

@@ -5,6 +5,7 @@ import type { AuditReport } from "@/domain/content/audit";
 import type { UnitState } from "@/domain/progress/state-machine";
 import type { RulerState } from "@/components/coverage-ruler";
 import { summarizePerformance, type AttemptRecord } from "@/domain/progress/performance";
+import { computeGamification, streakMessage, type StudyStats } from "@/domain/progress/gamification";
 
 /**
  * Leituras das telas. Usam o cliente com a sessão do aluno: a RLS garante no banco
@@ -174,6 +175,8 @@ export async function getLessonForStudy(lessonId: string) {
       .select("id, type, statement, difficulty, essential, origin, board_style, depends_on_external_source, node_id, question_options(id, label, text, sort_order)")
       .eq("lesson_id", lessonId)
       .eq("active", true)
+      // Fixação em progressão: do nível 1 ao 5.
+      .order("difficulty")
       .order("created_at"),
     db.from("learning_progress").select("state, reading_completed_at, passed_at, mastered_at").eq("lesson_id", lessonId).maybeSingle(),
     db.from("lesson_nodes").select("taught, content_nodes(id, key, marker, title, path, kind)").eq("lesson_id", lessonId),
@@ -233,7 +236,7 @@ export async function getDueReviews() {
 export async function getProfile() {
   const db = await createUserClient();
   const [p, s] = await Promise.all([
-    db.from("profiles").select("display_name, daily_questions_goal, weekly_lessons_goal, onboarding_completed").maybeSingle(),
+    db.from("profiles").select("display_name, daily_questions_goal, weekly_lessons_goal, onboarding_completed, created_at").maybeSingle(),
     db.from("subscriptions").select("status, plan_id, plans(name, max_active_trails, max_trail_builds_per_month, max_lesson_generations_per_month)").maybeSingle(),
   ]);
   return { profile: p.data, subscription: s.data };
@@ -397,11 +400,11 @@ export async function getDashboard() {
     db.rpc("my_lessons_completed_since", { p_since: weekStart.toISOString() }),
     db
       .from("learning_progress")
-      .select("lesson_id, state, updated_at, lessons(title, objective), study_trails(title, archived_at)")
+      .select("lesson_id, trail_id, state, updated_at, lessons(title, objective, estimated_minutes, learning_modules(title)), study_trails(title, archived_at)")
       .in("state", ["em_andamento", "aula_concluida", "em_revisao", "disponivel"])
       .order("updated_at", { ascending: false })
       .limit(5),
-    db.from("questions").select("id").eq("active", true).limit(5000),
+    db.from("questions").select("id, difficulty").eq("active", true).limit(5000),
     db.from("answer_attempts").select("question_id").limit(5000),
     db.from("question_marks").select("question_id", { count: "exact", head: true }),
   ]);
@@ -426,15 +429,29 @@ export async function getDashboard() {
     continueLesson: continueRow
       ? {
           id: continueRow.lesson_id as string,
+          trailId: continueRow.trail_id as string,
           state: continueRow.state as UnitState,
           title: (continueRow.lessons as unknown as { title: string }).title,
           objective: (continueRow.lessons as unknown as { objective: string }).objective,
+          estimatedMinutes: (continueRow.lessons as unknown as { estimated_minutes: number }).estimated_minutes,
+          moduleTitle: (continueRow.lessons as unknown as { learning_modules: { title: string } | null }).learning_modules?.title ?? null,
           trailTitle: (continueRow.study_trails as unknown as { title: string }).title,
         }
       : null,
     questions: (() => {
-      const active = (qCount.data ?? []).map((q) => q.id as string);
-      return { total: active.length, unanswered: active.filter((id) => !answeredIds.has(id)).length, marked: marks.count ?? 0 };
+      const active = (qCount.data ?? []).map((q) => ({ id: q.id as string, difficulty: Number(q.difficulty) }));
+      const open = active.filter((q) => !answeredIds.has(q.id));
+      return {
+        total: active.length,
+        unanswered: open.length,
+        marked: marks.count ?? 0,
+        // Fácil = níveis 1–2, Médio = 3, Difícil = 4–5 (níveis gerados para cada tema).
+        unansweredByLevel: {
+          facil: open.filter((q) => q.difficulty <= 2).length,
+          medio: open.filter((q) => q.difficulty === 3).length,
+          dificil: open.filter((q) => q.difficulty >= 4).length,
+        },
+      };
     })(),
   };
 }
@@ -485,4 +502,51 @@ export async function getPerformance(days = 30) {
     wrong: d.wrong,
   }));
   return { summary: summarizePerformance(records), daily, truncated: (attempts.data?.length ?? 0) >= 5000 };
+}
+
+// ---------------------------------------------------------------------------
+// Casco "Leveza Pastel" e nível/conquistas (todas as métricas vêm do banco)
+// ---------------------------------------------------------------------------
+export async function getStudyStats(): Promise<StudyStats> {
+  const db = await createUserClient();
+  const { data, error } = await db.rpc("my_study_stats");
+  if (error) throw new Error(error.message);
+  const d = (data ?? {}) as Partial<StudyStats> & { activeDays?: string[] };
+  return {
+    answered: Number(d.answered ?? 0),
+    correct: Number(d.correct ?? 0),
+    activeDays: (d.activeDays ?? []).map(String),
+    maxInDay: Number(d.maxInDay ?? 0),
+    themesPassed: Number(d.themesPassed ?? 0),
+    themesMastered: Number(d.themesMastered ?? 0),
+    modulesClosed: Number(d.modulesClosed ?? 0),
+    today: String(d.today ?? new Date().toISOString().slice(0, 10)),
+  };
+}
+
+export interface ShellSummary {
+  name: string | null;
+  email: string | null;
+  streak: { current: number; last7: boolean[]; message: string };
+  level: number;
+  counts: { trails: number; questions: number; dueReviews: number; answered: number };
+}
+
+export async function getShellSummary(email: string | null): Promise<ShellSummary> {
+  const db = await createUserClient();
+  const [profile, stats, trails, questions, reviews] = await Promise.all([
+    db.from("profiles").select("display_name").maybeSingle(),
+    getStudyStats(),
+    db.from("study_trails").select("id", { count: "exact", head: true }).is("archived_at", null),
+    db.from("questions").select("id", { count: "exact", head: true }).eq("active", true),
+    db.from("review_schedules").select("lesson_id", { count: "exact", head: true }).lte("due_at", new Date().toISOString()),
+  ]);
+  const g = computeGamification(stats);
+  return {
+    name: (profile.data?.display_name as string | null | undefined)?.split(" ")[0] ?? null,
+    email,
+    streak: { current: g.streak.current, last7: g.streak.last7, message: streakMessage(g.streak) },
+    level: g.level.level,
+    counts: { trails: trails.count ?? 0, questions: questions.count ?? 0, dueReviews: reviews.count ?? 0, answered: stats.answered },
+  };
 }

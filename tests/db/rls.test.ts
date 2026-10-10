@@ -221,6 +221,24 @@ describe("RLS — isolamento entre contas", () => {
   });
 });
 
+describe("estatísticas do painel (nível, sequência, conquistas)", () => {
+  itDb("my_study_stats só conta dados do próprio aluno", async () => {
+    await db.query("begin");
+    try {
+      await db.query("insert into answer_attempts (question_id, user_id, answer_bool, is_correct, created_at) values ($1,$2,true,true, now()), ($1,$2,true,false, now() - interval '1 day')", [ids.a_question, A]);
+      await db.query("insert into answer_attempts (question_id, user_id, answer_bool, is_correct) select $1,$2,true,true from generate_series(1,30)", [ids.b_question, B]);
+      await db.query("update learning_progress set state = 'aguardando_dominio' where user_id = $1", [A]);
+      await db.query("set local role authenticated");
+      await db.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: A, role: "authenticated" })]);
+      const s = (await db.query("select my_study_stats() s")).rows[0].s;
+      expect(s).toMatchObject({ answered: 2, correct: 1, maxInDay: 1, themesPassed: 1, themesMastered: 0, modulesClosed: 1 });
+      expect(s.activeDays).toHaveLength(2);
+    } finally {
+      await db.query("rollback");
+    }
+  });
+});
+
 describe("integridade referencial por dono", () => {
   itDb("impede vincular registro a trilha de outro usuário", async () => {
     await db.query("begin");

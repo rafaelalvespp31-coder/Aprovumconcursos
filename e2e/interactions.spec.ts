@@ -13,7 +13,7 @@ async function noHorizontalScroll(page: Page) {
 }
 
 test.describe("galeria: todas as telas carregam sem erro e sem rolagem horizontal", () => {
-  for (const path of ["painel", "trilha", "aula", "questoes", "simulado", "desempenho"]) {
+  for (const path of ["painel", "perfil", "trilha", "aula", "questoes", "simulado", "desempenho"]) {
     test(path, async ({ page }) => {
       const errors: string[] = [];
       page.on("pageerror", (e) => errors.push(e.message));
@@ -27,7 +27,7 @@ test.describe("galeria: todas as telas carregam sem erro e sem rolagem horizonta
 
 test.describe("celulares pequenos (320px): nenhuma tela rola para o lado", () => {
   test.use({ viewport: { width: 320, height: 640 } });
-  for (const path of ["painel", "trilha", "aula", "questoes", "simulado", "desempenho"]) {
+  for (const path of ["painel", "perfil", "trilha", "aula", "questoes", "simulado", "desempenho"]) {
     test(path, async ({ page }) => {
       await page.goto(`${G}/${path}`);
       await noHorizontalScroll(page);
@@ -131,9 +131,23 @@ test.describe("tela de aula", () => {
     await expect(page.getByText("Resposta correta").first()).toBeVisible();
   });
 
-  test("concluir leitura e calcular o resultado da unidade", async ({ page }) => {
+  test("leitura só conclui após percorrer todas as seções; depois calcula o resultado", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    await page.getByRole("button", { name: "Concluí a leitura" }).click();
+    const done = page.getByRole("button", { name: "Concluí a leitura" });
+    await expect(done).toBeDisabled();
+    // Pular direto para o fim não conta como leitura.
+    await done.scrollIntoViewIfNeeded();
+    await expect(done).toBeDisabled();
+    await expect(page.getByText(/Falta percorrer:/)).toBeVisible();
+    const ends = page.locator("[data-fim-secao]");
+    const n = await ends.count();
+    for (let i = 0; i < n; i++) {
+      await ends.nth(i).scrollIntoViewIfNeeded();
+      await page.waitForTimeout(60);
+    }
+    await expect(page.getByText(`${n} de ${n} seções`, { exact: true })).toBeVisible();
+    await expect(done).toBeEnabled();
+    await done.click();
     await expect(page.getByText(/Leitura concluída/).first()).toBeVisible();
     await page.getByRole("button", { name: "Calcular resultado" }).click();
     await expect(page.getByText(/de acerto/).first()).toBeVisible();
@@ -141,14 +155,47 @@ test.describe("tela de aula", () => {
 });
 
 test.describe("painel e trilha", () => {
-  test("cada card leva à funcionalidade correspondente", async ({ page }) => {
+  test("cada card do painel leva à funcionalidade correspondente", async ({ page }) => {
     await page.goto(`${G}/painel`);
-    await expect(page.getByRole("link", { name: /Nova trilha/ })).toHaveAttribute("href", "/nova-trilha");
-    await expect(page.getByRole("link", { name: /Continuar estudando/ })).toHaveAttribute("href", /\/aula\//);
-    await expect(page.getByRole("link", { name: /Revisões pendentes/ })).toHaveAttribute("href", "/revisoes");
-    await expect(page.getByRole("link", { name: /Questões a resolver/ })).toHaveAttribute("href", /\/questoes/);
+    await expect(page.getByRole("link", { name: /Nova trilha/ }).first()).toHaveAttribute("href", `${G}/nova-trilha`);
+    await expect(page.getByRole("link", { name: /Continuar estudando/ })).toHaveAttribute("href", new RegExp(`${G}/aula/`));
+    await expect(page.locator("a", { has: page.getByTestId("card-revisoes") })).toHaveAttribute("href", /\/aula\/.*revisao=1/);
+    await expect(page.getByRole("link", { name: /Questões a resolver/ })).toHaveAttribute("href", /\/questoes\?situacao=nao_respondidas/);
+    await expect(page.getByRole("link", { name: /Questões hoje: 13 de 20/ })).toBeVisible();
+    await expect(page.getByTestId("hero-stage")).toContainText("Ensino");
   });
 
+  test("trilha abre o detalhe com matérias reais e fecha com Esc", async ({ page }) => {
+    await page.goto(`${G}/painel`);
+    await page.getByRole("button", { name: /Abrir trilha Língua Portuguesa/ }).click();
+    const dialog = page.getByRole("dialog", { name: /Língua Portuguesa/ });
+    await expect(dialog).toBeVisible();
+    await expect(dialog.getByText("Matéria fechada ✓")).toBeVisible();
+    await expect(dialog.getByRole("link", { name: "Continuar" })).toHaveAttribute("href", /\/aula\//);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+  });
+
+  test("modo foco inicia um cronômetro real, pausa e encerra", async ({ page }) => {
+    await page.goto(`${G}/painel`);
+    await page.evaluate(() => localStorage.removeItem("na:modo-foco"));
+    await page.reload();
+    await page.getByRole("button", { name: "Ativar foco" }).click();
+    await expect(page.getByText("Modo foco ativado")).toBeVisible();
+    const time = page.getByTestId("foco-tempo");
+    await expect(time).toHaveText(/^2[45]:\d\d$/);
+    const first = await time.textContent();
+    await page.waitForTimeout(2100);
+    expect(await time.textContent()).not.toBe(first);
+    await page.getByRole("button", { name: "Pausar" }).click();
+    const paused = await time.textContent();
+    await page.waitForTimeout(1500);
+    await expect(time).toHaveText(paused!);
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Retomar" })).toBeVisible();
+    await page.getByRole("button", { name: "Encerrar" }).click();
+    await expect(page.getByRole("button", { name: "Ativar foco" })).toBeVisible();
+  });
   test("módulos expansíveis e pré-requisitos visíveis", async ({ page }) => {
     await page.goto(`${G}/trilha`);
     await expect(page.getByText(/Depende de:/).first()).toBeVisible();
@@ -166,5 +213,61 @@ test.describe("desempenho", () => {
     await expect(page.getByRole("heading", { name: "Por matéria" })).toBeVisible();
     await expect(page.getByRole("link", { name: /Poderes administrativos.*Abrir questões/ })).toHaveAttribute("href", /\/questoes\?materia=/);
     await expect(page.getByText(/A confiança declarada não altera seu domínio/)).toBeVisible();
+  });
+});
+
+test.describe("casco pastel", () => {
+  test("busca encontra itens reais e navega", async ({ page, isMobile }) => {
+    test.skip(isMobile, "a busca fica no cabeçalho a partir de telas médias");
+    await page.goto(`${G}/painel`);
+    await page.keyboard.press("Control+k");
+    const box = page.getByRole("combobox", { name: /Buscar/ });
+    await expect(box).toBeFocused();
+    await box.fill("atributos");
+    await expect(page.getByRole("option", { name: /Revisão.*Atributos do ato/ })).toBeVisible();
+    await box.fill("desemp");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(new RegExp(`${G}/desempenho`));
+  });
+
+  test("navegação lateral, atalhos 1–6 e recolher persistente", async ({ page, isMobile }) => {
+    test.skip(isMobile, "barra lateral só no desktop");
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await page.goto(`${G}/painel`);
+    const nav = page.getByRole("navigation", { name: "Principal" });
+    await expect(nav.getByRole("link", { name: /Painel/ })).toHaveAttribute("aria-current", "page");
+    await expect(page.getByTestId("nav-desc-revisoes")).toHaveText("2 pendentes");
+    await page.keyboard.press("6");
+    await expect(page).toHaveURL(new RegExp(`${G}/perfil`));
+    await expect(page.getByTestId("nivel")).toHaveText("Nível 5");
+    await page.getByRole("button", { name: "Recolher" }).click();
+    await page.reload();
+    await expect(page.getByRole("button", { name: "Expandir barra lateral" })).toBeVisible();
+    await page.getByRole("button", { name: "Expandir barra lateral" }).click();
+    await expect(page.getByRole("button", { name: "Recolher" })).toBeVisible();
+  });
+
+  test("atalhos numéricos não navegam nas telas com questões", async ({ page, isMobile }) => {
+    test.skip(isMobile, "teclado físico");
+    await page.goto(`${G}/questoes`);
+    await page.keyboard.press("6");
+    await expect(page).toHaveURL(new RegExp(`${G}/questoes`));
+  });
+
+  test("barra flutuante no celular leva às rotas reais", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.goto(`${G}/painel`);
+    const bar = page.getByRole("navigation", { name: "Principal (celular)" });
+    await bar.getByRole("link", { name: "Desempenho" }).click();
+    await expect(page).toHaveURL(new RegExp(`${G}/desempenho`));
+    await expect(bar.getByRole("link", { name: "Desempenho" })).toHaveAttribute("aria-current", "page");
+  });
+
+  test("perfil mostra conquistas com regras e progresso", async ({ page }) => {
+    await page.goto(`${G}/perfil`);
+    await expect(page.getByTestId("conquistas-total")).toContainText("/8");
+    await expect(page.getByText("Atirador de elite")).toBeVisible();
+    await expect(page.getByText("74% de acerto (meta: 80%)")).toBeVisible();
+    await expect(page.getByText(/XP/)).toHaveCount(0);
   });
 });

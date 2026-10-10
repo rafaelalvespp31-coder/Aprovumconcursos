@@ -186,7 +186,20 @@ describe("questões e correção", () => {
 
   itDb("desempenho considera a última tentativa de cada questão", async () => {
     const o = (await db.query("select lesson_quiz_outcome($1,$2) o", [U, lesson])).rows[0].o;
-    expect(o).toEqual({ answered: 2, correct: 2, essentialAnswered: 1, essentialCorrect: 1 });
+    expect(o).toEqual({ answered: 2, correct: 2, essentialAnswered: 1, essentialCorrect: 1, total: 2 });
+  });
+
+  itDb("rodada complementar acrescenta questões e o total passa a exigir todas", async () => {
+    const keys = plan.modules[0]!.lessons[0]!.nodeKeys;
+    await db.query("begin");
+    const n = await db.query("select save_lesson_questions($1,$2,'CEBRASPE',$3,true) n", [lesson, U, JSON.stringify([
+      { type: "certo_errado", statement: "Q3 nível 5", options: [], correctAnswerTrue: true, justification: "J3", nodeKey: keys[0], difficulty: 5, essential: false, dependsOnExternalSource: false },
+    ])]);
+    expect(n.rows[0].n).toBe(1);
+    const o = (await db.query("select lesson_quiz_outcome($1,$2) o", [U, lesson])).rows[0].o;
+    await db.query("rollback");
+    // As duas já respondidas continuam ativas; a nova entra no total.
+    expect(o).toMatchObject({ answered: 2, total: 3 });
   });
 
   itDb("rejeita alternativa de outra questão e questão de outro usuário", async () => {

@@ -230,12 +230,13 @@ export class SupabaseLessonRepo implements LessonRepo {
     });
   }
 
-  async saveQuestions(ctx: LessonGenContext, q: Parameters<LessonRepo["saveQuestions"]>[1]) {
+  async saveQuestions(ctx: LessonGenContext, q: Parameters<LessonRepo["saveQuestions"]>[1], append = false) {
     const r = await this.db.rpc("save_lesson_questions", {
       p_lesson: ctx.lesson.id,
       p_user: ctx.userId,
       p_board: ctx.boardName,
       p_questions: questionsPayload(q),
+      p_append: append,
     });
     if (r.error) throw new Error(`Falha ao gravar questões: ${r.error.message}`);
     return r.data as number;

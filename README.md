@@ -4,9 +4,9 @@ PWA de estudos para concursos públicos: transforma o conteúdo programático in
 
 > Do edital à aprovação, um nível de cada vez.
 
-## Estado atual (entrega 2 — 10/10/2026)
+## Estado atual (entrega 3 — 10/10/2026)
 
-Núcleo pedagógico, banco com RLS, pipeline de IA, PWA e a camada de design/UX (painel, mapa da trilha, aula interativa, modo de questões, simulado e desempenho) implementados e testados localmente. **Não foi publicado** e **não foi testado contra um Supabase real nem contra a API de IA real** (não havia credenciais neste ambiente). Veja [Critérios do MVP](#critérios-do-mvp) para o status de cada item.
+Núcleo pedagógico, banco com RLS, pipeline de IA, PWA, a camada de design/UX, o **fluxo por tema** (todas as formas de ensino → todas as questões → próximo tema) e o **painel "Leveza Pastel"** com nível e conquistas reais (painel, mapa da trilha, aula interativa, modo de questões, simulado e desempenho) implementados e testados localmente. **Não foi publicado** e **não foi testado contra um Supabase real nem contra a API de IA real** (não havia credenciais neste ambiente). Veja [Critérios do MVP](#critérios-do-mvp) para o status de cada item.
 
 ## Stack
 
@@ -58,6 +58,15 @@ Jobs persistidos (`ai_generation_jobs`) executados **um passo por requisição**
 
 Estados: não iniciada → disponível → em andamento → aula concluída → (em revisão) → aguardando domínio → dominada (+ necessita atualização, pendente de validação). Passar nas questões **libera a próxima aula**, mas "dominada" exige uma revisão bem-sucedida após o intervalo mínimo de retenção. Critérios configuráveis por trilha (`study_trails.mastery_criteria`).
 
+## Fluxo por tema
+
+Cada tema é esgotado antes de abrir o próximo:
+
+1. **Ensino completo.** A aula traz uma seção de cada forma de ensino, do básico ao avançado: introdução, explicação, conceitos fundamentais, aprofundamento, exemplos, comparação, aplicação, pegadinhas, exceções, resumo e checklist. Temas jurídicos acrescentam doutrina, jurisprudência e "como a banca aborda"; o texto legal só entra quando o aluno colou o dispositivo (`requiredSectionKinds`, `src/ai/pedagogy.ts`). A validação é determinística: seção repetida é descartada, a ordem é canônica e, se faltar alguma forma, o job roda a etapa `sections`, que gera **só as seções ausentes** (a aula não é reescrita). Se ainda faltar, a aula fica "pendente de validação" com o motivo.
+2. **Leitura percorrida.** "Concluí a leitura" só habilita depois que o fim de cada seção passou pela tela ("X de Y seções"); pular pelo índice não conta.
+3. **Fixação em todos os níveis.** De 10 a 15 questões por tema (uma por item, no mínimo), cobrindo os níveis 1 a 5 (memorização → compreensão → aplicação → análise → avançada) e todos os itens. Se faltar nível ou item, a etapa `questions_extra` gera só o que faltou e **acrescenta** (sem apagar respostas já dadas). As questões aparecem em ordem de dificuldade.
+4. **Liberação.** O próximo tema abre com **todas** as questões respondidas, **≥ 75%** de acerto e **todas as essenciais corretas** (`evaluateQuiz`, `lesson_quiz_outcome` com `total`). A revisão espaçada de retenção usa amostra e não exige todas.
+
 ## Design e experiência
 
 **Design system** (`src/app/globals.css`, `src/components/`): tokens de cor, tipografia (Public Sans na interface; Source Serif 4 na leitura), raios e estados; ícones próprios consistentes; componentes reutilizáveis (botões, campos, avisos, cards, confirmação de ações destrutivas, indicador de salvamento, cronômetro, teclas de atalho, estados vazio/carregando/erro).
@@ -66,12 +75,16 @@ Estados: não iniciada → disponível → em andamento → aula concluída → 
 
 | Tela | O que faz |
 |---|---|
-| Painel | saudação e metas (diária de questões, semanal de aulas), continuar última aula, revisões pendentes, questões a resolver, últimos 14 dias, trilhas com domínio por matéria. Todos os números vêm do banco; cada card leva à função correspondente. |
+| Painel ("Leveza Pastel") | porte do design criado pelo aluno, mantendo estrutura, cores, cards e microinterações (inclinação 3D, brilho, ondulação, anéis animados, barras com mola). Tema atual com etapa (Ensino/Fixação/Revisão) e posição na trilha; anéis de meta diária de questões e semanal de aulas; revisão mais atrasada; questões sem resposta por dificuldade; últimos 14 dias com dica por dia; trilhas com matérias e detalhe em diálogo; modo foco com cronômetro real de 25+5 min. Todos os números vêm do banco. |
+| Casco | barra lateral de vidro com destaque deslizante, contadores reais, sequência de estudo dos últimos 7 dias, recolher (lembrado no navegador), sino → revisões, busca ⌘K em trilhas, temas e revisões do aluno, atalhos 1–6 (desligados nas telas com questões, onde 1–5 escolhem alternativas), barra flutuante no celular. |
+| Perfil | nível, sequência e conquistas com regras explícitas e progresso; metas; dados, plano e sessão. |
 | Mapa da trilha | módulos expansíveis, aulas por nível, estado de cada aula, pré-requisitos visíveis, questões por aula, revisão pendente, conteúdo incompleto/não verificado, régua de cobertura. |
 | Aula | índice navegável (lateral no desktop, folha inferior no celular), progresso de leitura, seções com quadros comparativos, exemplos expansíveis, pegadinhas e exceções destacadas, texto legal com fonte, "Esclarecer" (resposta da IA sem sair da aula), "Revisar depois", anotações pessoais, dúvidas, perguntas rápidas intercaladas, conclusão de leitura e resultado da unidade. |
 | Questões | filtros (trilha, banca, matéria, assunto, dificuldade, situação), lista navegável com acerto/erro/"para depois", marcar para resolver depois, cronômetro opcional, histórico de tentativas, rever explicação, autoavaliação de confiança, atalhos (A–E, C/E, Enter, J/K). |
 | Simulado | quantidade escolhida, tempo corrido, gabarito só no final, análise dos erros por assunto, erros com certeza, gabarito comentado. |
 | Desempenho | acerto atual (última tentativa) × atividade (todas), 30 dias, por matéria, assunto, dificuldade e estilo de banca, erros recorrentes, calibração da confiança. |
+
+**Nível e conquistas (sem XP).** Nível = 1 + temas vencidos ÷ 3. Sequência = dias seguidos com ao menos uma resposta (continua viva até o fim do dia seguinte). Conquistas: primeiro tema vencido, 7 dias seguidos, 80% de acerto com ≥ 50 respostas, 20 questões num dia, 100 respostas, domínio confirmado, matéria fechada, 25 temas. Regras puras em `src/domain/progress/gamification.ts`; dados de `my_study_stats()` (security invoker, filtrado por `auth.uid()`). Textos secundários do pastel foram escurecidos o mínimo necessário para contraste legível (WCAG AA).
 
 Confiança declarada é registrada e exibida como calibração ("errou com certeza", "acertou no chute"), **nunca** como prova de domínio. Questões são sempre identificadas como originais de treino.
 
@@ -96,7 +109,7 @@ Renderiza as telas autenticadas com **dados de exemplo identificados como tal**,
 ## Configuração
 
 1. `npm ci`
-2. Crie um projeto no Supabase e aplique as **5 migrações** de `supabase/migrations/`, em ordem (`supabase db push` com a CLI, ou cole cada arquivo no SQL Editor): `…0100_schema`, `…0200_security`, `…0300_seed`, `…0400_functions`, `…0500_study_tools`.
+2. Crie um projeto no Supabase e aplique as **6 migrações** de `supabase/migrations/`, em ordem (`supabase db push` com a CLI, ou cole cada arquivo no SQL Editor): `…0100_schema`, `…0200_security`, `…0300_seed`, `…0400_functions`, `…0500_study_tools`, `…0600_theme_flow`. Quem já aplicou as cinco primeiras precisa aplicar só a `…0600_theme_flow`.
 3. Em *Authentication → URL Configuration*, adicione `https://SEU-DOMINIO/auth/callback` (e `http://localhost:3000/auth/callback`) às URLs de redirecionamento.
 4. Copie `.env.example` para `.env.local` e preencha (veja os comentários no arquivo).
 5. `npm run dev`
@@ -138,16 +151,16 @@ Os testes de banco aplicam as **migrações de produção** num Postgres real co
 |---|---|
 | TypeScript (`tsc --noEmit`) | sem erros |
 | ESLint (`--max-warnings=0`) | sem erros |
-| Unitários (73) | 73 aprovados |
-| Banco — RLS, integridade, cotas, persistência, ferramentas de estudo (34) | 34 aprovados (PostgreSQL 16) |
+| Unitários (93) | 93 aprovados |
+| Banco — RLS, integridade, cotas, persistência, ferramentas de estudo, estatísticas (36) | 36 aprovados (PostgreSQL 16) |
 | Build de produção | sucesso |
-| E2E públicos + interações da galeria, celular e desktop (50) | 50 aprovados |
+| E2E públicos + interações da galeria, celular e desktop (77) | 77 aprovados (3 testes só de desktop pulados no perfil celular) |
 | E2E autenticados (4) | **pulados** — sem Supabase/IA/conta de teste |
 | Galeria em produção sem a variável | 404 (verificado) |
 | Segredos no bundle do navegador | nenhum (verificado) |
 | `npm audit --omit=dev` | 0 vulnerabilidades |
 
-Os E2E de interação clicam em cada controle e verificam o efeito: responder e ver a explicação de cada alternativa, atalhos de teclado, marcar para depois, navegar pela lista, simulado com gabarito só no final, índice da aula (nav no desktop, folha no celular), revisar depois, anotar, esclarecer sem sair da aula, pergunta rápida, concluir leitura e resultado, links do painel, módulo expansível, desempenho.
+Os E2E de interação clicam em cada controle e verificam o efeito: responder e ver a explicação de cada alternativa, atalhos de teclado, marcar para depois, navegar pela lista, simulado com gabarito só no final, índice da aula (nav no desktop, folha no celular), revisar depois, anotar, esclarecer sem sair da aula, pergunta rápida, leitura só conclui após percorrer todas as seções, links do painel, detalhe da trilha, modo foco (contagem, pausa, retomada após recarregar), busca ⌘K, navegação lateral e atalhos, recolher persistente, barra flutuante do celular, conquistas, módulo expansível, desempenho.
 
 Cobertura dos testes inclui: extração de editais em linha e em lista, texto de lei, PDF quebrado, entrada grande (800 tópicos) e malformada; lacunas de numeração; auditoria (omissão, pai≠filhos, chaves inventadas, pré-requisito fora de ordem, aula gerada incompleta); correção automática; agregação de cobertura; máquina de estados; revisão espaçada; isolamento de prompt injection; validação de aula/questões; pipeline com falha temporária, falha definitiva, retomada, IA não configurada; acesso cruzado entre contas; cliente sem permissão de escrita; gabarito oculto; cotas e rate limit.
 

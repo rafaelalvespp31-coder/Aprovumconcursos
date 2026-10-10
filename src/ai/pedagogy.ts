@@ -121,3 +121,43 @@ export const VERIFICATION_SENSITIVE: ReadonlySet<LessonSectionKind> = new Set([
   "interpretacao_banca",
   "referencias",
 ]);
+
+/**
+ * Formas de ensino OBRIGATÓRIAS em toda aula de tema (decisão do produto: esgotar
+ * todas as formas aplicáveis antes da fixação). Cobrem os três níveis de profundidade:
+ * básico (introdução), intermediário (explicação, conceitos) e avançado (aprofundamento).
+ */
+export const REQUIRED_SECTION_KINDS: readonly LessonSectionKind[] = [
+  "introducao",
+  "explicacao",
+  "conceitos_fundamentais",
+  "aprofundamento",
+  "exemplos",
+  "comparacao",
+  "aplicacao",
+  "pegadinhas",
+  "excecoes",
+  "resumo",
+  "checklist",
+];
+
+/** Formas adicionais obrigatórias quando o tema é jurídico. */
+export const LEGAL_REQUIRED_SECTION_KINDS: readonly LessonSectionKind[] = [
+  "doutrina",
+  "jurisprudencia",
+  "interpretacao_banca",
+];
+
+/**
+ * Seções exigidas para um tema. `texto_legal` só entra quando o aluno colou o texto
+ * do dispositivo — é a única seção que não pode ser escrita sem a fonte.
+ */
+export function requiredSectionKinds(opts: { legal: boolean; hasLegalSourceText: boolean }): LessonSectionKind[] {
+  const kinds = [...REQUIRED_SECTION_KINDS];
+  if (opts.legal) kinds.push(...LEGAL_REQUIRED_SECTION_KINDS);
+  if (opts.legal && opts.hasLegalSourceText) kinds.splice(1, 0, "texto_legal");
+  return kinds;
+}
+
+/** Níveis de dificuldade exigidos nas questões de fixação de cada tema. */
+export const REQUIRED_QUESTION_LEVELS = [1, 2, 3, 4, 5] as const;

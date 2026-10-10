@@ -7,6 +7,7 @@ import {
   createAnnotation,
   deleteAnnotation,
   reviewAnsweredQuestion,
+  searchStudy,
   toggleQuestionMark,
   updateAnnotation,
 } from "@/app/(app)/study-actions";
@@ -28,6 +29,7 @@ export interface StudyApi {
   startLesson: typeof startLessonAction;
   completeReading: typeof completeReadingAction;
   evaluateQuiz: typeof evaluateQuizAction;
+  search: typeof searchStudy;
 }
 
 export const serverStudyApi: StudyApi = {
@@ -41,6 +43,7 @@ export const serverStudyApi: StudyApi = {
   startLesson: startLessonAction,
   completeReading: completeReadingAction,
   evaluateQuiz: evaluateQuizAction,
+  search: searchStudy,
 };
 
 const Ctx = createContext<StudyApi>(serverStudyApi);

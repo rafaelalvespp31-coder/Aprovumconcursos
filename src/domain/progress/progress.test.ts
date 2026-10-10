@@ -65,6 +65,28 @@ describe("máquina de estados de domínio", () => {
     expect(t.progress.state).toBe("em_revisao");
   });
 
+  it("exige responder todas as questões de fixação do tema", () => {
+    const partial = transition(readAndStart(), { type: "QUIZ_EVALUATED", outcome: { ...quiz(8, 8), total: 10 }, at: day(0) });
+    expect(partial.progress.state).toBe("em_revisao");
+    expect(partial.unlocksNext).toBe(false);
+    expect(partial.explanation).toMatch(/todas as 10 questões.*faltam 2/);
+    const all = transition(readAndStart(), { type: "QUIZ_EVALUATED", outcome: { ...quiz(10, 8), total: 10 }, at: day(0) });
+    expect(all.progress.state).toBe("aguardando_dominio");
+    expect(all.unlocksNext).toBe(true);
+  });
+
+  it("todas respondidas mas abaixo de 75% não libera", () => {
+    const t = transition(readAndStart(), { type: "QUIZ_EVALUATED", outcome: { ...quiz(10, 7), total: 10 }, at: day(0) });
+    expect(t.progress.state).toBe("em_revisao");
+    expect(t.explanation).toMatch(/70%/);
+  });
+
+  it("revisão de retenção não exige todas as questões", () => {
+    const passed = transition(readAndStart(), { type: "QUIZ_EVALUATED", outcome: { ...quiz(10, 10), total: 10 }, at: day(0) }).progress;
+    const r = transition(passed, { type: "REVIEW_EVALUATED", outcome: { ...quiz(3, 3), total: 10 }, at: day(3) });
+    expect(r.progress.state).toBe("dominada");
+  });
+
   it("poucas questões não bastam", () => {
     const t = transition(readAndStart(), { type: "QUIZ_EVALUATED", outcome: quiz(2, 2), at: day(0) });
     expect(t.progress.state).toBe("em_revisao");

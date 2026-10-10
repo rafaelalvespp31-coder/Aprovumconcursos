@@ -8,7 +8,8 @@
 import { useState, type ReactNode } from "react";
 import { StudyApiProvider, type StudyApi } from "@/components/study-api";
 import type { AnswerFeedback } from "@/server/services/study";
-import type { Annotation } from "@/app/(app)/study-actions";
+import type { Annotation, SearchItem } from "@/app/(app)/study-actions";
+import { DEFAULT_CRITERIA, evaluateQuiz } from "@/domain/progress/state-machine";
 import { bank, reader } from "./fixtures";
 
 const delay = (ms = 250) => new Promise((r) => setTimeout(r, ms));
@@ -121,20 +122,37 @@ function createDemoApi(): StudyApi {
       },
       async evaluateQuiz() {
         await delay();
+        // Mesma regra do produto: todas as questões do tema, ≥75% e essenciais corretas.
         const list = [...answers.values()];
-        const correct = list.filter((a) => a.correct).length;
-        const accuracy = list.length ? correct / list.length : 0;
-        const passed = list.length >= 3 && accuracy >= 0.75;
+        const outcome = {
+          answered: list.length,
+          correct: list.filter((a) => a.correct).length,
+          essentialAnswered: list.filter((a) => a.essential).length,
+          essentialCorrect: list.filter((a) => a.essential && a.correct).length,
+          total: reader.questions.length,
+        };
+        const v = evaluateQuiz(outcome, DEFAULT_CRITERIA);
         return {
           ok: true,
-          accuracy,
-          unlocksNext: passed,
-          explanation: passed
-            ? `Muito bem: ${Math.round(accuracy * 100)}% de acerto. A próxima aula foi liberada.`
-            : `Ainda não é hora de avançar. Acerto de ${Math.round(accuracy * 100)}%; o mínimo é 75%.`,
-          recommendations: passed ? [] : ["Veja uma explicação alternativa do conceito.", "Resolva novas questões sobre os pontos em que errou."],
+          accuracy: v.accuracy,
+          unlocksNext: v.passed,
+          explanation: v.passed
+            ? `Muito bem: ${Math.round(v.accuracy * 100)}% de acerto. O próximo tema foi liberado.`
+            : `Ainda não é hora de avançar. ${v.reasons.join(" ")}`,
+          recommendations: v.passed ? [] : ["Veja uma explicação alternativa do conceito.", "Resolva novas questões sobre os pontos em que errou."],
           nextReviewAt: new Date(Date.now() + 86_400_000).toISOString(),
         };
+      },
+      async search(query: string) {
+        await delay(120);
+        const q = query.trim().toLowerCase();
+        if (q.length < 2) return { ok: true, data: [] };
+        const items: SearchItem[] = [
+          { type: "Trilha", name: "Polícia Penal MG — Direito Administrativo", href: "/dev/galeria/trilha" },
+          { type: "Tema", name: reader.lesson.title, href: "/dev/galeria/aula" },
+          { type: "Revisão", name: "Atributos do ato administrativo", href: "/dev/galeria/aula" },
+        ];
+        return { ok: true, data: items.filter((i) => i.name.toLowerCase().includes(q)) };
       },
     };
 }

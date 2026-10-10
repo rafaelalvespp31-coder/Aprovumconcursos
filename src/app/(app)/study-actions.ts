@@ -133,3 +133,37 @@ export async function askClarification(input: { lessonId: string; sectionId: str
   const user = await requireUser();
   return guard("clarify", () => clarify(user.id, input));
 }
+
+// ---------------------------------------------------------------------------
+// Busca rápida (⌘K) nas trilhas e temas do próprio aluno (RLS)
+// ---------------------------------------------------------------------------
+export interface SearchItem {
+  type: "Trilha" | "Tema" | "Revisão" | "Página";
+  name: string;
+  href: string;
+}
+
+export async function searchStudy(query: string): Promise<Result<SearchItem[]>> {
+  await requireUser();
+  return guard("search", async () => {
+    const q = z.string().trim().min(2).max(80).safeParse(query);
+    if (!q.success) return [];
+    // Escapa curingas do ILIKE para que o termo seja literal.
+    const term = `%${q.data.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
+    const db = await createUserClient();
+    const [trails, lessons, reviews] = await Promise.all([
+      db.from("study_trails").select("id, title").is("archived_at", null).ilike("title", term).limit(5),
+      db.from("lessons").select("id, title").ilike("title", term).order("sort_order").limit(6),
+      db.from("review_schedules").select("lesson_id, lessons!inner(title)").lte("due_at", new Date().toISOString()).ilike("lessons.title", term).limit(3),
+    ]);
+    return [
+      ...(trails.data ?? []).map((t) => ({ type: "Trilha" as const, name: t.title as string, href: `/trilhas/${t.id}` })),
+      ...(reviews.data ?? []).map((r) => ({
+        type: "Revisão" as const,
+        name: (r.lessons as unknown as { title: string }).title,
+        href: `/aula/${r.lesson_id}?revisao=1#questoes`,
+      })),
+      ...(lessons.data ?? []).map((l) => ({ type: "Tema" as const, name: l.title as string, href: `/aula/${l.id}` })),
+    ];
+  });
+}

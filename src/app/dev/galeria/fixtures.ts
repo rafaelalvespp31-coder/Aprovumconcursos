@@ -1,47 +1,13 @@
 /** Dados de EXEMPLO para a galeria de design (nunca usados em produção). */
 import type { DashboardData } from "@/app/(app)/painel/view";
+import { trailCard, type PlanModule } from "@/app/(app)/painel/model";
+import type { ShellSummary } from "@/server/queries";
+import { computeGamification, streakMessage, type StudyStats } from "@/domain/progress/gamification";
 import type { ReaderProps } from "@/app/(app)/aula/[id]/reader";
 import type { BankQuestion, LessonListItem } from "@/server/queries";
 import { summarizePerformance, type AttemptRecord } from "@/domain/progress/performance";
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-
-export const dashboard: DashboardData = {
-  name: "Rafael",
-  goals: { dailyQuestions: 20, weeklyLessons: 5 },
-  today: { answered: 13, correct: 10 },
-  weekLessonsCompleted: 3,
-  days: Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(Date.UTC(2026, 8, 27 + i));
-    const c = [6, 9, 0, 12, 8, 4, 0, 10, 14, 7, 11, 0, 9, 10][i]!;
-    return { day: d.toISOString().slice(0, 10), correct: c, wrong: Math.round(c * 0.35) };
-  }),
-  accuracy14d: 0.74,
-  answered14d: 136,
-  continueLesson: { id: id(1), state: "em_andamento", title: "Anulação, revogação e convalidação", objective: "Distinguir as formas de extinção do ato administrativo, seus fundamentos e efeitos.", trailTitle: "Polícia Penal MG — Direito Administrativo" },
-  questions: { total: 84, unanswered: 31, marked: 4 },
-  reviews: [
-    { unitId: id(2), title: "Atributos do ato administrativo", reasons: ["Revisão atrasada há 2 dia(s).", "3 erro(s) recente(s) neste assunto."] },
-    { unitId: id(3), title: "Poder de polícia", reasons: ["Revisão programada para hoje."] },
-  ],
-  trails: [
-    {
-      id: id(10),
-      title: "Polícia Penal MG — Direito Administrativo",
-      modules: [
-        { id: id(11), title: "Ato administrativo", total: 14, studied: 12, practiced: 9, mastered: 5 },
-        { id: id(12), title: "Poderes administrativos", total: 8, studied: 5, practiced: 3, mastered: 1 },
-        { id: id(13), title: "Licitações e contratos", total: 11, studied: 1, practiced: 0, mastered: 0 },
-      ],
-    },
-    {
-      id: id(20),
-      title: "Língua Portuguesa — FGV",
-      modules: [{ id: id(21), title: "Coesão e coerência", total: 9, studied: 9, practiced: 9, mastered: 7 }],
-    },
-  ],
-  pendingTrails: [{ id: id(30), title: "Lei 7.210/1984 — Execução Penal", status: "review" }],
-};
 
 const lessonBase = (n: number, over: Partial<LessonListItem>): LessonListItem => ({
   id: id(100 + n), key: `L${n}`, title: "", objective: "", sort_order: n, estimated_minutes: 35, status: "ready",
@@ -167,4 +133,68 @@ export const performance = {
     return { day: new Date(Date.UTC(2026, 8, 11 + i)).toISOString().slice(0, 10), correct: c, wrong: Math.round(c * 0.35) };
   }),
   truncated: false,
+};
+
+// ---------------------------------------------------------------------------
+// Painel "Leveza Pastel" e casco (EXEMPLO)
+// ---------------------------------------------------------------------------
+const portugues: PlanModule[] = [
+  { id: id(21), title: "Coesão e coerência", lessons: Array.from({ length: 9 }, (_, i) => ({ id: id(200 + i), title: `Tema ${i + 1}`, state: i < 8 ? "dominada" : "em_andamento" })) },
+  { id: id(22), title: "Crase", lessons: Array.from({ length: 4 }, (_, i) => ({ id: id(210 + i), title: `Tema ${i + 1}`, state: i < 4 ? "aguardando_dominio" : null })) },
+];
+
+export const dashboard: DashboardData = {
+  name: "Rafael",
+  goals: { dailyQuestions: 20, weeklyLessons: 5 },
+  today: { answered: 13, correct: 10 },
+  weekLessonsCompleted: 3,
+  days: Array.from({ length: 14 }, (_, i) => {
+    const d = new Date(Date.UTC(2026, 8, 27 + i));
+    const c = [6, 9, 0, 12, 8, 4, 0, 10, 14, 7, 11, 0, 9, 10][i]!;
+    return { day: d.toISOString().slice(0, 10), correct: c, wrong: Math.round(c * 0.35) };
+  }),
+  accuracy14d: 0.74,
+  answered14d: 136,
+  continueLesson: {
+    id: id(103),
+    state: "em_andamento",
+    stage: "ensino",
+    title: "Anulação, revogação e convalidação",
+    objective: "Distinguir as formas de extinção do ato administrativo, seus fundamentos e efeitos.",
+    trailId: id(10),
+    trailTitle: "Polícia Penal MG — Direito Administrativo",
+    moduleTitle: "Ato administrativo",
+    position: 3,
+    totalLessons: 6,
+    trailProgress: 17,
+    estimatedMinutes: 35,
+  },
+  questions: { total: 84, unanswered: 31, marked: 4, unansweredByLevel: { facil: 12, medio: 14, dificil: 5 } },
+  reviews: { count: 2, top: { lessonId: id(102), title: "Atributos do ato administrativo", overdueDays: 2 } },
+  trails: [
+    trailCard({ id: id(10), title: "Polícia Penal MG — Direito Administrativo", disciplineMode: "direito_administrativo" }, trailModules, 0),
+    trailCard({ id: id(20), title: "Língua Portuguesa — FGV", disciplineMode: "lingua_portuguesa" }, portugues, 1),
+  ],
+  pendingTrails: [{ id: id(30), title: "Lei 7.210/1984 — Execução Penal", status: "review" }],
+  basePath: "/dev/galeria",
+};
+
+export const studyStats: StudyStats = {
+  answered: 136,
+  correct: 101,
+  activeDays: dashboard.days.filter((d) => d.correct + d.wrong > 0).map((d) => d.day),
+  maxInDay: 19,
+  themesPassed: 13,
+  themesMastered: 9,
+  modulesClosed: 1,
+  today: dashboard.days.at(-1)!.day,
+};
+
+const g = computeGamification(studyStats);
+export const shellSummary: ShellSummary = {
+  name: "Rafael",
+  email: "exemplo@nivelaprovado.dev",
+  streak: { current: g.streak.current, last7: g.streak.last7, message: streakMessage(g.streak) },
+  level: g.level.level,
+  counts: { trails: 2, questions: 84, dueReviews: 2, answered: 136 },
 };

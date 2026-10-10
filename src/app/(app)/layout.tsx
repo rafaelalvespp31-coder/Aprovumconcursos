@@ -1,20 +1,22 @@
 import { requireUser } from "@/server/auth";
-import { AppShell } from "@/components/app-shell";
+import { getShellSummary } from "@/server/queries";
+import { PastelShell } from "@/components/pastel/shell";
 import { signOut } from "../(auth)/actions";
 import { LogoutButton } from "./logout-button";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const user = await requireUser();
+  const summary = await getShellSummary(user.email ?? null);
   return (
-    <AppShell
-      email={user.email}
-      footer={
-        <form action={signOut} className="mt-2">
-          <LogoutButton />
+    <PastelShell
+      summary={summary}
+      logout={
+        <form action={signOut}>
+          <LogoutButton variant="icone" />
         </form>
       }
     >
       {children}
-    </AppShell>
+    </PastelShell>
   );
 }
