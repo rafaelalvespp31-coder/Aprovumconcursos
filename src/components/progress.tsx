@@ -77,8 +77,8 @@ export function MiniBars({
                 <div className="h-px bg-linha-forte" />
               ) : (
                 <div className="flex flex-col gap-[2px] overflow-hidden rounded-t-[3px]" style={{ height: `${(total / top) * 100}%` }}>
-                  <div className="bg-erro/70" style={{ flexGrow: d.secondary ?? 0 }} />
-                  <div className="bg-azul" style={{ flexGrow: d.value }} />
+                  <div className="bg-azul" style={{ flexGrow: d.secondary ?? 0 }} />
+                  <div className="bg-tinta" style={{ flexGrow: d.value }} />
                 </div>
               )}
             </div>
@@ -93,8 +93,8 @@ export function MiniBars({
         ))}
       </div>
       <figcaption className="mt-2 flex gap-4 t-tiny text-tinta-suave">
-        <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-[2px] bg-azul" aria-hidden />Acertos</span>
-        <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-[2px] bg-erro/70" aria-hidden />Erros</span>
+        <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-[2px] bg-tinta" aria-hidden />Acertos</span>
+        <span className="inline-flex items-center gap-1.5"><span className="size-2.5 rounded-[2px] bg-azul" aria-hidden />Erros</span>
       </figcaption>
     </figure>
   );

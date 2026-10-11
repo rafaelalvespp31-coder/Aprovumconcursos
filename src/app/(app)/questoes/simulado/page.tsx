@@ -12,7 +12,7 @@ export default async function SimuladoPage({ searchParams }: { searchParams: Pro
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <Link href="/questoes" className="t-small text-azul underline underline-offset-2">Questões</Link>
+        <Link href="/questoes" className="t-small text-destaque underline underline-offset-2">Questões</Link>
         <h1 className="mt-1 t-h1">Simulado</h1>
         <p className="mt-1 max-w-2xl text-tinta-suave">
           Questões sorteadas entre as {bank.questions.length} que correspondem aos filtros atuais, com tempo corrido. O gabarito e a análise aparecem só ao final.

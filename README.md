@@ -1,4 +1,4 @@
-# Nível Aprovado
+# APROVUM
 
 PWA de estudos para concursos públicos: transforma o conteúdo programático informado pelo aluno numa trilha de aulas e questões com **cobertura verificável item a item** e **progressão por domínio demonstrado**.
 
@@ -68,6 +68,9 @@ Cada tema é esgotado antes de abrir o próximo:
 4. **Liberação.** O próximo tema abre com **todas** as questões respondidas, **≥ 75%** de acerto e **todas as essenciais corretas** (`evaluateQuiz`, `lesson_quiz_outcome` com `total`). A revisão espaçada de retenção usa amostra e não exige todas.
 
 ## Design e experiência
+
+**Identidade APROVUM.** Preto, branco e vermelho, a partir da logo (`public/icons/aprovum-*.png`, ícones do PWA gerados dela). Tema escuro em todo o app: fundo preto, texto branco, vermelho `#E10600` para ações e destaque (`#FF4D4D` quando é texto, para manter contraste AA). Camadas de aprendizagem: estudado (cinza) → praticado (vermelho) → dominado (branco); "não verificado" usa listras. Acerto = branco com ✓; erro = vermelho com ícone e texto.
+
 
 **Design system** (`src/app/globals.css`, `src/components/`): tokens de cor, tipografia (Public Sans na interface; Source Serif 4 na leitura), raios e estados; ícones próprios consistentes; componentes reutilizáveis (botões, campos, avisos, cards, confirmação de ações destrutivas, indicador de salvamento, cronômetro, teclas de atalho, estados vazio/carregando/erro).
 

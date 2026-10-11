@@ -88,7 +88,7 @@ export function Practice({ questions }: { questions: BankQuestion[] }) {
           </span>
           <span>{q.trailTitle} › {q.moduleTitle}</span>
           <span className="ml-auto inline-flex items-center gap-2">
-            <button type="button" onClick={() => setTimer((t) => !t)} aria-pressed={timer} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 font-semibold hover:bg-nevoa aria-pressed:text-azul">
+            <button type="button" onClick={() => setTimer((t) => !t)} aria-pressed={timer} className="inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 font-semibold hover:bg-nevoa aria-pressed:text-destaque">
               <Icon name="relogio" className="size-4" /> {timer ? <Stopwatch running /> : "Cronômetro"}
             </button>
           </span>
@@ -104,7 +104,7 @@ export function Practice({ questions }: { questions: BankQuestion[] }) {
             <button
               type="button"
               disabled={pending}
-              className="ml-auto font-semibold text-azul"
+              className="ml-auto font-semibold text-destaque"
               onClick={() =>
                 start(async () => {
                   const r = await api.reviewAnsweredQuestion(q.id);
@@ -155,7 +155,7 @@ export function Practice({ questions }: { questions: BankQuestion[] }) {
           </Button>
         </div>
         <p className="mt-3 t-small">
-          <Link href={`/aula/${q.lessonId}`} className="font-semibold text-azul underline-offset-2 hover:underline">Estudar a aula desta questão: {q.lessonTitle}</Link>
+          <Link href={`/aula/${q.lessonId}`} className="font-semibold text-destaque underline-offset-2 hover:underline">Estudar a aula desta questão: {q.lessonTitle}</Link>
         </p>
       </div>
 

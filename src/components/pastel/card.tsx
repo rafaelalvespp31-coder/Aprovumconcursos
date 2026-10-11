@@ -19,7 +19,7 @@ export function PastelCard({
   delay = 0,
   noTilt = false,
   style = {},
-  glowColor = "124,107,255",
+  glowColor = "225,6,0",
   testId,
 }: {
   children: ReactNode;
@@ -82,29 +82,29 @@ export function PastelCard({
       role={onActivate && !href ? "button" : undefined}
       tabIndex={onActivate && !href ? 0 : undefined}
       aria-label={onActivate && !href ? label : undefined}
-      className={`group relative rounded-[32px] bg-white/80 backdrop-blur-[22px] border border-[#F3F0FF] shadow-[0_8px_32px_rgba(139,92,246,0.08),inset_0_1px_0_white] overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-[4px] will-change-transform ${interactive ? "cursor-pointer" : ""} ${className}`}
+      className={`group relative rounded-[32px] bg-[#0E0E0E]/90 backdrop-blur-[22px] border border-[#222222] shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.05)] overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-[4px] will-change-transform ${interactive ? "cursor-pointer" : ""} ${className}`}
       style={{
         transform: hover && !noTilt && !reduced ? `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateY(-4px)` : undefined,
-        boxShadow: hover ? `0 20px 60px rgba(${glowColor},0.16), 0 4px 16px rgba(${glowColor},0.10), inset 0 1px 0 white` : undefined,
+        boxShadow: hover ? `0 20px 60px rgba(${glowColor},0.16), 0 4px 16px rgba(${glowColor},0.10), inset 0 1px 0 rgba(255,255,255,0.05)` : undefined,
         animation: "enter 0.6s cubic-bezier(0.34,1.56,0.64,1) both",
         animationDelay: `${delay}ms`,
         ...style,
       }}
     >
-      <div className="pointer-events-none absolute inset-0 rounded-[32px] border border-white/60" />
-      <div className="pointer-events-none absolute inset-[1px] rounded-[31px] border border-[#F5F3FF]/80" />
+      <div className="pointer-events-none absolute inset-0 rounded-[32px] border border-white/[0.06]" />
+      <div className="pointer-events-none absolute inset-[1px] rounded-[31px] border border-white/[0.04]" />
       <div
         className="pointer-events-none absolute -inset-px rounded-[32px] opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         style={{ background: `radial-gradient(500px circle at ${glow.x}% ${glow.y}%, rgba(${glowColor},0.12), transparent 45%)` }}
       />
       <div
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-700 group-hover:opacity-100"
-        style={{ background: `radial-gradient(800px circle at ${glow.x}% ${glow.y}%, rgba(255,255,255,0.8), transparent 35%)` }}
+        style={{ background: `radial-gradient(800px circle at ${glow.x}% ${glow.y}%, rgba(255,255,255,0.05), transparent 35%)` }}
       />
       {ripples.map((p) => (
         <span
           key={p.id}
-          className="pointer-events-none absolute h-2 w-2 animate-[ripple_0.7s_ease-out] rounded-full bg-[#7C6BFF]/20"
+          className="pointer-events-none absolute h-2 w-2 animate-[ripple_0.7s_ease-out] rounded-full bg-[#FF1E1E]/20"
           style={{ left: p.x, top: p.y, transform: "translate(-50%,-50%)" }}
         />
       ))}
@@ -114,7 +114,7 @@ export function PastelCard({
 
   if (href) {
     return (
-      <Link href={href} aria-label={label} className="block rounded-[32px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#7C6BFF]">
+      <Link href={href} aria-label={label} className="block rounded-[32px] focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[#FF1E1E]">
         {body}
       </Link>
     );
@@ -124,5 +124,5 @@ export function PastelCard({
 
 /** Converte "#RRGGBB" em "r,g,b" para os brilhos do card. */
 export function rgbOf(hex: string): string {
-  return hex.replace("#", "").match(/.{2}/g)?.map((h) => parseInt(h, 16)).join(",") ?? "124,107,255";
+  return hex.replace("#", "").match(/.{2}/g)?.map((h) => parseInt(h, 16)).join(",") ?? "225,6,0";
 }

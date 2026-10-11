@@ -31,12 +31,12 @@ export interface TrailCard {
   modules: Array<{ id: string; title: string; passed: number; total: number; nextLessonId: string | null }>;
 }
 
-/** Paleta original do design, atribuída em ordem às trilhas. */
+/** Paleta da marca APROVUM (preto, branco e vermelho), atribuída em ordem às trilhas. */
 export const TRAIL_PALETTE = [
-  { color: "#7C6BFF", color2: "#5B8DEF" },
-  { color: "#FF8E6B", color2: "#FFB86B" },
-  { color: "#6EE7B7", color2: "#34D399" },
-  { color: "#FBBF24", color2: "#F59E0B" },
+  { color: "#FF1E1E", color2: "#B30000" },
+  { color: "#FFFFFF", color2: "#8C8C8C" },
+  { color: "#E10600", color2: "#5C0000" },
+  { color: "#BDBDBD", color2: "#5A5A5A" },
 ] as const;
 
 /** Ícone pela disciplina da trilha (não pelo nome do concurso, para não sugerir o que não é). */

@@ -9,7 +9,7 @@ export default function ResetPage() {
       <h1 className="t-h1">Recuperar senha</h1>
       <p className="mb-6 mt-1 text-tinta-suave">Enviaremos um link para você criar uma nova senha.</p>
       <ResetRequestForm />
-      <Link href="/entrar" className="mt-6 t-small text-azul underline underline-offset-2">Voltar para entrar</Link>
+      <Link href="/entrar" className="mt-6 t-small text-destaque underline underline-offset-2">Voltar para entrar</Link>
     </>
   );
 }

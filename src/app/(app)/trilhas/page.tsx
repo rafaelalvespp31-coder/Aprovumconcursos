@@ -54,7 +54,7 @@ export default async function TrailsPage({ searchParams }: { searchParams: Promi
         </ul>
       )}
       {(archivedCount > 0 || showArchived) && (
-        <Link href={showArchived ? "/trilhas" : "/trilhas?arquivadas=1"} className="mt-4 inline-block t-small text-azul underline underline-offset-2">
+        <Link href={showArchived ? "/trilhas" : "/trilhas?arquivadas=1"} className="mt-4 inline-block t-small text-destaque underline underline-offset-2">
           {showArchived ? "Ver trilhas ativas" : `Ver ${archivedCount} trilha(s) arquivada(s)`}
         </Link>
       )}

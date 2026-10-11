@@ -12,31 +12,34 @@
 @import "@fontsource/space-grotesk/latin-700.css";
 
 /*
- * Nível Aprovado — tokens
- * Papel frio + tinta marinho + azul edital. Verde e âmbar só têm significado
- * (dominado / não verificado); nunca decoração.
+ * APROVUM — tokens (identidade da logo: preto, branco e vermelho)
+ * Fundo preto, texto branco, vermelho como destaque e alvo.
+ * Camadas de aprendizagem: estudado (cinza) → praticado (vermelho) → dominado (branco).
+ * Erro usa vermelho claro sempre com ícone e texto; acerto usa branco com ✓.
  */
 @theme {
-  --color-papel: #f7f8fb;
-  --color-superficie: #ffffff;
-  --color-tinta: #14213d;
-  --color-tinta-suave: #4a5672;
-  --color-tinta-fraca: #6b7590;
-  --color-linha: #d9deea;
-  --color-linha-forte: #b9c1d4;
-  --color-azul: #1f4fd8;
-  --color-azul-escuro: #173aa3;
-  --color-nevoa: #e6ecfb;
-  /* Camadas de aprendizagem (validadas para daltonismo e contraste): estudado → praticado → dominado */
-  --color-planejado: #d3dcf6;
-  --color-estudado: #6f8fe6;
-  --color-praticado: #1f4fd8;
-  --color-dominado: #0e7a55;
-  --color-dominado-fundo: #e3f4ec;
-  --color-alerta: #b26a00;
-  --color-alerta-fundo: #fbf0dc;
-  --color-erro: #b4302a;
-  --color-erro-fundo: #fbe7e5;
+  --color-papel: #050505;
+  --color-superficie: #121212;
+  --color-tinta: #f5f5f5;
+  --color-tinta-suave: #c4c4c4;
+  --color-tinta-fraca: #a3a3a3;
+  --color-linha: #262626;
+  --color-linha-forte: #3a3a3a;
+  /* "azul" é o nome histórico do token de destaque: hoje é o vermelho da marca */
+  --color-azul: #e10600;
+  --color-azul-escuro: #b80500;
+  /* vermelho para TEXTO sobre fundo escuro (contraste AA) */
+  --color-destaque: #ff4d4d;
+  --color-nevoa: #1f1f1f;
+  --color-planejado: #2b2b2b;
+  --color-estudado: #6b6b6b;
+  --color-praticado: #e10600;
+  --color-dominado: #ffffff;
+  --color-dominado-fundo: #1c1c1c;
+  --color-alerta: #e6e6e6;
+  --color-alerta-fundo: #232323;
+  --color-erro: #ff4d4d;
+  --color-erro-fundo: #2a0b0b;
 
   --font-sans: "Public Sans Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: "Source Serif 4 Variable", Georgia, "Times New Roman", serif;
@@ -47,7 +50,7 @@
 }
 
 :root {
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 html {
@@ -204,9 +207,9 @@ body {
 @keyframes ripple { 0%{width:0;height:0;opacity:0.5} 100%{width:600px;height:600px;opacity:0} }
 @keyframes meshMove { 0%{transform:translate(0,0) scale(1)} 33%{transform:translate(30px,-20px) scale(1.08)} 66%{transform:translate(-20px,20px) scale(0.95)} 100%{transform:translate(0,0) scale(1)} }
 @keyframes shake { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-3px)} 75%{transform:translateX(3px)} }
-@keyframes borderPulse { 0%,100%{box-shadow:0 0 0 0 rgba(255,142,107,0.4)} 50%{box-shadow:0 0 0 8px rgba(255,142,107,0)} }
+@keyframes borderPulse { 0%,100%{box-shadow:0 0 0 0 rgba(225,6,0,0.45)} 50%{box-shadow:0 0 0 8px rgba(225,6,0,0)} }
 @keyframes springIn { 0%{transform:scaleY(0); opacity:0} 60%{transform:scaleY(1.15)} 80%{transform:scaleY(0.9)} 100%{transform:scaleY(1); opacity:1} }
 .glass { backdrop-filter: blur(28px) saturate(1.3); -webkit-backdrop-filter: blur(28px) saturate(1.3); }
-.text-gradient { background: linear-gradient(90deg, #7C6BFF, #5B8DEF); -webkit-background-clip:text; background-clip:text; color:transparent; }
-.pastel * { scrollbar-width: thin; scrollbar-color: #E9E6FF transparent; }
-.pastel :focus-visible { outline-color: #7C6BFF; }
+.text-gradient { background: linear-gradient(90deg, #FF2A2A, #E10600); -webkit-background-clip:text; background-clip:text; color:transparent; }
+.pastel * { scrollbar-width: thin; scrollbar-color: #3a3a3a transparent; }
+.pastel :focus-visible { outline-color: #FF2A2A; }

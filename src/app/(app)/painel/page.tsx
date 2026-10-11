@@ -39,7 +39,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
   return (
     <>
       {sp.senha === "alterada" && (
-        <p role="status" className="mb-4 rounded-[14px] border border-[#A7F3D0] bg-[#ECFDF5] px-4 py-2 text-[13px] font-medium text-[#047857]">Senha alterada.</p>
+        <p role="status" className="mb-4 rounded-[14px] border border-[#3A3A3A] bg-[#1C1C1C] px-4 py-2 text-[13px] font-medium text-[#FFFFFF]">Senha alterada.</p>
       )}
       <DashboardView
         name={dash.profile?.display_name?.split(" ")[0] ?? null}

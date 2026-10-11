@@ -138,7 +138,7 @@ export function QuestionCard({
           onClick={toggleMark}
           disabled={markPending}
           aria-pressed={marked}
-          className="ml-auto inline-flex min-h-9 items-center gap-1 rounded-md px-2 font-semibold text-tinta-suave hover:bg-nevoa aria-pressed:text-azul"
+          className="ml-auto inline-flex min-h-9 items-center gap-1 rounded-md px-2 font-semibold text-tinta-suave hover:bg-nevoa aria-pressed:text-destaque"
         >
           <Icon name="bookmark" className={`size-4 ${marked ? "fill-azul/20" : ""}`} />
           {marked ? "Para resolver depois" : "Resolver depois"}
@@ -199,7 +199,7 @@ export function QuestionCard({
                 role="radio"
                 aria-checked={confidence === c.v}
                 onClick={() => setConfidence(confidence === c.v ? null : c.v)}
-                className="min-h-9 rounded-full border border-linha-forte px-3 t-small font-semibold text-tinta-suave aria-checked:border-azul aria-checked:bg-nevoa aria-checked:text-azul-escuro"
+                className="min-h-9 rounded-full border border-linha-forte px-3 t-small font-semibold text-tinta-suave aria-checked:border-azul aria-checked:bg-nevoa aria-checked:text-destaque"
               >
                 {c.label}
               </button>

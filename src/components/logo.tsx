@@ -1,20 +1,22 @@
 import Link from "next/link";
 
-export function LogoMark({ className = "size-7" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 512 512" className={className} aria-hidden>
-      <rect width="512" height="512" rx="112" fill="#1f4fd8" />
-      <path d="M112 384h96v-80h96v-80h96v160z" fill="#fff" opacity=".35" />
-      <path d="M112 384h96v-80h96v-80h96v-80" fill="none" stroke="#fff" strokeWidth="36" strokeLinejoin="round" strokeLinecap="round" />
-    </svg>
-  );
+/** Emblema APROVUM (caveira no alvo), recortado da logo oficial. */
+export function LogoMark({ className = "size-8" }: { className?: string }) {
+  // eslint-disable-next-line @next/next/no-img-element
+  return <img src="/icons/aprovum-mark.png" alt="" aria-hidden className={`${className} rounded-[22%] bg-black object-cover`} />;
 }
 
-export function Logo({ href = "/" }: { href?: string }) {
+/** Logotipo: emblema + nome. `tagline` mostra o slogan da marca. */
+export function Logo({ href = "/", tagline = false }: { href?: string; tagline?: boolean }) {
   return (
-    <Link href={href} className="inline-flex items-center gap-2 font-bold tracking-[-0.01em] text-tinta">
+    <Link href={href} className="inline-flex items-center gap-2.5 text-tinta" aria-label="APROVUM — início">
       <LogoMark />
-      <span>Nível Aprovado</span>
+      <span className="leading-none">
+        <span className="block font-[Space_Grotesk] text-[1.15rem] font-bold tracking-[0.04em]">
+          APRO<span className="text-[#F80000]">V</span>UM
+        </span>
+        {tagline && <span className="mt-1 block text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-tinta-fraca">Sua preparação. Seu próximo cargo.</span>}
+      </span>
     </Link>
   );
 }

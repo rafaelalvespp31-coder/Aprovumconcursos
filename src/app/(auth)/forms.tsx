@@ -28,7 +28,7 @@ function PasswordInput({ id, name, autoComplete, invalid }: { id: string; name: 
       <button
         type="button"
         onClick={() => setShow((s) => !s)}
-        className="absolute inset-y-0 right-1 my-1 rounded px-3 t-small font-semibold text-azul hover:bg-nevoa"
+        className="absolute inset-y-0 right-1 my-1 rounded px-3 t-small font-semibold text-destaque hover:bg-nevoa"
         aria-pressed={show}
       >
         {show ? "Ocultar" : "Mostrar"}
@@ -52,8 +52,8 @@ export function SignInForm({ next, notice }: { next?: string; notice?: string | 
       </Field>
       <Button type="submit" disabled={pending}>{pending ? "Entrando…" : "Entrar"}</Button>
       <div className="flex flex-wrap justify-between gap-2 t-small">
-        <Link href="/recuperar-senha" className="text-azul underline underline-offset-2">Esqueci a senha</Link>
-        <Link href="/cadastro" className="text-azul underline underline-offset-2">Criar conta</Link>
+        <Link href="/recuperar-senha" className="text-destaque underline underline-offset-2">Esqueci a senha</Link>
+        <Link href="/cadastro" className="text-destaque underline underline-offset-2">Criar conta</Link>
       </div>
     </form>
   );
@@ -85,7 +85,7 @@ export function SignUpForm() {
       </div>
       <Button type="submit" disabled={pending}>{pending ? "Criando conta…" : "Criar conta"}</Button>
       <p className="t-small">
-        Já tem conta? <Link href="/entrar" className="text-azul underline underline-offset-2">Entrar</Link>
+        Já tem conta? <Link href="/entrar" className="text-destaque underline underline-offset-2">Entrar</Link>
       </p>
     </form>
   );

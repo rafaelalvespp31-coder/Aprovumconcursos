@@ -73,7 +73,7 @@ export default async function TrailPage({
       <section className="mt-6 rounded-lg border border-linha bg-superficie p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
           <p className="t-h3">{items.length} itens do conteúdo informado</p>
-          <Link href={`/trilhas/${id}/cobertura`} className="t-small font-semibold text-azul underline underline-offset-2">
+          <Link href={`/trilhas/${id}/cobertura`} className="t-small font-semibold text-destaque underline underline-offset-2">
             Ver cobertura item a item
           </Link>
         </div>

@@ -28,7 +28,7 @@ export function ConfirmAction({
       </Button>
       <dialog
         ref={ref}
-        className="m-auto w-[min(92vw,420px)] rounded-lg border border-linha bg-superficie p-0 text-tinta backdrop:bg-tinta/40"
+        className="m-auto w-[min(92vw,420px)] rounded-lg border border-linha bg-superficie p-0 text-tinta backdrop:bg-black/40"
         aria-labelledby="confirm-title"
       >
         <div className="p-5">

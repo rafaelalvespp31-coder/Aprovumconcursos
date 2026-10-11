@@ -14,7 +14,7 @@ export default function GalleryLayout({ children }: { children: React.ReactNode 
   return (
     <DemoStudyApi>
       <PastelShell summary={shellSummary} basePath="/dev/galeria">
-        <p className="mb-5 rounded-[14px] border border-dashed border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-[12px] text-[#6B6A8A]">
+        <p className="mb-5 rounded-[14px] border border-dashed border-[#3A3A3A] bg-[#1C1C1C] px-3 py-2 text-[12px] text-[#B3B3B3]">
           Galeria de desenvolvimento: dados de exemplo para revisão visual. Nada aqui vem de um aluno real.
         </p>
         {children}

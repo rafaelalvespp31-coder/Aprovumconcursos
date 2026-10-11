@@ -13,7 +13,7 @@ export default function OfflinePage() {
         Esta página ainda não foi aberta neste aparelho. As aulas que você já abriu continuam disponíveis para leitura sem internet.
       </p>
       <p className="text-tinta-suave">Respostas às questões, progresso e geração de aulas voltam a funcionar quando a conexão retornar.</p>
-      <Link href="/painel" className="font-semibold text-azul underline underline-offset-2">
+      <Link href="/painel" className="font-semibold text-destaque underline underline-offset-2">
         Tentar abrir o painel
       </Link>
     </main>

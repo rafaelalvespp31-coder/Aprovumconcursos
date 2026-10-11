@@ -3,16 +3,16 @@ import type { MetadataRoute } from "next";
 export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
-    name: "Nível Aprovado",
-    short_name: "Nível Aprovado",
-    description: "Do edital à aprovação, um nível de cada vez.",
+    name: "APROVUM",
+    short_name: "APROVUM",
+    description: "Sua preparação. Seu próximo cargo.",
     lang: "pt-BR",
     start_url: "/painel",
     scope: "/",
     display: "standalone",
     orientation: "portrait-primary",
-    background_color: "#f7f8fb",
-    theme_color: "#1f4fd8",
+    background_color: "#000000",
+    theme_color: "#000000",
     categories: ["education", "productivity"],
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },

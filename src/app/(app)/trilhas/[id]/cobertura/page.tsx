@@ -50,7 +50,7 @@ export default async function CoveragePage({ params, searchParams }: { params: P
 
   return (
     <div>
-      <Link href={`/trilhas/${id}`} className="t-small text-azul underline underline-offset-2">{trail.title}</Link>
+      <Link href={`/trilhas/${id}`} className="t-small text-destaque underline underline-offset-2">{trail.title}</Link>
       <h1 className="mt-1 t-h1">Cobertura do conteúdo</h1>
       <p className="mt-1 max-w-2xl text-tinta-suave">
         Cada item do conteúdo que você informou, com o que já foi planejado, ensinado, praticado e dominado. Um item só conta como coberto quando todo o seu escopo foi ensinado.
@@ -65,7 +65,7 @@ export default async function CoveragePage({ params, searchParams }: { params: P
             key={k}
             href={`?filtro=${k}`}
             aria-current={filtro === k ? "page" : undefined}
-            className="rounded-full border border-linha-forte px-3 py-1 t-small font-semibold text-tinta-suave aria-[current=page]:border-azul aria-[current=page]:bg-nevoa aria-[current=page]:text-azul-escuro"
+            className="rounded-full border border-linha-forte px-3 py-1 t-small font-semibold text-tinta-suave aria-[current=page]:border-azul aria-[current=page]:bg-nevoa aria-[current=page]:text-destaque"
           >
             {label}
           </Link>
@@ -92,7 +92,7 @@ export default async function CoveragePage({ params, searchParams }: { params: P
                 <tr key={r.key} className={container ? "bg-papel/60" : ""}>
                   <td className="px-3 py-2 align-top" style={{ paddingLeft: `${12 + Math.min(r.depth, 5) * 14}px` }}>
                     <span className={container ? "font-semibold" : ""}>
-                      {r.marker && <span className="mr-1.5 font-semibold text-azul">{r.marker}</span>}
+                      {r.marker && <span className="mr-1.5 font-semibold text-destaque">{r.marker}</span>}
                       {r.title}
                     </span>
                   </td>
@@ -105,7 +105,7 @@ export default async function CoveragePage({ params, searchParams }: { params: P
                   </td>
                   <td className="px-3 py-2 align-top">
                     {(lessonsByKey.get(r.key) ?? []).map((l) => (
-                      <Link key={l.id} href={`/aula/${l.id}`} className="block text-azul underline-offset-2 hover:underline">{l.title}</Link>
+                      <Link key={l.id} href={`/aula/${l.id}`} className="block text-destaque underline-offset-2 hover:underline">{l.title}</Link>
                     ))}
                     {!container && !lessonsByKey.has(r.key) && <span className="font-semibold text-erro">Sem aula</span>}
                   </td>

@@ -7,8 +7,8 @@ const variants: Record<Variant, string> = {
   primario:
     "bg-azul text-white hover:bg-azul-escuro disabled:bg-linha-forte disabled:text-white",
   secundario:
-    "bg-superficie text-tinta border border-linha-forte hover:border-azul hover:text-azul disabled:text-tinta-fraca",
-  discreto: "text-azul hover:bg-nevoa disabled:text-tinta-fraca",
+    "bg-superficie text-tinta border border-linha-forte hover:border-azul hover:text-destaque disabled:text-tinta-fraca",
+  discreto: "text-destaque hover:bg-nevoa disabled:text-tinta-fraca",
   perigo: "bg-superficie text-erro border border-erro/40 hover:bg-erro-fundo",
 };
 
@@ -83,7 +83,7 @@ export function Notice({ tone = "info", title, children }: { tone?: Tone; title?
 export function Tag({ tone = "neutro", children }: { tone?: "neutro" | "azul" | "verde" | "ambar" | "vermelho"; children: ReactNode }) {
   const map = {
     neutro: "bg-papel text-tinta-suave border-linha",
-    azul: "bg-nevoa text-azul-escuro border-azul/20",
+    azul: "bg-nevoa text-destaque border-azul/20",
     verde: "bg-dominado-fundo text-dominado border-dominado/25",
     ambar: "bg-alerta-fundo text-alerta border-alerta/25",
     vermelho: "bg-erro-fundo text-erro border-erro/25",

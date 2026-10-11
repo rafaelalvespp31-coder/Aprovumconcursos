@@ -139,7 +139,7 @@ export function PerformanceView({ data }: { data: PerformanceData }) {
       </div>
 
       <Card>
-        <SectionTitle title="Erros recorrentes" action={<Link href="/questoes?situacao=erradas" className="t-small font-semibold text-azul underline underline-offset-2">Refazer as erradas</Link>} />
+        <SectionTitle title="Erros recorrentes" action={<Link href="/questoes?situacao=erradas" className="t-small font-semibold text-destaque underline underline-offset-2">Refazer as erradas</Link>} />
         {s.recurringErrors.length === 0 ? (
           <p className="t-small text-tinta-suave">Nenhum erro recorrente.</p>
         ) : (
@@ -148,7 +148,7 @@ export function PerformanceView({ data }: { data: PerformanceData }) {
               <li key={e.questionId} className="flex flex-wrap items-start justify-between gap-2 py-3">
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 t-small">{e.statement}</p>
-                  <Link href={`/aula/${e.lessonId}`} className="t-tiny text-azul underline-offset-2 hover:underline">{e.lessonTitle}</Link>
+                  <Link href={`/aula/${e.lessonId}`} className="t-tiny text-destaque underline-offset-2 hover:underline">{e.lessonTitle}</Link>
                 </div>
                 <span className={`shrink-0 t-tiny font-semibold ${e.lastCorrect ? "text-dominado" : "text-erro"}`}>
                   {e.lastCorrect ? `Corrigida após ${e.wrongCount} erro(s)` : `Errada${e.wrongCount > 1 ? ` ${e.wrongCount} vezes` : ""}`}

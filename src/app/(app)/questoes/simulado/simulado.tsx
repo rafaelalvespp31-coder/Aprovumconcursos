@@ -60,7 +60,7 @@ export function Simulado({ pool }: { pool: BankQuestion[] }) {
               role="radio"
               aria-checked={size === n}
               onClick={() => setSize(n)}
-              className="min-h-11 rounded-md border border-linha-forte px-4 font-semibold aria-checked:border-azul aria-checked:bg-nevoa aria-checked:text-azul-escuro"
+              className="min-h-11 rounded-md border border-linha-forte px-4 font-semibold aria-checked:border-azul aria-checked:bg-nevoa aria-checked:text-destaque"
             >
               {n === pool.length ? `Todas (${n})` : n}
             </button>
@@ -215,7 +215,7 @@ function SimuladoResult({
         </dl>
         <div className="mt-4 flex flex-wrap gap-2">
           <Button onClick={onRestart}>Novo simulado</Button>
-          <Link href="/questoes?situacao=erradas" className="inline-flex min-h-11 items-center rounded-md border border-linha-forte px-4 font-semibold hover:border-azul hover:text-azul">
+          <Link href="/questoes?situacao=erradas" className="inline-flex min-h-11 items-center rounded-md border border-linha-forte px-4 font-semibold hover:border-azul hover:text-destaque">
             Refazer as que errei
           </Link>
         </div>
@@ -234,7 +234,7 @@ function SimuladoResult({
                   <p className="font-semibold">{t.topic}</p>
                   <p className="t-small text-tinta-suave">{t.wrong} de {t.total} sem acerto</p>
                 </div>
-                <Link href={`/aula/${t.lessonId}`} className="t-small font-semibold text-azul">Rever a aula</Link>
+                <Link href={`/aula/${t.lessonId}`} className="t-small font-semibold text-destaque">Rever a aula</Link>
               </li>
             ))}
           </ul>
@@ -272,7 +272,7 @@ function SimuladoResult({
                   </>
                 ) : (
                   <p className="mt-2 t-small text-tinta-suave">
-                    Sem resposta. <Link href="/questoes?situacao=nao_respondidas" className="font-semibold text-azul">Responder no modo prática</Link>
+                    Sem resposta. <Link href="/questoes?situacao=nao_respondidas" className="font-semibold text-destaque">Responder no modo prática</Link>
                   </p>
                 )}
               </li>

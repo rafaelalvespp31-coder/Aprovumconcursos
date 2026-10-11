@@ -33,12 +33,12 @@ export default async function ProfilePage() {
       <PastelCard noTilt className="p-6">
         <h2 className="mb-3 text-[13px] font-bold">Plano</h2>
         <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-[13px]">
-          <dt className="text-[#6B6A8A]">Plano atual</dt><dd className="font-semibold">{plan?.name ?? "Gratuito"}</dd>
-          <dt className="text-[#6B6A8A]">Trilhas ativas</dt><dd>{plan?.max_active_trails ?? "-"}</dd>
-          <dt className="text-[#6B6A8A]">Construções de trilha por mês</dt><dd>{plan?.max_trail_builds_per_month ?? "-"}</dd>
-          <dt className="text-[#6B6A8A]">Aulas geradas por mês</dt><dd>{plan?.max_lesson_generations_per_month ?? "-"}</dd>
+          <dt className="text-[#A3A3A3]">Plano atual</dt><dd className="font-semibold">{plan?.name ?? "Gratuito"}</dd>
+          <dt className="text-[#A3A3A3]">Trilhas ativas</dt><dd>{plan?.max_active_trails ?? "-"}</dd>
+          <dt className="text-[#A3A3A3]">Construções de trilha por mês</dt><dd>{plan?.max_trail_builds_per_month ?? "-"}</dd>
+          <dt className="text-[#A3A3A3]">Aulas geradas por mês</dt><dd>{plan?.max_lesson_generations_per_month ?? "-"}</dd>
         </dl>
-        <p className="mt-2 text-[11px] text-[#6F6D92]">A contratação de planos pagos ainda não está disponível.</p>
+        <p className="mt-2 text-[11px] text-[#8C8C8C]">A contratação de planos pagos ainda não está disponível.</p>
       </PastelCard>
       <PastelCard noTilt className="p-6">
         <h2 className="mb-2 text-[13px] font-bold">Sessão</h2>

@@ -7,12 +7,12 @@ import type { LessonListItem, ModuleProgress } from "@/server/queries";
 
 const STATE_ICON: Record<UnitState, { icon: IconName; cls: string }> = {
   nao_iniciada: { icon: "cadeado", cls: "text-tinta-fraca bg-papel border-linha" },
-  disponivel: { icon: "play", cls: "text-azul bg-nevoa border-azul/30" },
-  em_andamento: { icon: "livro", cls: "text-azul bg-nevoa border-azul/40" },
-  aula_concluida: { icon: "livro", cls: "text-white bg-[#7f98e3] border-transparent" },
+  disponivel: { icon: "play", cls: "text-destaque bg-nevoa border-azul/30" },
+  em_andamento: { icon: "livro", cls: "text-destaque bg-nevoa border-azul/40" },
+  aula_concluida: { icon: "livro", cls: "text-white bg-estudado border-transparent" },
   em_revisao: { icon: "revisoes", cls: "text-alerta bg-alerta-fundo border-alerta/30" },
   aguardando_dominio: { icon: "check", cls: "text-white bg-azul border-transparent" },
-  dominada: { icon: "check", cls: "text-white bg-dominado border-transparent" },
+  dominada: { icon: "check", cls: "text-black bg-dominado border-transparent" },
   necessita_atualizacao: { icon: "alerta", cls: "text-alerta bg-alerta-fundo border-alerta/30" },
   pendente_validacao: { icon: "alerta", cls: "text-alerta bg-alerta-fundo border-alerta/30" },
 };
@@ -77,7 +77,7 @@ export function TrailMap({
                         {review || locked ? (
                           <p className={`font-semibold ${locked && !review ? "text-tinta-suave" : ""}`}>{l.title}</p>
                         ) : (
-                          <Link href={`/aula/${l.id}`} className="font-semibold text-tinta hover:text-azul">{l.title}</Link>
+                          <Link href={`/aula/${l.id}`} className="font-semibold text-tinta hover:text-destaque">{l.title}</Link>
                         )}
                       </div>
                       <p className="mt-0.5 line-clamp-2 t-small text-tinta-suave">{l.objective}</p>

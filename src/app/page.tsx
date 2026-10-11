@@ -38,19 +38,19 @@ export default async function Home() {
           <div className="max-w-xl">
             <h1 className="t-display">Cole o edital. Estude tudo o que ele pede.</h1>
             <p className="mt-5 text-[1.1rem] leading-relaxed text-tinta-suave">
-              O Nível Aprovado separa cada item do conteúdo programático, monta aulas e questões para cada um e mostra, item por item,
+              O APROVUM separa cada item do conteúdo programático, monta aulas e questões para cada um e mostra, item por item,
               o que você já estudou e o que já domina.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
               <ButtonLink href={user ? "/nova-trilha" : "/cadastro"}>{user ? "Criar uma trilha" : "Criar conta grátis"}</ButtonLink>
               <ButtonLink href="#como-funciona" variant="secundario">Como funciona</ButtonLink>
             </div>
-            <p className="mt-4 t-small text-tinta-fraca">Do edital à aprovação, um nível de cada vez.</p>
+            <p className="mt-4 t-small text-tinta-fraca">Sua preparação. Seu próximo cargo.</p>
           </div>
 
-          <figure className="rounded-lg border border-linha bg-superficie p-5 shadow-[0_1px_0_#d9deea]">
+          <figure className="rounded-lg border border-linha bg-superficie p-5 shadow-[0_1px_0_#262626]">
             <figcaption className="t-small text-tinta-suave">
-              Este trecho de edital foi decomposto agora pelo motor do Nível Aprovado:
+              Este trecho de edital foi decomposto agora pelo motor do APROVUM:
             </figcaption>
             <blockquote className="mt-3 border-l-2 border-linha-forte pl-3 font-serif text-[0.95rem] leading-relaxed text-tinta-suave">
               {DEMO}
@@ -70,7 +70,7 @@ export default async function Home() {
             <ol className="mt-5 divide-y divide-linha border-t border-linha">
               {nodes.slice(0, 14).map((n) => (
                 <li key={n.key} className="flex gap-3 py-2 t-small" style={{ paddingLeft: `${Math.min(n.depth, 3) * 14}px` }}>
-                  <span className="w-8 shrink-0 font-semibold text-azul">{n.marker ?? ""}</span>
+                  <span className="w-8 shrink-0 font-semibold text-destaque">{n.marker ?? ""}</span>
                   <span className={n.requiresDirectCoverage ? "text-tinta" : "font-semibold text-tinta"}>{n.title}</span>
                 </li>
               ))}
@@ -88,7 +88,7 @@ export default async function Home() {
                 ["Estude, responda e revise", "Cada aula termina com questões comentadas. Você avança quando demonstra o aprendizado, e as revisões voltam no tempo certo."],
               ].map(([t, d], i) => (
                 <li key={t} className="flex gap-4">
-                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-nevoa font-bold text-azul" aria-hidden>
+                  <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-nevoa font-bold text-destaque" aria-hidden>
                     {i + 1}
                   </span>
                   <div>
@@ -124,7 +124,7 @@ export default async function Home() {
 
       <footer className="border-t border-linha">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-6 t-small text-tinta-fraca">
-          <span>Nível Aprovado</span>
+          <span>APROVUM</span>
           <span>Conteúdo gerado com apoio de IA, com verificação de cobertura e sinalização de pontos não verificados.</span>
         </div>
       </footer>

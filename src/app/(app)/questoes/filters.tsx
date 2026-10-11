@@ -28,7 +28,7 @@ export function BankFiltersForm({
     <details className="group rounded-lg border border-linha bg-superficie" open={active > 0}>
       <summary className="flex min-h-12 cursor-pointer list-none items-center gap-2 px-4 font-semibold">
         <Icon name="filtro" className="size-4" /> Filtros
-        {active > 0 && <span className="rounded-full bg-nevoa px-2 t-tiny text-azul-escuro">{active} ativo(s)</span>}
+        {active > 0 && <span className="rounded-full bg-nevoa px-2 t-tiny text-destaque">{active} ativo(s)</span>}
         <Icon name="chevronDown" className="ml-auto size-4 transition-transform group-open:rotate-180" />
       </summary>
       <form action={action} method="get" className="grid gap-3 border-t border-linha p-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -74,7 +74,7 @@ export function BankFiltersForm({
         </label>
         <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-3">
           <button type="submit" className="inline-flex min-h-11 items-center rounded-md bg-azul px-4 font-semibold text-white hover:bg-azul-escuro">Aplicar filtros</button>
-          {active > 0 && <Link href={action} className="inline-flex min-h-11 items-center px-3 font-semibold text-azul">Limpar</Link>}
+          {active > 0 && <Link href={action} className="inline-flex min-h-11 items-center px-3 font-semibold text-destaque">Limpar</Link>}
         </div>
       </form>
     </details>

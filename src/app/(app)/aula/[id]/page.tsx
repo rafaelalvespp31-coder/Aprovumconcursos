@@ -28,7 +28,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
 
   const header = (
     <header>
-      <Link href={`/trilhas/${lesson.trail_id}`} className="t-small text-azul underline underline-offset-2">{lesson.study_trails.title}</Link>
+      <Link href={`/trilhas/${lesson.trail_id}`} className="t-small text-destaque underline underline-offset-2">{lesson.study_trails.title}</Link>
       <h1 className="mt-1 t-h1">{lesson.title}</h1>
       <p className="mt-1 text-tinta-suave">{lesson.objective}</p>
       <div className="mt-2 flex flex-wrap items-center gap-2 t-tiny text-tinta-fraca">

@@ -1,14 +1,14 @@
-/* Nível Aprovado — service worker
+/* APROVUM — service worker
  * - Arquivos estáticos versionados: cache-first.
  * - Aulas já abertas: network-first com cópia local para leitura offline.
  * - Demais navegações: rede; sem conexão, página /offline.
  * - Nunca armazena respostas de API, ações (POST) nem páginas de conta.
  * - Cache privado é apagado no logout (mensagem "clear-private").
  */
-const VERSION = "v1";
+const VERSION = "v2"; // v2: identidade APROVUM (ícones novos)
 const STATIC_CACHE = `na-static-${VERSION}`;
 const LESSON_CACHE = `na-aulas-${VERSION}`;
-const PRECACHE = ["/offline", "/icons/icon-192.png", "/icons/icon.svg", "/manifest.webmanifest"];
+const PRECACHE = ["/offline", "/icons/icon-192.png", "/icons/aprovum-mark.png", "/manifest.webmanifest"];
 const MAX_LESSONS = 40;
 
 self.addEventListener("install", (event) => {

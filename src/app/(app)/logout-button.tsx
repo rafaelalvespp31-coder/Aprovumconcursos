@@ -12,14 +12,14 @@ export function LogoutButton({ variant = "texto" }: { variant?: "texto" | "icone
         onClick={clear}
         aria-label="Sair"
         title="Sair"
-        className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-[#F0F0FF] bg-white transition hover:bg-[#F5F3FF]"
+        className="flex h-10 w-10 items-center justify-center rounded-[12px] border border-[#2A2A2A] bg-[#161616] text-white transition hover:border-[#E10600] hover:bg-[#1F1F1F]"
       >
         <LogOut className="h-4 w-4" aria-hidden />
       </button>
     );
   }
   return (
-    <button type="submit" onClick={clear} className="font-semibold text-azul underline underline-offset-2">
+    <button type="submit" onClick={clear} className="font-semibold text-destaque underline underline-offset-2">
       Sair
     </button>
   );

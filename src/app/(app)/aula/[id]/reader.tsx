@@ -140,11 +140,11 @@ export function LessonReader(props: ReaderProps) {
               type="button"
               onClick={() => goTo(s.id)}
               aria-current={activeSection === s.id ? "location" : undefined}
-              className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left t-small text-tinta-suave hover:bg-nevoa aria-[current=location]:bg-nevoa aria-[current=location]:font-semibold aria-[current=location]:text-azul-escuro"
+              className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left t-small text-tinta-suave hover:bg-nevoa aria-[current=location]:bg-nevoa aria-[current=location]:font-semibold aria-[current=location]:text-destaque"
             >
               <span className="flex-1">{s.title || SECTION_LABELS[s.kind as LessonSectionKind]}</span>
               {(readingDone || seen.has(s.id)) && <Icon name="check" className="mt-0.5 size-3.5 text-dominado" label="Seção percorrida" />}
-              {anns.some((a) => a.kind === "revisar") && <Icon name="bookmark" className="mt-0.5 size-3.5 text-azul" label="Marcado para revisar" />}
+              {anns.some((a) => a.kind === "revisar") && <Icon name="bookmark" className="mt-0.5 size-3.5 text-destaque" label="Marcado para revisar" />}
               {anns.some((a) => a.kind === "duvida" && !a.resolved) && <Icon name="duvida" className="mt-0.5 size-3.5 text-alerta" label="Dúvida aberta" />}
               {anns.some((a) => a.kind === "nota") && <Icon name="nota" className="mt-0.5 size-3.5 text-tinta-fraca" label="Tem anotação" />}
             </button>
@@ -152,7 +152,7 @@ export function LessonReader(props: ReaderProps) {
         );
       })}
       <li>
-        <button type="button" onClick={() => document.getElementById("questoes")?.scrollIntoView({ behavior: "smooth" })} className="w-full rounded-md px-2 py-1.5 text-left t-small font-semibold text-azul hover:bg-nevoa">
+        <button type="button" onClick={() => document.getElementById("questoes")?.scrollIntoView({ behavior: "smooth" })} className="w-full rounded-md px-2 py-1.5 text-left t-small font-semibold text-destaque hover:bg-nevoa">
           Questões da aula ({questions.length})
         </button>
       </li>
@@ -176,7 +176,7 @@ export function LessonReader(props: ReaderProps) {
       <div className="md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-10 lg:grid-cols-[240px_minmax(0,1fr)]">
         <aside className="hidden md:block">
           <div className="sticky top-6 flex max-h-[calc(100dvh-3rem)] flex-col gap-4 overflow-y-auto pb-6">
-            <Link href={`/trilhas/${lesson.trailId}`} className="inline-flex items-center gap-1 t-small font-semibold text-azul">
+            <Link href={`/trilhas/${lesson.trailId}`} className="inline-flex items-center gap-1 t-small font-semibold text-destaque">
               <Icon name="chevronLeft" className="size-4" /> {lesson.trailTitle}
             </Link>
             <nav aria-label="Índice da aula">
@@ -185,7 +185,7 @@ export function LessonReader(props: ReaderProps) {
               </p>
               {toc}
             </nav>
-            <button type="button" onClick={() => notesRef.current?.showModal()} className="mx-2 inline-flex items-center gap-2 t-small font-semibold text-tinta-suave hover:text-azul">
+            <button type="button" onClick={() => notesRef.current?.showModal()} className="mx-2 inline-flex items-center gap-2 t-small font-semibold text-tinta-suave hover:text-destaque">
               <Icon name="nota" className="size-4" /> Minhas anotações ({annotations.length})
             </button>
           </div>
@@ -193,7 +193,7 @@ export function LessonReader(props: ReaderProps) {
 
         <article id="corpo-aula" className="min-w-0">
           <header>
-            <Link href={`/trilhas/${lesson.trailId}`} className="t-small text-azul underline underline-offset-2 md:hidden">{lesson.trailTitle}</Link>
+            <Link href={`/trilhas/${lesson.trailId}`} className="t-small text-destaque underline underline-offset-2 md:hidden">{lesson.trailTitle}</Link>
             <h1 className="mt-1 t-h1">{lesson.title}</h1>
             <p className="mt-1 max-w-[68ch] text-tinta-suave">{lesson.objective}</p>
             <div className="mt-3 flex flex-wrap items-center gap-2 t-tiny text-tinta-fraca">
@@ -210,7 +210,7 @@ export function LessonReader(props: ReaderProps) {
             <ul className="mt-2 flex flex-col gap-1">
               {nodes.map((n) => (
                 <li key={n.key} className="flex items-start justify-between gap-3">
-                  <span>{n.marker && <span className="mr-1 font-semibold text-azul">{n.marker}</span>}{n.title}</span>
+                  <span>{n.marker && <span className="mr-1 font-semibold text-destaque">{n.marker}</span>}{n.title}</span>
                   <Tag tone={n.taught ? "azul" : "ambar"}>{n.taught ? "Ensinado" : "Pendente"}</Tag>
                 </li>
               ))}
@@ -233,7 +233,7 @@ export function LessonReader(props: ReaderProps) {
                 <span data-fim-secao={s.id} aria-hidden className="block h-px" />
                 {(interleaved.get(s.id) ?? []).map((q) => (
                   <div key={q.id} className="my-6" onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
-                    <p className="mb-2 inline-flex items-center gap-1.5 t-small font-semibold text-azul-escuro">
+                    <p className="mb-2 inline-flex items-center gap-1.5 t-small font-semibold text-destaque">
                       <Icon name="raio" className="size-4" /> Pergunta rápida sobre esta seção
                     </p>
                     <QuestionCard q={q} number={numberOf.get(q.id)!} context={context} compact active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} />
@@ -270,12 +270,12 @@ export function LessonReader(props: ReaderProps) {
 
           <nav aria-label="Aulas" className="mt-12 flex flex-wrap justify-between gap-3 border-t border-linha pt-5">
             {props.prevId ? (
-              <Link href={`/aula/${props.prevId}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-azul">
+              <Link href={`/aula/${props.prevId}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-destaque">
                 <Icon name="setaEsquerda" className="size-4" /> Aula anterior
               </Link>
             ) : <span />}
             {props.nextId && (
-              <Link href={`/aula/${props.nextId}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-azul">
+              <Link href={`/aula/${props.nextId}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-destaque">
                 Próxima aula <Icon name="setaDireita" className="size-4" />
               </Link>
             )}
@@ -283,7 +283,7 @@ export function LessonReader(props: ReaderProps) {
         </article>
       </div>
 
-      <dialog ref={tocRef} className="m-0 mt-auto w-full max-w-none rounded-t-lg border border-linha bg-superficie p-4 backdrop:bg-tinta/40 md:hidden" aria-label="Índice da aula">
+      <dialog ref={tocRef} className="m-0 mt-auto w-full max-w-none rounded-t-lg border border-linha bg-superficie p-4 backdrop:bg-black/40 md:hidden" aria-label="Índice da aula">
         <div className="mb-2 flex items-center justify-between">
           <p className="t-h3">Nesta aula</p>
           <button type="button" onClick={() => tocRef.current?.close()} className="rounded-md p-2 hover:bg-nevoa" aria-label="Fechar índice">
@@ -456,7 +456,7 @@ function SectionActions({
       onClick={onClick}
       aria-pressed={pressed}
       aria-expanded={p !== "revisar" ? panel === p : undefined}
-      className="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 t-small font-semibold text-tinta-suave hover:bg-nevoa hover:text-tinta aria-pressed:bg-nevoa aria-pressed:text-azul-escuro"
+      className="inline-flex min-h-10 items-center gap-1.5 rounded-md px-2.5 t-small font-semibold text-tinta-suave hover:bg-nevoa hover:text-tinta aria-pressed:bg-nevoa aria-pressed:text-destaque"
     >
       <Icon name={icon} className="size-4" /> {labelText}
     </button>
@@ -477,7 +477,7 @@ function SectionActions({
           {answers.map((c) => (
             <div key={c.id} className="rounded-md border border-azul/25 bg-nevoa/60 px-4 py-3">
               <p className="t-small font-semibold">
-                <Icon name="lampada" className="mr-1 inline size-4 text-azul" />
+                <Icon name="lampada" className="mr-1 inline size-4 text-destaque" />
                 {c.question}
               </p>
               <div className="leitura mt-1 !text-[1rem]"><Markdown>{c.answer_markdown}</Markdown></div>
@@ -503,7 +503,7 @@ function SectionActions({
                   <span className={d.resolved ? "text-tinta-fraca line-through" : ""}>{d.body || "Dúvida sem descrição"}</span>
                   <button
                     type="button"
-                    className="shrink-0 t-tiny font-semibold text-azul"
+                    className="shrink-0 t-tiny font-semibold text-destaque"
                     onClick={() =>
                       start(async () => {
                         const r = await api.updateAnnotation(d.id, { resolved: !d.resolved });
@@ -593,7 +593,7 @@ function ReadingDone({
         <span className="t-small tabular-nums text-tinta-suave">{seenCount} de {total} seções</span>
       </div>
       {!complete && nextUnseen && (
-        <button type="button" onClick={() => onGo(nextUnseen.id)} className="self-start t-small font-semibold text-azul underline underline-offset-2">
+        <button type="button" onClick={() => onGo(nextUnseen.id)} className="self-start t-small font-semibold text-destaque underline underline-offset-2">
           Falta percorrer: {nextUnseen.title}
         </button>
       )}
@@ -652,7 +652,7 @@ function UnitResult({ lessonId, context, readingDone, nextId, total }: { lessonI
         </Notice>
       )}
       {result?.ok && result.unlocksNext && nextId && (
-        <Link href={`/aula/${nextId}`} className="inline-flex min-h-11 items-center gap-1.5 self-start font-semibold text-azul">
+        <Link href={`/aula/${nextId}`} className="inline-flex min-h-11 items-center gap-1.5 self-start font-semibold text-destaque">
           Ir para a próxima aula <Icon name="setaDireita" className="size-4" />
         </Link>
       )}
@@ -686,7 +686,7 @@ function AnnotationsDialog({
     duvida: { label: "Dúvida", icon: "duvida" },
   };
   return (
-    <dialog ref={refEl} className="m-0 ml-auto h-dvh max-h-none w-[min(100vw,420px)] border-l border-linha bg-superficie p-0 backdrop:bg-tinta/30" aria-label="Minhas anotações">
+    <dialog ref={refEl} className="m-0 ml-auto h-dvh max-h-none w-[min(100vw,420px)] border-l border-linha bg-superficie p-0 backdrop:bg-black/30" aria-label="Minhas anotações">
       <div className="flex h-full flex-col">
         <div className="flex items-center justify-between border-b border-linha px-4 py-3">
           <p className="t-h3">Minhas anotações</p>
@@ -701,7 +701,7 @@ function AnnotationsDialog({
               role="tab"
               aria-selected={filter === f}
               onClick={() => setFilter(f)}
-              className="rounded-full px-3 py-1 t-small font-semibold text-tinta-suave aria-selected:bg-nevoa aria-selected:text-azul-escuro"
+              className="rounded-full px-3 py-1 t-small font-semibold text-tinta-suave aria-selected:bg-nevoa aria-selected:text-destaque"
             >
               {f === "todas" ? "Todas" : KIND[f].label}
             </button>
@@ -722,7 +722,7 @@ function AnnotationsDialog({
                   </div>
                   {a.body && <p className="mt-2 whitespace-pre-line t-small">{a.body}</p>}
                   <div className="mt-2 flex flex-wrap items-center gap-3 t-small">
-                    <button type="button" className="font-semibold text-azul" onClick={() => onGo(a.section_id)}>
+                    <button type="button" className="font-semibold text-destaque" onClick={() => onGo(a.section_id)}>
                       {a.section_title ? `Ir para “${a.section_title}”` : "Ir para a aula"}
                     </button>
                     {confirming === a.id ? (
