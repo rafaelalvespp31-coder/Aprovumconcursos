@@ -17,6 +17,41 @@ const MIN_PCT = 90;
  * Cada nível exige ≥ 90%. Quem não atinge faz exercícios de recuperação que substituem
  * só as questões erradas — o nível não é reiniciado.
  */
+/** Um único nível (usado na aula passo a passo). O estado de aprovação fica com quem chama. */
+export function SingleLevel({
+  lessonId,
+  levelKey,
+  questions,
+  interleavedIds,
+  levelsPassed,
+  readingDone,
+  renderQuestion,
+  onPassed,
+}: {
+  lessonId: string;
+  levelKey: LevelKey;
+  questions: ReaderQuestion[];
+  interleavedIds: ReadonlySet<string>;
+  levelsPassed: number;
+  readingDone: boolean;
+  renderQuestion: (q: ReaderQuestion, number: number, label?: string) => ReactNode;
+  onPassed: (n: number) => void;
+}) {
+  const level = LEVELS.find((l) => l.key === levelKey)!;
+  return (
+    <LevelBlock
+      lessonId={lessonId}
+      level={level}
+      status={levelStatus(levelsPassed, level.n)}
+      questions={questions.filter((q) => (q.level ?? levelOf(q.difficulty)) === levelKey)}
+      interleavedIds={interleavedIds}
+      readingDone={readingDone}
+      renderQuestion={renderQuestion}
+      onPassed={onPassed}
+    />
+  );
+}
+
 export function LevelsPanel({
   lessonId,
   trailId,

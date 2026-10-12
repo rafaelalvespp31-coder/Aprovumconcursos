@@ -13,7 +13,7 @@ const variants: Record<Variant, string> = {
 };
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded-md px-4 min-h-11 font-semibold text-[0.95rem] transition-colors disabled:cursor-not-allowed";
+  "inline-flex items-center justify-center gap-2 rounded-md px-4 min-h-11 font-semibold text-[0.95rem] transition-[color,background-color,border-color,transform] duration-150 active:scale-[0.97] disabled:cursor-not-allowed disabled:active:scale-100 select-none touch-manipulation";
 
 export function Button({
   variant = "primario",

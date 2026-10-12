@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { requireUser } from "@/server/auth";
 import { createTrail, enforceRateLimit, UserFacingError } from "@/server/services/trails";
 import { findInCatalog } from "@/server/services/catalog";
+import { moveTrailToFolder } from "@/server/services/folders";
 import { logEvent } from "@/server/observability";
 
 export interface CreateTrailState {
@@ -25,6 +26,11 @@ export async function createTrailAction(_: CreateTrailState, form: FormData): Pr
     if (err instanceof UserFacingError) return { error: err.message };
     await logEvent("trail.create_error", { userId: user.id, error: (err as Error).message });
     return { error: "Não foi possível criar o estudo agora. Tente novamente em instantes." };
+  }
+  const folderId = String(form.get("folderId") ?? "");
+  if (folderId) {
+    // A pasta é opcional: se falhar, o estudo continua criado (o aluno pode mover depois).
+    await moveTrailToFolder(user.id, result.trailId, folderId).catch((e) => logEvent("folder.assign_failed", { error: (e as Error).message }));
   }
   redirect(result.jobId ? `/trilhas/${result.trailId}/processando?job=${result.jobId}` : `/trilhas/${result.trailId}?catalogo=1`);
 }

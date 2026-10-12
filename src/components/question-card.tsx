@@ -125,7 +125,16 @@ export function QuestionCard({
 
   return (
     <article
-      className={`rounded-lg border bg-superficie ${compact ? "p-4" : "p-4 sm:p-6"} ${active ? "border-azul/50" : "border-linha"}`}
+      className={`rounded-lg border transition-colors duration-300 ${compact ? "p-4" : "p-4 sm:p-6"} ${
+        showFeedback && fb!.correct
+          ? "border-acerto bg-acerto-fundo ring-1 ring-acerto/40"
+          : showFeedback && !fb!.correct
+            ? "border-erro/60 bg-superficie"
+            : active
+              ? "border-azul/50 bg-superficie"
+              : "border-linha bg-superficie"
+      }`}
+      data-resultado={showFeedback ? (fb!.correct ? "acerto" : "erro") : undefined}
       aria-label={`Questão ${number}`}
     >
       <header className="flex flex-wrap items-center gap-2 t-tiny text-tinta-fraca">
@@ -162,7 +171,7 @@ export function QuestionCard({
                 key={o.id}
                 className={`flex min-h-12 cursor-pointer gap-3 rounded-md border px-3 py-2.5 transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-azul ${
                   isCorrect
-                    ? "border-dominado bg-dominado-fundo"
+                    ? "border-acerto bg-white text-acerto font-semibold"
                     : isWrongPick
                       ? "border-erro bg-erro-fundo"
                       : "border-linha-forte hover:border-azul/60 has-[:checked]:border-azul has-[:checked]:bg-nevoa"
@@ -171,7 +180,7 @@ export function QuestionCard({
                 <input type="radio" name={`q-${q.id}`} value={o.id} checked={choice === o.id} onChange={() => setChoice(o.id)} className="sr-only" />
                 <span
                   className={`flex size-7 shrink-0 items-center justify-center rounded-full border t-small font-bold ${
-                    choice === o.id ? "border-azul bg-azul text-white" : "border-linha-forte text-tinta-suave"
+                    isCorrect ? "border-acerto bg-acerto text-white" : choice === o.id ? "border-azul bg-azul text-white" : "border-linha-forte text-tinta-suave"
                   }`}
                   aria-hidden
                 >
@@ -221,11 +230,22 @@ export function QuestionCard({
         </p>
       ) : (
         <div className="mt-4 flex flex-col gap-2">
-          <Notice tone={fb!.correct ? "sucesso" : "erro"} title={fb!.correct ? "Resposta correta" : "Resposta incorreta"}>
-            <p className="whitespace-pre-line">{fb!.justification}</p>
-            {q.depends_on_external_source && <p className="mt-2 t-tiny">Depende de fonte normativa: confira a redação vigente.</p>}
-            {fb!.attempts && fb!.attempts > 1 && <p className="mt-2 t-tiny">Esta foi sua tentativa nº {fb!.attempts} nesta questão.</p>}
-          </Notice>
+          {fb!.correct ? (
+            <div role="status" className="entrar rounded-md border border-acerto/40 bg-white px-4 py-3 t-small">
+              <p className="inline-flex items-center gap-1.5 font-semibold text-acerto">
+                <Icon name="check" className="size-4" /> Resposta correta
+              </p>
+              <p className="mt-1 whitespace-pre-line text-tinta-suave">{fb!.justification}</p>
+              {q.depends_on_external_source && <p className="mt-2 t-tiny text-tinta-suave">Depende de fonte normativa: confira a redação vigente.</p>}
+              {fb!.attempts && fb!.attempts > 1 && <p className="mt-2 t-tiny text-tinta-suave">Esta foi sua tentativa nº {fb!.attempts} nesta questão.</p>}
+            </div>
+          ) : (
+            <Notice tone="erro" title="Resposta incorreta">
+              <p className="whitespace-pre-line">{fb!.justification}</p>
+              {q.depends_on_external_source && <p className="mt-2 t-tiny">Depende de fonte normativa: confira a redação vigente.</p>}
+              {fb!.attempts && fb!.attempts > 1 && <p className="mt-2 t-tiny">Esta foi sua tentativa nº {fb!.attempts} nesta questão.</p>}
+            </Notice>
+          )}
           {overconfident && (
             <Notice tone="alerta">Você marcou certeza e errou. Esse é o tipo de erro que mais custa na prova — vale revisar este ponto.</Notice>
           )}

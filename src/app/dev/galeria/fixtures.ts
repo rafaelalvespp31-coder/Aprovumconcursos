@@ -98,6 +98,8 @@ export const reader: ReaderProps = {
   context: "fixacao",
   prevId: id(102),
   nextId: id(104),
+  nextHref: `/aula/${id(104)}`,
+  nextLabel: "Atos administrativos: atributos",
   notices: null,
 };
 

@@ -23,6 +23,8 @@ export interface TrailSummary {
   last_studied_at: string | null;
   updated_at: string;
   created_at: string;
+  folder_id: string | null;
+  folder_order: number;
 }
 
 /** Delimitação de escopo feita pela IA para pedidos breves (tema, artigo). */
@@ -38,7 +40,7 @@ export interface ScopeSummary {
   catalogTopics?: Array<{ id: string; title: string; version: number }>;
 }
 
-const TRAIL_COLS = "id, title, board_slug, other_board_name, content_type, status, archived_at, last_studied_at, updated_at, created_at";
+const TRAIL_COLS = "id, title, board_slug, other_board_name, content_type, status, archived_at, last_studied_at, updated_at, created_at, folder_id, folder_order";
 
 export async function listTrails(includeArchived = false): Promise<TrailSummary[]> {
   const db = await createUserClient();
@@ -607,4 +609,43 @@ export async function listStudyPdfs(trailId: string): Promise<StudyPdfItem[]> {
     .order("pdf_version", { ascending: false });
   if (error) throw new Error(error.message);
   return (data ?? []).map((r) => ({ id: r.id as string, pdf_version: r.pdf_version as number, created_at: r.created_at as string, questions: (r.question_ids as string[]).length }));
+}
+
+/**
+ * Próximo tema ou assunto da mesma matéria: a aula seguinte do estudo; se for a
+ * última, o próximo estudo (não arquivado) da mesma pasta.
+ */
+export async function getNextInSubject(trailId: string, nextLesson: { id: string; title: string } | null): Promise<{ href: string; label: string } | null> {
+  if (nextLesson) return { href: `/aula/${nextLesson.id}`, label: nextLesson.title };
+  const db = await createUserClient();
+  const { data: trail } = await db.from("study_trails").select("folder_id").eq("id", trailId).maybeSingle();
+  const folderId = trail?.folder_id as string | null | undefined;
+  if (!folderId) return null;
+  const { data: list } = await db
+    .from("study_trails")
+    .select("id, title, folder_order, created_at")
+    .eq("folder_id", folderId)
+    .is("archived_at", null)
+    .order("folder_order")
+    .order("created_at");
+  const items = list ?? [];
+  const i = items.findIndex((t) => t.id === trailId);
+  const following = i >= 0 ? items[i + 1] : undefined;
+  if (!following) return null;
+  const { data: first } = await db.from("lessons").select("id").eq("trail_id", following.id).order("sort_order").limit(1).maybeSingle();
+  return { href: first ? `/aula/${first.id}` : `/trilhas/${following.id}`, label: following.title as string };
+}
+
+export interface StudyFolder {
+  id: string;
+  name: string;
+  color: string;
+  sort_order: number;
+}
+
+export async function listFolders(): Promise<StudyFolder[]> {
+  const db = await createUserClient();
+  const { data, error } = await db.from("study_folders").select("id, name, color, sort_order").order("sort_order").order("created_at");
+  if (error) return [];
+  return (data ?? []) as StudyFolder[];
 }

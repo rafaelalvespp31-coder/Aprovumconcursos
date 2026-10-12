@@ -285,6 +285,32 @@ describe("integridade referencial por dono", () => {
   });
 });
 
+describe("pastas do aluno", () => {
+  itDb("cada aluno vê só as próprias pastas, não grava direto e não usa pasta alheia", async () => {
+    await db.query("begin");
+    try {
+      const fa = (await db.query("insert into study_folders (user_id, name) values ($1, 'Penal A') returning id", [A])).rows[0].id;
+      const fb = (await db.query("insert into study_folders (user_id, name) values ($1, 'Penal B') returning id", [B])).rows[0].id;
+      // A não pode colocar o próprio estudo na pasta de B (chave composta pasta+dono).
+      expect(await errorCode(db, "update study_trails set folder_id = $1 where id = $2", [fb, ids.a_trail])).toBe("23503");
+      await db.query("update study_trails set folder_id = $1 where id = $2", [fa, ids.a_trail]);
+      await db.query("set local role authenticated");
+      await db.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: A, role: "authenticated" })]);
+      const seen = (await db.query("select name from study_folders order by name")).rows.map((r) => r.name);
+      expect(seen).toEqual(["Penal A"]);
+      expect(await errorCode(db, "insert into study_folders (user_id, name) values ($1, 'X')", [A])).toBe("42501");
+      expect(await errorCode(db, "update study_folders set name = 'Y' where id = $1", [fa])).toBe("42501");
+      await db.query("reset role");
+      // Excluir a pasta não apaga o estudo: ele só fica sem pasta.
+      await db.query("delete from study_folders where id = $1", [fa]);
+      const t = (await db.query("select folder_id from study_trails where id = $1", [ids.a_trail])).rows[0];
+      expect(t.folder_id).toBeNull();
+    } finally {
+      await db.query("rollback");
+    }
+  });
+});
+
 describe("cotas, limite de taxa e lease (servidor)", () => {
   itDb("consome cota até o limite do plano e então bloqueia", async () => {
     const limit = (await db.query("select max_trail_builds_per_month l from plans where id = 'free'")).rows[0].l as number;

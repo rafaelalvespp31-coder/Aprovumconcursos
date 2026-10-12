@@ -5,15 +5,15 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { Markdown } from "@/components/markdown";
 import { Icon, type IconName } from "@/components/icons";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
-import { ReadingProgress, SaveIndicator, type SaveState } from "@/components/interactive";
+import { SaveIndicator, type SaveState } from "@/components/interactive";
 import { QuestionCard, type QuestionData } from "@/components/question-card";
 import { SECTION_LABELS, type LessonSectionKind } from "@/ai/pedagogy";
 import type { Annotation } from "../../study-actions";
 import type { QuizResult } from "./actions";
 import { useStored } from "@/components/use-stored";
 import { useStudyApi } from "@/components/study-api";
-import type { LevelKey } from "@/domain/progress/levels";
-import { LevelsPanel } from "./levels-panel";
+import { LEVELS, levelStatus, type LevelKey } from "@/domain/progress/levels";
+import { SingleLevel } from "./levels-panel";
 
 export interface ReaderSection {
   id: string;
@@ -46,6 +46,9 @@ export interface ReaderProps {
   context: "fixacao" | "revisao";
   prevId: string | null;
   nextId: string | null;
+  /** Próximo tema/assunto da mesma matéria (aula seguinte ou próximo estudo da pasta). */
+  nextHref: string | null;
+  nextLabel: string | null;
   notices: React.ReactNode;
   /** Pré-visualização de design: não dispara efeitos no servidor. */
 }
@@ -54,58 +57,57 @@ export type ReaderQuestion = QuestionData & { nodeKey: string | null; level?: Le
 
 const sectionDomId = (id: string) => `secao-${id}`;
 
+type Step =
+  | { type: "secao"; section: ReaderSection; n: number }
+  | { type: "nivel"; level: LevelKey }
+  | { type: "revisao" }
+  | { type: "fim" };
+
+const LEVEL_TITLE: Record<LevelKey, string> = { facil: "Questões · Fácil", medio: "Questões · Médio", dificil: "Questões · Difícil" };
+
+/**
+ * Aula passo a passo: um tema (bloco) por tela, cada um seguido da sua pergunta rápida;
+ * depois as questões separadas por dificuldade (fácil → médio → difícil) e, no fim,
+ * o botão para o próximo tema ou assunto da mesma matéria.
+ */
 export function LessonReader(props: ReaderProps) {
   const api = useStudyApi();
   const { lesson, sections, nodes, questions, context } = props;
   const [annotations, setAnnotations] = useState(props.annotations);
   const [readingDone, setReadingDone] = useState(props.readingDone);
-  const [activeSection, setActiveSection] = useState<string | null>(sections[0]?.id ?? null);
+  const [levelsPassed, setLevelsPassed] = useState(props.levelsPassed);
   const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
+  const [completing, startCompleting] = useTransition();
   const tocRef = useRef<HTMLDialogElement>(null);
   const notesRef = useRef<HTMLDialogElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
 
   // Registra a abertura da aula (máquina de estados no servidor).
   useEffect(() => {
     void api.startLesson(lesson.id);
   }, [lesson.id, api]);
 
-  // Seção visível atual (para o índice).
-  useEffect(() => {
-    const els = sections.map((s) => document.getElementById(sectionDomId(s.id))).filter((e): e is HTMLElement => !!e);
-    const obs = new IntersectionObserver(
-      (entries) => {
-        const visible = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (visible) setActiveSection(visible.target.id.replace("secao-", ""));
-      },
-      { rootMargin: "-20% 0px -65% 0px" },
-    );
-    els.forEach((e) => obs.observe(e));
-    return () => obs.disconnect();
-  }, [sections]);
+  const steps = useMemo<Step[]>(() => {
+    const list: Step[] = sections.map((s, i) => ({ type: "secao", section: s, n: i + 1 }));
+    if (context === "revisao") list.push({ type: "revisao" });
+    else for (const l of LEVELS) list.push({ type: "nivel", level: l.key });
+    list.push({ type: "fim" });
+    return list;
+  }, [sections, context]);
 
-  // Seções percorridas: conta quando o FIM da seção passa pela tela. Pular pelo índice
-  // não conta — a leitura só pode ser concluída depois de passar por todas as formas de ensino.
+  const [storedStep, setStoredStep] = useStored<number>(`na:passo:${lesson.id}`, 0);
+  const step = Math.min(Math.max(storedStep, 0), steps.length - 1);
+  const current = steps[step]!;
+
+  // Blocos percorridos: contam quando o aluno passa adiante (ou chega ao último).
   const [seenList, setSeenList] = useStored<string[]>(`na:secoes-vistas:${lesson.id}`, []);
   const seen = useMemo(() => new Set(seenList), [seenList]);
-  useEffect(() => {
-    if (readingDone) return;
-    const els = [...document.querySelectorAll<HTMLElement>("[data-fim-secao]")];
-    const obs = new IntersectionObserver((entries) => {
-      const hit = entries.filter((e) => e.isIntersecting).map((e) => (e.target as HTMLElement).dataset.fimSecao!);
-      const fresh = hit.filter((id) => !seen.has(id));
-      if (fresh.length) setSeenList([...seen, ...fresh]);
-    });
-    els.forEach((e) => obs.observe(e));
-    return () => obs.disconnect();
-  }, [sections, readingDone, seen, setSeenList]);
   const seenCount = readingDone ? sections.length : sections.filter((s) => seen.has(s.id)).length;
-  const unseen = readingDone ? [] : sections.filter((s) => !seen.has(s.id));
 
-  // Distribui questões: a primeira questão de cada item aparece logo após a seção que o ensina.
-  const { interleaved, remaining } = useMemo(() => {
+  // Pergunta rápida logo após o bloco que ensina o item (nível fácil).
+  const { interleaved } = useMemo(() => {
     const placed = new Set<string>();
     const inter = new Map<string, ReaderQuestion[]>();
-    // Perguntas rápidas: só questões oficiais do nível fácil (o 1º nível liberado).
     const quick = questions.filter((q) => !q.recovery_of && (q.level ?? "facil") === "facil");
     for (const s of sections) {
       const q = quick.find((q) => !placed.has(q.id) && q.nodeKey && s.node_keys.includes(q.nodeKey));
@@ -114,8 +116,9 @@ export function LessonReader(props: ReaderProps) {
         inter.set(s.id, [q]);
       }
     }
-    return { interleaved: inter, remaining: questions.filter((q) => !placed.has(q.id)) };
+    return { interleaved: inter };
   }, [sections, questions]);
+  const interleavedIds = useMemo(() => new Set([...interleaved.values()].flat().map((q) => q.id)), [interleaved]);
   const numberOf = useMemo(() => new Map(questions.map((q, i) => [q.id, i + 1])), [questions]);
 
   const annotationsBySection = useMemo(() => {
@@ -127,69 +130,111 @@ export function LessonReader(props: ReaderProps) {
     return m;
   }, [annotations]);
 
-  const goTo = useCallback((id: string) => {
-    document.getElementById(sectionDomId(id))?.scrollIntoView({ behavior: "smooth", block: "start" });
-    tocRef.current?.close();
-  }, []);
+  const markSeen = useCallback(
+    (id: string) => {
+      if (!seen.has(id)) setSeenList([...seen, id]);
+    },
+    [seen, setSeenList],
+  );
+
+  const go = useCallback(
+    (to: number) => {
+      const target = Math.min(Math.max(to, 0), steps.length - 1);
+      setStoredStep(target);
+      tocRef.current?.close();
+      requestAnimationFrame(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    },
+    [steps.length, setStoredStep],
+  );
+
+  const goToSection = useCallback((sectionId: string) => go(steps.findIndex((s) => s.type === "secao" && s.section.id === sectionId)), [go, steps]);
+
+  const next = () => {
+    if (current.type === "secao") {
+      markSeen(current.section.id);
+      const lastSection = current.n === sections.length;
+      const unseenAfter = sections.filter((s) => !seen.has(s.id) && s.id !== current.section.id).length;
+      const willHaveAll = readingDone || unseenAfter === 0;
+      // Saindo do último bloco: registra a leitura concluída e segue para as questões.
+      if (lastSection && !readingDone && willHaveAll) {
+        startCompleting(async () => {
+          await api.completeReading(lesson.id);
+          setReadingDone(true);
+          go(step + 1);
+        });
+        return;
+      }
+    }
+    go(step + 1);
+  };
 
   const counts = {
-    nota: annotations.filter((a) => a.kind === "nota").length,
-    revisar: annotations.filter((a) => a.kind === "revisar").length,
     duvida: annotations.filter((a) => a.kind === "duvida" && !a.resolved).length,
+  };
+
+  const stepLabel = (s: Step): string =>
+    s.type === "secao" ? s.section.title || SECTION_LABELS[s.section.kind as LessonSectionKind] : s.type === "nivel" ? LEVEL_TITLE[s.level] : s.type === "revisao" ? "Questões de revisão" : "Concluir e avançar";
+
+  const stepState = (s: Step): "feito" | "atual" | "bloqueado" | "livre" => {
+    if (s === current) return "atual";
+    if (s.type === "secao") return readingDone || seen.has(s.section.id) ? "feito" : "livre";
+    if (s.type === "nivel") {
+      const n = LEVELS.find((l) => l.key === s.level)!.n;
+      const st = levelStatus(levelsPassed, n);
+      return st === "aprovado" ? "feito" : st === "bloqueado" ? "bloqueado" : "livre";
+    }
+    return "livre";
   };
 
   const toc = (
     <ol className="flex flex-col gap-0.5">
-      {sections.map((s) => {
-        const anns = annotationsBySection.get(s.id) ?? [];
+      {steps.map((s, i) => {
+        const st = stepState(s);
+        const anns = s.type === "secao" ? annotationsBySection.get(s.section.id) ?? [] : [];
+        const firstOfGroup = i === sections.length;
         return (
-          <li key={s.id}>
+          <li key={i} className={firstOfGroup ? "mt-2 border-t border-linha pt-2" : ""}>
             <button
               type="button"
-              onClick={() => goTo(s.id)}
-              aria-current={activeSection === s.id ? "location" : undefined}
-              className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left t-small text-tinta-suave hover:bg-nevoa aria-[current=location]:bg-nevoa aria-[current=location]:font-semibold aria-[current=location]:text-destaque"
+              onClick={() => go(i)}
+              aria-current={st === "atual" ? "step" : undefined}
+              className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left t-small text-tinta-suave hover:bg-nevoa aria-[current=step]:bg-nevoa aria-[current=step]:font-semibold aria-[current=step]:text-destaque"
             >
-              <span className="flex-1">{s.title || SECTION_LABELS[s.kind as LessonSectionKind]}</span>
-              {(readingDone || seen.has(s.id)) && <Icon name="check" className="mt-0.5 size-3.5 text-dominado" label="Seção percorrida" />}
+              <span className="w-6 shrink-0 tabular-nums text-tinta-fraca">{s.type === "secao" ? s.n : s.type === "fim" ? "→" : "?"}</span>
+              <span className="flex-1">{stepLabel(s)}</span>
+              {st === "feito" && <Icon name="check" className="mt-0.5 size-3.5 text-acerto" label="Concluído" />}
+              {st === "bloqueado" && <Icon name="cadeado" className="mt-0.5 size-3.5 text-tinta-fraca" label="Bloqueado" />}
               {anns.some((a) => a.kind === "revisar") && <Icon name="bookmark" className="mt-0.5 size-3.5 text-destaque" label="Marcado para revisar" />}
-              {anns.some((a) => a.kind === "duvida" && !a.resolved) && <Icon name="duvida" className="mt-0.5 size-3.5 text-alerta" label="Dúvida aberta" />}
-              {anns.some((a) => a.kind === "nota") && <Icon name="nota" className="mt-0.5 size-3.5 text-tinta-fraca" label="Tem anotação" />}
             </button>
           </li>
         );
       })}
-      <li>
-        <button type="button" onClick={() => document.getElementById("questoes")?.scrollIntoView({ behavior: "smooth" })} className="w-full rounded-md px-2 py-1.5 text-left t-small font-semibold text-destaque hover:bg-nevoa">
-          Questões da aula ({questions.length})
-        </button>
-      </li>
     </ol>
   );
 
+  const renderQuestion = (q: ReaderQuestion, n: number, label?: string) => (
+    <div key={q.id} onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
+      {label && <p className="mb-2 t-tiny font-semibold text-destaque">{label}</p>}
+      <QuestionCard q={q} number={n} context={context} active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} />
+    </div>
+  );
+
+  const pct = Math.round(((step + 1) / steps.length) * 100);
+  const isLast = step === steps.length - 1;
+
   return (
     <div>
-      <ReadingProgress targetId="corpo-aula" />
+      <div ref={topRef} className="scroll-mt-4" />
 
-      {/* Barra compacta (celular) */}
-      <div className="sticky top-1 z-20 -mx-4 mb-4 flex items-center gap-2 border-b border-linha bg-papel/95 px-4 py-2 backdrop-blur md:hidden">
-        <button type="button" onClick={() => tocRef.current?.showModal()} className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-linha-forte bg-superficie px-3 t-small font-semibold">
-          <Icon name="indice" className="size-4" /> Índice
-        </button>
-        <button type="button" onClick={() => notesRef.current?.showModal()} className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-linha-forte bg-superficie px-3 t-small font-semibold">
-          <Icon name="nota" className="size-4" /> Anotações {annotations.length > 0 && <span className="tabular-nums">({annotations.length})</span>}
-        </button>
-      </div>
-
-      <div className="md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-10 lg:grid-cols-[240px_minmax(0,1fr)]">
+      <div className="md:grid md:grid-cols-[230px_minmax(0,1fr)] md:gap-10 lg:grid-cols-[250px_minmax(0,1fr)]">
         <aside className="hidden md:block">
           <div className="sticky top-6 flex max-h-[calc(100dvh-3rem)] flex-col gap-4 overflow-y-auto pb-6">
             <Link href={`/trilhas/${lesson.trailId}`} className="inline-flex items-center gap-1 t-small font-semibold text-destaque">
               <Icon name="chevronLeft" className="size-4" /> {lesson.trailTitle}
             </Link>
-            <nav aria-label="Índice da aula">
+            <nav aria-label="Etapas da aula">
               <p className="mb-1 px-2 t-tiny font-semibold text-tinta-fraca">
-                Nesta aula · <span className="tabular-nums" data-testid="secoes-vistas">{seenCount} de {sections.length}</span> seções
+                Temas · <span className="tabular-nums" data-testid="secoes-vistas">{seenCount} de {sections.length}</span>
               </p>
               {toc}
             </nav>
@@ -199,126 +244,190 @@ export function LessonReader(props: ReaderProps) {
           </div>
         </aside>
 
-        <article id="corpo-aula" className="min-w-0">
-          <header>
-            <Link href={`/trilhas/${lesson.trailId}`} className="t-small text-destaque underline underline-offset-2 md:hidden">{lesson.trailTitle}</Link>
-            <h1 className="mt-1 t-h1">{lesson.title}</h1>
-            <p className="mt-1 max-w-[68ch] text-tinta-suave">{lesson.objective}</p>
-            <div className="mt-3 flex flex-wrap items-center gap-2 t-tiny text-tinta-fraca">
-              {lesson.stateLabel && <Tag tone="azul">{lesson.stateLabel}</Tag>}
-              <span>~{lesson.estimatedMinutes} min de leitura e prática (estimativa)</span>
-              {counts.duvida > 0 && <Tag tone="ambar">{counts.duvida} dúvida(s) aberta(s)</Tag>}
+        <article id="corpo-aula" className="min-w-0 pb-28">
+          {/* Cabeçalho fixo: onde estou e quanto falta */}
+          <div className="sticky top-0 z-20 -mx-4 border-b border-linha bg-papel/95 px-4 pb-2 pt-2 backdrop-blur md:mx-0 md:px-0">
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => tocRef.current?.showModal()} className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-linha-forte bg-superficie px-3 t-small font-semibold md:hidden">
+                <Icon name="indice" className="size-4" /> Etapas
+              </button>
+              <p className="min-w-0 flex-1 truncate t-small font-semibold">
+                <span className="text-tinta-fraca">{current.type === "secao" ? `Tema ${current.n} de ${sections.length}` : current.type === "fim" ? "Fim da aula" : "Avaliação"} · </span>
+                {stepLabel(current)}
+              </p>
+              <button type="button" onClick={() => notesRef.current?.showModal()} className="inline-flex min-h-10 items-center rounded-md px-2 text-tinta-suave md:hidden" aria-label="Anotações">
+                <Icon name="nota" className="size-5" />
+              </button>
             </div>
-          </header>
+            <div className="mt-2 flex h-1.5 gap-[3px]" role="progressbar" aria-label="Progresso na aula" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+              {steps.map((s, i) => {
+                const st = stepState(s);
+                return (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => go(i)}
+                    aria-label={`Ir para: ${stepLabel(s)}`}
+                    className={`h-full flex-1 rounded-full transition-colors ${
+                      st === "atual" ? "bg-azul" : st === "feito" ? "bg-acerto" : s.type === "nivel" ? "bg-linha-forte" : "bg-linha"
+                    }`}
+                  />
+                );
+              })}
+            </div>
+          </div>
 
-          <div className="mt-5 flex flex-col gap-3">{props.notices}</div>
+          <div key={step} className="entrar mt-5">
+            {step === 0 && (
+              <header className="mb-5">
+                <Link href={`/trilhas/${lesson.trailId}`} className="t-small text-destaque underline underline-offset-2 md:hidden">{lesson.trailTitle}</Link>
+                <h1 className="mt-1 t-h1">{lesson.title}</h1>
+                <p className="mt-1 max-w-[68ch] text-tinta-suave">{lesson.objective}</p>
+                <div className="mt-3 flex flex-wrap items-center gap-2 t-tiny text-tinta-fraca">
+                  {lesson.stateLabel && <Tag tone="azul">{lesson.stateLabel}</Tag>}
+                  <span>{sections.length} temas · 3 níveis de questões · ~{lesson.estimatedMinutes} min</span>
+                  {counts.duvida > 0 && <Tag tone="ambar">{counts.duvida} dúvida(s) aberta(s)</Tag>}
+                </div>
+                <div className="mt-4 flex flex-col gap-3">{props.notices}</div>
+                <details className="mt-4 rounded-md border border-linha bg-superficie px-4 py-3 t-small">
+                  <summary className="cursor-pointer font-semibold">Itens do seu conteúdo nesta aula ({nodes.length})</summary>
+                  <ul className="mt-2 flex flex-col gap-1">
+                    {nodes.map((n) => (
+                      <li key={n.key} className="flex items-start justify-between gap-3">
+                        <span>{n.marker && <span className="mr-1 font-semibold text-destaque">{n.marker}</span>}{n.title}</span>
+                        <Tag tone={n.taught ? "azul" : "ambar"}>{n.taught ? "Ensinado" : "Pendente"}</Tag>
+                      </li>
+                    ))}
+                  </ul>
+                </details>
+              </header>
+            )}
 
-          <details className="mt-5 rounded-md border border-linha bg-superficie px-4 py-3 t-small">
-            <summary className="cursor-pointer font-semibold">Itens do seu conteúdo nesta aula ({nodes.length})</summary>
-            <ul className="mt-2 flex flex-col gap-1">
-              {nodes.map((n) => (
-                <li key={n.key} className="flex items-start justify-between gap-3">
-                  <span>{n.marker && <span className="mr-1 font-semibold text-destaque">{n.marker}</span>}{n.title}</span>
-                  <Tag tone={n.taught ? "azul" : "ambar"}>{n.taught ? "Ensinado" : "Pendente"}</Tag>
-                </li>
-              ))}
-            </ul>
-          </details>
-
-          <div className="mt-6 flex flex-col gap-2">
-            {sections.map((s) => (
-              <div key={s.id}>
+            {current.type === "secao" && (
+              <>
                 <SectionBlock
-                  section={s}
+                  section={current.section}
                   lessonId={lesson.id}
                   nodes={nodes}
-                  annotations={annotationsBySection.get(s.id) ?? []}
-                  clarifications={props.clarifications.filter((c) => c.section_id === s.id)}
-                  onAnnotation={(a, removed) =>
-                    setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : [a, ...list.filter((x) => x.id !== a.id)]))
-                  }
+                  annotations={annotationsBySection.get(current.section.id) ?? []}
+                  clarifications={props.clarifications.filter((c) => c.section_id === current.section.id)}
+                  onAnnotation={(a, removed) => setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : [a, ...list.filter((x) => x.id !== a.id)]))}
                 />
-                <span data-fim-secao={s.id} aria-hidden className="block h-px" />
-                {(interleaved.get(s.id) ?? []).map((q) => (
-                  <div key={q.id} className="my-6" onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
+                {(interleaved.get(current.section.id) ?? []).map((q) => (
+                  <div key={q.id} className="mt-6" onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
                     <p className="mb-2 inline-flex items-center gap-1.5 t-small font-semibold text-destaque">
-                      <Icon name="raio" className="size-4" /> Pergunta rápida sobre esta seção
+                      <Icon name="raio" className="size-4" /> Questão sobre este tema
                     </p>
                     <QuestionCard q={q} number={numberOf.get(q.id)!} context={context} compact active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} />
                   </div>
                 ))}
-              </div>
-            ))}
-          </div>
-
-          <ReadingDone
-            lessonId={lesson.id}
-            done={readingDone}
-            onDone={() => setReadingDone(true)}
-            seenCount={seenCount}
-            total={sections.length}
-            nextUnseen={unseen[0] ? { id: unseen[0].id, title: unseen[0].title || SECTION_LABELS[unseen[0].kind as LessonSectionKind] } : null}
-            onGo={goTo}
-          />
-
-          <section id="questoes" className="mt-10 scroll-mt-6" aria-labelledby="questoes-titulo">
-            <h2 id="questoes-titulo" className="t-h2">{context === "revisao" ? "Revisão da aula" : "Avaliação por níveis"}</h2>
-            {context === "revisao" ? (
-              <>
-                <p className="mt-1 t-small text-tinta-suave">
-                  {remaining.length} questão(ões) aqui{interleaved.size ? ` e ${questions.length - remaining.length} ao longo da aula` : ""}. Seu resultado considera todas.
-                </p>
-                <div className="mt-4 flex flex-col gap-4">
-                  {remaining.map((q) => (
-                    <div key={q.id} onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
-                      <QuestionCard q={q} number={numberOf.get(q.id)!} context={context} active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} />
-                    </div>
-                  ))}
-                </div>
-                <UnitResult lessonId={lesson.id} context={context} readingDone={readingDone} nextId={props.nextId} total={questions.length} />
-              </>
-            ) : (
-              <LevelsPanel
-                lessonId={lesson.id}
-                trailId={lesson.trailId}
-                questions={questions}
-                interleavedIds={new Set([...interleaved.values()].flat().map((q) => q.id))}
-                initialLevelsPassed={props.levelsPassed}
-                readingDone={readingDone}
-                nextId={props.nextId}
-                renderQuestion={(q, n, label) => (
-                  <div key={q.id} onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
-                    {label && <p className="mb-2 t-tiny font-semibold text-destaque">{label}</p>}
-                    <QuestionCard q={q} number={n} context={context} active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} />
+                {current.n === sections.length && !readingDone && sections.some((s) => !seen.has(s.id) && s.id !== current.section.id) && (
+                  <div className="mt-6">
+                    <Notice tone="alerta" title="Faltam temas">
+                      Passe por todos os temas antes das questões. Toque em “Etapas” para ver os que faltam.
+                    </Notice>
                   </div>
                 )}
-              />
+              </>
             )}
-          </section>
 
-          <nav aria-label="Aulas" className="mt-12 flex flex-wrap justify-between gap-3 border-t border-linha pt-5">
-            {props.prevId ? (
-              <Link href={`/aula/${props.prevId}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-destaque">
-                <Icon name="setaEsquerda" className="size-4" /> Aula anterior
-              </Link>
-            ) : <span />}
-            {props.nextId && (
-              <Link href={`/aula/${props.nextId}`} className="inline-flex min-h-11 items-center gap-1.5 font-semibold text-destaque">
-                Próxima aula <Icon name="setaDireita" className="size-4" />
-              </Link>
+            {current.type === "nivel" && (
+              <section aria-label={LEVEL_TITLE[current.level]}>
+                <p className="mb-3 t-small text-tinta-suave">
+                  Três níveis, nesta ordem: fácil, médio e difícil. Cada um exige pelo menos 90% de acerto para liberar o seguinte. Errou? A recuperação refaz só os pontos errados.
+                </p>
+                <SingleLevel
+                  lessonId={lesson.id}
+                  levelKey={current.level}
+                  questions={questions}
+                  interleavedIds={interleavedIds}
+                  levelsPassed={levelsPassed}
+                  readingDone={readingDone}
+                  renderQuestion={renderQuestion}
+                  onPassed={(n) => setLevelsPassed((p) => Math.max(p, n))}
+                />
+              </section>
             )}
-          </nav>
+
+            {current.type === "revisao" && (
+              <section aria-label="Questões de revisão">
+                <div className="flex flex-col gap-4">{questions.filter((q) => !interleavedIds.has(q.id)).map((q) => renderQuestion(q, numberOf.get(q.id)!))}</div>
+                <UnitResult lessonId={lesson.id} context={context} readingDone={readingDone} nextId={props.nextId} total={questions.length} />
+              </section>
+            )}
+
+            {current.type === "fim" && (
+              <section className="flex flex-col gap-4" aria-label="Concluir e avançar">
+                {levelsPassed >= 3 || context === "revisao" ? (
+                  <Notice tone="sucesso" title="Tema concluído">Você passou por todos os temas e aprovou os três níveis desta aula.</Notice>
+                ) : (
+                  <Notice tone="info" title="Ainda falta aprovar os níveis">
+                    {LEVELS.filter((l) => levelStatus(levelsPassed, l.n) !== "aprovado").map((l) => l.label).join(", ")} ainda não aprovado(s). Você pode avançar e voltar depois.
+                  </Notice>
+                )}
+                {props.nextHref ? (
+                  <Link
+                    href={props.nextHref}
+                    className="flex items-center justify-between gap-3 rounded-lg bg-azul px-5 py-4 text-white transition-transform active:scale-[0.98]"
+                  >
+                    <span>
+                      <span className="block t-tiny font-semibold uppercase tracking-wide text-white/80">Próximo tema</span>
+                      <span className="block text-lg font-bold">{props.nextLabel}</span>
+                    </span>
+                    <Icon name="setaDireita" className="size-6 shrink-0" />
+                  </Link>
+                ) : (
+                  <p className="t-small text-tinta-suave">Este é o último tema desta matéria. Para continuar, crie um estudo novo ou coloque outros temas nesta pasta.</p>
+                )}
+                <div className="flex flex-wrap gap-4 t-small">
+                  <Link href={`/trilhas/${lesson.trailId}#pdf`} className="font-semibold text-destaque">PDF do conteúdo</Link>
+                  <Link href="/trilhas" className="font-semibold text-destaque">Minhas pastas e estudos</Link>
+                </div>
+              </section>
+            )}
+          </div>
         </article>
       </div>
 
-      <dialog ref={tocRef} className="m-0 mt-auto w-full max-w-none rounded-t-lg border border-linha bg-superficie p-4 backdrop:bg-black/40 md:hidden" aria-label="Índice da aula">
+      {/* Navegação fixa: anterior / próximo */}
+      <nav aria-label="Navegação da aula" className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-30 px-4 md:bottom-6">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 md:pl-[260px]">
+          <button
+            type="button"
+            onClick={() => go(step - 1)}
+            disabled={step === 0}
+            className="inline-flex min-h-12 items-center gap-1.5 rounded-full border border-linha-forte bg-superficie px-4 font-semibold shadow-sm transition-transform active:scale-95 disabled:opacity-40"
+          >
+            <Icon name="setaEsquerda" className="size-4" /> Anterior
+          </button>
+          {!isLast ? (
+            <button
+              type="button"
+              onClick={next}
+              disabled={completing}
+              className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-azul px-5 font-semibold text-white shadow-md transition-transform active:scale-95 disabled:opacity-60"
+            >
+              {completing ? "Salvando…" : current.type === "secao" && current.n === sections.length ? "Ir para as questões" : steps[step + 1]?.type === "fim" ? "Concluir" : "Próximo"}
+              <Icon name="setaDireita" className="size-4" />
+            </button>
+          ) : props.nextHref ? (
+            <Link href={props.nextHref} className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-azul px-5 font-semibold text-white shadow-md transition-transform active:scale-95">
+              Próximo tema <Icon name="setaDireita" className="size-4" />
+            </Link>
+          ) : (
+            <span />
+          )}
+        </div>
+      </nav>
+
+      <dialog ref={tocRef} className="m-0 mt-auto w-full max-w-none rounded-t-lg border border-linha bg-superficie p-4 backdrop:bg-black/40 md:hidden" aria-label="Etapas da aula">
         <div className="mb-2 flex items-center justify-between">
-          <p className="t-h3">Nesta aula</p>
-          <button type="button" onClick={() => tocRef.current?.close()} className="rounded-md p-2 hover:bg-nevoa" aria-label="Fechar índice">
+          <p className="t-h3">Etapas da aula</p>
+          <button type="button" onClick={() => tocRef.current?.close()} className="rounded-md p-2 hover:bg-nevoa" aria-label="Fechar">
             <Icon name="x" />
           </button>
         </div>
-        <div className="max-h-[60dvh] overflow-y-auto">{toc}</div>
+        <div className="max-h-[65dvh] overflow-y-auto">{toc}</div>
       </dialog>
 
       <AnnotationsDialog
@@ -326,13 +435,14 @@ export function LessonReader(props: ReaderProps) {
         annotations={annotations}
         onGo={(id) => {
           notesRef.current?.close();
-          if (id) goTo(id);
+          if (id) goToSection(id);
         }}
         onChange={(a, removed) => setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : list.map((x) => (x.id === a.id ? a : x))))}
       />
     </div>
   );
 }
+
 
 // ---------------------------------------------------------------------------
 // Seção com forma adequada ao tipo de conteúdo + ações
@@ -579,69 +689,6 @@ function SectionActions({
 // ---------------------------------------------------------------------------
 // Conclusão da leitura e resultado da unidade
 // ---------------------------------------------------------------------------
-
-function ReadingDone({
-  lessonId,
-  done,
-  onDone,
-  seenCount,
-  total,
-  nextUnseen,
-  onGo,
-}: {
-  lessonId: string;
-  done: boolean;
-  onDone: () => void;
-  seenCount: number;
-  total: number;
-  nextUnseen: { id: string; title: string } | null;
-  onGo: (id: string) => void;
-}) {
-  const api = useStudyApi();
-  const [pending, start] = useTransition();
-  const [msg, setMsg] = useState<string | null>(null);
-  if (done) {
-    return (
-      <div className="mt-8">
-        <Notice tone="sucesso" title="Leitura concluída">Agora resolva todas as questões de fixação para liberar o próximo tema.</Notice>
-      </div>
-    );
-  }
-  const complete = seenCount >= total;
-  return (
-    <div className="mt-8 flex flex-col gap-2 rounded-lg border border-linha bg-superficie p-4">
-      <p className="font-semibold">Chegou ao fim da leitura?</p>
-      <p className="t-small text-tinta-suave">
-        O tema só avança depois de passar por todas as formas de ensino. Ler não conta como domínio: isso vem das questões e da revisão.
-      </p>
-      <div className="flex items-center gap-3">
-        <div className="h-2 flex-1 overflow-hidden rounded-full bg-nevoa" role="progressbar" aria-label="Seções percorridas" aria-valuemin={0} aria-valuemax={total} aria-valuenow={seenCount}>
-          <div className="h-full rounded-full bg-azul transition-[width] duration-500" style={{ width: `${total ? (seenCount / total) * 100 : 0}%` }} />
-        </div>
-        <span className="t-small tabular-nums text-tinta-suave">{seenCount} de {total} seções</span>
-      </div>
-      {!complete && nextUnseen && (
-        <button type="button" onClick={() => onGo(nextUnseen.id)} className="self-start t-small font-semibold text-destaque underline underline-offset-2">
-          Falta percorrer: {nextUnseen.title}
-        </button>
-      )}
-      <Button
-        className="self-start"
-        disabled={pending || !complete}
-        onClick={() =>
-          start(async () => {
-            const r = await api.completeReading(lessonId);
-            setMsg(r.explanation);
-            onDone();
-          })
-        }
-      >
-        {pending ? "Registrando…" : "Concluí a leitura"}
-      </Button>
-      {msg && <p className="t-small text-tinta-suave" role="status">{msg}</p>}
-    </div>
-  );
-}
 
 function UnitResult({ lessonId, context, readingDone, nextId, total }: { lessonId: string; context: "fixacao" | "revisao"; readingDone: boolean; nextId: string | null; total: number }) {
   const hasQuestions = total > 0;

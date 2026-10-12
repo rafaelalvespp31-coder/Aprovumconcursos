@@ -32,7 +32,17 @@ function guessType(text: string): ContentType {
   return "tema_livre";
 }
 
-export function NewTrailForm({ initialContent = "", aiOn = true, available = [] }: { initialContent?: string; aiOn?: boolean; available?: string[] }) {
+export function NewTrailForm({
+  initialContent = "",
+  aiOn = true,
+  available = [],
+  folders = [],
+}: {
+  initialContent?: string;
+  aiOn?: boolean;
+  available?: string[];
+  folders?: Array<{ id: string; name: string }>;
+}) {
   const [state, action, pending] = useActionState<CreateTrailState, FormData>(createTrailAction, {});
   const [board, setBoard] = useState<ExamBoardSlug | null>(null);
   const [other, setOther] = useState("");
@@ -179,6 +189,15 @@ export function NewTrailForm({ initialContent = "", aiOn = true, available = [] 
           />
           {touched && issues.title && <p className="mt-2 t-tiny text-erro" role="alert">{issues.title}</p>}
         </div>
+        {folders.length > 0 && (
+          <div className="mt-4">
+            <label htmlFor="folderId" className="t-small font-semibold">Pasta (opcional)</label>
+            <select id="folderId" name="folderId" defaultValue="" className={`${inputClass} mt-1.5`}>
+              <option value="">Sem pasta</option>
+              {folders.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </div>
+        )}
       </Step>
 
       <Step n={2} title="Tipo de conteúdo" done={!!content.trim()}>

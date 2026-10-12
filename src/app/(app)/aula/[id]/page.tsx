@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { getLatestJob, getLessonForStudy } from "@/server/queries";
+import { getLatestJob, getLessonForStudy, getNextInSubject } from "@/server/queries";
 import { Button, ButtonLink, Notice, Tag } from "@/components/ui";
 import { JobRunner, type PublicJob } from "@/components/job-runner";
 import { STATE_LABELS } from "@/domain/progress/state-machine";
@@ -85,6 +85,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
   }
 
   const notTaught = nodes.filter((n) => !n.taught);
+  const nextInSubject = await getNextInSubject(lesson.trail_id, next ? { id: next.id, title: next.title } : null).catch(() => null);
   const notices = (
     <>
       {data.catalog && (
@@ -148,6 +149,8 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       context={context}
       prevId={prev?.id ?? null}
       nextId={next?.id ?? null}
+      nextHref={nextInSubject?.href ?? null}
+      nextLabel={nextInSubject?.label ?? null}
       notices={notices}
     />
   );

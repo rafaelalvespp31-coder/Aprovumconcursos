@@ -90,14 +90,47 @@ test.describe("simulado", () => {
   });
 });
 
+/** Avança tema a tema até as questões; `onStep` roda em cada tela de tema. */
+async function walkThemes(page: Page, onStep?: () => Promise<void>) {
+  for (let i = 0; i < 60; i++) {
+    if (onStep) await onStep();
+    const toQuestions = page.getByRole("button", { name: /^Ir para as questões/ });
+    if (await toQuestions.isVisible()) {
+      await toQuestions.click();
+      return;
+    }
+    await page.getByRole("button", { name: /^Próximo/ }).click();
+  }
+  throw new Error("não chegou às questões");
+}
+
+async function answerErradoIfVisible(page: Page) {
+  const radio = page.getByRole("radio", { name: /Errado/ }).first();
+  if ((await radio.count()) && (await radio.isEnabled()) && !(await radio.isChecked())) {
+    // O rádio é visualmente oculto (o rótulo é o alvo de toque); clica direto no elemento.
+    await radio.evaluate((el) => (el as HTMLInputElement).click());
+    await expect(radio).toBeChecked();
+    await page.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
+    await expect(page.getByText(/Resposta (correta|incorreta)/).first()).toBeVisible();
+  }
+}
+
+async function answerIfVisible(page: Page, optionText: string) {
+  const opt = page.getByText(optionText, { exact: false }).first();
+  if (await opt.isVisible()) {
+    await opt.click();
+    await page.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
+    await expect(page.getByText(/Resposta (correta|incorreta)/).first()).toBeVisible();
+  }
+}
+
 test.describe("tela de aula", () => {
-  test("índice navega até a seção", async ({ page, isMobile }) => {
+  test("etapas levam direto a um tema", async ({ page, isMobile }) => {
     await page.goto(`${G}/aula`);
-    // Desktop: índice lateral (nav). Celular: folha inferior (dialog). Mesmo nome acessível.
-    if (isMobile) await page.getByRole("button", { name: "Índice", exact: true }).click();
-    const toc = isMobile ? page.getByRole("dialog", { name: "Índice da aula" }) : page.getByRole("navigation", { name: "Índice da aula" });
-    await toc.getByRole("button", { name: /^Convalidação/ }).click();
-    await expect(page.getByRole("heading", { name: "Convalidação", level: 2 })).toBeInViewport();
+    if (isMobile) await page.getByRole("button", { name: "Etapas", exact: true }).click();
+    const toc = isMobile ? page.getByRole("dialog", { name: "Etapas da aula" }) : page.getByRole("navigation", { name: "Etapas da aula" });
+    await toc.getByRole("button", { name: /Convalidação/ }).click();
+    await expect(page.getByRole("heading", { name: "Convalidação", level: 2 })).toBeVisible();
     if (isMobile) await expect(toc).toBeHidden();
   });
 
@@ -124,62 +157,59 @@ test.describe("tela de aula", () => {
     await expect(page).toHaveURL(/\/dev\/galeria\/aula/);
   });
 
-  test("pergunta rápida intercalada corrige na hora", async ({ page }) => {
+  test("questão do tema corrige na hora e o card fica verde no acerto", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    await page.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
-    await page.getByRole("button", { name: "Responder", exact: true }).first().click();
+    let answered = false;
+    for (let i = 0; i < 60 && !answered; i++) {
+      const opt = page.getByText("anular a licença, por ilegalidade", { exact: false }).first();
+      if (await opt.isVisible()) {
+        await opt.click();
+        await page.getByRole("button", { name: "Responder", exact: true }).first().click();
+        answered = true;
+      } else await page.getByRole("button", { name: /^(Próximo|Ir para as questões)/ }).click();
+    }
     await expect(page.getByText("Resposta correta").first()).toBeVisible();
+    await expect(page.locator('[data-resultado="acerto"]').first()).toBeVisible();
   });
 
-  test("leitura só conclui após percorrer todas as seções; depois avalia por níveis", async ({ page }) => {
+  test("um tema por tela; pular para as questões não conta como leitura; depois avalia por níveis", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    const done = page.getByRole("button", { name: "Concluí a leitura" });
-    await expect(done).toBeDisabled();
-    // Pular direto para o fim não conta como leitura.
-    await done.scrollIntoViewIfNeeded();
-    await expect(done).toBeDisabled();
-    await expect(page.getByText(/Falta percorrer:/)).toBeVisible();
-    const ends = page.locator("[data-fim-secao]");
-    const n = await ends.count();
-    for (let i = 0; i < n; i++) {
-      await ends.nth(i).scrollIntoViewIfNeeded();
-      await page.waitForTimeout(60);
-    }
-    await expect(page.getByText(`${n} de ${n} seções`, { exact: true })).toBeVisible();
-    await expect(done).toBeEnabled();
-    await done.click();
-    await expect(page.getByText(/Leitura concluída/).first()).toBeVisible();
-    // Níveis: médio e difícil começam bloqueados; o fácil exige ≥ 90%.
-    await expect(page.getByTestId("nivel-medio")).toContainText("Bloqueado");
-    await expect(page.getByTestId("nivel-dificil")).toContainText("Bloqueado");
+    await expect(page.getByText(/^Tema 1 de \d+/)).toBeVisible();
+    // Pular direto para as questões não conclui a leitura.
+    await page.getByRole("button", { name: "Ir para: Questões · Fácil" }).click();
     const fac = page.getByTestId("nivel-facil");
-    await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
-    await expect(fac.getByText(/Responda todas as 2 questões/)).toBeVisible();
-    // Responde às duas questões do nível fácil (uma delas aparece ao longo da aula).
-    await page.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
-    await page.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
-    await page.getByRole("radio", { name: /Errado/ }).first().check({ force: true });
-    await page.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
-    await expect(page.getByText("Resposta correta")).toHaveCount(2);
+    await expect(fac.getByRole("button", { name: "Calcular resultado do nível fácil" })).toBeDisabled();
+    await page.getByRole("button", { name: /^Ir para: / }).first().click();
+
+    // Percorre tema a tema, respondendo à questão que aparece junto do tema.
+    await walkThemes(page, async () => {
+      await answerIfVisible(page, "anular a licença, por ilegalidade");
+      await answerErradoIfVisible(page);
+    });
+    await expect(fac).toBeVisible();
     await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
     await expect(fac.getByText(/Nível fácil aprovado com 100%/)).toBeVisible();
+    await page.getByRole("button", { name: /^Próximo/ }).click();
     await expect(page.getByTestId("nivel-medio")).toContainText("Liberado");
+    await page.getByRole("button", { name: /^Próximo/ }).click();
+    await expect(page.getByTestId("nivel-dificil")).toContainText("Bloqueado");
+    // Fim: botão para o próximo tema da mesma matéria.
+    await page.getByRole("button", { name: /^Concluir/ }).click();
+    await expect(page.getByRole("link", { name: /Próximo tema/ }).first()).toBeVisible();
   });
 
   test("nível reprovado oferece recuperação em vez de reiniciar", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    const ends = page.locator("[data-fim-secao]");
-    for (let i = 0; i < (await ends.count()); i++) await ends.nth(i).scrollIntoViewIfNeeded();
-    await page.getByRole("button", { name: "Concluí a leitura" }).click();
-    await page.getByText("revogar a licença, por conveniência", { exact: false }).first().click();
-    await page.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
-    await page.getByRole("radio", { name: /Errado/ }).first().check({ force: true });
-    await page.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
+    await walkThemes(page, async () => {
+      await answerIfVisible(page, "revogar a licença, por conveniência");
+      await answerErradoIfVisible(page);
+    });
     const fac = page.getByTestId("nivel-facil");
     await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
     await expect(fac.getByText(/mínimo para avançar é 90%/)).toBeVisible();
     await fac.getByRole("button", { name: "Gerar exercícios de recuperação" }).click();
     await expect(fac.getByText(/galeria de demonstração não há IA/)).toBeVisible();
+    await page.getByRole("button", { name: /^Próximo/ }).click();
     await expect(page.getByTestId("nivel-medio")).toContainText("Bloqueado");
   });
 });
