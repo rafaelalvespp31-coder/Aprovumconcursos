@@ -101,3 +101,19 @@ export async function reorderTrail(userId: string, trailId: string, direction: "
   [ids[i], ids[j]] = [ids[j]!, ids[i]!];
   await Promise.all(ids.map((id, k) => db.from("study_trails").update({ folder_order: k }).eq("id", id).eq("user_id", userId)));
 }
+
+const trailTitleSchema = z
+  .string()
+  .transform((s) => s.replace(/\s+/g, " ").trim())
+  .pipe(z.string().min(1, "Dê um nome ao assunto.").max(160, "Use até 160 caracteres."));
+
+/** Renomeia o assunto estudado (só o nome exibido; o conteúdo da aula não muda). */
+export async function renameTrail(userId: string, trailId: string, title: string) {
+  const tid = idSchema.parse(trailId);
+  const parsed = trailTitleSchema.safeParse(title);
+  if (!parsed.success) throw new UserFacingError(parsed.error.issues[0]?.message ?? "Nome inválido.", "invalid");
+  const db = createAdminClient();
+  const { data, error } = await db.from("study_trails").update({ title: parsed.data }).eq("id", tid).eq("user_id", userId).select("id");
+  if (error) throw new Error(error.message);
+  if (!data?.length) throw new UserFacingError("Estudo não encontrado.", "not_found");
+}

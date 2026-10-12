@@ -6,7 +6,7 @@ import { useState, useTransition } from "react";
 import { Icon } from "@/components/icons";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
 import { deleteTrailAction } from "./[id]/actions";
-import { createFolderAction, deleteFolderAction, moveTrailAction, renameFolderAction, reorderTrailAction, type FolderResult } from "./folder-actions";
+import { createFolderAction, deleteFolderAction, moveTrailAction, renameFolderAction, renameTrailAction, reorderTrailAction, type FolderResult } from "./folder-actions";
 
 export interface BoardFolder {
   id: string;
@@ -249,6 +249,8 @@ function TrailRow({
   order?: { i: number; total: number };
 }) {
   const [confirming, setConfirming] = useState(false);
+  const [renaming, setRenaming] = useState(false);
+  const [title, setTitle] = useState(t.title);
   const studied = isStudied(t);
   return (
     <li className={`flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 ${studied ? "bg-acerto-fundo/40" : ""}`} data-estudado={studied ? "sim" : undefined}>
@@ -283,10 +285,44 @@ function TrailRow({
             <option key={f.id} value={f.id}>{f.name}</option>
           ))}
         </select>
-        <button type="button" disabled={pending} onClick={() => setConfirming(!confirming)} className="rounded-md p-2 text-tinta-suave hover:bg-nevoa hover:text-erro" aria-label={`Excluir estudo ${t.title}`}>
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() => {
+            setTitle(t.title);
+            setRenaming(!renaming);
+            setConfirming(false);
+          }}
+          className="rounded-md p-2 text-tinta-suave hover:bg-nevoa"
+          aria-label={`Renomear estudo ${t.title}`}
+        >
+          <Icon name="nota" className="size-4" />
+        </button>
+        <button type="button" disabled={pending} onClick={() => { setConfirming(!confirming); setRenaming(false); }} className="rounded-md p-2 text-tinta-suave hover:bg-nevoa hover:text-erro" aria-label={`Excluir estudo ${t.title}`}>
           <Icon name="lixeira" className="size-4" />
         </button>
       </div>
+      {renaming && (
+        <form
+          className="entrar flex w-full gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            act(() => renameTrailAction(t.id, title), () => setRenaming(false));
+          }}
+        >
+          <input
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => e.key === "Escape" && setRenaming(false)}
+            maxLength={160}
+            className={inputClass}
+            aria-label="Novo nome do assunto"
+            autoFocus
+          />
+          <Button type="submit" disabled={pending || !title.trim() || title.trim() === t.title}>Salvar</Button>
+          <Button type="button" variant="discreto" onClick={() => setRenaming(false)}>Cancelar</Button>
+        </form>
+      )}
       {confirming && (
         <div className="entrar flex w-full flex-wrap items-center gap-3 rounded-md bg-erro-fundo px-3 py-3 t-small" role="alert">
           <span className="flex-1">

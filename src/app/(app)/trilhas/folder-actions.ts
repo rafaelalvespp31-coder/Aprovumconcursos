@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/server/auth";
 import { UserFacingError } from "@/server/services/trails";
-import { createFolder, deleteFolder, moveTrailToFolder, reorderTrail, updateFolder } from "@/server/services/folders";
+import { createFolder, deleteFolder, moveTrailToFolder, renameTrail, reorderTrail, updateFolder } from "@/server/services/folders";
 import { logEvent } from "@/server/observability";
 
 export interface FolderResult {
@@ -38,4 +38,12 @@ export async function moveTrailAction(trailId: string, folderId: string | null) 
 }
 export async function reorderTrailAction(trailId: string, direction: "up" | "down") {
   return run("reorder", (u) => reorderTrail(u, trailId, direction));
+}
+export async function renameTrailAction(trailId: string, title: string) {
+  const r = await run("rename_trail", (u) => renameTrail(u, trailId, title));
+  if (r.ok) {
+    revalidatePath(`/trilhas/${trailId}`);
+    revalidatePath("/painel");
+  }
+  return r;
 }
