@@ -13,7 +13,7 @@ async function noHorizontalScroll(page: Page) {
 }
 
 test.describe("galeria: todas as telas carregam sem erro e sem rolagem horizontal", () => {
-  for (const path of ["painel", "perfil", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo"]) {
+  for (const path of ["painel", "perfil", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo", "banco"]) {
     test(path, async ({ page }) => {
       const errors: string[] = [];
       page.on("pageerror", (e) => errors.push(e.message));
@@ -27,7 +27,7 @@ test.describe("galeria: todas as telas carregam sem erro e sem rolagem horizonta
 
 test.describe("celulares pequenos (320px): nenhuma tela rola para o lado", () => {
   test.use({ viewport: { width: 320, height: 640 } });
-  for (const path of ["painel", "perfil", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo"]) {
+  for (const path of ["painel", "perfil", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo", "banco"]) {
     test(path, async ({ page }) => {
       await page.goto(`${G}/${path}`);
       await noHorizontalScroll(page);
@@ -346,5 +346,35 @@ test.describe("casco pastel", () => {
     await expect(page.getByText("Atirador de elite")).toBeVisible();
     await expect(page.getByText("74% de acerto (meta: 80%)")).toBeVisible();
     await expect(page.getByText(/XP/)).toHaveCount(0);
+  });
+});
+
+test.describe("banco de questões (painel escuro)", () => {
+  test("aprovar só libera com o checklist completo", async ({ page }) => {
+    await page.goto(`${G}/banco`);
+    const approve = page.getByRole("button", { name: "Aprovar", exact: true });
+    await expect(approve).toBeDisabled();
+    for (const label of ["Conteúdo correto", "Gabarito e justificativas", "Fonte e referências", "Direito de uso confirmado"]) {
+      await page.getByText(label).click();
+    }
+    await expect(approve).toBeEnabled();
+    // decisões que exigem motivo abrem o campo de motivo
+    await page.getByRole("button", { name: "Pedir correção" }).click();
+    await expect(page.getByLabel(/Motivo/)).toBeVisible();
+    await expect(page.getByRole("button", { name: "Confirmar" })).toBeDisabled();
+  });
+
+  test("formulário: alternativa correta destacada, certo/errado e procedência só para prova anterior", async ({ page }) => {
+    await page.goto(`${G}/banco`);
+    await page.getByLabel("Alternativa C é a correta").check();
+    await expect(page.getByLabel("Alternativa C é a correta")).toBeChecked();
+    await expect(page.getByText("Procedência (prova anterior real)")).toHaveCount(0);
+    await page.getByLabel("Origem *").selectOption("prova_anterior");
+    await expect(page.getByText("Procedência (prova anterior real)")).toBeVisible();
+    await expect(page.getByLabel("Direito de uso *").locator("option[value=proprio]")).toHaveCount(0);
+    await page.getByLabel("Formato *").selectOption("certo_errado");
+    await expect(page.getByText("Gabarito *")).toBeVisible();
+    await page.getByRole("button", { name: "+ Referência" }).click();
+    await expect(page.getByLabel("Norma", { exact: true })).toBeVisible();
   });
 });

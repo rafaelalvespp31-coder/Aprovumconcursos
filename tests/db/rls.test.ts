@@ -583,3 +583,84 @@ describe("banco de questões", () => {
     }
   });
 });
+
+describe("banco de questões — funções do servidor (Fase 3)", () => {
+  const AUT = "00000000-0000-4000-8000-0000000000d1";
+  const REV = "00000000-0000-4000-8000-0000000000d2";
+  const ADM = "00000000-0000-4000-8000-0000000000d3";
+  async function team() {
+    for (const [id, tag] of [[AUT, "aut3"], [REV, "rev3"], [ADM, "adm3"]] as const) {
+      await db.query("insert into auth.users (id, email) values ($1, $2) on conflict do nothing", [id, `${tag}@teste.local`]);
+    }
+    await db.query("insert into admin_roles (user_id, role) values ($1, 'admin') on conflict do nothing", [ADM]);
+  }
+  const payload = async (extra: Record<string, unknown> = {}) => ({
+    subject_id: (await db.query("select id from subjects where slug = 'direito-constitucional'")).rows[0].id,
+    origin: "autoral_humana",
+    question_type: "multipla_escolha",
+    statement: "Enunciado fictício sobre direitos fundamentais e seus limites.",
+    initial_difficulty: "muito_dificil",
+    justification: "Justificativa fictícia suficientemente longa.",
+    usage_rights: "proprio",
+    options: [
+      { label: "A", text: "Certa", is_correct: true, explanation: "Porque sim" },
+      { label: "B", text: "Errada", is_correct: false },
+      { label: "C", text: "Errada 2", is_correct: false },
+    ],
+    legal_refs: [{ norm_name: "Constituição Federal", norm_number: "CF/1988", article: "5", consulted_on: "2026-10-01", official_url: "https://www.planalto.gov.br/ccivil_03/constituicao/constituicao.htm" }],
+    ...extra,
+  });
+
+  itDb("só admin gerencia equipe; papéis valem no banco", async () => {
+    await db.query("begin");
+    try {
+      await team();
+      expect(await errorCode(db, "select bank_set_staff_role($1, 'aut3@teste.local', 'autor', true)", [REV])).toBe("42501");
+      await db.query("select bank_set_staff_role($1, 'AUT3@teste.local', 'autor', true)", [ADM]);
+      await db.query("select bank_set_staff_role($1, 'rev3@teste.local', 'revisor', true)", [ADM]);
+      expect(await errorCode(db, "select bank_set_staff_role($1, 'ninguem@teste.local', 'autor', true)", [ADM])).toBe("P0002");
+      const list = (await db.query("select email, roles, is_admin from bank_staff_list() where email like '%3@teste.local' order by email")).rows;
+      expect(list).toEqual([
+        { email: "adm3@teste.local", roles: [], is_admin: true },
+        { email: "aut3@teste.local", roles: ["autor"], is_admin: false },
+        { email: "rev3@teste.local", roles: ["revisor"], is_admin: false },
+      ]);
+    } finally {
+      await db.query("rollback");
+    }
+  });
+
+  itDb("salvar é atômico (questão + alternativas + referências) e respeita papéis", async () => {
+    await db.query("begin");
+    try {
+      await team();
+      await db.query("select bank_set_staff_role($1, 'aut3@teste.local', 'autor', true)", [ADM]);
+      await db.query("select bank_set_staff_role($1, 'rev3@teste.local', 'revisor', true)", [ADM]);
+      // revisor (sem papel de autor) não cadastra
+      expect(await errorCode(db, "select bank_save_question($1, null, $2)", [REV, await payload()])).toBe("42501");
+      const id = (await db.query("select bank_save_question($1, null, $2) id", [AUT, await payload()])).rows[0].id;
+      expect((await db.query("select count(*)::int n from bank_question_options where question_id = $1", [id])).rows[0].n).toBe(3);
+      expect((await db.query("select count(*)::int n from bank_question_legal_refs where question_id = $1", [id])).rows[0].n).toBe(1);
+      // falha no meio (duas corretas) não deixa nada pela metade
+      const bad = await payload({ statement: "Outro enunciado fictício diferente.", options: [{ label: "A", text: "x", is_correct: true }, { label: "B", text: "y", is_correct: true }] });
+      expect(await errorCode(db, "select bank_save_question($1, $2, $3)", [AUT, id, bad])).toBe("23505");
+      expect((await db.query("select statement from bank_questions where id = $1", [id])).rows[0].statement).toMatch(/^Enunciado fictício sobre direitos/);
+      // fluxo pelo bank_decide
+      await db.query("select bank_decide($1, $2, 'em_revisao', '', null)", [AUT, id]);
+      expect(await errorCode(db, "select bank_decide($1, $2, null, '', $3)", [AUT, id, { content: true, answer: true, source: true, rights: true }])).toBe("42501");
+      expect(await errorCode(db, "select bank_decide($1, $2, 'correcao_necessaria', 'x', null)", [REV, id])).toBe("23514");
+      await db.query("select bank_decide($1, $2, 'aprovada', 'Conferida com a CF', $3)", [REV, id, { content: true, answer: true, source: true, rights: true }]);
+      await db.query("select bank_decide($1, $2, 'publicada', '', null)", [REV, id]);
+      // publicada: autor não mexe; revisor só com motivo
+      expect(await errorCode(db, "select bank_decide($1, $2, 'em_revisao', 'Lei mudou', null)", [AUT, id])).toBe("42501");
+      expect(await errorCode(db, "select bank_decide($1, $2, 'suspensa', '', null)", [REV, id])).toBe("23514");
+      expect(await errorCode(db, "select bank_save_question($1, $2, $3)", [AUT, id, await payload()])).toBe("23514");
+      await db.query("select bank_decide($1, $2, 'suspensa', 'Gabarito contestado', null)", [REV, id]);
+      const d = (await db.query("select bank_dashboard() d")).rows[0].d;
+      expect(d.by_status.suspensa).toBeGreaterThanOrEqual(1);
+      expect(d.recent.length).toBeGreaterThan(0);
+    } finally {
+      await db.query("rollback");
+    }
+  });
+});
