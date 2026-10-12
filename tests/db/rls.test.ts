@@ -369,3 +369,217 @@ describe("cotas, limite de taxa e lease (servidor)", () => {
     expect([first.rows[0].ok, second.rows[0].ok, wrongUser.rows[0].ok]).toEqual([true, false, false]);
   });
 });
+
+// -----------------------------------------------------------------------------
+// Banco de questões (Fase 2)
+// -----------------------------------------------------------------------------
+describe("banco de questões", () => {
+  const AUTOR = "00000000-0000-4000-8000-0000000000c1";
+  const REVISOR = "00000000-0000-4000-8000-0000000000c2";
+  const OUTRO = "00000000-0000-4000-8000-0000000000c3";
+
+  async function staff() {
+    for (const [id, tag] of [[AUTOR, "autor"], [REVISOR, "revisor"], [OUTRO, "outro"]] as const) {
+      await db.query("insert into auth.users (id, email) values ($1, $2) on conflict do nothing", [id, `${tag}@teste.local`]);
+    }
+    await db.query("insert into staff_roles (user_id, role) values ($1, 'autor'), ($2, 'revisor') on conflict do nothing", [AUTOR, REVISOR]);
+  }
+  const subject = async (slug = "direito-penal") => (await db.query("select id from subjects where slug = $1", [slug])).rows[0].id as string;
+
+  async function newQuestion(opts: { statement?: string; origin?: string; rights?: string; slug?: string; difficulty?: string } = {}) {
+    const sid = await subject(opts.slug);
+    const q = await db.query(
+      `insert into bank_questions (subject_id, origin, question_type, statement, initial_difficulty, justification, usage_rights, created_by)
+       values ($1, $2, 'multipla_escolha', $3, $4, 'Justificativa do gabarito fictícia.', $5, $6) returning id`,
+      [sid, opts.origin ?? "autoral_humana", opts.statement ?? "Enunciado fictício sobre homicídio qualificado e suas hipóteses.", opts.difficulty ?? "dificil", opts.rights ?? "proprio", AUTOR],
+    );
+    const id = q.rows[0].id as string;
+    await db.query(
+      "insert into bank_question_options (question_id, label, text, sort_order, is_correct) values ($1,'A','Alternativa certa',0,true), ($1,'B','Alternativa errada',1,false)",
+      [id],
+    );
+    return id;
+  }
+  const move = (id: string, status: string, by: string, extra = "") =>
+    db.query(`update bank_questions set status = $2, status_changed_by = $3 ${extra} where id = $1`, [id, status, by]);
+  const checkAll = (id: string) =>
+    db.query("update bank_questions set content_checked = true, answer_checked = true, source_checked = true, rights_checked = true where id = $1", [id]);
+
+  async function approve(id: string) {
+    await move(id, "em_revisao", AUTOR);
+    await checkAll(id);
+    await db.query("update bank_questions set status = 'aprovada', status_changed_by = $2, approved_by = $2, change_reason = 'Conferida' where id = $1", [id, REVISOR]);
+  }
+
+  itDb("o aluno não lê nem grava nada do banco (gabarito protegido)", async () => {
+    await db.query("begin");
+    try {
+      await staff();
+      await newQuestion();
+      await db.query("set local role authenticated");
+      await db.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: A, role: "authenticated" })]);
+      for (const t of ["bank_questions", "bank_question_options", "bank_question_versions", "ranked_form_items", "bank_attempts", "question_sources", "subjects"]) {
+        expect(await errorCode(db, `select * from ${t} limit 1`)).toBe("42501");
+      }
+      expect(await errorCode(db, "insert into bank_attempts (question_id, version, user_id, context, is_correct) values (gen_random_uuid(), 1, $1, 'treino', true)", [A])).toBe("42501");
+    } finally {
+      await db.query("rollback");
+    }
+  });
+
+  itDb("aprovação exige outro revisor, checklist completo e gera versão imutável", async () => {
+    await db.query("begin");
+    try {
+      await staff();
+      const id = await newQuestion();
+      await move(id, "em_revisao", AUTOR);
+      // pular etapas não é permitido
+      expect(await errorCode(db, "update bank_questions set status = 'publicada', status_changed_by = $2 where id = $1", [id, REVISOR])).toBe("23514");
+      // checklist incompleto
+      expect(await errorCode(db, "update bank_questions set status = 'aprovada', status_changed_by = $2, approved_by = $2 where id = $1", [id, REVISOR])).toBe("23514");
+      await checkAll(id);
+      // quem criou não aprova
+      expect(await errorCode(db, "update bank_questions set status = 'aprovada', status_changed_by = $2, approved_by = $2 where id = $1", [id, AUTOR])).toBe("23514");
+      // sem papel de revisor não aprova
+      expect(await errorCode(db, "update bank_questions set status = 'aprovada', status_changed_by = $2, approved_by = $2 where id = $1", [id, OUTRO])).toBe("42501");
+      await db.query("update bank_questions set status = 'aprovada', status_changed_by = $2, approved_by = $2, change_reason = 'Conferida' where id = $1", [id, REVISOR]);
+      const v1 = (await db.query("select version, snapshot from bank_question_versions where question_id = $1", [id])).rows;
+      expect(v1).toHaveLength(1);
+      expect(v1[0].version).toBe(1);
+      expect(v1[0].snapshot.options).toHaveLength(2);
+      // conteúdo travado depois de aprovado
+      expect(await errorCode(db, "update bank_questions set statement = 'Outro enunciado qualquer aqui' where id = $1", [id])).toBe("23514");
+      expect(await errorCode(db, "update bank_question_options set text = 'mudou' where question_id = $1 and label = 'A'", [id])).toBe("23514");
+      expect(await errorCode(db, "update bank_question_versions set reason = 'x' where question_id = $1", [id])).toBe("23514");
+      expect(await errorCode(db, "delete from bank_questions where id = $1", [id])).toBe("23503");
+      await move(id, "publicada", REVISOR);
+      // correção: volta para revisão, edita e reaprova → versão 2; a 1 continua igual
+      await move(id, "em_revisao", REVISOR, ", change_reason = 'Lei alterada'");
+      const back = (await db.query("select approved_by, content_checked from bank_questions where id = $1", [id])).rows[0];
+      expect(back).toEqual({ approved_by: null, content_checked: false });
+      await db.query("update bank_questions set statement = 'Enunciado corrigido após alteração legislativa fictícia.' where id = $1", [id]);
+      await checkAll(id);
+      await db.query("update bank_questions set status = 'aprovada', status_changed_by = $2, approved_by = $2, change_reason = 'Atualização' where id = $1", [id, REVISOR]);
+      const versions = (await db.query("select version, previous_version, snapshot->>'statement' s from bank_question_versions where question_id = $1 order by version", [id])).rows;
+      expect(versions.map((v) => v.version)).toEqual([1, 2]);
+      expect(versions[1].previous_version).toBe(1);
+      expect(versions[0].s).toMatch(/^Enunciado fictício/);
+      const log = (await db.query("select to_status from bank_question_reviews where question_id = $1 order by id", [id])).rows.map((r) => r.to_status);
+      expect(log).toEqual(["em_revisao", "aprovada", "publicada", "em_revisao", "aprovada"]);
+    } finally {
+      await db.query("rollback");
+    }
+  });
+
+  itDb("procedência e direito de uso não podem ser inventados", async () => {
+    await db.query("begin");
+    try {
+      await staff();
+      const sid = await subject();
+      // questão de IA não pode declarar ano/banca de origem
+      expect(await errorCode(db,
+        "insert into bank_questions (subject_id, origin, question_type, statement, initial_difficulty, year, created_by) values ($1, 'ia_assistida', 'certo_errado', 'Enunciado fictício de teste.', 'dificil', 2023, $2)",
+        [sid, AUTOR])).toBe("23514");
+      // prova anterior exige fonte
+      expect(await errorCode(db,
+        "insert into bank_questions (subject_id, origin, question_type, statement, initial_difficulty, correct_answer_true, created_by) values ($1, 'prova_anterior', 'certo_errado', 'Enunciado fictício de teste.', 'dificil', true, $2)",
+        [sid, AUTOR])).toBe("23514");
+      // prova anterior com fonte sem autorização verificada não é aprovada
+      const src = (await db.query("insert into question_sources (name, kind, url) values ('Prova fictícia', 'prova_oficial', 'https://exemplo.invalid/prova.pdf') returning id")).rows[0].id;
+      const q = (await db.query(
+        "insert into bank_questions (subject_id, origin, question_type, statement, initial_difficulty, correct_answer_true, justification, usage_rights, source_id, created_by) values ($1, 'prova_anterior', 'certo_errado', 'Enunciado fictício de prova.', 'dificil', true, 'Justificativa fictícia longa.', 'autorizado', $2, $3) returning id",
+        [sid, src, AUTOR])).rows[0].id;
+      await move(q, "em_revisao", AUTOR);
+      await checkAll(q);
+      expect(await errorCode(db, "update bank_questions set status = 'aprovada', status_changed_by = $2, approved_by = $2 where id = $1", [q, REVISOR])).toBe("23514");
+      await db.query("update question_sources set reuse_verified = true, reuse_verified_by = $2, reuse_verified_at = now() where id = $1", [src, REVISOR]);
+      await db.query("update bank_questions set status = 'aprovada', status_changed_by = $2, approved_by = $2 where id = $1", [q, REVISOR]);
+      // direito "não verificado" bloqueia
+      const q2 = await newQuestion({ rights: "nao_verificado", statement: "Outro enunciado fictício totalmente diferente sobre informática." });
+      await move(q2, "em_revisao", AUTOR);
+      await checkAll(q2);
+      expect(await errorCode(db, "update bank_questions set status = 'aprovada', status_changed_by = $2, approved_by = $2 where id = $1", [q2, REVISOR])).toBe("23514");
+    } finally {
+      await db.query("rollback");
+    }
+  });
+
+  itDb("duplicidade por semelhança e alerta de lei alterada", async () => {
+    await db.query("begin");
+    try {
+      await staff();
+      const id = await newQuestion({ statement: "Considere que Fulano matou Beltrano por motivo fútil. Assinale a alternativa correta sobre o homicídio qualificado." });
+      const sim = (await db.query("select question_id, similarity from bank_similar_questions($1, null, 0.45, null)", [
+        "Considere que Fulano matou Beltrano por motivo fútil. Assinale a alternativa correta quanto ao homicídio qualificado.",
+      ])).rows;
+      expect(sim[0].question_id).toBe(id);
+      expect(Number(sim[0].similarity)).toBeGreaterThan(0.7);
+      await db.query("insert into bank_question_legal_refs (question_id, norm_name, norm_number, article, consulted_on) values ($1, 'Código Penal', 'DL 2.848/1940', '121', current_date)", [id]);
+      expect(await errorCode(db, "insert into bank_question_legal_refs (question_id, norm_name, consulted_on, case_law_thesis) values ($1, 'X', current_date, 'tese sem identificação')", [id])).toBe("23514");
+      expect((await db.query("select bank_flag_outdated('DL 2.848/1940', '121', $1, 'Alteração fictícia') n", [REVISOR])).rows[0].n).toBe(1);
+      // não duplica alerta aberto
+      expect((await db.query("select bank_flag_outdated('DL 2.848/1940', '121', $1, 'De novo') n", [REVISOR])).rows[0].n).toBe(0);
+      expect(await errorCode(db, "select bank_flag_outdated('DL 2.848/1940', '121', $1, 'x')", [AUTOR])).toBe("42501");
+    } finally {
+      await db.query("rollback");
+    }
+  });
+
+  itDb("assuntos não formam ciclo e pertencem à mesma matéria", async () => {
+    await db.query("begin");
+    try {
+      const penal = await subject();
+      const adm = await subject("direito-administrativo");
+      const a = (await db.query("insert into subject_topics (subject_id, slug, name) values ($1, 'teoria-do-crime', 'Teoria do Crime') returning id", [penal])).rows[0].id;
+      const b = (await db.query("insert into subject_topics (subject_id, parent_id, slug, name) values ($1, $2, 'tipicidade', 'Tipicidade') returning id", [penal, a])).rows[0].id;
+      expect(await errorCode(db, "update subject_topics set parent_id = $1 where id = $2", [b, a])).toBe("23514");
+      expect(await errorCode(db, "insert into subject_topics (subject_id, parent_id, slug, name) values ($1, $2, 'outra', 'Outra matéria')", [adm, a])).toBe("23503");
+    } finally {
+      await db.query("rollback");
+    }
+  });
+
+  itDb("Ranked: prova só com publicadas, fiel ao blueprint, congelada e sem reenvio de resposta", async () => {
+    await db.query("begin");
+    try {
+      await staff();
+      const blueprint = { total: 2, subjects: [{ subject: "direito-penal", count: 2, tiers: { dificil: 1, extrema: 1 } }] };
+      const season = (await db.query("insert into ranked_seasons (slug, name, blueprint, scoring_rules) values ('t1', 'Temporada teste', $1, '{\"acerto\":1}') returning id", [blueprint])).rows[0].id;
+      const form = (await db.query("insert into ranked_forms (season_id, code) values ($1, 'A') returning id", [season])).rows[0].id;
+      const q1 = await newQuestion({ statement: "Questão fictícia de ranked número um sobre dolo eventual." });
+      const q2 = await newQuestion({ statement: "Questão fictícia de ranked número dois sobre culpa consciente.", difficulty: "extrema" });
+      await approve(q1);
+      // aprovada mas não publicada: não entra
+      expect(await errorCode(db, "insert into ranked_form_items (form_id, position, question_id, version, subject_id, tier) values ($1, 1, $2, 1, $3, 'dificil')", [form, q1, await subject()])).toBe("23514");
+      await move(q1, "publicada", REVISOR);
+      await approve(q2);
+      await move(q2, "publicada", REVISOR);
+      // tier e matéria vêm da versão congelada, não do que for enviado
+      await db.query("insert into ranked_form_items (form_id, position, question_id, version, subject_id, tier) values ($1, 1, $2, 1, $3, 'extrema')", [form, q1, await subject("matematica")]);
+      const item = (await db.query("select tier, subject_id from ranked_form_items where form_id = $1 and position = 1", [form])).rows[0];
+      expect(item).toEqual({ tier: "dificil", subject_id: await subject() });
+      // fora do blueprint: falta a 'extrema'
+      expect(await errorCode(db, "update ranked_forms set status = 'validada' where id = $1", [form])).toBe("23514");
+      await db.query("insert into ranked_form_items (form_id, position, question_id, version, subject_id, tier) values ($1, 2, $2, 1, $3, 'dificil')", [form, q2, await subject()]);
+      await db.query("update ranked_forms set status = 'validada' where id = $1", [form]);
+      expect(await errorCode(db, "delete from ranked_form_items where form_id = $1 and position = 1", [form])).toBe("23514");
+      await db.query("update ranked_forms set status = 'ativa' where id = $1", [form]);
+      await db.query("update ranked_seasons set status = 'ativa' where id = $1", [season]);
+      expect(await errorCode(db, "update ranked_seasons set scoring_rules = '{\"acerto\":2}' where id = $1", [season])).toBe("23514");
+      const match = (await db.query("insert into ranked_matches (season_id, form_id, user_id, scoring_snapshot) values ($1, $2, $3, '{\"acerto\":1}') returning id", [season, form, A])).rows[0].id;
+      expect(await errorCode(db, "insert into ranked_matches (season_id, form_id, user_id, scoring_snapshot) values ($1, $2, $3, '{}')", [season, form, A])).toBe("23505");
+      await db.query("insert into bank_attempts (question_id, version, user_id, context, match_id, position, selected_label, is_correct) values ($1, 1, $2, 'ranked', $3, 1, 'A', true)", [q1, A, match]);
+      expect(await errorCode(db, "insert into bank_attempts (question_id, version, user_id, context, match_id, position, selected_label, is_correct) values ($1, 1, $2, 'ranked', $3, 1, 'B', false)", [q1, A, match])).toBe("23505");
+      // a questão problemática pode ser suspensa; a versão usada continua preservada
+      await move(q1, "suspensa", REVISOR, ", change_reason = 'Gabarito contestado'");
+      expect((await db.query("select count(*)::int n from bank_question_versions where question_id = $1", [q1])).rows[0].n).toBe(1);
+      await db.query("insert into ranked_item_invalidations (form_id, position, rule, reason, decided_by) values ($1, 1, 'anular_conta_acerto', 'Gabarito contestado', $2)", [form, REVISOR]);
+      const bp = (await db.query("select ranked_default_blueprint() b")).rows[0].b;
+      expect(bp.total).toBe(120);
+      expect(bp.subjects.reduce((s: number, x: { count: number }) => s + x.count, 0)).toBe(120);
+      for (const s of bp.subjects) expect(Object.values(s.tiers as Record<string, number>).reduce((a, b) => a + b, 0)).toBe(s.count);
+    } finally {
+      await db.query("rollback");
+    }
+  });
+});
