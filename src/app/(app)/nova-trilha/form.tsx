@@ -1,8 +1,9 @@
 "use client";
 
-import { useActionState, useEffect, useMemo, useState } from "react";
+import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { BuildingOverlay } from "./building-overlay";
 import { Button, Notice, inputClass } from "@/components/ui";
-import { CONTENT_EXAMPLES, CONTENT_LIMITS, CONTENT_TYPE_OPTIONS, EXAM_BOARDS, trailRequestSchema, type ExamBoardSlug } from "@/domain/trail-input";
+import { CONTENT_EXAMPLES, CONTENT_LIMITS, EXAM_BOARDS, trailRequestSchema, type ExamBoardSlug } from "@/domain/trail-input";
 import type { ContentType } from "@/domain/content/types";
 import { catalogHintAction, createTrailAction, type CatalogHint, type CreateTrailState } from "./actions";
 
@@ -26,7 +27,10 @@ function Step({ n, title, done, children }: { n: number; title: string; done: bo
   );
 }
 
-/** Adivinha o tipo pelo texto (o aluno pode trocar). */
+/** Duração da tela de preparação da aula do catálogo. */
+const BUILD_MS = 5200;
+
+/** Adivinha o tipo pelo texto (definido automaticamente; a escolha não aparece mais na tela). */
 function guessType(text: string): ContentType {
   if (/\b(arts?\.?|artigos?|§|inciso|lei\s+n?º?|c[óo]digo|constitui[çc][ãa]o|\bCF\b|\bCP\b|\bCPP\b)/i.test(text)) return "artigo_lei";
   return "tema_livre";
@@ -53,6 +57,10 @@ export function NewTrailForm({
   const [touched, setTouched] = useState(false);
   const [hint, setHint] = useState<{ for: string; data: CatalogHint } | null>(null);
   const [useAi, setUseAi] = useState(false);
+  // Estado no momento do envio: a tela de preparação some quando chega uma resposta nova (ex.: erro).
+  const [buildFrom, setBuildFrom] = useState<CreateTrailState | null>(null);
+  const building = buildFrom !== null && buildFrom === state;
+  const formRef = useRef<HTMLFormElement>(null);
 
   // Sugestão ao vivo do catálogo revisado (o resultado final é decidido no servidor).
   useEffect(() => {
@@ -83,13 +91,26 @@ export function NewTrailForm({
 
   return (
     <form
+      ref={formRef}
       action={action}
       onSubmit={(e) => {
         setTouched(true);
-        if (!validation.success) e.preventDefault();
+        if (!validation.success) {
+          e.preventDefault();
+          return;
+        }
+        // Conteúdo do catálogo: mostra a preparação da aula com calma antes de abrir o estudo.
+        if (catalog?.kind === "completo" && !useAi) {
+          e.preventDefault();
+          const data = new FormData(e.currentTarget);
+          setBuildFrom(state);
+          setTimeout(() => startTransition(() => action(data)), BUILD_MS - 900);
+        }
       }}
       noValidate
     >
+      {building && <BuildingOverlay topic={catalog?.titles[0] ?? content.trim().slice(0, 80)} durationMs={BUILD_MS} />}
+      <input type="hidden" name="contentType" value={type} />
       <Step n={1} title="O que você quer estudar agora?" done={!issues.content && content.trim().length > 0}>
         <p className="mb-3 t-small text-tinta-suave">
           Informe um tema, uma matéria, um artigo ou um capítulo. Não precisa do edital: a plataforma identifica o assunto, delimita o escopo e monta a aula e as avaliações só disso.
@@ -139,7 +160,7 @@ export function NewTrailForm({
           </div>
         )}
         {!aiOn && (
-          <div className="mt-3 rounded-md border border-linha bg-superficie p-3 t-small" data-testid="catalogo-disponivel">
+          <div hidden className="mt-3 rounded-md border border-linha bg-superficie p-3 t-small" data-testid="catalogo-disponivel">
             <p className="font-semibold">Conteúdos disponíveis agora</p>
             {available.length ? (
               <div className="mt-2 flex flex-wrap gap-2">
@@ -200,35 +221,7 @@ export function NewTrailForm({
         )}
       </Step>
 
-      <Step n={2} title="Tipo de conteúdo" done={!!content.trim()}>
-        <div role="radiogroup" aria-label="Tipo de conteúdo" className="grid gap-2 sm:grid-cols-2">
-          {CONTENT_TYPE_OPTIONS.map((o) => (
-            <label
-              key={o.value}
-              className="flex cursor-pointer gap-3 rounded-md border border-linha-forte bg-superficie p-3 has-[:checked]:border-azul has-[:checked]:bg-nevoa has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-azul"
-            >
-              <input
-                type="radio"
-                name="contentType"
-                value={o.value}
-                checked={type === o.value}
-                onChange={() => {
-                  setType(o.value);
-                  setTypeTouched(true);
-                }}
-                className="mt-1 size-4 accent-azul"
-              />
-              <span>
-                <span className="block font-semibold">{o.label}</span>
-                <span className="block t-small text-tinta-suave">{o.description}</span>
-              </span>
-            </label>
-          ))}
-        </div>
-        <p className="mt-2 t-tiny text-tinta-fraca">Sugerido pelo que você escreveu; troque se quiser. Importação de PDF chega numa próxima versão.</p>
-      </Step>
-
-      <Step n={3} title="Banca de referência" done={!!board}>
+      <Step n={2} title="Banca de referência" done={!!board}>
         <p className="mb-3 t-small text-tinta-suave">A banca orienta o estilo das questões e dos exemplos.</p>
         <div role="radiogroup" aria-label="Banca examinadora" className="grid grid-cols-2 gap-2 sm:grid-cols-4">
           {EXAM_BOARDS.map((b) => (
@@ -264,8 +257,8 @@ export function NewTrailForm({
 
       <div className="flex flex-col gap-3 border-l-2 border-transparent pl-5">
         {state.error && <Notice tone="erro">{state.error}</Notice>}
-        <Button type="submit" disabled={pending || !board} className="self-start">
-          {pending ? "Registrando…" : "Começar este estudo"}
+        <Button type="submit" disabled={pending || building || !board} className="self-start">
+          {pending || building ? "Preparando…" : "Começar este estudo"}
         </Button>
         {!board && <p className="t-tiny text-tinta-fraca">Selecione a banca para continuar.</p>}
       </div>

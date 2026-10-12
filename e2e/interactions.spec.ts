@@ -388,3 +388,12 @@ test.describe("banco de questões (painel escuro)", () => {
     await expect(page.getByRole("button", { name: "Gerar questões" })).toBeEnabled();
   });
 });
+
+test("preparação da aula do catálogo: etapas aparecem com animação suave", async ({ page }) => {
+  await page.goto(`${G}/montando`);
+  const overlay = page.getByTestId("montando-aula");
+  await expect(overlay).toBeVisible();
+  await expect(overlay.getByText("Montando sua aula")).toBeVisible();
+  await expect(overlay.getByText("Analisando o tema…")).toBeVisible();
+  await expect(overlay.getByRole("listitem")).toHaveCount(5);
+});
