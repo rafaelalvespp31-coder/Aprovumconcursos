@@ -2,14 +2,25 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { normalizeContent } from "@/domain/content/normalize";
 import { trailRequestSchema, type TrailRequest } from "@/domain/trail-input";
-import { getAIProvider } from "@/ai";
+import { aiEnabled, getAIProvider } from "@/ai";
+import type { CatalogMatch } from "@/domain/catalog/match";
 import { createAdminClient } from "../supabase";
 import { advanceBuild, resumeFailedJob } from "../pipeline/build-trail";
 import { advanceLessonJob, type LessonJobState } from "../pipeline/generate-lesson";
 import type { BuildState, Job } from "../pipeline/types";
 import { SupabaseBuildRepo, SupabaseLessonRepo, JOB_COLUMNS, rowToJob, type JobRow } from "../repos/supabase-repos";
 import { auditLog, logEvent } from "../observability";
-import { createStudyFromCatalog, findInCatalog } from "./catalog";
+import { catalogAvailableTitles, createStudyFromCatalog, findInCatalog } from "./catalog";
+
+/** Mensagem do modo só catálogo: diz o que falta e o que já está disponível. */
+async function catalogOnlyMessage(match: CatalogMatch): Promise<string> {
+  const titles = await catalogAvailableTitles().catch(() => [] as string[]);
+  const disponiveis = titles.length ? ` Disponíveis agora: ${titles.slice(0, 15).join("; ")}${titles.length > 15 ? "; …" : ""}.` : "";
+  if (match.kind === "parcial") {
+    return `Parte do pedido ainda não está no catálogo (${match.missing.join(", ")}). No momento, o APROVUM usa só conteúdos já cadastrados: peça apenas o que está disponível.${disponiveis}`;
+  }
+  return `Esse conteúdo ainda não está no catálogo do APROVUM. No momento, os estudos usam só conteúdos já cadastrados.${disponiveis} Dica: escreva o tema ou o artigo, como "homicídio" ou "art. 121 do CP".`;
+}
 
 export class UserFacingError extends Error {
   constructor(message: string, public readonly code: string) {
@@ -71,7 +82,9 @@ export async function createTrail(
     throw new UserFacingError("Você atingiu o número de estudos ativos do seu plano. Arquive um estudo para criar outro.", "trail_limit");
   }
   // Modelo híbrido: pedido coberto pelo catálogo revisado é montado sem IA (e sem consumir cota).
-  if (opts.useCatalog !== false) {
+  // Com a IA desligada (modo só catálogo), o catálogo é o único caminho.
+  const catalogOnly = !aiEnabled();
+  if (opts.useCatalog !== false || catalogOnly) {
     const match = await findInCatalog(req.content).catch(async (e) => {
       await logEvent("catalog.match_failed", { error: (e as Error).message });
       return { kind: "nenhum" } as const;
@@ -80,6 +93,7 @@ export async function createTrail(
       const trailId = await createStudyFromCatalog(userId, req, match);
       return { trailId, jobId: null, fromCatalog: true };
     }
+    if (catalogOnly) throw new UserFacingError(await catalogOnlyMessage(match), "catalog_only");
   }
 
   const quota = await db.rpc("consume_quota", { p_user: userId, p_kind: "trail_build", p_units: 1 });

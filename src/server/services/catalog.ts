@@ -47,6 +47,11 @@ export async function loadPublishedIndex(): Promise<CatalogTopicIndex[]> {
   }));
 }
 
+/** Títulos publicados, para orientar o aluno no modo só catálogo. */
+export async function catalogAvailableTitles(): Promise<string[]> {
+  return (await loadPublishedIndex()).map((t) => t.title).sort((a, b) => a.localeCompare(b, "pt-BR"));
+}
+
 export async function findInCatalog(text: string): Promise<CatalogMatch> {
   if (text.trim().length < 3) return { kind: "nenhum" };
   return matchCatalog(text, await loadPublishedIndex());

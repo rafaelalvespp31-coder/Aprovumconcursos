@@ -32,7 +32,7 @@ function guessType(text: string): ContentType {
   return "tema_livre";
 }
 
-export function NewTrailForm({ initialContent = "" }: { initialContent?: string }) {
+export function NewTrailForm({ initialContent = "", aiOn = true, available = [] }: { initialContent?: string; aiOn?: boolean; available?: string[] }) {
   const [state, action, pending] = useActionState<CreateTrailState, FormData>(createTrailAction, {});
   const [board, setBoard] = useState<ExamBoardSlug | null>(null);
   const [other, setOther] = useState("");
@@ -113,19 +113,44 @@ export function NewTrailForm({ initialContent = "" }: { initialContent?: string 
                   Este conteúdo já está no catálogo do APROVUM: começa na hora, sem esperar a geração.
                 </p>
                 <p className="mt-1 text-tinta-suave">{catalog.titles.join(" · ")}</p>
-                <label className="mt-2 flex items-center gap-2 text-tinta-suave">
-                  <input type="checkbox" name="usarIa" value="1" checked={useAi} onChange={(e) => setUseAi(e.target.checked)} className="size-4 accent-azul" />
-                  Prefiro que a IA gere uma aula nova
-                </label>
+                {aiOn && (
+                  <label className="mt-2 flex items-center gap-2 text-tinta-suave">
+                    <input type="checkbox" name="usarIa" value="1" checked={useAi} onChange={(e) => setUseAi(e.target.checked)} className="size-4 accent-azul" />
+                    Prefiro que a IA gere uma aula nova
+                  </label>
+                )}
               </>
             ) : (
               <p className="text-tinta-suave">
-                Parte do pedido está no catálogo ({catalog.titles.join(", ")}), mas não tudo{catalog.reason ? ` — ${catalog.reason}` : ""}. A aula será gerada pela IA.
+                Parte do pedido está no catálogo ({catalog.titles.join(", ")}), mas não tudo{catalog.reason ? ` — ${catalog.reason}` : ""}.{" "}
+                {aiOn ? "A aula será gerada pela IA." : "No momento, peça só o que já está no catálogo."}
               </p>
             )}
           </div>
         )}
-        <div className="mt-3 flex flex-wrap gap-2" aria-label="Exemplos">
+        {!aiOn && (
+          <div className="mt-3 rounded-md border border-linha bg-superficie p-3 t-small" data-testid="catalogo-disponivel">
+            <p className="font-semibold">Conteúdos disponíveis agora</p>
+            {available.length ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {available.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => onContent(t)}
+                    className="rounded-full border border-azul bg-nevoa px-3 py-1.5 t-tiny font-semibold text-destaque hover:bg-azul hover:text-white"
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="mt-1 text-tinta-suave">Novos conteúdos estão sendo cadastrados. Volte em breve.</p>
+            )}
+            <p className="mt-2 t-tiny text-tinta-fraca">Toque num conteúdo para escolher, ou escreva o tema ou o artigo (ex.: “homicídio”, “art. 121 do CP”).</p>
+          </div>
+        )}
+        <div className="mt-3 flex flex-wrap gap-2" aria-label="Exemplos" hidden={!aiOn}>
           {CONTENT_EXAMPLES.map((ex) => (
             <button
               key={ex.text}

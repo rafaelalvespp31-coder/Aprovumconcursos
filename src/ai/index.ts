@@ -21,10 +21,22 @@ const COMPAT_PRESETS: Record<string, { baseUrl: string; keyVar: string; keyRequi
 };
 
 /**
+ * Modo só catálogo: a IA fica desligada até `AI_ENABLED=true` no servidor.
+ * Desligada, os estudos vêm só do catálogo revisado e nenhuma chamada à IA é feita.
+ */
+export function aiEnabled(): boolean {
+  return process.env.AI_ENABLED?.trim().toLowerCase() === "true";
+}
+
+export const AI_DISABLED_MESSAGE =
+  "A geração por IA está temporariamente desativada. No momento, os estudos usam apenas os conteúdos do catálogo do APROVUM.";
+
+/**
  * Seleciona o provedor por variável de ambiente. Sem configuração válida, falha
  * explicitamente — nunca cai em um gerador de conteúdo fictício.
  */
 export function getAIProvider(): AIProvider {
+  if (!aiEnabled()) throw new AIError(AI_DISABLED_MESSAGE, "not_configured", false);
   if (cached) return cached;
   const provider = (process.env.AI_PROVIDER ?? "anthropic").toLowerCase();
   switch (provider) {
