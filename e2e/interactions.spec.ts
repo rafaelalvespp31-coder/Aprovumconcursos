@@ -134,6 +134,23 @@ test.describe("tela de aula", () => {
     if (isMobile) await expect(toc).toBeHidden();
   });
 
+  test("exemplos são casos interativos: situação, tocar e conferir o enquadramento; negrito em vermelho-sangue", async ({ page, isMobile }) => {
+    await page.goto(`${G}/aula`);
+    // Negrito do conteúdo em vermelho-sangue.
+    const bold = page.locator(".leitura strong").first();
+    await expect(bold).toHaveCSS("color", "rgb(138, 3, 3)");
+    if (isMobile) await page.getByRole("button", { name: "Etapas", exact: true }).click();
+    const toc = isMobile ? page.getByRole("dialog", { name: "Etapas da aula" }) : page.getByRole("navigation", { name: "Etapas da aula" });
+    await toc.getByRole("button", { name: /Exemplos/ }).click();
+    const box = page.getByTestId("exemplos-interativos");
+    await expect(box.getByText("0 de 2 conferidos")).toBeVisible();
+    await expect(box.getByText("Documento falso", { exact: true })).toBeVisible();
+    await expect(box.getByText("Enquadramento", { exact: true })).toHaveCount(0);
+    await box.getByRole("button", { name: /Ver resposta/ }).first().click();
+    await expect(box.getByText("Enquadramento", { exact: true })).toBeVisible();
+    await expect(box.getByText("1 de 2 conferidos")).toBeVisible();
+  });
+
   test("marcar trecho para revisar e criar anotação", async ({ page }) => {
     await page.goto(`${G}/aula`);
     const actions = page.getByRole("toolbar", { name: "Ações da seção Introdução" });

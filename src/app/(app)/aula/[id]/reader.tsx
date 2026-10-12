@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Markdown } from "@/components/markdown";
+import { ExampleCards, parseExamples } from "@/components/examples";
 import { Icon, type IconName } from "@/components/icons";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
 import { SaveIndicator, type SaveState } from "@/components/interactive";
@@ -482,15 +483,17 @@ function SectionBlock({
         </p>
       </div>
     );
-  } else if (kind === "exemplos" || kind === "aplicacao") {
+  } else if (kind === "exemplos" || (kind === "aplicacao" && parseExamples(s.body_markdown).some((c) => c.answer))) {
+    // Exemplos sempre como casos interativos: situação → pensar → conferir o enquadramento.
+    content = <ExampleCards markdown={s.body_markdown} kind={kind} />;
+  } else if (kind === "aplicacao") {
     content = (
-      <details className="group my-2 rounded-md border border-linha bg-superficie">
-        <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 font-sans font-semibold">
-          <Icon name="chevronRight" className="size-4 transition-transform group-open:rotate-90" />
-          {kind === "exemplos" ? "Ver exemplos" : "Ver aplicação prática"}
-        </summary>
-        <div className="border-t border-linha px-4 pt-3">{body}</div>
-      </details>
+      <div className="my-2 rounded-md border-2 border-linha-forte bg-superficie px-4 py-3">
+        <p className="m-0 inline-flex items-center gap-1.5 font-sans t-small font-semibold text-destaque">
+          <Icon name="alvo" className="size-4" /> Aplicação prática
+        </p>
+        <div className="mt-1">{body}</div>
+      </div>
     );
   } else if (kind === "excecoes" || kind === "pegadinhas") {
     content = (

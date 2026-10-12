@@ -352,6 +352,12 @@ export interface LessonContext {
   previousLessonTitles: string[];
 }
 
+/** Formato dos exemplos: viram cards interativos (situação → tocar para ver o enquadramento). */
+export const EXAMPLES_FORMAT = `Na seção "exemplos", escreva de 3 a 7 casos concretos, um por parágrafo, exatamente neste formato:
+**Caso 1 — Título curto.** Situação concreta em 1 a 3 frases.
+→ Enquadramento/resposta, com o dispositivo ou a regra aplicada.
+Use **negrito** só nos termos-chave (ele aparece destacado em vermelho para o aluno).`;
+
 /** Ordem canônica das seções: do básico ao avançado, terminando em síntese e checagem. */
 const CANONICAL_ORDER: readonly LessonSectionKind[] = [
   "objetivo", "conhecimentos_previos", "introducao", "texto_legal", "explicacao", "conceitos_fundamentais",
@@ -392,7 +398,9 @@ ${ctx.previousLessonTitles.length ? `Aulas anteriores (não repita): ${ctx.previ
 Escopo obrigatório — ensine TODOS estes itens e liste-os em "taughtNodeKeys" (somente os que de fato ensinou): ${ctx.lesson.nodeKeys.join(", ")}.
 O aluno só avança para o próximo tema depois de esgotar este. Por isso a aula deve trazer UMA seção de CADA tipo abaixo, nesta ordem, do nível básico ao avançado, cada uma com conteúdo próprio (sem repetir outra seção):
 ${describeRequired(required)}
-Você pode acrescentar "quadro_comparativo" ou "esquema" quando ajudarem. Cada seção informa em "nodeKeys" quais itens trata; todo item do escopo deve aparecer em ao menos uma seção de explicação ou aprofundamento.
+Você pode acrescentar "quadro_comparativo" ou "esquema" quando ajudarem.
+${EXAMPLES_FORMAT}
+Cada seção informa em "nodeKeys" quais itens trata; todo item do escopo deve aparecer em ao menos uma seção de explicação ou aprofundamento.
 Liste em "unverifiedClaims" afirmações que dependem de fonte externa que você não pode confirmar.
 
 ${wrapped.text}`,
