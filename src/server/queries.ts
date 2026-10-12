@@ -33,6 +33,9 @@ export interface ScopeSummary {
   isLegal: boolean;
   legalReferences: Array<{ norm: string; provisions: string }>;
   subtopicCount?: number;
+  /** Estudo montado a partir do catálogo revisado. */
+  catalog?: boolean;
+  catalogTopics?: Array<{ id: string; title: string; version: number }>;
 }
 
 const TRAIL_COLS = "id, title, board_slug, other_board_name, content_type, status, archived_at, last_studied_at, updated_at, created_at";
@@ -186,10 +189,16 @@ export async function getLessonForStudy(lessonId: string) {
   const db = await createUserClient();
   const { data: lesson } = await db
     .from("lessons")
-    .select("id, trail_id, key, title, objective, sort_order, estimated_minutes, status, supplementary, verification_pending, unverified_claims, generation_error, generated_at, study_trails(title, board_slug, other_board_name)")
+    .select("id, trail_id, key, title, objective, sort_order, estimated_minutes, status, supplementary, verification_pending, unverified_claims, generation_error, generated_at, catalog_topic_id, catalog_version, study_trails(title, board_slug, other_board_name)")
     .eq("id", lessonId)
     .maybeSingle();
   if (!lesson) notFound();
+  // Unidade do catálogo: compara com a versão publicada atual (só id e versão são expostos).
+  let catalogLatest: number | null = null;
+  if (lesson.catalog_topic_id) {
+    const v = await db.rpc("catalog_topic_versions", { p_ids: [lesson.catalog_topic_id] });
+    catalogLatest = ((v.data as Array<{ id: string; version: number }> | null) ?? [])[0]?.version ?? null;
+  }
   const [sections, refs, questions, progress, nodes, siblings, annotations, clarifications, marks] = await Promise.all([
     db.from("lesson_sections").select("id, kind, title, body_markdown, sort_order, node_keys, verification_status").eq("lesson_id", lessonId).order("sort_order"),
     db.from("source_references").select("kind, citation, verified").eq("lesson_id", lessonId),
@@ -218,8 +227,12 @@ export async function getLessonForStudy(lessonId: string) {
       id: string; trail_id: string; key: string; title: string; objective: string; sort_order: number; estimated_minutes: number;
       status: LessonListItem["status"]; supplementary: Array<{ title: string; justification: string }>; verification_pending: boolean;
       unverified_claims: string[]; generation_error: string | null; generated_at: string | null;
+      catalog_topic_id: string | null; catalog_version: number | null;
       study_trails: { title: string; board_slug: string; other_board_name: string | null };
     },
+    catalog: lesson.catalog_topic_id
+      ? { version: lesson.catalog_version as number | null, latest: catalogLatest, outdated: catalogLatest !== null && (lesson.catalog_version ?? 0) < catalogLatest }
+      : null,
     sections: (sections.data ?? []) as Array<{ id: string; kind: string; title: string; body_markdown: string; node_keys: string[]; verification_status: string }>,
     references: (refs.data ?? []) as Array<{ kind: string; citation: string; verified: boolean }>,
     questions: (questions.data ?? []).map((q) => {

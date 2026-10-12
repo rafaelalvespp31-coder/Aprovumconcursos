@@ -87,6 +87,13 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
   const notTaught = nodes.filter((n) => !n.taught);
   const notices = (
     <>
+      {data.catalog && (
+        <Notice tone={data.catalog.outdated ? "alerta" : "info"} title={data.catalog.outdated ? "Conteúdo atualizado no catálogo" : "Conteúdo revisado"}>
+          {data.catalog.outdated
+            ? "A equipe publicou uma versão revisada deste conteúdo depois que você começou. Revise com atenção: para estudar a versão nova, crie o estudo de novo com o mesmo pedido."
+            : "Esta unidade vem do catálogo revisado pela equipe do APROVUM."}
+        </Notice>
+      )}
       {lesson.status === "pending_validation" && (
         <Notice tone="alerta" title="Cobertura incompleta nesta aula">
           {notTaught.length > 0

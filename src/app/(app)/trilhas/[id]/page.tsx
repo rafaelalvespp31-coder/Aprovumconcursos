@@ -22,10 +22,10 @@ export default async function TrailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ erro?: string }>;
+  searchParams: Promise<{ erro?: string; catalogo?: string }>;
 }) {
   const { id } = await params;
-  const { erro } = await searchParams;
+  const { erro, catalogo } = await searchParams;
   const trail = await getTrail(id);
   if (trail.status === "pending" || trail.status === "processing" || trail.status === "clarification") redirect(`/trilhas/${id}/processando`);
 
@@ -73,6 +73,13 @@ export default async function TrailPage({
       </div>
 
       {erro && <div className="mt-4"><Notice tone="erro">{erro}</Notice></div>}
+      {catalogo && trail.scope_summary?.catalog && trail.status === "review" && (
+        <div className="mt-4">
+          <Notice tone="sucesso" title="Pronto na hora: conteúdo revisado">
+            Este pedido já estava no catálogo do APROVUM, então o estudo foi montado sem esperar a geração. Confira abaixo e comece.
+          </Notice>
+        </div>
+      )}
 
       <section className="mt-6 rounded-lg border border-linha bg-superficie p-5">
         <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -98,7 +105,9 @@ export default async function TrailPage({
 
       {scope && (
         <section className="mt-6 rounded-lg border border-linha bg-superficie p-5" aria-labelledby="escopo-titulo">
-          <h2 id="escopo-titulo" className="t-h3">Escopo identificado</h2>
+          <h2 id="escopo-titulo" className="t-h3">
+            Escopo identificado{scope.catalog && <span className="ml-2 inline-block rounded-full bg-azul px-2 py-0.5 align-middle t-tiny text-white">Revisado</span>}
+          </h2>
           <p className="mt-1 font-semibold">{scope.subject}</p>
           <p className="mt-1 t-small text-tinta-suave">{scope.scopeStatement}</p>
           {trail.scope_answer && <p className="mt-2 t-small"><span className="font-semibold">Seu esclarecimento:</span> {trail.scope_answer}</p>}

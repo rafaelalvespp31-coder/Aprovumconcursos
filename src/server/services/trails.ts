@@ -9,6 +9,7 @@ import { advanceLessonJob, type LessonJobState } from "../pipeline/generate-less
 import type { BuildState, Job } from "../pipeline/types";
 import { SupabaseBuildRepo, SupabaseLessonRepo, JOB_COLUMNS, rowToJob, type JobRow } from "../repos/supabase-repos";
 import { auditLog, logEvent } from "../observability";
+import { createStudyFromCatalog, findInCatalog } from "./catalog";
 
 export class UserFacingError extends Error {
   constructor(message: string, public readonly code: string) {
@@ -45,7 +46,11 @@ async function planLimits(userId: string) {
  * Cria a trilha a partir da solicitação validada. Revalida no servidor, verifica
  * plano/cota, grava o texto original e normalizado e enfileira o job de construção.
  */
-export async function createTrail(userId: string, input: unknown): Promise<{ trailId: string; jobId: string }> {
+export async function createTrail(
+  userId: string,
+  input: unknown,
+  opts: { useCatalog?: boolean } = {},
+): Promise<{ trailId: string; jobId: string | null; fromCatalog: boolean }> {
   const parsed = trailRequestSchema.safeParse(input);
   if (!parsed.success) {
     throw new UserFacingError(parsed.error.issues[0]?.message ?? "Dados inválidos.", "invalid_input");
@@ -65,6 +70,18 @@ export async function createTrail(userId: string, input: unknown): Promise<{ tra
   if ((active as number) >= limits.max_active_trails) {
     throw new UserFacingError("Você atingiu o número de estudos ativos do seu plano. Arquive um estudo para criar outro.", "trail_limit");
   }
+  // Modelo híbrido: pedido coberto pelo catálogo revisado é montado sem IA (e sem consumir cota).
+  if (opts.useCatalog !== false) {
+    const match = await findInCatalog(req.content).catch(async (e) => {
+      await logEvent("catalog.match_failed", { error: (e as Error).message });
+      return { kind: "nenhum" } as const;
+    });
+    if (match.kind === "completo") {
+      const trailId = await createStudyFromCatalog(userId, req, match);
+      return { trailId, jobId: null, fromCatalog: true };
+    }
+  }
+
   const quota = await db.rpc("consume_quota", { p_user: userId, p_kind: "trail_build", p_units: 1 });
   if (quota.error) throw new Error(`cota indisponível: ${quota.error.message}`);
   if (!(quota.data as { allowed: boolean }).allowed) {
@@ -109,7 +126,7 @@ export async function createTrail(userId: string, input: unknown): Promise<{ tra
       .single();
     if (job.error) throw new Error(job.error.message);
     await auditLog(db, { actorId: userId, userId, action: "trail.created", entity: "study_trails", entityId: trailId, meta: { board: req.board, type: req.contentType, chars: norm.stats.originalLength } });
-    return { trailId, jobId: job.data.id as string };
+    return { trailId, jobId: job.data.id as string, fromCatalog: false };
   } catch (err) {
     // Sem trilha "fantasma": desfaz a criação parcial.
     await db.from("study_trails").delete().eq("id", trailId).eq("user_id", userId);

@@ -8,6 +8,7 @@ import { SupabaseLessonRepo } from "../repos/supabase-repos";
 import { questionsPayload } from "../repos/payloads";
 import { UserFacingError, enforceRateLimit } from "./trails";
 import { logEvent } from "../observability";
+import { recoveryFromBank } from "./catalog";
 import { wrongRoots, type RecoveryQuestionRow as QRow } from "@/domain/progress/recovery";
 
 const MAX_PER_ROUND = 10;
@@ -56,6 +57,24 @@ export async function generateRecovery(userId: string, input: { lessonId: string
   const keyById = new Map((keys.data ?? []).map((k) => [k.id as string, k.key as string]));
   const targets = wrong.slice(0, MAX_PER_ROUND).map((w) => ({ rootId: w.id, nodeKey: keyById.get(w.node_id) ?? "", statement: w.statement })).filter((t) => t.nodeKey);
 
+  // Unidades do catálogo: recuperação vem do banco revisado, sem IA. Só o que faltar vai para a IA.
+  let fromBank = 0;
+  const lessonRow = await db.from("lessons").select("catalog_topic_id, catalog_key_map").eq("id", lessonId).eq("user_id", userId).single();
+  if (lessonRow.data?.catalog_topic_id) {
+    const b = await recoveryFromBank(
+      { id: lessonId, userId, catalogTopicId: lessonRow.data.catalog_topic_id as string, keyMap: (lessonRow.data.catalog_key_map as Record<string, string>) ?? {} },
+      level.key,
+      targets.map((t) => ({ rootId: t.rootId, nodeKey: t.nodeKey })),
+    );
+    fromBank = b.saved;
+    const pendingIds = new Set(b.pending.map((p) => p.rootId));
+    targets.splice(0, targets.length, ...targets.filter((t) => pendingIds.has(t.rootId)));
+    if (!targets.length) {
+      await logEvent("recovery.from_bank", { lessonId, level: level.key, wrong: wrong.length, created: fromBank });
+      return { created: fromBank, wrong: wrong.length, level: level.key };
+    }
+  }
+
   const r = await generateQuestions(getAIProvider(), {
     board: ctx.boardName,
     lesson: ctx.lesson,
@@ -88,5 +107,5 @@ export async function generateRecovery(userId: string, input: { lessonId: string
     output: { purpose: "recuperacao", level: level.key },
   });
   await logEvent("recovery.generated", { lessonId, level: level.key, wrong: wrong.length, created: saved.data });
-  return { created: saved.data as number, wrong: wrong.length, level: level.key };
+  return { created: (saved.data as number) + fromBank, wrong: wrong.length, level: level.key };
 }

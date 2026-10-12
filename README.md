@@ -69,6 +69,20 @@ O edital **nunca** é obrigatório. Cada conteúdo informado pelo aluno — um t
 5. **Recuperação.** Reprovado num nível, o aluno gera exercícios novos **só para as questões erradas** (mesmo item, mesmo nível). A resposta mais recente da cadeia vale pela questão original; o nível não é reiniciado.
 6. **PDF do conteúdo.** Liberado quando todas as unidades do estudo passaram nos três níveis. Reúne teoria no escopo, dispositivos e fontes, exemplos, esquemas e pegadinhas, as questões efetivamente respondidas com alternativas, gabaritos e comentários, os erros explicados e pontos de revisão, referências, datas e versão. Cada geração é uma nova versão (`study_pdfs`), vinculada ao aluno, ao conteúdo, às questões e à versão da fonte; as anteriores continuam disponíveis.
 
+## Catálogo revisado (modelo híbrido)
+
+Temas e dispositivos de lei preparados e revisados pela equipe, em `/admin/catalogo` (só administradores). Quando o pedido do aluno é coberto pelo catálogo, o estudo é **montado na hora, sem IA e sem consumir cota**; o que não estiver no catálogo continua sendo gerado pela IA.
+
+- **Reconhecimento sem IA** (`src/domain/catalog/match.ts`): referências de lei viram chaves — "art. 5º da CF", "arts. 121 a 129 do Código Penal", "Lei 11.340, arts. 1º a 7º", "CP, art. 121-A" — e temas são achados por título e sinônimos. O catálogo só é usado com **cobertura total** do pedido; cobertura parcial segue para a IA (e o aluno vê o motivo). O aluno pode marcar "prefiro que a IA gere uma aula nova".
+- **Um tema por artigo**: pedidos de intervalo juntam os temas sozinhos (`composeStudy`), com mapa, unidades e chaves renumeradas.
+- **Cópias por aluno**: o estudo recebe cópia da aula e **10 questões por nível sorteadas do banco** (ordem diferente para cada aluno). A recuperação usa questões do banco que o aluno ainda não recebeu; só se o banco acabar a IA é chamada.
+- **Versões**: publicar de novo cria nova versão; quem estudou a anterior vê o aviso "conteúdo atualizado no catálogo".
+- **Edição**: dados e sinônimos, texto-fonte (cole a lei oficial), rascunho com IA em passos (estrutura → aula → banco de 15 questões por nível, repetível), edição de cada seção e questão, remoção, publicação (exige estrutura, aula e ao menos 10 questões por nível), despublicação e arquivo.
+- **Fila da IA** (`/admin/fila`): pedidos atendidos pela IA, agrupados e ordenados por número de alunos, sem identificar quem pediu. "Promover" cria um rascunho com a aula e as questões geradas.
+- **Banco** (`…0800_catalog`): `catalog_topics`, `catalog_questions` (leitura só para administradores, gravação só pelo servidor), `lessons.catalog_topic_id/version/key_map` e `catalog_topic_versions()` (o aluno vê só id e versão de temas publicados).
+
+**Tornar-se administrador:** no SQL Editor do Supabase, `insert into public.admin_roles (user_id, role) values ('<seu user id>', 'admin');` (o id está em *Authentication → Users*).
+
 ## Design e experiência
 
 **Identidade APROVUM.** Preto, branco e vermelho, a partir da logo (`public/icons/aprovum-*.png`, ícones do PWA gerados dela). Fundo branco, texto preto, vermelho `#E10600` para ações e destaque (`#C80500` quando é texto, para manter contraste AA) e preto nos elementos de marca (barra lateral, botões escuros). Camadas de aprendizagem: estudado (cinza) → praticado (vermelho) → dominado (preto); "não verificado" usa listras. Acerto = preto com ✓; erro = vermelho com ícone e texto.
@@ -114,7 +128,7 @@ Renderiza as telas autenticadas com **dados de exemplo identificados como tal**,
 ## Configuração
 
 1. `npm ci`
-2. Crie um projeto no Supabase e aplique as **7 migrações** de `supabase/migrations/`, em ordem (`supabase db push` com a CLI, ou cole cada arquivo no SQL Editor): `…0100_schema`, `…0200_security`, `…0300_seed`, `…0400_functions`, `…0500_study_tools`, `…0600_theme_flow`, `…0700_content_units`. Quem já aplicou as anteriores aplica só as que faltam, em ordem. A `…0700` não apaga dados: questões existentes recebem o nível pela dificuldade e unidades já aprovadas contam como os três níveis concluídos.
+2. Crie um projeto no Supabase e aplique as **8 migrações** de `supabase/migrations/`, em ordem (`supabase db push` com a CLI, ou cole cada arquivo no SQL Editor): `…0100_schema`, `…0200_security`, `…0300_seed`, `…0400_functions`, `…0500_study_tools`, `…0600_theme_flow`, `…0700_content_units`, `…0800_catalog`. Quem já aplicou as anteriores aplica só as que faltam, em ordem. A `…0700` não apaga dados: questões existentes recebem o nível pela dificuldade e unidades já aprovadas contam como os três níveis concluídos.
 3. Em *Authentication → URL Configuration*, adicione `https://SEU-DOMINIO/auth/callback` (e `http://localhost:3000/auth/callback`) às URLs de redirecionamento.
 4. Copie `.env.example` para `.env.local` e preencha (veja os comentários no arquivo).
 5. `npm run dev`
@@ -159,10 +173,10 @@ Os testes de banco aplicam as **migrações de produção** num Postgres real co
 |---|---|
 | TypeScript (`tsc --noEmit`) | sem erros |
 | ESLint (`--max-warnings=0`) | sem erros |
-| Unitários (109) | 109 aprovados |
-| Banco — RLS, integridade, cotas, persistência, níveis, recuperação, PDF (40) | 40 aprovados (PostgreSQL 16) |
+| Unitários (123) | 123 aprovados |
+| Banco — RLS, integridade, cotas, persistência, níveis, recuperação, PDF, catálogo (44) | 44 aprovados (PostgreSQL 16) |
 | Build de produção | sucesso |
-| E2E públicos + interações da galeria, celular e desktop (79) | 79 aprovados (3 testes só de desktop pulados no perfil celular) |
+| E2E públicos + interações da galeria, celular e desktop (83) | 83 aprovados (3 testes só de desktop pulados no perfil celular) |
 | E2E autenticados (4) | **pulados** — sem Supabase/IA/conta de teste |
 | Galeria em produção sem a variável | 404 (verificado) |
 | Segredos no bundle do navegador | nenhum (verificado) |

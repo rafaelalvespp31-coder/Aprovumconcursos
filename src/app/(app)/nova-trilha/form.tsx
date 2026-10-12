@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
+import { useActionState, useEffect, useMemo, useState } from "react";
 import { Button, Notice, inputClass } from "@/components/ui";
 import { CONTENT_EXAMPLES, CONTENT_LIMITS, CONTENT_TYPE_OPTIONS, EXAM_BOARDS, trailRequestSchema, type ExamBoardSlug } from "@/domain/trail-input";
 import type { ContentType } from "@/domain/content/types";
-import { createTrailAction, type CreateTrailState } from "./actions";
+import { catalogHintAction, createTrailAction, type CatalogHint, type CreateTrailState } from "./actions";
 
 const PLACEHOLDER =
   "Ex.: Prisão em flagrante · Art. 5º da Constituição Federal · Arts. 121 a 129 do Código Penal · ou cole o texto da lei, o capítulo ou a matéria que você quer estudar agora.";
@@ -41,6 +41,24 @@ export function NewTrailForm({ initialContent = "" }: { initialContent?: string 
   const [typeTouched, setTypeTouched] = useState(false);
   const [title, setTitle] = useState("");
   const [touched, setTouched] = useState(false);
+  const [hint, setHint] = useState<{ for: string; data: CatalogHint } | null>(null);
+  const [useAi, setUseAi] = useState(false);
+
+  // Sugestão ao vivo do catálogo revisado (o resultado final é decidido no servidor).
+  useEffect(() => {
+    const text = content.trim();
+    if (text.length < 4 || text.length > 300) return;
+    let alive = true;
+    const t = setTimeout(async () => {
+      const data = await catalogHintAction(text);
+      if (alive) setHint({ for: text, data });
+    }, 450);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [content]);
+  const catalog = hint && hint.for === content.trim() && hint.data.kind !== "nenhum" ? hint.data : null;
 
   const validation = useMemo(
     () => trailRequestSchema.safeParse({ board: board ?? undefined, otherBoardName: other, contentType: type, content, title }),
@@ -86,6 +104,27 @@ export function NewTrailForm({ initialContent = "" }: { initialContent?: string 
           </span>
         </div>
         {touched && issues.content && <p className="mt-2 t-tiny text-erro" role="alert">{issues.content}</p>}
+        {catalog && (
+          <div className="mt-3 rounded-md border border-linha-forte bg-nevoa p-3 t-small" role="status" data-testid="catalogo-sugestao">
+            {catalog.kind === "completo" ? (
+              <>
+                <p className="font-semibold">
+                  <span className="mr-1.5 inline-block rounded-full bg-azul px-2 py-0.5 t-tiny text-white">Revisado</span>
+                  Este conteúdo já está no catálogo do APROVUM: começa na hora, sem esperar a geração.
+                </p>
+                <p className="mt-1 text-tinta-suave">{catalog.titles.join(" · ")}</p>
+                <label className="mt-2 flex items-center gap-2 text-tinta-suave">
+                  <input type="checkbox" name="usarIa" value="1" checked={useAi} onChange={(e) => setUseAi(e.target.checked)} className="size-4 accent-azul" />
+                  Prefiro que a IA gere uma aula nova
+                </label>
+              </>
+            ) : (
+              <p className="text-tinta-suave">
+                Parte do pedido está no catálogo ({catalog.titles.join(", ")}), mas não tudo{catalog.reason ? ` — ${catalog.reason}` : ""}. A aula será gerada pela IA.
+              </p>
+            )}
+          </div>
+        )}
         <div className="mt-3 flex flex-wrap gap-2" aria-label="Exemplos">
           {CONTENT_EXAMPLES.map((ex) => (
             <button
