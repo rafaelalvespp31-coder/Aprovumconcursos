@@ -1,5 +1,6 @@
 import "server-only";
 import { AnthropicProvider } from "./anthropic";
+import { OpenAICompatProvider } from "./openai-compat";
 import { AIError, type AIProvider } from "./provider";
 
 function numberOrNull(v: string | undefined): number | null {
@@ -9,6 +10,15 @@ function numberOrNull(v: string | undefined): number | null {
 }
 
 let cached: AIProvider | null = null;
+
+/** Endereços e variáveis de chave dos provedores compatíveis. */
+const COMPAT_PRESETS: Record<string, { baseUrl: string; keyVar: string; keyRequired: boolean }> = {
+  gemini: { baseUrl: "https://generativelanguage.googleapis.com/v1beta/openai", keyVar: "GEMINI_API_KEY", keyRequired: true },
+  groq: { baseUrl: "https://api.groq.com/openai/v1", keyVar: "GROQ_API_KEY", keyRequired: true },
+  openrouter: { baseUrl: "https://openrouter.ai/api/v1", keyVar: "OPENROUTER_API_KEY", keyRequired: true },
+  // Qualquer servidor compatível (ex.: Ollama local em http://localhost:11434/v1). Chave opcional.
+  openai_compat: { baseUrl: "", keyVar: "AI_API_KEY", keyRequired: false },
+};
 
 /**
  * Seleciona o provedor por variável de ambiente. Sem configuração válida, falha
@@ -34,6 +44,35 @@ export function getAIProvider(): AIProvider {
         inputPricePerMTok: numberOrNull(process.env.AI_PRICE_INPUT_PER_MTOK),
         outputPricePerMTok: numberOrNull(process.env.AI_PRICE_OUTPUT_PER_MTOK),
         maxRetries: 2,
+      });
+      return cached;
+    }
+    // Opções gratuitas/compatíveis (formato "chat completions").
+    case "gemini":
+    case "groq":
+    case "openrouter":
+    case "openai_compat": {
+      const preset = COMPAT_PRESETS[provider]!;
+      const apiKey = process.env[preset.keyVar] ?? null;
+      const model = process.env.AI_MODEL;
+      const baseUrl = process.env.AI_BASE_URL || preset.baseUrl;
+      if (!model || !baseUrl || (preset.keyRequired && !apiKey)) {
+        throw new AIError(
+          `IA não configurada: defina ${preset.keyRequired ? `${preset.keyVar}, ` : ""}AI_MODEL${preset.baseUrl ? "" : " e AI_BASE_URL"} no ambiente do servidor.`,
+          "not_configured",
+          false,
+        );
+      }
+      cached = new OpenAICompatProvider({
+        name: provider,
+        baseUrl,
+        apiKey,
+        model,
+        inputPricePerMTok: numberOrNull(process.env.AI_PRICE_INPUT_PER_MTOK),
+        outputPricePerMTok: numberOrNull(process.env.AI_PRICE_OUTPUT_PER_MTOK),
+        jsonMode: process.env.AI_JSON_MODE === "object" ? "object" : "schema",
+        reasoningEffort: process.env.AI_REASONING_EFFORT || null,
+        headers: provider === "openrouter" ? { "X-Title": "APROVUM", ...(process.env.NEXT_PUBLIC_SITE_URL ? { "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL } : {}) } : undefined,
       });
       return cached;
     }

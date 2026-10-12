@@ -133,7 +133,10 @@ insert into public.admin_roles (user_id, role) values ('<uuid do usuário>', 'ad
 | `NEXT_PUBLIC_SITE_URL` | público | sim em produção |
 | `SUPABASE_SECRET_KEY` (ou `SUPABASE_SERVICE_ROLE_KEY`) | servidor | sim |
 | `AI_PROVIDER` | servidor | não (padrão `anthropic`) |
-| `ANTHROPIC_API_KEY`, `AI_MODEL` | servidor | sim para gerar trilhas/aulas |
+| `AI_PROVIDER` | servidor | `anthropic` (padrão, pago), `gemini` (camada gratuita do Google AI Studio), `groq`, `openrouter` ou `openai_compat` (ex.: Ollama local) |
+| `AI_MODEL` + a chave do provedor (`ANTHROPIC_API_KEY`, `GEMINI_API_KEY`, `GROQ_API_KEY` ou `OPENROUTER_API_KEY`) | servidor | sim para gerar estudos e aulas |
+| `AI_BASE_URL`, `AI_API_KEY` | servidor | só para `openai_compat` |
+| `AI_REASONING_EFFORT`, `AI_JSON_MODE` | servidor | opcionais (`low` economiza cota em modelos que pensam; `object` para modelos sem JSON Schema) |
 | `AI_PRICE_INPUT_PER_MTOK`, `AI_PRICE_OUTPUT_PER_MTOK` | servidor | não (sem elas, custo = desconhecido) |
 
 Sem IA configurada, o app funciona e a construção falha com a mensagem "IA não configurada" — não há conteúdo fictício de reserva.
