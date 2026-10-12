@@ -490,9 +490,15 @@ function TrailTile({ t, delay, onOpen }: { t: TrailCard; delay: number; onOpen: 
         <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/90 blur-[14px]" aria-hidden />
         <div className="relative flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-3">
-            <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border border-[#E5E5E5] bg-[#F5F5F5] text-[22px] shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-transform duration-500 group-hover:rotate-[-8deg]" aria-hidden>
-              {t.icon}
-            </div>
+            {t.totalLessons > 0 && t.passedLessons >= t.totalLessons ? (
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e9f7ee] text-[22px] ring-2 ring-[#15803d]" role="img" aria-label="Estudado" data-testid="avatar-estudado">
+                ✅
+              </div>
+            ) : (
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border border-[#E5E5E5] bg-[#F5F5F5] text-[22px] shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-transform duration-500 group-hover:rotate-[-8deg]" aria-hidden>
+                {t.icon}
+              </div>
+            )}
             <div className="min-w-0">
               <div className="truncate font-[Space_Grotesk] text-[14.5px] font-bold leading-tight">{t.title}</div>
               <div className="text-[11px] text-[#5C5C5C]">
@@ -537,9 +543,12 @@ function TrailTile({ t, delay, onOpen }: { t: TrailCard; delay: number; onOpen: 
           return (
             <div key={m.id} className="group/item">
               <div className="mb-1.5 flex items-center justify-between gap-3 text-[12px]">
-                <span className="truncate font-medium">{m.title}</span>
-                <span className={`shrink-0 font-bold ${done ? "text-[#0A0A0A]" : "text-[#4D4D4D]"}`}>
-                  {m.passed}/{m.total} {done && "✓"}
+                <span className="flex min-w-0 items-center gap-1.5 font-medium">
+                  {done && <span className="shrink-0" role="img" aria-label="Matéria estudada">✅</span>}
+                  <span className="truncate">{m.title}</span>
+                </span>
+                <span className={`shrink-0 font-bold ${done ? "text-[#15803d]" : "text-[#4D4D4D]"}`}>
+                  {m.passed}/{m.total}
                 </span>
               </div>
               <div className="relative h-2.5 overflow-hidden rounded-full bg-[#F4F4F4] p-0.5">

@@ -51,6 +51,24 @@ export async function listTrails(includeArchived = false): Promise<TrailSummary[
   return (data ?? []) as TrailSummary[];
 }
 
+/** Progresso por estudo: aulas com os 3 níveis vencidos / total de aulas. */
+export async function listTrailProgress(): Promise<Record<string, { done: number; total: number }>> {
+  const db = await createUserClient();
+  const [lessons, progress] = await Promise.all([
+    db.from("lessons").select("id, trail_id"),
+    db.from("learning_progress").select("lesson_id, levels_passed"),
+  ]);
+  if (lessons.error) throw new Error(lessons.error.message);
+  const passed = new Set(((progress.data ?? []) as Array<{ lesson_id: string; levels_passed: number | null }>).filter((p) => (p.levels_passed ?? 0) >= 3).map((p) => p.lesson_id));
+  const out: Record<string, { done: number; total: number }> = {};
+  for (const l of (lessons.data ?? []) as Array<{ id: string; trail_id: string }>) {
+    const r = (out[l.trail_id] ??= { done: 0, total: 0 });
+    r.total++;
+    if (passed.has(l.id)) r.done++;
+  }
+  return out;
+}
+
 export async function getTrail(id: string) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const db = await createUserClient();

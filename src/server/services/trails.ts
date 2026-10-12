@@ -232,6 +232,20 @@ export async function setTrailArchived(trailId: string, userId: string, archived
 }
 
 /**
+ * Exclui o estudo de vez: aulas, questões, respostas, progresso, anotações e PDFs
+ * vão junto (chaves estrangeiras em cascata). O histórico de cota não é devolvido.
+ */
+export async function deleteTrail(trailId: string, userId: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(trailId)) throw new UserFacingError("Estudo não encontrado.", "not_found");
+  const db = createAdminClient();
+  const { data: t } = await db.from("study_trails").select("title").eq("id", trailId).eq("user_id", userId).maybeSingle();
+  if (!t) throw new UserFacingError("Estudo não encontrado.", "not_found");
+  const r = await db.from("study_trails").delete().eq("id", trailId).eq("user_id", userId);
+  if (r.error) throw new Error(r.error.message);
+  await auditLog(db, { actorId: userId, userId, action: "trail.deleted", entity: "study_trails", entityId: trailId, meta: { title: t.title } });
+}
+
+/**
  * Solicita a geração de uma aula (consome cota uma única vez). Se já houver job
  * ativo para a aula, devolve-o em vez de criar outro.
  */

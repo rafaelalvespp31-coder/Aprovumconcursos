@@ -311,6 +311,29 @@ describe("pastas do aluno", () => {
   });
 });
 
+describe("excluir estudo", () => {
+  itDb("apagar o estudo remove em cascata tudo o que é dele e não toca no de outro aluno", async () => {
+    await db.query("begin");
+    try {
+      const tables = (
+        await db.query("select table_name from information_schema.columns where table_schema = 'public' and column_name = 'trail_id' and table_name in (select table_name from information_schema.tables where table_schema = 'public' and table_type = 'BASE TABLE')")
+      ).rows.map((r) => r.table_name as string);
+      const count = async (trail: string) => {
+        let n = 0;
+        for (const t of tables) n += Number((await db.query(`select count(*) c from public.${t} where trail_id = $1`, [trail])).rows[0].c);
+        return n;
+      };
+      expect(await count(ids.a_trail!)).toBeGreaterThan(0);
+      const otherBefore = await count(ids.b_trail!);
+      await db.query("delete from study_trails where id = $1 and user_id = $2", [ids.a_trail, A]);
+      expect(await count(ids.a_trail!)).toBe(0);
+      expect(await count(ids.b_trail!)).toBe(otherBefore);
+    } finally {
+      await db.query("rollback");
+    }
+  });
+});
+
 describe("cotas, limite de taxa e lease (servidor)", () => {
   itDb("consome cota até o limite do plano e então bloqueia", async () => {
     const limit = (await db.query("select max_trail_builds_per_month l from plans where id = 'free'")).rows[0].l as number;

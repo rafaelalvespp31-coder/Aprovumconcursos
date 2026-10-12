@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { listFolders, listTrails } from "@/server/queries";
+import { listFolders, listTrailProgress, listTrails } from "@/server/queries";
 import { ButtonLink, EmptyState, Tag } from "@/components/ui";
 import { boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
 import { FolderBoard, type BoardTrail } from "./folder-board";
@@ -17,7 +17,7 @@ const STATUS: Record<string, BoardTrail["status"]> = {
 
 export default async function TrailsPage({ searchParams }: { searchParams: Promise<{ arquivadas?: string }> }) {
   const { arquivadas } = await searchParams;
-  const [all, folders] = await Promise.all([listTrails(true), listFolders()]);
+  const [all, folders, progress] = await Promise.all([listTrails(true), listFolders(), listTrailProgress()]);
   const showArchived = arquivadas === "1";
   const trails = all.filter((t) => (showArchived ? t.archived_at : !t.archived_at));
   const archivedCount = all.filter((t) => t.archived_at).length;
@@ -64,7 +64,7 @@ export default async function TrailsPage({ searchParams }: { searchParams: Promi
       ) : (
         <FolderBoard
           folders={folders.map((f) => ({ id: f.id, name: f.name, color: f.color }))}
-          trails={trails.map((t) => ({ id: t.id, title: t.title, subtitle: subtitle(t), status: STATUS[t.status] ?? STATUS.pending!, folderId: t.folder_id }))}
+          trails={trails.map((t) => ({ id: t.id, title: t.title, subtitle: subtitle(t), status: STATUS[t.status] ?? STATUS.pending!, folderId: t.folder_id, progress: progress[t.id] ?? { done: 0, total: 0 } }))}
         />
       )}
 

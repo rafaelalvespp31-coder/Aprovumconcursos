@@ -3,7 +3,28 @@
 import { useRouter } from "next/navigation";
 import { ConfirmAction } from "@/components/interactive";
 import { Button } from "@/components/ui";
-import { archiveTrailAction } from "./actions";
+import { archiveTrailAction, deleteTrailAction } from "./actions";
+
+export function DeleteTrail({ trailId }: { trailId: string }) {
+  const router = useRouter();
+  return (
+    <ConfirmAction
+      trigger="Excluir estudo"
+      title="Excluir este estudo de vez?"
+      description="Aulas, questões, respostas, progresso, revisões, anotações e PDF deste estudo serão apagados permanentemente. Não dá para desfazer. Se quiser só tirá-lo da frente, use Arquivar."
+      confirmLabel="Excluir definitivamente"
+      onConfirm={async () => {
+        const r = await deleteTrailAction(trailId);
+        if (!r.ok) {
+          alert(r.error ?? "Não foi possível excluir.");
+          return;
+        }
+        router.push("/trilhas");
+        router.refresh();
+      }}
+    />
+  );
+}
 
 export function ArchiveTrail({ trailId, archived }: { trailId: string; archived: boolean }) {
   const router = useRouter();

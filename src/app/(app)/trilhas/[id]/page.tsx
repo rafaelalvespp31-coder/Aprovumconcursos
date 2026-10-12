@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { getCoverage, getTrail, getTrailPlan, listStudyPdfs, moduleProgress, rulerStateOf } from "@/server/queries";
 import { PdfPanel } from "./pdf-panel";
 import { TrailMap } from "./trail-map";
-import { ArchiveTrail } from "./archive";
+import { ArchiveTrail, DeleteTrail } from "./archive";
 import { CoverageRuler, RulerLegend } from "@/components/coverage-ruler";
 import { Button, ButtonLink, Notice } from "@/components/ui";
 import { boardDisplayName, CONTENT_TYPE_OPTIONS, type ExamBoardSlug } from "@/domain/trail-input";
@@ -63,7 +63,12 @@ export default async function TrailPage({
     <div>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <h1 className="t-h1 break-words">{trail.title}</h1>
+          <h1 className="t-h1 flex items-center gap-2 break-words">
+            {lessons.length > 0 && unitsDone >= lessons.length && (
+              <span className="entrar flex size-9 shrink-0 items-center justify-center rounded-full bg-acerto-fundo text-lg ring-2 ring-acerto" role="img" aria-label="Estudado" title="Estudado: todas as aulas concluídas" data-testid="avatar-estudado">✅</span>
+            )}
+            {trail.title}
+          </h1>
           <p className="mt-1 t-small text-tinta-suave">
             Banca {boardDisplayName(trail.board_slug as ExamBoardSlug, trail.other_board_name)}, {typeLabel?.toLowerCase()}
             {trail.archived_at && " (arquivado)"}
@@ -172,8 +177,9 @@ export default async function TrailPage({
         <TrailMap modules={modules} progress={new Map(moduleProgress(modules, coverage).map((m) => [m.id, m]))} titleByKey={titleByKey} review={review} />
       </section>
 
-      <div className="mt-10">
+      <div className="mt-10 flex flex-wrap gap-3">
         <ArchiveTrail trailId={id} archived={!!trail.archived_at} />
+        <DeleteTrail trailId={id} />
       </div>
     </div>
   );

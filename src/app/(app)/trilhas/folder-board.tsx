@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Icon } from "@/components/icons";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
+import { deleteTrailAction } from "./[id]/actions";
 import { createFolderAction, deleteFolderAction, moveTrailAction, renameFolderAction, reorderTrailAction, type FolderResult } from "./folder-actions";
 
 export interface BoardFolder {
@@ -18,6 +19,43 @@ export interface BoardTrail {
   subtitle: string;
   status: { label: string; tone: "azul" | "verde" | "ambar" | "vermelho" | "neutro" };
   folderId: string | null;
+  /** Aulas com os 3 níveis vencidos / total de aulas do estudo. */
+  progress: { done: number; total: number };
+}
+
+export const isStudied = (t: Pick<BoardTrail, "progress">) => t.progress.total > 0 && t.progress.done >= t.progress.total;
+
+/** Avatar do estudo: ✅ quando todas as aulas foram vencidas; senão, o andamento. */
+export function StudyAvatar({ trail, size = "md" }: { trail: Pick<BoardTrail, "title" | "progress">; size?: "md" | "sm" }) {
+  const dim = size === "sm" ? "size-7 text-sm" : "size-10 text-lg";
+  if (isStudied(trail)) {
+    return (
+      <span
+        className={`${dim} entrar flex shrink-0 items-center justify-center rounded-full bg-acerto-fundo ring-2 ring-acerto`}
+        role="img"
+        aria-label="Estudado"
+        title="Estudado: todas as aulas concluídas"
+        data-testid="avatar-estudado"
+      >
+        ✅
+      </span>
+    );
+  }
+  const { done, total } = trail.progress;
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  return (
+    <span
+      className={`${dim} relative flex shrink-0 items-center justify-center rounded-full bg-nevoa font-bold text-tinta-suave`}
+      style={{ background: `conic-gradient(var(--color-acerto) ${pct}%, var(--color-nevoa) 0)` }}
+      role="img"
+      aria-label={total ? `${done} de ${total} aulas concluídas` : "Ainda sem aulas concluídas"}
+      title={total ? `${done} de ${total} aulas concluídas` : undefined}
+    >
+      <span className="absolute inset-[3px] flex items-center justify-center rounded-full bg-superficie t-tiny tabular-nums">
+        {total ? `${pct}%` : trail.title.trim().charAt(0).toUpperCase()}
+      </span>
+    </span>
+  );
 }
 
 const COLORS: Record<string, string> = {
@@ -146,8 +184,13 @@ function FolderCard({
       <div className="flex items-center gap-2 px-4 py-3">
         <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-10 flex-1 items-center gap-2 text-left">
           <Icon name="chevronRight" className={`size-4 shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
+          {trails.length > 0 && trails.every(isStudied) && (
+            <span className="entrar flex size-7 shrink-0 items-center justify-center rounded-full bg-acerto-fundo ring-2 ring-acerto" role="img" aria-label="Matéria estudada" title="Todos os estudos da pasta concluídos" data-testid="avatar-pasta-estudada">✅</span>
+          )}
           <span className="t-h3">{folder.name}</span>
-          <span className="t-tiny text-tinta-fraca">{trails.length} {trails.length === 1 ? "estudo" : "estudos"}</span>
+          <span className="t-tiny text-tinta-fraca">
+            {trails.filter(isStudied).length}/{trails.length} {trails.length === 1 ? "estudo concluído" : "estudos concluídos"}
+          </span>
         </button>
         <button type="button" onClick={() => setMenu(menu === "renomear" ? null : "renomear")} className="rounded-md p-2 text-tinta-suave hover:bg-nevoa" aria-label="Renomear pasta">
           <Icon name="nota" className="size-4" />
@@ -205,14 +248,17 @@ function TrailRow({
   act: (fn: () => Promise<FolderResult>, after?: () => void) => void;
   order?: { i: number; total: number };
 }) {
+  const [confirming, setConfirming] = useState(false);
+  const studied = isStudied(t);
   return (
-    <li className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+    <li className={`flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 ${studied ? "bg-acerto-fundo/40" : ""}`} data-estudado={studied ? "sim" : undefined}>
       {order && <span className="w-5 shrink-0 text-center t-small font-bold tabular-nums text-tinta-fraca">{order.i + 1}</span>}
+      <StudyAvatar trail={t} />
       <Link href={`/trilhas/${t.id}`} className="min-w-0 flex-1 rounded-md transition-opacity active:opacity-60">
         <p className="truncate font-semibold">{t.title}</p>
         <p className="truncate t-small text-tinta-suave">{t.subtitle}</p>
       </Link>
-      <Tag tone={t.status.tone}>{t.status.label}</Tag>
+      {studied ? <span className="inline-flex items-center gap-1 rounded-full border border-acerto/40 bg-acerto-fundo px-2 py-0.5 t-tiny font-bold text-acerto">✓ Estudado</span> : <Tag tone={t.status.tone}>{t.status.label}</Tag>}
       <div className="flex w-full items-center justify-end gap-1 sm:w-auto">
         {order && (
           <>
@@ -237,7 +283,21 @@ function TrailRow({
             <option key={f.id} value={f.id}>{f.name}</option>
           ))}
         </select>
+        <button type="button" disabled={pending} onClick={() => setConfirming(!confirming)} className="rounded-md p-2 text-tinta-suave hover:bg-nevoa hover:text-erro" aria-label={`Excluir estudo ${t.title}`}>
+          <Icon name="lixeira" className="size-4" />
+        </button>
       </div>
+      {confirming && (
+        <div className="entrar flex w-full flex-wrap items-center gap-3 rounded-md bg-erro-fundo px-3 py-3 t-small" role="alert">
+          <span className="flex-1">
+            Excluir “{t.title}” de vez? Aulas, questões, respostas, progresso e anotações deste estudo serão apagados e não dá para desfazer.
+          </span>
+          <Button variant="perigo" disabled={pending} onClick={() => act(() => deleteTrailAction(t.id), () => setConfirming(false))}>
+            Excluir estudo
+          </Button>
+          <Button variant="discreto" onClick={() => setConfirming(false)}>Cancelar</Button>
+        </div>
+      )}
     </li>
   );
 }

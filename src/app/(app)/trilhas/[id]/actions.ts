@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/server/auth";
-import { activateTrail, answerClarification, setTrailArchived, UserFacingError } from "@/server/services/trails";
+import { activateTrail, answerClarification, deleteTrail, setTrailArchived, UserFacingError } from "@/server/services/trails";
 import { createStudyPdf } from "@/server/services/pdf";
 import { logEvent } from "@/server/observability";
 
@@ -24,6 +24,20 @@ export async function archiveTrailAction(trailId: string, archived: boolean) {
   await setTrailArchived(trailId, user.id, archived);
   revalidatePath("/trilhas");
   revalidatePath(`/trilhas/${trailId}`);
+}
+
+export async function deleteTrailAction(trailId: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser();
+  try {
+    await deleteTrail(trailId, user.id);
+  } catch (e) {
+    if (e instanceof UserFacingError) return { ok: false, error: e.message };
+    await logEvent("trail.delete_failed", { trailId, error: (e as Error).message });
+    return { ok: false, error: "Não foi possível excluir agora. Tente novamente." };
+  }
+  revalidatePath("/trilhas");
+  revalidatePath("/painel");
+  return { ok: true };
 }
 
 export interface ClarifyState {
