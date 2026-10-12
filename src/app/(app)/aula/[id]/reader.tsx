@@ -295,7 +295,7 @@ export function LessonReader(props: ReaderProps) {
                   <ul className="mt-2 flex flex-col gap-1">
                     {nodes.map((n) => (
                       <li key={n.key} className="flex items-start justify-between gap-3">
-                        <span>{n.marker && <span className="mr-1 font-semibold text-destaque">{n.marker}</span>}{n.title}</span>
+                        <span className={/\brevogad[oa]s?\b/i.test(n.title) ? "item-revogado" : undefined}>{n.marker && <span className="mr-1 font-semibold text-destaque">{n.marker}</span>}{n.title}</span>
                         <Tag tone={n.taught ? "azul" : "ambar"}>{n.taught ? "Ensinado" : "Pendente"}</Tag>
                       </li>
                     ))}
@@ -467,7 +467,7 @@ function SectionBlock({
   const kind = s.kind as LessonSectionKind;
   const label = s.title || SECTION_LABELS[kind] || "Seção";
   const unverified = s.verification_status === "pendente";
-  const body = <Markdown>{s.body_markdown}</Markdown>;
+  const body = <Markdown legal={kind === "texto_legal"}>{s.body_markdown}</Markdown>;
   let content: React.ReactNode;
 
   if (kind === "texto_legal") {

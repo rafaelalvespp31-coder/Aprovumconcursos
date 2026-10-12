@@ -289,3 +289,38 @@ body {
 .md-destaque > div > :last-child {
   margin-bottom: 0;
 }
+
+/* Dispositivos revogados: riscados com linha vermelha */
+.md-revogado .md-revogado-texto,
+.item-revogado {
+  text-decoration: line-through;
+  text-decoration-color: #e10600;
+  text-decoration-thickness: 2px;
+  color: var(--color-tinta-fraca);
+}
+.md-revogado .md-revogado-texto .md-forte {
+  color: var(--color-tinta-fraca);
+}
+.md-revogado-selo {
+  display: inline-block;
+  margin-right: 0.45rem;
+  padding: 0 0.4rem;
+  border-radius: 4px;
+  background: #e10600;
+  color: #fff;
+  font-family: var(--font-sans);
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  vertical-align: 0.12em;
+  text-decoration: none;
+}
+.leitura blockquote p {
+  margin: 0 0 0.45rem;
+}
+.leitura blockquote.md-lei {
+  border-left: 3px solid var(--color-linha-forte);
+  background: transparent;
+  padding: 0.25rem 0 0.25rem 0.9rem;
+}
