@@ -77,15 +77,33 @@ interface ChatResponse {
   usage?: { prompt_tokens?: number; completion_tokens?: number };
 }
 
+export type Diagnosis400 = "bad_key" | "bad_model" | "drop_reasoning" | "json_object" | "unknown";
+
+/** Interpreta o corpo de um HTTP 400 para decidir um ajuste automático ou uma mensagem clara. */
+export function diagnose400(text: string, can: { reasoning: boolean; schema: boolean }): Diagnosis400 {
+  if (/api[_ ]?key|API_KEY_INVALID|invalid authentication|credential/i.test(text)) return "bad_key";
+  if (can.reasoning && /reasoning|thinking/i.test(text)) return "drop_reasoning";
+  if (can.schema && /response_format|json_schema|schema/i.test(text)) return "json_object";
+  if (/model/i.test(text) && /not (found|supported|exist)|unknown|invalid/i.test(text)) return "bad_model";
+  return "unknown";
+}
+
+/** Remove trechos parecidos com chaves antes de registrar. */
+export function redact(text: string): string {
+  return text.replace(/(AIza[0-9A-Za-z_-]{10,}|sk-[0-9A-Za-z_-]{10,}|gsk_[0-9A-Za-z]{10,}|Bearer\s+\S+)/g, "[redacted]");
+}
+
 export class OpenAICompatProvider implements AIProvider {
   readonly name: string;
   readonly model: string;
   private jsonMode: "schema" | "object";
+  private reasoningEffort: string | null;
 
   constructor(private readonly config: OpenAICompatConfig) {
     this.name = config.name;
     this.model = config.model;
     this.jsonMode = config.jsonMode;
+    this.reasoningEffort = config.reasoningEffort ?? null;
   }
 
   async generateStructured<T>(req: StructuredRequest<T>): Promise<StructuredResult<T>> {
@@ -139,27 +157,30 @@ export class OpenAICompatProvider implements AIProvider {
   }
 
   private async call(messages: ChatMessage[], req: StructuredRequest<unknown>, name: string, schema: Record<string, unknown>, usage: AIUsage): Promise<ChatResponse> {
-    const body = (mode: "schema" | "object") => ({
+    const body = () => ({
       model: this.model,
       messages,
       temperature: req.temperature ?? 0.2,
       max_tokens: req.maxOutputTokens,
-      ...(this.config.reasoningEffort ? { reasoning_effort: this.config.reasoningEffort } : {}),
-      response_format: mode === "schema" ? { type: "json_schema", json_schema: { name, strict: false, schema } } : { type: "json_object" },
+      ...(this.reasoningEffort ? { reasoning_effort: this.reasoningEffort } : {}),
+      response_format: this.jsonMode === "schema" ? { type: "json_schema", json_schema: { name, strict: false, schema } } : { type: "json_object" },
     });
-    let res = await this.post(body(this.jsonMode), req.timeoutMs, usage);
-    // Alguns modelos não aceitam json_schema: cai para JSON simples (o esquema já está no prompt).
-    if (res.status === 400 && this.jsonMode === "schema") {
-      const text = await res.text();
-      if (/response_format|json_schema|schema/i.test(text)) {
-        this.jsonMode = "object";
-        res = await this.post(body("object"), req.timeoutMs, usage);
-      } else {
-        throw new AIError("Erro do provedor de IA (HTTP 400).", "provider_error", false, usage);
-      }
+    // Até 3 ajustes automáticos para recursos que o modelo não aceita.
+    for (let i = 0; i < 3; i++) {
+      const res = await this.post(body(), req.timeoutMs, usage);
+      if (res.ok) return (await res.json()) as ChatResponse;
+      if (res.status !== 400) throw this.classify(res.status, usage);
+      const text = await res.text().catch(() => "");
+      const adjust = diagnose400(text, { reasoning: !!this.reasoningEffort, schema: this.jsonMode === "schema" });
+      if (adjust === "drop_reasoning") { this.reasoningEffort = null; continue; }
+      if (adjust === "json_object") { this.jsonMode = "object"; continue; }
+      // Registro no servidor (Vercel → Logs) para diagnóstico; sem chaves, truncado.
+      console.error(JSON.stringify({ event: "ai.provider_400", provider: this.name, model: this.model, detail: redact(text).slice(0, 600) }));
+      if (adjust === "bad_key") throw new AIError("Chave da IA inválida. Confira a variável GEMINI_API_KEY (ou a do provedor escolhido) no servidor.", "not_configured", false, usage);
+      if (adjust === "bad_model") throw new AIError(`Modelo de IA não encontrado: "${this.model}". Confira a variável AI_MODEL no servidor.`, "not_configured", false, usage);
+      throw new AIError("Erro do provedor de IA (HTTP 400).", "provider_error", false, usage);
     }
-    if (!res.ok) throw this.classify(res.status, usage);
-    return (await res.json()) as ChatResponse;
+    throw new AIError("Erro do provedor de IA (HTTP 400).", "provider_error", false, usage);
   }
 
   private async post(body: unknown, timeoutMs: number | undefined, usage: AIUsage): Promise<Response> {

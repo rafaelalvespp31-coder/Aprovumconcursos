@@ -63,6 +63,28 @@ describe("adaptador compatível (Gemini, Groq, OpenRouter, Ollama)", () => {
     expect(e.kind).toBe("invalid_output");
   });
 
+  it("HTTP 400: retira reasoning_effort, avisa chave/modelo inválidos e não vaza a chave no log", async () => {
+    const withReasoning = () =>
+      new OpenAICompatProvider({ name: "gemini", baseUrl: "https://exemplo.test/v1", apiKey: "k", model: "m", inputPricePerMTok: null, outputPricePerMTok: null, jsonMode: "schema", reasoningEffort: "low" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('{"error":{"message":"Invalid value for reasoning_effort"}}', { status: 400 }))
+      .mockResolvedValueOnce(reply('{"title":"Plano","keys":["N0004"]}'));
+    vi.stubGlobal("fetch", fetchMock);
+    expect((await withReasoning().generateStructured(req)).data.keys).toEqual(["N0004"]);
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body).reasoning_effort).toBe("low");
+    expect(JSON.parse(fetchMock.mock.calls[1]![1].body).reasoning_effort).toBeUndefined();
+
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response('[{"error":{"message":"API key not valid. Please pass a valid API key. AIzaSyFAKEFAKEFAKE123","status":"INVALID_ARGUMENT"}}]', { status: 400 })));
+    await expect(provider().generateStructured(req)).rejects.toMatchObject({ kind: "not_configured", message: expect.stringMatching(/GEMINI_API_KEY/) });
+    expect(err.mock.calls.flat().join(" ")).not.toMatch(/AIzaSyFAKE/);
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response('{"error":{"message":"models/m is not found for API version v1beta"}}', { status: 400 })));
+    await expect(provider().generateStructured(req)).rejects.toMatchObject({ kind: "not_configured", message: expect.stringMatching(/AI_MODEL/) });
+    err.mockRestore();
+  });
+
   it("utilitários", () => {
     expect(parseJsonLoose('Aqui está: {"a":1} pronto')).toEqual({ a: 1 });
     expect(sanitizeSchema({ type: "string", pattern: "x", minLength: 2, description: "d" })).toEqual({ type: "string", description: "d" });
