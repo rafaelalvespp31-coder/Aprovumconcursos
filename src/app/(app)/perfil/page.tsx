@@ -1,7 +1,9 @@
 import { getDashboard, getProfile, getStudyStats } from "@/server/queries";
 import { requireUser } from "@/server/auth";
 import { computeGamification } from "@/domain/progress/gamification";
+import Link from "next/link";
 import { PastelCard } from "@/components/pastel/card";
+import { getBankRoles } from "@/server/services/bank";
 import { signOut } from "../../(auth)/actions";
 import { LogoutButton } from "../logout-button";
 import { ProfileForm } from "./form";
@@ -11,7 +13,8 @@ export const metadata = { title: "Perfil" };
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const [{ profile, subscription }, stats, dash] = await Promise.all([getProfile(), getStudyStats(), getDashboard()]);
+  const [{ profile, subscription }, stats, dash, roles] = await Promise.all([getProfile(), getStudyStats(), getDashboard(), getBankRoles(user.id)]);
+  const staff = roles.admin || roles.autor || roles.revisor;
   const plan = subscription?.plans as unknown as { name: string; max_active_trails: number; max_trail_builds_per_month: number; max_lesson_generations_per_month: number } | null;
   return (
     <PastelProfile
@@ -26,6 +29,17 @@ export default async function ProfilePage() {
         weekLessonsCompleted: dash.weekLessonsCompleted,
       }}
     >
+      {staff && (
+        <PastelCard noTilt className="p-6" testId="area-equipe">
+          <h2 className="mb-1 text-[13px] font-bold">Área da equipe</h2>
+          <p className="mb-4 text-[12px] text-[#5C5C5C]">Visível só para a equipe do APROVUM.</p>
+          <div className="flex flex-wrap gap-2">
+            <Link href="/banco/gerar" className="inline-flex min-h-11 items-center rounded-xl bg-[#E10600] px-4 text-[13px] font-bold text-white active:scale-95">Gerar questões com IA</Link>
+            <Link href="/banco" className="inline-flex min-h-11 items-center rounded-xl bg-[#0A0A0A] px-4 text-[13px] font-bold text-white active:scale-95">Banco de questões</Link>
+            {roles.admin && <Link href="/admin/catalogo" className="inline-flex min-h-11 items-center rounded-xl border border-[#D4D4D4] px-4 text-[13px] font-bold active:scale-95">Catálogo</Link>}
+          </div>
+        </PastelCard>
+      )}
       <PastelCard noTilt className="p-6">
         <h2 className="mb-4 text-[13px] font-bold">Dados e metas</h2>
         <ProfileForm displayName={profile?.display_name ?? ""} dailyQuestions={profile?.daily_questions_goal ?? null} weeklyLessons={profile?.weekly_lessons_goal ?? null} />
