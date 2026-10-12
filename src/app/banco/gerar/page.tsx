@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { bankLookups, requireBankStaff, topicPath } from "@/server/services/bank";
+import { bankLookups, requireBankStaff } from "@/server/services/bank";
 import { bankAIStatus, listBatches, usageReport, usedToday } from "@/server/services/bank-generation";
-import { BLOCKED_BASE_KINDS, FREE_BASE_KINDS } from "@/domain/bank/generation";
 import { DBadge, DCard, DNotice, DStat, fmtDate } from "../ui";
 import { GenerateForm } from "./generate-form";
 
@@ -14,16 +13,13 @@ const STATUS_TONE: Record<string, "verde" | "vermelho" | "ambar" | "neutro"> = {
 export default async function GeneratePage() {
   const staff = await requireBankStaff();
   const [status, lk, batches, usage, used] = await Promise.all([Promise.resolve(bankAIStatus()), bankLookups(), listBatches(), usageReport(), usedToday()]);
-  const sources = lk.sources
-    .filter((s) => s.status === "ativa" && !(BLOCKED_BASE_KINDS as readonly string[]).includes(s.kind))
-    .map((s) => ({ id: s.id, name: s.name, kind: s.kind, usable: (FREE_BASE_KINDS as readonly string[]).includes(s.kind) || s.reuse_verified }));
 
   return (
     <div className="flex flex-col gap-5">
       <div>
-        <h1 className="font-[Space_Grotesk] text-[26px] font-bold">Gerar questões inéditas com IA</h1>
+        <h1 className="font-[Space_Grotesk] text-[26px] font-bold">Gerar questões com IA</h1>
         <p className="text-[14px] text-white/60">
-          A IA só usa o texto-base que você colar. Cada questão precisa citar trechos literais desse texto: citação inexistente é descartada. Tudo entra como “aguardando conferência” e passa por revisão humana. Nada é publicado automaticamente.
+          Escolha a matéria, digite o assunto ou o artigo e toque em Gerar. Se for um artigo de lei, o texto oficial é buscado no Planalto e cada questão precisa citá-lo literalmente. Tudo vai para conferência antes de ser publicado.
         </p>
       </div>
 
@@ -50,9 +46,7 @@ export default async function GeneratePage() {
         status.configured ? (
           <GenerateForm
             subjects={lk.subjects.filter((s) => s.status === "ativa").map((s) => ({ id: s.id, name: s.name }))}
-            topics={lk.topics.filter((t) => t.status === "ativo").map((t) => ({ id: t.id, subject_id: t.subject_id, path: topicPath(lk.topics, t.id) }))}
             boards={lk.boards}
-            sources={sources}
             remainingToday={Math.max(0, status.dailyLimit - used)}
           />
         ) : null

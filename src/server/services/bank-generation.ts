@@ -4,15 +4,19 @@ import { AIError, aiEnabled, aiIsConfigured, getAIProvider } from "@/ai";
 import { generateBankChunk } from "@/ai/bank-generation";
 import {
   BANK_PROMPT_VERSION,
-  BLOCKED_BASE_KINDS,
   DEFAULT_CHUNK,
-  FREE_BASE_KINDS,
+  MAX_SOURCE_CHARS,
   generationParamsSchema,
+  quickGenerationSchema,
+  type QuickGenerationInput,
   toQuestionInput,
   validateBankQuestions,
   type GenerationParams,
 } from "@/domain/bank/generation";
+import { LAW_SOURCES } from "@/domain/bank/law-text";
+import { LAWS, parseLawReference } from "@/domain/catalog/match";
 import { createAdminClient } from "../supabase";
+import { officialArticles } from "./law-text";
 import { auditLog, logEvent } from "../observability";
 import { UserFacingError } from "./trails";
 import { saveQuestion, type BankStaff } from "./bank";
@@ -57,29 +61,95 @@ interface BatchParams extends GenerationParams {
   lastError?: string;
 }
 
-export async function startGeneration(staff: BankStaff, raw: unknown): Promise<{ batchId: string; total: number }> {
+/** Resolve a base do pedido: texto próprio colado > catálogo revisado > texto oficial do Planalto > conhecimento geral. */
+async function resolveBase(staff: BankStaff, q: QuickGenerationInput) {
+  const db = createAdminClient();
+  const today = new Date(Date.now() - 3 * 3600_000).toISOString().slice(0, 10);
+  const ref = parseLawReference(q.query);
+  const law = ref.law ? LAW_SOURCES[ref.law] : undefined;
+  const lawName = law?.name ?? LAWS.find((l) => l.code === ref.law)?.name;
+  const artLabel = ref.articles.length ? `art. ${ref.articles.slice(0, 6).join(", ")}${ref.articles.length > 6 ? "…" : ""}` : "";
+
+  if (q.customText) {
+    return { mode: "texto" as const, label: "texto colado por você", sourceText: q.customText, sourceId: undefined, ref: undefined };
+  }
+
+  let sourceText: string | null = null;
+  let label = "";
+  let notice: string | undefined;
+  if (ref.law && ref.articles.length) {
+    // 1) catálogo revisado da equipe
+    const { data: topics } = await db.from("catalog_topics").select("title, source_text, articles").eq("status", "publicado").eq("law_code", ref.law);
+    const cat = (topics ?? []).find((t) => ref.articles.every((a) => ((t.articles as string[]) ?? []).includes(a)) && (t.source_text as string)?.length >= 200);
+    if (cat) {
+      sourceText = (cat.source_text as string).slice(0, MAX_SOURCE_CHARS);
+      label = `texto do catálogo revisado (${cat.title as string})`;
+    } else if (law) {
+      // 2) texto oficial do Planalto
+      const off = await officialArticles(ref.law, ref.articles, MAX_SOURCE_CHARS);
+      if (off && off.text.length >= 200) {
+        sourceText = off.text;
+        label = `texto oficial do Planalto (${law.name}, art. ${off.found.join(", ")})`;
+        if (off.missing.length) notice = `Artigo(s) não encontrado(s) ou fora do limite de tamanho: ${off.missing.join(", ")}.`;
+      } else {
+        notice = "Não consegui ler o texto oficial agora; as questões foram geradas com conhecimento geral e os fundamentos serão conferidos na revisão.";
+      }
+    }
+  }
+
+  if (sourceText && law) {
+    // Fonte da lei (domínio público) — criada uma vez e reaproveitada.
+    let { data: src } = await db.from("question_sources").select("id").eq("url", law.url).maybeSingle();
+    if (!src) {
+      const ins = await db
+        .from("question_sources")
+        .insert({
+          name: `${law.name} (${law.number}) — Planalto`,
+          kind: "legislacao",
+          author_institution: "Presidência da República",
+          url: law.url,
+          consulted_on: today,
+          license: "Texto de lei: não protegido por direito autoral (Lei 9.610/1998, art. 8º, IV).",
+          status: "ativa",
+          created_by: staff.id,
+        })
+        .select("id")
+        .single();
+      src = ins.data;
+    }
+    return {
+      mode: "texto" as const,
+      label,
+      notice,
+      sourceText,
+      sourceId: (src?.id as string | undefined) ?? undefined,
+      ref: { normName: law.name, normNumber: law.number, article: ref.articles.length === 1 ? ref.articles[0] : undefined, officialUrl: law.url, consultedOn: today },
+    };
+  }
+  return {
+    mode: "geral" as const,
+    label: "conhecimento geral da IA (fundamentos conferidos na revisão)",
+    notice,
+    sourceText: undefined,
+    sourceId: undefined,
+    ref: undefined,
+    focusHint: lawName ? `${lawName}${artLabel ? `, ${artLabel}` : ""}` : undefined,
+  };
+}
+
+export async function startGeneration(staff: BankStaff, raw: unknown): Promise<{ batchId: string; total: number; base: string; notice?: string }> {
   if (!staff.roles.autor) throw new UserFacingError("Somente autores geram questões.", "forbidden");
   const status = bankAIStatus();
   if (!status.enabled) throw new UserFacingError("A geração por IA está desligada. Defina AI_ENABLED=banco no servidor.", "ai_off");
   if (!status.configured) throw new UserFacingError("IA não configurada no servidor (provedor, chave ou modelo).", "ai_off");
-  const p = generationParamsSchema.parse(raw);
+  const q = quickGenerationSchema.parse(raw);
   const db = createAdminClient();
 
-  const { data: src } = await db.from("question_sources").select("kind, status, reuse_verified").eq("id", p.sourceId).maybeSingle();
-  if (!src) throw new UserFacingError("Fonte não encontrada.", "not_found");
-  if (src.status !== "ativa") throw new UserFacingError("A fonte precisa estar ativa.", "invalid");
-  if ((BLOCKED_BASE_KINDS as readonly string[]).includes(src.kind as string)) {
-    throw new UserFacingError("Provas e gabaritos não servem de base para questões inéditas (risco de cópia). Use a lei, a jurisprudência ou material autorizado.", "invalid");
-  }
-  if (!(FREE_BASE_KINDS as readonly string[]).includes(src.kind as string) && !src.reuse_verified) {
-    throw new UserFacingError("Esta fonte exige autorização de reutilização verificada por um revisor antes de servir de base para a IA.", "invalid");
-  }
-
   const used = await usedToday();
-  if (used + p.count > status.dailyLimit) {
+  if (used + q.count > status.dailyLimit) {
     throw new UserFacingError(`Limite diário de geração atingido (${used}/${status.dailyLimit} questões hoje). Tente amanhã ou ajuste AI_BANK_DAILY_QUESTIONS.`, "budget");
   }
-  // Evita pedido duplicado (duplo toque): já existe lote igual em andamento nos últimos 2 minutos?
+  // Evita pedido duplicado (duplo toque): lote igual em andamento nos últimos 2 minutos.
   const { data: recent } = await db
     .from("bank_generation_batches")
     .select("id, params")
@@ -88,9 +158,31 @@ export async function startGeneration(staff: BankStaff, raw: unknown): Promise<{
     .gte("created_at", new Date(Date.now() - 120_000).toISOString());
   const dup = (recent ?? []).find((b) => {
     const bp = b.params as BatchParams;
-    return bp.subjectId === p.subjectId && bp.sourceText === p.sourceText && bp.difficulty === p.difficulty && bp.questionType === p.questionType;
+    return bp.subjectId === q.subjectId && bp.topicLabel === q.query && bp.difficulty === q.difficulty && bp.questionType === q.questionType;
   });
-  if (dup) return { batchId: dup.id as string, total: p.count };
+  if (dup) return { batchId: dup.id as string, total: q.count, base: "lote já em andamento" };
+
+  // Assunto cadastrado com o mesmo nome vira o assunto da questão.
+  const { data: topics } = await db.from("subject_topics").select("id, name").eq("subject_id", q.subjectId).eq("status", "ativo");
+  const norm = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+  const topicId = (topics ?? []).find((t) => norm(t.name as string) === norm(q.query))?.id as string | undefined;
+
+  const base = await resolveBase(staff, q);
+  const p: GenerationParams = generationParamsSchema.parse({
+    subjectId: q.subjectId,
+    topicId: topicId ?? "",
+    difficulty: q.difficulty,
+    questionType: q.questionType,
+    count: q.count,
+    boardStyle: q.boardStyle ?? "",
+    casePractice: q.casePractice,
+    justification: "completa",
+    sourceId: base.sourceId,
+    sourceText: base.sourceText,
+    topicLabel: q.query,
+    focus: "focusHint" in base ? base.focusHint : undefined,
+    ref: base.ref,
+  });
 
   const provider = getAIProvider("banco");
   const { data, error } = await db
@@ -100,15 +192,15 @@ export async function startGeneration(staff: BankStaff, raw: unknown): Promise<{
       provider: provider.name,
       model: provider.model,
       prompt_version: BANK_PROMPT_VERSION,
-      params: { ...p, attempts: 0, rejected: [], questionIds: [] } satisfies BatchParams,
+      params: { ...p, attempts: 0, rejected: [], questionIds: [], base: base.label } satisfies BatchParams & { base: string },
       requested_count: p.count,
       status: "processando",
     })
     .select("id")
     .single();
   if (error) throw new Error(error.message);
-  await auditLog(db, { actorId: staff.id, userId: null, action: "bank.ai_batch_started", entity: "bank_generation_batches", entityId: data.id, meta: { count: p.count, difficulty: p.difficulty } });
-  return { batchId: data.id as string, total: p.count };
+  await auditLog(db, { actorId: staff.id, userId: null, action: "bank.ai_batch_started", entity: "bank_generation_batches", entityId: data.id, meta: { count: p.count, query: q.query.slice(0, 120), mode: base.mode } });
+  return { batchId: data.id as string, total: p.count, base: base.label, notice: base.notice };
 }
 
 export interface StepResult {

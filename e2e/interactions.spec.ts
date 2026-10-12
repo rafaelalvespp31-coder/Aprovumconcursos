@@ -379,11 +379,12 @@ test.describe("banco de questões (painel escuro)", () => {
     await expect(form.getByLabel("Norma", { exact: true })).toBeVisible();
   });
 
-  test("gerar com IA: fonte sem autorização fica bloqueada e o texto-base tem contador", async ({ page }) => {
+  test("gerar com IA: só matéria + assunto/artigo; opções extras escondidas", async ({ page }) => {
     await page.goto(`${G}/banco`);
-    await expect(page.getByRole("option", { name: /Apostila de terceiros.*falta autorização/ })).toBeDisabled();
-    await page.getByLabel("Texto-base * (única base da IA)").fill("Art. 121. Matar alguém");
-    await expect(page.getByText("22/8000")).toBeVisible();
+    await expect(page.getByLabel("Assunto ou artigo")).toBeVisible();
+    await expect(page.getByLabel("Quantidade")).toBeHidden();
+    await page.getByText("Mais opções (opcional)").click();
+    await expect(page.getByLabel("Quantidade")).toHaveValue("5");
     await expect(page.getByRole("button", { name: "Gerar questões" })).toBeEnabled();
   });
 });

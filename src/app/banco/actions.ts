@@ -97,7 +97,7 @@ export async function staffRoleAction(email: string, role: "autor" | "revisor", 
 // Geração por IA (Fase 5)
 // ---------------------------------------------------------------------------
 
-export async function startGenerationAction(payload: unknown): Promise<BankResult<{ batchId: string; total: number }>> {
+export async function startGenerationAction(payload: unknown): Promise<BankResult<{ batchId: string; total: number; base: string; notice?: string }>> {
   return run("ai_start", async () => startGeneration(await requireBankStaff(), payload), ["/banco/gerar"]);
 }
 

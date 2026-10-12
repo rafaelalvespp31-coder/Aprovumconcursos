@@ -104,3 +104,27 @@ describe("erros da IA não viram conteúdo", () => {
     await expect(generateBankChunk(failing, params, 2, [])).rejects.toMatchObject({ kind: "rate_limited", retryAfterSec: 12 });
   });
 });
+
+describe("modo rápido (sem texto oficial)", () => {
+  const geral = generationParamsSchema.parse({ ...params, sourceText: undefined, sourceId: undefined, ref: undefined, topicLabel: "Teoria do crime" });
+  it("prompt proíbe inventar dispositivos e avisa que haverá revisão", () => {
+    const { system, prompt } = buildBankPrompt(geral, 3, []);
+    expect(system).toMatch(/NUNCA invente número de lei/);
+    expect(prompt).toContain("Teoria do crime");
+    expect(prompt).not.toContain("<texto_base>");
+  });
+  it("aceita sem checar trechos, mas marca que os fundamentos não foram verificados; sem referência inventada", () => {
+    const r = validateBankQuestions({ questions: [q({ basis: [{ excerpt: "art. 18, I, do CP", why: "dolo" }] })] }, geral);
+    expect(r.accepted).toHaveLength(1);
+    expect(r.accepted[0]!.alerts.join(" ")).toMatch(/NÃO foram verificados/);
+    const input = questionInputSchema.parse(toQuestionInput(r.accepted[0]!, geral));
+    expect(input.legalRefs).toEqual([]);
+    expect(input.sourceId).toBeUndefined();
+  });
+  it("entrada rápida: só matéria e assunto, com padrões", async () => {
+    const { quickGenerationSchema } = await import("./generation");
+    const qk = quickGenerationSchema.parse({ subjectId: params.subjectId, query: "art. 121 do CP" });
+    expect(qk).toMatchObject({ count: 5, difficulty: "dificil", questionType: "multipla_escolha", casePractice: false });
+    expect(quickGenerationSchema.safeParse({ subjectId: params.subjectId, query: "" }).success).toBe(false);
+  });
+});
