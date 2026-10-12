@@ -47,6 +47,12 @@ describe("busca no catálogo", () => {
     expect(matchCatalog("Prisão preventiva", catalog).kind).toBe("nenhum");
     expect(matchCatalog("Atos administrativos", catalog).kind).toBe("nenhum");
   });
+  it("dispositivos também são encontrados pelo nome ou sinônimo, sem citar o artigo", () => {
+    const homicidio: CatalogTopicIndex = { id: "cp121", title: "Homicídio (CP, art. 121)", kind: "dispositivo", lawCode: "CP", articles: ["121"], aliases: ["homicídio", "homicídio qualificado"] };
+    expect(matchCatalog("Homicídio", [homicidio])).toMatchObject({ kind: "completo", topics: [{ id: "cp121" }] });
+    expect(matchCatalog("quero estudar homicídio qualificado", [homicidio])).toMatchObject({ kind: "completo" });
+    expect(matchCatalog("Feminicídio", [homicidio]).kind).toBe("nenhum");
+  });
   it("texto longo colado segue para a IA", () => {
     expect(matchCatalog(`Prisão em flagrante. ${"x ".repeat(200)}`, catalog).kind).toBe("nenhum");
   });

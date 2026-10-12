@@ -148,8 +148,9 @@ export function matchCatalog(query: string, topics: readonly CatalogTopicIndex[]
   // Pedido longo (texto colado) não é um "tema": segue para a IA, que respeita o texto do aluno.
   if (query.length > 300) return { kind: "nenhum" };
   let best: { t: CatalogTopicIndex; s: number } | null = null;
+  // Sem referência a lei/artigo, temas e dispositivos concorrem pelo nome e pelos
+  // sinônimos (ex.: "homicídio qualificado" → dispositivo "CP, art. 121").
   for (const t of topics) {
-    if (t.kind !== "tema") continue;
     const s = themeScore(query, t);
     if (!best || s > best.s) best = { t, s };
   }
