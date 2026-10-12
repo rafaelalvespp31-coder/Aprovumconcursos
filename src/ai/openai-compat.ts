@@ -87,7 +87,24 @@ export function diagnose400(text: string, can: { reasoning: boolean; schema: boo
   if (can.reasoning && /reasoning|thinking/i.test(text)) return "drop_reasoning";
   if (can.schema && /response_format|json_schema|schema/i.test(text)) return "json_object";
   if (/model/i.test(text) && /not (found|supported|exist)|unknown|invalid/i.test(text)) return "bad_model";
+  // Recusa genérica ("invalid argument"): tenta primeiro sem esquema e depois sem raciocínio.
+  if (can.schema) return "json_object";
+  if (can.reasoning) return "drop_reasoning";
   return "unknown";
+}
+
+/** Motivo curto informado pelo provedor (sem chaves), para a mensagem de erro. */
+export function providerReason(text: string): string {
+  let msg = "";
+  try {
+    const j = JSON.parse(text) as unknown;
+    const first = Array.isArray(j) ? j[0] : j;
+    msg = String((first as { error?: { message?: unknown } })?.error?.message ?? "");
+  } catch {
+    msg = text;
+  }
+  msg = redact(msg).replace(/\s+/g, " ").trim().slice(0, 180);
+  return msg ? `: ${msg}` : ".";
 }
 
 /** Remove trechos parecidos com chaves antes de registrar. */
@@ -180,7 +197,7 @@ export class OpenAICompatProvider implements AIProvider {
       console.error(JSON.stringify({ event: "ai.provider_400", provider: this.name, model: this.model, detail: redact(text).slice(0, 600) }));
       if (adjust === "bad_key") throw new AIError("Chave da IA inválida. Confira a variável GEMINI_API_KEY (ou a do provedor escolhido) no servidor.", "not_configured", false, usage);
       if (adjust === "bad_model") throw new AIError(`Modelo de IA não encontrado: "${this.model}". Confira a variável AI_MODEL no servidor.`, "not_configured", false, usage);
-      throw new AIError("Erro do provedor de IA (HTTP 400).", "provider_error", false, usage);
+      throw new AIError(`Erro do provedor de IA (HTTP 400)${providerReason(text)}`, "provider_error", false, usage);
     }
     throw new AIError("Erro do provedor de IA (HTTP 400).", "provider_error", false, usage);
   }

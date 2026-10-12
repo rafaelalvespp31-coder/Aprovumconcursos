@@ -94,6 +94,24 @@ describe("adaptador compatível (Gemini, Groq, OpenRouter, Ollama)", () => {
     expect(headers.Authorization).toBeUndefined();
   });
 
+  it("HTTP 400 genérico: tenta sem esquema, depois sem raciocínio e, persistindo, mostra o motivo do provedor", async () => {
+    const generic = () => new Response('[{"error":{"code":400,"message":"Request contains an invalid argument.","status":"INVALID_ARGUMENT"}}]', { status: 400 });
+    const p = () =>
+      new OpenAICompatProvider({ name: "gemini", baseUrl: "https://exemplo.test/v1", apiKey: "k", model: "m", inputPricePerMTok: null, outputPricePerMTok: null, jsonMode: "schema", reasoningEffort: "low" });
+    const ok = vi.fn().mockResolvedValueOnce(generic()).mockResolvedValueOnce(reply('{"title":"Plano","keys":["N0006"]}'));
+    vi.stubGlobal("fetch", ok);
+    expect((await p().generateStructured(req)).data.keys).toEqual(["N0006"]);
+    expect(JSON.parse(ok.mock.calls[1]![1].body).response_format).toEqual({ type: "json_object" });
+
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    const fail = vi.fn().mockImplementation(async () => generic());
+    vi.stubGlobal("fetch", fail);
+    await expect(p().generateStructured(req)).rejects.toMatchObject({ message: "Erro do provedor de IA (HTTP 400): Request contains an invalid argument." });
+    expect(fail).toHaveBeenCalledTimes(3);
+    expect(JSON.parse(fail.mock.calls[2]![1].body).reasoning_effort).toBeUndefined();
+    err.mockRestore();
+  });
+
   it("utilitários", () => {
     expect(parseJsonLoose('Aqui está: {"a":1} pronto')).toEqual({ a: 1 });
     expect(sanitizeSchema({ type: "string", pattern: "x", minLength: 2, description: "d" })).toEqual({ type: "string", description: "d" });
