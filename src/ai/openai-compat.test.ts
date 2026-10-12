@@ -85,6 +85,15 @@ describe("adaptador compatível (Gemini, Groq, OpenRouter, Ollama)", () => {
     err.mockRestore();
   });
 
+  it("Google: envia a chave em x-goog-api-key, sem Bearer", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reply('{"title":"Plano","keys":["N0005"]}'));
+    vi.stubGlobal("fetch", fetchMock);
+    await new OpenAICompatProvider({ name: "gemini", baseUrl: "https://exemplo.test/v1", apiKey: "AQ.chave", model: "m", inputPricePerMTok: null, outputPricePerMTok: null, jsonMode: "schema", keyHeader: "x-goog-api-key" }).generateStructured(req);
+    const headers = fetchMock.mock.calls[0]![1].headers;
+    expect(headers["x-goog-api-key"]).toBe("AQ.chave");
+    expect(headers.Authorization).toBeUndefined();
+  });
+
   it("utilitários", () => {
     expect(parseJsonLoose('Aqui está: {"a":1} pronto')).toEqual({ a: 1 });
     expect(sanitizeSchema({ type: "string", pattern: "x", minLength: 2, description: "d" })).toEqual({ type: "string", description: "d" });

@@ -53,8 +53,9 @@ export function getAIProvider(): AIProvider {
     case "openrouter":
     case "openai_compat": {
       const preset = COMPAT_PRESETS[provider]!;
-      const apiKey = process.env[preset.keyVar] ?? null;
-      const model = process.env.AI_MODEL;
+      // trim: valores colados pelo celular costumam vir com espaço ou quebra de linha.
+      const apiKey = process.env[preset.keyVar]?.trim() || null;
+      const model = process.env.AI_MODEL?.trim();
       const baseUrl = process.env.AI_BASE_URL || preset.baseUrl;
       if (!model || !baseUrl || (preset.keyRequired && !apiKey)) {
         throw new AIError(
@@ -71,7 +72,9 @@ export function getAIProvider(): AIProvider {
         inputPricePerMTok: numberOrNull(process.env.AI_PRICE_INPUT_PER_MTOK),
         outputPricePerMTok: numberOrNull(process.env.AI_PRICE_OUTPUT_PER_MTOK),
         jsonMode: process.env.AI_JSON_MODE === "object" ? "object" : "schema",
-        reasoningEffort: process.env.AI_REASONING_EFFORT || null,
+        reasoningEffort: process.env.AI_REASONING_EFFORT?.trim() || null,
+        // Google aceita a chave (AIza… ou o formato novo AQ.…) em x-goog-api-key; o "Bearer" é lido como token OAuth.
+        keyHeader: provider === "gemini" ? "x-goog-api-key" : "bearer",
         headers: provider === "openrouter" ? { "X-Title": "APROVUM", ...(process.env.NEXT_PUBLIC_SITE_URL ? { "HTTP-Referer": process.env.NEXT_PUBLIC_SITE_URL } : {}) } : undefined,
       });
       return cached;

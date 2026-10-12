@@ -21,6 +21,8 @@ export interface OpenAICompatConfig {
   jsonMode: "schema" | "object";
   /** Esforço de raciocínio dos modelos que "pensam" (ex.: Gemini): "low" economiza cota e evita truncar. */
   reasoningEffort?: string | null;
+  /** Como enviar a chave: Authorization: Bearer (padrão) ou x-goog-api-key (Google). */
+  keyHeader?: "bearer" | "x-goog-api-key";
   /** Cabeçalhos extras (ex.: OpenRouter pede identificação do app). */
   headers?: Record<string, string>;
 }
@@ -191,7 +193,11 @@ export class OpenAICompatProvider implements AIProvider {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          ...(this.config.apiKey ? { Authorization: `Bearer ${this.config.apiKey}` } : {}),
+          ...(this.config.apiKey
+            ? this.config.keyHeader === "x-goog-api-key"
+              ? { "x-goog-api-key": this.config.apiKey }
+              : { Authorization: `Bearer ${this.config.apiKey}` }
+            : {}),
           ...this.config.headers,
         },
         body: JSON.stringify(body),
