@@ -13,33 +13,33 @@
 
 /*
  * APROVUM — tokens (identidade da logo: preto, branco e vermelho)
- * Fundo preto, texto branco, vermelho como destaque e alvo.
- * Camadas de aprendizagem: estudado (cinza) → praticado (vermelho) → dominado (branco).
- * Erro usa vermelho claro sempre com ícone e texto; acerto usa branco com ✓.
+ * Fundo branco, texto preto, vermelho como destaque e alvo; preto em elementos de marca.
+ * Camadas de aprendizagem: estudado (cinza) → praticado (vermelho) → dominado (preto).
+ * Erro usa vermelho sempre com ícone e texto; acerto usa preto com ✓.
  */
 @theme {
-  --color-papel: #050505;
-  --color-superficie: #121212;
-  --color-tinta: #f5f5f5;
-  --color-tinta-suave: #c4c4c4;
-  --color-tinta-fraca: #a3a3a3;
-  --color-linha: #262626;
-  --color-linha-forte: #3a3a3a;
+  --color-papel: #ffffff;
+  --color-superficie: #ffffff;
+  --color-tinta: #0a0a0a;
+  --color-tinta-suave: #404040;
+  --color-tinta-fraca: #5c5c5c;
+  --color-linha: #e5e5e5;
+  --color-linha-forte: #c9c9c9;
   /* "azul" é o nome histórico do token de destaque: hoje é o vermelho da marca */
   --color-azul: #e10600;
   --color-azul-escuro: #b80500;
-  /* vermelho para TEXTO sobre fundo escuro (contraste AA) */
-  --color-destaque: #ff4d4d;
-  --color-nevoa: #1f1f1f;
-  --color-planejado: #2b2b2b;
-  --color-estudado: #6b6b6b;
+  /* vermelho para TEXTO sobre fundo claro (contraste AA) */
+  --color-destaque: #c80500;
+  --color-nevoa: #f4f4f4;
+  --color-planejado: #e5e5e5;
+  --color-estudado: #a3a3a3;
   --color-praticado: #e10600;
-  --color-dominado: #ffffff;
-  --color-dominado-fundo: #1c1c1c;
-  --color-alerta: #e6e6e6;
-  --color-alerta-fundo: #232323;
-  --color-erro: #ff4d4d;
-  --color-erro-fundo: #2a0b0b;
+  --color-dominado: #0a0a0a;
+  --color-dominado-fundo: #f2f2f2;
+  --color-alerta: #404040;
+  --color-alerta-fundo: #f2f2f2;
+  --color-erro: #c80500;
+  --color-erro-fundo: #fdecec;
 
   --font-sans: "Public Sans Variable", system-ui, -apple-system, "Segoe UI", sans-serif;
   --font-serif: "Source Serif 4 Variable", Georgia, "Times New Roman", serif;
@@ -50,7 +50,7 @@
 }
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 html {
@@ -211,5 +211,5 @@ body {
 @keyframes springIn { 0%{transform:scaleY(0); opacity:0} 60%{transform:scaleY(1.15)} 80%{transform:scaleY(0.9)} 100%{transform:scaleY(1); opacity:1} }
 .glass { backdrop-filter: blur(28px) saturate(1.3); -webkit-backdrop-filter: blur(28px) saturate(1.3); }
 .text-gradient { background: linear-gradient(90deg, #FF2A2A, #E10600); -webkit-background-clip:text; background-clip:text; color:transparent; }
-.pastel * { scrollbar-width: thin; scrollbar-color: #3a3a3a transparent; }
+.pastel * { scrollbar-width: thin; scrollbar-color: #c9c9c9 transparent; }
 .pastel :focus-visible { outline-color: #FF2A2A; }

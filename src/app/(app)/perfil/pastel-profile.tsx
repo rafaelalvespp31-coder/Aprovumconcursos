@@ -48,12 +48,12 @@ export function PastelProfile({ p, children }: { p: ProfileData; children?: Reac
             <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "20px 20px" }} aria-hidden />
             <div className="absolute -right-10 -top-10 h-48 w-48 rounded-full bg-white/20 blur-[20px]" aria-hidden />
             <div className="absolute bottom-4 left-6 right-6 flex items-end gap-4">
-              <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[20px] border-4 border-[#262626] bg-[#161616] text-[32px] shadow-[0_8px_24px_rgba(0,0,0,0.15)] sm:h-[84px] sm:w-[84px] sm:text-[36px]" aria-hidden>
+              <div className="flex h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[20px] border-4 border-[#E5E5E5] bg-[#F5F5F5] text-[32px] shadow-[0_8px_24px_rgba(0,0,0,0.15)] sm:h-[84px] sm:w-[84px] sm:text-[36px]" aria-hidden>
                 🧑‍🎓
               </div>
               <div className="min-w-0 pb-2 text-white">
                 <div className="truncate font-[Space_Grotesk] text-[20px] font-[800] leading-none">{p.name ?? "Seu perfil"}</div>
-                <div className="mt-1 truncate text-[12px] text-white/85">
+                <div className="mt-1 truncate text-[12px] text-white/90">
                   {[p.email, since].filter(Boolean).join(" • ")}
                 </div>
               </div>
@@ -61,43 +61,43 @@ export function PastelProfile({ p, children }: { p: ProfileData; children?: Reac
           </div>
           <div className="grid grid-cols-3 gap-2 p-6 sm:gap-4">
             <div className="text-center">
-              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#1A1A1A]" aria-hidden>
+              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#F4F4F4]" aria-hidden>
                 <Crown className="h-6 w-6 text-[#FF1E1E]" />
               </div>
               <div className="text-[18px] font-[800] sm:text-[20px]" data-testid="nivel">Nível {g.level.level}</div>
-              <div className="text-[11px] text-[#A3A3A3]">{p.themesPassed} {p.themesPassed === 1 ? "tema vencido" : "temas vencidos"}</div>
+              <div className="text-[11px] text-[#5C5C5C]">{p.themesPassed} {p.themesPassed === 1 ? "tema vencido" : "temas vencidos"}</div>
             </div>
-            <div className="border-x border-[#222222] text-center">
-              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#2A0B0B]" aria-hidden>
+            <div className="border-x border-[#EBEBEB] text-center">
+              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#FDECEC]" aria-hidden>
                 <Flame className="h-6 w-6 text-[#E10600]" />
               </div>
               <div className="text-[18px] font-[800] sm:text-[20px]">{g.streak.current} {g.streak.current === 1 ? "dia" : "dias"}</div>
-              <div className="text-[11px] text-[#A3A3A3]">Sequência atual</div>
+              <div className="text-[11px] text-[#5C5C5C]">Sequência atual</div>
             </div>
             <div className="text-center">
-              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#1C1C1C]" aria-hidden>
-                <Trophy className="h-6 w-6 text-[#FFFFFF]" />
+              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#F5F5F5]" aria-hidden>
+                <Trophy className="h-6 w-6 text-[#0A0A0A]" />
               </div>
               <div className="text-[18px] font-[800] sm:text-[20px]" data-testid="conquistas-total">
                 {g.unlockedCount}
-                <span className="text-[13px] font-semibold text-[#A3A3A3]">/{g.achievements.length}</span>
+                <span className="text-[13px] font-semibold text-[#5C5C5C]">/{g.achievements.length}</span>
               </div>
-              <div className="text-[11px] text-[#A3A3A3]">Conquistas</div>
+              <div className="text-[11px] text-[#5C5C5C]">Conquistas</div>
             </div>
           </div>
           <div className="px-6 pb-6">
-            <div className="h-2.5 overflow-hidden rounded-full bg-[#1A1A1A]" role="progressbar" aria-label={`Progresso para o nível ${g.level.level + 1}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(g.level.progress * 100)}>
+            <div className="h-2.5 overflow-hidden rounded-full bg-[#F4F4F4]" role="progressbar" aria-label={`Progresso para o nível ${g.level.level + 1}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(g.level.progress * 100)}>
               <div className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-[#FF1E1E] to-[#B30000]" style={{ width: `${Math.max(g.level.progress * 100, 3)}%` }}>
                 <div className="absolute inset-0 animate-[shimmer_2s_linear_infinite] bg-white/30" />
               </div>
             </div>
             <div className="mt-2 flex justify-between gap-3 text-[11px]">
-              <span className="text-[#B3B3B3]">Progresso para Nível {g.level.level + 1}</span>
+              <span className="text-[#4D4D4D]">Progresso para Nível {g.level.level + 1}</span>
               <span className="text-right font-bold">
                 {Math.round(g.level.progress * 100)}% • falta{g.level.remaining > 1 ? "m" : ""} {g.level.remaining} {g.level.remaining > 1 ? "temas" : "tema"}
               </span>
             </div>
-            <p className="mt-2 text-[11px] text-[#A3A3A3]">Você sobe um nível a cada 3 temas vencidos: todas as questões do tema, 75% de acerto e as essenciais corretas.</p>
+            <p className="mt-2 text-[11px] text-[#5C5C5C]">Você sobe um nível a cada 3 temas vencidos: todas as questões do tema, 75% de acerto e as essenciais corretas.</p>
           </div>
         </PastelCard>
 
@@ -105,30 +105,30 @@ export function PastelProfile({ p, children }: { p: ProfileData; children?: Reac
           <h2 className="mb-4 flex items-center gap-2 font-[Space_Grotesk] font-bold">
             <Award className="h-4 w-4" aria-hidden /> Conquistas
           </h2>
-          {unlocked.length === 0 && <p className="mb-3 text-[12px] text-[#A3A3A3]">Nenhuma conquista ainda. Elas se desbloqueiam sozinhas, conforme as regras abaixo.</p>}
+          {unlocked.length === 0 && <p className="mb-3 text-[12px] text-[#5C5C5C]">Nenhuma conquista ainda. Elas se desbloqueiam sozinhas, conforme as regras abaixo.</p>}
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {[...unlocked, ...locked].map((s) => (
               <li
                 key={s.id}
                 data-unlocked={s.unlocked}
-                className={`flex gap-3 rounded-[16px] border p-4 transition-all ${s.unlocked ? "border-[#2A2A2A] bg-[#161616] hover:bg-[#1C1C1C] hover:shadow-[0_8px_24px_rgba(225,6,0,0.08)]" : "border-dashed border-[#333333] bg-white/[0.02]"}`}
+                className={`flex gap-3 rounded-[16px] border p-4 transition-all ${s.unlocked ? "border-[#E5E5E5] bg-[#F5F5F5] hover:bg-[#EDEDED] hover:shadow-[0_8px_24px_rgba(225,6,0,0.08)]" : "border-dashed border-[#D9D9D9] bg-white/[0.02]"}`}
               >
-                <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-[#2A2A2A] bg-[#161616] text-[18px] shadow-sm ${s.unlocked ? "" : "grayscale opacity-60"}`} aria-hidden>
+                <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-[#E5E5E5] bg-[#F5F5F5] text-[18px] shadow-sm ${s.unlocked ? "" : "grayscale opacity-60"}`} aria-hidden>
                   {s.icon}
-                  {!s.unlocked && <Lock className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full bg-[#161616] p-0.5 text-[#A3A3A3]" />}
+                  {!s.unlocked && <Lock className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full bg-[#F5F5F5] p-0.5 text-[#5C5C5C]" />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="text-[13px] font-semibold">
                     {s.title}
                     <span className="sr-only">{s.unlocked ? " (conquistada)" : " (bloqueada)"}</span>
                   </div>
-                  <div className="mt-0.5 text-[11px] text-[#B3B3B3]">{s.rule}</div>
+                  <div className="mt-0.5 text-[11px] text-[#4D4D4D]">{s.rule}</div>
                   {!s.unlocked && (
                     <>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#1A1A1A]">
+                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#F4F4F4]">
                         <div className="h-full rounded-full" style={{ width: `${Math.round(s.progress * 100)}%`, background: s.color }} />
                       </div>
-                      <div className="mt-1 text-[10.5px] text-[#A3A3A3]">{s.status}</div>
+                      <div className="mt-1 text-[10.5px] text-[#5C5C5C]">{s.status}</div>
                     </>
                   )}
                 </div>

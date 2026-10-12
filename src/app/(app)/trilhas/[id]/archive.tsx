@@ -16,9 +16,9 @@ export function ArchiveTrail({ trailId, archived }: { trailId: string; archived:
   }
   return (
     <ConfirmAction
-      trigger="Arquivar trilha"
-      title="Arquivar esta trilha?"
-      description="Ela sai do painel, das questões e das revisões, mas nada é apagado. Você pode reativá-la a qualquer momento em Trilhas arquivadas."
+      trigger="Arquivar estudo"
+      title="Arquivar este estudo?"
+      description="Ele sai do painel, das questões e das revisões, mas nada é apagado. Você pode reativá-lo a qualquer momento em Estudos arquivados."
       confirmLabel="Arquivar"
       onConfirm={async () => {
         await archiveTrailAction(trailId, true);

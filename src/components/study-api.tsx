@@ -11,7 +11,7 @@ import {
   toggleQuestionMark,
   updateAnnotation,
 } from "@/app/(app)/study-actions";
-import { completeReadingAction, evaluateQuizAction, startLessonAction } from "@/app/(app)/aula/[id]/actions";
+import { completeReadingAction, evaluateQuizAction, generateRecoveryAction, startLessonAction } from "@/app/(app)/aula/[id]/actions";
 
 /**
  * Ações usadas pelos componentes interativos de estudo.
@@ -30,6 +30,7 @@ export interface StudyApi {
   completeReading: typeof completeReadingAction;
   evaluateQuiz: typeof evaluateQuizAction;
   search: typeof searchStudy;
+  generateRecovery: typeof generateRecoveryAction;
 }
 
 export const serverStudyApi: StudyApi = {
@@ -44,6 +45,7 @@ export const serverStudyApi: StudyApi = {
   completeReading: completeReadingAction,
   evaluateQuiz: evaluateQuizAction,
   search: searchStudy,
+  generateRecovery: generateRecoveryAction,
 };
 
 const Ctx = createContext<StudyApi>(serverStudyApi);

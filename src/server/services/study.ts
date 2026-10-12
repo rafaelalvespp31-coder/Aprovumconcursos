@@ -10,6 +10,7 @@ import {
   type UnitState,
 } from "@/domain/progress/state-machine";
 import { DEFAULT_REVIEW_CONFIG, initialReviewState, scheduleNext } from "@/domain/progress/review";
+import { levelByKey, levelByNumber, type LevelKey } from "@/domain/progress/levels";
 import { createAdminClient } from "../supabase";
 import { UserFacingError, enforceRateLimit } from "./trails";
 
@@ -19,6 +20,7 @@ interface ProgressRow {
   reading_completed_at: string | null;
   passed_at: string | null;
   mastered_at: string | null;
+  levels_passed: number | null;
   trail_id: string;
 }
 
@@ -28,7 +30,7 @@ async function loadProgress(userId: string, lessonId: string) {
   const db = createAdminClient();
   const r = await db
     .from("learning_progress")
-    .select("state, resume_state, reading_completed_at, passed_at, mastered_at, trail_id")
+    .select("state, resume_state, reading_completed_at, passed_at, mastered_at, levels_passed, trail_id")
     .eq("user_id", userId)
     .eq("lesson_id", lessonId)
     .maybeSingle();
@@ -41,6 +43,7 @@ async function loadProgress(userId: string, lessonId: string) {
     readingCompletedAt: d(row.reading_completed_at),
     passedAt: d(row.passed_at),
     masteredAt: d(row.mastered_at),
+    levelsPassed: row.levels_passed ?? 0,
   };
   return { progress, trailId: row.trail_id };
 }
@@ -66,18 +69,22 @@ async function apply(userId: string, lessonId: string, event: UnitEvent) {
       reading_completed_at: p.readingCompletedAt?.toISOString() ?? null,
       passed_at: p.passedAt?.toISOString() ?? null,
       mastered_at: p.masteredAt?.toISOString() ?? null,
+      levels_passed: p.levelsPassed,
     })
     .eq("user_id", userId)
     .eq("lesson_id", lessonId);
   if (up.error) throw new Error(up.error.message);
 
-  if (progress.state !== p.state) {
+  if (progress.state !== p.state || progress.levelsPassed !== p.levelsPassed) {
     await db.from("mastery_records").insert({
       user_id: userId,
       lesson_id: lessonId,
       from_state: progress.state,
       to_state: p.state,
-      evidence: "outcome" in event ? { event: event.type, ...event.outcome } : { event: event.type },
+      evidence:
+        "outcome" in event
+          ? { event: event.type, ...event.outcome, ...("level" in event && event.level ? { level: event.level } : {}), levelsPassed: p.levelsPassed }
+          : { event: event.type },
     });
   }
   if (t.unlocksNext) await unlockNext(userId, trailId, lessonId);
@@ -160,18 +167,30 @@ export async function submitAnswer(userId: string, input: unknown): Promise<Answ
   return r.data as AnswerFeedback;
 }
 
-/** Avalia o conjunto de questões da aula e atualiza progresso e revisão. */
-export async function evaluateLessonQuiz(userId: string, lessonId: string, context: "fixacao" | "revisao") {
+/**
+ * Avalia um nível (fixação) ou a revisão espaçada e atualiza progresso e revisão.
+ * Na fixação, o nível avaliado é sempre o próximo a aprovar.
+ */
+export async function evaluateLessonQuiz(userId: string, lessonId: string, context: "fixacao" | "revisao", levelKey?: LevelKey) {
   const db = createAdminClient();
-  const o = await db.rpc("lesson_quiz_outcome", { p_user: userId, p_lesson: lessonId, p_context: context });
+  const { progress } = await loadProgress(userId, lessonId);
+  const level = levelKey ? levelByKey(levelKey) : levelByNumber(Math.min(3, (progress.levelsPassed ?? 0) + 1))!;
+  const o =
+    context === "revisao"
+      ? await db.rpc("lesson_quiz_outcome", { p_user: userId, p_lesson: lessonId, p_context: context })
+      : await db.rpc("lesson_level_outcome", { p_user: userId, p_lesson: lessonId, p_level: level.key, p_context: "fixacao" });
   if (o.error) throw new Error(o.error.message);
   const outcome = o.data as QuizOutcome;
   const now = new Date();
-  const result = await apply(userId, lessonId, {
-    type: context === "revisao" ? "REVIEW_EVALUATED" : "QUIZ_EVALUATED",
-    outcome,
-    at: now,
-  });
+  const result = await apply(
+    userId,
+    lessonId,
+    context === "revisao" ? { type: "REVIEW_EVALUATED", outcome, at: now } : { type: "QUIZ_EVALUATED", outcome, at: now, level: level.n },
+  );
+  // A revisão espaçada só começa quando a unidade passa nos três níveis.
+  if (context === "fixacao" && result.progress.levelsPassed < 3) {
+    return { ...result, outcome, level: level.key, nextReviewAt: null as Date | null };
+  }
 
   // Agenda/atualiza a revisão espaçada.
   const accuracy = outcome.answered ? outcome.correct / outcome.answered : 0;
@@ -206,5 +225,5 @@ export async function evaluateLessonQuiz(userId: string, lessonId: string, conte
     },
     { onConflict: "user_id,lesson_id" },
   );
-  return { ...result, outcome, nextReviewAt: next.dueAt };
+  return { ...result, outcome, level: level.key, nextReviewAt: next.dueAt as Date | null };
 }

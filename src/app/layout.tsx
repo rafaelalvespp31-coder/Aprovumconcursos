@@ -4,9 +4,9 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: { default: "APROVUM", template: "%s · APROVUM" },
-  description: "Transforme o conteúdo do seu edital numa trilha de estudos com cobertura verificável, aulas, questões e revisões.",
+  description: "Estude um tema, artigo ou matéria por vez, com aula completa, três níveis de avaliação e PDF do conteúdo, aulas, questões e revisões.",
   applicationName: "APROVUM",
-  appleWebApp: { capable: true, title: "APROVUM", statusBarStyle: "black-translucent" },
+  appleWebApp: { capable: true, title: "APROVUM", statusBarStyle: "black" },
   formatDetection: { telephone: false },
   icons: {
     icon: [{ url: "/icons/favicon-64.png", type: "image/png", sizes: "64x64" }],

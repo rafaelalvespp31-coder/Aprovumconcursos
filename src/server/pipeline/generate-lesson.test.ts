@@ -27,7 +27,7 @@ const ctx: LessonGenContext = {
 
 class MemoryLessonRepo implements LessonRepo {
   lessons: Array<{ kinds: LessonSectionKind[]; status: LessonStatus; missing: string[] }> = [];
-  questionSaves: Array<{ count: number; append: boolean; levels: number[] }> = [];
+  questionSaves: Array<{ count: number; append: boolean; levels: number[]; level?: string }> = [];
   jobs: Job<LessonJobState>[] = [];
   statuses: LessonStatus[] = [];
   async getContext() { return structuredClone(ctx); }
@@ -35,8 +35,8 @@ class MemoryLessonRepo implements LessonRepo {
     this.lessons.push({ kinds: out.sections.map((s) => s.kind), status, missing });
   }
   async getLessonMarkdown() { return "# Tema 1\n\nConteúdo."; }
-  async saveQuestions(_: LessonGenContext, q: QuestionsOutput, append = false) {
-    this.questionSaves.push({ count: q.questions.length, append, levels: q.questions.map((x) => x.difficulty) });
+  async saveQuestions(_: LessonGenContext, q: QuestionsOutput, append = false, level?: string) {
+    this.questionSaves.push({ count: q.questions.length, append, levels: q.questions.map((x) => x.difficulty), level });
     return q.questions.length;
   }
   async setLessonStatus(_a: string, _b: string, s: LessonStatus) { this.statuses.push(s); }
@@ -84,8 +84,23 @@ async function run(ai: FakeProvider, repo: MemoryLessonRepo) {
   return job;
 }
 
-describe("geração do tema: todas as formas de ensino e todos os níveis", () => {
-  it("completa só as seções ausentes e só os níveis ausentes, sem reescrever", async () => {
+/** IA de questões coerente: responde ao nível pedido cobrindo os itens (ou parte deles). */
+function questionsAI(opts: { skipOnFirstEasy?: string } = {}) {
+  let easyCalls = 0;
+  return (req: StructuredRequest<unknown>) => {
+    const level = /NÍVEL FÁCIL/.test(req.prompt) ? 1 : /NÍVEL MÉDIO/.test(req.prompt) ? 3 : 5;
+    if (req.prompt.includes("rodada COMPLEMENTAR")) {
+      return { questions: [question(`Complementar ${opts.skipOnFirstEasy}`, opts.skipOnFirstEasy!, level)] };
+    }
+    let keys = scope;
+    if (level === 1 && opts.skipOnFirstEasy && easyCalls++ === 0) keys = scope.filter((k) => k !== opts.skipOnFirstEasy);
+    // A IA às vezes erra a dificuldade: o serviço ajusta para a faixa do nível.
+    return { questions: keys.map((k, i) => question(`Nível ${level} item ${i} ${k}`, k, level === 1 ? 3 : level)) };
+  };
+}
+
+describe("geração da unidade: formas de ensino e três níveis de avaliação", () => {
+  it("completa só as seções ausentes e gera fácil, médio e difícil cobrindo todos os itens", async () => {
     const missing: LessonSectionKind[] = ["excecoes", "checklist"];
     const first = REQUIRED_SECTION_KINDS.filter((k) => !missing.includes(k));
     const ai = new FakeProvider()
@@ -94,50 +109,44 @@ describe("geração do tema: todas as formas de ensino e todos os níveis", () =
           ? { sections: [section("checklist"), section("resumo"), section("excecoes")] }
           : lessonResponse(first),
       )
-      .respond("generate_questions", (req: StructuredRequest<unknown>) =>
-        req.prompt.includes("rodada COMPLEMENTAR")
-          ? { questions: [question("Questão avançada do tema", scope[0]!, 5), question("Questão 1 do item", scope[0]!, 1)] }
-          : { questions: scope.flatMap((k, i) => [question(`Questão 1 do item`.replace("1", String(i * 2 + 1)), k, 1 + (i % 4)), question(`Questão extra ${i}`, k, 2 + (i % 3))]) },
-      );
+      .respond("generate_questions", questionsAI({ skipOnFirstEasy: scope[2] }));
     const repo = new MemoryLessonRepo();
     const final = await run(ai, repo);
 
     expect(final.status).toBe("succeeded");
-    expect(repo.jobs.map((j) => j.stage)).toEqual(["sections", "questions", "questions_extra", "done"]);
+    expect(repo.jobs.map((j) => j.stage)).toEqual(["sections", "questions", "questions_extra", "questions", "questions", "done"]);
     const progress = repo.jobs.map((j) => j.progress);
     expect(progress).toEqual([...progress].sort((a, b) => a - b));
 
-    // 1ª gravação: aula utilizável mas pendente; 2ª: completa, na ordem canônica, sem duplicar "resumo".
     expect(repo.lessons[0]!.status).toBe("pending_validation");
     expect(repo.lessons[0]!.missing).toEqual(["secao:excecoes", "secao:checklist"]);
     expect(repo.lessons[1]!.status).toBe("ready");
     expect(repo.lessons[1]!.kinds).toEqual([...REQUIRED_SECTION_KINDS]);
 
-    // Questões: a principal substitui; a complementar acrescenta só o nível que faltava.
-    expect(repo.questionSaves[0]!.append).toBe(false);
-    expect(repo.questionSaves[0]!.levels).not.toContain(5);
-    expect(repo.questionSaves[1]).toEqual({ count: 1, append: true, levels: [5] });
-    expect(final.state.questionGaps).toEqual({ missingLevels: [], uncoveredNodeKeys: [] });
+    // Fácil substitui as antigas; a complementar do fácil e os demais níveis acrescentam.
+    expect(repo.questionSaves.map((q) => [q.level, q.append])).toEqual([
+      ["facil", false], ["facil", true], ["medio", true], ["dificil", true],
+    ]);
+    // Dificuldade sempre dentro da faixa do nível.
+    expect(repo.questionSaves[0]!.levels.every((d) => d <= 2)).toBe(true);
+    expect(repo.questionSaves[2]!.levels.every((d) => d === 3)).toBe(true);
+    expect(repo.questionSaves[3]!.levels.every((d) => d >= 4)).toBe(true);
+    expect(final.state.levelGaps).toEqual({ facil: [], medio: [], dificil: [] });
     expect(final.state.draft).toBeUndefined();
 
-    const extraPrompt = ai.calls.find((c) => c.prompt.includes("rodada COMPLEMENTAR"))!.prompt;
-    expect(extraPrompt).toContain("5 — avançada");
-    expect(extraPrompt).not.toContain("1 — memorização");
+    const prompts = ai.calls.filter((c) => c.task === "generate_questions").map((c) => c.prompt);
+    expect(prompts[0]).toMatch(/NÍVEL FÁCIL[\s\S]*90% de acerto/);
+    expect(prompts[1]).toContain("rodada COMPLEMENTAR");
   });
 
-  it("aula completa de primeira vai direto às questões", async () => {
-    const ai = new FakeProvider()
-      .respond("generate_lesson", lessonResponse(REQUIRED_SECTION_KINDS))
-      .respond("generate_questions", {
-        questions: [1, 2, 3, 4, 5].map((lvl, i) => question(`Questão de nível ${lvl}`, scope[i % scope.length]!, lvl)),
-      });
+  it("aula completa de primeira vai direto aos três níveis", async () => {
+    const ai = new FakeProvider().respond("generate_lesson", lessonResponse(REQUIRED_SECTION_KINDS)).respond("generate_questions", questionsAI());
     const repo = new MemoryLessonRepo();
     const final = await run(ai, repo);
-    expect(repo.jobs.map((j) => j.stage)).toEqual(["questions", "done"]);
+    expect(repo.jobs.map((j) => j.stage)).toEqual(["questions", "questions", "questions", "done"]);
     expect(repo.lessons).toHaveLength(1);
     expect(repo.lessons[0]!.status).toBe("ready");
     expect(final.state.missingKinds).toEqual([]);
-    expect(ai.calls.filter((c) => c.task === "generate_questions")[0]!.prompt).toContain("Use TODOS os níveis de dificuldade");
   });
 
   it("se a rodada complementar também falhar em trazer a seção, a aula fica pendente com o motivo", async () => {
@@ -145,9 +154,7 @@ describe("geração do tema: todas as formas de ensino e todos os níveis", () =
       req.schemaName === "registrar_secoes"
         ? { sections: [section("resumo")] }
         : lessonResponse(REQUIRED_SECTION_KINDS.filter((k) => k !== "pegadinhas")),
-    ).respond("generate_questions", {
-      questions: [1, 2, 3, 4, 5].map((lvl, i) => question(`Questão de nível ${lvl}`, scope[i % scope.length]!, lvl)),
-    });
+    ).respond("generate_questions", questionsAI());
     const repo = new MemoryLessonRepo();
     const final = await run(ai, repo);
     expect(final.status).toBe("succeeded");

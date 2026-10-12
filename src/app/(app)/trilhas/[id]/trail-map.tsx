@@ -3,6 +3,7 @@ import { Icon, type IconName } from "@/components/icons";
 import { Tag } from "@/components/ui";
 import { TripleProgress } from "@/components/progress";
 import { STATE_LABELS, type UnitState } from "@/domain/progress/state-machine";
+import { LEVELS, levelStatus } from "@/domain/progress/levels";
 import type { LessonListItem, ModuleProgress } from "@/server/queries";
 
 const STATE_ICON: Record<UnitState, { icon: IconName; cls: string }> = {
@@ -12,13 +13,14 @@ const STATE_ICON: Record<UnitState, { icon: IconName; cls: string }> = {
   aula_concluida: { icon: "livro", cls: "text-white bg-estudado border-transparent" },
   em_revisao: { icon: "revisoes", cls: "text-alerta bg-alerta-fundo border-alerta/30" },
   aguardando_dominio: { icon: "check", cls: "text-white bg-azul border-transparent" },
-  dominada: { icon: "check", cls: "text-black bg-dominado border-transparent" },
+  dominada: { icon: "check", cls: "text-white bg-dominado border-transparent" },
   necessita_atualizacao: { icon: "alerta", cls: "text-alerta bg-alerta-fundo border-alerta/30" },
   pendente_validacao: { icon: "alerta", cls: "text-alerta bg-alerta-fundo border-alerta/30" },
 };
 
 /**
- * Mapa da trilha: módulos expansíveis, aulas por nível, estado de aprendizagem,
+ * Mapa do estudo: módulos expansíveis, unidades em ordem, níveis aprovados (fácil,
+ * médio, difícil), estado de aprendizagem,
  * pré-requisitos, questões, revisões e itens incompletos.
  */
 export function TrailMap({
@@ -48,7 +50,7 @@ export function TrailMap({
                 <div className="min-w-0 flex-1">
                   <p className="t-h3">{m.title}</p>
                   <p className="t-tiny text-tinta-fraca">
-                    {m.lessons.length} aula(s), ~{m.lessons.reduce((s, l) => s + l.estimated_minutes, 0)} min (estimativa)
+                    {m.lessons.length} unidade(s), ~{m.lessons.reduce((s, l) => s + l.estimated_minutes, 0)} min (estimativa)
                   </p>
                 </div>
               </div>
@@ -73,7 +75,7 @@ export function TrailMap({
                     </span>
                     <div className="min-w-0 flex-1">
                       <div className="flex flex-wrap items-baseline gap-x-2">
-                        <span className="t-tiny font-semibold text-tinta-fraca">Nível {li + 1}</span>
+                        <span className="t-tiny font-semibold text-tinta-fraca">Unidade {li + 1}</span>
                         {review || locked ? (
                           <p className={`font-semibold ${locked && !review ? "text-tinta-suave" : ""}`}>{l.title}</p>
                         ) : (
@@ -81,6 +83,23 @@ export function TrailMap({
                         )}
                       </div>
                       <p className="mt-0.5 line-clamp-2 t-small text-tinta-suave">{l.objective}</p>
+                      {!review && (
+                        <ol className="mt-2 flex flex-wrap gap-1.5" aria-label={`Níveis aprovados: ${l.levelsPassed} de 3`}>
+                          {LEVELS.map((lv) => {
+                            const st = levelStatus(l.levelsPassed, lv.n);
+                            return (
+                              <li
+                                key={lv.key}
+                                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 t-tiny font-semibold ${st === "aprovado" ? "border-transparent bg-dominado text-white" : st === "liberado" && !locked ? "border-azul text-destaque" : "border-linha text-tinta-fraca"}`}
+                              >
+                                {st === "aprovado" ? <Icon name="check" className="size-3" /> : st === "bloqueado" || locked ? <Icon name="cadeado" className="size-3" /> : null}
+                                {lv.label}
+                                <span className="sr-only">: {st === "aprovado" ? "aprovado" : st === "liberado" && !locked ? "liberado" : "bloqueado"}</span>
+                              </li>
+                            );
+                          })}
+                        </ol>
+                      )}
                       <div className="mt-2 flex flex-wrap items-center gap-1.5">
                         {l.state && <Tag tone={l.state === "dominada" ? "verde" : l.state === "em_revisao" ? "ambar" : locked ? "neutro" : "azul"}>{STATE_LABELS[l.state]}</Tag>}
                         {isCurrent && <Tag tone="azul">Próximo passo</Tag>}

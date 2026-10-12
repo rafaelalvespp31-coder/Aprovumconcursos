@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { getCoverage, getTrail, getTrailPlan, moduleProgress, rulerStateOf } from "@/server/queries";
+import { getCoverage, getTrail, getTrailPlan, listStudyPdfs, moduleProgress, rulerStateOf } from "@/server/queries";
+import { PdfPanel } from "./pdf-panel";
 import { TrailMap } from "./trail-map";
 import { ArchiveTrail } from "./archive";
 import { CoverageRuler, RulerLegend } from "@/components/coverage-ruler";
@@ -8,7 +9,7 @@ import { Button, ButtonLink, Notice } from "@/components/ui";
 import { boardDisplayName, CONTENT_TYPE_OPTIONS, type ExamBoardSlug } from "@/domain/trail-input";
 import { startTrailAction } from "./actions";
 
-export const metadata = { title: "Trilha" };
+export const metadata = { title: "Estudo" };
 
 function minutes(total: number) {
   const h = Math.floor(total / 60);
@@ -26,14 +27,14 @@ export default async function TrailPage({
   const { id } = await params;
   const { erro } = await searchParams;
   const trail = await getTrail(id);
-  if (trail.status === "pending" || trail.status === "processing") redirect(`/trilhas/${id}/processando`);
+  if (trail.status === "pending" || trail.status === "processing" || trail.status === "clarification") redirect(`/trilhas/${id}/processando`);
 
   if (trail.status === "failed") {
     return (
       <div className="mx-auto max-w-2xl">
         <h1 className="t-h1">{trail.title}</h1>
         <div className="mt-6">
-          <Notice tone="erro" title="A construção desta trilha não foi concluída">
+          <Notice tone="erro" title="A preparação deste estudo não foi concluída">
             O conteúdo está salvo. Você pode retomar o processamento a partir da etapa que falhou.
           </Notice>
         </div>
@@ -42,7 +43,7 @@ export default async function TrailPage({
     );
   }
 
-  const [modules, coverage] = await Promise.all([getTrailPlan(id), getCoverage(id)]);
+  const [modules, coverage, pdfs] = await Promise.all([getTrailPlan(id), getCoverage(id), listStudyPdfs(id)]);
   const items = coverage.filter((c) => c.coverage?.requires_direct_coverage);
   const titleByKey = new Map(coverage.map((c) => [c.key, `${c.marker ? `${c.marker} ` : ""}${c.title}`]));
   const lessons = modules.flatMap((m) => m.lessons);
@@ -54,6 +55,9 @@ export default async function TrailPage({
   const warnings = audit?.issues.filter((i) => i.severity === "warning") ?? [];
   const infos = audit?.issues.filter((i) => i.severity === "info") ?? [];
   const typeLabel = CONTENT_TYPE_OPTIONS.find((o) => o.value === trail.content_type)?.label;
+  const unitsDone = lessons.filter((l) => l.levelsPassed >= 3).length;
+  const scope = trail.scope_summary;
+  const aiItems = coverage.filter((c) => c.coverage?.requires_direct_coverage && c.origin === "ia").length;
 
   return (
     <div>
@@ -62,7 +66,7 @@ export default async function TrailPage({
           <h1 className="t-h1 break-words">{trail.title}</h1>
           <p className="mt-1 t-small text-tinta-suave">
             Banca {boardDisplayName(trail.board_slug as ExamBoardSlug, trail.other_board_name)}, {typeLabel?.toLowerCase()}
-            {trail.archived_at && " (arquivada)"}
+            {trail.archived_at && " (arquivado)"}
           </p>
         </div>
         {!review && nextLesson && <ButtonLink href={`/aula/${nextLesson.id}`}>Continuar: {nextLesson.title.slice(0, 40)}</ButtonLink>}
@@ -80,7 +84,7 @@ export default async function TrailPage({
         <div className="mt-3">
           <CoverageRuler
             size="lg"
-            label="Cobertura da trilha"
+            label="Cobertura do conteúdo"
             segments={items.map((c) => ({ key: c.key, state: rulerStateOf(c.coverage), title: c.title }))}
           />
         </div>
@@ -88,9 +92,35 @@ export default async function TrailPage({
           <RulerLegend states={["dominado", "praticado", "ensinado", "nao_verificado", "planejado", "pendente"]} />
         </div>
         <p className="mt-3 t-small text-tinta-suave">
-          {modules.length} módulo(s), {lessons.length} aula(s). Carga estimada: cerca de {minutes(totalMinutes)} de estudo — é uma estimativa e varia de pessoa para pessoa.
+          {lessons.length} unidade(s) didática(s){aiItems ? `, ${aiItems} item(ns) organizado(s) pela IA a partir do seu pedido` : ""}. Carga estimada: cerca de {minutes(totalMinutes)} de estudo — é uma estimativa e varia de pessoa para pessoa.
         </p>
       </section>
+
+      {scope && (
+        <section className="mt-6 rounded-lg border border-linha bg-superficie p-5" aria-labelledby="escopo-titulo">
+          <h2 id="escopo-titulo" className="t-h3">Escopo identificado</h2>
+          <p className="mt-1 font-semibold">{scope.subject}</p>
+          <p className="mt-1 t-small text-tinta-suave">{scope.scopeStatement}</p>
+          {trail.scope_answer && <p className="mt-2 t-small"><span className="font-semibold">Seu esclarecimento:</span> {trail.scope_answer}</p>}
+          {scope.legalReferences.length > 0 && (
+            <ul className="mt-2 list-disc pl-5 t-small">
+              {scope.legalReferences.map((r) => <li key={r.norm + r.provisions}><span className="font-semibold">{r.norm}</span>: {r.provisions}</li>)}
+            </ul>
+          )}
+          {scope.outOfScope.length > 0 && (
+            <p className="mt-2 t-small text-tinta-suave"><span className="font-semibold text-tinta">Fora do escopo:</span> {scope.outOfScope.join("; ")}.</p>
+          )}
+          {scope.isLegal && aiItems > 0 && (
+            <p className="mt-2 t-tiny text-tinta-fraca">A estrutura dos dispositivos foi organizada pela IA e fica marcada como não verificada: o texto legal só é transcrito quando você o cola.</p>
+          )}
+        </section>
+      )}
+
+      {!review && (
+        <div className="mt-6">
+          <PdfPanel trailId={id} ready={lessons.length > 0 && unitsDone === lessons.length} unitsDone={unitsDone} unitsTotal={lessons.length} pdfs={pdfs} />
+        </div>
+      )}
 
       {review && (
         <section className="mt-6 flex flex-col gap-3">
@@ -128,8 +158,8 @@ export default async function TrailPage({
       )}
 
       <section className="mt-8">
-        <h2 className="t-h2">Mapa da trilha</h2>
-        <p className="mt-1 mb-3 t-small text-tinta-suave">Cada nível libera o seguinte quando você demonstra o aprendizado. Aulas já liberadas ficam sempre disponíveis para consulta.</p>
+        <h2 className="t-h2">Unidades do estudo</h2>
+        <p className="mt-1 mb-3 t-small text-tinta-suave">Cada unidade tem a aula completa e três níveis de avaliação (fácil, médio e difícil), com pelo menos 90% em cada um. A unidade seguinte abre quando a anterior é concluída; as já liberadas ficam sempre disponíveis para consulta.</p>
         <TrailMap modules={modules} progress={new Map(moduleProgress(modules, coverage).map((m) => [m.id, m]))} titleByKey={titleByKey} review={review} />
       </section>
 

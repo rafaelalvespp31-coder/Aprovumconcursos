@@ -29,8 +29,14 @@ describe("solicitação de trilha", () => {
     expect(trailRequestSchema.safeParse({ ...valid, board: "outra", otherBoardName: "FCC" }).success).toBe(true);
   });
 
+  it("aceita um tema curto, sem edital, com título opcional", () => {
+    expect(trailRequestSchema.safeParse({ ...valid, contentType: "tema_livre", content: "Prisão em flagrante" }).success).toBe(true);
+    expect(trailRequestSchema.safeParse({ ...valid, contentType: "artigo_lei", content: "Art. 5º da CF", title: "" }).success).toBe(true);
+    expect(trailRequestSchema.safeParse({ ...valid, content: "Lei Maria da Penha, arts. 1º a 7º", title: "Violência doméstica" }).success).toBe(true);
+  });
+
   it("valida tamanho e conteúdo", () => {
-    expect(trailRequestSchema.safeParse({ ...valid, content: "curto" }).success).toBe(false);
+    expect(trailRequestSchema.safeParse({ ...valid, content: "abc" }).success).toBe(false);
     expect(trailRequestSchema.safeParse({ ...valid, content: "1234567890 ........ 1234567890 !!!" }).success).toBe(false);
     expect(trailRequestSchema.safeParse({ ...valid, content: "a".repeat(CONTENT_LIMITS.maxChars + 1) }).success).toBe(false);
   });

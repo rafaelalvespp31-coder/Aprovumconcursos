@@ -10,7 +10,7 @@ const password = process.env.E2E_PASSWORD;
 test.describe("fluxo do aluno", () => {
   test.skip(!email || !password, "E2E_EMAIL/E2E_PASSWORD não definidos: fluxo autenticado não executado.");
 
-  test("cria trilha exigindo banca e acompanha o processamento real", async ({ page }) => {
+  test("cria um estudo de tema específico, sem edital, exigindo banca", async ({ page }) => {
     test.setTimeout(10 * 60_000);
     await page.goto("/entrar");
     await page.getByLabel("E-mail").fill(email!);
@@ -18,10 +18,10 @@ test.describe("fluxo do aluno", () => {
     await page.getByRole("button", { name: "Entrar" }).click();
     await page.goto("/nova-trilha");
 
-    const build = page.getByRole("button", { name: "Construir minha trilha" });
+    const build = page.getByRole("button", { name: "Começar este estudo" });
     await expect(build).toBeDisabled(); // banca obrigatória
     await page.getByText("CEBRASPE").click();
-    await page.getByLabel("Conteúdo a estudar").fill("NOÇÕES DE INFORMÁTICA: 1 Conceitos de internet e intranet. 2 Correio eletrônico; navegadores; busca na web.");
+    await page.getByLabel("Conteúdo a estudar").fill("Prisão em flagrante");
     await build.click();
 
     await expect(page).toHaveURL(/\/trilhas\/.+\/processando/);

@@ -21,15 +21,29 @@ export const EXAM_BOARDS = [
 export type ExamBoardSlug = (typeof EXAM_BOARDS)[number]["slug"];
 const BOARD_SLUGS = EXAM_BOARDS.map((b) => b.slug) as [ExamBoardSlug, ...ExamBoardSlug[]];
 
+/**
+ * Tipos de conteúdo. O estudo é sempre de um conteúdo específico; o edital é só uma
+ * forma opcional de organizar vários temas e nunca é exigido para começar.
+ */
 export const CONTENT_TYPE_OPTIONS: Array<{ value: ContentType; label: string; description: string }> = [
-  { value: "edital", label: "Edital ou conteúdo programático", description: "O conteúdo completo de um ou mais cargos." },
-  { value: "materia", label: "Matéria ou disciplina", description: "Uma disciplina inteira ou parte dela." },
-  { value: "artigo_lei", label: "Artigo de lei", description: "Um ou mais artigos com incisos, parágrafos e alíneas." },
-  { value: "tema_livre", label: "Tema livre", description: "Um assunto específico que você quer dominar." },
+  { value: "tema_livre", label: "Tema", description: "Um assunto específico, como prisão em flagrante ou poderes administrativos." },
+  { value: "artigo_lei", label: "Artigo ou trecho de lei", description: "Um ou mais artigos, com ou sem o texto colado (ex.: arts. 121 a 129 do CP)." },
+  { value: "materia", label: "Matéria ou capítulo", description: "Uma disciplina, um capítulo ou parte dela." },
+  { value: "edital", label: "Edital (opcional)", description: "Vários temas de um cargo, para organizar em sequência." },
+];
+
+/** Exemplos de pedidos para a tela de entrada. */
+export const CONTENT_EXAMPLES: Array<{ text: string; type: ContentType }> = [
+  { text: "Art. 5º da Constituição Federal", type: "artigo_lei" },
+  { text: "Arts. 121 a 129 do Código Penal", type: "artigo_lei" },
+  { text: "Prisão em flagrante", type: "tema_livre" },
+  { text: "Poderes administrativos", type: "tema_livre" },
+  { text: "Lei Maria da Penha, arts. 1º a 7º", type: "artigo_lei" },
 ];
 
 export const CONTENT_LIMITS = {
-  minChars: 20,
+  /** Um tema curto já basta ("Prisão em flagrante"): a IA delimita o escopo. */
+  minChars: 4,
   /** ~60 mil caracteres cobrem editais extensos sem estourar custos de IA. */
   maxChars: 60_000,
 } as const;
@@ -52,7 +66,12 @@ export const trailRequestSchema = z
         message: `O conteúdo precisa ter pelo menos ${CONTENT_LIMITS.minChars} caracteres.`,
       })
       .refine((s) => /\p{L}{3,}/u.test(s), { message: "O conteúdo não parece conter texto." }),
-    title: z.string().trim().max(120).optional(),
+    title: z
+      .string()
+      .trim()
+      .max(120, "O título pode ter no máximo 120 caracteres.")
+      .optional()
+      .transform((v) => (v ? v : undefined)),
   })
   .superRefine((v, ctx) => {
     if (v.board === "outra" && (!v.otherBoardName || v.otherBoardName.length < 2)) {

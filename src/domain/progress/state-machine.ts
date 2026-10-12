@@ -3,7 +3,8 @@
  * Pura e determinística; a persistência fica na camada de servidor.
  *
  * Princípio: leitura concluída ≠ domínio demonstrado.
- *  - "aguardando_dominio": passou nas questões → libera a próxima unidade,
+ *  - Avaliação em três níveis (fácil → médio → difícil), cada um com ≥ 90%.
+ *  - "aguardando_dominio": passou no nível difícil → libera a próxima unidade,
  *    mas o domínio só é confirmado após revisão bem-sucedida depois de um intervalo.
  *  - "dominada": confirmada a retenção ao longo do tempo.
  */
@@ -40,7 +41,7 @@ export interface MasteryCriteria {
   requireAllQuestions: boolean;
   /** Mínimo de questões distintas respondidas na unidade. */
   minQuestions: number;
-  /** Proporção mínima de acertos (0–1) para avançar. */
+  /** Proporção mínima de acertos (0–1) para aprovar cada nível. */
   minAccuracy: number;
   /** Proporção mínima de acertos nas questões marcadas como essenciais. */
   minEssentialAccuracy: number;
@@ -54,7 +55,7 @@ export const DEFAULT_CRITERIA: MasteryCriteria = {
   requireLessonCompletion: true,
   requireAllQuestions: true,
   minQuestions: 4,
-  minAccuracy: 0.75,
+  minAccuracy: 0.9,
   minEssentialAccuracy: 1,
   minRetentionDays: 2,
   minReviewAccuracy: 0.7,
@@ -73,7 +74,8 @@ export type UnitEvent =
   | { type: "UNLOCK" }
   | { type: "START" }
   | { type: "COMPLETE_READING" }
-  | { type: "QUIZ_EVALUATED"; outcome: QuizOutcome; at: Date }
+  /** Resultado de um nível (1 fácil, 2 médio, 3 difícil). Sem `level`, vale o próximo nível. */
+  | { type: "QUIZ_EVALUATED"; outcome: QuizOutcome; at: Date; level?: 1 | 2 | 3 }
   | { type: "REVIEW_EVALUATED"; outcome: QuizOutcome; at: Date }
   | { type: "REVIEW_DUE" }
   | { type: "CONTENT_UPDATED" }
@@ -85,6 +87,8 @@ export interface UnitProgress {
   readingCompletedAt: Date | null;
   passedAt: Date | null;
   masteredAt: Date | null;
+  /** Níveis aprovados (0–3). O nível 3 aprovado libera a próxima unidade. */
+  levelsPassed: number;
   /** Estado a restaurar depois de validação/atualização. */
   resumeState: UnitState | null;
 }
@@ -112,9 +116,12 @@ export function initialProgress(unlocked: boolean): UnitProgress {
     readingCompletedAt: null,
     passedAt: null,
     masteredAt: null,
+    levelsPassed: 0,
     resumeState: null,
   };
 }
+
+const LEVEL_NAMES = ["", "fácil", "médio", "difícil"] as const;
 
 export interface QuizVerdict {
   passed: boolean;
@@ -127,7 +134,8 @@ export function evaluateQuiz(o: QuizOutcome, c: MasteryCriteria, minAccuracy = c
   const accuracy = o.answered ? o.correct / o.answered : 0;
   if (c.requireAllQuestions && o.total !== undefined && o.answered < o.total) {
     reasons.push(`Responda todas as ${o.total} questões de fixação do tema (faltam ${o.total - o.answered}).`);
-  } else if (o.answered < c.minQuestions) {
+  } else if (o.answered < (o.total !== undefined ? Math.min(c.minQuestions, o.total) : c.minQuestions)) {
+    // Com o total conhecido, responder todas basta (um nível pode ter menos questões que o mínimo geral).
     reasons.push(`Responda pelo menos ${c.minQuestions} questões (você respondeu ${o.answered}).`);
   }
   if (accuracy < minAccuracy) {
@@ -215,18 +223,35 @@ export function transition(
       if (s === "aguardando_dominio" || s === "dominada") {
         return ok("Prática registrada.", { unlocksNext: true });
       }
+      const passed = p.levelsPassed ?? 0;
+      const level = event.level ?? Math.min(3, passed + 1);
+      if (level <= passed) {
+        return ok(`O nível ${LEVEL_NAMES[level]} já foi aprovado. Esta prática não altera seu progresso.`);
+      }
+      if (level > passed + 1) {
+        return ok(`Conclua o nível ${LEVEL_NAMES[passed + 1]} antes do nível ${LEVEL_NAMES[level]}.`);
+      }
       const v = evaluateQuiz(event.outcome, criteria);
+      const pct = Math.round(v.accuracy * 100);
+      if (v.passed && level < 3) {
+        p.levelsPassed = level;
+        return ok(`Nível ${LEVEL_NAMES[level]} aprovado com ${pct}%. O nível ${LEVEL_NAMES[level + 1]} foi liberado.`);
+      }
       if (v.passed) {
+        p.levelsPassed = 3;
         p.state = "aguardando_dominio";
         p.passedAt = event.at;
         return ok(
-          `Muito bem: ${Math.round(v.accuracy * 100)}% de acerto. A próxima unidade foi liberada. O domínio será confirmado em uma revisão daqui a ${criteria.minRetentionDays} dia(s).`,
+          `Nível difícil aprovado com ${pct}%. Você concluiu os três níveis desta unidade e a próxima foi liberada. O domínio será confirmado em uma revisão daqui a ${criteria.minRetentionDays} dia(s).`,
           { unlocksNext: true },
         );
       }
-      p.state = "em_revisao";
-      return ok(`Ainda não é hora de avançar. ${v.reasons.join(" ")}`, {
-        recommendations: DIFFICULTY_TIPS,
+      // Reprovação no nível: nada é reiniciado; os exercícios de recuperação cobrem os erros.
+      return ok(`Ainda não é hora de avançar no nível ${LEVEL_NAMES[level]}. ${v.reasons.join(" ")}`, {
+        recommendations: [
+          "Faça os exercícios de recuperação: eles substituem só as questões que você errou.",
+          ...DIFFICULTY_TIPS,
+        ],
       });
     }
 
@@ -236,6 +261,7 @@ export function transition(
         if (v.passed) {
           p.state = "aguardando_dominio";
           p.passedAt = event.at;
+          p.levelsPassed = 3;
           return ok("Revisão aprovada. A próxima unidade foi liberada.", { unlocksNext: true });
         }
         return ok(`Continue revisando. ${v.reasons.join(" ")}`, { recommendations: DIFFICULTY_TIPS });

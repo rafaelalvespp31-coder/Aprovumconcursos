@@ -12,6 +12,8 @@ export interface PublicJob {
   status: "queued" | "running" | "succeeded" | "failed";
   progress: number;
   error: string | null;
+  /** "needs_clarification": o processamento aguarda uma resposta do aluno (não é erro). */
+  errorCode?: string | null;
   attempts: number;
   maxAttempts: number;
 }
@@ -82,7 +84,9 @@ export function JobRunner({
       router.replace(doneHref);
       router.refresh();
     }
-  }, [job.status, router, doneHref]);
+    // Pedido de esclarecimento: a página do servidor mostra a pergunta.
+    if (job.status === "failed" && job.errorCode === "needs_clarification") router.refresh();
+  }, [job.status, job.errorCode, router, doneHref]);
 
   const retry = async () => {
     const res = await fetch(`/api/jobs/${job.id}/retry`, { method: "POST" });

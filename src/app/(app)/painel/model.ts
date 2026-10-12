@@ -34,9 +34,9 @@ export interface TrailCard {
 /** Paleta da marca APROVUM (preto, branco e vermelho), atribuída em ordem às trilhas. */
 export const TRAIL_PALETTE = [
   { color: "#FF1E1E", color2: "#B30000" },
-  { color: "#FFFFFF", color2: "#8C8C8C" },
+  { color: "#0A0A0A", color2: "#5C5C5C" },
   { color: "#E10600", color2: "#5C0000" },
-  { color: "#BDBDBD", color2: "#5A5A5A" },
+  { color: "#8C8C8C", color2: "#3A3A3A" },
 ] as const;
 
 /** Ícone pela disciplina da trilha (não pelo nome do concurso, para não sugerir o que não é). */

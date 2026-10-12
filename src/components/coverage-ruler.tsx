@@ -10,8 +10,8 @@ const fill: Record<RulerState, string> = {
   ensinado: "bg-estudado",
   praticado: "bg-praticado",
   dominado: "bg-dominado",
-  // Listras branco/cinza: distingue "não verificado" de "dominado" (branco sólido) sem usar outra cor.
-  nao_verificado: "bg-[repeating-linear-gradient(135deg,#e6e6e6_0_3px,#4a4a4a_3px_6px)]",
+  // Listras branco/cinza: distingue "não verificado" de "dominado" (preto sólido) sem usar outra cor.
+  nao_verificado: "bg-[repeating-linear-gradient(135deg,#0a0a0a_0_2px,#d4d4d4_2px_5px)]",
 };
 
 export const RULER_LABELS: Record<RulerState, string> = {

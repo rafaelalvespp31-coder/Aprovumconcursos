@@ -57,22 +57,22 @@ export async function createTrail(userId: string, input: unknown): Promise<{ tra
   const limits = await planLimits(userId);
   if (req.content.length > limits.max_content_chars) {
     throw new UserFacingError(
-      `Seu plano permite até ${limits.max_content_chars.toLocaleString("pt-BR")} caracteres por trilha. Divida o conteúdo ou altere o plano.`,
+      `Seu plano permite até ${limits.max_content_chars.toLocaleString("pt-BR")} caracteres por estudo. Divida o conteúdo ou altere o plano.`,
       "content_too_large",
     );
   }
   const { data: active } = await db.rpc("count_active_trails", { p_user: userId });
   if ((active as number) >= limits.max_active_trails) {
-    throw new UserFacingError("Você atingiu o número de trilhas ativas do seu plano. Arquive uma trilha para criar outra.", "trail_limit");
+    throw new UserFacingError("Você atingiu o número de estudos ativos do seu plano. Arquive um estudo para criar outro.", "trail_limit");
   }
   const quota = await db.rpc("consume_quota", { p_user: userId, p_kind: "trail_build", p_units: 1 });
   if (quota.error) throw new Error(`cota indisponível: ${quota.error.message}`);
   if (!(quota.data as { allowed: boolean }).allowed) {
-    throw new UserFacingError("Limite mensal de construção de trilhas atingido no seu plano.", "quota_exceeded");
+    throw new UserFacingError("Limite mensal de novos estudos atingido no seu plano.", "quota_exceeded");
   }
 
   const norm = normalizeContent(req.content);
-  const title = req.title || firstLine(norm.normalized) || "Nova trilha";
+  const title = req.title || firstLine(norm.normalized) || "Novo estudo";
 
   const trail = await db
     .from("study_trails")
@@ -114,7 +114,7 @@ export async function createTrail(userId: string, input: unknown): Promise<{ tra
     // Sem trilha "fantasma": desfaz a criação parcial.
     await db.from("study_trails").delete().eq("id", trailId).eq("user_id", userId);
     await logEvent("trail.create_failed", { userId, error: (err as Error).message });
-    throw new Error("Não foi possível registrar a trilha. Tente novamente.");
+    throw new Error("Não foi possível registrar o estudo. Tente novamente.");
   }
 }
 
@@ -174,10 +174,10 @@ export async function activateTrail(trailId: string, userId: string) {
   const t = await db.from("study_trails").select("status").eq("id", trailId).eq("user_id", userId).single();
   if (t.error) throw new UserFacingError("Trilha não encontrada.", "not_found");
   if (t.data.status === "active") return;
-  if (t.data.status !== "review") throw new UserFacingError("A trilha ainda não está pronta para começar.", "not_ready");
+  if (t.data.status !== "review") throw new UserFacingError("O estudo ainda não está pronto para começar.", "not_ready");
 
   const lessons = await db.from("lessons").select("id, sort_order").eq("trail_id", trailId).eq("user_id", userId).order("sort_order");
-  if (lessons.error || !lessons.data.length) throw new UserFacingError("A trilha não tem aulas planejadas.", "empty_plan");
+  if (lessons.error || !lessons.data.length) throw new UserFacingError("O estudo não tem unidades planejadas.", "empty_plan");
   const rows = lessons.data.map((l, i) => ({
     user_id: userId,
     lesson_id: l.id,
@@ -229,5 +229,34 @@ export async function requestLessonGeneration(lessonId: string, userId: string):
     .select("id")
     .single();
   if (job.error) throw new Error(job.error.message);
+  return job.data.id as string;
+}
+
+/**
+ * Resposta do aluno ao pedido de esclarecimento do escopo. Grava a resposta e retoma
+ * a construção do mesmo ponto (a delimitação roda de novo, agora sem perguntar).
+ */
+export async function answerClarification(userId: string, trailId: string, answer: string): Promise<string> {
+  const text = answer.trim();
+  if (text.length < 1 || text.length > 1000) throw new UserFacingError("Escreva uma resposta de até 1.000 caracteres.", "invalid_input");
+  await enforceRateLimit(userId, "clarify_scope", 6);
+  const db = createAdminClient();
+  const t = await db.from("study_trails").select("status").eq("id", trailId).eq("user_id", userId).single();
+  if (t.error) throw new UserFacingError("Estudo não encontrado.", "not_found");
+  if (t.data.status !== "clarification") throw new UserFacingError("Este estudo não está aguardando esclarecimento.", "not_waiting");
+  const job = await db
+    .from("ai_generation_jobs")
+    .select("id")
+    .eq("trail_id", trailId)
+    .eq("user_id", userId)
+    .eq("kind", "build_trail")
+    .eq("error_code", "needs_clarification")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!job.data) throw new UserFacingError("Processamento não encontrado.", "not_found");
+  const up = await db.from("study_trails").update({ scope_answer: text }).eq("id", trailId).eq("user_id", userId);
+  if (up.error) throw new Error(up.error.message);
+  await retryJob(job.data.id as string, userId);
   return job.data.id as string;
 }

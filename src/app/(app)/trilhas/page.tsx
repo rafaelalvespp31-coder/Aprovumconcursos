@@ -3,7 +3,7 @@ import { listTrails } from "@/server/queries";
 import { ButtonLink, EmptyState, Tag } from "@/components/ui";
 import { boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
 
-export const metadata = { title: "Minhas trilhas" };
+export const metadata = { title: "Meus estudos" };
 
 const STATUS: Record<string, { label: string; tone: "azul" | "verde" | "ambar" | "vermelho" | "neutro" }> = {
   pending: { label: "Na fila", tone: "neutro" },
@@ -23,12 +23,12 @@ export default async function TrailsPage({ searchParams }: { searchParams: Promi
   return (
     <div>
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="t-h1">{showArchived ? "Trilhas arquivadas" : "Minhas trilhas"}</h1>
-        <ButtonLink href="/nova-trilha">Nova trilha</ButtonLink>
+        <h1 className="t-h1">{showArchived ? "Estudos arquivados" : "Meus estudos"}</h1>
+        <ButtonLink href="/nova-trilha">Novo estudo</ButtonLink>
       </div>
       {trails.length === 0 ? (
         <div className="mt-6">
-          <EmptyState title={showArchived ? "Nenhuma trilha arquivada" : "Você ainda não tem trilhas"} action={!showArchived && <ButtonLink href="/nova-trilha">Criar a primeira trilha</ButtonLink>}>
+          <EmptyState title={showArchived ? "Nenhum estudo arquivado" : "Você ainda não tem estudos"} action={!showArchived && <ButtonLink href="/nova-trilha">Começar o primeiro estudo</ButtonLink>}>
             {!showArchived && "Cole o conteúdo do edital, de uma matéria ou de um artigo de lei para começar."}
           </EmptyState>
         </div>
@@ -55,7 +55,7 @@ export default async function TrailsPage({ searchParams }: { searchParams: Promi
       )}
       {(archivedCount > 0 || showArchived) && (
         <Link href={showArchived ? "/trilhas" : "/trilhas?arquivadas=1"} className="mt-4 inline-block t-small text-destaque underline underline-offset-2">
-          {showArchived ? "Ver trilhas ativas" : `Ver ${archivedCount} trilha(s) arquivada(s)`}
+          {showArchived ? "Ver estudos ativos" : `Ver ${archivedCount} estudo(s) arquivado(s)`}
         </Link>
       )}
     </div>

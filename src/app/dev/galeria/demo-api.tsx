@@ -10,6 +10,7 @@ import { StudyApiProvider, type StudyApi } from "@/components/study-api";
 import type { AnswerFeedback } from "@/server/services/study";
 import type { Annotation, SearchItem } from "@/app/(app)/study-actions";
 import { DEFAULT_CRITERIA, evaluateQuiz } from "@/domain/progress/state-machine";
+import { LEVELS, type LevelKey } from "@/domain/progress/levels";
 import { bank, reader } from "./fixtures";
 
 const delay = (ms = 250) => new Promise((r) => setTimeout(r, ms));
@@ -33,6 +34,7 @@ function createDemoApi(): StudyApi {
     const attempts = new Map<string, number>();
     let annotations: Annotation[] = [...reader.annotations];
     let seq = 0;
+    let levelsPassed = 0;
 
     const feedbackFor = (questionId: string, correct: boolean): AnswerFeedback => {
       const q = questions.get(questionId)!;
@@ -120,35 +122,46 @@ function createDemoApi(): StudyApi {
         await delay();
         return { explanation: "Leitura concluída. Agora resolva as questões para demonstrar o aprendizado." };
       },
-      async evaluateQuiz() {
+      async evaluateQuiz(_lessonId: string, _context: "fixacao" | "revisao", levelKey?: LevelKey) {
         await delay();
-        // Mesma regra do produto: todas as questões do tema, ≥75% e essenciais corretas.
-        const list = [...answers.values()];
+        // Mesma regra do produto: um nível por vez, todas as questões do nível, ≥90% e essenciais corretas.
+        const level = levelKey ?? LEVELS[Math.min(2, levelsPassed)]!.key;
+        const n = LEVELS.find((l) => l.key === level)!.n;
+        const ids = new Set(reader.questions.filter((q) => q.level === level).map((q) => q.id));
+        const list = [...answers.entries()].filter(([id]) => ids.has(id)).map(([, a]) => a);
         const outcome = {
           answered: list.length,
           correct: list.filter((a) => a.correct).length,
           essentialAnswered: list.filter((a) => a.essential).length,
           essentialCorrect: list.filter((a) => a.essential && a.correct).length,
-          total: reader.questions.length,
+          total: ids.size,
         };
         const v = evaluateQuiz(outcome, DEFAULT_CRITERIA);
+        if (v.passed && n === levelsPassed + 1) levelsPassed = n;
         return {
           ok: true,
-          accuracy: v.accuracy,
-          unlocksNext: v.passed,
+          accuracy: ids.size ? outcome.correct / ids.size : 0,
+          unlocksNext: v.passed && n === 3,
           explanation: v.passed
-            ? `Muito bem: ${Math.round(v.accuracy * 100)}% de acerto. O próximo tema foi liberado.`
-            : `Ainda não é hora de avançar. ${v.reasons.join(" ")}`,
-          recommendations: v.passed ? [] : ["Veja uma explicação alternativa do conceito.", "Resolva novas questões sobre os pontos em que errou."],
-          nextReviewAt: new Date(Date.now() + 86_400_000).toISOString(),
+            ? `Nível ${LEVELS[n - 1]!.label.toLowerCase()} aprovado com ${Math.round(v.accuracy * 100)}%.`
+            : `Ainda não é hora de avançar neste nível. ${v.reasons.join(" ")}`,
+          recommendations: v.passed ? [] : ["Faça os exercícios de recuperação: eles substituem só as questões que você errou."],
+          level,
+          levelsPassed,
+          correct: outcome.correct,
+          total: ids.size,
         };
+      },
+      async generateRecovery() {
+        await delay();
+        return { ok: false, error: "Na galeria de demonstração não há IA: os exercícios de recuperação só são gerados no app." };
       },
       async search(query: string) {
         await delay(120);
         const q = query.trim().toLowerCase();
         if (q.length < 2) return { ok: true, data: [] };
         const items: SearchItem[] = [
-          { type: "Trilha", name: "Polícia Penal MG — Direito Administrativo", href: "/dev/galeria/trilha" },
+          { type: "Estudo", name: "Polícia Penal MG — Direito Administrativo", href: "/dev/galeria/trilha" },
           { type: "Tema", name: reader.lesson.title, href: "/dev/galeria/aula" },
           { type: "Revisão", name: "Atributos do ato administrativo", href: "/dev/galeria/aula" },
         ];

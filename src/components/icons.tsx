@@ -38,6 +38,7 @@ const PATHS = {
   raio: "M13 3 5 14h6l-1 7 8-11h-6z",
   grafico: "M4 20V10M10 20V4M16 20v-7M22 20H2",
   teclado: "M3 7h18v10H3zM7 11h.01M11 11h.01M15 11h.01M8 14h8",
+  download: "M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14",
 } as const;
 
 export type IconName = keyof typeof PATHS;

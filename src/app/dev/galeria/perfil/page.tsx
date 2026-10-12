@@ -20,7 +20,7 @@ export default function Page() {
     >
       <PastelCard noTilt className="p-6">
         <h2 className="text-[13px] font-bold">Dados e metas</h2>
-        <p className="mt-2 text-[12px] text-[#B3B3B3]">No app, aqui ficam o formulário de nome e metas, o plano e a opção de sair.</p>
+        <p className="mt-2 text-[12px] text-[#4D4D4D]">No app, aqui ficam o formulário de nome e metas, o plano e a opção de sair.</p>
       </PastelCard>
     </PastelProfile>
   );

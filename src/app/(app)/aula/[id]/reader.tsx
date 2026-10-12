@@ -12,6 +12,8 @@ import type { Annotation } from "../../study-actions";
 import type { QuizResult } from "./actions";
 import { useStored } from "@/components/use-stored";
 import { useStudyApi } from "@/components/study-api";
+import type { LevelKey } from "@/domain/progress/levels";
+import { LevelsPanel } from "./levels-panel";
 
 export interface ReaderSection {
   id: string;
@@ -34,7 +36,9 @@ export interface ReaderProps {
   lesson: { id: string; title: string; objective: string; trailId: string; trailTitle: string; estimatedMinutes: number; stateLabel: string | null };
   sections: ReaderSection[];
   nodes: Array<{ key: string; marker: string | null; title: string; taught: boolean }>;
-  questions: Array<QuestionData & { nodeKey: string | null }>;
+  questions: Array<ReaderQuestion>;
+  /** Níveis aprovados nesta unidade (0–3): fácil → médio → difícil. */
+  levelsPassed: number;
   markedQuestionIds: string[];
   annotations: Annotation[];
   clarifications: ReaderClarification[];
@@ -45,6 +49,8 @@ export interface ReaderProps {
   notices: React.ReactNode;
   /** Pré-visualização de design: não dispara efeitos no servidor. */
 }
+
+export type ReaderQuestion = QuestionData & { nodeKey: string | null; level?: LevelKey; recovery_of?: string | null };
 
 const sectionDomId = (id: string) => `secao-${id}`;
 
@@ -98,9 +104,11 @@ export function LessonReader(props: ReaderProps) {
   // Distribui questões: a primeira questão de cada item aparece logo após a seção que o ensina.
   const { interleaved, remaining } = useMemo(() => {
     const placed = new Set<string>();
-    const inter = new Map<string, Array<QuestionData & { nodeKey: string | null }>>();
+    const inter = new Map<string, ReaderQuestion[]>();
+    // Perguntas rápidas: só questões oficiais do nível fácil (o 1º nível liberado).
+    const quick = questions.filter((q) => !q.recovery_of && (q.level ?? "facil") === "facil");
     for (const s of sections) {
-      const q = questions.find((q) => !placed.has(q.id) && q.nodeKey && s.node_keys.includes(q.nodeKey));
+      const q = quick.find((q) => !placed.has(q.id) && q.nodeKey && s.node_keys.includes(q.nodeKey));
       if (q && s.kind !== "texto_legal" && s.kind !== "objetivo") {
         placed.add(q.id);
         inter.set(s.id, [q]);
@@ -254,18 +262,38 @@ export function LessonReader(props: ReaderProps) {
           />
 
           <section id="questoes" className="mt-10 scroll-mt-6" aria-labelledby="questoes-titulo">
-            <h2 id="questoes-titulo" className="t-h2">{context === "revisao" ? "Revisão da aula" : "Questões de fixação"}</h2>
-            <p className="mt-1 t-small text-tinta-suave">
-              {remaining.length} questão(ões) aqui{interleaved.size ? ` e ${questions.length - remaining.length} ao longo da aula` : ""}. Seu resultado considera todas.
-            </p>
-            <div className="mt-4 flex flex-col gap-4">
-              {remaining.map((q) => (
-                <div key={q.id} onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
-                  <QuestionCard q={q} number={numberOf.get(q.id)!} context={context} active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} />
+            <h2 id="questoes-titulo" className="t-h2">{context === "revisao" ? "Revisão da aula" : "Avaliação por níveis"}</h2>
+            {context === "revisao" ? (
+              <>
+                <p className="mt-1 t-small text-tinta-suave">
+                  {remaining.length} questão(ões) aqui{interleaved.size ? ` e ${questions.length - remaining.length} ao longo da aula` : ""}. Seu resultado considera todas.
+                </p>
+                <div className="mt-4 flex flex-col gap-4">
+                  {remaining.map((q) => (
+                    <div key={q.id} onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
+                      <QuestionCard q={q} number={numberOf.get(q.id)!} context={context} active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} />
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
-            <UnitResult lessonId={lesson.id} context={context} readingDone={readingDone} nextId={props.nextId} total={questions.length} />
+                <UnitResult lessonId={lesson.id} context={context} readingDone={readingDone} nextId={props.nextId} total={questions.length} />
+              </>
+            ) : (
+              <LevelsPanel
+                lessonId={lesson.id}
+                trailId={lesson.trailId}
+                questions={questions}
+                interleavedIds={new Set([...interleaved.values()].flat().map((q) => q.id))}
+                initialLevelsPassed={props.levelsPassed}
+                readingDone={readingDone}
+                nextId={props.nextId}
+                renderQuestion={(q, n, label) => (
+                  <div key={q.id} onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
+                    {label && <p className="mb-2 t-tiny font-semibold text-destaque">{label}</p>}
+                    <QuestionCard q={q} number={n} context={context} active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} />
+                  </div>
+                )}
+              />
+            )}
           </section>
 
           <nav aria-label="Aulas" className="mt-12 flex flex-wrap justify-between gap-3 border-t border-linha pt-5">

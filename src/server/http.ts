@@ -41,8 +41,9 @@ export async function withUser(
   }
 }
 
-export function publicJob(job: { id: string; kind: string; stage: string; status: string; progress: number; errorMessage: string | null; attempts: number; maxAttempts: number; trailId: string; lessonId: string | null }) {
+export function publicJob(job: { id: string; kind: string; stage: string; status: string; progress: number; errorMessage: string | null; errorCode?: string | null; attempts: number; maxAttempts: number; trailId: string; lessonId: string | null }) {
   return {
+    errorCode: job.errorCode ?? null,
     id: job.id,
     kind: job.kind,
     stage: job.stage,

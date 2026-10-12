@@ -10,6 +10,7 @@ import { AIError, type AIProvider } from "@/ai/provider";
 import { completeLessonSections, generateLesson, generateQuestions, questionCountFor, type Warning } from "@/ai/services";
 import type { LessonOutput, QuestionsOutput } from "@/ai/schemas";
 import type { DisciplineMode, LessonSectionKind } from "@/ai/pedagogy";
+import { LEVELS, type LevelKey } from "@/domain/progress/levels";
 import { SECTION_LABELS } from "@/ai/pedagogy";
 import { PipelineError } from "./build-trail";
 import type { GenerationRecord, Job } from "./types";
@@ -31,7 +32,7 @@ export interface LessonRepo {
   saveLesson(ctx: LessonGenContext, out: LessonOutput & { verificationPending: boolean }, status: LessonStatus, missing: string[]): Promise<void>;
   getLessonMarkdown(lessonId: string, userId: string): Promise<string>;
   /** append=false substitui as questões ativas do tema; append=true acrescenta. */
-  saveQuestions(ctx: LessonGenContext, q: QuestionsOutput, append?: boolean): Promise<number>;
+  saveQuestions(ctx: LessonGenContext, q: QuestionsOutput, append?: boolean, level?: LevelKey): Promise<number>;
   setLessonStatus(lessonId: string, userId: string, status: LessonStatus, error?: string | null): Promise<void>;
   saveJob(job: Job<LessonJobState>): Promise<void>;
   recordGeneration(rec: GenerationRecord): Promise<void>;
@@ -49,6 +50,10 @@ export interface LessonJobState {
   questionGaps?: { missingLevels: number[]; uncoveredNodeKeys: string[] };
   /** Enunciados já gravados (para a rodada complementar não repetir). */
   savedStatements?: string[];
+  /** Nível de questões em geração (0 fácil, 1 médio, 2 difícil). */
+  levelIndex?: number;
+  /** Itens que ficaram sem questão em cada nível, após a rodada complementar. */
+  levelGaps?: Partial<Record<LevelKey, string[]>>;
 }
 
 
@@ -110,56 +115,57 @@ export async function advanceLessonJob(
         next.progress = 70;
       }
     } else if (stage === "questions" || stage === "questions_extra") {
+      // Três níveis, um por passo: fácil → médio → difícil. Cada nível cobre todos os
+      // itens; se faltar item, uma rodada complementar daquele nível acrescenta só o que faltou.
       const extra = stage === "questions_extra";
+      const li = job.state.levelIndex ?? 0;
+      const level = LEVELS[li]!;
       const gaps = job.state.questionGaps;
       const markdown = await repo.getLessonMarkdown(lessonId, job.userId);
-      const scopeSize = requiredNodes.length;
       const r = await generateQuestions(ai, {
         board: ctx.boardName,
         lesson: ctx.lesson,
         lessonMarkdown: markdown,
         nodes: ctx.nodes,
-        count: extra && gaps
-          ? Math.min(15, Math.max(gaps.missingLevels.length, gaps.uncoveredNodeKeys.length, 1))
-          : questionCountFor(scopeSize),
+        level: level.key,
+        count: extra && gaps ? Math.min(15, Math.max(gaps.uncoveredNodeKeys.length, 1)) : questionCountFor(requiredNodes.length),
         focus: extra && gaps ? { ...gaps, existingStatements: job.state.savedStatements ?? [] } : undefined,
       });
-      const saved = await repo.saveQuestions(ctx, r.data, extra);
+      // A primeira gravação da aula substitui as questões antigas; as demais acrescentam.
+      const saved = await repo.saveQuestions(ctx, r.data, extra || li > 0, level.key);
       await repo.recordGeneration({ jobId: job.id, userId: job.userId, trailId: job.trailId, lessonId, task: "generate_questions", provider: r.provider, model: r.model, usage: r.usage, warnings: r.warnings });
       next.state.warnings = [...(next.state.warnings ?? []), ...r.warnings];
       if (!extra && saved === 0) {
-        throw new PipelineError("Nenhuma questão válida foi gerada para esta aula.", "no_valid_questions", true);
+        throw new PipelineError(`Nenhuma questão válida foi gerada para o nível ${level.label.toLowerCase()}.`, "no_valid_questions", true);
       }
-      if (!extra && (r.gaps.missingLevels.length || r.gaps.uncoveredNodeKeys.length)) {
-        // Uma rodada complementar só com os níveis/itens que faltaram.
-        next.state.questionGaps = r.gaps;
-        next.state.savedStatements = r.data.questions.map((q) => q.statement);
+      const remaining = extra && gaps
+        ? gaps.uncoveredNodeKeys.filter((k) => !r.data.questions.some((q) => q.nodeKey === k))
+        : r.gaps.uncoveredNodeKeys;
+      const statements = [...(extra ? job.state.savedStatements ?? [] : []), ...r.data.questions.map((q) => q.statement)];
+      if (!extra && remaining.length) {
+        next.state.questionGaps = { missingLevels: [], uncoveredNodeKeys: remaining };
+        next.state.savedStatements = statements;
         next.stage = "questions_extra";
-        next.progress = 85;
       } else {
-        if (extra && gaps) {
-          const levels = new Set(r.data.questions.map((q) => q.difficulty));
-          const nodes = new Set(r.data.questions.map((q) => q.nodeKey));
-          next.state.questionGaps = {
-            missingLevels: gaps.missingLevels.filter((l) => !levels.has(l)),
-            uncoveredNodeKeys: gaps.uncoveredNodeKeys.filter((k) => !nodes.has(k)),
-          };
-        } else {
-          next.state.questionGaps = r.gaps;
-        }
+        next.state.levelGaps = { ...(next.state.levelGaps ?? {}), [level.key]: remaining };
+        delete next.state.questionGaps;
         delete next.state.savedStatements;
-        next.stage = "done";
-        next.status = "succeeded";
-        next.progress = 100;
-        await repo.log("lesson.generated", {
-          jobId: job.id,
-          lessonId,
-          questions: saved,
-          missing: next.state.missingNodeKeys?.length ?? 0,
-          missingKinds: next.state.missingKinds?.length ?? 0,
-          missingLevels: next.state.questionGaps.missingLevels.length,
-        });
+        if (li < LEVELS.length - 1) {
+          next.state.levelIndex = li + 1;
+          next.stage = "questions";
+        } else {
+          next.stage = "done";
+          next.status = "succeeded";
+          await repo.log("lesson.generated", {
+            jobId: job.id,
+            lessonId,
+            missing: next.state.missingNodeKeys?.length ?? 0,
+            missingKinds: next.state.missingKinds?.length ?? 0,
+            levelGaps: Object.values(next.state.levelGaps ?? {}).reduce((n, g) => n + g.length, 0),
+          });
+        }
       }
+      next.progress = next.status === "succeeded" ? 100 : Math.min(98, 70 + (li + (extra ? 1 : 0.5)) * 9);
     }
     next.attempts = 0;
     next.errorCode = null;

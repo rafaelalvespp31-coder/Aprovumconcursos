@@ -1,15 +1,16 @@
 import { expect, test } from "@playwright/test";
 
 test.describe("páginas públicas", () => {
-  test("landing demonstra a decomposição real do edital", async ({ page }) => {
+  test("landing: estudo por conteúdo específico, com decomposição real de um artigo", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Cole o edital. Estude tudo o que ele pede.");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Cole o que vai estudar hoje. Saia dominando.");
+    await expect(page.getByText(/sem precisar do edital/)).toBeVisible();
     // A régua mostra um segmento por item extraído pelo motor real.
     const ruler = page.getByRole("img", { name: /Cobertura do exemplo/ });
     await expect(ruler).toBeVisible();
     await expect(ruler).toHaveAttribute("aria-label", /\d+ itens/);
     // O item aparece na lista extraída (além da citação do texto original).
-    await expect(page.getByRole("listitem").filter({ hasText: "Invalidação, anulação e revogação" })).toBeVisible();
+    await expect(page.getByRole("listitem").filter({ hasText: "ninguém será submetido a tortura" })).toBeVisible();
   });
 
   test("sem rolagem horizontal", async ({ page }) => {

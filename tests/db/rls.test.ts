@@ -239,6 +239,28 @@ describe("estatísticas do painel (nível, sequência, conquistas)", () => {
   });
 });
 
+describe("PDF por conteúdo", () => {
+  itDb("cada aluno lê só os próprios PDFs e o cliente não grava PDF", async () => {
+    await db.query("begin");
+    try {
+      await db.query("insert into study_pdfs (user_id, trail_id, version_id, pdf_version, snapshot, content_hash) values ($1,$2,$3,1,'{}',$4)", [A, ids.a_trail, ids.a_version, "b".repeat(64)]);
+      await db.query("set local role authenticated");
+      await db.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: B, role: "authenticated" })]);
+      expect((await db.query("select count(*)::int n from study_pdfs")).rows[0].n).toBe(0);
+      await db.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: A, role: "authenticated" })]);
+      expect((await db.query("select count(*)::int n from study_pdfs")).rows[0].n).toBe(1);
+      await db.query("savepoint s");
+      const ins = await db.query("insert into study_pdfs (user_id, trail_id, version_id, pdf_version, snapshot, content_hash) values ($1,$2,$3,2,'{}',$4)", [A, ids.a_trail, ids.a_version, "c".repeat(64)]).catch((e) => e);
+      expect(ins.code).toBe("42501");
+      await db.query("rollback to savepoint s");
+      const fn = await db.query("select save_study_pdf($1,$2,'{}'::jsonb,'{}',$3)", [A, ids.a_trail, "d".repeat(64)]).catch((e) => e);
+      expect(fn.code).toBe("42501");
+    } finally {
+      await db.query("rollback");
+    }
+  });
+});
+
 describe("integridade referencial por dono", () => {
   itDb("impede vincular registro a trilha de outro usuário", async () => {
     await db.query("begin");

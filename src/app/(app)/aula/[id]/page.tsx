@@ -136,6 +136,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       markedQuestionIds={data.markedQuestionIds}
       annotations={data.annotations}
       clarifications={data.clarifications}
+      levelsPassed={progress?.levels_passed ?? 0}
       readingDone={!!progress?.reading_completed_at}
       context={context}
       prevId={prev?.id ?? null}

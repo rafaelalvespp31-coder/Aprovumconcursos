@@ -7,6 +7,29 @@ import { DISCIPLINE_MODES, LESSON_SECTION_KINDS } from "./pedagogy";
 
 const nodeKey = z.string().regex(/^N\d{4,6}$/);
 
+// ---- Delimitação de escopo (tema/artigo informado de forma breve) --------------
+const scopeTitle = z.string().min(2).max(160);
+export const scopeSchema = z.object({
+  subject: z.string().min(2).max(200).describe("Assunto identificado, em uma linha."),
+  scopeStatement: z.string().min(5).max(600).describe("O que será ensinado, sem extrapolar o pedido."),
+  outOfScope: z.array(z.string().min(2).max(200)).max(8).describe("Assuntos próximos que ficam de fora."),
+  isLegal: z.boolean().describe("O pedido é sobre lei, artigo ou instituto jurídico?"),
+  legalReferences: z
+    .array(z.object({ norm: z.string().min(2).max(200), provisions: z.string().min(1).max(200) }))
+    .max(10)
+    .describe("Normas e dispositivos identificados no pedido (sem transcrever o texto legal)."),
+  subtopics: z
+    .array(z.object({ title: scopeTitle, children: z.array(z.object({ title: scopeTitle })).max(15) }))
+    .max(25)
+    .describe("Subtemas necessários para ensinar o pedido por completo, em ordem didática."),
+  needsClarification: z.boolean(),
+  clarification: z
+    .object({ question: z.string().min(5).max(300), options: z.array(z.string().min(1).max(160)).min(2).max(5) })
+    .nullable()
+    .describe("Somente se houver ambiguidade relevante que impeça delimitar o escopo com segurança."),
+});
+export type ScopeOutput = z.infer<typeof scopeSchema>;
+
 // ---- Análise / enriquecimento -------------------------------------------------
 export const analysisSchema = z.object({
   disciplineMode: z.enum(DISCIPLINE_MODES),

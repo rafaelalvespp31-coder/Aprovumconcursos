@@ -6,19 +6,30 @@ import { AIError } from "@/ai/provider";
 import { FakeProvider } from "../../../tests/support/fake-provider";
 import { EDITAL_INLINE } from "../../../tests/fixtures/samples";
 import { advanceBuild, resumeFailedJob } from "./build-trail";
-import type { BuildRepo, FinalizedPlan, Job, TrailInfo } from "./types";
+import type { BuildRepo, FinalizedPlan, Job, ScopeRecord, TrailInfo } from "./types";
 
 class MemoryRepo implements BuildRepo {
+  scope: ScopeRecord = {};
+  answer: string | null = null;
   nodes: ExtractedNode[] = [];
   jobs: Job[] = [];
   statuses: string[] = [];
   generations = 0;
   finalized: FinalizedPlan | null = null;
   events: string[] = [];
-  constructor(private text: string) {}
+  constructor(private text: string, private contentType = "edital") {}
   async getTrail(): Promise<TrailInfo> {
-    return { id: "t1", userId: "u1", boardName: "FGV", contentType: "edital", versionId: "v1", normalizedText: normalizeContent(this.text).normalized };
+    const source = normalizeContent(this.text).normalized;
+    const outline = this.scope.outline;
+    return {
+      id: "t1", userId: "u1", boardName: "FGV", contentType: this.contentType, versionId: "v1",
+      normalizedText: outline ? `${source}\n\n${outline}` : source,
+      sourceLength: source.length,
+      scopeAnswer: this.answer,
+      scopeDone: this.scope.summary !== undefined && this.scope.summary !== null,
+    };
   }
+  async saveScope(_: TrailInfo, r: ScopeRecord) { this.scope = { ...this.scope, ...r }; }
   async replaceNodes(_: TrailInfo, nodes: ExtractedNode[]) { this.nodes = structuredClone(nodes); }
   async getNodes() { return structuredClone(this.nodes); }
   async saveJob(job: Job) { this.jobs.push(structuredClone(job)); }
@@ -140,5 +151,65 @@ describe("pipeline de construção de trilha", () => {
     expect(r.job.status).toBe("failed");
     expect(r.job.errorCode).toBe("empty_content");
     expect(ai.calls).toHaveLength(0);
+  });
+
+  it("tema breve: a IA delimita o escopo e os subtemas entram no mapa de cobertura", async () => {
+    const repo = new MemoryRepo("Prisão em flagrante", "tema_livre");
+    const ai = coherentAI().respond("delimit_scope", {
+      subject: "Prisão em flagrante (CPP, arts. 301 a 310)",
+      scopeStatement: "Conceito, espécies, sujeitos, auto de prisão e audiência de custódia.",
+      outOfScope: ["Prisão preventiva", "Prisão temporária"],
+      isLegal: true,
+      legalReferences: [{ norm: "Código de Processo Penal", provisions: "arts. 301 a 310" }],
+      subtopics: [
+        { title: "Conceito e natureza jurídica", children: [] },
+        { title: "Espécies de flagrante", children: [{ title: "Próprio" }, { title: "Impróprio; quase flagrante" }, { title: "Presumido" }] },
+        { title: "1.2 Auto de prisão em flagrante", children: [] },
+      ],
+      needsClarification: false,
+      clarification: null,
+    });
+    const final = await runToEnd(newJob(), repo, ai);
+    expect(final.status).toBe("succeeded");
+    expect(repo.scope.outline).toBe("1 Conceito e natureza jurídica\n2 Espécies de flagrante\n2.1 Próprio\n2.2 Impróprio, quase flagrante\n2.3 Presumido\n3 Auto de prisão em flagrante");
+    const titles = repo.nodes.map((n) => n.title);
+    expect(titles).toEqual(expect.arrayContaining(["Prisão em flagrante", "Conceito e natureza jurídica", "Presumido"]));
+    expect(repo.finalized!.audit.summary.errors).toBe(0);
+    // O planejamento recebe a orientação de conteúdo específico (não edital).
+    expect(ai.calls.find((c) => c.task === "plan_lessons")!.prompt).toMatch(/UM conteúdo específico/);
+  });
+
+  it("ambiguidade relevante pausa e pede esclarecimento; a resposta retoma do mesmo ponto", async () => {
+    const repo = new MemoryRepo("Prisão", "tema_livre");
+    const ask = {
+      subject: "Prisão", scopeStatement: "Pedido amplo.", outOfScope: [], isLegal: true, legalReferences: [], subtopics: [],
+      needsClarification: true,
+      clarification: { question: "Qual modalidade de prisão você quer estudar?", options: ["Em flagrante", "Preventiva", "Temporária"] },
+    };
+    const ai = coherentAI().respond("delimit_scope", (req: StructuredRequest<unknown>) =>
+      req.prompt.includes("esclarecimento_do_aluno")
+        ? { ...ask, needsClarification: false, clarification: null, subject: "Prisão preventiva", subtopics: [{ title: "Pressupostos", children: [] }] }
+        : ask,
+    );
+    const paused = await runToEnd(newJob(), repo, ai);
+    expect(paused.status).toBe("failed");
+    expect(paused.errorCode).toBe("needs_clarification");
+    expect(paused.errorMessage).toBe("Qual modalidade de prisão você quer estudar?");
+    expect(repo.statuses.at(-1)).toBe("clarification");
+    expect(repo.scope.question?.options).toHaveLength(3);
+    expect(repo.nodes).toHaveLength(0);
+
+    repo.answer = "Preventiva";
+    const done = await runToEnd(resumeFailedJob(paused), repo, ai);
+    expect(done.status).toBe("succeeded");
+    expect(repo.scope.outline).toBe("1 Pressupostos");
+    expect(repo.scope.question).toBeNull();
+  });
+
+  it("edital e conteúdo colado por inteiro não passam pela delimitação da IA", async () => {
+    const repo = new MemoryRepo(EDITAL_INLINE, "tema_livre");
+    const ai = coherentAI();
+    await runToEnd(newJob(), repo, ai);
+    expect(ai.calls.some((c) => c.task === "delimit_scope")).toBe(false);
   });
 });

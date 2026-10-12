@@ -9,8 +9,17 @@ import type { LessonOutput, QuestionsOutput } from "@/ai/schemas";
 import { VERIFICATION_SENSITIVE } from "@/ai/pedagogy";
 import type { LessonStatus } from "../pipeline/generate-lesson";
 
-export function nodesPayload(nodes: ExtractedNode[]) {
-  return nodes.map((n, ord) => ({
+/**
+ * Nós para gravação. Nós que nascem do roteiro de subtemas da IA (depois de
+ * `sourceLength`) têm origem "ia"; em pedidos jurídicos ficam pendentes de verificação,
+ * porque a estrutura do dispositivo veio da IA e não do texto colado pelo aluno.
+ */
+export function nodesPayload(nodes: ExtractedNode[], opts: { sourceLength?: number; legal?: boolean } = {}) {
+  return nodes.map((n, ord) => {
+    const ia = opts.sourceLength !== undefined && n.span.start >= opts.sourceLength;
+    return {
+    origin: ia ? "ia" : "texto",
+    verification_status: ia && opts.legal ? "pendente" : "nao_aplicavel",
     key: n.key,
     kind: n.kind,
     marker: n.marker,
@@ -23,7 +32,8 @@ export function nodesPayload(nodes: ExtractedNode[]) {
     path: n.path,
     parent_key: n.parentKey,
     requires_direct_coverage: n.requiresDirectCoverage,
-  }));
+    };
+  });
 }
 
 export interface NodeRow {

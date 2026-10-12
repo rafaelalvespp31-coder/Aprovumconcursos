@@ -2,11 +2,11 @@
 
 PWA de estudos para concursos públicos: transforma o conteúdo programático informado pelo aluno numa trilha de aulas e questões com **cobertura verificável item a item** e **progressão por domínio demonstrado**.
 
-> Do edital à aprovação, um nível de cada vez.
+> Sua preparação. Seu próximo cargo.
 
-## Estado atual (entrega 3 — 10/10/2026)
+## Estado atual (entrega 4 — 12/10/2026)
 
-Núcleo pedagógico, banco com RLS, pipeline de IA, PWA, a camada de design/UX, o **fluxo por tema** (todas as formas de ensino → todas as questões → próximo tema) e o **painel "Leveza Pastel"** com nível e conquistas reais (painel, mapa da trilha, aula interativa, modo de questões, simulado e desempenho) implementados e testados localmente. **Não foi publicado** e **não foi testado contra um Supabase real nem contra a API de IA real** (não havia credenciais neste ambiente). Veja [Critérios do MVP](#critérios-do-mvp) para o status de cada item.
+Núcleo pedagógico, banco com RLS, pipeline de IA, PWA, a camada de design/UX, o **estudo por conteúdo específico** (sem edital obrigatório: escopo, aula completa, três níveis com 90%, recuperação e PDF por conteúdo) e o painel com nível e conquistas reais (painel, mapa da trilha, aula interativa, modo de questões, simulado e desempenho) implementados e testados localmente. **Não foi publicado** e **não foi testado contra um Supabase real nem contra a API de IA real** (não havia credenciais neste ambiente). Veja [Critérios do MVP](#critérios-do-mvp) para o status de cada item.
 
 ## Stack
 
@@ -58,18 +58,20 @@ Jobs persistidos (`ai_generation_jobs`) executados **um passo por requisição**
 
 Estados: não iniciada → disponível → em andamento → aula concluída → (em revisão) → aguardando domínio → dominada (+ necessita atualização, pendente de validação). Passar nas questões **libera a próxima aula**, mas "dominada" exige uma revisão bem-sucedida após o intervalo mínimo de retenção. Critérios configuráveis por trilha (`study_trails.mastery_criteria`).
 
-## Fluxo por tema
+## Estudo por conteúdo específico
 
-Cada tema é esgotado antes de abrir o próximo:
+O edital **nunca** é obrigatório. Cada conteúdo informado pelo aluno — um tema ("Prisão em flagrante"), um artigo ou trecho de lei ("Arts. 121 a 129 do Código Penal"), um capítulo ou uma matéria — é um **estudo independente** (`study_trails`), com mapa de cobertura, unidades, progresso, níveis e PDF próprios. O progresso de um estudo nunca é somado ao de uma disciplina inteira. O edital continua aceito como forma opcional de organizar vários temas.
 
-1. **Ensino completo.** A aula traz uma seção de cada forma de ensino, do básico ao avançado: introdução, explicação, conceitos fundamentais, aprofundamento, exemplos, comparação, aplicação, pegadinhas, exceções, resumo e checklist. Temas jurídicos acrescentam doutrina, jurisprudência e "como a banca aborda"; o texto legal só entra quando o aluno colou o dispositivo (`requiredSectionKinds`, `src/ai/pedagogy.ts`). A validação é determinística: seção repetida é descartada, a ordem é canônica e, se faltar alguma forma, o job roda a etapa `sections`, que gera **só as seções ausentes** (a aula não é reescrita). Se ainda faltar, a aula fica "pendente de validação" com o motivo.
-2. **Leitura percorrida.** "Concluí a leitura" só habilita depois que o fim de cada seção passou pela tela ("X de Y seções"); pular pelo índice não conta.
-3. **Fixação em todos os níveis.** De 10 a 15 questões por tema (uma por item, no mínimo), cobrindo os níveis 1 a 5 (memorização → compreensão → aplicação → análise → avançada) e todos os itens. Se faltar nível ou item, a etapa `questions_extra` gera só o que faltou e **acrescenta** (sem apagar respostas já dadas). As questões aparecem em ordem de dificuldade.
-4. **Liberação.** O próximo tema abre com **todas** as questões respondidas, **≥ 75%** de acerto e **todas as essenciais corretas** (`evaluateQuiz`, `lesson_quiz_outcome` com `total`). A revisão espaçada de retenção usa amostra e não exige todas.
+1. **Entrada.** Texto livre (a partir de 4 caracteres) com título opcional, tipo sugerido automaticamente e banca de referência.
+2. **Escopo.** Pedidos breves passam pela etapa `scope`: a IA identifica o assunto, delimita o que entra e o que fica de fora e organiza os subtemas necessários, sem expandir para assuntos alheios. Texto colado por inteiro (lei, capítulo, edital) segue direto para a extração determinística, que identifica artigos, parágrafos, incisos e alíneas. Havendo ambiguidade relevante, o estudo fica em `clarification` e pergunta ao aluno; com a resposta, retoma de onde parou.
+3. **Aula.** Completa e em blocos curtos: uma seção de cada forma de ensino aplicável, do básico ao avançado (seções ausentes são geradas à parte, sem reescrever a aula). "Concluí a leitura" só habilita depois de percorrer todas as seções.
+4. **Três níveis.** Fácil → médio → difícil, cada um com questões próprias cobrindo todos os itens. Cada nível exige **todas as questões respondidas, ≥ 90% de acerto e as essenciais corretas** (`evaluateQuiz`, `lesson_level_outcome`). O nível seguinte só abre após a aprovação do anterior.
+5. **Recuperação.** Reprovado num nível, o aluno gera exercícios novos **só para as questões erradas** (mesmo item, mesmo nível). A resposta mais recente da cadeia vale pela questão original; o nível não é reiniciado.
+6. **PDF do conteúdo.** Liberado quando todas as unidades do estudo passaram nos três níveis. Reúne teoria no escopo, dispositivos e fontes, exemplos, esquemas e pegadinhas, as questões efetivamente respondidas com alternativas, gabaritos e comentários, os erros explicados e pontos de revisão, referências, datas e versão. Cada geração é uma nova versão (`study_pdfs`), vinculada ao aluno, ao conteúdo, às questões e à versão da fonte; as anteriores continuam disponíveis.
 
 ## Design e experiência
 
-**Identidade APROVUM.** Preto, branco e vermelho, a partir da logo (`public/icons/aprovum-*.png`, ícones do PWA gerados dela). Tema escuro em todo o app: fundo preto, texto branco, vermelho `#E10600` para ações e destaque (`#FF4D4D` quando é texto, para manter contraste AA). Camadas de aprendizagem: estudado (cinza) → praticado (vermelho) → dominado (branco); "não verificado" usa listras. Acerto = branco com ✓; erro = vermelho com ícone e texto.
+**Identidade APROVUM.** Preto, branco e vermelho, a partir da logo (`public/icons/aprovum-*.png`, ícones do PWA gerados dela). Fundo branco, texto preto, vermelho `#E10600` para ações e destaque (`#C80500` quando é texto, para manter contraste AA) e preto nos elementos de marca (barra lateral, botões escuros). Camadas de aprendizagem: estudado (cinza) → praticado (vermelho) → dominado (preto); "não verificado" usa listras. Acerto = preto com ✓; erro = vermelho com ícone e texto.
 
 
 **Design system** (`src/app/globals.css`, `src/components/`): tokens de cor, tipografia (Public Sans na interface; Source Serif 4 na leitura), raios e estados; ícones próprios consistentes; componentes reutilizáveis (botões, campos, avisos, cards, confirmação de ações destrutivas, indicador de salvamento, cronômetro, teclas de atalho, estados vazio/carregando/erro).
@@ -112,7 +114,7 @@ Renderiza as telas autenticadas com **dados de exemplo identificados como tal**,
 ## Configuração
 
 1. `npm ci`
-2. Crie um projeto no Supabase e aplique as **6 migrações** de `supabase/migrations/`, em ordem (`supabase db push` com a CLI, ou cole cada arquivo no SQL Editor): `…0100_schema`, `…0200_security`, `…0300_seed`, `…0400_functions`, `…0500_study_tools`, `…0600_theme_flow`. Quem já aplicou as cinco primeiras precisa aplicar só a `…0600_theme_flow`.
+2. Crie um projeto no Supabase e aplique as **7 migrações** de `supabase/migrations/`, em ordem (`supabase db push` com a CLI, ou cole cada arquivo no SQL Editor): `…0100_schema`, `…0200_security`, `…0300_seed`, `…0400_functions`, `…0500_study_tools`, `…0600_theme_flow`, `…0700_content_units`. Quem já aplicou as anteriores aplica só as que faltam, em ordem. A `…0700` não apaga dados: questões existentes recebem o nível pela dificuldade e unidades já aprovadas contam como os três níveis concluídos.
 3. Em *Authentication → URL Configuration*, adicione `https://SEU-DOMINIO/auth/callback` (e `http://localhost:3000/auth/callback`) às URLs de redirecionamento.
 4. Copie `.env.example` para `.env.local` e preencha (veja os comentários no arquivo).
 5. `npm run dev`
@@ -154,10 +156,10 @@ Os testes de banco aplicam as **migrações de produção** num Postgres real co
 |---|---|
 | TypeScript (`tsc --noEmit`) | sem erros |
 | ESLint (`--max-warnings=0`) | sem erros |
-| Unitários (93) | 93 aprovados |
-| Banco — RLS, integridade, cotas, persistência, ferramentas de estudo, estatísticas (36) | 36 aprovados (PostgreSQL 16) |
+| Unitários (109) | 109 aprovados |
+| Banco — RLS, integridade, cotas, persistência, níveis, recuperação, PDF (40) | 40 aprovados (PostgreSQL 16) |
 | Build de produção | sucesso |
-| E2E públicos + interações da galeria, celular e desktop (77) | 77 aprovados (3 testes só de desktop pulados no perfil celular) |
+| E2E públicos + interações da galeria, celular e desktop (79) | 79 aprovados (3 testes só de desktop pulados no perfil celular) |
 | E2E autenticados (4) | **pulados** — sem Supabase/IA/conta de teste |
 | Galeria em produção sem a variável | 404 (verificado) |
 | Segredos no bundle do navegador | nenhum (verificado) |

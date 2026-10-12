@@ -3,7 +3,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import type { ExtractedNode } from "@/domain/content/extract";
 import { boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
 import type { DisciplineMode } from "@/ai/pedagogy";
-import type { BuildRepo, FinalizedPlan, GenerationRecord, Job, TrailInfo } from "../pipeline/types";
+import type { ScopeRecord, BuildRepo, FinalizedPlan, GenerationRecord, Job, TrailInfo } from "../pipeline/types";
+import type { LevelKey } from "@/domain/progress/levels";
 import type { LessonGenContext, LessonJobState, LessonRepo, LessonStatus } from "../pipeline/generate-lesson";
 import { lessonToMarkdown } from "../pipeline/generate-lesson";
 import { lessonPayload, nodesPayload, planPayload, questionsPayload, rowsToNodes, NODE_COLUMNS, type NodeRow } from "./payloads";
@@ -98,7 +99,12 @@ async function recordGenerationRow(db: SupabaseClient, rec: GenerationRecord) {
 /** Custos e tokens ficam em ai_generation_versions; cotas usam apenas usage_events (consume_quota). */
 export async function loadTrailInfo(db: SupabaseClient, trailId: string, userId: string): Promise<TrailInfo & { disciplineMode: string | null; board: ExamBoardSlug; otherBoard: string | null }> {
   const t = must(
-    await db.from("study_trails").select("id, user_id, board_slug, other_board_name, content_type, discipline_mode").eq("id", trailId).eq("user_id", userId).single(),
+    await db
+      .from("study_trails")
+      .select("id, user_id, board_slug, other_board_name, content_type, discipline_mode, scope_outline, scope_answer, scope_summary")
+      .eq("id", trailId)
+      .eq("user_id", userId)
+      .single(),
     "carregar trilha",
   );
   const v = must(
@@ -120,9 +126,18 @@ export async function loadTrailInfo(db: SupabaseClient, trailId: string, userId:
     boardName: boardDisplayName(t.board_slug, t.other_board_name),
     contentType: t.content_type,
     versionId: v.id,
-    normalizedText: v.normalized_text,
+    normalizedText: composeScopedText(v.normalized_text, t.scope_outline),
+    sourceLength: v.normalized_text.length,
+    scopeAnswer: t.scope_answer,
+    scopeLegal: !!(t.scope_summary as { isLegal?: boolean } | null)?.isLegal,
+    scopeDone: t.scope_summary !== null,
     disciplineMode: t.discipline_mode,
   };
+}
+
+/** Texto do aluno + roteiro de subtemas da IA (separado por linha em branco). */
+export function composeScopedText(source: string, outline: string | null | undefined): string {
+  return outline ? `${source}\n\n${outline}` : source;
 }
 
 async function loadNodes(db: SupabaseClient, trailId: string, userId: string): Promise<ExtractedNode[]> {
@@ -144,7 +159,7 @@ export class SupabaseBuildRepo implements BuildRepo {
       p_trail: trail.id,
       p_user: trail.userId,
       p_version: trail.versionId,
-      p_nodes: nodesPayload(nodes),
+      p_nodes: nodesPayload(nodes, { sourceLength: trail.sourceLength, legal: trail.scopeLegal }),
     });
     if (r.error) throw new Error(`Falha ao gravar mapa: ${r.error.message}`);
   }
@@ -161,8 +176,16 @@ export class SupabaseBuildRepo implements BuildRepo {
     const r = await this.db.rpc("persist_trail_plan", { p_trail: trail.id, p_user: trail.userId, p_payload: planPayload(result) });
     if (r.error) throw new Error(`Falha ao gravar plano: ${r.error.message}`);
   }
-  async setTrailStatus(trailId: string, userId: string, status: "processing" | "review" | "failed") {
+  async setTrailStatus(trailId: string, userId: string, status: "processing" | "clarification" | "review" | "failed") {
     await this.db.from("study_trails").update({ status }).eq("id", trailId).eq("user_id", userId);
+  }
+  async saveScope(trail: TrailInfo, scope: ScopeRecord) {
+    const patch: Record<string, unknown> = {};
+    if (scope.summary !== undefined) patch.scope_summary = scope.summary;
+    if (scope.outline !== undefined) patch.scope_outline = scope.outline;
+    if (scope.question !== undefined) patch.scope_question = scope.question;
+    const r = await this.db.from("study_trails").update(patch).eq("id", trail.id).eq("user_id", trail.userId);
+    if (r.error) throw new Error(`Falha ao gravar escopo: ${r.error.message}`);
   }
   log(event: string, meta: Record<string, unknown>) {
     return logEvent(event, meta);
@@ -230,13 +253,14 @@ export class SupabaseLessonRepo implements LessonRepo {
     });
   }
 
-  async saveQuestions(ctx: LessonGenContext, q: Parameters<LessonRepo["saveQuestions"]>[1], append = false) {
+  async saveQuestions(ctx: LessonGenContext, q: Parameters<LessonRepo["saveQuestions"]>[1], append = false, level?: LevelKey) {
     const r = await this.db.rpc("save_lesson_questions", {
       p_lesson: ctx.lesson.id,
       p_user: ctx.userId,
       p_board: ctx.boardName,
       p_questions: questionsPayload(q),
       p_append: append,
+      p_level: level ?? null,
     });
     if (r.error) throw new Error(`Falha ao gravar questões: ${r.error.message}`);
     return r.data as number;

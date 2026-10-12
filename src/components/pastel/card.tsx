@@ -82,24 +82,24 @@ export function PastelCard({
       role={onActivate && !href ? "button" : undefined}
       tabIndex={onActivate && !href ? 0 : undefined}
       aria-label={onActivate && !href ? label : undefined}
-      className={`group relative rounded-[32px] bg-[#0E0E0E]/90 backdrop-blur-[22px] border border-[#222222] shadow-[0_8px_32px_rgba(0,0,0,0.55),inset_0_1px_0_rgba(255,255,255,0.05)] overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-[4px] will-change-transform ${interactive ? "cursor-pointer" : ""} ${className}`}
+      className={`group relative rounded-[32px] bg-white/95 backdrop-blur-[22px] border border-[#EBEBEB] shadow-[0_8px_32px_rgba(0,0,0,0.06),inset_0_1px_0_white] overflow-hidden transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)] hover:-translate-y-[4px] will-change-transform ${interactive ? "cursor-pointer" : ""} ${className}`}
       style={{
         transform: hover && !noTilt && !reduced ? `perspective(1200px) rotateX(${tilt.x}deg) rotateY(${tilt.y}deg) translateY(-4px)` : undefined,
-        boxShadow: hover ? `0 20px 60px rgba(${glowColor},0.16), 0 4px 16px rgba(${glowColor},0.10), inset 0 1px 0 rgba(255,255,255,0.05)` : undefined,
+        boxShadow: hover ? `0 20px 60px rgba(${glowColor},0.16), 0 4px 16px rgba(${glowColor},0.10), inset 0 1px 0 white` : undefined,
         animation: "enter 0.6s cubic-bezier(0.34,1.56,0.64,1) both",
         animationDelay: `${delay}ms`,
         ...style,
       }}
     >
-      <div className="pointer-events-none absolute inset-0 rounded-[32px] border border-white/[0.06]" />
-      <div className="pointer-events-none absolute inset-[1px] rounded-[31px] border border-white/[0.04]" />
+      <div className="pointer-events-none absolute inset-0 rounded-[32px] border border-black/[0.06]" />
+      <div className="pointer-events-none absolute inset-[1px] rounded-[31px] border border-black/[0.04]" />
       <div
         className="pointer-events-none absolute -inset-px rounded-[32px] opacity-0 transition-opacity duration-500 group-hover:opacity-100"
         style={{ background: `radial-gradient(500px circle at ${glow.x}% ${glow.y}%, rgba(${glowColor},0.12), transparent 45%)` }}
       />
       <div
         className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-700 group-hover:opacity-100"
-        style={{ background: `radial-gradient(800px circle at ${glow.x}% ${glow.y}%, rgba(255,255,255,0.05), transparent 35%)` }}
+        style={{ background: `radial-gradient(800px circle at ${glow.x}% ${glow.y}%, rgba(255,255,255,0.7), transparent 35%)` }}
       />
       {ripples.map((p) => (
         <span

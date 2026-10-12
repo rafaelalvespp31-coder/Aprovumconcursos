@@ -202,6 +202,83 @@ describe("questões e correção", () => {
     expect(o).toMatchObject({ answered: 2, total: 3 });
   });
 
+  itDb("níveis: questões existentes recebem o nível pela dificuldade e cada nível conta só as suas", async () => {
+    const lv = (await db.query("select type, level from questions where lesson_id = $1 and active order by statement", [lesson])).rows;
+    expect(lv.map((r) => r.level)).toEqual(["facil", "facil"]);
+    expect((await db.query("select lesson_level_outcome($1,$2,'facil') o", [U, lesson])).rows[0].o)
+      .toEqual({ answered: 2, correct: 2, essentialAnswered: 1, essentialCorrect: 1, total: 2 });
+    const keys = plan.modules[0]!.lessons[0]!.nodeKeys;
+    await db.query("begin");
+    await db.query("select save_lesson_questions($1,$2,'CEBRASPE',$3,true,'dificil')", [lesson, U, JSON.stringify([
+      { type: "certo_errado", statement: "Q difícil", options: [], correctAnswerTrue: true, justification: "J", nodeKey: keys[0], difficulty: 4, essential: false, dependsOnExternalSource: false },
+    ])]);
+    const dif = (await db.query("select lesson_level_outcome($1,$2,'dificil') o", [U, lesson])).rows[0].o;
+    const fac = (await db.query("select lesson_level_outcome($1,$2,'facil') o", [U, lesson])).rows[0].o;
+    const bad = await db.query("select save_lesson_questions($1,$2,'CEBRASPE','[]',true,'extremo')", [lesson, U]).catch((e) => e);
+    await db.query("rollback");
+    expect(dif).toMatchObject({ answered: 0, total: 1 });
+    expect(fac).toMatchObject({ total: 2 });
+    expect(bad.code).toBe("22023");
+  });
+
+  itDb("recuperação substitui só a questão errada, sem reiniciar o nível", async () => {
+    const wrong = (await db.query("select id from question_options where question_id = $1 and label = 'A'", [mcq])).rows[0].id;
+    await db.query("begin");
+    try {
+      await db.query("select submit_answer($1,$2,$3,null)", [U, mcq, wrong]);
+      expect((await db.query("select lesson_level_outcome($1,$2,'facil') o", [U, lesson])).rows[0].o).toMatchObject({ answered: 2, correct: 1, total: 2 });
+      const n = await db.query("select save_recovery_questions($1,$2,'CEBRASPE',$3) n", [U, lesson, JSON.stringify([
+        { recoveryOf: mcq, type: "certo_errado", statement: "Recuperação da Q1", options: [], correctAnswerTrue: true, justification: "Justificativa", difficulty: 2, dependsOnExternalSource: false },
+      ])]);
+      expect(n.rows[0].n).toBe(1);
+      const rec = (await db.query("select id, level, recovery_of, node_id = (select node_id from questions where id = $1) as same_node from questions where recovery_of = $1", [mcq])).rows[0];
+      expect(rec).toMatchObject({ level: "facil", recovery_of: mcq, same_node: true });
+      await db.query("select submit_answer($1,$2,null,true)", [U, rec.id]);
+      // Na mesma transação now() não avança; no app cada resposta é uma requisição própria.
+      await db.query("update answer_attempts set created_at = now() + interval '1 minute' where question_id = $1", [rec.id]);
+      // A recuperação certa conta pela questão original; o total do nível não muda.
+      expect((await db.query("select lesson_level_outcome($1,$2,'facil') o", [U, lesson])).rows[0].o).toMatchObject({ answered: 2, correct: 2, total: 2 });
+      await db.query("savepoint s");
+      const chain = await db.query("select save_recovery_questions($1,$2,'CEBRASPE',$3)", [U, lesson, JSON.stringify([{ recoveryOf: rec.id, type: "certo_errado", statement: "x", options: [], correctAnswerTrue: true, justification: "j", difficulty: 2 }])]).catch((e) => e);
+      expect(chain.code).toBe("22023");
+      await db.query("rollback to savepoint s");
+      const other = await db.query("select save_recovery_questions($1,$2,'CEBRASPE',$3)", [OTHER, lesson, JSON.stringify([{ recoveryOf: mcq, type: "certo_errado", statement: "x", options: [], correctAnswerTrue: true, justification: "j", difficulty: 2 }])]).catch((e) => e);
+      expect(other.code).toBe("22023");
+    } finally {
+      await db.query("rollback");
+    }
+  });
+
+  itDb("PDF só com todas as unidades aprovadas nos três níveis, vinculado ao conteúdo e versionado", async () => {
+    const hash = "a".repeat(64);
+    await db.query("begin");
+    try {
+      const lessons = (await db.query("select id from lessons where trail_id = $1", [trailId])).rows.map((r) => r.id);
+      for (const l of lessons) {
+        await db.query("insert into learning_progress (user_id, lesson_id, trail_id, state, levels_passed) values ($1,$2,$3,'em_andamento',2) on conflict (user_id, lesson_id) do update set levels_passed = 2", [U, l, trailId]);
+      }
+      await db.query("savepoint s");
+      const early = await db.query("select save_study_pdf($1,$2,'{}'::jsonb,$3,$4)", [U, trailId, [mcq], hash]).catch((e) => e);
+      expect(early.code).toBe("P0001");
+      await db.query("rollback to savepoint s");
+      await db.query("update learning_progress set levels_passed = 3 where trail_id = $1", [trailId]);
+      const v1 = (await db.query("select save_study_pdf($1,$2,'{}'::jsonb,$3,$4) r", [U, trailId, [mcq, ce], hash])).rows[0].r;
+      const v2 = (await db.query("select save_study_pdf($1,$2,'{}'::jsonb,$3,$4) r", [U, trailId, [mcq], hash])).rows[0].r;
+      expect([v1.pdfVersion, v2.pdfVersion]).toEqual([1, 2]);
+      const row = (await db.query("select version_id, question_ids from study_pdfs where id = $1", [v1.id])).rows[0];
+      expect(row.version_id).toBe(versionId);
+      expect(row.question_ids.sort()).toEqual([mcq, ce].sort());
+      await db.query("savepoint s2");
+      const foreign = await db.query("select save_study_pdf($1,$2,'{}'::jsonb,$3,$4)", [U, trailId, ["00000000-0000-4000-8000-00000000dead"], hash]).catch((e) => e);
+      expect(foreign.code).toBe("22023");
+      await db.query("rollback to savepoint s2");
+      const notOwner = await db.query("select save_study_pdf($1,$2,'{}'::jsonb,$3,$4)", [OTHER, trailId, [], hash]).catch((e) => e);
+      expect(notOwner.code).toBeTruthy();
+    } finally {
+      await db.query("rollback");
+    }
+  });
+
   itDb("rejeita alternativa de outra questão e questão de outro usuário", async () => {
     const optOfMcq = (await db.query("select id from question_options where question_id = $1 limit 1", [mcq])).rows[0].id;
     await db.query("begin");

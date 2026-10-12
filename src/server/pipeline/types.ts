@@ -8,7 +8,7 @@ import type { Warning } from "@/ai/services";
 
 export type JobStatus = "queued" | "running" | "succeeded" | "failed";
 
-export type BuildStage = "extract" | "analyze" | "plan" | "audit" | "done";
+export type BuildStage = "scope" | "extract" | "analyze" | "plan" | "audit" | "done";
 
 export interface BuildState {
   chunks?: string[][];
@@ -41,7 +41,25 @@ export interface TrailInfo {
   boardName: string;
   contentType: string;
   versionId: string;
+  /**
+   * Texto usado pela extração: o conteúdo do aluno e, quando houver, o roteiro de
+   * subtemas organizado pela IA logo depois (a partir de `sourceLength`).
+   */
   normalizedText: string;
+  /** Tamanho do texto do aluno dentro de `normalizedText`; nós além disso têm origem "ia". */
+  sourceLength?: number;
+  /** Resposta do aluno ao pedido de esclarecimento, se houve. */
+  scopeAnswer?: string | null;
+  /** O pedido é jurídico (subtemas organizados pela IA ficam pendentes de verificação). */
+  scopeLegal?: boolean;
+  /** Já passou pela delimitação de escopo. */
+  scopeDone?: boolean;
+}
+
+export interface ScopeRecord {
+  summary?: unknown;
+  outline?: string | null;
+  question?: { question: string; options: string[] } | null;
 }
 
 export interface GenerationRecord {
@@ -75,6 +93,8 @@ export interface BuildRepo {
   saveJob(job: Job): Promise<void>;
   recordGeneration(rec: GenerationRecord): Promise<void>;
   persistPlan(trail: TrailInfo, result: FinalizedPlan): Promise<void>;
-  setTrailStatus(trailId: string, userId: string, status: "processing" | "review" | "failed"): Promise<void>;
+  setTrailStatus(trailId: string, userId: string, status: "processing" | "clarification" | "review" | "failed"): Promise<void>;
+  /** Grava a delimitação de escopo (ou a pergunta de esclarecimento). */
+  saveScope(trail: TrailInfo, scope: ScopeRecord): Promise<void>;
   log(event: string, meta: Record<string, unknown>): Promise<void>;
 }

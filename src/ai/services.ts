@@ -9,12 +9,15 @@ import type { ExtractedNode } from "@/domain/content/extract";
 import type { LessonPlan, PlannedLesson } from "@/domain/content/plan";
 import type { AIProvider, AIUsage } from "./provider";
 import { z } from "zod";
+import { levelByKey, type LevelKey } from "@/domain/progress/levels";
 import {
   analysisSchema,
   lessonSchema,
   planSchema,
   questionsSchema,
   clarificationSchema,
+  scopeSchema,
+  type ScopeOutput,
   type ClarificationOutput,
   type AnalysisOutput,
   type LessonOutput,
@@ -23,6 +26,7 @@ import {
 import { UNTRUSTED_RULES, wrapUntrusted } from "./untrusted";
 import {
   DISCIPLINE_LABELS,
+  LEGAL_RULES,
   LESSON_SECTION_KINDS,
   REQUIRED_QUESTION_LEVELS,
   SECTION_LABELS,
@@ -38,6 +42,7 @@ export const AI_LIMITS = {
   /** Máximo de nós por chamada de análise/planejamento (o edital é fatiado). */
   maxNodesPerChunk: 120,
   maxOutputTokens: {
+    delimit_scope: 4_000,
     analyze_content: 8_000,
     plan_lessons: 8_000,
     generate_lesson: 16_000,
@@ -108,6 +113,92 @@ function describeNodes(nodes: ExtractedNode[], withText: boolean): string {
       return withText ? `${head}\n${n.sourceText}` : head;
     })
     .join("\n");
+}
+
+// ---------------------------------------------------------------------------
+// Delimitação de escopo: tema, matéria ou artigo informado de forma breve
+// ---------------------------------------------------------------------------
+
+/**
+ * A IA só organiza subtemas quando o aluno informou um pedido curto (um tema, uma
+ * referência a artigo). Conteúdo colado por inteiro já tem estrutura própria e é
+ * decomposto de forma determinística. Edital nunca passa por aqui.
+ */
+export function shouldDelimitScope(contentType: string, text: string, directNodes: number): boolean {
+  return contentType !== "edital" && text.trim().length <= 2_500 && directNodes <= 6;
+}
+
+const MAX_SCOPE_ITEMS = 80;
+
+/** Limpa títulos da IA para virarem linhas numeradas que a extração entende. */
+function cleanTitle(t: string): string {
+  return t
+    .replace(/[\r\n]+/g, " ")
+    .replace(/^\s*(?:\d+(?:\.\d+)*\.?|[IVXLCDM]+\s*[-–—]|[a-z]\)|[-•*])\s*/u, "")
+    .replace(/;/g, ",")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 160);
+}
+
+/** Converte os subtemas em um roteiro numerado (1, 1.1...) — base do mapa de cobertura. */
+export function scopeOutline(subtopics: ScopeOutput["subtopics"]): string {
+  const lines: string[] = [];
+  let top = 0;
+  for (const t of subtopics) {
+    const title = cleanTitle(t.title);
+    if (!title || lines.length >= MAX_SCOPE_ITEMS) continue;
+    top++;
+    lines.push(`${top} ${title}`);
+    let sub = 0;
+    for (const c of t.children) {
+      const ct = cleanTitle(c.title);
+      if (!ct || lines.length >= MAX_SCOPE_ITEMS) continue;
+      sub++;
+      lines.push(`${top}.${sub} ${ct}`);
+    }
+  }
+  return lines.join("\n");
+}
+
+export async function delimitScope(
+  provider: AIProvider,
+  ctx: { text: string; contentType: string; board: string; answer?: string | null },
+): Promise<ServiceResult<ScopeOutput & { outline: string }>> {
+  const wrapped = wrapUntrusted(ctx.text.slice(0, 4_000));
+  const answer = ctx.answer ? wrapUntrusted(ctx.answer.slice(0, 1_000), "esclarecimento_do_aluno") : null;
+  const res = await provider.generateStructured({
+    task: "delimit_scope",
+    schemaName: "registrar_escopo",
+    system: `${BASE_SYSTEM}\n${LEGAL_RULES}`,
+    maxOutputTokens: AI_LIMITS.maxOutputTokens.delimit_scope,
+    temperature: 0.2,
+    schema: scopeSchema,
+    prompt: `O aluno quer estudar AGORA o conteúdo abaixo (banca de referência: ${ctx.board}). Não é um edital: é um tema, matéria, artigo ou capítulo específico.
+1. Identifique o assunto e delimite o escopo exatamente ao que foi pedido.
+2. Liste em "subtopics" os subtemas necessários para ensiná-lo POR COMPLETO, em ordem didática (do básico ao avançado). Não expanda para assuntos alheios ao pedido; o que for próximo mas fora do pedido vai em "outOfScope".
+3. Se for lei ou artigo: identifique a norma e os dispositivos pedidos e organize os subtemas pelos elementos pertinentes (caput, parágrafos, incisos, alíneas, exceções). Escreva só o título de cada elemento — NUNCA transcreva nem reconstrua o texto legal de memória.
+4. Ambiguidade: marque "needsClarification" SOMENTE se o pedido admitir interpretações relevantes que mudem o conteúdo (ex.: "prisão" sem dizer se é em flagrante, preventiva ou temporária; lei citada sem indicar quais artigos quando ela é extensa). Se for possível interpretar com segurança, prossiga sem perguntar e explique a interpretação em "scopeStatement".
+${answer ? `O aluno já respondeu ao esclarecimento abaixo. Use a resposta e NÃO pergunte de novo (needsClarification = false).
+${answer.text}` : ""}
+
+${wrapped.text}`,
+  });
+  const data = res.data;
+  const warnings: Warning[] = [];
+  if (ctx.answer && data.needsClarification) {
+    warnings.push({ code: "clarification_ignored", message: "A IA pediu novo esclarecimento após a resposta do aluno; seguimos com a interpretação mais segura." });
+    data.needsClarification = false;
+  }
+  if (data.needsClarification && !data.clarification) {
+    warnings.push({ code: "clarification_missing", message: "Pedido de esclarecimento sem pergunta; seguimos sem perguntar." });
+    data.needsClarification = false;
+  }
+  const outline = scopeOutline(data.subtopics);
+  if (!data.needsClarification && !outline) {
+    warnings.push({ code: "scope_empty", message: "Nenhum subtema organizado; o conteúdo informado será usado como está." });
+  }
+  return { data: { ...data, outline }, warnings, usage: res.usage, model: res.model, provider: res.provider };
 }
 
 // ---------------------------------------------------------------------------
@@ -187,7 +278,7 @@ export function removeCycles<T extends { key: string; prerequisiteKeys: string[]
 export async function planChunk(
   provider: AIProvider,
   chunk: ExtractedNode[],
-  ctx: { board: string; chunkIndex: number; analysis?: AnalysisOutput },
+  ctx: { board: string; chunkIndex: number; analysis?: AnalysisOutput; specific?: boolean },
 ): Promise<ServiceResult<LessonPlan>> {
   const required = chunk.filter((n) => n.requiresDirectCoverage).map((n) => n.key);
   const prereqInfo = ctx.analysis
@@ -211,7 +302,8 @@ Regras obrigatórias:
 4. Agrupe subtópicos relacionados numa mesma aula; divida tópicos extensos em várias aulas.
 5. Assuntos fora da lista só podem entrar em "supplementary", com justificativa pedagógica.
 6. "estimatedMinutes" é uma estimativa de estudo da aula.
-${prereqInfo ? `Pré-requisitos identificados:\n${prereqInfo}\n` : ""}
+${ctx.specific ? `7. O aluno está estudando UM conteúdo específico (tema, matéria, artigo ou capítulo), não um edital: use um único módulo com o título do assunto e divida em unidades didáticas apenas quando o conteúdo for extenso (até cerca de 8 itens por unidade). Um pedido pequeno vira uma única unidade.
+` : ""}${prereqInfo ? `Pré-requisitos identificados:\n${prereqInfo}\n` : ""}
 ${wrapped.text}`,
   });
 
@@ -435,12 +527,19 @@ export interface QuestionGaps {
   uncoveredNodeKeys: string[];
 }
 
-/** O que falta para a fixação esgotar o tema: todos os níveis 1–5 e todos os itens. */
-export function questionGaps(questions: QuestionsOutput["questions"], scopeKeys: readonly string[]): QuestionGaps {
+/**
+ * O que falta para as questões esgotarem o tema. Com `difficulties` (um nível de
+ * avaliação), só se exige cobrir todos os itens; sem ele, também os cinco graus 1–5.
+ */
+export function questionGaps(
+  questions: QuestionsOutput["questions"],
+  scopeKeys: readonly string[],
+  difficulties?: readonly number[],
+): QuestionGaps {
   const levels = new Set(questions.map((q) => q.difficulty));
   const nodes = new Set(questions.map((q) => q.nodeKey));
   return {
-    missingLevels: REQUIRED_QUESTION_LEVELS.filter((l) => !levels.has(l)),
+    missingLevels: difficulties ? [] : REQUIRED_QUESTION_LEVELS.filter((l) => !levels.has(l)),
     uncoveredNodeKeys: scopeKeys.filter((k) => !nodes.has(k)),
   };
 }
@@ -453,6 +552,21 @@ const LEVEL_LABELS: Record<number, string> = {
   5: "5 — avançada (caso complexo, várias regras combinadas)",
 };
 
+const LEVEL_GUIDE: Record<LevelKey, string> = {
+  facil: "NÍVEL FÁCIL: reconhecimento e compreensão direta dos conceitos e regras (dificuldade 1 ou 2).",
+  medio: "NÍVEL MÉDIO: aplicação das regras a casos simples e interpretação de enunciados (dificuldade 3).",
+  dificil:
+    "NÍVEL DIFÍCIL: análise de exceções, pegadinhas, comparação entre institutos e casos que combinam várias regras (dificuldade 4 ou 5).",
+};
+
+/** Mantém a dificuldade dentro da faixa do nível (a IA às vezes extrapola). */
+function clampToLevel(questions: QuestionsOutput["questions"], level: LevelKey) {
+  const band = levelByKey(level).difficulties as readonly number[];
+  const lo = Math.min(...band);
+  const hi = Math.max(...band);
+  for (const q of questions) q.difficulty = Math.min(hi, Math.max(lo, q.difficulty));
+}
+
 export async function generateQuestions(
   provider: AIProvider,
   ctx: {
@@ -461,8 +575,12 @@ export async function generateQuestions(
     lessonMarkdown: string;
     nodes: ExtractedNode[];
     count: number;
+    /** Nível de avaliação (fácil, médio, difícil). Sem ele, gera questões de todos os graus. */
+    level?: LevelKey;
     /** Rodada complementar: só os níveis/itens que faltaram, sem repetir enunciados. */
     focus?: QuestionGaps & { existingStatements: string[] };
+    /** Recuperação: uma questão nova para cada questão errada, no mesmo item. */
+    recovery?: Array<{ nodeKey: string; statement: string }>;
   },
 ): Promise<ServiceResult<QuestionsOutput> & { gaps: QuestionGaps }> {
   const scope = ctx.nodes.filter((n) => ctx.lesson.nodeKeys.includes(n.key) && n.requiresDirectCoverage);
@@ -471,14 +589,26 @@ export async function generateQuestions(
   const describe = (keys: readonly string[]) =>
     scope.filter((n) => keys.includes(n.key)).map((n) => `${n.key} (${n.title.slice(0, 60)})`).join("; ");
   const focus = ctx.focus;
-  const distribution = focus
-    ? `Esta é uma rodada COMPLEMENTAR. Gere ${ctx.count} questões que cubram exatamente o que faltou:
+  const level = ctx.level;
+  const band = level ? (levelByKey(level).difficulties as readonly number[]) : undefined;
+  let distribution: string;
+  if (ctx.recovery) {
+    distribution = `Estes são EXERCÍCIOS DE RECUPERAÇÃO: o aluno errou as questões abaixo. Para CADA uma, escreva UMA questão nova sobre o MESMO item (mesmo "nodeKey"), abordando o ponto que levou ao erro de outro ângulo, sem repetir nem parafrasear o enunciado original:
+${ctx.recovery.map((r, i) => `${i + 1}. item ${r.nodeKey}: "${r.statement.slice(0, 220)}"`).join("\n")}
+Gere exatamente ${ctx.recovery.length} questões, na mesma ordem.`;
+  } else if (focus) {
+    distribution = `Esta é uma rodada COMPLEMENTAR. Gere ${ctx.count} questões que cubram exatamente o que faltou:
 ${focus.missingLevels.length ? `- níveis de dificuldade ausentes (ao menos uma questão de cada): ${focus.missingLevels.map((l) => LEVEL_LABELS[l]).join("; ")}` : ""}
 ${focus.uncoveredNodeKeys.length ? `- itens ainda sem questão (ao menos uma por item): ${describe(focus.uncoveredNodeKeys)}` : ""}
-Não repita nem parafraseie estes enunciados já existentes: ${focus.existingStatements.map((t) => `"${t.slice(0, 80)}"`).join("; ")}.`
-    : `Cubra TODOS os itens (ao menos uma questão por item): ${describe(scopeKeys)}.
+Não repita nem parafraseie estes enunciados já existentes: ${focus.existingStatements.map((t) => `"${t.slice(0, 80)}"`).join("; ")}.`;
+  } else if (band) {
+    distribution = `Cubra TODOS os itens (ao menos uma questão por item): ${describe(scopeKeys)}.
+Todas as questões devem ter dificuldade ${band.join(" ou ")}: ${band.map((l) => LEVEL_LABELS[l]).join("; ")}.`;
+  } else {
+    distribution = `Cubra TODOS os itens (ao menos uma questão por item): ${describe(scopeKeys)}.
 Use TODOS os níveis de dificuldade, ao menos uma questão de cada, em progressão:
 ${REQUIRED_QUESTION_LEVELS.map((l) => `- ${LEVEL_LABELS[l]}`).join("\n")}`;
+  }
   const res = await provider.generateStructured({
     task: "generate_questions",
     schemaName: "registrar_questoes",
@@ -486,9 +616,9 @@ ${REQUIRED_QUESTION_LEVELS.map((l) => `- ${LEVEL_LABELS[l]}`).join("\n")}`;
     maxOutputTokens: AI_LIMITS.maxOutputTokens.generate_questions,
     temperature: 0.4,
     schema: questionsSchema,
-    prompt: `Elabore ${ctx.count} questões ORIGINAIS de fixação sobre a aula abaixo, no estilo geral de provas da banca ${ctx.board}.
+    prompt: `Elabore ${ctx.recovery ? ctx.recovery.length : ctx.count} questões ORIGINAIS sobre a aula abaixo, no estilo geral de provas da banca ${ctx.board}.
 São questões de treinamento elaboradas pela plataforma: nunca as apresente como questões oficiais nem cite prova/ano.
-O aluno só avança para o próximo tema depois de responder todas elas, então juntas devem esgotar o tema.
+${level ? `${LEVEL_GUIDE[level]} O aluno precisa de 90% de acerto neste nível para avançar, então as questões devem verificar o domínio real de cada item, sem ambiguidade.` : "O aluno só avança para o próximo tema depois de responder todas elas, então juntas devem esgotar o tema."}
 ${distribution}
 Marque "essential" nas que verificam o conceito central de cada item.
 - multipla_escolha/situacional: 4 ou 5 alternativas, exatamente UMA correta, todas com explicação.
@@ -497,16 +627,37 @@ Cada questão deve ser respondível com base na aula. Marque "dependsOnExternalS
 
 ${wrapped.text}`,
   });
-  const v = validateQuestions(res.data, new Set(scopeKeys), focus?.existingStatements);
-  const gaps = questionGaps(v.data.questions, scopeKeys);
+  const existing = [...(focus?.existingStatements ?? []), ...(ctx.recovery?.map((r) => r.statement) ?? [])];
+  const v = validateQuestions(res.data, new Set(scopeKeys), existing);
+  if (level) clampToLevel(v.data.questions, level);
+  const gaps = questionGaps(v.data.questions, scopeKeys, band);
   const warnings = [...v.warnings];
-  if (!focus && (gaps.missingLevels.length || gaps.uncoveredNodeKeys.length)) {
+  if (!focus && !ctx.recovery && (gaps.missingLevels.length || gaps.uncoveredNodeKeys.length)) {
     warnings.push({
       code: "questions_incomplete",
-      message: `Faltaram níveis [${gaps.missingLevels.join(", ")}] e itens [${gaps.uncoveredNodeKeys.join(", ")}] nas questões.`,
+      message: `Faltaram níveis [${gaps.missingLevels.join(", ")}] e itens [${gaps.uncoveredNodeKeys.join(", ")}] nas questões${level ? ` do nível ${level}` : ""}.`,
     });
   }
   return { data: v.data, warnings, gaps, usage: res.usage, model: res.model, provider: res.provider };
+}
+
+/**
+ * Associa cada questão de recuperação gerada à questão errada que ela substitui,
+ * pelo item (nodeKey), na ordem. Questões que não casam com nenhuma são descartadas.
+ */
+export function matchRecovery<T extends { nodeKey: string }>(
+  wrong: ReadonlyArray<{ rootId: string; nodeKey: string }>,
+  generated: readonly T[],
+): Array<T & { recoveryOf: string }> {
+  const pool = [...generated];
+  const out: Array<T & { recoveryOf: string }> = [];
+  for (const w of wrong) {
+    const i = pool.findIndex((g) => g.nodeKey === w.nodeKey);
+    if (i < 0) continue;
+    const [g] = pool.splice(i, 1);
+    out.push({ ...g!, recoveryOf: w.rootId });
+  }
+  return out;
 }
 
 /** Validação determinística das questões. Exportada para testes. */

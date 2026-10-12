@@ -8,8 +8,11 @@ import {
   analyzeChunk,
   chunkNodes,
   clarifyConcept,
+  matchRecovery,
   planChunk,
   questionCountFor,
+  scopeOutline,
+  shouldDelimitScope,
   questionGaps,
   removeCycles,
   validateLesson,
@@ -244,5 +247,34 @@ describe("esclarecimento de conceito", () => {
     expect(r.warnings[0]!.code).toBe("prompt_injection_suspect");
     expect(r.data.verificationPending).toBe(true);
     expect(r.data.unverifiedClaims.join(" ")).toMatch(/Súmula 473/);
+  });
+});
+
+describe("delimitação de escopo", () => {
+  it("só pedidos breves e não-edital passam pela IA", () => {
+    expect(shouldDelimitScope("tema_livre", "Prisão em flagrante", 1)).toBe(true);
+    expect(shouldDelimitScope("artigo_lei", "Art. 5º da Constituição Federal", 1)).toBe(true);
+    expect(shouldDelimitScope("edital", "Português", 1)).toBe(false);
+    expect(shouldDelimitScope("artigo_lei", "x".repeat(3000), 1)).toBe(false);
+    expect(shouldDelimitScope("materia", "texto", 20)).toBe(false);
+  });
+
+  it("roteiro numerado limpa numeração, quebras e ponto e vírgula vindos da IA", () => {
+    expect(
+      scopeOutline([
+        { title: "1. Conceito\nde prisão", children: [{ title: "a) natureza; finalidade" }] },
+        { title: "   ", children: [] },
+        { title: "- Espécies", children: [] },
+      ]),
+    ).toBe("1 Conceito de prisão\n1.1 natureza, finalidade\n2 Espécies");
+  });
+
+  it("recuperação: cada questão gerada substitui uma errada do mesmo item", () => {
+    const wrong = [{ rootId: "q1", nodeKey: "N0001" }, { rootId: "q2", nodeKey: "N0002" }, { rootId: "q3", nodeKey: "N0001" }];
+    const gen = [{ nodeKey: "N0001", s: "a" }, { nodeKey: "N0003", s: "x" }, { nodeKey: "N0001", s: "b" }];
+    expect(matchRecovery(wrong, gen)).toEqual([
+      { nodeKey: "N0001", s: "a", recoveryOf: "q1" },
+      { nodeKey: "N0001", s: "b", recoveryOf: "q3" },
+    ]);
   });
 });

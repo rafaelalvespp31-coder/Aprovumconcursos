@@ -6,7 +6,10 @@ import { extractStructure } from "@/domain/content/extract";
 import { getSessionUser } from "@/server/auth";
 import { publicEnv } from "@/lib/env";
 
-const DEMO = `NOÇÕES DE DIREITO ADMINISTRATIVO: 1 Estado, governo e administração pública: conceitos; elementos; poderes. 2 Ato administrativo. 2.1 Conceito, requisitos, atributos, classificação e espécies. 2.2 Invalidação, anulação e revogação. 3 Poderes administrativos. 3.1 Hierárquico; disciplinar; regulamentar; de polícia. 4 Licitações e contratos.`;
+const DEMO = `Art. 5º Todos são iguais perante a lei, sem distinção de qualquer natureza, garantindo-se aos brasileiros e aos estrangeiros residentes no País a inviolabilidade do direito à vida, à liberdade, à igualdade, à segurança e à propriedade, nos termos seguintes:
+I - homens e mulheres são iguais em direitos e obrigações, nos termos desta Constituição;
+II - ninguém será obrigado a fazer ou deixar de fazer alguma coisa senão em virtude de lei;
+III - ninguém será submetido a tortura nem a tratamento desumano ou degradante;`;
 
 // Estados ilustrativos para a demonstração (claramente identificados na página).
 const DEMO_STATES: RulerState[] = ["dominado", "dominado", "dominado", "praticado", "ensinado", "ensinado", "nao_verificado", "planejado", "planejado", "planejado", "pendente", "pendente", "pendente", "pendente"];
@@ -36,21 +39,21 @@ export default async function Home() {
       <main>
         <section className="mx-auto grid max-w-6xl gap-10 px-5 pb-16 pt-8 lg:grid-cols-[1.05fr_1fr] lg:items-start lg:pt-16">
           <div className="max-w-xl">
-            <h1 className="t-display">Cole o edital. Estude tudo o que ele pede.</h1>
+            <h1 className="t-display">Cole o que vai estudar hoje. Saia dominando.</h1>
             <p className="mt-5 text-[1.1rem] leading-relaxed text-tinta-suave">
-              O APROVUM separa cada item do conteúdo programático, monta aulas e questões para cada um e mostra, item por item,
-              o que você já estudou e o que já domina.
+              Um tema, um artigo de lei, um capítulo ou uma matéria — sem precisar do edital. O APROVUM delimita o escopo, ensina em blocos curtos,
+              avalia em três níveis (fácil, médio e difícil) e, ao final, entrega o PDF só daquele conteúdo.
             </p>
             <div className="mt-7 flex flex-wrap gap-3">
-              <ButtonLink href={user ? "/nova-trilha" : "/cadastro"}>{user ? "Criar uma trilha" : "Criar conta grátis"}</ButtonLink>
+              <ButtonLink href={user ? "/nova-trilha" : "/cadastro"}>{user ? "Começar um estudo" : "Criar conta grátis"}</ButtonLink>
               <ButtonLink href="#como-funciona" variant="secundario">Como funciona</ButtonLink>
             </div>
             <p className="mt-4 t-small text-tinta-fraca">Sua preparação. Seu próximo cargo.</p>
           </div>
 
-          <figure className="rounded-lg border border-linha bg-superficie p-5 shadow-[0_1px_0_#262626]">
+          <figure className="rounded-lg border border-linha bg-superficie p-5 shadow-[0_1px_0_#e5e5e5]">
             <figcaption className="t-small text-tinta-suave">
-              Este trecho de edital foi decomposto agora pelo motor do APROVUM:
+              Este trecho de lei foi decomposto agora pelo motor do APROVUM:
             </figcaption>
             <blockquote className="mt-3 border-l-2 border-linha-forte pl-3 font-serif text-[0.95rem] leading-relaxed text-tinta-suave">
               {DEMO}
@@ -83,9 +86,9 @@ export default async function Home() {
             <h2 className="t-h1 max-w-xl">Como funciona</h2>
             <ol className="mt-8 grid gap-8 md:grid-cols-3">
               {[
-                ["Escolha a banca e cole o conteúdo", "Edital inteiro, uma matéria, um artigo de lei ou um tema. A banca orienta o estilo dos exercícios."],
-                ["Confira a trilha antes de começar", "Veja os módulos, as aulas e qual item do edital cada aula cobre. Itens sem aula aparecem destacados — nada some sem aviso."],
-                ["Estude, responda e revise", "Cada aula termina com questões comentadas. Você avança quando demonstra o aprendizado, e as revisões voltam no tempo certo."],
+                ["Informe o conteúdo", "Ex.: “Prisão em flagrante” ou “Arts. 121 a 129 do Código Penal”. Pode colar o texto da lei. Se o pedido for ambíguo, a plataforma pergunta antes de seguir."],
+                ["Estude a aula completa", "Blocos curtos, do básico ao avançado: explicação, exemplos, comparações, pegadinhas e exceções — tudo dentro do escopo pedido."],
+                ["Passe pelos três níveis", "Fácil, médio e difícil, cada um com pelo menos 90%. Errou? A recuperação refaz só os pontos errados. Aprovado, o PDF do conteúdo é liberado."],
               ].map(([t, d], i) => (
                 <li key={t} className="flex gap-4">
                   <span className="flex size-9 shrink-0 items-center justify-center rounded-full bg-nevoa font-bold text-destaque" aria-hidden>
@@ -108,7 +111,7 @@ export default async function Home() {
               ["Ler não é dominar", "Uma aula lida conta como estudada. Domínio só depois de acertar as questões e manter o acerto numa revisão dias depois."],
               ["Lei com origem marcada", "O texto legal exibido é o que você colou. Doutrina e jurisprudência citadas ficam marcadas como não verificadas até a conferência na fonte oficial."],
               ["Questões de treino, não de prova", "Os exercícios são elaborados para treinamento no estilo da banca escolhida e identificados como originais. Nunca são apresentados como questões oficiais."],
-              ["Lacunas avisadas", "Se o conteúdo colado pula um item (por exemplo, inciso III depois do II), a trilha avisa antes de você começar."],
+              ["Cada conteúdo é independente", "Vários temas ao mesmo tempo, cada um com progresso, níveis e PDF próprios. Se o texto colado pular um item (inciso III depois do I), você é avisado antes de começar."],
             ].map(([t, d]) => (
               <div key={t} className="border-l-2 border-azul pl-4">
                 <dt className="t-h3">{t}</dt>
@@ -117,7 +120,7 @@ export default async function Home() {
             ))}
           </dl>
           <div className="mt-10">
-            <ButtonLink href={user ? "/nova-trilha" : "/cadastro"}>{user ? "Criar uma trilha" : "Criar conta grátis"}</ButtonLink>
+            <ButtonLink href={user ? "/nova-trilha" : "/cadastro"}>{user ? "Começar um estudo" : "Criar conta grátis"}</ButtonLink>
           </div>
         </section>
       </main>

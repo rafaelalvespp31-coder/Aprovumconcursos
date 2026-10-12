@@ -23,7 +23,7 @@ export async function createTrailAction(_: CreateTrailState, form: FormData): Pr
   } catch (err) {
     if (err instanceof UserFacingError) return { error: err.message };
     await logEvent("trail.create_error", { userId: user.id, error: (err as Error).message });
-    return { error: "Não foi possível criar a trilha agora. Tente novamente em instantes." };
+    return { error: "Não foi possível criar o estudo agora. Tente novamente em instantes." };
   }
   redirect(`/trilhas/${result.trailId}/processando?job=${result.jobId}`);
 }

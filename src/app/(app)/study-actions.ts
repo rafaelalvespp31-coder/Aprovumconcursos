@@ -138,7 +138,7 @@ export async function askClarification(input: { lessonId: string; sectionId: str
 // Busca rápida (⌘K) nas trilhas e temas do próprio aluno (RLS)
 // ---------------------------------------------------------------------------
 export interface SearchItem {
-  type: "Trilha" | "Tema" | "Revisão" | "Página";
+  type: "Estudo" | "Tema" | "Revisão" | "Página";
   name: string;
   href: string;
 }
@@ -157,7 +157,7 @@ export async function searchStudy(query: string): Promise<Result<SearchItem[]>> 
       db.from("review_schedules").select("lesson_id, lessons!inner(title)").lte("due_at", new Date().toISOString()).ilike("lessons.title", term).limit(3),
     ]);
     return [
-      ...(trails.data ?? []).map((t) => ({ type: "Trilha" as const, name: t.title as string, href: `/trilhas/${t.id}` })),
+      ...(trails.data ?? []).map((t) => ({ type: "Estudo" as const, name: t.title as string, href: `/trilhas/${t.id}` })),
       ...(reviews.data ?? []).map((r) => ({
         type: "Revisão" as const,
         name: (r.lessons as unknown as { title: string }).title,

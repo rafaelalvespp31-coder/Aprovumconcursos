@@ -52,7 +52,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 function navItems(s: ShellSummary, base: string): NavItem[] {
   return [
     { id: "painel", href: `${base}/painel`, label: "Painel", icon: House, num: "1", desc: "Visão geral", title: "" },
-    { id: "trilhas", href: `${base}/trilhas`, label: "Trilhas", icon: MapIcon, num: "2", desc: plural(s.counts.trails, "trilha", "trilhas"), also: [`${base}/trilha`, `${base}/aula`, `${base}/nova-trilha`], title: "Suas trilhas" },
+    { id: "trilhas", href: `${base}/trilhas`, label: "Estudos", icon: MapIcon, num: "2", desc: plural(s.counts.trails, "conteúdo", "conteúdos"), also: [`${base}/trilha`, `${base}/aula`, `${base}/nova-trilha`], title: "Seus estudos" },
     { id: "questoes", href: `${base}/questoes`, label: "Questões", icon: CircleHelp, num: "3", desc: `Banco ${s.counts.questions}`, also: [`${base}/simulado`], title: "Banco de questões" },
     { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "4", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
     { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", icon: ChartColumn, num: "5", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
@@ -130,13 +130,13 @@ export function PastelShell({
 
   return (
     <ToastCtx.Provider value={setToast}>
-      <div className="pastel relative min-h-screen w-full overflow-x-hidden font-[Inter,system-ui,sans-serif] text-white antialiased selection:bg-[#E10600]/40">
-        <div className="pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden bg-black" />
+      <div className="pastel relative min-h-screen w-full overflow-x-hidden font-[Inter,system-ui,sans-serif] text-[#0A0A0A] antialiased selection:bg-[#E10600]/25">
+        <div className="pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden bg-white" />
         <div className="pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden" aria-hidden>
-          <div className="absolute -top-[220px] -left-[140px] h-[min(620px,80vw)] w-[min(620px,80vw)] animate-[meshMove_18s_ease-in-out_infinite] rounded-full bg-[#E10600]/[0.14] blur-[70px]" />
-          <div className="absolute -top-[120px] -right-[120px] h-[min(560px,70vw)] w-[min(560px,70vw)] animate-[meshMove_22s_ease-in-out_infinite_2s] rounded-full bg-white/[0.04] blur-[70px]" />
-          <div className="absolute bottom-[-120px] left-[24%] h-[min(520px,70vw)] w-[min(720px,90vw)] animate-[meshMove_20s_ease-in-out_infinite_1s] rounded-full bg-[#E10600]/[0.07] blur-[80px]" />
-          <div className="absolute top-[50%] right-[10%] h-[min(380px,60vw)] w-[min(380px,60vw)] animate-[meshMove_24s_ease-in-out_infinite_0.5s] rounded-full bg-white/[0.03] blur-[60px]" />
+          <div className="absolute -top-[220px] -left-[140px] h-[min(620px,80vw)] w-[min(620px,80vw)] animate-[meshMove_18s_ease-in-out_infinite] rounded-full bg-[#E10600]/[0.05] blur-[70px]" />
+          <div className="absolute -top-[120px] -right-[120px] h-[min(560px,70vw)] w-[min(560px,70vw)] animate-[meshMove_22s_ease-in-out_infinite_2s] rounded-full bg-black/[0.025] blur-[70px]" />
+          <div className="absolute bottom-[-120px] left-[24%] h-[min(520px,70vw)] w-[min(720px,90vw)] animate-[meshMove_20s_ease-in-out_infinite_1s] rounded-full bg-[#E10600]/[0.05] blur-[80px]" />
+          <div className="absolute top-[50%] right-[10%] h-[min(380px,60vw)] w-[min(380px,60vw)] animate-[meshMove_24s_ease-in-out_infinite_0.5s] rounded-full bg-black/[0.025] blur-[60px]" />
         </div>
 
         <div className="relative flex min-h-screen w-full max-w-[100vw]">
@@ -145,7 +145,7 @@ export function PastelShell({
             className={`sticky top-0 z-30 hidden h-screen shrink-0 flex-col transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:flex ${collapsed ? "w-[100px]" : "w-[320px]"}`}
             style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
           >
-            <div className="glass m-4 flex flex-1 flex-col overflow-hidden rounded-[32px] border border-[#262626] bg-[#0E0E0E]/80 shadow-[0_16px_48px_rgba(225,6,0,0.10),inset_0_1px_0_rgba(255,255,255,0.05)]">
+            <div className="m-4 flex flex-1 flex-col overflow-hidden rounded-[32px] border border-[#1F1F1F] bg-[#0A0A0A] text-white shadow-[0_16px_48px_rgba(225,6,0,0.10),inset_0_1px_0_rgba(255,255,255,0.05)]">
               <div className="flex items-center gap-3.5 p-[22px]">
                 <Link
                   href={`${basePath}/painel`}
@@ -273,13 +273,13 @@ export function PastelShell({
           </aside>
 
           <div className="min-w-0 flex-1">
-            <header className="sticky top-0 z-20 border-b border-white/[0.06] bg-black/60 backdrop-blur-[18px]" style={{ top: "env(safe-area-inset-top, 0px)" }}>
+            <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-white/75 backdrop-blur-[18px]" style={{ top: "env(safe-area-inset-top, 0px)" }}>
               <div className="flex h-[88px] items-center justify-between gap-4 px-5 lg:px-10">
                 <div className="flex min-w-0 flex-1 items-center gap-4">
                   <Link
                     href={`${basePath}/perfil`}
                     aria-label="Perfil e conquistas"
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-[#2A2A2A] bg-[#161616] shadow lg:hidden"
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-[#E5E5E5] bg-[#F5F5F5] shadow lg:hidden"
                   >
                     <UserRound className="h-5 w-5" aria-hidden />
                   </Link>
@@ -289,12 +289,12 @@ export function PastelShell({
                     ) : (
                       <p className="flex items-center gap-2 truncate font-[Space_Grotesk] text-[24px] font-[800] leading-none tracking-[-0.02em] sm:text-[28px] lg:text-[34px]">{title}</p>
                     )}
-                    <div className="mt-2 hidden items-center gap-2 text-[13.5px] text-[#B3B3B3] sm:flex">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#2E2E2E] bg-[#1A1A1A]" aria-hidden>
+                    <div className="mt-2 hidden items-center gap-2 text-[13.5px] text-[#4D4D4D] sm:flex">
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#E0E0E0] bg-[#F4F4F4]" aria-hidden>
                         <Target className="h-3.5 w-3.5 text-[#FF1E1E]" />
                       </span>
                       <span className="truncate">
-                        {isPainel ? (notice ?? "Um tema por vez: todas as formas de ensino, depois todas as questões.") : `${active?.desc ?? ""}${shortcutsOn ? " • atalhos 1-6" : ""}`}
+                        {isPainel ? (notice ?? "Um conteúdo por vez: aula completa e três níveis — fácil, médio e difícil.") : `${active?.desc ?? ""}${shortcutsOn ? " • atalhos 1-6" : ""}`}
                       </span>
                     </div>
                   </div>
@@ -305,7 +305,7 @@ export function PastelShell({
                     href={`${basePath}/nova-trilha`}
                     className="group relative flex h-11 items-center gap-2 rounded-[14px] bg-gradient-to-r from-[#FF1E1E] to-[#B30000] px-5 text-[13.5px] font-semibold text-white shadow-[0_10px_24px_rgba(225,6,0,0.30),inset_0_1px_0_rgba(255,255,255,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(225,6,0,0.42)]"
                   >
-                    <Plus className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Nova trilha</span>
+                    <Plus className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Novo estudo</span>
                     <span className="sm:hidden">Nova</span>
                     <Sparkles className="h-3.5 w-3.5 opacity-70 transition-transform group-hover:rotate-12" aria-hidden />
                   </Link>
@@ -337,7 +337,7 @@ export function PastelShell({
                 })}
                 <Link
                   href={`${basePath}/nova-trilha`}
-                  aria-label="Nova trilha"
+                  aria-label="Novo estudo"
                   className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-gradient-to-br from-[#FF1E1E] to-[#B30000] text-white shadow-[0_6px_16px_rgba(225,6,0,0.35)]"
                 >
                   <Plus className="h-5 w-5" aria-hidden />
@@ -373,7 +373,7 @@ function QuickSearch({ inputRef, basePath, items }: { inputRef: React.RefObject<
   const toast = usePastelToast();
 
   const pages: SearchItem[] = useMemo(
-    () => items.map((i) => ({ type: "Página" as const, name: i.label, href: i.href })).concat([{ type: "Página" as const, name: "Nova trilha", href: `${basePath}/nova-trilha` }]),
+    () => items.map((i) => ({ type: "Página" as const, name: i.label, href: i.href })).concat([{ type: "Página" as const, name: "Novo estudo", href: `${basePath}/nova-trilha` }]),
     [items, basePath],
   );
 
@@ -407,14 +407,14 @@ function QuickSearch({ inputRef, basePath, items }: { inputRef: React.RefObject<
 
   return (
     <div className="relative hidden md:flex">
-      <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#A3A3A3]" aria-hidden />
+      <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5C5C5C]" aria-hidden />
       <input
         ref={inputRef}
         value={q}
         role="combobox"
         aria-expanded={open && !!q}
         aria-controls="busca-resultados"
-        aria-label="Buscar trilhas, temas e revisões"
+        aria-label="Buscar estudos, temas e revisões"
         onChange={(e) => {
           setQ(e.target.value);
           setOpen(!!e.target.value);
@@ -438,10 +438,10 @@ function QuickSearch({ inputRef, basePath, items }: { inputRef: React.RefObject<
           }
         }}
         placeholder="Buscar (⌘K) ..."
-        className="h-11 w-[220px] rounded-[14px] border border-[#2A2A2A] bg-[#0E0E0E]/90 pl-10 pr-4 text-[13px] shadow-[0_2px_12px_rgba(225,6,0,0.06)] outline-none transition-all placeholder:text-[#A3A3A3] focus:border-[#FF1E1E]/30 focus:shadow-[0_4px_20px_rgba(225,6,0,0.12)] xl:w-[260px]"
+        className="h-11 w-[220px] rounded-[14px] border border-[#E5E5E5] bg-white/95 pl-10 pr-4 text-[13px] shadow-[0_2px_12px_rgba(225,6,0,0.06)] outline-none transition-all placeholder:text-[#5C5C5C] focus:border-[#FF1E1E]/30 focus:shadow-[0_4px_20px_rgba(225,6,0,0.12)] xl:w-[260px]"
       />
       {open && q && (
-        <div id="busca-resultados" role="listbox" className="absolute left-0 right-0 top-[52px] z-50 overflow-hidden rounded-[16px] border border-[#2A2A2A] bg-[#161616] shadow-[0_16px_48px_rgba(0,0,0,0.12)]">
+        <div id="busca-resultados" role="listbox" className="absolute left-0 right-0 top-[52px] z-50 overflow-hidden rounded-[16px] border border-[#E5E5E5] bg-[#F5F5F5] shadow-[0_16px_48px_rgba(0,0,0,0.12)]">
           {list.length ? (
             list.map((s, i) => (
               <button
@@ -451,17 +451,17 @@ function QuickSearch({ inputRef, basePath, items }: { inputRef: React.RefObject<
                 aria-selected={i === cursor}
                 onMouseDown={(e) => e.preventDefault()}
                 onClick={() => go(s)}
-                className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-[#1A1A1A] aria-selected:bg-[#1A1A1A]"
+                className="flex w-full items-center justify-between px-4 py-3 text-left hover:bg-[#F4F4F4] aria-selected:bg-[#F4F4F4]"
               >
                 <span className="min-w-0 truncate text-[13px]">
-                  <span className="mr-2 rounded bg-[#1A1A1A] px-1.5 py-0.5 text-[10px]">{s.type}</span>
+                  <span className="mr-2 rounded bg-[#F4F4F4] px-1.5 py-0.5 text-[10px]">{s.type}</span>
                   {s.name}
                 </span>
-                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#A3A3A3]" aria-hidden />
+                <ArrowRight className="h-3.5 w-3.5 shrink-0 text-[#5C5C5C]" aria-hidden />
               </button>
             ))
           ) : (
-            <div className="px-4 py-3 text-[13px] text-[#A3A3A3]">{loading || term.length < 2 ? "Buscando…" : "Nada encontrado"}</div>
+            <div className="px-4 py-3 text-[13px] text-[#5C5C5C]">{loading || term.length < 2 ? "Buscando…" : "Nada encontrado"}</div>
           )}
         </div>
       )}

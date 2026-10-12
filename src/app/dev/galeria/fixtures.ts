@@ -12,7 +12,8 @@ const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")
 const lessonBase = (n: number, over: Partial<LessonListItem>): LessonListItem => ({
   id: id(100 + n), key: `L${n}`, title: "", objective: "", sort_order: n, estimated_minutes: 35, status: "ready",
   supplementary: [], module_id: id(11), verification_pending: false, state: "nao_iniciada", nodeKeys: [],
-  prerequisiteIds: [], questionCount: 6, reviewDue: false, ...over,
+  prerequisiteIds: [], questionCount: 30, reviewDue: false, ...over,
+  levelsPassed: over.levelsPassed ?? (over.state === "dominada" || over.state === "aguardando_dominio" ? 3 : over.state === "em_revisao" ? 3 : 0),
 });
 
 export const trailModules: Array<{ id: string; title: string; lessons: LessonListItem[] }> = [
@@ -83,7 +84,8 @@ export const reader: ReaderProps = {
     { id: id(207), kind: "jurisprudencia", title: "Entendimento dos tribunais", node_keys: ["N0006"], verification_status: "pendente", body_markdown: "A orientação consolidada é de que a Administração pode anular os próprios atos ilegais e revogá-los por conveniência, respeitados os direitos adquiridos e ressalvada a apreciação judicial." },
     { id: id(208), kind: "resumo", title: "Resumo", node_keys: ["N0006", "N0007"], verification_status: "nao_aplicavel", body_markdown: "1. Ilegal → **anula** (retroage).\n2. Válido, mas inconveniente → **revoga** (não retroage).\n3. Vício sanável, sem prejuízo → pode **convalidar**." },
   ],
-  questions: bank.slice(0, 3).map((b, i) => ({ ...b, nodeKey: i === 2 ? "N0007" : "N0006" })),
+  questions: bank.slice(0, 3).map((b, i) => ({ ...b, nodeKey: i === 2 ? "N0007" : "N0006", level: i === 2 ? ("medio" as const) : ("facil" as const), recovery_of: null })),
+  levelsPassed: 0,
   markedQuestionIds: [id(503)],
   annotations: [
     { id: id(301), section_id: id(203), section_title: "Anulação × revogação", kind: "revisar", body: "", resolved: false, updated_at: "2026-10-10T12:00:00Z" },

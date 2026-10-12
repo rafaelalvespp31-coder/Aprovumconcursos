@@ -131,7 +131,7 @@ test.describe("tela de aula", () => {
     await expect(page.getByText("Resposta correta").first()).toBeVisible();
   });
 
-  test("leitura só conclui após percorrer todas as seções; depois calcula o resultado", async ({ page }) => {
+  test("leitura só conclui após percorrer todas as seções; depois avalia por níveis", async ({ page }) => {
     await page.goto(`${G}/aula`);
     const done = page.getByRole("button", { name: "Concluí a leitura" });
     await expect(done).toBeDisabled();
@@ -149,15 +149,45 @@ test.describe("tela de aula", () => {
     await expect(done).toBeEnabled();
     await done.click();
     await expect(page.getByText(/Leitura concluída/).first()).toBeVisible();
-    await page.getByRole("button", { name: "Calcular resultado" }).click();
-    await expect(page.getByText(/de acerto/).first()).toBeVisible();
+    // Níveis: médio e difícil começam bloqueados; o fácil exige ≥ 90%.
+    await expect(page.getByTestId("nivel-medio")).toContainText("Bloqueado");
+    await expect(page.getByTestId("nivel-dificil")).toContainText("Bloqueado");
+    const fac = page.getByTestId("nivel-facil");
+    await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
+    await expect(fac.getByText(/Responda todas as 2 questões/)).toBeVisible();
+    // Responde às duas questões do nível fácil (uma delas aparece ao longo da aula).
+    await page.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
+    await page.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
+    await page.getByRole("radio", { name: /Errado/ }).first().check({ force: true });
+    await page.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
+    await expect(page.getByText("Resposta correta")).toHaveCount(2);
+    await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
+    await expect(fac.getByText(/Nível fácil aprovado com 100%/)).toBeVisible();
+    await expect(page.getByTestId("nivel-medio")).toContainText("Liberado");
+  });
+
+  test("nível reprovado oferece recuperação em vez de reiniciar", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    const ends = page.locator("[data-fim-secao]");
+    for (let i = 0; i < (await ends.count()); i++) await ends.nth(i).scrollIntoViewIfNeeded();
+    await page.getByRole("button", { name: "Concluí a leitura" }).click();
+    await page.getByText("revogar a licença, por conveniência", { exact: false }).first().click();
+    await page.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
+    await page.getByRole("radio", { name: /Errado/ }).first().check({ force: true });
+    await page.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
+    const fac = page.getByTestId("nivel-facil");
+    await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
+    await expect(fac.getByText(/mínimo para avançar é 90%/)).toBeVisible();
+    await fac.getByRole("button", { name: "Gerar exercícios de recuperação" }).click();
+    await expect(fac.getByText(/galeria de demonstração não há IA/)).toBeVisible();
+    await expect(page.getByTestId("nivel-medio")).toContainText("Bloqueado");
   });
 });
 
 test.describe("painel e trilha", () => {
   test("cada card do painel leva à funcionalidade correspondente", async ({ page }) => {
     await page.goto(`${G}/painel`);
-    await expect(page.getByRole("link", { name: /Nova trilha/ }).first()).toHaveAttribute("href", `${G}/nova-trilha`);
+    await expect(page.getByRole("link", { name: /Novo estudo/ }).first()).toHaveAttribute("href", `${G}/nova-trilha`);
     await expect(page.getByRole("link", { name: /Continuar estudando/ })).toHaveAttribute("href", new RegExp(`${G}/aula/`));
     await expect(page.locator("a", { has: page.getByTestId("card-revisoes") })).toHaveAttribute("href", /\/aula\/.*revisao=1/);
     await expect(page.getByRole("link", { name: /Questões a resolver/ })).toHaveAttribute("href", /\/questoes\?situacao=nao_respondidas/);
@@ -167,7 +197,7 @@ test.describe("painel e trilha", () => {
 
   test("trilha abre o detalhe com matérias reais e fecha com Esc", async ({ page }) => {
     await page.goto(`${G}/painel`);
-    await page.getByRole("button", { name: /Abrir trilha Língua Portuguesa/ }).click();
+    await page.getByRole("button", { name: /Abrir estudo Língua Portuguesa/ }).click();
     const dialog = page.getByRole("dialog", { name: /Língua Portuguesa/ });
     await expect(dialog).toBeVisible();
     await expect(dialog.getByText("Matéria fechada ✓")).toBeVisible();

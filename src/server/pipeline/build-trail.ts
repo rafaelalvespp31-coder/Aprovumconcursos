@@ -3,14 +3,15 @@
  * Cada chamada de `advanceBuild` executa no máximo uma etapa ou um bloco de IA e
  * persiste o estado — permite retomar após falha, recarga de página ou timeout.
  *
- * extract (determinístico) → analyze (IA, por bloco) → plan (IA, por bloco)
- *   → audit (determinístico: mescla, corrige o seguro, audita) → done
+ * scope (IA, só para pedidos breves: delimita o escopo e organiza subtemas; pode
+ *   pausar pedindo esclarecimento) → extract (determinístico) → analyze (IA, por bloco)
+ *   → plan (IA, por bloco) → audit (determinístico: mescla, corrige o seguro, audita) → done
  */
 import { extractStructure } from "@/domain/content/extract";
 import { auditPlan, autoRepairPlan } from "@/domain/content/audit";
 import type { LessonPlan } from "@/domain/content/plan";
 import { AIError, type AIProvider } from "@/ai/provider";
-import { analyzeChunk, chunkNodes, planChunk } from "@/ai/services";
+import { analyzeChunk, chunkNodes, delimitScope, planChunk, shouldDelimitScope } from "@/ai/services";
 import { DISCIPLINE_MODES, type DisciplineMode } from "@/ai/pedagogy";
 import type { BuildRepo, BuildStage, BuildState, Job } from "./types";
 
@@ -20,7 +21,8 @@ export interface StepResult {
 }
 
 const PROGRESS: Record<BuildStage, [number, number]> = {
-  extract: [0, 10],
+  scope: [0, 6],
+  extract: [6, 10],
   analyze: [10, 45],
   plan: [45, 88],
   audit: [88, 99],
@@ -29,11 +31,12 @@ const PROGRESS: Record<BuildStage, [number, number]> = {
 
 export const STAGE_LABELS: Record<string, string> = {
   queued: "Na fila",
+  scope: "Identificando o assunto e delimitando o escopo",
   extract: "Lendo e estruturando o conteúdo",
   analyze: "Analisando tópicos e pré-requisitos",
   plan: "Planejando módulos e aulas",
   audit: "Auditando a cobertura",
-  done: "Trilha pronta para conferência",
+  done: "Estudo pronto para conferência",
 };
 
 export async function advanceBuild(
@@ -48,11 +51,36 @@ export async function advanceBuild(
   const trail = await repo.getTrail(job.trailId, job.userId);
   const next: Job = { ...job, status: "running", state: { ...job.state } };
   const state = next.state as BuildState;
-  const stage = (job.stage === "queued" ? "extract" : job.stage) as BuildStage;
+  let stage = (job.stage === "queued" ? "scope" : job.stage) as BuildStage;
+  const source = trail.normalizedText.slice(0, trail.sourceLength ?? trail.normalizedText.length);
+  if (stage === "scope") {
+    // Sem delimitação necessária (edital, conteúdo colado por inteiro): segue direto para a extração.
+    const direct = extractStructure(source).nodes.filter((n) => n.requiresDirectCoverage).length;
+    if (trail.scopeDone || !shouldDelimitScope(trail.contentType, source, direct)) stage = "extract";
+  }
 
   try {
     if (job.status === "queued") await repo.setTrailStatus(trail.id, trail.userId, "processing");
     switch (stage) {
+      case "scope": {
+        {
+          const r = await delimitScope(getAI(), { text: source, contentType: trail.contentType, board: trail.boardName, answer: trail.scopeAnswer });
+          state.warnings = [...(state.warnings ?? []), ...r.warnings];
+          await repo.recordGeneration({ jobId: job.id, userId: job.userId, trailId: trail.id, task: "delimit_scope", provider: r.provider, model: r.model, usage: r.usage, warnings: r.warnings, output: r.data });
+          if (r.data.needsClarification && r.data.clarification) {
+            await repo.saveScope(trail, { question: r.data.clarification });
+            throw new PipelineError(r.data.clarification.question, "needs_clarification", false);
+          }
+          const { outline, clarification: _c, needsClarification: _n, subtopics: _s, ...summary } = r.data;
+          void _c; void _n; void _s;
+          await repo.saveScope(trail, { summary: { ...summary, subtopicCount: outline ? outline.split("\n").length : 0 }, outline: outline || null, question: null });
+          await repo.log("build.scoped", { jobId: job.id, subtopics: outline ? outline.split("\n").length : 0 });
+        }
+        next.stage = "extract";
+        next.progress = PROGRESS.scope[1];
+        break;
+      }
+
       case "extract": {
         const ex = extractStructure(trail.normalizedText);
         if (ex.nodes.length === 0) {
@@ -86,7 +114,7 @@ export async function advanceBuild(
           state.warnings = [...(state.warnings ?? []), ...r.warnings];
           await repo.recordGeneration({ jobId: job.id, userId: job.userId, trailId: trail.id, task: "analyze_content", provider: r.provider, model: r.model, usage: r.usage, warnings: r.warnings, output: r.data });
         } else {
-          const r = await planChunk(ai, chunk, { board: trail.boardName, chunkIndex: i + 1, analysis: state.analyses?.[i] });
+          const r = await planChunk(ai, chunk, { board: trail.boardName, chunkIndex: i + 1, analysis: state.analyses?.[i], specific: trail.contentType !== "edital" });
           state.plans = [...(state.plans ?? []), r.data];
           state.warnings = [...(state.warnings ?? []), ...r.warnings];
           await repo.recordGeneration({ jobId: job.id, userId: job.userId, trailId: trail.id, task: "plan_lessons", provider: r.provider, model: r.model, usage: r.usage, warnings: r.warnings, output: r.data });
@@ -190,7 +218,8 @@ async function handleFailure(job: Job, err: unknown, repo: BuildRepo): Promise<S
   };
   await repo.saveJob(failed);
   await repo.log("build.step_failed", { jobId: job.id, stage: job.stage, code, attempts, final: failed.status === "failed" });
-  if (failed.status === "failed") await repo.setTrailStatus(job.trailId, job.userId, "failed");
+  // Pedido de esclarecimento não é erro: o estudo aguarda a resposta do aluno e retoma daqui.
+  if (failed.status === "failed") await repo.setTrailStatus(job.trailId, job.userId, code === "needs_clarification" ? "clarification" : "failed");
   return { job: failed, done: failed.status === "failed" };
 }
 

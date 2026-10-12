@@ -5,6 +5,7 @@
 import type { z } from "zod";
 
 export type AITask =
+  | "delimit_scope"
   | "analyze_content"
   | "plan_lessons"
   | "generate_lesson"

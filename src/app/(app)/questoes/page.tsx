@@ -29,8 +29,8 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
       </div>
       <BankFiltersForm action="/questoes" filters={filters} trails={bank.trails} boards={bank.boards} modules={bank.modules} />
       {bank.total === 0 ? (
-        <EmptyState title="Ainda não há questões" action={<ButtonLink href="/trilhas">Ir para as trilhas</ButtonLink>}>
-          As questões aparecem aqui depois que você prepara as aulas de uma trilha.
+        <EmptyState title="Ainda não há questões" action={<ButtonLink href="/trilhas">Ir para os estudos</ButtonLink>}>
+          As questões aparecem aqui depois que você prepara as aulas de um estudo.
         </EmptyState>
       ) : bank.questions.length === 0 ? (
         <EmptyState title="Nenhuma questão com esses filtros" action={<ButtonLink href="/questoes" variant="secundario">Limpar filtros</ButtonLink>}>
