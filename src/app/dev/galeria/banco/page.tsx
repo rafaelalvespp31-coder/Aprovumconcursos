@@ -4,6 +4,7 @@ import { DecisionPanel } from "@/app/banco/questoes/[id]/decision-panel";
 import { SourceManager } from "@/app/banco/fontes/source-manager";
 import { TopicManager } from "@/app/banco/assuntos/topic-manager";
 import { DCard, DStat } from "@/app/banco/ui";
+import { GenerateForm } from "@/app/banco/gerar/generate-form";
 
 /** Prévia do painel escuro do banco de questões com dados de EXEMPLO. Os botões não gravam aqui. */
 const S1 = "00000000-0000-4000-8000-00000000b001";
@@ -48,6 +49,16 @@ export default function Page() {
             checklist={{ content: false, answer: false, source: false, rights: false }}
           />
         </DCard>
+        <GenerateForm
+          subjects={lookups.subjects}
+          topics={lookups.topics.map((t) => ({ id: t.id, subject_id: t.subject_id, path: t.path }))}
+          boards={lookups.boards}
+          sources={[
+            { id: "00000000-0000-4000-8000-00000000b301", name: "Código Penal (Planalto)", kind: "legislacao", usable: true },
+            { id: "00000000-0000-4000-8000-00000000b302", name: "Apostila de terceiros", kind: "material_didatico", usable: false },
+          ]}
+          remainingToday={60}
+        />
         <QuestionForm id={null} initial={emptyQuestion(S1)} lookups={lookups} />
         <SourceManager
           canVerify

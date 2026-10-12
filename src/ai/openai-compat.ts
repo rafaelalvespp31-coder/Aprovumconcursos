@@ -23,6 +23,10 @@ export interface OpenAICompatConfig {
   reasoningEffort?: string | null;
   /** Como enviar a chave: Authorization: Bearer (padrão) ou x-goog-api-key (Google). */
   keyHeader?: "bearer" | "x-goog-api-key";
+  /** Teto para max_tokens (planos gratuitos com limite de tokens por minuto). */
+  maxOutputTokensCap?: number | null;
+  /** Nome da variável da chave, para mensagens de erro. */
+  keyVar?: string;
   /** Cabeçalhos extras (ex.: OpenRouter pede identificação do app). */
   headers?: Record<string, string>;
 }
@@ -180,7 +184,7 @@ export class OpenAICompatProvider implements AIProvider {
       model: this.model,
       messages,
       temperature: req.temperature ?? 0.2,
-      max_tokens: req.maxOutputTokens,
+      max_tokens: this.config.maxOutputTokensCap ? Math.min(req.maxOutputTokens, this.config.maxOutputTokensCap) : req.maxOutputTokens,
       ...(this.reasoningEffort ? { reasoning_effort: this.reasoningEffort } : {}),
       response_format: this.jsonMode === "schema" ? { type: "json_schema", json_schema: { name, strict: false, schema } } : { type: "json_object" },
     });
@@ -188,6 +192,10 @@ export class OpenAICompatProvider implements AIProvider {
     for (let i = 0; i < 3; i++) {
       const res = await this.post(body(), req.timeoutMs, usage);
       if (res.ok) return (await res.json()) as ChatResponse;
+      if (res.status === 429) {
+        const ra = Number(res.headers.get("retry-after"));
+        throw new AIError("Limite gratuito do provedor de IA atingido. Aguarde alguns instantes e tente novamente.", "rate_limited", true, usage, Number.isFinite(ra) && ra > 0 ? Math.min(ra, 120) : undefined);
+      }
       if (res.status !== 400) throw this.classify(res.status, usage);
       const text = await res.text().catch(() => "");
       const adjust = diagnose400(text, { reasoning: !!this.reasoningEffort, schema: this.jsonMode === "schema" });
@@ -195,7 +203,7 @@ export class OpenAICompatProvider implements AIProvider {
       if (adjust === "json_object") { this.jsonMode = "object"; continue; }
       // Registro no servidor (Vercel → Logs) para diagnóstico; sem chaves, truncado.
       console.error(JSON.stringify({ event: "ai.provider_400", provider: this.name, model: this.model, detail: redact(text).slice(0, 600) }));
-      if (adjust === "bad_key") throw new AIError("Chave da IA inválida. Confira a variável GEMINI_API_KEY (ou a do provedor escolhido) no servidor.", "not_configured", false, usage);
+      if (adjust === "bad_key") throw new AIError(`Chave da IA inválida. Confira a variável ${this.config.keyVar ?? "da chave"} no servidor.`, "not_configured", false, usage);
       if (adjust === "bad_model") throw new AIError(`Modelo de IA não encontrado: "${this.model}". Confira a variável AI_MODEL no servidor.`, "not_configured", false, usage);
       throw new AIError(`Erro do provedor de IA (HTTP 400)${providerReason(text)}`, "provider_error", false, usage);
     }
@@ -238,7 +246,10 @@ export class OpenAICompatProvider implements AIProvider {
     if (status === 429) {
       return new AIError("Limite gratuito do provedor de IA atingido. Aguarde alguns minutos e tente novamente.", "rate_limited", true, usage);
     }
-    if (status === 401 || status === 403) return new AIError("Credencial do provedor de IA inválida.", "not_configured", false, usage);
+    if (status === 413) {
+      return new AIError("Pedido grande demais para o limite gratuito por minuto do provedor de IA. Gere menos questões por vez ou use um texto-base menor.", "rate_limited", false, usage);
+    }
+    if (status === 401 || status === 403) return new AIError(`Credencial do provedor de IA inválida. Confira a variável ${this.config.keyVar ?? "da chave"} no servidor.`, "not_configured", false, usage);
     // Não propaga o corpo do erro do provedor (pode conter detalhes internos).
     return new AIError(`Erro do provedor de IA (HTTP ${status}).`, "provider_error", status >= 500, usage);
   }

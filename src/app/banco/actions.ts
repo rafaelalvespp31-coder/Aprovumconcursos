@@ -21,6 +21,7 @@ import {
   type SimilarHit,
 } from "@/server/services/bank";
 import type { BankStatus } from "@/domain/bank/labels";
+import { cancelGeneration, runGenerationStep, startGeneration, type StepResult } from "@/server/services/bank-generation";
 
 export interface BankResult<T = undefined> {
   ok: boolean;
@@ -90,4 +91,20 @@ export async function createExamAction(payload: unknown) {
 
 export async function staffRoleAction(email: string, role: "autor" | "revisor", grant: boolean) {
   return run("staff", async () => setStaffRole(await requireBankStaff(), email, role, grant), ["/banco/equipe"]);
+}
+
+// ---------------------------------------------------------------------------
+// Geração por IA (Fase 5)
+// ---------------------------------------------------------------------------
+
+export async function startGenerationAction(payload: unknown): Promise<BankResult<{ batchId: string; total: number }>> {
+  return run("ai_start", async () => startGeneration(await requireBankStaff(), payload), ["/banco/gerar"]);
+}
+
+export async function generationStepAction(batchId: string): Promise<BankResult<StepResult>> {
+  return run("ai_step", async () => runGenerationStep(await requireBankStaff(), batchId), ["/banco", "/banco/questoes"]);
+}
+
+export async function cancelGenerationAction(batchId: string) {
+  return run("ai_cancel", async () => cancelGeneration(await requireBankStaff(), batchId), ["/banco/gerar"]);
 }

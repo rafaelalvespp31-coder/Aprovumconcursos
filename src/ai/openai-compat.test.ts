@@ -10,7 +10,7 @@ const reply = (content: string, finish = "stop") =>
   new Response(JSON.stringify({ model: "m", choices: [{ finish_reason: finish, message: { content } }], usage: { prompt_tokens: 10, completion_tokens: 5 } }), { status: 200 });
 
 const provider = (jsonMode: "schema" | "object" = "schema") =>
-  new OpenAICompatProvider({ name: "gemini", baseUrl: "https://exemplo.test/v1/", apiKey: "k", model: "m", inputPricePerMTok: null, outputPricePerMTok: null, jsonMode });
+  new OpenAICompatProvider({ name: "gemini", baseUrl: "https://exemplo.test/v1/", apiKey: "k", model: "m", inputPricePerMTok: null, outputPricePerMTok: null, jsonMode, keyVar: "GEMINI_API_KEY" });
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -115,5 +115,25 @@ describe("adaptador compatível (Gemini, Groq, OpenRouter, Ollama)", () => {
   it("utilitários", () => {
     expect(parseJsonLoose('Aqui está: {"a":1} pronto')).toEqual({ a: 1 });
     expect(sanitizeSchema({ type: "string", pattern: "x", minLength: 2, description: "d" })).toEqual({ type: "string", description: "d" });
+  });
+});
+
+describe("plano gratuito (Groq): teto de saída, 413 e espera do 429", () => {
+  it("limita max_tokens ao teto configurado", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(reply('{"title":"Plano","keys":["N0001"]}'));
+    vi.stubGlobal("fetch", fetchMock);
+    const p = new OpenAICompatProvider({ name: "groq", baseUrl: "https://g.test/v1", apiKey: "k", model: "m", inputPricePerMTok: null, outputPricePerMTok: null, jsonMode: "schema", maxOutputTokensCap: 500 });
+    await p.generateStructured({ ...req, maxOutputTokens: 16000 });
+    expect(JSON.parse(fetchMock.mock.calls[0]![1].body).max_tokens).toBe(500);
+  });
+  it("429 devolve o tempo de espera sugerido; 413 explica o limite por minuto", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 429, headers: { "retry-after": "17" } })));
+    const e = (await provider().generateStructured(req).catch((x) => x)) as AIError;
+    expect(e.kind).toBe("rate_limited");
+    expect(e.retryAfterSec).toBe(17);
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response("{}", { status: 413 })));
+    const e2 = (await provider().generateStructured(req).catch((x) => x)) as AIError;
+    expect(e2.message).toMatch(/limite gratuito por minuto/);
+    expect(e2.retryable).toBe(false);
   });
 });

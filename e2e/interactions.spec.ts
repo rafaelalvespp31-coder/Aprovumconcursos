@@ -366,15 +366,24 @@ test.describe("banco de questões (painel escuro)", () => {
 
   test("formulário: alternativa correta destacada, certo/errado e procedência só para prova anterior", async ({ page }) => {
     await page.goto(`${G}/banco`);
-    await page.getByLabel("Alternativa C é a correta").check();
-    await expect(page.getByLabel("Alternativa C é a correta")).toBeChecked();
-    await expect(page.getByText("Procedência (prova anterior real)")).toHaveCount(0);
-    await page.getByLabel("Origem *").selectOption("prova_anterior");
-    await expect(page.getByText("Procedência (prova anterior real)")).toBeVisible();
-    await expect(page.getByLabel("Direito de uso *").locator("option[value=proprio]")).toHaveCount(0);
-    await page.getByLabel("Formato *").selectOption("certo_errado");
-    await expect(page.getByText("Gabarito *")).toBeVisible();
-    await page.getByRole("button", { name: "+ Referência" }).click();
-    await expect(page.getByLabel("Norma", { exact: true })).toBeVisible();
+    const form = page.locator("form").filter({ hasText: "Classificação" });
+    await form.getByLabel("Alternativa C é a correta").check();
+    await expect(form.getByLabel("Alternativa C é a correta")).toBeChecked();
+    await expect(form.getByText("Procedência (prova anterior real)")).toHaveCount(0);
+    await form.getByLabel("Origem *").selectOption("prova_anterior");
+    await expect(form.getByText("Procedência (prova anterior real)")).toBeVisible();
+    await expect(form.getByLabel("Direito de uso *").locator("option[value=proprio]")).toHaveCount(0);
+    await form.getByLabel("Formato *").selectOption("certo_errado");
+    await expect(form.getByText("Gabarito *")).toBeVisible();
+    await form.getByRole("button", { name: "+ Referência" }).click();
+    await expect(form.getByLabel("Norma", { exact: true })).toBeVisible();
+  });
+
+  test("gerar com IA: fonte sem autorização fica bloqueada e o texto-base tem contador", async ({ page }) => {
+    await page.goto(`${G}/banco`);
+    await expect(page.getByRole("option", { name: /Apostila de terceiros.*falta autorização/ })).toBeDisabled();
+    await page.getByLabel("Texto-base * (única base da IA)").fill("Art. 121. Matar alguém");
+    await expect(page.getByText("22/8000")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Gerar questões" })).toBeEnabled();
   });
 });

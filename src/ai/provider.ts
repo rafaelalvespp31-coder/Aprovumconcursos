@@ -65,6 +65,8 @@ export class AIError extends Error {
       | "refused",
     public readonly retryable: boolean,
     public readonly usage?: AIUsage,
+    /** Segundos sugeridos pelo provedor antes de tentar de novo (limite por minuto). */
+    public readonly retryAfterSec?: number,
   ) {
     super(message);
     this.name = "AIError";
