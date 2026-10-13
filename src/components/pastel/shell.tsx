@@ -39,6 +39,8 @@ interface NavItem {
   id: string;
   href: string;
   label: string;
+  /** Rótulo curto da barra inferior do celular. */
+  short?: string;
   icon: LucideIcon;
   num: string;
   desc: string;
@@ -54,7 +56,7 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
     { id: "trilhas", href: `${base}/trilhas`, label: "Estudos", icon: MapIcon, num: "2", desc: plural(s.counts.trails, "conteúdo", "conteúdos"), also: [`${base}/trilha`, `${base}/aula`, `${base}/nova-trilha`], title: "Seus estudos" },
     { id: "questoes", href: `${base}/questoes`, label: "Questões", icon: CircleHelp, num: "3", desc: `Banco ${s.counts.questions}`, also: [`${base}/simulado`], title: "Banco de questões" },
     { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "4", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
-    { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", icon: ChartColumn, num: "5", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
+    { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "5", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
     { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "6", desc: `Nível ${s.level}`, title: "Perfil & conquistas" },
   ];
 }
@@ -192,7 +194,7 @@ export function PastelShell({
                         {!collapsed && (
                           <span className="min-w-0 flex-1">
                             <span className="flex items-center gap-2">
-                              <span className={`font-semibold tracking-tight ${on ? "text-white" : ""}`}>{s.label}</span>
+                              <span className={`font-semibold tracking-tight ${on ? "text-white" : ""}`}>{s.short ?? s.label}</span>
                               {!on && shortcutsOn && (
                                 <span className="rounded-full border border-[#2E2E2E] bg-[#1A1A1A] px-1.5 py-0.5 text-[10px]" aria-label={`atalho ${s.num}`}>{s.num}</span>
                               )}
@@ -311,27 +313,29 @@ export function PastelShell({
 
             {/* Barra flutuante (celular) */}
             <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 p-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:hidden">
-              <nav aria-label="Principal (celular)" className="glass pointer-events-auto mx-auto flex max-w-[520px] items-center justify-between rounded-[22px] border border-[#262626] bg-[#0E0E0E]/90 p-2 shadow-[0_16px_40px_rgba(0,0,0,0.14)]">
+              <nav aria-label="Principal (celular)" className="glass pointer-events-auto mx-auto flex max-w-[520px] items-stretch justify-between gap-0.5 rounded-[22px] border border-[#262626] bg-[#0E0E0E]/90 p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.14)]">
                 {items.slice(0, 5).map((s) => {
                   const on = active?.id === s.id;
                   return (
                     <Link
                       key={s.id}
                       href={s.href}
-                      aria-label={s.label}
+                      aria-label={s.short ? s.label : undefined}
                       aria-current={on ? "page" : undefined}
-                      className={`flex h-11 w-11 items-center justify-center rounded-[14px] transition-all ${on ? "bg-[#E10600] text-white shadow" : "text-[#A3A3A3]"}`}
+                      className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[14px] px-0.5 py-1.5 transition-all ${on ? "bg-[#E10600] text-white shadow" : "text-[#A3A3A3]"}`}
                     >
-                      <s.icon className="h-5 w-5" aria-hidden />
+                      <s.icon className="h-5 w-5 shrink-0" aria-hidden />
+                      <span className="max-w-full truncate text-[10px] font-semibold leading-tight tracking-[-0.01em]">{s.short ?? s.label}</span>
                     </Link>
                   );
                 })}
                 <Link
                   href={`${basePath}/nova-trilha`}
                   aria-label="Novo estudo"
-                  className="flex h-11 w-11 items-center justify-center rounded-[14px] bg-gradient-to-br from-[#FF1E1E] to-[#B30000] text-white shadow-[0_6px_16px_rgba(225,6,0,0.35)]"
+                  className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[14px] bg-gradient-to-br from-[#FF1E1E] to-[#B30000] px-0.5 py-1.5 text-white shadow-[0_6px_16px_rgba(225,6,0,0.35)]"
                 >
-                  <Plus className="h-5 w-5" aria-hidden />
+                  <Plus className="h-5 w-5 shrink-0" aria-hidden />
+                  <span className="max-w-full truncate text-[10px] font-semibold leading-tight">Novo</span>
                 </Link>
               </nav>
             </div>
