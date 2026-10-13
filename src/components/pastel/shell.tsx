@@ -18,7 +18,6 @@ import {
   Plus,
   Search,
   Settings,
-  Sparkles,
   Target,
   UserRound,
   type LucideIcon,
@@ -301,14 +300,6 @@ export function PastelShell({
                 </div>
                 <div className="flex shrink-0 items-center gap-2.5">
                   <QuickSearch inputRef={searchRef} basePath={basePath} items={items} />
-                  <Link
-                    href={`${basePath}/nova-trilha`}
-                    className="group relative flex h-11 items-center gap-2 rounded-[14px] bg-gradient-to-r from-[#FF1E1E] to-[#B30000] px-5 text-[13.5px] font-semibold text-white shadow-[0_10px_24px_rgba(225,6,0,0.30),inset_0_1px_0_rgba(255,255,255,0.35)] transition-all hover:-translate-y-0.5 hover:shadow-[0_14px_32px_rgba(225,6,0,0.42)]"
-                  >
-                    <Plus className="h-4 w-4" aria-hidden /> <span className="hidden sm:inline">Novo estudo</span>
-                    <span className="sm:hidden">Nova</span>
-                    <Sparkles className="h-3.5 w-3.5 opacity-70 transition-transform group-hover:rotate-12" aria-hidden />
-                  </Link>
                 </div>
               </div>
             </header>

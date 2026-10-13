@@ -234,7 +234,8 @@ test.describe("tela de aula", () => {
 test.describe("painel e trilha", () => {
   test("cada card do painel leva à funcionalidade correspondente", async ({ page }) => {
     await page.goto(`${G}/painel`);
-    await expect(page.getByRole("link", { name: /Novo estudo/ }).first()).toHaveAttribute("href", `${G}/nova-trilha`);
+    // O topo não tem mais o botão "+ Nova" (novo estudo fica na barra inferior do celular e na página Estudos).
+    await expect(page.getByRole("banner").getByRole("link", { name: /Nova|Novo estudo/ })).toHaveCount(0);
     await expect(page.getByRole("link", { name: /Continuar estudando/ })).toHaveAttribute("href", new RegExp(`${G}/aula/`));
     await expect(page.locator("a", { has: page.getByTestId("card-revisoes") })).toHaveAttribute("href", /\/aula\/.*revisao=1/);
     await expect(page.getByRole("link", { name: /Questões a resolver/ })).toHaveAttribute("href", /\/questoes\?situacao=nao_respondidas/);
