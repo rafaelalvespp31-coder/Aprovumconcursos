@@ -282,3 +282,20 @@ describe("cobertura", () => {
     expect(cov.get(t21.key)!.reasons.join(" ")).toMatch(/não verificada/);
   });
 });
+
+describe("artigos no formato do Planalto (Art. 10. / Art. 10 - O …)", () => {
+  it("reconhece o artigo e não confunde a palavra inicial com sufixo de letra", async () => {
+    const { extractStructure } = await import("./extract");
+    const { normalizeContent } = await import("./normalize");
+    const text = "Art. 10. O inquérito deverá terminar no prazo de 10 dias.\nArt. 12 - O inquérito policial acompanhará a denúncia.\nArt. 14-A Nos casos em que servidores.\nArt. 121-A. Matar a mulher.\n§ 2º-A (revogado).";
+    const nodes = extractStructure(normalizeContent(text).normalized).nodes;
+    expect(nodes.map((n) => [n.kind, n.marker])).toEqual([
+      ["artigo", "Art. 10"],
+      ["artigo", "Art. 12"],
+      ["artigo", "Art. 14-A"],
+      ["artigo", "Art. 121-A"],
+      ["paragrafo", "§ 2º-A"],
+    ]);
+    expect(nodes[0]!.title).toMatch(/^O inquérito/);
+  });
+});

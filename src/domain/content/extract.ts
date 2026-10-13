@@ -40,7 +40,8 @@ const UPPER_START = "A-ZÀ-ÖØ-Þ";
 /** Pontos onde um item começa no meio de uma linha, após pontuação. */
 const INLINE_BREAKS: RegExp[] = [
   // "... textos. 2 Reconhecimento ..." / "LÍNGUA PORTUGUESA: 1 Compreensão"
-  new RegExp(`(?<=[.;:])\\s+(?=\\d{1,3}(?:\\.\\d{1,3})*\\.?\\s+[${UPPER_START}])`, "g"),
+  // (não corta depois de abreviações: "Art. 10. O inquérito…", "arts. 4 a 23", "nº 2")
+  new RegExp(`(?<![Aa]rt(?:igo)?s?\\.|n[º°o]\\.|[Ii]nc\\.)(?<=[.;:])\\s+(?=\\d{1,3}(?:\\.\\d{1,3})*\\.?\\s+[${UPPER_START}])`, "g"),
   // "... Art. 1º ... . Art. 2º ..."
   /(?<=[.;:])\s+(?=Art(?:igo)?\.?\s*\d)/g,
   /(?<=[.;:])\s+(?=§\s*\d)/g,
@@ -100,8 +101,10 @@ const RE = {
   capitulo: /^(CAP[ÍI]TULO\s+[IVXLCDM]+)\b\.?\s*[-–—]?\s*/i,
   subsecao: /^(Subse[çc][ãa]o\s+[IVXLCDM]+)\b\.?\s*[-–—]?\s*/i,
   secao: /^(Se[çc][ãa]o\s+[IVXLCDM]+)\b\.?\s*[-–—]?\s*/i,
-  artigo: /^(Art(?:igo)?\.?\s*\d+(?:\.\d+)?\s*(?:[º°o]|ª)?(?:\s*-\s*[A-Z]\b)?)\.?\s*[-–—]?\s*/,
-  paragrafo: /^(§\s*\d+\s*(?:[º°o])?(?:\s*-\s*[A-Z]\b)?|Par[áa]grafo [úu]nico)\.?\s*[-–—]?\s*/i,
+  // Sufixo de letra ("121-A", "14-A Nos casos") só quando a letra não inicia uma palavra minúscula
+  // ("Art. 10 - O inquérito" é artigo 10, não "10-O").
+  artigo: /^(Art(?:igo)?\.?\s*\d+(?:\.\d+)?\s*(?:[º°o]|ª)?(?:\s*-\s*[A-Z]\b(?!\s+[a-zà-ú]))?)\.?\s*[-–—]?\s*/,
+  paragrafo: /^(§\s*\d+\s*(?:[º°o])?(?:\s*-\s*[A-Z]\b(?!\s+[a-zà-ú]))?|Par[áa]grafo [úu]nico)\.?\s*[-–—]?\s*/i,
   romano: /^([IVXLCDM]+)\s*[-–—]\s+/,
   letra: /^([a-z])\)\s+/,
   numeroLegal: /^(\d{1,2})(?:\)|\s*[-–—])\s+/,
