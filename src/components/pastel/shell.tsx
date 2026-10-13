@@ -6,6 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   ArrowRight,
   Bell,
+  Brain,
   ChartColumn,
   ChevronRight,
   CircleHelp,
@@ -54,14 +55,15 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
   return [
     { id: "painel", href: `${base}/painel`, label: "Painel", icon: House, num: "1", desc: "Visão geral", title: "" },
     { id: "trilhas", href: `${base}/trilhas`, label: "Estudos", icon: MapIcon, num: "2", desc: plural(s.counts.trails, "conteúdo", "conteúdos"), also: [`${base}/trilha`, `${base}/aula`, `${base}/nova-trilha`], title: "Seus estudos" },
-    { id: "questoes", href: `${base}/questoes`, label: "Questões", icon: CircleHelp, num: "3", desc: `Banco ${s.counts.questions}`, also: [`${base}/simulado`], title: "Banco de questões" },
-    { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "4", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
-    { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "5", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
-    { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "6", desc: `Nível ${s.level}`, title: "Perfil & conquistas" },
+    { id: "quiz", href: `${base}/quiz`, label: "Quiz", icon: Brain, num: "3", desc: "Complete a lei", title: "Modo Quiz" },
+    { id: "questoes", href: `${base}/questoes`, label: "Questões", icon: CircleHelp, num: "4", desc: `Banco ${s.counts.questions}`, also: [`${base}/simulado`], title: "Banco de questões" },
+    { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "5", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
+    { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "6", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
+    { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "7", desc: `Nível ${s.level}`, title: "Perfil & conquistas" },
   ];
 }
 
-/** Rotas sem questões na tela: só nelas os atalhos 1–6 navegam (nas outras, 1–5 escolhem alternativas). */
+/** Rotas sem questões na tela: só nelas os atalhos 1–7 navegam (nas outras, 1–5 escolhem alternativas). */
 const SHORTCUT_ROUTES = ["painel", "trilhas", "desempenho", "perfil"];
 
 /**
@@ -110,7 +112,7 @@ export function PastelShell({
         return;
       }
       if (!shortcutsOn || typing || e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key >= "1" && e.key <= "6") {
+      if (e.key >= "1" && e.key <= "7") {
         const item = items[Number(e.key) - 1];
         if (item) router.push(item.href);
       }
@@ -295,7 +297,7 @@ export function PastelShell({
                         <Target className="h-3.5 w-3.5 text-[#FF1E1E]" />
                       </span>
                       <span className="truncate">
-                        {isPainel ? (notice ?? "Um conteúdo por vez: aula completa e três níveis — fácil, médio e difícil.") : `${active?.desc ?? ""}${shortcutsOn ? " • atalhos 1-6" : ""}`}
+                        {isPainel ? (notice ?? "Um conteúdo por vez: aula completa e três níveis — fácil, médio e difícil.") : `${active?.desc ?? ""}${shortcutsOn ? " • atalhos 1-7" : ""}`}
                       </span>
                     </div>
                   </div>
@@ -314,7 +316,7 @@ export function PastelShell({
             {/* Barra flutuante (celular) */}
             <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 p-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:hidden">
               <nav aria-label="Principal (celular)" className="glass pointer-events-auto mx-auto flex max-w-[520px] items-stretch justify-between gap-0.5 rounded-[22px] border border-[#262626] bg-[#0E0E0E]/90 p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.14)]">
-                {items.slice(0, 5).map((s) => {
+                {items.slice(0, 6).map((s) => {
                   const on = active?.id === s.id;
                   return (
                     <Link
@@ -325,7 +327,7 @@ export function PastelShell({
                       className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[14px] px-0.5 py-1.5 transition-all ${on ? "bg-[#E10600] text-white shadow" : "text-[#A3A3A3]"}`}
                     >
                       <s.icon className="h-5 w-5 shrink-0" aria-hidden />
-                      <span className="max-w-full truncate text-[10px] font-semibold leading-tight tracking-[-0.01em]">{s.short ?? s.label}</span>
+                      <span className="whitespace-nowrap text-[9.5px] font-semibold leading-tight tracking-[-0.02em]">{s.short ?? s.label}</span>
                     </Link>
                   );
                 })}
@@ -335,7 +337,7 @@ export function PastelShell({
                   className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[14px] bg-gradient-to-br from-[#FF1E1E] to-[#B30000] px-0.5 py-1.5 text-white shadow-[0_6px_16px_rgba(225,6,0,0.35)]"
                 >
                   <Plus className="h-5 w-5 shrink-0" aria-hidden />
-                  <span className="max-w-full truncate text-[10px] font-semibold leading-tight">Novo</span>
+                  <span className="whitespace-nowrap text-[9.5px] font-semibold leading-tight">Novo</span>
                 </Link>
               </nav>
             </div>

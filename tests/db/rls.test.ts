@@ -239,6 +239,28 @@ describe("estatísticas do painel (nível, sequência, conquistas)", () => {
   });
 });
 
+describe("quiz Complete a lei", () => {
+  itDb("aluno só lê as próprias respostas, não grava direto, e o quiz conta na ofensiva", async () => {
+    await db.query("begin");
+    try {
+      const topic = (await db.query("insert into catalog_topics (slug, title, kind) values ('quiz-t','Quiz','tema') returning id")).rows[0].id;
+      // O servidor (service_role) grava depois de conferir.
+      await db.query("insert into quiz_attempts (user_id, topic_id, node_key, correct, xp, created_at) values ($1,$3,'N0001',true,10, now() - interval '2 days'), ($2,$3,'N0001',true,10, now())", [A, B, topic]);
+      expect(await errorCode(db, "insert into quiz_attempts (user_id, topic_id, node_key, correct, xp) values ($1,$2,'X1',true,10)", [A, topic])).toBe("23514");
+      expect(await errorCode(db, "insert into quiz_attempts (user_id, topic_id, node_key, correct, xp) values ($1,$2,'N0002',true,999)", [A, topic])).toBe("23514");
+      await db.query("set local role authenticated");
+      await db.query("select set_config('request.jwt.claims', $1, true)", [JSON.stringify({ sub: A, role: "authenticated" })]);
+      expect((await db.query("select count(*)::int n from quiz_attempts")).rows[0].n).toBe(1);
+      expect(await errorCode(db, "insert into quiz_attempts (user_id, topic_id, node_key, correct, xp) values ($1,$2,'N0003',true,50)", [A, topic])).toBe("42501");
+      const s = (await db.query("select my_study_stats() s")).rows[0].s;
+      expect(s.answered).toBe(0);
+      expect(s.activeDays).toHaveLength(1);
+    } finally {
+      await db.query("rollback");
+    }
+  });
+});
+
 describe("PDF por conteúdo", () => {
   itDb("cada aluno lê só os próprios PDFs e o cliente não grava PDF", async () => {
     await db.query("begin");

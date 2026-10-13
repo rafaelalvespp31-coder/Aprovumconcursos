@@ -13,7 +13,7 @@ async function noHorizontalScroll(page: Page) {
 }
 
 test.describe("galeria: todas as telas carregam sem erro e sem rolagem horizontal", () => {
-  for (const path of ["painel", "perfil", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo", "banco"]) {
+  for (const path of ["painel", "perfil", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo", "banco", "quiz", "na-pratica"]) {
     test(path, async ({ page }) => {
       const errors: string[] = [];
       page.on("pageerror", (e) => errors.push(e.message));
@@ -27,7 +27,7 @@ test.describe("galeria: todas as telas carregam sem erro e sem rolagem horizonta
 
 test.describe("celulares pequenos (320px): nenhuma tela rola para o lado", () => {
   test.use({ viewport: { width: 320, height: 640 } });
-  for (const path of ["painel", "perfil", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo", "banco"]) {
+  for (const path of ["painel", "perfil", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo", "banco", "quiz", "na-pratica"]) {
     test(path, async ({ page }) => {
       await page.goto(`${G}/${path}`);
       await noHorizontalScroll(page);
@@ -308,14 +308,15 @@ test.describe("casco pastel", () => {
     await expect(page).toHaveURL(new RegExp(`${G}/desempenho`));
   });
 
-  test("navegação lateral, atalhos 1–6 e recolher persistente", async ({ page, isMobile }) => {
+  test("navegação lateral, atalhos 1–7 e recolher persistente", async ({ page, isMobile }) => {
     test.skip(isMobile, "barra lateral só no desktop");
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(`${G}/painel`);
     const nav = page.getByRole("navigation", { name: "Principal" });
     await expect(nav.getByRole("link", { name: /Painel/ })).toHaveAttribute("aria-current", "page");
     await expect(page.getByTestId("nav-desc-revisoes")).toHaveText("2 pendentes");
-    await page.keyboard.press("6");
+    await expect(nav.getByRole("link", { name: /Quiz/ })).toHaveAttribute("href", `${G}/quiz`);
+    await page.keyboard.press("7");
     await expect(page).toHaveURL(new RegExp(`${G}/perfil`));
     await expect(page.getByTestId("nivel")).toHaveText("Nível 5");
     await page.getByRole("button", { name: "Recolher" }).click();
@@ -416,3 +417,22 @@ test("flashcards viram com animação e certo/errado mostra o gabarito", async (
   await expect(tf.getByText(/Não foi dessa vez — o item está CERTO/)).toBeVisible();
 });
 
+
+test.describe("modo quiz", () => {
+  test("encaixa palavras do banco nos espaços e libera a verificação", async ({ page }) => {
+    await page.goto(`${G}/quiz`);
+    const card = page.getByRole("region", { name: "Questão do quiz" });
+    await expect(card.getByText("Instrutor Caveira")).toBeVisible();
+    const verify = card.getByRole("button", { name: /Verificar resposta/ });
+    await expect(verify).toBeDisabled();
+    const slots = card.getByRole("button", { name: /^Espaço \d/ });
+    const n = await slots.count();
+    const words = card.locator("button.min-h-12");
+    for (let i = 0; i < n; i++) await words.nth(i).click();
+    await expect(verify).toBeEnabled();
+    await expect(card.getByText(`${n}/${n} preenchidos`)).toBeVisible();
+    // Tocar num espaço preenchido devolve a palavra ao banco.
+    await card.getByRole("button", { name: /Espaço 1: .* Toque para tirar/ }).click();
+    await expect(verify).toBeDisabled();
+  });
+});
