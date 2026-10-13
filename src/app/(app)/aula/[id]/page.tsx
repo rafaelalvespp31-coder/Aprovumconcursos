@@ -88,11 +88,9 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
   const nextInSubject = await getNextInSubject(lesson.trail_id, next ? { id: next.id, title: next.title } : null).catch(() => null);
   const notices = (
     <>
-      {data.catalog && (
-        <Notice tone={data.catalog.outdated ? "alerta" : "info"} title={data.catalog.outdated ? "Conteúdo atualizado no catálogo" : "Conteúdo revisado"}>
-          {data.catalog.outdated
-            ? "A equipe publicou uma versão revisada deste conteúdo depois que você começou. Revise com atenção: para estudar a versão nova, crie o estudo de novo com o mesmo pedido."
-            : "Esta unidade vem do catálogo revisado pela equipe do APROVUM."}
+      {data.catalog?.outdated && (
+        <Notice tone="alerta" title="Conteúdo atualizado no catálogo">
+          A equipe publicou uma versão revisada deste conteúdo depois que você começou. Revise com atenção: para estudar a versão nova, crie o estudo de novo com o mesmo pedido.
         </Notice>
       )}
       {lesson.status === "pending_validation" && (
@@ -100,12 +98,6 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
           {notTaught.length > 0
             ? `Estes itens não foram tratados pela aula e continuam pendentes: ${notTaught.map((n) => n.title).join("; ")}.`
             : "A aula está em validação."}
-        </Notice>
-      )}
-      {lesson.verification_pending && (
-        <Notice tone="alerta" title="Contém informação não verificada">
-          Trechos de doutrina, jurisprudência ou interpretação foram escritos sem conferência em fonte oficial. Use-os como orientação e confira a redação vigente antes da prova.
-          {lesson.unverified_claims.length > 0 && <ul className="mt-2 list-disc pl-5">{lesson.unverified_claims.slice(0, 6).map((c) => <li key={c}>{c}</li>)}</ul>}
         </Notice>
       )}
       {lesson.supplementary.length > 0 && (
