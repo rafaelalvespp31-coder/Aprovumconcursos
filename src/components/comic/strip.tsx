@@ -51,8 +51,9 @@ function Scene({ kind, dots }: { kind: StripPanel["cenario"]; dots: string }) {
         <g>
           <rect width={W} height={H} fill="#D7DEE6" />
           <rect width={W} height={H} fill={`url(#${dots})`} opacity={0.4} />
-          <rect x={162} y={84} width={64} height={16} rx={2} fill="#2F3A4A" stroke={INK} strokeWidth={1.6} />
-          <text x={194} y={95.5} fontSize={8} fontWeight={800} textAnchor="middle" fill="#FFFFFF" letterSpacing={0.6}>DELEGACIA</text>
+          {/* brasão da polícia na parede (canto livre do quadro) */}
+          <path d="M214 86 h18 v10 q0 10 -9 14 q-9 -4 -9 -14z" fill="#2F3A4A" stroke={INK} strokeWidth={1.6} />
+          <path d="M223 90 l1.8 3.8 l4.2 0.4 l-3.2 2.8 l1 4.1 l-3.8 -2.2 l-3.8 2.2 l1 -4.1 l-3.2 -2.8 l4.2 -0.4z" fill="#E8B923" />
           <rect x={0} y={154} width={W} height={46} fill="#B8A07E" />
           <path d="M0 154 h240" {...ln} />
           <rect x={160} y={128} width={70} height={30} fill="#8B6B47" stroke={INK} strokeWidth={2} />
@@ -94,6 +95,19 @@ function Scene({ kind, dots }: { kind: StripPanel["cenario"]; dots: string }) {
           ))}
           <rect x={0} y={150} width={W} height={50} fill="#3E271C" />
           <path d="M0 150 h240" {...ln} />
+        </g>
+      );
+    case "piscina":
+      return (
+        <g>
+          <rect width={W} height={H} fill="#E8F4FA" />
+          <rect width={W} height={H} fill={`url(#${dots})`} opacity={0.35} />
+          <rect x={0} y={150} width={W} height={50} fill="#D8CBB4" />
+          <path d="M0 150 h240" {...ln} />
+          <rect x={120} y={150} width={120} height={50} fill="#4FB3D9" stroke={INK} strokeWidth={2} />
+          <path d="M130 166 q10 -6 20 0 t20 0 t20 0 t20 0 M130 182 q10 -6 20 0 t20 0 t20 0 t20 0" stroke="#FFFFFF" strokeWidth={2} fill="none" />
+          <path d="M20 150 v-40 M20 112 h18" stroke={INK} strokeWidth={3} />
+          <rect x={14} y={96} width={30} height={10} rx={2} fill="#C81E1E" stroke={INK} strokeWidth={1.6} />
         </g>
       );
     case "hospital":
@@ -176,10 +190,13 @@ function Bubble({ text, speakerX, top }: { text: string; speakerX: number; top: 
 }
 
 function Burst({ text, x, y }: { text: string; x: number; y: number }) {
-  const pts = Array.from({ length: 16 }, (_, i) => {
-    const r = i % 2 ? 13 : 24;
-    const a = (i / 16) * Math.PI * 2;
-    return `${x + Math.cos(a) * r * 1.3},${y + Math.sin(a) * r}`;
+  // Tamanho conforme o texto, para a palavra caber inteira dentro da explosão.
+  const rx = Math.max(26, text.length * 4.6 + 12);
+  const ry = 22;
+  const pts = Array.from({ length: 18 }, (_, i) => {
+    const k = i % 2 ? 0.62 : 1;
+    const a = (i / 18) * Math.PI * 2;
+    return `${x + Math.cos(a) * rx * k},${y + Math.sin(a) * ry * k}`;
   }).join(" ");
   return (
     <g className="comic-pop">
@@ -215,7 +232,14 @@ export function ComicPanel({ panel, n }: { panel: StripPanel; n: number }) {
           <Person key={i} c={p.c} x={p.x} faceLeft={p.faceLeft} />
         ))}
       </g>
-      {panel.efeito && <Burst text={panel.efeito} x={120} y={GROUND - 120} />}
+      {panel.efeito && (
+        <Burst
+          text={panel.efeito}
+          // Com uma pessoa, a explosão vai para o lado livre; com duas, fica entre elas, acima das cabeças.
+          x={people.length === 1 ? (people[0]!.x > W / 2 ? 64 : 176) : 120}
+          y={people.length === 1 ? GROUND - 110 : capH + 26}
+        />
+      )}
       {panel.legenda && <Caption text={panel.legenda} />}
       {panel.fala && speaker && <Bubble text={panel.fala.texto} speakerX={speaker.x + (speaker.faceLeft ? -4 : 4)} top={capH + 2} />}
       <rect x={1} y={1} width={W - 2} height={H - 2} fill="none" stroke={INK} strokeWidth={3} />

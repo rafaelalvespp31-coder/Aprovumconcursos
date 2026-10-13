@@ -8,7 +8,7 @@ import { z } from "zod";
  */
 
 export const ROLES = ["delegado", "pm", "policial_penal", "perito", "promotor", "juiz", "advogado", "vitima", "investigado", "preso", "cidadao"] as const;
-export const SCENES = ["delegacia", "local_crime", "cela", "forum", "rua", "casa", "bar", "hospital"] as const;
+export const SCENES = ["delegacia", "local_crime", "cela", "forum", "rua", "casa", "bar", "hospital", "piscina"] as const;
 export const POSES = ["neutro", "fala", "aponta", "pega", "ataca", "bracos_cruzados"] as const;
 export const MOODS = ["neutro", "serio", "bravo", "surpreso", "feliz", "triste"] as const;
 export const PROPS = ["arma", "documento", "celular", "maleta", "faca", "copo"] as const;
