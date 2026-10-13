@@ -12,14 +12,22 @@
  * Na aula, o bloco vira um card interativo; no PDF e em outros lugares, vira texto comum.
  */
 
+import { parseVisual, schemeSchema, stripSchema, type Scheme, type Strip } from "./visual";
+
 export interface PracticeCase {
   situation: string;
   question: string;
   answer: string;
+  /** Tirinha da situação (opcional). */
+  strip?: Strip;
+  /** Esquema da resposta (opcional). */
+  scheme?: Scheme;
+  /** Carimbo que aparece sobre a tirinha ao revelar a resposta (ex.: "Ilegal | erro"). */
+  stamp?: { text: string; tone: "erro" | "ok" | "alerta" };
 }
 
 const BLOCK = /(?:^|\n)[ \t]*:::exemplo[ \t]*\n([\s\S]*?)\n[ \t]*:::[ \t]*(?=\n|$)/g;
-const FIELD = /^\s*(situa[çc][ãa]o|pergunta|resposta)\s*:\s*/i;
+const FIELD = /^\s*(situa[çc][ãa]o|pergunta|resposta|tirinha|esquema|carimbo)\s*:\s*/i;
 
 function parseBlock(raw: string): PracticeCase | null {
   const out: Record<string, string[]> = {};
@@ -27,14 +35,21 @@ function parseBlock(raw: string): PracticeCase | null {
   for (const line of raw.split("\n")) {
     const m = line.match(FIELD);
     if (m) {
-      key = m[1]!.toLowerCase().startsWith("situa") ? "situation" : m[1]!.toLowerCase() === "pergunta" ? "question" : "answer";
+      const f = m[1]!.toLowerCase();
+      key = f.startsWith("situa") ? "situation" : f === "pergunta" ? "question" : f === "resposta" ? "answer" : f === "tirinha" ? "strip" : f === "esquema" ? "scheme" : "stamp";
       out[key] = [line.slice(m[0].length)];
     } else if (key) {
       out[key]!.push(line);
     }
   }
   const get = (k: string) => (out[k] ?? []).join("\n").trim();
-  const c = { situation: get("situation"), question: get("question"), answer: get("answer") };
+  const c: PracticeCase = { situation: get("situation"), question: get("question"), answer: get("answer") };
+  const strip = parseVisual(get("strip"), stripSchema);
+  const scheme = parseVisual(get("scheme"), schemeSchema);
+  if (strip) c.strip = strip;
+  if (scheme) c.scheme = scheme;
+  const stamp = get("stamp").match(/^(.{1,40}?)\s*(?:\|\s*(erro|ok|alerta))?$/);
+  if (stamp?.[1]) c.stamp = { text: stamp[1].trim(), tone: (stamp[2] as "erro" | "ok" | "alerta" | undefined) ?? "erro" };
   return c.situation && c.answer ? c : null;
 }
 

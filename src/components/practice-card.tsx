@@ -4,6 +4,8 @@ import { useState } from "react";
 import { Icon } from "./icons";
 import { Markdown } from "./markdown";
 import type { PracticeCase } from "@/domain/content/practice";
+import { ComicStrip } from "./comic/strip";
+import { SchemeDiagram } from "./comic/scheme";
 
 /**
  * Card "Na prática": o assunto que acabou de ser ensinado aplicado a um caso concreto.
@@ -66,6 +68,13 @@ export function PracticeCard({ cases, onReread }: { cases: PracticeCase[]; onRer
       </ol>
 
       <div key={idx} className="entrar px-4 pb-5 pt-4 sm:px-5">
+        {/* Tirinha da situação (o carimbo aparece ao revelar a resposta) */}
+        {c.strip && (
+          <div className="mb-3">
+            <ComicStrip strip={c.strip} stamp={revealed ? c.stamp : null} />
+          </div>
+        )}
+
         {/* Situação */}
         <div className="rounded-[14px] border border-linha bg-papel px-4 py-3">
           <p className="mb-1 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-tinta-fraca">
@@ -102,6 +111,7 @@ export function PracticeCard({ cases, onReread }: { cases: PracticeCase[]; onRer
             </div>
           </div>
         )}
+        {revealed && c.scheme && <SchemeDiagram scheme={c.scheme} />}
 
         {revealed && (
           <div className="entrar mt-4 flex flex-wrap items-center gap-2">
