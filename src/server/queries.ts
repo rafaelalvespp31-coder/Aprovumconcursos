@@ -262,7 +262,7 @@ export async function getLessonForStudy(lessonId: string) {
       : null,
     sections: ((sections.data ?? []) as Array<{ id: string; kind: string; title: string; body_markdown: string; node_keys: string[]; verification_status: string }>).map((s) => ({
       ...s,
-      practice: s.body_markdown.includes(":::exemplo") ? [] : (practice[normalizeText(s.title)] ?? []),
+      practice: practice[normalizeText(s.title)] ?? [],
     })),
     references: (refs.data ?? []) as Array<{ kind: string; citation: string; verified: boolean }>,
     questions: (questions.data ?? []).map((q) => {

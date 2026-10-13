@@ -27,7 +27,7 @@ export interface ReaderSection {
   body_markdown: string;
   node_keys: string[];
   verification_status: string;
-  /** Exemplos "Na prática" vindos do catálogo (quando o texto da seção não traz os seus). */
+  /** Exemplos "Na prática" da versão atual do catálogo (têm prioridade sobre os copiados na criação do estudo). */
   practice?: PracticeCase[];
 }
 
@@ -529,7 +529,7 @@ function SectionBlock({
     content = body;
   }
   const asCases = kind === "aplicacao" && parseExamples(md).some((c) => c.answer);
-  const practice = PRACTICE_KINDS.has(kind) && !asCases ? (ownCases.length ? ownCases : (s.practice ?? [])) : [];
+  const practice = PRACTICE_KINDS.has(kind) && !asCases ? (s.practice?.length ? s.practice : ownCases) : [];
 
   return (
     <section id={sectionDomId(s.id)} className="scroll-mt-16 border-b border-linha/70 pb-4 pt-2" aria-labelledby={`h-${s.id}`}>
