@@ -100,7 +100,11 @@ export function NewTrailForm({
           return;
         }
         // Conteúdo do catálogo: mostra a preparação da aula com calma antes de abrir o estudo.
-        if (catalog?.kind === "completo" && !useAi) {
+        // No modo só catálogo, anima sempre — exceto quando já se sabe que o pedido não está no catálogo
+        // (aí o aviso aparece na hora). Assim a animação não depende de a sugestão ter chegado a tempo.
+        const knownMiss = !!hint && hint.for === content.trim() && hint.data.kind !== "completo";
+        const animate = !useAi && (catalog?.kind === "completo" || (!aiOn && !knownMiss));
+        if (animate) {
           e.preventDefault();
           const data = new FormData(e.currentTarget);
           setBuildFrom(state);
