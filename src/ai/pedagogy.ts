@@ -87,6 +87,7 @@ export const LESSON_SECTION_KINDS = [
   "doutrina",
   "jurisprudencia",
   "interpretacao_banca",
+  "flashcards",
 ] as const;
 export type LessonSectionKind = (typeof LESSON_SECTION_KINDS)[number];
 
@@ -112,6 +113,7 @@ export const SECTION_LABELS: Record<LessonSectionKind, string> = {
   doutrina: "Doutrina",
   jurisprudencia: "Jurisprudência",
   interpretacao_banca: "Como a banca costuma abordar",
+  flashcards: "Flashcards",
 };
 
 /** Seções cujo conteúdo é factual externo e começa como "não verificado". */

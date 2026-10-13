@@ -397,3 +397,21 @@ test("preparação da aula do catálogo: etapas aparecem com animação suave", 
   await expect(overlay.getByText("Analisando o tema…")).toBeVisible();
   await expect(overlay.getByRole("listitem")).toHaveCount(5);
 });
+
+test("flashcards viram com animação e certo/errado mostra o gabarito", async ({ page }) => {
+  await page.goto(`${G}/cartoes`);
+  const fc = page.getByTestId("flashcards");
+  await expect(fc.getByText("Cartão 1 de 3")).toBeVisible();
+  const card = fc.getByRole("button", { name: "Mostrar a resposta" });
+  await card.click();
+  await expect(fc.getByRole("button", { name: "Mostrar a pergunta" })).toHaveAttribute("aria-pressed", "true");
+  await fc.getByRole("button", { name: "Eu sabia ✓" }).click();
+  await expect(fc.getByText("Cartão 2 de 3")).toBeVisible();
+  await expect(fc.getByText("1 de 1 você já sabia")).toBeVisible();
+  const tf = page.getByTestId("certo-errado-interativo");
+  await tf.getByRole("button", { name: "Errado" }).first().click();
+  await expect(tf.getByText(/Você acertou — o item está ERRADO/)).toBeVisible();
+  await tf.getByRole("button", { name: "Errado" }).first().click();
+  await expect(tf.getByText(/Não foi dessa vez — o item está CERTO/)).toBeVisible();
+});
+

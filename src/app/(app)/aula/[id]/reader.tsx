@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Markdown } from "@/components/markdown";
 import { ExampleCards, parseExamples } from "@/components/examples";
+import { Flashcards } from "@/components/flashcards";
+import { TrueFalseCards, parseTrueFalse } from "@/components/true-false-cards";
 import { Icon, type IconName } from "@/components/icons";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
 import { SaveIndicator, type SaveState } from "@/components/interactive";
@@ -479,7 +481,7 @@ function SectionBlock({
         </p>
         <div className="mt-2">{body}</div>
         <p className="m-0 border-t border-linha pt-2 font-sans t-tiny text-tinta-fraca">
-          Fonte: trecho do conteúdo que você informou{src.length ? ` (${src.map((n) => n.marker ?? n.title).join(", ")})` : ""}. Confira a redação vigente na fonte oficial.
+          Fonte: texto legal{src.length ? ` (${src.map((n) => n.marker ?? n.title).join(", ")})` : ""}. Confira a redação vigente na fonte oficial.
         </p>
       </div>
     );
@@ -495,6 +497,11 @@ function SectionBlock({
         <div className="mt-1">{body}</div>
       </div>
     );
+  } else if (kind === "flashcards") {
+    content = <Flashcards markdown={s.body_markdown} />;
+  } else if (kind === "pegadinhas" && parseTrueFalse(s.body_markdown).length) {
+    // Pegadinhas no formato "afirmação → CERTO/ERRADO" viram itens para julgar.
+    content = <TrueFalseCards markdown={s.body_markdown} />;
   } else if (kind === "excecoes" || kind === "pegadinhas") {
     content = (
       <aside className="my-2 rounded-md border-l-4 border-alerta bg-alerta-fundo px-4 py-3" aria-label={label}>

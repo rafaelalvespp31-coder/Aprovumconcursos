@@ -94,7 +94,7 @@ export const lessonSchema = z.object({
     )
     .min(2)
     .max(30),
-  taughtNodeKeys: z.array(nodeKey).min(1).max(60),
+  taughtNodeKeys: z.array(nodeKey).min(1).max(100),
   references: z
     .array(
       z.object({
