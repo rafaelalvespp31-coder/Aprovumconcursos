@@ -135,8 +135,9 @@ export function NewTrailForm({
           </span>
         </div>
         {touched && issues.content && <p className="mt-2 t-tiny text-erro" role="alert">{issues.content}</p>}
+        {/* Reconhecimento do catálogo: continua ativo (decide a animação), mas não aparece na tela. */}
         {catalog && (
-          <div className="mt-3 rounded-md border border-linha-forte bg-nevoa p-3 t-small" role="status" data-testid="catalogo-sugestao">
+          <div hidden className="mt-3 rounded-md border border-linha-forte bg-nevoa p-3 t-small" data-testid="catalogo-sugestao">
             {catalog.kind === "completo" ? (
               <>
                 <p className="font-semibold">
