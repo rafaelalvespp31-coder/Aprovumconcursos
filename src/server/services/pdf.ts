@@ -1,4 +1,5 @@
 import "server-only";
+import { practiceToMarkdown } from "@/domain/content/practice";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { CONTENT_TYPE_OPTIONS, boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
@@ -167,7 +168,7 @@ export async function buildSnapshot(userId: string, trailId: string): Promise<{ 
       verificationPending: l.verification_pending,
       unverifiedClaims: l.unverified_claims ?? [],
       levelsPassed: levelsBy.get(l.id) ?? 0,
-      sections: secRows.filter((s) => s.lesson_id === l.id).map((s) => ({ kind: s.kind, title: s.title, body: s.body_markdown, verificationStatus: s.verification_status })),
+      sections: secRows.filter((s) => s.lesson_id === l.id).map((s) => ({ kind: s.kind, title: s.title, body: practiceToMarkdown(s.body_markdown), verificationStatus: s.verification_status })),
       references: refRows.filter((r) => r.lesson_id === l.id).map((r) => ({ kind: r.kind, citation: r.citation, verified: r.verified })),
     })),
     questions: snapshotQuestions,

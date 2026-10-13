@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { Markdown } from "@/components/markdown";
 import { ExampleCards, parseExamples } from "@/components/examples";
 import { Flashcards } from "@/components/flashcards";
+import { PracticeCard } from "@/components/practice-card";
+import { PRACTICE_KINDS, extractPractice, type PracticeCase } from "@/domain/content/practice";
 import { TrueFalseCards, parseTrueFalse } from "@/components/true-false-cards";
 import { Icon, type IconName } from "@/components/icons";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
@@ -25,6 +27,8 @@ export interface ReaderSection {
   body_markdown: string;
   node_keys: string[];
   verification_status: string;
+  /** Exemplos "Na prática" vindos do catálogo (quando o texto da seção não traz os seus). */
+  practice?: PracticeCase[];
 }
 
 export interface ReaderClarification {
@@ -225,6 +229,36 @@ export function LessonReader(props: ReaderProps) {
   const pct = Math.round(((step + 1) / steps.length) * 100);
   const isLast = step === steps.length - 1;
 
+  const navButtons = (
+    <>
+          <button
+        type="button"
+        onClick={() => go(step - 1)}
+        disabled={step === 0}
+        className="inline-flex min-h-12 items-center gap-1.5 rounded-full border border-linha-forte bg-superficie px-4 font-semibold shadow-sm transition-transform active:scale-95 disabled:opacity-40"
+      >
+        <Icon name="setaEsquerda" className="size-4" /> Anterior
+      </button>
+      {!isLast ? (
+        <button
+          type="button"
+          onClick={next}
+          disabled={completing}
+          className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-azul px-5 font-semibold text-white shadow-md transition-transform active:scale-95 disabled:opacity-60"
+        >
+          {completing ? "Salvando…" : current.type === "secao" && current.n === sections.length ? "Ir para as questões" : steps[step + 1]?.type === "fim" ? "Concluir" : "Próximo"}
+          <Icon name="setaDireita" className="size-4" />
+        </button>
+      ) : props.nextHref ? (
+        <Link href={props.nextHref} className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-azul px-5 font-semibold text-white shadow-md transition-transform active:scale-95">
+          Próximo tema <Icon name="setaDireita" className="size-4" />
+        </Link>
+      ) : (
+        <span />
+      )}
+    </>
+  );
+
   return (
     <div>
       <div ref={topRef} className="scroll-mt-4" />
@@ -247,9 +281,9 @@ export function LessonReader(props: ReaderProps) {
           </div>
         </aside>
 
-        <article id="corpo-aula" className="min-w-0 pb-28">
+        <article id="corpo-aula" className="min-w-0 pb-28 md:pb-10">
           {/* Cabeçalho fixo: onde estou e quanto falta */}
-          <div className="sticky top-0 z-20 -mx-4 border-b border-linha bg-papel/95 px-4 pb-2 pt-2 backdrop-blur md:mx-0 md:px-0">
+          <div className="sticky top-0 z-20 -mx-4 border-b border-linha bg-papel/95 px-4 pb-2 pt-2 backdrop-blur md:mx-auto md:max-w-[820px] md:px-0">
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => tocRef.current?.showModal()} className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-linha-forte bg-superficie px-3 t-small font-semibold md:hidden">
                 <Icon name="indice" className="size-4" /> Etapas
@@ -280,7 +314,8 @@ export function LessonReader(props: ReaderProps) {
             </div>
           </div>
 
-          <div key={step} className="entrar mt-5">
+          {/* No computador, a aula fica centralizada num card. */}
+          <div key={step} className="entrar mt-5 md:mx-auto md:max-w-[820px] md:rounded-[24px] md:border md:border-linha md:bg-superficie md:p-8 md:shadow-[0_18px_50px_rgba(0,0,0,0.07)] lg:p-10">
             {step === 0 && (
               <header className="mb-5">
                 <Link href={`/trilhas/${lesson.trailId}`} className="t-small text-destaque underline underline-offset-2 md:hidden">{lesson.trailTitle}</Link>
@@ -388,39 +423,14 @@ export function LessonReader(props: ReaderProps) {
                 </div>
               </section>
             )}
+            <nav aria-label="Navegação da aula (computador)" className="mt-8 hidden items-center justify-between gap-3 border-t border-linha pt-5 md:flex">{navButtons}</nav>
           </div>
         </article>
       </div>
 
-      {/* Navegação fixa: anterior / próximo */}
-      <nav aria-label="Navegação da aula" className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-30 px-4 md:bottom-6">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3 md:pl-[260px]">
-          <button
-            type="button"
-            onClick={() => go(step - 1)}
-            disabled={step === 0}
-            className="inline-flex min-h-12 items-center gap-1.5 rounded-full border border-linha-forte bg-superficie px-4 font-semibold shadow-sm transition-transform active:scale-95 disabled:opacity-40"
-          >
-            <Icon name="setaEsquerda" className="size-4" /> Anterior
-          </button>
-          {!isLast ? (
-            <button
-              type="button"
-              onClick={next}
-              disabled={completing}
-              className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-azul px-5 font-semibold text-white shadow-md transition-transform active:scale-95 disabled:opacity-60"
-            >
-              {completing ? "Salvando…" : current.type === "secao" && current.n === sections.length ? "Ir para as questões" : steps[step + 1]?.type === "fim" ? "Concluir" : "Próximo"}
-              <Icon name="setaDireita" className="size-4" />
-            </button>
-          ) : props.nextHref ? (
-            <Link href={props.nextHref} className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-azul px-5 font-semibold text-white shadow-md transition-transform active:scale-95">
-              Próximo tema <Icon name="setaDireita" className="size-4" />
-            </Link>
-          ) : (
-            <span />
-          )}
-        </div>
+      {/* Navegação fixa no celular: anterior / próximo (no computador fica no fim do card) */}
+      <nav aria-label="Navegação da aula" className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-30 px-4 md:hidden">
+        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">{navButtons}</div>
       </nav>
 
       <dialog ref={tocRef} className="m-0 mt-auto w-full max-w-none rounded-t-lg border border-linha bg-superficie p-4 backdrop:bg-black/40 md:hidden" aria-label="Etapas da aula">
@@ -469,7 +479,9 @@ function SectionBlock({
   const kind = s.kind as LessonSectionKind;
   const label = s.title || SECTION_LABELS[kind] || "Seção";
   const unverified = s.verification_status === "pendente";
-  const body = <Markdown legal={kind === "texto_legal"}>{s.body_markdown}</Markdown>;
+  // Blocos ":::exemplo" saem do texto e viram o card "Na prática" no fim do tema.
+  const { body: md, cases: ownCases } = extractPractice(s.body_markdown);
+  const body = <Markdown legal={kind === "texto_legal"}>{md}</Markdown>;
   let content: React.ReactNode;
 
   if (kind === "texto_legal") {
@@ -485,9 +497,9 @@ function SectionBlock({
         </p>
       </div>
     );
-  } else if (kind === "exemplos" || (kind === "aplicacao" && parseExamples(s.body_markdown).some((c) => c.answer))) {
+  } else if (kind === "exemplos" || (kind === "aplicacao" && parseExamples(md).some((c) => c.answer))) {
     // Exemplos sempre como casos interativos: situação → pensar → conferir o enquadramento.
-    content = <ExampleCards markdown={s.body_markdown} kind={kind} />;
+    content = <ExampleCards markdown={md} kind={kind} />;
   } else if (kind === "aplicacao") {
     content = (
       <div className="my-2 rounded-md border-2 border-linha-forte bg-superficie px-4 py-3">
@@ -498,10 +510,10 @@ function SectionBlock({
       </div>
     );
   } else if (kind === "flashcards") {
-    content = <Flashcards markdown={s.body_markdown} />;
-  } else if (kind === "pegadinhas" && parseTrueFalse(s.body_markdown).length) {
+    content = <Flashcards markdown={md} />;
+  } else if (kind === "pegadinhas" && parseTrueFalse(md).length) {
     // Pegadinhas no formato "afirmação → CERTO/ERRADO" viram itens para julgar.
-    content = <TrueFalseCards markdown={s.body_markdown} />;
+    content = <TrueFalseCards markdown={md} />;
   } else if (kind === "excecoes" || kind === "pegadinhas") {
     content = (
       <aside className="my-2 rounded-md border-l-4 border-alerta bg-alerta-fundo px-4 py-3" aria-label={label}>
@@ -516,6 +528,8 @@ function SectionBlock({
   } else {
     content = body;
   }
+  const asCases = kind === "aplicacao" && parseExamples(md).some((c) => c.answer);
+  const practice = PRACTICE_KINDS.has(kind) && !asCases ? (ownCases.length ? ownCases : (s.practice ?? [])) : [];
 
   return (
     <section id={sectionDomId(s.id)} className="scroll-mt-16 border-b border-linha/70 pb-4 pt-2" aria-labelledby={`h-${s.id}`}>
@@ -524,6 +538,9 @@ function SectionBlock({
         {unverified && <Tag tone="ambar">Não verificado</Tag>}
       </div>
       <div className="leitura mt-2">{content}</div>
+      {practice.length > 0 && (
+        <PracticeCard cases={practice} onReread={() => document.getElementById(sectionDomId(s.id))?.scrollIntoView({ behavior: "smooth", block: "start" })} />
+      )}
       <SectionActions section={s} lessonId={lessonId} annotations={annotations} clarifications={clarifications} onAnnotation={onAnnotation} />
     </section>
   );

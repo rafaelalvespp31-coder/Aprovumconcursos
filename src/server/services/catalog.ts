@@ -12,6 +12,7 @@ import { auditPlan } from "@/domain/content/audit";
 import type { PlannedLesson } from "@/domain/content/plan";
 import { LEVELS, LEVEL_KEYS, type LevelKey } from "@/domain/progress/levels";
 import { LAWS, articleId, matchCatalog, normalizeText, type CatalogMatch, type CatalogTopicIndex } from "@/domain/catalog/match";
+import { extractPractice, practiceToMarkdown, type PracticeCase } from "@/domain/content/practice";
 import { composeStudy, type CatalogQuestion, type CatalogTopicContent } from "@/domain/catalog/compose";
 import type { TrailRequest } from "@/domain/trail-input";
 import { createAdminClient } from "../supabase";
@@ -25,6 +26,23 @@ export const CATALOG_BOARD_LABEL = "várias bancas";
 /** Mínimo de questões no banco, por nível, para publicar um tema. */
 export const MIN_BANK_PER_LEVEL = 10;
 const BANK_PER_ROUND = 15;
+
+/**
+ * Exemplos "Na prática" da versão publicada de um tema, por título de seção.
+ * Usado na leitura: estudos criados antes dos exemplos também ganham os cards
+ * (só os exemplos são lidos do catálogo; o restante da aula continua o do aluno).
+ */
+export async function catalogPracticeByTitle(topicId: string): Promise<Record<string, PracticeCase[]>> {
+  const db = createAdminClient();
+  const { data } = await db.from("catalog_topics").select("lesson").eq("id", topicId).eq("status", "publicado").maybeSingle();
+  const sections = ((data?.lesson as { sections?: Array<{ title: string; bodyMarkdown: string }> } | null)?.sections ?? []);
+  const out: Record<string, PracticeCase[]> = {};
+  for (const s of sections) {
+    const { cases } = extractPractice(s.bodyMarkdown ?? "");
+    if (cases.length) out[normalizeText(s.title)] = cases;
+  }
+  return out;
+}
 
 // ---------------------------------------------------------------------------
 // Busca (aluno)
@@ -434,7 +452,7 @@ export async function generateTopicQuestions(id: string, level: LevelKey) {
   const t = await getTopic(id);
   if (!t.lesson) throw new UserFacingError("Gere a aula primeiro.", "no_lesson");
   const existing = await getTopicQuestions(id);
-  const markdown = [`# ${t.lesson.title}`, ...t.lesson.sections.map((s) => `## ${s.title}\n\n${s.bodyMarkdown}`)].join("\n\n");
+  const markdown = [`# ${t.lesson.title}`, ...t.lesson.sections.map((s) => `## ${s.title}\n\n${practiceToMarkdown(s.bodyMarkdown)}`)].join("\n\n");
   const ctx = lessonCtx(t);
   const r = await generateQuestions(getAIProvider(), {
     board: CATALOG_BOARD_LABEL,

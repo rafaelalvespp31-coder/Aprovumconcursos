@@ -1,6 +1,7 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import type { Element, ElementContent } from "hast";
+import { practiceToMarkdown } from "@/domain/content/practice";
 
 function textOf(n: ElementContent | undefined): string {
   if (!n) return "";
@@ -81,7 +82,7 @@ export function Markdown({ children, legal = false }: { children: string; legal?
           ),
       }}
     >
-      {legal ? splitLegalLines(children) : children}
+      {legal ? splitLegalLines(children) : practiceToMarkdown(children)}
     </ReactMarkdown>
   );
 }
