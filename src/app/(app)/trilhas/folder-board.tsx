@@ -184,9 +184,6 @@ function FolderCard({
       <div className="flex items-center gap-2 px-4 py-3">
         <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-10 flex-1 items-center gap-2 text-left">
           <Icon name="chevronRight" className={`size-4 shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
-          {trails.length > 0 && trails.every(isStudied) && (
-            <span className="entrar flex size-7 shrink-0 items-center justify-center rounded-full bg-acerto-fundo ring-2 ring-acerto" role="img" aria-label="Matéria estudada" title="Todos os estudos da pasta concluídos" data-testid="avatar-pasta-estudada">✅</span>
-          )}
           <span className="t-h3">{folder.name}</span>
           <span className="t-tiny text-tinta-fraca">
             {trails.filter(isStudied).length}/{trails.length} {trails.length === 1 ? "estudo concluído" : "estudos concluídos"}
