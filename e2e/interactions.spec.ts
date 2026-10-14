@@ -52,6 +52,27 @@ test.describe("modo de questões", () => {
     await expect(gab.getByText(/^Gabarito: [A-E]$/)).toBeVisible();
   });
 
+  test("comentários dos alunos: aparecem após responder; publicar, apagar e denunciar", async ({ page }) => {
+    await page.goto(`${G}/questoes`);
+    await expect(page.getByTestId("comentarios-questao")).toHaveCount(0);
+    await page.getByText("anular a licença, por ilegalidade", { exact: false }).click();
+    await page.getByRole("button", { name: "Responder", exact: true }).click();
+    const box = page.getByTestId("comentarios-questao");
+    await expect(box.getByText("Marina S.")).toBeVisible();
+    await expect(box.getByText(/Visíveis para todos os alunos/)).toBeVisible();
+    const publish = box.getByRole("button", { name: "Publicar comentário" });
+    await expect(publish).toBeDisabled();
+    await box.getByLabel("Seu comentário").fill("Macete: vício de legalidade → anula.");
+    await publish.click();
+    const mine = box.getByRole("listitem").filter({ hasText: "Macete: vício de legalidade" });
+    await expect(mine.getByText("Lucas M. (você)")).toBeVisible();
+    await mine.getByRole("button", { name: "Apagar" }).click();
+    await expect(mine).toHaveCount(0);
+    const other = box.getByRole("listitem").filter({ hasText: "Carlos R." });
+    await other.getByRole("button", { name: "Denunciar" }).click();
+    await expect(other.getByText("Denunciado")).toBeVisible();
+  });
+
   test("atalhos de teclado: letra escolhe, Enter responde, J avança", async ({ page }) => {
     await page.goto(`${G}/questoes`);
     await page.locator("body").click({ position: { x: 5, y: 5 } });

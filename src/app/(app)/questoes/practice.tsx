@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { QuestionCard, type AnswerOutcome } from "@/components/question-card";
 import { AnswerExplanation } from "@/components/answer-explanation";
+import { QuestionComments } from "@/components/question-comments";
 import { Icon } from "@/components/icons";
 import { Button, Notice, Tag } from "@/components/ui";
 import { Kbd, Stopwatch } from "@/components/interactive";
@@ -128,6 +129,7 @@ export function Practice({ questions }: { questions: BankQuestion[] }) {
               chosen={null}
               questionLabel={`rev-${q.id}`}
             />
+            <QuestionComments questionId={q.id} />
           </div>
         )}
 

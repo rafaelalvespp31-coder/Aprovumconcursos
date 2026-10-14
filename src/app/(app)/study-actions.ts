@@ -5,7 +5,7 @@ import { requireUser } from "@/server/auth";
 import { createUserClient } from "@/server/supabase";
 import { submitAnswer, type AnswerFeedback } from "@/server/services/study";
 import { clarify, type Clarification } from "@/server/services/tools";
-import { UserFacingError } from "@/server/services/trails";
+import { enforceRateLimit, UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
 import { AIError } from "@/ai/provider";
 
@@ -165,5 +165,90 @@ export async function searchStudy(query: string): Promise<Result<SearchItem[]>> 
       })),
       ...(lessons.data ?? []).map((l) => ({ type: "Tema" as const, name: l.title as string, href: `/aula/${l.id}` })),
     ];
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Comentários dos alunos na questão (visíveis para todos que responderam a mesma questão)
+// ---------------------------------------------------------------------------
+export interface QuestionComment {
+  id: string;
+  author: string;
+  body: string;
+  createdAt: string;
+  isMine: boolean;
+  reported: boolean;
+}
+
+const COMMENT_ERRORS: Record<string, string> = {
+  "42501": "Responda a questão para ver e escrever comentários.",
+  P0002: "Questão não encontrada.",
+  "54000": "Muitos comentários em pouco tempo. Tente mais tarde.",
+};
+
+async function commentsOf(db: Awaited<ReturnType<typeof createUserClient>>, questionId: string): Promise<QuestionComment[]> {
+  const { data, error } = await db.rpc("list_question_comments", { p_question: questionId });
+  if (error) {
+    const msg = COMMENT_ERRORS[error.code ?? ""];
+    if (msg) throw new UserFacingError(msg, "comments");
+    throw new Error(error.message);
+  }
+  return ((data ?? []) as Array<{ id: string; author: string; body: string; created_at: string; is_mine: boolean; reported: boolean }>).map((r) => ({
+    id: r.id,
+    author: r.author,
+    body: r.body,
+    createdAt: r.created_at,
+    isMine: r.is_mine,
+    reported: r.reported,
+  }));
+}
+
+export async function listQuestionComments(questionId: string): Promise<Result<QuestionComment[]>> {
+  await requireUser();
+  return guard("comments_list", async () => commentsOf(await createUserClient(), z.uuid().parse(questionId)));
+}
+
+const commentBody = z.string().trim().min(2, "Escreva o comentário.").max(1000, "Use no máximo 1.000 caracteres.");
+
+export async function addQuestionComment(questionId: string, body: string): Promise<Result<QuestionComment[]>> {
+  const user = await requireUser();
+  return guard("comments_add", async () => {
+    const id = z.uuid().parse(questionId);
+    const parsed = commentBody.safeParse(body);
+    if (!parsed.success) throw new UserFacingError(parsed.error.issues[0]?.message ?? "Comentário inválido.", "invalid_input");
+    await enforceRateLimit(user.id, "comment", 6);
+    const db = await createUserClient();
+    const { error } = await db.rpc("add_question_comment", { p_question: id, p_body: parsed.data });
+    if (error) {
+      if (error.code === "22023") throw new UserFacingError(error.message, "invalid_input");
+      const msg = COMMENT_ERRORS[error.code ?? ""];
+      if (msg) throw new UserFacingError(msg, "comments");
+      throw new Error(error.message);
+    }
+    await logEvent("comment.added", { userId: user.id });
+    return commentsOf(db, id);
+  });
+}
+
+export async function deleteQuestionComment(questionId: string, commentId: string): Promise<Result<QuestionComment[]>> {
+  await requireUser();
+  return guard("comments_delete", async () => {
+    const db = await createUserClient();
+    const { error } = await db.rpc("delete_question_comment", { p_comment: z.uuid().parse(commentId) });
+    if (error) throw new Error(error.message);
+    return commentsOf(db, z.uuid().parse(questionId));
+  });
+}
+
+export async function reportQuestionComment(questionId: string, commentId: string): Promise<Result<QuestionComment[]>> {
+  const user = await requireUser();
+  return guard("comments_report", async () => {
+    await enforceRateLimit(user.id, "comment_report", 20);
+    const db = await createUserClient();
+    const qid = z.uuid().parse(questionId);
+    const { error } = await db.rpc("report_question_comment", { p_question: qid, p_comment: z.uuid().parse(commentId) });
+    if (error) throw new Error(error.message);
+    await logEvent("comment.reported", { userId: user.id, commentId });
+    return commentsOf(db, qid);
   });
 }

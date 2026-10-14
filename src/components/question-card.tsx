@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from "react";
 import { useStudyApi } from "./study-api";
 import type { AnswerFeedback } from "@/server/services/study";
 import { AnswerExplanation } from "./answer-explanation";
+import { QuestionComments } from "./question-comments";
 import { Icon } from "./icons";
 import { Button, Notice, Tag } from "./ui";
 
@@ -254,6 +255,7 @@ export function QuestionCard({
       )}
     </article>
     {showFeedback && <AnswerExplanation fb={fb!} options={options} certoErrado={ce} chosen={choice} questionLabel={`${q.id}`} />}
+    {showFeedback && <QuestionComments questionId={q.id} />}
     </div>
   );
 }

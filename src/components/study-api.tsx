@@ -2,10 +2,14 @@
 
 import { createContext, useContext, type ReactNode } from "react";
 import {
+  addQuestionComment,
   answerQuestion,
   askClarification,
   createAnnotation,
   deleteAnnotation,
+  deleteQuestionComment,
+  listQuestionComments,
+  reportQuestionComment,
   reviewAnsweredQuestion,
   searchStudy,
   toggleQuestionMark,
@@ -31,6 +35,10 @@ export interface StudyApi {
   evaluateQuiz: typeof evaluateQuizAction;
   search: typeof searchStudy;
   generateRecovery: typeof generateRecoveryAction;
+  listComments: typeof listQuestionComments;
+  addComment: typeof addQuestionComment;
+  deleteComment: typeof deleteQuestionComment;
+  reportComment: typeof reportQuestionComment;
 }
 
 export const serverStudyApi: StudyApi = {
@@ -46,6 +54,10 @@ export const serverStudyApi: StudyApi = {
   evaluateQuiz: evaluateQuizAction,
   search: searchStudy,
   generateRecovery: generateRecoveryAction,
+  listComments: listQuestionComments,
+  addComment: addQuestionComment,
+  deleteComment: deleteQuestionComment,
+  reportComment: reportQuestionComment,
 };
 
 const Ctx = createContext<StudyApi>(serverStudyApi);

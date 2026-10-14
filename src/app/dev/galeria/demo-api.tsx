@@ -8,7 +8,7 @@
 import { useState, type ReactNode } from "react";
 import { StudyApiProvider, type StudyApi } from "@/components/study-api";
 import type { AnswerFeedback } from "@/server/services/study";
-import type { Annotation, SearchItem } from "@/app/(app)/study-actions";
+import type { Annotation, QuestionComment, SearchItem } from "@/app/(app)/study-actions";
 import { DEFAULT_CRITERIA, evaluateQuiz } from "@/domain/progress/state-machine";
 import { LEVELS, type LevelKey } from "@/domain/progress/levels";
 import { bank, reader } from "./fixtures";
@@ -35,6 +35,17 @@ function createDemoApi(): StudyApi {
     let annotations: Annotation[] = [...reader.annotations];
     let seq = 0;
     let levelsPassed = 0;
+    // Comentários de exemplo (fictícios, só para a galeria), compartilhados por enunciado.
+    const comments = new Map<string, QuestionComment[]>();
+    const sample = (id: string, author: string, body: string, minsAgo: number): QuestionComment => ({ id, author, body, createdAt: new Date(Date.now() - minsAgo * 60_000).toISOString(), isMine: false, reported: false });
+    const threadOf = (questionId: string) => {
+      const k = questions.get(questionId)?.statement ?? questionId;
+      if (!comments.has(k)) comments.set(k, [
+        sample(`c-${k.length}-1`, "Marina S.", "Caiu exatamente assim na minha prova. O detalhe é o efeito retroativo da anulação.", 180),
+        sample(`c-${k.length}-2`, "Carlos R.", "Dica: ilegalidade → anula; conveniência e oportunidade → revoga.", 42),
+      ]);
+      return comments.get(k)!;
+    };
 
     const feedbackFor = (questionId: string, correct: boolean): AnswerFeedback => {
       const q = questions.get(questionId)!;
@@ -155,6 +166,32 @@ function createDemoApi(): StudyApi {
       async generateRecovery() {
         await delay();
         return { ok: false, error: "Na galeria de demonstração não há IA: os exercícios de recuperação só são gerados no app." };
+      },
+      async listComments(questionId) {
+        await delay(150);
+        if (!answers.has(questionId) && !questions.get(questionId)?.history?.length) return { ok: false, error: "Responda a questão para ver e escrever comentários." };
+        return { ok: true, data: [...threadOf(questionId)] };
+      },
+      async addComment(questionId, body) {
+        await delay();
+        const text = body.trim();
+        if (text.length < 2) return { ok: false, error: "Escreva o comentário." };
+        if (text.length > 1000) return { ok: false, error: "Use no máximo 1.000 caracteres." };
+        threadOf(questionId).push({ id: `c-novo-${++seq}`, author: "Lucas M.", body: text, createdAt: new Date().toISOString(), isMine: true, reported: false });
+        return { ok: true, data: [...threadOf(questionId)] };
+      },
+      async deleteComment(questionId, commentId) {
+        await delay(150);
+        const list = threadOf(questionId);
+        const i = list.findIndex((c) => c.id === commentId && c.isMine);
+        if (i >= 0) list.splice(i, 1);
+        return { ok: true, data: [...list] };
+      },
+      async reportComment(questionId, commentId) {
+        await delay(150);
+        const c = threadOf(questionId).find((x) => x.id === commentId);
+        if (c && !c.isMine) c.reported = true;
+        return { ok: true, data: [...threadOf(questionId)] };
       },
       async search(query: string) {
         await delay(120);
