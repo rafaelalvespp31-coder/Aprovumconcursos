@@ -478,3 +478,32 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   60% { box-shadow: 0 0 0 10px rgba(255, 214, 10, 0); }
 }
 @keyframes cd-barra-k { 0% { opacity: 1; } 100% { opacity: 0.35; } }
+
+/* Modo Jogo — fogo nos olhos do banner */
+.fogo-olho { mix-blend-mode: screen; opacity: 0.9; }
+.fogo-chama { transform-origin: 50% 96%; animation: fogo-chama-k 1.1s ease-in-out var(--d, 0s) infinite alternate; }
+.fogo-nucleo { transform-origin: 50% 90%; animation: fogo-nucleo-k 0.45s steps(3, jump-none) var(--d, 0s) infinite alternate; }
+.fogo-brilho {
+  background: radial-gradient(closest-side, rgba(255, 90, 0, 0.75), rgba(225, 20, 0, 0.35) 55%, transparent 100%);
+  filter: blur(6px);
+  animation: fogo-brilho-k 1.6s ease-in-out var(--d, 0s) infinite;
+}
+.fogo-brasa {
+  width: 6%; aspect-ratio: 1; background: #FFB347; box-shadow: 0 0 6px 2px rgba(255, 90, 0, 0.9);
+  opacity: 0;
+  animation: fogo-brasa-k 1.8s ease-out calc(var(--d, 0s) + var(--k) * 0.36s) infinite;
+}
+@keyframes fogo-chama-k {
+  0%   { transform: scale(0.94, 0.9) skewX(-3deg); opacity: 0.88; }
+  35%  { transform: scale(1.04, 1.08) skewX(2deg); opacity: 1; }
+  70%  { transform: scale(0.98, 1.16) skewX(-1deg); opacity: 0.93; }
+  100% { transform: scale(1.05, 1) skewX(3deg); opacity: 1; }
+}
+@keyframes fogo-nucleo-k { 0% { opacity: 0.55; transform: scale(0.92); } 100% { opacity: 0.95; transform: scale(1.06); } }
+@keyframes fogo-brilho-k { 0%, 100% { opacity: 0.65; transform: translate(-50%, -50%) scale(0.95); } 50% { opacity: 1; transform: translate(-50%, -50%) scale(1.12); } }
+@keyframes fogo-brasa-k {
+  0%   { bottom: 22%; opacity: 0; transform: translateX(0) scale(1); }
+  15%  { opacity: 1; }
+  60%  { transform: translateX(40%) scale(0.8); }
+  100% { bottom: 105%; opacity: 0; transform: translateX(-60%) scale(0.3); }
+}
