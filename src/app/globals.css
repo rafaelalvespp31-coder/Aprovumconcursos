@@ -566,24 +566,23 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   83.5% { opacity: 0.5; } 84.3%, 100% { opacity: 0; }
 }
 
-.fogo-suave { mix-blend-mode: screen; opacity: 1; }
-.fogo-suave-lingua { transform-box: fill-box; transform-origin: 50% 100%; }
-.fogo-suave-l1 { animation: fs-l1-k 2.4s ease-in-out var(--d, 0s) infinite alternate; }
-.fogo-suave-l2 { animation: fs-l2-k 1.7s ease-in-out calc(var(--d, 0s) + 0.4s) infinite alternate; }
-.fogo-suave-l3 { animation: fs-l3-k 1.95s ease-in-out calc(var(--d, 0s) + 0.9s) infinite alternate; }
-.fogo-suave-nucleo { transform-box: fill-box; transform-origin: 50% 70%; animation: fs-nucleo-k 1.3s ease-in-out var(--d, 0s) infinite alternate; }
-.fogo-suave-calor {
-  background: radial-gradient(closest-side, rgba(255, 60, 20, 0.6), rgba(210, 10, 0, 0.25) 60%, transparent 100%);
-  filter: blur(5px);
-  animation: fs-calor-k 3.4s ease-in-out var(--d, 0s) infinite;
+/* Fogo no contorno dos olhos: textura de fogo deslizando para cima dentro da máscara dos olhos.
+   Cada camada tem o dobro da altura da caixa e sobe exatamente 1 ladrilho por ciclo (sem salto). */
+.olhos-fogo {
+  overflow: hidden;
+  mix-blend-mode: screen;
+  -webkit-mask: url(/banner-estudo-olhos.png) center / 100% 100% no-repeat;
+  mask: url(/banner-estudo-olhos.png) center / 100% 100% no-repeat;
+  animation: olhos-pulso-k 2.4s ease-in-out infinite;
 }
-@keyframes fs-l1-k {
-  0%   { transform: scale(0.96, 0.9) skewX(-2deg); opacity: 0.85; }
-  30%  { transform: scale(1.02, 1.04) skewX(1.5deg); opacity: 0.95; }
-  65%  { transform: scale(0.98, 1.12) skewX(-1deg); opacity: 1; }
-  100% { transform: scale(1.03, 0.98) skewX(2deg); opacity: 0.9; }
+.olhos-fogo-camada {
+  position: absolute; left: 0; top: 0; width: 100%; height: 200%;
+  background-image: url(/fogo-textura.webp);
+  background-repeat: repeat;
+  will-change: transform;
+  transform: translate3d(0, 0, 0);
 }
-@keyframes fs-l2-k { 0% { transform: scale(0.85, 0.75) skewX(4deg); opacity: 0.4; } 100% { transform: scale(1, 1.1) skewX(-3deg); opacity: 0.9; } }
-@keyframes fs-l3-k { 0% { transform: scale(1, 1.05) skewX(-4deg); opacity: 0.85; } 100% { transform: scale(0.86, 0.78) skewX(3deg); opacity: 0.4; } }
-@keyframes fs-nucleo-k { from { opacity: 0.28; transform: scale(0.9); } to { opacity: 0.5; transform: scale(1.08); } }
-@keyframes fs-calor-k { 0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(0.94); } 50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.08); } }
+.olhos-fogo-a { background-size: 30% 50%; animation: olhos-sobe-k 1.5s linear infinite; }
+.olhos-fogo-b { background-size: 18% 25%; background-position: 37% 0; opacity: 0.7; mix-blend-mode: screen; animation: olhos-sobe-k 0.95s linear infinite; }
+@keyframes olhos-sobe-k { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(0, -50%, 0); } }
+@keyframes olhos-pulso-k { 0%, 100% { opacity: 0.86; } 35% { opacity: 1; } 60% { opacity: 0.92; } 80% { opacity: 1; } }
