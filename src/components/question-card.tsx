@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useStudyApi } from "./study-api";
 import type { AnswerFeedback } from "@/server/services/study";
+import { AnswerExplanation } from "./answer-explanation";
 import { Icon } from "./icons";
 import { Button, Notice, Tag } from "./ui";
 
@@ -124,6 +125,7 @@ export function QuestionCard({
   const lucky = showFeedback && fb!.correct && confidence === 1;
 
   return (
+    <div>
     <article
       className={`rounded-lg border transition-colors duration-300 ${compact ? "p-4" : "p-4 sm:p-6"} ${
         showFeedback && fb!.correct
@@ -165,7 +167,6 @@ export function QuestionCard({
           {options.map((o) => {
             const isCorrect = showFeedback && correctId === o.id;
             const isWrongPick = showFeedback && choice === o.id && !isCorrect;
-            const expl = showFeedback && !ce ? fb!.options.find((x) => x.id === o.id)?.explanation : null;
             return (
               <label
                 key={o.id}
@@ -189,7 +190,6 @@ export function QuestionCard({
                 <span className="flex-1 pt-0.5">
                   <span className="sr-only">{o.label}) </span>
                   {o.text}
-                  {expl && <span className="mt-1.5 block t-small text-tinta-suave">{expl}</span>}
                 </span>
               </label>
             );
@@ -235,13 +235,13 @@ export function QuestionCard({
               <p className="inline-flex items-center gap-1.5 font-semibold text-acerto">
                 <Icon name="check" className="size-4" /> Resposta correta
               </p>
-              <p className="mt-1 whitespace-pre-line text-tinta-suave">{fb!.justification}</p>
+              <p className="mt-1 text-tinta-suave">Veja abaixo por que esta é a resposta certa e por que as outras não são.</p>
               {q.depends_on_external_source && <p className="mt-2 t-tiny text-tinta-suave">Depende de fonte normativa: confira a redação vigente.</p>}
               {fb!.attempts && fb!.attempts > 1 && <p className="mt-2 t-tiny text-tinta-suave">Esta foi sua tentativa nº {fb!.attempts} nesta questão.</p>}
             </div>
           ) : (
             <Notice tone="erro" title="Resposta incorreta">
-              <p className="whitespace-pre-line">{fb!.justification}</p>
+              <p>Veja abaixo por que a sua resposta está errada e qual é a correta.</p>
               {q.depends_on_external_source && <p className="mt-2 t-tiny">Depende de fonte normativa: confira a redação vigente.</p>}
               {fb!.attempts && fb!.attempts > 1 && <p className="mt-2 t-tiny">Esta foi sua tentativa nº {fb!.attempts} nesta questão.</p>}
             </Notice>
@@ -253,5 +253,7 @@ export function QuestionCard({
         </div>
       )}
     </article>
+    {showFeedback && <AnswerExplanation fb={fb!} options={options} certoErrado={ce} chosen={choice} questionLabel={`${q.id}`} />}
+    </div>
   );
 }

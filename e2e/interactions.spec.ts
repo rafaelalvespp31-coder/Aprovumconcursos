@@ -46,6 +46,10 @@ test.describe("modo de questões", () => {
     await expect(page.getByText("Resposta correta")).toBeVisible();
     await expect(page.getByText(/Documento falso é vício de legalidade/).first()).toBeVisible();
     await expect(page.getByText(/Incorreta: a alternativa A/)).toBeVisible();
+    const gab = page.getByTestId("gabarito-comentado");
+    await expect(gab.getByText(/Por que a alternativa [A-E] está correta/)).toBeVisible();
+    await expect(gab.getByText("Por que as outras alternativas estão erradas")).toBeVisible();
+    await expect(gab.getByText(/^Gabarito: [A-E]$/)).toBeVisible();
   });
 
   test("atalhos de teclado: letra escolhe, Enter responde, J avança", async ({ page }) => {

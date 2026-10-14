@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { QuestionCard, type AnswerOutcome } from "@/components/question-card";
+import { AnswerExplanation } from "@/components/answer-explanation";
 import { Icon } from "@/components/icons";
 import { Button, Notice, Tag } from "@/components/ui";
 import { Kbd, Stopwatch } from "@/components/interactive";
@@ -120,16 +121,13 @@ export function Practice({ questions }: { questions: BankQuestion[] }) {
         {reviewError && <div className="mb-3"><Notice tone="erro">{reviewError}</Notice></div>}
         {review && (
           <div className="mb-3">
-            <Notice tone="info" title="Gabarito comentado">
-              <p className="whitespace-pre-line">{review.justification}</p>
-              <ul className="mt-2 flex flex-col gap-1">
-                {review.options.map((o) => (
-                  <li key={o.id}>
-                    <strong className={o.isCorrect ? "text-dominado" : ""}>{o.label})</strong> {o.explanation}
-                  </li>
-                ))}
-              </ul>
-            </Notice>
+            <AnswerExplanation
+              fb={review}
+              certoErrado={q.type === "certo_errado"}
+              options={q.options}
+              chosen={null}
+              questionLabel={`rev-${q.id}`}
+            />
           </div>
         )}
 
