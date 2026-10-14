@@ -446,4 +446,21 @@ test.describe("modo jogo", () => {
     await card.getByRole("button", { name: /Espaço 1: .* Toque para tirar/ }).click();
     await expect(verify).toBeDisabled();
   });
+  test("nível e ranking: botão abre o ranking; ?nivel=1 mostra a passagem de nível", async ({ page }) => {
+    await page.goto(`${G}/quiz`);
+    await expect(page.getByTestId("quiz-nivel")).toContainText("Soldado");
+    await expect(page.getByTestId("quiz-dificuldade")).toHaveText("Médio");
+    await page.getByTestId("jogo-banner").getByRole("button", { name: /Ranking/ }).click();
+    const dlg = page.getByTestId("level-up");
+    await expect(dlg.getByRole("heading", { name: "RANKING", exact: true })).toBeVisible();
+    await expect(dlg.getByText("Lucas M. (você)")).toBeVisible();
+    await dlg.getByRole("button", { name: /Voltar ao jogo/ }).click();
+    await expect(dlg).toBeHidden();
+
+    await page.goto(`${G}/quiz?nivel=1`);
+    await expect(dlg.getByRole("heading", { name: "NÍVEL 3", exact: true })).toBeVisible();
+    await expect(dlg.getByText(/Dificuldade agora: Difícil/)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dlg).toBeHidden();
+  });
 });

@@ -2,18 +2,37 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { ArrowRight, BookOpen, Check, Clock, Crown, Crosshair, FileText, Flame, Lightbulb, MessageSquare, Plus, RotateCcw, ShieldCheck, X, Zap } from "lucide-react";
+import { ArrowRight, BarChart3, BookOpen, Check, Clock, Crown, Crosshair, FileText, Flame, Lightbulb, MessageSquare, Plus, RotateCcw, ShieldCheck, X, Zap } from "lucide-react";
 import { Markdown } from "@/components/markdown";
-import type { QuizCheck, QuizHome, QuizRound } from "@/server/services/quiz";
+import type { QuizCheck, QuizHome, QuizLevel, QuizRound, RankingRow } from "@/server/services/quiz";
 import { checkAnswerAction, startRoundAction } from "./actions";
 import { GameBanner } from "./game-banner";
+import { LevelUpDialog } from "./level-up";
 
 const MASCOT = "/icons/instrutor-caveira.png";
 
 type Tab = "explicacao" | "banca" | "dica";
 
-export function QuizView({ home, initialRound, lives, dailyGoal }: { home: QuizHome; initialRound: QuizRound; lives: number; dailyGoal: number }) {
+export function QuizView({
+  home,
+  initialRound,
+  lives,
+  dailyGoal,
+  previewLevelUp,
+  previewRanking,
+}: {
+  home: QuizHome;
+  initialRound: QuizRound;
+  lives: number;
+  dailyGoal: number;
+  /** Só na galeria: abre o popup de nível ao carregar. */
+  previewLevelUp?: { from: QuizLevel; to: QuizLevel };
+  previewRanking?: RankingRow[];
+}) {
   const [round, setRound] = useState(initialRound);
+  const [level, setLevel] = useState<QuizLevel>(initialRound.level);
+  const [levelUp, setLevelUp] = useState<{ from: QuizLevel; to: QuizLevel } | null>(previewLevelUp ?? null);
+  const [dialog, setDialog] = useState<"level" | "ranking" | null>(previewLevelUp ? "level" : null);
   const [idx, setIdx] = useState(0);
   const [slots, setSlots] = useState<(string | null)[]>(() => Array(initialRound.items[0]?.blanks ?? 0).fill(null));
   const [check, setCheck] = useState<QuizCheck | null>(null);
@@ -52,9 +71,17 @@ export function QuizView({ home, initialRound, lives, dailyGoal }: { home: QuizH
     if (!item || filled < item.blanks) return;
     setError(null);
     start(async () => {
-      const r = await checkAnswerAction(topic.id, item.nodeKey, slots as string[]);
+      const r = await checkAnswerAction(topic.id, item.nodeKey, slots as string[], round.level.tier.tier);
       if (!r.ok) return setError(r.error);
       setCheck(r.check);
+      setLevel(r.check.level);
+      if (r.check.levelUp) {
+        const lu = r.check.levelUp;
+        setTimeout(() => {
+          setLevelUp(lu);
+          setDialog("level");
+        }, 900);
+      }
       setTab("explicacao");
       setXp(r.check.totals.xp);
       setTodayHits(r.check.totals.todayHits);
@@ -80,6 +107,7 @@ export function QuizView({ home, initialRound, lives, dailyGoal }: { home: QuizH
       const r = await startRoundAction(topicId);
       if (!r.ok) return setError(r.error);
       setRound(r.round);
+      setLevel(r.round.level);
       setIdx(0);
       setCheck(null);
       setSlots(Array(r.round.items[0]?.blanks ?? 0).fill(null));
@@ -104,11 +132,27 @@ export function QuizView({ home, initialRound, lives, dailyGoal }: { home: QuizH
           hearts={Math.max(0, hearts)}
           lives={lives}
           xp={xp}
+          level={level}
           streak={home.streak.current}
           pct={pct}
           started={idx > 0 || !!check || filled > 0}
           onStart={() => (finished ? newRound() : cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }))}
           onPickTarget={() => lessonsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+          onRanking={() => setDialog("ranking")}
+        />
+        <LevelUpDialog
+          open={dialog !== null}
+          levelUp={dialog === "level" ? levelUp : null}
+          onClose={() => setDialog(null)}
+          previewRows={previewRanking}
+          onNext={
+            dialog === "level"
+              ? () => {
+                  setDialog(null);
+                  newRound();
+                }
+              : undefined
+          }
         />
       </div>
       <div className="relative mx-auto mt-6 grid max-w-[1180px] gap-6 lg:grid-cols-[minmax(0,1fr)_330px] xl:gap-8">
@@ -127,7 +171,7 @@ export function QuizView({ home, initialRound, lives, dailyGoal }: { home: QuizH
           {error && <p className="mt-3 rounded-[12px] border border-[#FF3B30]/50 bg-[#2A0606] px-3 py-2 text-[14px] font-semibold text-white" role="alert">{error}</p>}
 
           {finished ? (
-            <RoundEnd hearts={hearts} hits={hits} total={total} answered={Math.min(idx + (check ? 1 : 0), total)} roundXp={roundXp} pending={pending} onAgain={() => newRound()} />
+            <RoundEnd hearts={hearts} hits={hits} total={total} answered={Math.min(idx + (check ? 1 : 0), total)} roundXp={roundXp} pending={pending} level={level} onAgain={() => newRound()} onRanking={() => setDialog("ranking")} />
           ) : item ? (
             <section className="relative mt-4 overflow-hidden rounded-[28px] bg-gradient-to-br from-[#D90A00] via-[#B10400] to-[#6E0000] shadow-[0_24px_60px_rgba(225,6,0,0.28)] ring-1 ring-white/10" aria-label="Questão do jogo">
               <div className="absolute inset-x-0 top-0 h-1 bg-black/25">
@@ -145,8 +189,13 @@ export function QuizView({ home, initialRound, lives, dailyGoal }: { home: QuizH
                     <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden /> Complete a lei<span className="hidden sm:inline"> — texto literal</span>
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full bg-black/30 px-3 py-1 text-[12px] font-bold tabular-nums">
-                  {idx + 1}/{total}
+                <span className="flex shrink-0 flex-col items-end gap-1">
+                  <span className="rounded-full bg-black/30 px-3 py-1 text-[12px] font-bold tabular-nums">
+                    {idx + 1}/{total}
+                  </span>
+                  <span className="rounded-full bg-white px-2 py-0.5 text-[10.5px] font-black uppercase tracking-wide text-[#B10400]" data-testid="quiz-dificuldade">
+                    {round.level.tier.label}
+                  </span>
                 </span>
               </header>
 
@@ -304,6 +353,7 @@ export function QuizView({ home, initialRound, lives, dailyGoal }: { home: QuizH
 
         {/* Coluna lateral */}
         <aside className="flex min-w-0 flex-col gap-5">
+          <LevelCard level={level} onRanking={() => setDialog("ranking")} />
           <StreakCard streak={home.streak} pct={pct} remaining={topic.total - topicMastered} onKeep={() => cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
 
           <section ref={lessonsRef} className="scroll-mt-24" aria-label="Próximas lições">
@@ -443,7 +493,7 @@ function StreakCard({ streak, pct, remaining, onKeep }: { streak: QuizHome["stre
   );
 }
 
-function RoundEnd({ hearts, hits, total, answered, roundXp, pending, onAgain }: { hearts: number; hits: number; total: number; answered: number; roundXp: number; pending: boolean; onAgain: () => void }) {
+function RoundEnd({ hearts, hits, total, answered, roundXp, pending, level, onAgain, onRanking }: { hearts: number; hits: number; total: number; answered: number; roundXp: number; pending: boolean; level: QuizLevel; onAgain: () => void; onRanking: () => void }) {
   const lost = hearts <= 0;
   return (
     <section className="entrar relative mt-4 overflow-hidden rounded-[28px] bg-gradient-to-br from-[#D90A00] via-[#B10400] to-[#6E0000] px-6 py-8 text-center shadow-[0_24px_60px_rgba(225,6,0,0.28)]" aria-label="Resultado da rodada" data-testid="quiz-fim">
@@ -464,6 +514,39 @@ function RoundEnd({ hearts, hits, total, answered, roundXp, pending, onAgain }: 
       </div>
       <button type="button" onClick={onAgain} disabled={pending} className="mx-auto mt-7 flex min-h-14 w-full max-w-sm items-center justify-center gap-2 rounded-full bg-white text-[15px] font-black uppercase tracking-[0.1em] text-[#B10400] disabled:opacity-60">
         <RotateCcw className="h-5 w-5" aria-hidden /> {pending ? "Preparando…" : "Nova rodada"}
+      </button>
+      <p className="mt-4 text-[13px] text-white/80">
+        Nível {level.level} • {level.patente} • faltam {level.toNext} {level.toNext === 1 ? "questão" : "questões"} para {level.nextPatente}
+      </p>
+      <button type="button" onClick={onRanking} className="mx-auto mt-3 flex min-h-12 items-center justify-center gap-2 rounded-full bg-black/35 px-5 text-[14px] font-black">
+        <BarChart3 className="h-4 w-4" aria-hidden /> Ver ranking
+      </button>
+    </section>
+  );
+}
+
+function LevelCard({ level, onRanking }: { level: QuizLevel; onRanking: () => void }) {
+  const done = 10 - level.toNext;
+  return (
+    <section className="relative overflow-hidden rounded-[24px] bg-[#111] p-5 ring-1 ring-[#E10600]/40" aria-label="Nível" data-testid="quiz-nivel">
+      <div className="flex items-center gap-3">
+        <span className="font-stencil flex h-14 w-14 shrink-0 items-center justify-center rounded-[14px] bg-[#E10600] text-[26px] leading-none">{level.level}</span>
+        <div className="min-w-0 flex-1">
+          <p className="font-hud text-[11px] font-semibold uppercase tracking-[0.22em] text-white/55">Nível {level.level}</p>
+          <p className="font-hud truncate text-[19px] font-bold">{level.patente}</p>
+          <p className="text-[12.5px] text-white/70">Dificuldade: <strong className="text-white">{level.tier.label}</strong> • +{level.tier.xp} XP por acerto</p>
+        </div>
+      </div>
+      <div className="mt-4 flex gap-[3px]" role="progressbar" aria-label="Progresso até o próximo nível" aria-valuenow={done} aria-valuemin={0} aria-valuemax={10}>
+        {Array.from({ length: 10 }, (_, i) => (
+          <span key={i} className={`h-2 flex-1 rounded-full ${i < done ? "bg-[#FF3B30]" : "bg-white/10"}`} />
+        ))}
+      </div>
+      <p className="mt-2 text-[12.5px] text-white/70">
+        Faltam <strong className="text-white">{level.toNext}</strong> {level.toNext === 1 ? "questão" : "questões"} para {level.nextPatente}. A cada 10 respondidas, a dificuldade sobe.
+      </p>
+      <button type="button" onClick={onRanking} className="font-hud mt-4 flex min-h-12 w-full items-center justify-center gap-2 rounded-full bg-white text-[14px] font-bold uppercase tracking-[0.12em] text-[#B10400]">
+        <BarChart3 className="h-4 w-4" aria-hidden /> Ranking geral
       </button>
     </section>
   );

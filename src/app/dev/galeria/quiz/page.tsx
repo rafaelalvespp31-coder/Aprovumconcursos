@@ -1,5 +1,6 @@
 import { QuizView } from "@/app/(app)/quiz/quiz-view";
 import { buildAll, type LawNode } from "@/domain/quiz/cloze";
+import { levelFor, patente, tierFor, toNextLevel } from "@/domain/quiz/levels";
 
 /** Prévia do Modo Jogo com dispositivos de exemplo (sem servidor: verificar não funciona aqui). */
 const N = (key: string, kind: string, marker: string | null, sourceText: string, parentKey: string | null = null): LawNode => ({ key, kind, marker, sourceText, parentKey, path: marker ?? key });
@@ -15,11 +16,28 @@ const topics = [
   { id: "00000000-0000-4000-8000-000000000002", title: "Homicídio (CP, art. 121)", discipline: "Direito Penal", lawCode: "CP", total: 20, mastered: 0 },
 ];
 
-export default function Page() {
+const lv = (answered: number) => {
+  const level = levelFor(answered);
+  return { level, patente: patente(level), nextPatente: patente(level + 1), tier: tierFor(level), answered, toNext: toNextLevel(answered) };
+};
+const ranking = [
+  { pos: 1, name: "Marina S.", xp: 940, answered: 58 },
+  { pos: 2, name: "Carlos R.", xp: 715, answered: 44 },
+  { pos: 3, name: "Lucas M.", xp: 300, answered: 20, isMe: true },
+  { pos: 4, name: "Júlia P.", xp: 210, answered: 17 },
+  { pos: 5, name: "Aluno APROVUM", xp: 90, answered: 9 },
+].map((r) => ({ isMe: false, ...r, patente: patente(levelFor(r.answered)) }));
+
+/** Exemplo de prévia: ?nivel=1 abre o popup de passagem de nível; ?ranking=1 o ranking. */
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
+  const sp = await searchParams;
+  const level = lv(sp.nivel ? 20 : 13);
   return (
     <QuizView
-      home={{ topics, xp: 130, todayHits: 7, streak: { current: 3, best: 5, studiedToday: true, last7: [false, true, false, false, true, true, true], message: "Faltam 4 dia(s) para 7 seguidos" } }}
-      initialRound={{ topic: topics[0]!, items }}
+      home={{ topics, level, xp: 130, todayHits: 7, streak: { current: 3, best: 5, studiedToday: true, last7: [false, true, false, false, true, true, true], message: "Faltam 4 dia(s) para 7 seguidos" } }}
+      initialRound={{ topic: topics[0]!, items, level }}
+      previewLevelUp={sp.nivel ? { from: lv(19), to: level } : undefined}
+      previewRanking={ranking}
       lives={3}
       dailyGoal={20}
     />

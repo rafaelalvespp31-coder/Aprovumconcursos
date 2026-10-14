@@ -255,6 +255,11 @@ describe("quiz Complete a lei", () => {
       const s = (await db.query("select my_study_stats() s")).rows[0].s;
       expect(s.answered).toBe(0);
       expect(s.activeDays).toHaveLength(1);
+      // Ranking: vê todos, sem e-mail/id; marca a própria linha.
+      const rk = (await db.query("select * from quiz_ranking(10)")).rows;
+      expect(rk.map((r) => r.xp)).toEqual([10, 10]);
+      expect(rk.filter((r) => r.is_me)).toHaveLength(1);
+      expect(Object.keys(rk[0]).sort()).toEqual(["answered", "is_me", "name", "pos", "xp"]);
     } finally {
       await db.query("rollback");
     }

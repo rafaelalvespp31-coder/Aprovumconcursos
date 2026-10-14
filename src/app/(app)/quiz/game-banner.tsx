@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Crosshair, Flame, Heart, Target, Trophy } from "lucide-react";
+import { BarChart3, Crosshair, Flame, Heart, Target, Trophy } from "lucide-react";
+import type { QuizLevel } from "@/server/services/quiz";
 
 const MASCOT = "/icons/instrutor-caveira.png";
 
@@ -27,11 +28,13 @@ export function GameBanner({
   hearts,
   lives,
   xp,
+  level,
   streak,
   pct,
   started,
   onStart,
   onPickTarget,
+  onRanking,
 }: {
   topicTitle: string;
   discipline: string;
@@ -40,11 +43,13 @@ export function GameBanner({
   hearts: number;
   lives: number;
   xp: number;
+  level: QuizLevel;
   streak: number;
   pct: number;
   started: boolean;
   onStart: () => void;
   onPickTarget: () => void;
+  onRanking: () => void;
 }) {
   const ref = useRef<HTMLElement>(null);
   const [line, setLine] = useState<number | null>(null);
@@ -130,6 +135,10 @@ export function GameBanner({
           </h2>
           </div>
           <p className="font-hud mt-2 line-clamp-2 text-[15px] font-semibold text-white/85 sm:text-[17px]">Alvo: {topicTitle}</p>
+          <p className="font-hud mt-2 inline-flex flex-wrap items-center gap-2 text-[12px] font-bold uppercase tracking-[0.16em]">
+            <span className="rounded-[6px] bg-[#E10600] px-2 py-1">Nível {level.level} • {level.patente}</span>
+            <span className="rounded-[6px] bg-white px-2 py-1 text-[#B10400]">{level.tier.label}</span>
+          </p>
           <div className="mt-2 flex items-center gap-3">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10 sm:max-w-56" role="progressbar" aria-label="Domínio do tema" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
               <div className="h-full rounded-full bg-gradient-to-r from-[#FF3B30] to-[#E10600] transition-[width] duration-500" style={{ width: `${pct}%` }} />
@@ -151,6 +160,13 @@ export function GameBanner({
               className="font-hud flex min-h-12 items-center gap-2 rounded-[14px] px-3.5 text-[12.5px] font-bold uppercase tracking-[0.12em] text-white/80 sm:px-4 sm:text-[13px] sm:tracking-[0.16em] ring-1 ring-white/20 transition-colors hover:bg-white/10 hover:text-white"
             >
               <Target className="h-4 w-4" aria-hidden /> Trocar alvo
+            </button>
+            <button
+              type="button"
+              onClick={onRanking}
+              className="font-hud flex min-h-12 items-center gap-2 rounded-[14px] px-3.5 text-[12.5px] font-bold uppercase tracking-[0.12em] text-white/80 sm:px-4 sm:text-[13px] sm:tracking-[0.16em] ring-1 ring-white/20 transition-colors hover:bg-white/10 hover:text-white"
+            >
+              <BarChart3 className="h-4 w-4" aria-hidden /> Ranking
             </button>
           </div>
           <p className="font-hud mt-3 min-h-[2.5rem] text-[13.5px] font-semibold leading-snug" role="status" aria-live="polite">

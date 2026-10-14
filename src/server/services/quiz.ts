@@ -3,15 +3,14 @@ import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import { extractPractice } from "@/domain/content/practice";
 import { computeStreak, streakMessage } from "@/domain/progress/gamification";
 import { buildAll, checkCloze, shuffle, seeded, type ClozeItem, type LawNode } from "@/domain/quiz/cloze";
+import { levelFor, patente, tierByNumber, tierFor, toNextLevel, type Tier } from "@/domain/quiz/levels";
 import { requireUser } from "../auth";
 import { getStudyStats } from "../queries";
 import { createAdminClient, createUserClient } from "../supabase";
 import { enforceRateLimit, UserFacingError } from "./trails";
 
-/** Lacunas por rodada, vidas por rodada, XP por acerto e meta do desafio do dia. */
-export const ROUND_SIZE = 10;
+/** Vidas por rodada e meta do desafio do dia. A rodada vai até o próximo nível (10 questões). */
 export const LIVES = 3;
-export const XP_PER_HIT = 10;
 export const DAILY_GOAL = 20;
 
 interface QuizTopic {
@@ -19,6 +18,8 @@ interface QuizTopic {
   title: string;
   discipline: string;
   lawCode: string | null;
+  nodes: LawNode[];
+  /** Itens no formato padrão (para contar dispositivos e progresso). */
   items: ClozeItem[];
   sections: Array<{ kind: string; title: string; bodyMarkdown: string; nodeKeys: string[] }>;
 }
@@ -40,13 +41,43 @@ async function loadTopics(): Promise<QuizTopic[]> {
         title: t.title as string,
         discipline: DISCIPLINE_LABELS[(t.discipline_mode as DisciplineMode) ?? "outra"] ?? "Outra",
         lawCode: (t.law_code as string | null) ?? null,
+        nodes: (t.nodes ?? []) as LawNode[],
         items: buildAll(((t.nodes ?? []) as LawNode[]), t.id as string),
         sections: lesson.sections ?? [],
       };
     })
     .filter((t) => t.items.length > 0);
   cache = { at: Date.now(), topics };
+  tierCache.clear();
   return topics;
+}
+
+// Itens por dificuldade (mesmos dispositivos; lacunas, banco e apoio mudam com o nível).
+const tierCache = new Map<string, ClozeItem[]>();
+function itemsFor(topic: QuizTopic, tier: Tier): ClozeItem[] {
+  const k = `${topic.id}:${tier.tier}`;
+  let items = tierCache.get(k);
+  if (!items) {
+    items = buildAll(topic.nodes, topic.id, { blanks: tier.blanks, bank: tier.bank, context: tier.context });
+    tierCache.set(k, items);
+  }
+  return items;
+}
+
+export interface QuizLevel {
+  level: number;
+  patente: string;
+  nextPatente: string;
+  tier: Tier;
+  /** Questões respondidas (todas). */
+  answered: number;
+  /** Faltam para subir de nível. */
+  toNext: number;
+}
+
+function levelInfo(answered: number): QuizLevel {
+  const level = levelFor(answered);
+  return { level, patente: patente(level), nextPatente: patente(level + 1), tier: tierFor(level), answered, toNext: toNextLevel(answered) };
 }
 
 export interface QuizTopicSummary {
@@ -62,6 +93,7 @@ export interface QuizHome {
   topics: QuizTopicSummary[];
   xp: number;
   todayHits: number;
+  level: QuizLevel;
   streak: { current: number; best: number; studiedToday: boolean; last7: boolean[]; message: string };
 }
 
@@ -105,7 +137,7 @@ export async function getQuizHome(): Promise<QuizHome> {
   const [topics, attempts, stats] = await Promise.all([loadTopics(), myAttempts(), getStudyStats()]);
   const s = summarize(attempts, topics);
   const st = computeStreak(stats.activeDays, stats.today);
-  return { topics: s.topics, xp: s.xp, todayHits: s.todayHits, streak: { ...st, message: streakMessage(st) } };
+  return { topics: s.topics, xp: s.xp, todayHits: s.todayHits, level: levelInfo(attempts.length), streak: { ...st, message: streakMessage(st) } };
 }
 
 /** Item enviado ao navegador: sem as respostas (a conferência é no servidor). */
@@ -114,20 +146,30 @@ export type PublicClozeItem = Omit<ClozeItem, "answers"> & { blanks: number };
 export interface QuizRound {
   topic: QuizTopicSummary;
   items: PublicClozeItem[];
+  level: QuizLevel;
 }
 
-/** Rodada: primeiro os dispositivos que o aluno ainda não acertou, em ordem sorteada. */
+/**
+ * Rodada no nível atual do aluno: vai até completar o nível (10 questões, ou o que falta).
+ * Primeiro os dispositivos que ele ainda não acertou; nos níveis altos, os de mais lacunas.
+ */
 export async function startRound(topicId: string): Promise<QuizRound> {
   await requireUser("/quiz");
   const [topics, attempts] = await Promise.all([loadTopics(), myAttempts()]);
   const topic = topics.find((t) => t.id === topicId);
   if (!topic) throw new UserFacingError("Este conteúdo não está disponível no quiz.", "not_found");
   const s = summarize(attempts, [topic]);
+  const lv = levelInfo(attempts.length);
+  const pool = itemsFor(topic, lv.tier);
   const rnd = seeded(`${topicId}:${Date.now()}:${Math.random()}`);
-  const fresh = shuffle(topic.items.filter((i) => !s.hit.has(`${topicId}:${i.nodeKey}`)), rnd);
-  const done = shuffle(topic.items.filter((i) => s.hit.has(`${topicId}:${i.nodeKey}`)), rnd);
-  const items = [...fresh, ...done].slice(0, ROUND_SIZE).map(({ answers, ...rest }) => ({ ...rest, blanks: answers.length }));
-  return { topic: s.topics[0]!, items };
+  const order = (list: ClozeItem[]) => {
+    const sh = shuffle(list, rnd);
+    return lv.tier.tier >= 3 ? sh.sort((a, b) => b.answers.length - a.answers.length) : sh;
+  };
+  const fresh = order(pool.filter((i) => !s.hit.has(`${topicId}:${i.nodeKey}`)));
+  const done = order(pool.filter((i) => s.hit.has(`${topicId}:${i.nodeKey}`)));
+  const items = [...fresh, ...done].slice(0, lv.toNext).map(({ answers, ...rest }) => ({ ...rest, blanks: answers.length }));
+  return { topic: s.topics[0]!, items, level: lv };
 }
 
 export interface QuizHelp {
@@ -142,24 +184,66 @@ export interface QuizCheck {
   correct: boolean;
   xp: number;
   totals: { xp: number; todayHits: number; mastered: number };
+  level: QuizLevel;
+  /** Preenchido quando esta resposta completou 10 questões e o aluno subiu de nível. */
+  levelUp: { from: QuizLevel; to: QuizLevel } | null;
   help: QuizHelp;
 }
 
-export async function checkAnswer(topicId: string, nodeKey: string, given: string[]): Promise<QuizCheck> {
+export async function checkAnswer(topicId: string, nodeKey: string, given: string[], tierN: number): Promise<QuizCheck> {
   const user = await requireUser("/quiz");
   await enforceRateLimit(user.id, "quiz_check", 120);
-  const topics = await loadTopics();
+  const [topics, before] = await Promise.all([loadTopics(), myAttempts()]);
   const topic = topics.find((t) => t.id === topicId);
-  const item = topic?.items.find((i) => i.nodeKey === nodeKey);
+  // A dificuldade da questão não pode passar a do nível que o aluno já conquistou.
+  const current = levelInfo(before.length);
+  const tier = tierByNumber(Math.min(tierN, current.tier.tier));
+  const item = topic ? itemsFor(topic, tier).find((i) => i.nodeKey === nodeKey) : undefined;
   if (!topic || !item) throw new UserFacingError("Questão não encontrada. Comece uma nova rodada.", "not_found");
   const results = checkCloze(item, given.slice(0, item.answers.length).map((g) => String(g ?? "").slice(0, 80)));
   const correct = results.every(Boolean);
-  const xp = correct ? XP_PER_HIT : 0;
+  const xp = correct ? tier.xp : 0;
   // Grava só pelo servidor, depois de conferir (o aluno não grava XP direto no banco).
   const { error } = await createAdminClient().from("quiz_attempts").insert({ user_id: user.id, topic_id: topicId, node_key: nodeKey, correct, xp });
   if (error) throw new Error(error.message);
-  const s = summarize(await myAttempts(), topics);
-  return { results, answers: item.answers, correct, xp, totals: { xp: s.xp, todayHits: s.todayHits, mastered: s.topics.find((t) => t.id === topicId)?.mastered ?? 0 }, help: helpFor(topic, item) };
+  const after = await myAttempts();
+  const s = summarize(after, topics);
+  const next = levelInfo(after.length);
+  return {
+    results,
+    answers: item.answers,
+    correct,
+    xp,
+    totals: { xp: s.xp, todayHits: s.todayHits, mastered: s.topics.find((t) => t.id === topicId)?.mastered ?? 0 },
+    level: next,
+    levelUp: next.level > current.level ? { from: current, to: next } : null,
+    help: helpFor(topic, item),
+  };
+}
+
+export interface RankingRow {
+  pos: number;
+  name: string;
+  xp: number;
+  answered: number;
+  isMe: boolean;
+  patente: string;
+}
+
+/** Ranking de todos os alunos (posição, primeiro nome + inicial, XP). */
+export async function getRanking(limit = 20): Promise<RankingRow[]> {
+  await requireUser("/quiz");
+  const db = await createUserClient();
+  const { data, error } = await db.rpc("quiz_ranking", { p_limit: limit });
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as Array<{ pos: number; name: string; xp: number; answered: number; is_me: boolean }>).map((r) => ({
+    pos: r.pos,
+    name: r.name,
+    xp: r.xp,
+    answered: r.answered,
+    isMe: r.is_me,
+    patente: patente(levelFor(r.answered)),
+  }));
 }
 
 // ---------------------------------------------------------------------------

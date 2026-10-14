@@ -193,21 +193,32 @@ function legalAnchor(node: LawNode, all: LawNode[]): LawNode | undefined {
 }
 
 /** Monta a lacuna de um dispositivo; null se o texto não serve (revogado, curto, sem termo-chave). */
-export function buildCloze(node: LawNode, all: LawNode[], topicSeed: string): ClozeItem | null {
+export interface ClozeOptions {
+  /** Máximo de lacunas (padrão 2). */
+  blanks?: number;
+  /** Tamanho do banco de palavras (padrão 6). */
+  bank?: number;
+  /** Mostrar o caput acima do inciso/alínea (padrão sim). */
+  context?: boolean;
+}
+
+export function buildCloze(node: LawNode, all: LawNode[], topicSeed: string, opts: ClozeOptions = {}): ClozeItem | null {
+  const maxBlanks = Math.max(1, Math.min(4, opts.blanks ?? 2));
+  const bankSize = Math.max(maxBlanks + 2, Math.min(10, opts.bank ?? 6));
   if (!LEGAL_KINDS.has(node.kind)) return null;
   const clean = cleanLegalText(node.sourceText);
   if (/\brevogad[oa]\b/i.test(clean) || clean.length < 18 || clean.length > 420) return null;
   const { marker, body } = stripMarker(clean);
   if (body.length < 12) return null;
 
-  const rnd = seeded(`${topicSeed}:${node.key}`);
+  const rnd = seeded(opts.blanks || opts.bank ? `${topicSeed}:${node.key}:${maxBlanks}-${bankSize}` : `${topicSeed}:${node.key}`);
   const cands = candidates(body);
   if (!cands.length) return null;
   // Melhores termos primeiro (empate decidido pela semente), no máximo 2 lacunas, sem palavras coladas.
   const ranked = shuffle(cands, rnd).sort((a, b) => b.score - a.score);
   const chosen: Token[] = [];
   for (const c of ranked) {
-    if (chosen.length >= 2) break;
+    if (chosen.length >= maxBlanks) break;
     if (chosen.some((x) => Math.abs(x.start - c.start) < 12 || norm(x.text) === norm(c.text))) continue;
     if (c.score < 3 && chosen.length) continue;
     chosen.push(c);
@@ -236,7 +247,7 @@ export function buildCloze(node: LawNode, all: LawNode[], topicSeed: string): Cl
   pool.push(...others);
   const distractors: string[] = [];
   for (const w of pool) {
-    if (distractors.length >= 6 - answers.length) break;
+    if (distractors.length >= bankSize - answers.length) break;
     const k = norm(w);
     if (lowerAnswers.has(k) || distractors.some((d) => norm(d) === k) || body.toLowerCase().includes(` ${w.toLowerCase()} `)) continue;
     distractors.push(w);
@@ -245,7 +256,7 @@ export function buildCloze(node: LawNode, all: LawNode[], topicSeed: string): Cl
 
   // Contexto: o caput a que o inciso/alínea pertence; a linha "Pena - ..." pertence ao artigo ou parágrafo.
   const parent = node.kind === "item" ? legalAnchor(node, all) : node.parentKey ? all.find((n) => n.key === node.parentKey) : undefined;
-  const context = (node.kind === "inciso" || node.kind === "alinea" || node.kind === "item") && parent ? cleanLegalText(parent.sourceText) : null;
+  const context = opts.context !== false && (node.kind === "inciso" || node.kind === "alinea" || node.kind === "item") && parent ? cleanLegalText(parent.sourceText) : null;
   const ref = node.kind === "item" && parent ? refOf(parent, all) : refOf(node, all, marker);
   return { nodeKey: node.key, context, parts, answers, bank, ref };
 }
@@ -272,6 +283,6 @@ export function checkCloze(item: ClozeItem, given: string[]): boolean[] {
 }
 
 /** Todos os itens possíveis de um tema. */
-export function buildAll(nodes: LawNode[], topicSeed: string): ClozeItem[] {
-  return nodes.map((n) => buildCloze(n, nodes, topicSeed)).filter((x): x is ClozeItem => !!x);
+export function buildAll(nodes: LawNode[], topicSeed: string, opts: ClozeOptions = {}): ClozeItem[] {
+  return nodes.map((n) => buildCloze(n, nodes, topicSeed, opts)).filter((x): x is ClozeItem => !!x);
 }
