@@ -446,6 +446,22 @@ test.describe("modo jogo", () => {
     await card.getByRole("button", { name: /Espaço 1: .* Toque para tirar/ }).click();
     await expect(verify).toBeDisabled();
   });
+  test("cronômetro de 10 s por questão: corre com a questão na tela e esgota o tempo", async ({ page }) => {
+    await page.clock.install();
+    await page.goto(`${G}/quiz`);
+    const card = page.getByRole("region", { name: "Questão do jogo" });
+    await card.scrollIntoViewIfNeeded();
+    const timer = card.getByTestId("cronometro");
+    await expect(timer).toHaveAttribute("aria-label", "10 segundos restantes");
+    await page.clock.runFor(4_000);
+    await expect(timer).toHaveAttribute("aria-label", /^[56] segundos restantes$/);
+    await page.clock.runFor(4_000);
+    await expect(timer).toHaveAttribute("data-urgente", "true");
+    await page.clock.runFor(3_000);
+    await expect(card.getByRole("button", { name: /Tempo esgotado/ })).toBeVisible();
+    await expect(card.locator("button.min-h-12").first()).toBeDisabled();
+  });
+
   test("nível e ranking: botão abre o ranking; ?nivel=1 mostra a passagem de nível", async ({ page }) => {
     await page.goto(`${G}/quiz`);
     await expect(page.getByTestId("quiz-nivel")).toContainText("Soldado");

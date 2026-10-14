@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useRef, useState, useTransition } from "react";
-import { ArrowRight, BarChart3, BookOpen, Check, Clock, Crown, Crosshair, FileText, Flame, Lightbulb, MessageSquare, Plus, RotateCcw, ShieldCheck, X, Zap } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { ArrowRight, BarChart3, BookOpen, Check, Clock, Crown, Crosshair, FileText, Flame, Lightbulb, MessageSquare, Plus, RotateCcw, ShieldCheck, Timer, X, Zap } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import type { QuizCheck, QuizHome, QuizLevel, QuizRound, RankingRow } from "@/server/services/quiz";
 import { checkAnswerAction, startRoundAction } from "./actions";
+import { Countdown, QUESTION_SECONDS } from "./countdown";
 import { GameBanner } from "./game-banner";
 import { LevelUpDialog } from "./level-up";
 
@@ -46,7 +47,12 @@ export function QuizView({
   const [filter, setFilter] = useState("Todos");
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
+  const [roundNo, setRoundNo] = useState(0);
+  const [timedOut, setTimedOut] = useState(false);
+  const [inView, setInView] = useState(false);
+  const [pageVisible, setPageVisible] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
+  const questionRef = useRef<HTMLElement>(null);
   const lessonsRef = useRef<HTMLElement>(null);
 
   const item = round.items[idx];
@@ -59,19 +65,35 @@ export function QuizView({
   const used = useMemo(() => new Set(slots.filter(Boolean) as string[]), [slots]);
   const disciplines = useMemo(() => ["Todos", ...new Set(home.topics.map((t) => t.discipline))], [home.topics]);
 
+  // O cronômetro só corre com a questão na tela e a aba ativa (não pune quem ainda está lendo o banner).
+  const hasQuestion = !finished && !!item;
+  useEffect(() => {
+    const el = questionRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => setInView(!!e && e.intersectionRatio >= 0.35), { threshold: [0, 0.35, 0.6] });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasQuestion]);
+  useEffect(() => {
+    const on = () => setPageVisible(document.visibilityState === "visible");
+    document.addEventListener("visibilitychange", on);
+    return () => document.removeEventListener("visibilitychange", on);
+  }, []);
+  const timerRunning = hasQuestion && inView && pageVisible && !check && !pending && !timedOut && dialog === null;
+
   const place = (w: string) => {
-    if (check || used.has(w)) return;
+    if (check || timedOut || used.has(w)) return;
     const i = slots.findIndex((s) => !s);
     if (i < 0) return;
     setSlots(slots.map((s, j) => (j === i ? w : s)));
   };
-  const clear = (i: number) => !check && setSlots(slots.map((s, j) => (j === i ? null : s)));
+  const clear = (i: number) => !check && !timedOut && setSlots(slots.map((s, j) => (j === i ? null : s)));
 
-  const verify = () => {
-    if (!item || filled < item.blanks) return;
+  const submit = (given: string[]) => {
+    if (!item || check) return;
     setError(null);
     start(async () => {
-      const r = await checkAnswerAction(topic.id, item.nodeKey, slots as string[], round.level.tier.tier);
+      const r = await checkAnswerAction(topic.id, item.nodeKey, given, round.level.tier.tier);
       if (!r.ok) return setError(r.error);
       setCheck(r.check);
       setLevel(r.check.level);
@@ -92,11 +114,21 @@ export function QuizView({
       } else setHearts((h) => h - 1);
     });
   };
+  const verify = () => {
+    if (item && filled >= item.blanks) submit(slots as string[]);
+  };
+  // Tempo esgotado: confere o que estiver preenchido (espaço vazio conta como erro).
+  const expire = () => {
+    if (!item || check) return;
+    setTimedOut(true);
+    submit(slots.map((s) => s ?? ""));
+  };
 
   const next = () => {
     const n = idx + 1;
     setIdx(n);
     setCheck(null);
+    setTimedOut(false);
     setSlots(Array(round.items[n]?.blanks ?? 0).fill(null));
     cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -110,6 +142,8 @@ export function QuizView({
       setLevel(r.round.level);
       setIdx(0);
       setCheck(null);
+      setTimedOut(false);
+      setRoundNo((x) => x + 1);
       setSlots(Array(r.round.items[0]?.blanks ?? 0).fill(null));
       setHearts(lives);
       setHits(0);
@@ -183,7 +217,7 @@ export function QuizView({
             <span className="text-white/30">/</span>
             {item && <span className="rounded-full bg-[#E10600] px-3 py-1 font-bold text-white">{item.ref}</span>}
             <span className="flex items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-[12px] text-white/60">
-              <Clock className="h-3.5 w-3.5" aria-hidden /> ~1 min
+              <Timer className="h-3.5 w-3.5" aria-hidden /> {QUESTION_SECONDS} s por questão
             </span>
           </div>
 
@@ -192,7 +226,7 @@ export function QuizView({
           {finished ? (
             <RoundEnd hearts={hearts} hits={hits} total={total} answered={Math.min(idx + (check ? 1 : 0), total)} roundXp={roundXp} pending={pending} level={level} onAgain={() => newRound()} onRanking={() => setDialog("ranking")} />
           ) : item ? (
-            <section className="relative mt-4 overflow-hidden rounded-[28px] bg-gradient-to-br from-[#D90A00] via-[#B10400] to-[#6E0000] shadow-[0_24px_60px_rgba(225,6,0,0.28)] ring-1 ring-white/10" aria-label="Questão do jogo">
+            <section ref={questionRef} className="relative mt-4 overflow-hidden rounded-[28px] bg-gradient-to-br from-[#D90A00] via-[#B10400] to-[#6E0000] shadow-[0_24px_60px_rgba(225,6,0,0.28)] ring-1 ring-white/10" aria-label="Questão do jogo">
               <div className="absolute inset-x-0 top-0 h-1 bg-black/25">
                 <div className="h-full bg-white transition-[width] duration-500" style={{ width: `${((idx + (check ? 1 : 0)) / total) * 100}%` }} />
               </div>
@@ -208,6 +242,12 @@ export function QuizView({
                     <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden /> Complete a lei<span className="hidden sm:inline"> — texto literal</span>
                   </p>
                 </div>
+                <Countdown
+                  key={`${roundNo}-${idx}`}
+                  running={timerRunning}
+                  result={check ? (check.correct ? "ok" : "erro") : null}
+                  onExpire={expire}
+                />
                 <span className="flex shrink-0 flex-col items-end gap-1">
                   <span className="rounded-full bg-black/30 px-3 py-1 text-[12px] font-bold tabular-nums">
                     {idx + 1}/{total}
@@ -254,7 +294,7 @@ export function QuizView({
                         key={i}
                         type="button"
                         onClick={() => clear(i)}
-                        disabled={!w || !!check}
+                        disabled={!w || !!check || timedOut}
                         aria-label={w ? `Espaço ${i + 1}: ${w}. Toque para tirar` : `Espaço ${i + 1} vazio`}
                         className={`flex min-h-[76px] flex-col items-center justify-center gap-1 rounded-[16px] border-2 px-3 text-center transition-all ${
                           st === "ok" ? "border-[#22C55E] bg-[#0F2A18]" : st === "erro" ? "border-black/40 bg-black/50" : w ? "border-white bg-white text-[#8A0000]" : "border-dashed border-white/45 bg-black/15"
@@ -285,7 +325,7 @@ export function QuizView({
                       key={w}
                       type="button"
                       onClick={() => place(w)}
-                      disabled={!!check || used.has(w) || filled >= item.blanks}
+                      disabled={!!check || timedOut || used.has(w) || filled >= item.blanks}
                       className={`min-h-12 rounded-full px-5 text-[16px] font-bold transition-all active:scale-95 ${
                         used.has(w) ? "border border-dashed border-white/25 bg-transparent text-white/35" : "bg-[#0B0B0B] text-white shadow-[0_6px_16px_rgba(0,0,0,0.35)] ring-1 ring-white/10 hover:ring-white/40"
                       } disabled:cursor-default`}
@@ -303,7 +343,7 @@ export function QuizView({
                     <img src={MASCOT} alt="" className="h-10 w-10 shrink-0 rounded-full bg-black object-contain p-0.5" />
                     <div>
                       <p className={`text-[15px] font-black ${check.correct ? "text-[#4ADE80]" : "text-white"}`}>
-                        {check.correct ? `Na mosca! +${check.xp} XP` : hearts > 0 ? "Errou. Menos uma vida." : "Errou. Acabaram as vidas."}
+                        {check.correct ? `Na mosca! +${check.xp} XP` : `${timedOut ? "Tempo esgotado!" : "Errou."} ${hearts > 0 ? "Menos uma vida." : "Acabaram as vidas."}`}
                       </p>
                       <p className="text-[13.5px] text-white/75">
                         {check.correct ? "Literalidade em dia. É assim que se vence a banca." : `Texto certo: ${check.answers.join(" · ")}. Leia a explicação abaixo.`}
@@ -311,7 +351,16 @@ export function QuizView({
                     </div>
                   </div>
                 )}
-                {!check ? (
+                {!check && timedOut ? (
+                  <button
+                    type="button"
+                    onClick={expire}
+                    disabled={pending}
+                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-black text-[15px] font-black uppercase tracking-[0.1em] text-[#FFD60A] ring-1 ring-[#FFD60A]/40 transition-all active:scale-[0.99] disabled:opacity-70"
+                  >
+                    <Timer className="h-5 w-5" aria-hidden /> {pending ? "Conferindo…" : "Tempo esgotado!"}
+                  </button>
+                ) : !check ? (
                   <button
                     type="button"
                     onClick={verify}
