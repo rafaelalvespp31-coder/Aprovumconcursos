@@ -157,6 +157,55 @@ function Scene({ kind, dots }: { kind: StripPanel["cenario"]; dots: string }) {
           <path d="M14 152 l6 10 M26 152 l6 10 M38 152 l6 10" stroke="#FFFFFF" strokeWidth={2.4} />
         </g>
       );
+    case "transito":
+      return (
+        <g>
+          <rect width={W} height={H} fill="#D8E7F3" />
+          <rect width={W} height={H} fill={`url(#${dots})`} opacity={0.4} />
+          <path d="M0 104 h44 v-44 h40 v44 h96 v-30 h60 v30" fill="#B3C3D1" stroke={INK} strokeWidth={2} />
+          <rect x={0} y={140} width={W} height={60} fill="#5F6670" />
+          <path d="M0 140 h240" {...ln} />
+          {/* faixa de pedestres */}
+          {[16, 34, 52, 70, 88].map((x) => (
+            <rect key={x} x={x} y={150} width={10} height={40} fill="#F5F5F5" opacity={0.9} />
+          ))}
+          {/* semáforo */}
+          <path d="M226 140 v-96" stroke={INK} strokeWidth={4} />
+          <rect x={216} y={30} width={20} height={46} rx={4} fill="#1F1F1F" stroke={INK} strokeWidth={1.6} />
+          <circle cx={226} cy={40} r={5} fill="#E10600" />
+          <circle cx={226} cy={53} r={5} fill="#6B5A00" />
+          <circle cx={226} cy={66} r={5} fill="#0E4D22" />
+          {/* carro */}
+          <g stroke={INK} strokeWidth={2} strokeLinejoin="round">
+            <path d="M150 172 v-14 l10 -14 h34 l12 14 h14 v14 z" fill="#C81E1E" />
+            <path d="M164 146 h28 l8 11 h-44 z" fill="#BFE0F2" />
+            <circle cx={166} cy={174} r={7} fill="#2B2B2B" />
+            <circle cx={208} cy={174} r={7} fill="#2B2B2B" />
+          </g>
+        </g>
+      );
+    case "rodovia":
+      return (
+        <g>
+          <rect width={W} height={H} fill="#CFE6F5" />
+          <rect width={W} height={H} fill={`url(#${dots})`} opacity={0.35} />
+          <path d="M0 120 q60 -18 120 -6 t120 -8 v34 h-240z" fill="#9CC98A" stroke={INK} strokeWidth={1.6} />
+          <rect x={0} y={140} width={W} height={60} fill="#4B5059" />
+          <path d="M0 140 h240" {...ln} />
+          <path d="M0 168 h24 M40 168 h24 M80 168 h24 M120 168 h24 M160 168 h24 M200 168 h24" stroke="#F4D03F" strokeWidth={3} />
+          {/* placa de velocidade */}
+          <path d="M28 140 v-46" stroke={INK} strokeWidth={3} />
+          <circle cx={28} cy={86} r={13} fill="#FFFFFF" stroke="#C81E1E" strokeWidth={4} />
+          <text x={28} y={90} fontSize={11} fontWeight={900} textAnchor="middle" fill={INK}>80</text>
+          {/* carro */}
+          <g stroke={INK} strokeWidth={2} strokeLinejoin="round">
+            <path d="M150 172 v-14 l10 -14 h34 l12 14 h14 v14 z" fill="#C81E1E" />
+            <path d="M164 146 h28 l8 11 h-44 z" fill="#BFE0F2" />
+            <circle cx={166} cy={174} r={7} fill="#2B2B2B" />
+            <circle cx={208} cy={174} r={7} fill="#2B2B2B" />
+          </g>
+        </g>
+      );
     case "hospital":
       return (
         <g>

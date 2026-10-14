@@ -35,7 +35,7 @@ export const LAWS: ReadonlyArray<{ code: string; name: string; patterns: RegExp[
   { code: "L12850", name: "Lei de Organização Criminosa (Lei 12.850/2013)", patterns: [/\blei (n )?12\.?850\b/, /organizacao criminosa/] },
   { code: "L9455", name: "Lei de Tortura (Lei 9.455/1997)", patterns: [/\blei (n )?9\.?455\b/, /lei de tortura/] },
   { code: "ECA", name: "Estatuto da Criança e do Adolescente (Lei 8.069/1990)", patterns: [/\beca\b/, /\blei (n )?8\.?069\b/, /estatuto da crianca/] },
-  { code: "CTB", name: "Código de Trânsito Brasileiro", patterns: [/\bctb\b/, /codigo de transito/] },
+  { code: "CTB", name: "Código de Trânsito Brasileiro", patterns: [/\bctb\b/, /codigo de transito/, /\blei (n )?9\.?503\b/] },
 ];
 
 /** Identificador de artigo normalizado: "5", "121", "121-A". */

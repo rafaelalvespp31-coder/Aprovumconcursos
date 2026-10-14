@@ -1,0 +1,896 @@
+[
+ {
+  "level": "facil",
+  "type": "certo_errado",
+  "statement": "Segundo o CTB, considera-se trânsito a utilização das vias por pessoas, veículos e animais, isolados ou em grupos, conduzidos ou não, para fins de circulação, parada, estacionamento e operação de carga ou descarga.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Literalidade do art. 1º, § 1º, do CTB.",
+  "nodeKey": "N0002",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "certo_errado",
+  "statement": "Os órgãos e entidades do Sistema Nacional de Trânsito respondem subjetivamente pelos danos causados aos cidadãos em virtude de ação, omissão ou erro na execução de programas e serviços que garantam o trânsito seguro.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "O art. 1º, § 3º, prevê responsabilidade OBJETIVA: dispensa a prova de culpa do órgão.",
+  "nodeKey": "N0004",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "certo_errado",
+  "statement": "O CONTRAN é o coordenador do Sistema Nacional de Trânsito e seu órgão máximo normativo.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Art. 7º, I, do CTB.",
+  "nodeKey": "N0007",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "certo_errado",
+  "statement": "De acordo com a ordem de prevalência da sinalização, as indicações do semáforo prevalecem sobre as ordens do agente de trânsito.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "Art. 89: as ordens do agente prevalecem sobre as normas de circulação e outros sinais; o semáforo vem em segundo lugar.",
+  "nodeKey": "N0016",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "certo_errado",
+  "statement": "A infração de natureza grave computa cinco pontos no prontuário do infrator.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Art. 259, II: grave = 5 pontos (leve 3, média 4, grave 5, gravíssima 7).",
+  "nodeKey": "N0027",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "certo_errado",
+  "statement": "As Juntas Administrativas de Recursos de Infrações (JARI) integram o Sistema Nacional de Trânsito.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Art. 7º, VII, do CTB. A JARI julga os recursos contra penalidades em 1ª instância.",
+  "nodeKey": "N0013",
+  "difficulty": 1,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "multipla_escolha",
+  "statement": "Para os efeitos do CTB, NÃO se enquadra no conceito de via terrestre aberta à circulação, nos termos do art. 2º:",
+  "options": [
+   {
+    "label": "A",
+    "text": "garagem de uso exclusivo de uma residência",
+    "correct": true,
+    "explanation": "Correta: a garagem privativa não é via aberta à circulação."
+   },
+   {
+    "label": "B",
+    "text": "estacionamento de supermercado de uso coletivo",
+    "correct": false,
+    "explanation": "O parágrafo único inclui os estacionamentos privados de uso coletivo."
+   },
+   {
+    "label": "C",
+    "text": "via interna de condomínio",
+    "correct": false,
+    "explanation": "Incluída expressamente pelo parágrafo único do art. 2º."
+   },
+   {
+    "label": "D",
+    "text": "praia aberta à circulação pública",
+    "correct": false,
+    "explanation": "Incluída expressamente pelo parágrafo único do art. 2º."
+   }
+  ],
+  "justification": "Art. 2º, parágrafo único: praias abertas, vias internas de condomínios e estacionamentos privados de uso coletivo são vias terrestres.",
+  "nodeKey": "N0041",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "multipla_escolha",
+  "statement": "Uma infração gravíssima computa, no prontuário do infrator:",
+  "options": [
+   {
+    "label": "A",
+    "text": "7 pontos",
+    "correct": true,
+    "explanation": "Correta: art. 259, I."
+   },
+   {
+    "label": "B",
+    "text": "5 pontos",
+    "correct": false,
+    "explanation": "É a pontuação da grave."
+   },
+   {
+    "label": "C",
+    "text": "4 pontos",
+    "correct": false,
+    "explanation": "É a pontuação da média."
+   },
+   {
+    "label": "D",
+    "text": "10 pontos",
+    "correct": false,
+    "explanation": "Não há infração de 10 pontos no art. 259."
+   }
+  ],
+  "justification": "Leve 3, média 4, grave 5, gravíssima 7.",
+  "nodeKey": "N0025",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "multipla_escolha",
+  "statement": "É penalidade prevista no art. 256 do CTB:",
+  "options": [
+   {
+    "label": "A",
+    "text": "suspensão do direito de dirigir",
+    "correct": true,
+    "explanation": "Correta: art. 256, III."
+   },
+   {
+    "label": "B",
+    "text": "remoção do veículo",
+    "correct": false,
+    "explanation": "É medida administrativa (art. 269)."
+   },
+   {
+    "label": "C",
+    "text": "retenção do veículo",
+    "correct": false,
+    "explanation": "É medida administrativa (art. 269)."
+   },
+   {
+    "label": "D",
+    "text": "apreensão do veículo",
+    "correct": false,
+    "explanation": "Foi revogada pela Lei 13.281/2016."
+   }
+  ],
+  "justification": "Penalidades: advertência, multa, suspensão, cassação da CNH e da PPD e curso de reciclagem.",
+  "nodeKey": "N0018",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "multipla_escolha",
+  "statement": "Os recursos contra penalidades de trânsito são julgados, em primeira instância, pela:",
+  "options": [
+   {
+    "label": "A",
+    "text": "JARI",
+    "correct": true,
+    "explanation": "Correta: Junta Administrativa de Recursos de Infrações."
+   },
+   {
+    "label": "B",
+    "text": "CONTRAN",
+    "correct": false,
+    "explanation": "É órgão normativo e coordenador, não julga recurso de multa em 1ª instância."
+   },
+   {
+    "label": "C",
+    "text": "Polícia Rodoviária Federal",
+    "correct": false,
+    "explanation": "Órgão de policiamento e fiscalização."
+   },
+   {
+    "label": "D",
+    "text": "Polícia Militar",
+    "correct": false,
+    "explanation": "Órgão de policiamento ostensivo."
+   }
+  ],
+  "justification": "JARI (1ª instância) → CETRAN/CONTRANDIFE (2ª instância).",
+  "nodeKey": "N0013",
+  "difficulty": 1,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "multipla_escolha",
+  "statement": "A pena do homicídio culposo na direção de veículo automotor (art. 302, caput) é:",
+  "options": [
+   {
+    "label": "A",
+    "text": "detenção de dois a quatro anos, e suspensão ou proibição de se obter a permissão ou a habilitação para dirigir",
+    "correct": true,
+    "explanation": "Correta: literalidade do art. 302."
+   },
+   {
+    "label": "B",
+    "text": "reclusão de cinco a oito anos",
+    "correct": false,
+    "explanation": "É a pena do § 3º (sob influência de álcool)."
+   },
+   {
+    "label": "C",
+    "text": "detenção de seis meses a dois anos",
+    "correct": false,
+    "explanation": "É a pena da lesão corporal culposa (art. 303)."
+   },
+   {
+    "label": "D",
+    "text": "detenção de seis meses a um ano, ou multa",
+    "correct": false,
+    "explanation": "É a pena de crimes como os dos arts. 304, 305 e 309."
+   }
+  ],
+  "justification": "Art. 302: detenção de 2 a 4 anos + suspensão ou proibição.",
+  "nodeKey": "N0030",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "situacional",
+  "statement": "Joana dirige sem possuir habilitação, em velocidade compatível e sem gerar perigo a ninguém, quando é parada numa blitz. Ela:",
+  "options": [
+   {
+    "label": "A",
+    "text": "comete apenas a infração administrativa do art. 162, I",
+    "correct": true,
+    "explanation": "Correta: sem perigo de dano, não há o crime do art. 309 (Súmula 720 do STF)."
+   },
+   {
+    "label": "B",
+    "text": "comete o crime do art. 309, que é de perigo abstrato",
+    "correct": false,
+    "explanation": "O art. 309 exige perigo de dano (perigo concreto)."
+   },
+   {
+    "label": "C",
+    "text": "comete o crime do art. 310",
+    "correct": false,
+    "explanation": "O art. 310 pune quem ENTREGA a direção."
+   },
+   {
+    "label": "D",
+    "text": "não comete infração alguma",
+    "correct": false,
+    "explanation": "Dirigir sem habilitação é infração gravíssima (art. 162, I)."
+   }
+  ],
+  "justification": "Súmula 720 do STF: o art. 309 exige perigo concreto. Sem ele, só a infração administrativa.",
+  "nodeKey": "N0038",
+  "difficulty": 1,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "certo_errado",
+  "statement": "As medidas administrativas do art. 269 podem ser adotadas pela autoridade de trânsito ou por seus agentes, enquanto as penalidades do art. 256 são impostas pela autoridade de trânsito.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Arts. 256 e 269 do CTB: penalidade é da autoridade; medida administrativa, da autoridade ou de seus agentes.",
+  "nodeKey": "N0060",
+  "difficulty": 2,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "certo_errado",
+  "statement": "O condutor que exerce atividade remunerada ao veículo terá o direito de dirigir suspenso ao atingir 20 pontos no período de 12 meses, se houver duas ou mais infrações gravíssimas.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "Para o condutor com EAR, o limite é de 40 pontos, independentemente da natureza das infrações (art. 261, § 5º, com a Lei 14.071/2020).",
+  "nodeKey": "N0059",
+  "difficulty": 2,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "certo_errado",
+  "statement": "Se a notificação da autuação não for expedida no prazo de 30 dias, o auto de infração será arquivado e seu registro julgado insubsistente.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Art. 281, parágrafo único, II, do CTB.",
+  "nodeKey": "N0061",
+  "difficulty": 2,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "certo_errado",
+  "statement": "Aplicam-se à lesão corporal culposa de trânsito os arts. 74, 76 e 88 da Lei 9.099/1995, salvo se o agente estiver, entre outras hipóteses, transitando em velocidade superior à máxima permitida em 50%.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "O art. 291, § 1º, III, fala em velocidade superior à máxima em 50 km/h — não em 50%.",
+  "nodeKey": "N0063",
+  "difficulty": 2,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "certo_errado",
+  "statement": "A alteração da capacidade psicomotora exigida pelo art. 306 pode ser constatada por sinais que a indiquem, além dos testes de alcoolemia.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Art. 306, § 1º, II, e § 2º: admite-se a prova por sinais, vídeo, prova testemunhal e outros meios.",
+  "nodeKey": "N0036",
+  "difficulty": 2,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "certo_errado",
+  "statement": "Com a Lei 14.071/2020, o prazo para o proprietário indicar o condutor infrator passou a ser de 30 dias.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Art. 257, § 7º, com a redação da Lei 14.071/2020 (antes eram 15 dias).",
+  "nodeKey": "N0056",
+  "difficulty": 2,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "situacional",
+  "statement": "Na via com velocidade máxima de 80 km/h, um veículo é flagrado a 125 km/h. A infração é:",
+  "options": [
+   {
+    "label": "A",
+    "text": "gravíssima, com multa multiplicada por três e suspensão do direito de dirigir",
+    "correct": true,
+    "explanation": "Correta: 125 supera em mais de 50% o limite de 80 (o teto de 50% seria 120): art. 218, III."
+   },
+   {
+    "label": "B",
+    "text": "grave, apenas com multa",
+    "correct": false,
+    "explanation": "Grave é de 20% a 50% acima (art. 218, II)."
+   },
+   {
+    "label": "C",
+    "text": "média, apenas com multa",
+    "correct": false,
+    "explanation": "Média é até 20% acima (art. 218, I)."
+   },
+   {
+    "label": "D",
+    "text": "gravíssima, com multa simples e sem suspensão",
+    "correct": false,
+    "explanation": "O inciso III prevê multa (3x) e suspensão."
+   }
+  ],
+  "justification": "Art. 218: até 20% média; 20% a 50% grave; mais de 50% gravíssima, multa 3x e suspensão.",
+  "nodeKey": "N0058",
+  "difficulty": 2,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "multipla_escolha",
+  "statement": "Assinale a ordem de prevalência da sinalização prevista no art. 89 do CTB.",
+  "options": [
+   {
+    "label": "A",
+    "text": "Ordens do agente; indicações do semáforo; indicações dos sinais; normas de circulação",
+    "correct": true,
+    "explanation": "Correta."
+   },
+   {
+    "label": "B",
+    "text": "Semáforo; agente; sinais; normas",
+    "correct": false,
+    "explanation": "O agente vem antes do semáforo."
+   },
+   {
+    "label": "C",
+    "text": "Sinais; semáforo; agente; normas",
+    "correct": false,
+    "explanation": "Ordem invertida."
+   },
+   {
+    "label": "D",
+    "text": "Normas de circulação; sinais; semáforo; agente",
+    "correct": false,
+    "explanation": "É a ordem inversa da lei."
+   }
+  ],
+  "justification": "Agente > semáforo > sinais > normas.",
+  "nodeKey": "N0014",
+  "difficulty": 2,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "multipla_escolha",
+  "statement": "Das decisões da JARI cabe recurso, no âmbito estadual, ao:",
+  "options": [
+   {
+    "label": "A",
+    "text": "CETRAN",
+    "correct": true,
+    "explanation": "Correta: art. 288 c/c art. 289 do CTB."
+   },
+   {
+    "label": "B",
+    "text": "CONTRAN, em qualquer caso",
+    "correct": false,
+    "explanation": "O CONTRAN julga apenas hipóteses específicas previstas no art. 289."
+   },
+   {
+    "label": "C",
+    "text": "DETRAN",
+    "correct": false,
+    "explanation": "É órgão executivo, não instância recursal."
+   },
+   {
+    "label": "D",
+    "text": "Poder Judiciário, obrigatoriamente",
+    "correct": false,
+    "explanation": "Há instância administrativa própria."
+   }
+  ],
+  "justification": "JARI → CETRAN (Estados) ou CONTRANDIFE (DF).",
+  "nodeKey": "N0008",
+  "difficulty": 2,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "situacional",
+  "statement": "Durante uma blitz, o agente recolhe a CNH de um motociclista que conduzia sem capacete. O recolhimento da CNH é:",
+  "options": [
+   {
+    "label": "A",
+    "text": "medida administrativa, que pode ser adotada pelo agente",
+    "correct": true,
+    "explanation": "Correta: art. 269, III, e art. 244, I."
+   },
+   {
+    "label": "B",
+    "text": "penalidade, que só pode ser aplicada pela autoridade",
+    "correct": false,
+    "explanation": "Recolhimento é medida, não penalidade."
+   },
+   {
+    "label": "C",
+    "text": "penalidade de suspensão já aplicada",
+    "correct": false,
+    "explanation": "A suspensão depende de processo administrativo."
+   },
+   {
+    "label": "D",
+    "text": "providência ilegal, por falta de processo prévio",
+    "correct": false,
+    "explanation": "As medidas administrativas são adotadas na hora."
+   }
+  ],
+  "justification": "O agente autua e adota medidas; a suspensão (penalidade) vem depois, imposta pela autoridade.",
+  "nodeKey": "N0018",
+  "difficulty": 2,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "multipla_escolha",
+  "statement": "Afastar-se o condutor do local do acidente para fugir à responsabilidade penal ou civil é crime punido com:",
+  "options": [
+   {
+    "label": "A",
+    "text": "detenção de seis meses a um ano, ou multa",
+    "correct": true,
+    "explanation": "Correta: art. 305."
+   },
+   {
+    "label": "B",
+    "text": "detenção de dois a quatro anos",
+    "correct": false,
+    "explanation": "É a pena do homicídio culposo."
+   },
+   {
+    "label": "C",
+    "text": "reclusão de dois a cinco anos",
+    "correct": false,
+    "explanation": "É a pena do art. 303, § 2º."
+   },
+   {
+    "label": "D",
+    "text": "apenas multa administrativa",
+    "correct": false,
+    "explanation": "É crime, com pena de detenção ou multa."
+   }
+  ],
+  "justification": "Art. 305: detenção de 6 meses a 1 ano, ou multa.",
+  "nodeKey": "N0034",
+  "difficulty": 2,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "multipla_escolha",
+  "statement": "Pela Lei 14.071/2020, o exame de aptidão física e mental de um condutor de 55 anos deve ser renovado a cada:",
+  "options": [
+   {
+    "label": "A",
+    "text": "cinco anos",
+    "correct": true,
+    "explanation": "Correta: de 50 a 69 anos, a cada 5 anos (art. 147, § 2º)."
+   },
+   {
+    "label": "B",
+    "text": "dez anos",
+    "correct": false,
+    "explanation": "Vale para menores de 50 anos."
+   },
+   {
+    "label": "C",
+    "text": "três anos",
+    "correct": false,
+    "explanation": "Vale a partir dos 70 anos."
+   },
+   {
+    "label": "D",
+    "text": "dois anos",
+    "correct": false,
+    "explanation": "Não há esse prazo na regra geral."
+   }
+  ],
+  "justification": "Validade: 10 anos (até 49), 5 anos (50 a 69), 3 anos (70+).",
+  "nodeKey": "N0053",
+  "difficulty": 2,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "certo_errado",
+  "statement": "Na lesão corporal culposa na direção de veículo automotor, a pena de reclusão de dois a cinco anos do art. 303, § 2º, aplica-se ao condutor sob influência de álcool, ainda que a lesão seja leve.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "O § 2º exige, cumulativamente, a influência de álcool ou psicoativa E o resultado de lesão corporal de natureza grave ou gravíssima.",
+  "nodeKey": "N0033",
+  "difficulty": 3,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "certo_errado",
+  "statement": "Ao condutor de veículo, nos casos de acidentes de trânsito de que resulte vítima, não se imporá a prisão em flagrante, nem se exigirá fiança, se prestar pronto e integral socorro àquela.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Art. 301 do CTB: o socorro pronto e integral afasta o flagrante e a fiança.",
+  "nodeKey": "N0062",
+  "difficulty": 3,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "certo_errado",
+  "statement": "O crime de entregar a direção de veículo automotor a pessoa não habilitada (art. 310) exige, para sua consumação, a demonstração de perigo concreto de dano.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "Súmula 575 do STJ: o crime do art. 310 é de perigo abstrato; dispensa lesão ou perigo concreto.",
+  "nodeKey": "N0064",
+  "difficulty": 3,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "certo_errado",
+  "statement": "Nos crimes de homicídio culposo e de lesão corporal culposa praticados sob influência de álcool (arts. 302, § 3º, e 303, § 2º), é vedada a substituição da pena privativa de liberdade por restritiva de direitos.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Art. 312-B do CTB, incluído pela Lei 14.071/2020.",
+  "nodeKey": "N0064",
+  "difficulty": 3,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "certo_errado",
+  "statement": "A penalidade de advertência por escrito deve ser imposta à infração leve ou média, passível de multa, se o infrator não tiver cometido nenhuma outra infração nos últimos 12 meses.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Art. 267 do CTB, com a redação da Lei 14.071/2020.",
+  "nodeKey": "N0060",
+  "difficulty": 3,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "certo_errado",
+  "statement": "A pessoa jurídica proprietária que não indica o condutor infrator recebe nova multa, cujo valor é sempre o dobro da multa originária.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "Art. 257, § 8º: o valor da nova multa é o da multa originária multiplicado pelo número de infrações iguais cometidas no período de 12 meses.",
+  "nodeKey": "N0058",
+  "difficulty": 3,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "multipla_escolha",
+  "statement": "Aplicam-se à lesão corporal culposa de trânsito os benefícios dos arts. 74, 76 e 88 da Lei 9.099/1995, EXCETO se o agente estiver:",
+  "options": [
+   {
+    "label": "A",
+    "text": "participando, em via pública, de corrida não autorizada",
+    "correct": true,
+    "explanation": "Correta: art. 291, § 1º, II."
+   },
+   {
+    "label": "B",
+    "text": "dirigindo sem possuir habilitação",
+    "correct": false,
+    "explanation": "Não está entre as exceções do § 1º."
+   },
+   {
+    "label": "C",
+    "text": "transitando 20% acima da velocidade máxima",
+    "correct": false,
+    "explanation": "A exceção é 50 km/h acima da máxima."
+   },
+   {
+    "label": "D",
+    "text": "conduzindo veículo não licenciado",
+    "correct": false,
+    "explanation": "Não está entre as exceções do § 1º."
+   },
+   {
+    "label": "E",
+    "text": "conduzindo veículo de transporte de passageiros",
+    "correct": false,
+    "explanation": "É causa de aumento do art. 302, § 1º, não exceção do art. 291."
+   }
+  ],
+  "justification": "Exceções: álcool ou psicoativa; racha; velocidade 50 km/h acima da máxima.",
+  "nodeKey": "N0063",
+  "difficulty": 4,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "situacional",
+  "statement": "Embriagado, um condutor perde o controle e atropela um pedestre, que morre. Não há indícios de dolo. A conduta se amolda ao:",
+  "options": [
+   {
+    "label": "A",
+    "text": "art. 302, § 3º, com reclusão de cinco a oito anos",
+    "correct": true,
+    "explanation": "Correta: homicídio culposo sob influência de álcool."
+   },
+   {
+    "label": "B",
+    "text": "art. 302, caput, com detenção de dois a quatro anos",
+    "correct": false,
+    "explanation": "O álcool desloca para o § 3º."
+   },
+   {
+    "label": "C",
+    "text": "art. 306, apenas",
+    "correct": false,
+    "explanation": "Há resultado morte: incide o art. 302, § 3º."
+   },
+   {
+    "label": "D",
+    "text": "art. 308, § 2º",
+    "correct": false,
+    "explanation": "Não houve racha."
+   },
+   {
+    "label": "E",
+    "text": "art. 303, § 2º",
+    "correct": false,
+    "explanation": "Esse dispositivo trata de lesão corporal, não de morte."
+   }
+  ],
+  "justification": "Art. 302, § 3º: reclusão de 5 a 8 anos + suspensão ou proibição; vedada a substituição (art. 312-B).",
+  "nodeKey": "N0030",
+  "difficulty": 4,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "situacional",
+  "statement": "Em 12 meses, Carla (sem EAR) somou 1 gravíssima, 3 graves e 2 médias. Diego (sem EAR) somou 2 gravíssimas e 2 graves. Considerando o art. 261, I:",
+  "options": [
+   {
+    "label": "A",
+    "text": "Carla não será suspensa (29 pontos, limite 30); Diego será (24 pontos, limite 20)",
+    "correct": true,
+    "explanation": "Correta: 7 + 15 + 8 = 29 < 30; 14 + 10 = 24 ≥ 20."
+   },
+   {
+    "label": "B",
+    "text": "ambos serão suspensos, pois passaram de 20 pontos",
+    "correct": false,
+    "explanation": "O limite de 20 só vale com 2 ou mais gravíssimas."
+   },
+   {
+    "label": "C",
+    "text": "nenhum será suspenso, pois o limite é de 40 pontos",
+    "correct": false,
+    "explanation": "40 é o limite sem gravíssima ou para o EAR."
+   },
+   {
+    "label": "D",
+    "text": "Carla será suspensa e Diego não",
+    "correct": false,
+    "explanation": "Inverte os limites."
+   },
+   {
+    "label": "E",
+    "text": "Diego não será suspenso, pois tem menos de 30 pontos",
+    "correct": false,
+    "explanation": "Com 2 gravíssimas, o limite de Diego é 20."
+   }
+  ],
+  "justification": "Limites: 20 (2+ gravíssimas), 30 (1 gravíssima), 40 (nenhuma).",
+  "nodeKey": "N0059",
+  "difficulty": 4,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "multipla_escolha",
+  "statement": "Sobre embriaguez ao volante, assinale a correta.",
+  "options": [
+   {
+    "label": "A",
+    "text": "A recusa ao teste do bafômetro configura infração autônoma (art. 165-A), com as mesmas penalidades do art. 165",
+    "correct": true,
+    "explanation": "Correta."
+   },
+   {
+    "label": "B",
+    "text": "A recusa ao bafômetro configura, por si só, o crime do art. 306",
+    "correct": false,
+    "explanation": "A recusa é infração administrativa; o crime exige prova da alteração."
+   },
+   {
+    "label": "C",
+    "text": "O crime do art. 306 só pode ser provado por exame de sangue",
+    "correct": false,
+    "explanation": "Admite bafômetro, sinais, vídeo, testemunhas."
+   },
+   {
+    "label": "D",
+    "text": "A infração do art. 165 é grave, com multa simples",
+    "correct": false,
+    "explanation": "É gravíssima, multa (10x) e suspensão por 12 meses."
+   },
+   {
+    "label": "E",
+    "text": "O crime do art. 306 exige concentração mínima de 0,6 mg/L de ar alveolar",
+    "correct": false,
+    "explanation": "São 0,3 mg/L de ar ou 6 dg/L de sangue."
+   }
+  ],
+  "justification": "Art. 165-A: recusa = mesmas penalidades do art. 165. Art. 306: ≥ 0,3 mg/L de ar, ≥ 6 dg/L de sangue ou sinais.",
+  "nodeKey": "N0037",
+  "difficulty": 4,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "multipla_escolha",
+  "statement": "Quem viola a suspensão ou a proibição de se obter a permissão ou a habilitação imposta com fundamento no CTB (art. 307) está sujeito a:",
+  "options": [
+   {
+    "label": "A",
+    "text": "detenção de seis meses a um ano e multa, com nova imposição adicional de idêntico prazo de suspensão ou proibição",
+    "correct": true,
+    "explanation": "Correta: art. 307."
+   },
+   {
+    "label": "B",
+    "text": "detenção de seis meses a dois anos",
+    "correct": false,
+    "explanation": "Erro comum (inclusive da apostila-base): a pena é de 6 meses a 1 ano."
+   },
+   {
+    "label": "C",
+    "text": "reclusão de um a três anos",
+    "correct": false,
+    "explanation": "Não é a pena do art. 307."
+   },
+   {
+    "label": "D",
+    "text": "apenas multa administrativa e cassação da CNH",
+    "correct": false,
+    "explanation": "É crime, além das consequências administrativas."
+   }
+  ],
+  "justification": "Art. 307: detenção de 6 meses a 1 ano e multa, com nova imposição por igual prazo.",
+  "nodeKey": "N0064",
+  "difficulty": 4,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "multipla_escolha",
+  "statement": "Sobre o processo administrativo de trânsito, assinale a correta.",
+  "options": [
+   {
+    "label": "A",
+    "text": "O recurso contra a imposição de multa pode ser interposto sem o recolhimento do seu valor",
+    "correct": true,
+    "explanation": "Correta: art. 286."
+   },
+   {
+    "label": "B",
+    "text": "O recurso à JARI exige o depósito prévio da multa",
+    "correct": false,
+    "explanation": "O art. 286 dispensa o recolhimento."
+   },
+   {
+    "label": "C",
+    "text": "A notificação da autuação pode ser expedida a qualquer tempo, dentro da prescrição",
+    "correct": false,
+    "explanation": "O prazo é de 30 dias (art. 281, par. único, II)."
+   },
+   {
+    "label": "D",
+    "text": "Da decisão da JARI cabe recurso diretamente ao Poder Judiciário, sem instância administrativa",
+    "correct": false,
+    "explanation": "Cabe recurso ao CETRAN/CONTRANDIFE (art. 288)."
+   },
+   {
+    "label": "E",
+    "text": "O prazo para recorrer da penalidade pode ser inferior a 30 dias",
+    "correct": false,
+    "explanation": "O art. 282, § 4º, fixa prazo não inferior a 30 dias."
+   }
+  ],
+  "justification": "Autuação → notificação (30 dias) → defesa → penalidade → JARI → CETRAN; recurso sem recolher a multa.",
+  "nodeKey": "N0061",
+  "difficulty": 4,
+  "essential": false,
+  "dependsOnExternalSource": false
+ }
+]

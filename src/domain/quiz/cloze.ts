@@ -66,6 +66,10 @@ const KEY_TERMS: Record<string, number> = {
   exclusivamente: 5, direcao: 3, chefia: 3, assessoramento: 3, professor: 4, tecnico: 4, cientifico: 4, saude: 4, autarquia: 5, especifica: 5, complementar: 5,
   educativo: 4, informativo: 3, nulidade: 5, regresso: 5, dolo: 5, culpa: 5, terceiros: 4, brasileiros: 4, estrangeiros: 4, horarios: 4, uma: 2,
   improrrogavel: 5, prioridade: 4, suspensao: 4, indisponibilidade: 4, ressarcimento: 4, legislativa: 4, subsidiarias: 4, privativos: 3, improbidade: 4,
+  // trânsito (CTB)
+  contran: 5, cetran: 5, contrandife: 4, jari: 5, semaforo: 5, agente: 5, sinais: 4, normativo: 4, consultivos: 3, executivos: 4, rodoviarios: 4,
+  rodoviaria: 5, militares: 5, objetivamente: 5, vida: 4, quatro: 4, cinco: 4, sete: 4, animais: 4, estacionamento: 4, parada: 4, circulacao: 3,
+  cassacao: 5, reciclagem: 4, advertencia: 4, ordens: 3, direito: 2, seguras: 3, omissao: 4,
 };
 
 /** Trocas típicas de banca (palavra certa → candidatas a "errada"). */
@@ -165,6 +169,29 @@ const SWAPS: Record<string, string[]> = {
   subsidiárias: ["filiais", "autarquias"],
   privativos: ["exclusivos", "próprios"],
   improbidade: ["imoralidade", "ilegalidade"],
+  contran: ["CETRAN", "DENATRAN"],
+  cetran: ["CONTRAN", "JARI"],
+  contrandife: ["CETRAN", "DETRAN"],
+  jari: ["CETRAN", "CONTRAN"],
+  semáforo: ["agente de trânsito", "sinal sonoro"],
+  agente: ["semáforo", "condutor"],
+  sinais: ["semáforos", "agentes"],
+  normativo: ["executivo", "julgador"],
+  executivos: ["normativos", "consultivos"],
+  rodoviária: ["Civil", "Federal"],
+  militares: ["Civis", "Penais"],
+  objetivamente: ["subjetivamente", "solidariamente"],
+  vida: ["propriedade", "fluidez"],
+  quatro: ["três", "cinco"],
+  cinco: ["quatro", "sete"],
+  sete: ["cinco", "nove"],
+  estacionamento: ["parada", "circulação"],
+  parada: ["estacionamento", "circulação"],
+  cassação: ["suspensão", "apreensão"],
+  reciclagem: ["formação", "habilitação"],
+  advertência: ["repreensão", "notificação"],
+  omissão: ["dolo", "culpa"],
+  seguras: ["adequadas", "regulares"],
 };
 
 /** Gerador pseudoaleatório determinístico (mulberry32) a partir de uma string. */
