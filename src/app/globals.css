@@ -586,3 +586,8 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .olhos-fogo-b { background-size: 18% 25%; background-position: 37% 0; opacity: 0.7; mix-blend-mode: screen; animation: olhos-sobe-k 0.95s linear infinite; }
 @keyframes olhos-sobe-k { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(0, -50%, 0); } }
 @keyframes olhos-pulso-k { 0%, 100% { opacity: 0.86; } 35% { opacity: 1; } 60% { opacity: 0.92; } 80% { opacity: 1; } }
+
+/* Banners: arte e animações aparecem juntas (ver BannerGate) */
+.banner-gate { transition: opacity 0.5s ease-out; }
+.banner-gate[data-pronto="0"] { opacity: 0; }
+.banner-gate[data-pronto="0"] * { animation-play-state: paused !important; }

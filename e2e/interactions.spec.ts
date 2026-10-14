@@ -548,3 +548,24 @@ test("novo estudo: seletor de aulas do catálogo, separado por matéria", async 
   await expect(picker.getByText(/Administração Pública/)).toBeVisible();
   await expect(picker.getByText("Homicídio (CP, art. 121)")).toBeHidden();
 });
+
+test("banners: arte e animações aparecem juntas, mesmo com a imagem demorando", async ({ page }) => {
+  for (const [path, id, img] of [["painel", "painel-banner", /banner-estudo(-sm)?\.webp/], ["quiz", "jogo-banner-marca", /banner-jogo(-sm)?\.webp/]] as const) {
+    let release: () => void = () => {};
+    const gate = new Promise<void>((r) => (release = r));
+    await page.route(img, async (route) => {
+      await gate;
+      await route.continue();
+    });
+    await page.goto(`${G}/${path}`, { waitUntil: "domcontentloaded" });
+    const banner = page.getByTestId(id);
+    await expect(banner).toHaveAttribute("data-pronto", "0");
+    await page.waitForTimeout(800);
+    // Ainda sem a arte: banner (e animações) invisível.
+    await expect(banner).toHaveAttribute("data-pronto", "0");
+    expect(await banner.evaluate((e) => getComputedStyle(e).opacity)).toBe("0");
+    release();
+    await expect(banner).toHaveAttribute("data-pronto", "1");
+    await page.unroute(img);
+  }
+});

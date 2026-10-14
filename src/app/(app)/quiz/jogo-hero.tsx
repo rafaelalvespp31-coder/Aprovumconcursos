@@ -8,6 +8,8 @@
  * de uma explosão. Tudo é decorativo (aria-hidden).
  */
 
+import { BannerGate } from "@/components/banner-gate";
+
 const W = 1664;
 const H = 1536;
 
@@ -23,10 +25,11 @@ export function JogoHero() {
   const bottomFade = "linear-gradient(to bottom, #000 0%, #000 90%, transparent 100%)";
   const sideFade = "linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%)";
   return (
-    <div
+    <BannerGate
       className="relative -mx-4 -mt-6 mb-5 overflow-hidden sm:-mx-5 lg:-mx-10 lg:h-[min(calc(100dvh-6rem),900px)] lg:min-h-[560px]"
       style={{ maskImage: bottomFade, WebkitMaskImage: bottomFade }}
-      data-testid="jogo-banner-marca"
+      testId="jogo-banner-marca"
+      assets={["/banner-jogo-fundo.webp"]}
     >
       <FireFilter />
       {/* Laterais no desktop: a própria arte, desfocada e escurecida */}
@@ -49,6 +52,7 @@ export function JogoHero() {
           alt="APROVUM — Sua preparação. Seu próximo cargo. O PWA de estudos para concursos com IA e gamificação: aulas inteligentes, gamificação, todos os concursos, questões reais e seu progresso. Mais que estudo, é estratégia."
           className="marca-zoom block h-full w-full object-contain"
           fetchPriority="high"
+          data-banner-main
           decoding="async"
         />
         {/* Fogo nos olhos (posição em % da arte, então acompanha qualquer tamanho de tela) */}
@@ -60,7 +64,7 @@ export function JogoHero() {
       </div>
       {/* Brasas e cinzas flutuando sobre todo o banner (inclusive as laterais do desktop) */}
       <Embers />
-    </div>
+    </BannerGate>
   );
 }
 

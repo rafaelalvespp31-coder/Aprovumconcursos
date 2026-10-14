@@ -13,6 +13,8 @@
  * - "V" do APROVUM: letreiro de neon — halo vermelho, tubo aceso e falhas de acendimento.
  */
 
+import { BannerGate } from "@/components/banner-gate";
+
 const W = 1664;
 const H = 1536;
 const pct = (v: number, total: number) => `${(v / total) * 100}%`;
@@ -27,10 +29,11 @@ export function BrandBanner() {
   const bottomFade = "linear-gradient(to bottom, #000 0%, #000 92%, transparent 100%)";
   const sideFade = "linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%)";
   return (
-    <div
+    <BannerGate
       className="relative -mx-4 -mt-7 mb-4 overflow-hidden sm:-mx-5 lg:-mx-10 lg:mb-6 lg:h-[min(calc(100dvh-6rem),880px)] lg:min-h-[560px]"
       style={{ maskImage: bottomFade, WebkitMaskImage: bottomFade }}
-      data-testid="painel-banner"
+      testId="painel-banner"
+      assets={["/banner-estudo-fundo.webp", "/banner-estudo-texto.png", "/banner-estudo-v.png", "/banner-estudo-olhos.png", "/fogo-textura.webp"]}
     >
       {/* Laterais no desktop: a própria arte, ampliada e desfocada */}
       <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden>
@@ -51,6 +54,7 @@ export function BrandBanner() {
           alt="APROVUM — Sua preparação. Seu próximo cargo. O PWA de estudos para concursos com IA e gamificação: aulas inteligentes, gamificação, todos os concursos, questões reais e seu progresso. Mais que estudo, é estratégia."
           className="marca-zoom block h-full w-full object-contain"
           fetchPriority="high"
+          data-banner-main
           decoding="async"
         />
 
@@ -77,6 +81,6 @@ export function BrandBanner() {
           </div>
         </div>
       </div>
-    </div>
+    </BannerGate>
   );
 }
