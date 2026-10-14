@@ -111,6 +111,16 @@ export function TrailMap({
                         </span>
                         <span className="t-tiny text-tinta-fraca">~{l.estimated_minutes} min</span>
                       </div>
+                      {!review && !locked && (
+                        <Link
+                          href={`/aula/${l.id}`}
+                          className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-xl bg-[#D90A00] px-5 text-[15px] font-bold text-white shadow-[0_8px_20px_rgba(217,10,0,0.28)] transition-[background-color,transform] hover:bg-[#B00800] active:scale-[0.98] sm:w-auto"
+                          data-testid="iniciar-aula"
+                        >
+                          <Icon name="play" className="size-4" />
+                          {l.state === "disponivel" ? "Iniciar aula" : l.state === "em_andamento" ? "Continuar aula" : "Abrir aula"}
+                        </Link>
+                      )}
                       {l.prerequisiteIds.length > 0 && (
                         <p className="mt-2 inline-flex items-start gap-1 t-tiny text-tinta-suave">
                           <Icon name="trilhas" className="mt-px size-3.5" />
