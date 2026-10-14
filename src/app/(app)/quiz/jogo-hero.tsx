@@ -4,7 +4,8 @@
  * - Desktop: faixa com a altura da tela; arte inteira no centro e laterais com a
  *   própria arte desfocada e escurecida.
  * Os olhos em brasa ganham fogo animado: chamas com distorção de turbulência (SVG),
- * brilho pulsante e brasas subindo. Tudo é decorativo (aria-hidden).
+ * brilho pulsante e brasas subindo. Sobre a arte flutuam brasas e cinzas, como depois
+ * de uma explosão. Tudo é decorativo (aria-hidden).
  */
 
 const W = 1664;
@@ -56,8 +57,64 @@ export function JogoHero() {
             <FireEye key={i} left={(e.x / W) * 100} top={(e.y / H) * 100} width={(e.w / W) * 100} delay={e.d} />
           ))}
         </div>
-        <div className="marca-scan pointer-events-none absolute inset-x-0 top-0 h-full" aria-hidden />
       </div>
+      {/* Brasas e cinzas flutuando sobre todo o banner (inclusive as laterais do desktop) */}
+      <Embers />
+    </div>
+  );
+}
+
+/** Gerador determinístico (mesmo resultado no servidor e no navegador). */
+function rand(seed: number) {
+  let t = seed;
+  return () => {
+    t = (t * 1664525 + 1013904223) % 4294967296;
+    return t / 4294967296;
+  };
+}
+
+/**
+ * Partículas leves subindo devagar com balanço lateral: brasas acesas (laranja, com brilho)
+ * e cinzas (cinza, apagadas). Densidade menor no celular.
+ */
+function Embers() {
+  const r = rand(42);
+  const parts = Array.from({ length: 52 }, (_, i) => {
+    const ash = r() < 0.3;
+    // Algumas brasas grandes e desfocadas, como se estivessem mais perto da câmera.
+    const bokeh = !ash && r() < 0.14;
+    return {
+      i,
+      ash,
+      bokeh,
+      left: r() * 100,
+      size: bokeh ? 9 + r() * 7 : ash ? 2 + r() * 3 : 2.5 + r() * 3.5,
+      dur: bokeh ? 14 + r() * 8 : 8 + r() * 10,
+      delay: -r() * 20,
+      sway: (r() - 0.5) * 90,
+      rise: 55 + r() * 45,
+      glow: bokeh ? 0.35 + r() * 0.25 : 0.6 + r() * 0.4,
+      mobile: i % 2 === 0,
+    };
+  });
+  return (
+    <div className="pointer-events-none absolute inset-0 overflow-hidden" style={{ containerType: "size" }} aria-hidden>
+      {parts.map((p) => (
+        <span
+          key={p.i}
+          className={`cinza ${p.ash ? "cinza-apagada" : "cinza-brasa"} ${p.bokeh ? "cinza-perto" : ""} ${p.mobile ? "" : "hidden sm:block"}`}
+          style={{
+            left: `${p.left}%`,
+            width: p.size,
+            height: p.size,
+            ["--dur" as string]: `${p.dur}s`,
+            ["--delay" as string]: `${p.delay}s`,
+            ["--sway" as string]: `${p.sway}px`,
+            ["--rise" as string]: `${p.rise + 50}cqh`,
+            ["--glow" as string]: p.glow,
+          }}
+        />
+      ))}
     </div>
   );
 }

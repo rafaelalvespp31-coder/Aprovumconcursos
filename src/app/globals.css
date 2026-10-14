@@ -455,9 +455,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 
 /* Modo Jogo — banner da marca */
 @keyframes marca-zoom-k { from { transform: scale(1.06); } to { transform: scale(1); } }
-@keyframes marca-scan-k { 0% { transform: translateY(-100%); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(100%); opacity: 0; } }
 .marca-zoom { animation: marca-zoom-k 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
-.marca-scan { background: linear-gradient(to bottom, transparent 0%, rgba(255, 40, 30, 0.10) 48%, rgba(255, 60, 48, 0.28) 50%, transparent 52%); animation: marca-scan-k 6s ease-in-out 1.2s infinite; mix-blend-mode: screen; }
 /* Painel — brilho que atravessa o banner claro */
 @keyframes marca-brilho-k { 0% { transform: translateX(-120%) skewX(-18deg); } 100% { transform: translateX(220%) skewX(-18deg); } }
 .marca-brilho { background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%); width: 40%; animation: marca-brilho-k 5.5s ease-in-out 1.4s infinite; }
@@ -507,3 +505,26 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   60%  { transform: translateX(40%) scale(0.8); }
   100% { bottom: 105%; opacity: 0; transform: translateX(-60%) scale(0.3); }
 }
+
+/* Modo Jogo — brasas e cinzas flutuando no banner */
+.cinza {
+  position: absolute; bottom: -2%; border-radius: 9999px; opacity: 0;
+  animation: cinza-sobe var(--dur) linear var(--delay) infinite;
+  will-change: transform, opacity;
+}
+.cinza-brasa {
+  background: radial-gradient(circle, #FFE3A3 0%, #FF8A1F 45%, #E11A00 100%);
+  box-shadow: 0 0 6px 2px rgba(255, 120, 30, calc(var(--glow) * 0.95)), 0 0 18px 5px rgba(225, 30, 0, calc(var(--glow) * 0.55));
+  mix-blend-mode: screen;
+}
+.cinza-apagada { background: rgba(200, 190, 185, 0.7); filter: blur(0.3px); }
+.cinza-perto { --b: 3px; filter: blur(3px); }
+@keyframes cinza-sobe {
+  0%   { transform: translate3d(0, 0, 0) scale(1); opacity: 0; }
+  10%  { opacity: var(--glow, 0.7); }
+  35%  { transform: translate3d(calc(var(--sway) * 0.6), calc(var(--rise) * -0.35), 0) scale(1); }
+  65%  { transform: translate3d(calc(var(--sway) * -0.4), calc(var(--rise) * -0.65), 0) scale(0.85); opacity: calc(var(--glow, 0.7) * 0.8); }
+  100% { transform: translate3d(var(--sway), calc(var(--rise) * -1), 0) scale(0.5); opacity: 0; }
+}
+.cinza-brasa { animation-name: cinza-sobe, cinza-pisca; animation-duration: var(--dur), 1.7s; animation-timing-function: linear, ease-in-out; animation-delay: var(--delay), var(--delay); animation-iteration-count: infinite, infinite; animation-direction: normal, alternate; }
+@keyframes cinza-pisca { from { filter: brightness(0.8) blur(var(--b, 0px)); } to { filter: brightness(1.4) blur(var(--b, 0px)); } }
