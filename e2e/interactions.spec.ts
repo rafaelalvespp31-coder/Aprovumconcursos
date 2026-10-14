@@ -142,7 +142,9 @@ async function answerErradoIfVisible(page: Page) {
 
 async function answerIfVisible(page: Page, optionText: string) {
   const opt = page.getByText(optionText, { exact: false }).first();
-  if (await opt.isVisible()) {
+  // Questão já respondida (resposta gravada) não tem botão "Responder" ativo: segue em frente.
+  const radio = page.getByRole("radio", { name: new RegExp(optionText) }).first();
+  if ((await opt.isVisible()) && (await radio.isEnabled())) {
     await opt.click();
     await page.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
     await expect(page.getByText(/Resposta (correta|incorreta)/).first()).toBeVisible();
@@ -212,6 +214,29 @@ test.describe("tela de aula", () => {
     }
     await expect(page.getByText("Resposta correta").first()).toBeVisible();
     await expect(page.locator('[data-resultado="acerto"]').first()).toBeVisible();
+  });
+
+  test("respostas ficam gravadas: reabrir a questão mostra a resposta e o gabarito", async ({ page, isMobile }) => {
+    await page.goto(`${G}/aula`);
+    // Resposta gravada em visita anterior: a questão já abre respondida.
+    if (isMobile) await page.getByRole("button", { name: "Etapas", exact: true }).click();
+    const toc = isMobile ? page.getByRole("dialog", { name: "Etapas da aula" }) : page.getByRole("navigation", { name: "Etapas da aula" });
+    await toc.getByRole("button", { name: /Anulação × revogação/ }).click();
+    const saved = page.getByRole("article", { name: /Questão/ }).filter({ hasText: "A revogação de ato administrativo pode ser feita" });
+    await expect(saved.getByText("Resposta gravada anteriormente")).toBeVisible();
+    await expect(saved.getByText("Resposta correta")).toBeVisible();
+    await expect(page.getByTestId("gabarito-comentado").first()).toBeVisible();
+    // Responde outra questão, sai da etapa e volta: continua respondida.
+    if (isMobile) await page.getByRole("button", { name: "Etapas", exact: true }).click();
+    await toc.getByRole("button", { name: /Introdução/ }).click();
+    await page.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
+    await page.getByRole("button", { name: "Responder", exact: true }).first().click();
+    await expect(page.getByText("Resposta correta").first()).toBeVisible();
+    await page.getByRole("button", { name: /^Próximo/ }).click();
+    await page.getByRole("button", { name: /Anterior/ }).first().click();
+    const again = page.getByRole("article", { name: /Questão/ }).filter({ hasText: "Um servidor obteve licença" });
+    await expect(again.getByText("Resposta correta")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Refazer questão" }).first()).toBeVisible();
   });
 
   test("um tema por tela; pular para as questões não conta como leitura; depois avalia por níveis", async ({ page }) => {

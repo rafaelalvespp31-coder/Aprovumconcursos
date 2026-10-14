@@ -11,7 +11,7 @@ import { TrueFalseCards, parseTrueFalse } from "@/components/true-false-cards";
 import { Icon, type IconName } from "@/components/icons";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
 import { SaveIndicator, type SaveState } from "@/components/interactive";
-import { QuestionCard, type QuestionData } from "@/components/question-card";
+import { QuestionCard, type AnswerOutcome, type QuestionData, type SavedAnswer } from "@/components/question-card";
 import { SECTION_LABELS, type LessonSectionKind } from "@/ai/pedagogy";
 import type { Annotation } from "../../study-actions";
 import type { QuizResult } from "./actions";
@@ -50,6 +50,8 @@ export interface ReaderProps {
   /** Níveis aprovados nesta unidade (0–3): fácil → médio → difícil. */
   levelsPassed: number;
   markedQuestionIds: string[];
+  /** Respostas já gravadas por questão (a tela reabre com elas marcadas). */
+  answers?: Record<string, SavedAnswer>;
   annotations: Annotation[];
   clarifications: ReaderClarification[];
   readingDone: boolean;
@@ -87,6 +89,10 @@ export function LessonReader(props: ReaderProps) {
   const [readingDone, setReadingDone] = useState(props.readingDone);
   const [levelsPassed, setLevelsPassed] = useState(props.levelsPassed);
   const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
+  // Respostas dadas nesta visita: as etapas desmontam os cards, então a resposta fica guardada aqui.
+  const [sessionAnswers, setSessionAnswers] = useState<Record<string, SavedAnswer>>({});
+  const savedFor = (id: string) => sessionAnswers[id] ?? props.answers?.[id];
+  const remember = (o: AnswerOutcome) => setSessionAnswers((m) => ({ ...m, [o.questionId]: { choice: o.choice, feedback: o.feedback } }));
   const [completing, startCompleting] = useTransition();
   const tocRef = useRef<HTMLDialogElement>(null);
   const notesRef = useRef<HTMLDialogElement>(null);
@@ -301,7 +307,7 @@ export function LessonReader(props: ReaderProps) {
   const renderQuestion = (q: ReaderQuestion, n: number, label?: string) => (
     <div key={q.id} onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
       {label && <p className="mb-2 t-tiny font-semibold text-destaque">{label}</p>}
-      <QuestionCard q={q} number={n} context={context} active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} />
+      <QuestionCard q={q} number={n} context={context} active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} saved={savedFor(q.id)} onAnswered={remember} />
     </div>
   );
 
@@ -494,7 +500,7 @@ export function LessonReader(props: ReaderProps) {
                     <p className="mb-2 inline-flex items-center gap-1.5 t-small font-semibold text-destaque">
                       <Icon name="raio" className="size-4" /> Questão sobre este tema
                     </p>
-                    <QuestionCard q={q} number={numberOf.get(q.id)!} context={context} compact active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} />
+                    <QuestionCard q={q} number={numberOf.get(q.id)!} context={context} compact active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} saved={savedFor(q.id)} onAnswered={remember} />
                   </div>
                 ))}
                 {current.n === sections.length && !readingDone && sections.some((s) => !seen.has(s.id) && s.id !== current.section.id) && (

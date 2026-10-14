@@ -7,6 +7,8 @@ import type { PracticeCase } from "@/domain/content/practice";
 import type { AuditReport } from "@/domain/content/audit";
 import type { UnitState } from "@/domain/progress/state-machine";
 import type { RulerState } from "@/components/coverage-ruler";
+import type { SavedAnswer } from "@/components/question-card";
+import type { AnswerFeedback } from "./services/study";
 import { summarizePerformance, type AttemptRecord } from "@/domain/progress/performance";
 import { computeGamification, streakMessage, type StudyStats } from "@/domain/progress/gamification";
 
@@ -229,7 +231,7 @@ export async function getLessonForStudy(lessonId: string) {
   const modulesP: Promise<Record<string, string>> = lesson.catalog_topic_id
     ? import("./services/catalog").then((m) => m.catalogModulesByTitle(lesson.catalog_topic_id as string)).catch(() => ({}))
     : Promise.resolve({});
-  const [sections, refs, questions, progress, nodes, siblings, annotations, clarifications, marks] = await Promise.all([
+  const [sections, refs, questions, progress, nodes, siblings, annotations, clarifications, marks, answerStates] = await Promise.all([
     db.from("lesson_sections").select("id, kind, title, body_markdown, sort_order, node_keys, verification_status").eq("lesson_id", lessonId).order("sort_order"),
     db.from("source_references").select("kind, citation, verified").eq("lesson_id", lessonId),
     db
@@ -246,8 +248,14 @@ export async function getLessonForStudy(lessonId: string) {
     db.from("lesson_annotations").select("id, section_id, section_title, kind, body, resolved, updated_at").eq("lesson_id", lessonId).order("created_at", { ascending: false }),
     db.from("concept_clarifications").select("id, section_id, question, answer_markdown, verification_pending").eq("lesson_id", lessonId).order("created_at"),
     db.from("question_marks").select("question_id"),
+    // Respostas já dadas nesta aula (última de cada questão + gabarito), para reabrir tudo marcado.
+    db.rpc("lesson_answer_states", { p_lesson: lessonId }),
   ]);
   const [practice, modules] = await Promise.all([practiceP, modulesP]);
+  const answers: Record<string, SavedAnswer> = {};
+  for (const r of (answerStates.data ?? []) as Array<{ question_id: string; choice: string; correct: boolean; attempts: number; feedback: Omit<AnswerFeedback, "correct" | "attempts"> }>) {
+    answers[r.question_id] = { choice: r.choice, feedback: { ...r.feedback, correct: r.correct, attempts: r.attempts } };
+  }
   const nodeList = (nodes.data ?? [])
     .map((n) => ({ taught: n.taught as boolean, ...(n.content_nodes as unknown as { id: string; key: string; marker: string | null; title: string; path: string; kind: string }) }))
     .sort((a, b) => a.key.localeCompare(b.key));
@@ -291,6 +299,7 @@ export async function getLessonForStudy(lessonId: string) {
     annotations: (annotations.data ?? []) as Array<{ id: string; section_id: string | null; section_title: string | null; kind: "nota" | "revisar" | "duvida"; body: string; resolved: boolean; updated_at: string }>,
     clarifications: (clarifications.data ?? []) as Array<{ id: string; section_id: string | null; question: string; answer_markdown: string; verification_pending: boolean }>,
     markedQuestionIds: (marks.data ?? []).map((m) => m.question_id as string),
+    answers,
   };
 }
 

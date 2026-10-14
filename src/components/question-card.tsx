@@ -20,8 +20,16 @@ export interface QuestionData {
   topic?: string | null;
 }
 
+/** Resposta já gravada (reabrir a tela com a questão respondida e o gabarito). */
+export interface SavedAnswer {
+  choice: string;
+  feedback: AnswerFeedback;
+}
+
 export interface AnswerOutcome {
   questionId: string;
+  /** Alternativa marcada (id) ou "true"/"false" em certo/errado. */
+  choice: string;
   correct: boolean;
   confidence: number | null;
   feedback: AnswerFeedback;
@@ -43,6 +51,7 @@ export function QuestionCard({
   initialMarked = false,
   active = false,
   compact = false,
+  saved,
   onAnswered,
 }: {
   q: QuestionData;
@@ -55,12 +64,15 @@ export function QuestionCard({
   /** Recebe atalhos de teclado quando ativa. */
   active?: boolean;
   compact?: boolean;
+  /** Última resposta gravada: a questão abre já respondida, com o gabarito. */
+  saved?: SavedAnswer;
   onAnswered?: (o: AnswerOutcome) => void;
 }) {
   const api = useStudyApi();
-  const [choice, setChoice] = useState<string | null>(null);
+  const [choice, setChoice] = useState<string | null>(saved?.choice ?? null);
   const [confidence, setConfidence] = useState<number | null>(null);
-  const [fb, setFb] = useState<AnswerFeedback | null>(null);
+  const [fb, setFb] = useState<AnswerFeedback | null>(saved?.feedback ?? null);
+  const [fromSaved, setFromSaved] = useState(!!saved);
   const [error, setError] = useState<string | null>(null);
   const [marked, setMarked] = useState(initialMarked);
   const [markPending, setMarkPending] = useState(false);
@@ -86,8 +98,9 @@ export function QuestionCard({
       });
       if (!r.ok) return setError(r.error);
       setError(null);
+      setFromSaved(false);
       setFb(r.data);
-      onAnswered?.({ questionId: q.id, correct: r.data.correct, confidence, feedback: r.data });
+      onAnswered?.({ questionId: q.id, choice: choice!, correct: r.data.correct, confidence, feedback: r.data });
     });
   };
 
@@ -246,6 +259,24 @@ export function QuestionCard({
               {q.depends_on_external_source && <p className="mt-2 t-tiny">Depende de fonte normativa: confira a redação vigente.</p>}
               {fb!.attempts && fb!.attempts > 1 && <p className="mt-2 t-tiny">Esta foi sua tentativa nº {fb!.attempts} nesta questão.</p>}
             </Notice>
+          )}
+          {!examMode && (
+            <div className="flex flex-wrap items-center gap-3 t-tiny text-tinta-fraca">
+              {fromSaved && <span className="inline-flex items-center gap-1"><Icon name="salvo" className="size-3.5" /> Resposta gravada anteriormente</span>}
+              <button
+                type="button"
+                onClick={() => {
+                  setFb(null);
+                  setChoice(null);
+                  setConfidence(null);
+                  setFromSaved(false);
+                  startedAt.current = Date.now();
+                }}
+                className="inline-flex min-h-9 items-center gap-1 font-semibold text-destaque"
+              >
+                <Icon name="historico" className="size-3.5" /> Refazer questão
+              </button>
+            </div>
           )}
           {overconfident && (
             <Notice tone="alerta">Você marcou certeza e errou. Esse é o tipo de erro que mais custa na prova — vale revisar este ponto.</Notice>

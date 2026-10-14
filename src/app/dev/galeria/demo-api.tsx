@@ -31,6 +31,8 @@ function allQuestions() {
 function createDemoApi(): StudyApi {
     const questions = allQuestions();
     const answers = new Map<string, { correct: boolean; essential: boolean }>();
+    // Respostas "gravadas" das fixtures contam como já respondidas (como no banco).
+    for (const [qid, sv] of Object.entries(reader.answers ?? {})) answers.set(qid, { correct: sv.feedback.correct, essential: questions.get(qid)?.essential ?? false });
     const attempts = new Map<string, number>();
     let annotations: Annotation[] = [...reader.annotations];
     let seq = 0;

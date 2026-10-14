@@ -87,6 +87,19 @@ export const reader: ReaderProps = {
   questions: bank.slice(0, 3).map((b, i) => ({ ...b, nodeKey: i === 2 ? "N0007" : "N0006", level: i === 2 ? ("medio" as const) : ("facil" as const), recovery_of: null })),
   levelsPassed: 0,
   markedQuestionIds: [id(503)],
+  // Questão já respondida em outra visita: abre marcada, com o gabarito comentado.
+  answers: {
+    [id(502)]: {
+      choice: "false",
+      feedback: {
+        correct: true,
+        attempts: 1,
+        correctAnswerTrue: false,
+        justification: "Revogar é juízo de conveniência e oportunidade, exclusivo de quem praticou o ato. O Judiciário, ao julgar, só anula por ilegalidade.",
+        options: [],
+      },
+    },
+  },
   annotations: [
     { id: id(301), section_id: id(203), section_title: "Anulação × revogação", kind: "revisar", body: "", resolved: false, updated_at: "2026-10-10T12:00:00Z" },
     { id: id(302), section_id: id(206), section_title: "Convalidação", kind: "duvida", body: "Vício de competência sempre pode ser convalidado?", resolved: false, updated_at: "2026-10-10T12:05:00Z" },
