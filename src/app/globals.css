@@ -458,3 +458,6 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 @keyframes marca-scan-k { 0% { transform: translateY(-100%); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(100%); opacity: 0; } }
 .marca-zoom { animation: marca-zoom-k 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
 .marca-scan { background: linear-gradient(to bottom, transparent 0%, rgba(255, 40, 30, 0.10) 48%, rgba(255, 60, 48, 0.28) 50%, transparent 52%); animation: marca-scan-k 6s ease-in-out 1.2s infinite; mix-blend-mode: screen; }
+/* Painel — brilho que atravessa o banner claro */
+@keyframes marca-brilho-k { 0% { transform: translateX(-120%) skewX(-18deg); } 100% { transform: translateX(220%) skewX(-18deg); } }
+.marca-brilho { background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%); width: 40%; animation: marca-brilho-k 5.5s ease-in-out 1.4s infinite; }

@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { getDashboard, getDueReviews, getTrailPlan, listTrails } from "@/server/queries";
 import { DashboardView } from "./view";
+import { BrandBanner } from "./brand-banner";
 import { overdueDays, stageOf, trailCard, type PlanModule } from "./model";
 
 export const metadata = { title: "Painel" };
@@ -38,6 +39,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
 
   return (
     <>
+      <BrandBanner />
       {sp.senha === "alterada" && (
         <p role="status" className="mb-4 rounded-[14px] border border-[#D4D4D4] bg-[#F5F5F5] px-4 py-2 text-[13px] font-medium text-[#0A0A0A]">Senha alterada.</p>
       )}
