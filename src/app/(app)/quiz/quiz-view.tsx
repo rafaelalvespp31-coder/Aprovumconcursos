@@ -139,6 +139,7 @@ export function QuizView({
           onStart={() => (finished ? newRound() : cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }))}
           onPickTarget={() => lessonsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
           onRanking={() => setDialog("ranking")}
+          mood={check ? (check.correct ? "ok" : "erro") : null}
         />
         <LevelUpDialog
           open={dialog !== null}

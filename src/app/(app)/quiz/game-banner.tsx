@@ -3,8 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { BarChart3, Crosshair, Flame, Heart, Target, Trophy } from "lucide-react";
 import type { QuizLevel } from "@/server/services/quiz";
+import { Operador } from "./operador";
 
-const MASCOT = "/icons/instrutor-caveira.png";
 
 /** Falas do Instrutor ao tocar nele (motivação; sem dados inventados). */
 const LINES = [
@@ -35,6 +35,7 @@ export function GameBanner({
   onStart,
   onPickTarget,
   onRanking,
+  mood = null,
 }: {
   topicTitle: string;
   discipline: string;
@@ -50,6 +51,8 @@ export function GameBanner({
   onStart: () => void;
   onPickTarget: () => void;
   onRanking: () => void;
+  /** Reação do Operador à última resposta. */
+  mood?: "ok" | "erro" | null;
 }) {
   const ref = useRef<HTMLElement>(null);
   const [line, setLine] = useState<number | null>(null);
@@ -122,7 +125,7 @@ export function GameBanner({
 
       <div className="relative flex gap-3 p-5 sm:p-7 md:items-center md:gap-6">
         <div className="min-w-0 flex-1">
-          <div className="pr-[112px] min-[400px]:pr-[124px] md:pr-0">
+          <div className="pr-[120px] min-[400px]:pr-[132px] md:pr-0">
           <p className="font-hud flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-[#FF4D4D] sm:text-[12px] sm:tracking-[0.28em]">
             <span className="relative flex h-2 w-2">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#FF3B30] opacity-75" />
@@ -133,12 +136,12 @@ export function GameBanner({
           <h2 className="font-stencil jogo-glitch mt-2 text-[40px] leading-[0.9] tracking-[0.02em] text-white [text-shadow:0_0_24px_rgba(255,30,30,0.55)] min-[400px]:text-[46px] sm:text-[64px] lg:text-[76px]" data-text="MODO JOGO">
             MODO JOGO
           </h2>
-          </div>
           <p className="font-hud mt-2 line-clamp-2 text-[15px] font-semibold text-white/85 sm:text-[17px]">Alvo: {topicTitle}</p>
           <p className="font-hud mt-2 inline-flex flex-wrap items-center gap-2 text-[12px] font-bold uppercase tracking-[0.16em]">
             <span className="rounded-[6px] bg-[#E10600] px-2 py-1">Nível {level.level} • {level.patente}</span>
             <span className="rounded-[6px] bg-white px-2 py-1 text-[#B10400]">{level.tier.label}</span>
           </p>
+          </div>
           <div className="mt-2 flex items-center gap-3">
             <div className="h-1.5 flex-1 overflow-hidden rounded-full bg-white/10 sm:max-w-56" role="progressbar" aria-label="Domínio do tema" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
               <div className="h-full rounded-full bg-gradient-to-r from-[#FF3B30] to-[#E10600] transition-[width] duration-500" style={{ width: `${pct}%` }} />
@@ -180,14 +183,12 @@ export function GameBanner({
           </p>
         </div>
 
-        {/* Instrutor: toque para ouvir */}
-        <div className="absolute right-3 top-3 h-[118px] w-[104px] min-[400px]:h-[132px] min-[400px]:w-[118px] md:relative md:right-auto md:top-auto md:h-[230px] md:w-[250px] md:shrink-0 md:self-center">
-          <div className="jogo-radar pointer-events-none absolute inset-3 rounded-full bg-[conic-gradient(from_0deg,rgba(255,59,48,0.35),transparent_35%)]" aria-hidden />
-          <div className="pointer-events-none absolute inset-3 rounded-full ring-1 ring-[#FF3B30]/30" aria-hidden />
-          <div className="pointer-events-none absolute inset-8 rounded-full ring-1 ring-[#FF3B30]/20 md:inset-12" aria-hidden />
-          <button type="button" onClick={talk} className="group absolute inset-0 flex items-center justify-center rounded-full" aria-label="Falar com o Instrutor Caveira">
-            <span className="jogo-eyes pointer-events-none absolute left-1/2 top-[52%] h-6 w-16 -translate-x-1/2 rounded-full bg-[#FF1E1E] blur-xl md:h-10 md:w-28 md:blur-2xl" aria-hidden />
-            <img src={MASCOT} alt="" className="relative h-[92%] w-auto drop-shadow-[0_18px_30px_rgba(0,0,0,0.7)] transition-transform duration-300 group-hover:scale-105 group-active:scale-95" />
+        {/* Operador animado: toque para ouvir o Instrutor */}
+        <div className="absolute right-1 top-4 h-[200px] w-[124px] min-[400px]:h-[214px] min-[400px]:w-[134px] md:relative md:right-auto md:top-auto md:h-[300px] md:w-[250px] md:shrink-0 md:self-end">
+          <div className="jogo-radar pointer-events-none absolute left-1/2 top-[8%] aspect-square w-[118%] -translate-x-1/2 rounded-full bg-[conic-gradient(from_0deg,rgba(255,59,48,0.28),transparent_35%)] md:w-[100%]" aria-hidden />
+          <div className="pointer-events-none absolute left-1/2 top-[8%] aspect-square w-[118%] -translate-x-1/2 rounded-full ring-1 ring-[#FF3B30]/25 md:w-[100%]" aria-hidden />
+          <button type="button" onClick={talk} className="group absolute inset-0 flex items-end justify-center" aria-label="Falar com o Instrutor Caveira">
+            <Operador mood={mood} className="h-full transition-transform duration-300 group-hover:scale-[1.03] group-active:scale-95" />
           </button>
         </div>
       </div>

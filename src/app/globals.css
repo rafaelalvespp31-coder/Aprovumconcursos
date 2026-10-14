@@ -421,3 +421,32 @@ body {
 .lvl-chevron { stroke-dasharray: 80; animation: lvl-chevron-k 0.45s ease-out both; }
 .lvl-row { animation: lvl-row-k 0.4s ease-out both; }
 dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
+
+/* Modo Jogo — Operador animado */
+@keyframes op-float-k { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+@keyframes op-shadow-k { 0%, 100% { transform: translateX(-50%) scaleX(1); opacity: 0.75; } 50% { transform: translateX(-50%) scaleX(0.86); opacity: 0.5; } }
+@keyframes op-breathe-k { 0%, 100% { transform: scale(1, 1) rotate(0deg); } 50% { transform: scale(1.008, 1.016) rotate(-0.6deg); } }
+@keyframes op-beam-k {
+  0%, 100% { transform: translateY(-50%) rotate(6deg); opacity: 0.55; }
+  45% { transform: translateY(-50%) rotate(-8deg); opacity: 0.8; }
+  70% { opacity: 0.5; }
+}
+@keyframes op-lens-k { 0%, 100% { opacity: 0.75; } 50% { opacity: 1; } 52% { opacity: 0.55; } 54% { opacity: 1; } }
+@keyframes op-eye-k { 0%, 100% { opacity: 0.35; transform: scale(0.9); } 50% { opacity: 0.9; transform: scale(1.15); } }
+@keyframes op-hop-k { 0% { transform: translateY(0); } 30% { transform: translateY(-14%) ; } 55% { transform: translateY(0) scale(1.03, 0.97); } 75% { transform: translateY(-4%); } 100% { transform: none; } }
+@keyframes op-shake-k { 0%, 100% { transform: none; } 20% { transform: translateX(-5px) rotate(-2deg); } 40% { transform: translateX(5px) rotate(2deg); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+.op-float { animation: op-float-k 4.2s ease-in-out infinite; }
+.op-shadow { animation: op-shadow-k 4.2s ease-in-out infinite; }
+.op-breathe { transform-origin: 50% 100%; animation: op-breathe-k 3.4s ease-in-out infinite; }
+.op-beam {
+  background: linear-gradient(270deg, rgba(255, 244, 210, 0.55), rgba(255, 244, 210, 0.12) 45%, transparent 85%);
+  clip-path: polygon(100% 46%, 0 0, 0 100%, 100% 54%);
+  transform: translateY(-50%);
+  filter: blur(3px);
+  mix-blend-mode: screen;
+  animation: op-beam-k 6s ease-in-out infinite;
+}
+.op-lens { animation: op-lens-k 3s ease-in-out infinite; mix-blend-mode: screen; }
+.op-eye { animation: op-eye-k 2.4s ease-in-out infinite; }
+.op-hop { animation: op-hop-k 0.7s cubic-bezier(0.3, 0.7, 0.4, 1) both; }
+.op-shake { animation: op-shake-k 0.5s ease-in-out both; }
