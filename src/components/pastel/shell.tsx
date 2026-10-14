@@ -279,7 +279,7 @@ export function PastelShell({
 
           <div className="min-w-0 flex-1">
             <header
-              className={`sticky top-0 z-20 border-b backdrop-blur-[18px] ${dark ? "border-white/10 bg-[#070707]/90 text-white" : "border-black/[0.06] bg-white/75"}`}
+              className={`sticky top-0 z-20 border-b backdrop-blur-[18px] ${dark ? "border-transparent bg-[#070707] text-white" : "border-black/[0.06] bg-white/75"}`}
               style={{ top: "env(safe-area-inset-top, 0px)" }}
             >
               <div className="flex h-[88px] items-center justify-between gap-4 px-5 lg:px-10">

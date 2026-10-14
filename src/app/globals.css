@@ -452,3 +452,9 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .op-eye { animation: op-eye-k 2.4s ease-in-out infinite; }
 .op-hop { animation: op-hop-k 0.7s cubic-bezier(0.3, 0.7, 0.4, 1) both; }
 .op-shake { animation: op-shake-k 0.5s ease-in-out both; }
+
+/* Modo Jogo — banner da marca */
+@keyframes marca-zoom-k { from { transform: scale(1.06); } to { transform: scale(1); } }
+@keyframes marca-scan-k { 0% { transform: translateY(-100%); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(100%); opacity: 0; } }
+.marca-zoom { animation: marca-zoom-k 1.6s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.marca-scan { background: linear-gradient(to bottom, transparent 0%, rgba(255, 40, 30, 0.10) 48%, rgba(255, 60, 48, 0.28) 50%, transparent 52%); animation: marca-scan-k 6s ease-in-out 1.2s infinite; mix-blend-mode: screen; }

@@ -123,6 +123,24 @@ export function QuizView({
     // Modo Jogo: palco preto ocupando toda a área de conteúdo; cards vermelhos; texto branco.
     <div className="jogo relative -mx-4 -mb-28 -mt-7 min-h-[calc(100dvh-5rem)] bg-[#070707] px-4 pb-32 pt-6 text-white sm:-mx-5 sm:px-5 lg:-mx-10 lg:-mb-12 lg:px-10 lg:pb-14" data-testid="quiz">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_at_top,rgba(225,6,0,0.22),transparent_65%)]" aria-hidden />
+      {/* Banner da marca: sai da borda superior, logo abaixo do cabeçalho, e se funde ao palco preto */}
+      <div className="relative -mx-4 -mt-6 mb-5 h-[230px] overflow-hidden sm:-mx-5 sm:h-[280px] lg:-mx-10 lg:h-[380px]" data-testid="jogo-banner-marca">
+        {/* Brilho vermelho atrás (preenche as laterais no desktop) */}
+        <div className="pointer-events-none absolute inset-0 hidden bg-[radial-gradient(ellipse_at_50%_60%,rgba(225,6,0,0.35),transparent_60%)] lg:block" aria-hidden />
+        <div className="relative mx-auto h-full w-full lg:max-w-[780px]">
+          <img
+            src="/banner-aprovum.webp"
+            srcSet="/banner-aprovum-sm.webp 900w, /banner-aprovum.webp 1312w"
+            sizes="(min-width: 1024px) 780px, 100vw"
+            alt="APROVUM — Sua preparação. Seu próximo cargo. O PWA de estudos para concursos com IA e gamificação."
+            className="marca-zoom absolute inset-0 h-full w-full object-cover object-[50%_58%] lg:object-[50%_42%]"
+            fetchPriority="high"
+          />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,#070707_0%,transparent_16%,transparent_64%,#070707_100%)]" aria-hidden />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_right,#070707_0%,transparent_14%,transparent_86%,#070707_100%)]" aria-hidden />
+          <div className="marca-scan pointer-events-none absolute inset-x-0 top-0 h-full" aria-hidden />
+        </div>
+      </div>
       <div className="relative mx-auto max-w-[1180px]">
         <GameBanner
           topicTitle={topic.title}
