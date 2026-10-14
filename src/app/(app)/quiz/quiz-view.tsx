@@ -2,10 +2,11 @@
 
 import Link from "next/link";
 import { useMemo, useRef, useState, useTransition } from "react";
-import { ArrowRight, BookOpen, Check, Clock, Crown, Crosshair, FileText, Flame, Heart, Lightbulb, MessageSquare, Plus, RotateCcw, ShieldCheck, Trophy, X, Zap } from "lucide-react";
+import { ArrowRight, BookOpen, Check, Clock, Crown, Crosshair, FileText, Flame, Lightbulb, MessageSquare, Plus, RotateCcw, ShieldCheck, X, Zap } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import type { QuizCheck, QuizHome, QuizRound } from "@/server/services/quiz";
 import { checkAnswerAction, startRoundAction } from "./actions";
+import { GameBanner } from "./game-banner";
 
 const MASCOT = "/icons/instrutor-caveira.png";
 
@@ -27,6 +28,7 @@ export function QuizView({ home, initialRound, lives, dailyGoal }: { home: QuizH
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const cardRef = useRef<HTMLDivElement>(null);
+  const lessonsRef = useRef<HTMLElement>(null);
 
   const item = round.items[idx];
   const total = round.items.length;
@@ -93,23 +95,24 @@ export function QuizView({ home, initialRound, lives, dailyGoal }: { home: QuizH
     // Modo Jogo: palco preto ocupando toda a área de conteúdo; cards vermelhos; texto branco.
     <div className="jogo relative -mx-4 -mb-28 -mt-7 min-h-[calc(100dvh-5rem)] bg-[#070707] px-4 pb-32 pt-6 text-white sm:-mx-5 sm:px-5 lg:-mx-10 lg:-mb-12 lg:px-10 lg:pb-14" data-testid="quiz">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_at_top,rgba(225,6,0,0.22),transparent_65%)]" aria-hidden />
-      <div className="relative mx-auto grid max-w-[1180px] gap-6 lg:grid-cols-[minmax(0,1fr)_330px] xl:gap-8">
+      <div className="relative mx-auto max-w-[1180px]">
+        <GameBanner
+          topicTitle={topic.title}
+          discipline={topic.discipline}
+          idx={idx}
+          total={total}
+          hearts={Math.max(0, hearts)}
+          lives={lives}
+          xp={xp}
+          streak={home.streak.current}
+          pct={pct}
+          started={idx > 0 || !!check || filled > 0}
+          onStart={() => (finished ? newRound() : cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }))}
+          onPickTarget={() => lessonsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+        />
+      </div>
+      <div className="relative mx-auto mt-6 grid max-w-[1180px] gap-6 lg:grid-cols-[minmax(0,1fr)_330px] xl:gap-8">
         <div className="min-w-0">
-          {/* Placar */}
-          <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-center">
-            <div className="col-span-3 rounded-[18px] border border-white/10 bg-[#121212] px-4 py-3 sm:col-span-1">
-              <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-[0.14em] text-white/60">
-                <Crosshair className="h-3.5 w-3.5 text-[#FF3B30]" aria-hidden /> Progresso no tema
-                <span className="ml-auto text-[13px] font-black tracking-normal text-white">{pct}%</span>
-              </p>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10" role="progressbar" aria-label="Dispositivos dominados no tema" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100}>
-                <div className="h-full rounded-full bg-gradient-to-r from-[#FF3B30] to-[#E10600] transition-[width] duration-500" style={{ width: `${pct}%` }} />
-              </div>
-            </div>
-            <Stat icon={<Flame className="h-4 w-4" aria-hidden />} value={home.streak.current} label={home.streak.current === 1 ? "dia" : "dias"} />
-            <Stat icon={<Heart className="h-4 w-4 fill-current" aria-hidden />} value={hearts} label={hearts === 1 ? "vida" : "vidas"} ariaLabel={`${hearts} vidas`} />
-            <Stat icon={<Trophy className="h-4 w-4" aria-hidden />} value={xp} label="XP" accent />
-          </div>
 
           {/* Trilha */}
           <div ref={cardRef} className="mt-5 flex scroll-mt-24 flex-wrap items-center gap-2 text-[13px]">
@@ -303,7 +306,7 @@ export function QuizView({ home, initialRound, lives, dailyGoal }: { home: QuizH
         <aside className="flex min-w-0 flex-col gap-5">
           <StreakCard streak={home.streak} pct={pct} remaining={topic.total - topicMastered} onKeep={() => cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })} />
 
-          <section aria-label="Próximas lições">
+          <section ref={lessonsRef} className="scroll-mt-24" aria-label="Próximas lições">
             <div className="flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-[15px] font-black"><BookOpen className="h-4 w-4 text-[#FF3B30]" aria-hidden /> Próximas lições</h2>
               <span className="rounded-full bg-white/10 px-2.5 py-0.5 text-[12px] text-white/70">{home.topics.length} {home.topics.length === 1 ? "disponível" : "disponíveis"}</span>
@@ -383,21 +386,6 @@ export function QuizView({ home, initialRound, lives, dailyGoal }: { home: QuizH
           </section>
         </aside>
       </div>
-    </div>
-  );
-}
-
-function Stat({ icon, value, label, accent = false, ariaLabel }: { icon: React.ReactNode; value: number; label: string; accent?: boolean; ariaLabel?: string }) {
-  return (
-    <div
-      className={`flex min-h-[58px] items-center justify-center gap-2 rounded-[18px] px-3 py-2 ${accent ? "bg-[#E10600] shadow-[0_10px_24px_rgba(225,6,0,0.3)]" : "bg-[#121212] ring-1 ring-white/10"}`}
-      aria-label={ariaLabel}
-    >
-      <span className={`flex h-8 w-8 items-center justify-center rounded-full ${accent ? "bg-black/30 text-white" : "bg-[#E10600]/15 text-[#FF3B30]"}`}>{icon}</span>
-      <span className="leading-none">
-        <span className="block text-[18px] font-black tabular-nums">{value}</span>
-        <span className={`block text-[11px] font-semibold ${accent ? "text-white/80" : "text-white/55"}`}>{label}</span>
-      </span>
     </div>
   );
 }

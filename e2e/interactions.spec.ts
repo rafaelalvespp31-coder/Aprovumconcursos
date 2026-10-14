@@ -419,6 +419,17 @@ test("flashcards viram com animação e certo/errado mostra o gabarito", async (
 
 
 test.describe("modo jogo", () => {
+  test("banner: o Instrutor responde ao toque e mostra o placar da rodada", async ({ page }) => {
+    await page.goto(`${G}/quiz`);
+    const banner = page.getByTestId("jogo-banner");
+    await expect(banner.getByRole("heading", { name: "MODO JOGO" })).toBeVisible();
+    await expect(banner.getByText(/Toque no Instrutor/)).toBeVisible();
+    await banner.getByRole("button", { name: "Falar com o Instrutor Caveira" }).click();
+    await expect(banner.getByText(/^Instrutor:/)).toBeVisible();
+    await expect(banner.getByLabel("3 de 3 vidas")).toBeVisible();
+    await expect(banner.getByRole("button", { name: /Iniciar missão/ })).toBeVisible();
+  });
+
   test("encaixa palavras do banco nos espaços e libera a verificação", async ({ page }) => {
     await page.goto(`${G}/quiz`);
     const card = page.getByRole("region", { name: "Questão do jogo" });

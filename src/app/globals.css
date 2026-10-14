@@ -10,6 +10,11 @@
 @import "@fontsource/space-grotesk/latin-500.css";
 @import "@fontsource/space-grotesk/latin-600.css";
 @import "@fontsource/space-grotesk/latin-700.css";
+/* Modo Jogo: estêncil tático (títulos) e fonte de HUD */
+@import "@fontsource/saira-stencil-one/latin-400.css";
+@import "@fontsource/chakra-petch/latin-500.css";
+@import "@fontsource/chakra-petch/latin-600.css";
+@import "@fontsource/chakra-petch/latin-700.css";
 
 /*
  * APROVUM — tokens (identidade da logo: preto, branco e vermelho)
@@ -120,6 +125,54 @@ body {
 .jogo-texto li { color: rgba(255, 255, 255, 0.9); }
 .jogo-texto strong { color: #ff6b6b; }
 .jogo-texto a { color: #ffffff; }
+
+/* Modo Jogo: banner */
+.font-stencil { font-family: "Saira Stencil One", "Chakra Petch", system-ui, sans-serif; }
+.font-hud { font-family: "Chakra Petch", system-ui, sans-serif; }
+.jogo-glitch { position: relative; }
+.jogo-glitch::before,
+.jogo-glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+}
+.jogo-glitch::before { color: #ff2a2a; transform: translate(-2px, 0); }
+.jogo-glitch::after { color: #ffffff; transform: translate(2px, 0); mix-blend-mode: overlay; }
+.jogo-banner:hover .jogo-glitch::before,
+.jogo-banner:focus-within .jogo-glitch::before { animation: jogo-glitch 1.8s steps(2, end) infinite; }
+.jogo-banner:hover .jogo-glitch::after,
+.jogo-banner:focus-within .jogo-glitch::after { animation: jogo-glitch 1.8s steps(2, end) infinite reverse; }
+@keyframes jogo-glitch {
+  0%, 82%, 100% { opacity: 0; clip-path: inset(0 0 0 0); }
+  84% { opacity: 0.9; clip-path: inset(12% 0 58% 0); }
+  88% { opacity: 0.9; clip-path: inset(62% 0 8% 0); }
+  92% { opacity: 0.7; clip-path: inset(36% 0 40% 0); }
+}
+.jogo-radar { animation: jogo-radar 4s linear infinite; }
+@keyframes jogo-radar { to { transform: rotate(360deg); } }
+.jogo-eyes { animation: jogo-eyes 2.6s ease-in-out infinite; }
+@keyframes jogo-eyes { 0%, 100% { opacity: 0.45; transform: scale(0.92); } 50% { opacity: 0.95; transform: scale(1.06); } }
+.jogo-shine { position: relative; overflow: hidden; }
+.jogo-shine::after {
+  content: "";
+  position: absolute;
+  inset: -40% auto -40% -60%;
+  width: 40%;
+  transform: skewX(-20deg);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.55), transparent);
+  animation: jogo-shine 3.2s ease-in-out infinite;
+}
+@keyframes jogo-shine { 0%, 55% { left: -60%; } 100% { left: 130%; } }
+.jogo-scan {
+  background-image: repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.035) 0 1px, transparent 1px 4px);
+}
+.jogo-grid {
+  background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 32px 32px;
+  mask-image: radial-gradient(ellipse at 70% 40%, #000 30%, transparent 75%);
+}
 
 /* Foco sempre visível para navegação por teclado */
 :focus-visible {
