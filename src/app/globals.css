@@ -528,3 +528,62 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 }
 .cinza-brasa { animation-name: cinza-sobe, cinza-pisca; animation-duration: var(--dur), 1.7s; animation-timing-function: linear, ease-in-out; animation-delay: var(--delay), var(--delay); animation-iteration-count: infinite, infinite; animation-direction: normal, alternate; }
 @keyframes cinza-pisca { from { filter: brightness(0.8) blur(var(--b, 0px)); } to { filter: brightness(1.4) blur(var(--b, 0px)); } }
+
+/* Painel (modo estudo) — reflexo nas letras, V em neon e fogo suave nos olhos */
+.estudo-reflexo {
+  -webkit-mask: url(/banner-estudo-texto.png) center / 100% 100% no-repeat;
+  mask: url(/banner-estudo-texto.png) center / 100% 100% no-repeat;
+  background: linear-gradient(112deg, transparent 0%, transparent 43%, rgba(255, 255, 255, 0.25) 45.5%, rgba(255, 255, 255, 0.85) 50%, rgba(255, 255, 255, 0.25) 54.5%, transparent 57%, transparent 100%);
+  background-size: 300% 100%;
+  background-repeat: no-repeat;
+  animation: reflexo-k 8s cubic-bezier(0.45, 0, 0.55, 1) 1.2s infinite;
+}
+@keyframes reflexo-k { 0% { background-position: 120% 0; } 62%, 100% { background-position: -20% 0; } }
+
+.neon-v-forma {
+  -webkit-mask: url(/banner-estudo-v.png) center / 100% 100% no-repeat;
+  mask: url(/banner-estudo-v.png) center / 100% 100% no-repeat;
+}
+.neon-v-apagado { background: #4f1212; opacity: 0; animation: neon-off-k 6.4s linear infinite; }
+.neon-v-halo { filter: blur(clamp(4px, 0.8vw, 12px)); animation: neon-on-k 6.4s linear infinite; }
+.neon-v-halo > .neon-v-forma { background: #FF1A1A; transform: scale(1.06); animation: neon-hum-k 2.2s ease-in-out infinite alternate; }
+.neon-v-tubo {
+  background: linear-gradient(160deg, #FF9C8E 0%, #FF3B2E 35%, #FF1414 70%, #E00000 100%);
+  animation: neon-on-k 6.4s linear infinite;
+}
+@keyframes neon-hum-k { from { opacity: 0.7; } to { opacity: 1; } }
+/* Letreiro: aceso quase sempre, com falhas rápidas e uma queda maior no meio do ciclo. */
+@keyframes neon-on-k {
+  0%, 9% { opacity: 1; }
+  9.6% { opacity: 0.12; } 10.4% { opacity: 1; } 11.2% { opacity: 0.2; } 12.2%, 51% { opacity: 1; }
+  51.6% { opacity: 0.08; } 55% { opacity: 0.08; } 55.5% { opacity: 0.85; } 56.2% { opacity: 0.2; } 57.2%, 83% { opacity: 1; }
+  83.5% { opacity: 0.35; } 84.3%, 100% { opacity: 1; }
+}
+@keyframes neon-off-k {
+  0%, 9% { opacity: 0; }
+  9.6% { opacity: 0.8; } 10.4% { opacity: 0; } 11.2% { opacity: 0.75; } 12.2%, 51% { opacity: 0; }
+  51.6% { opacity: 0.85; } 55% { opacity: 0.85; } 55.5% { opacity: 0.1; } 56.2% { opacity: 0.7; } 57.2%, 83% { opacity: 0; }
+  83.5% { opacity: 0.5; } 84.3%, 100% { opacity: 0; }
+}
+
+.fogo-suave { mix-blend-mode: screen; opacity: 1; }
+.fogo-suave-lingua { transform-box: fill-box; transform-origin: 50% 100%; }
+.fogo-suave-l1 { animation: fs-l1-k 2.4s ease-in-out var(--d, 0s) infinite alternate; }
+.fogo-suave-l2 { animation: fs-l2-k 1.7s ease-in-out calc(var(--d, 0s) + 0.4s) infinite alternate; }
+.fogo-suave-l3 { animation: fs-l3-k 1.95s ease-in-out calc(var(--d, 0s) + 0.9s) infinite alternate; }
+.fogo-suave-nucleo { transform-box: fill-box; transform-origin: 50% 70%; animation: fs-nucleo-k 1.3s ease-in-out var(--d, 0s) infinite alternate; }
+.fogo-suave-calor {
+  background: radial-gradient(closest-side, rgba(255, 60, 20, 0.6), rgba(210, 10, 0, 0.25) 60%, transparent 100%);
+  filter: blur(5px);
+  animation: fs-calor-k 3.4s ease-in-out var(--d, 0s) infinite;
+}
+@keyframes fs-l1-k {
+  0%   { transform: scale(0.96, 0.9) skewX(-2deg); opacity: 0.85; }
+  30%  { transform: scale(1.02, 1.04) skewX(1.5deg); opacity: 0.95; }
+  65%  { transform: scale(0.98, 1.12) skewX(-1deg); opacity: 1; }
+  100% { transform: scale(1.03, 0.98) skewX(2deg); opacity: 0.9; }
+}
+@keyframes fs-l2-k { 0% { transform: scale(0.85, 0.75) skewX(4deg); opacity: 0.4; } 100% { transform: scale(1, 1.1) skewX(-3deg); opacity: 0.9; } }
+@keyframes fs-l3-k { 0% { transform: scale(1, 1.05) skewX(-4deg); opacity: 0.85; } 100% { transform: scale(0.86, 0.78) skewX(3deg); opacity: 0.4; } }
+@keyframes fs-nucleo-k { from { opacity: 0.28; transform: scale(0.9); } to { opacity: 0.5; transform: scale(1.08); } }
+@keyframes fs-calor-k { 0%, 100% { opacity: 0.55; transform: translate(-50%, -50%) scale(0.94); } 50% { opacity: 0.9; transform: translate(-50%, -50%) scale(1.08); } }
