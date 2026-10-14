@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 /** Tempo de cada questão do Modo Jogo. */
-export const QUESTION_SECONDS = 10;
+export const QUESTION_SECONDS = 20;
 
 const R = 23;
 const C = 2 * Math.PI * R;
