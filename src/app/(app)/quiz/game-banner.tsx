@@ -185,8 +185,6 @@ export function GameBanner({
 
         {/* Operador animado: toque para ouvir o Instrutor */}
         <div className="absolute right-1 top-4 h-[200px] w-[124px] min-[400px]:h-[214px] min-[400px]:w-[134px] md:relative md:right-auto md:top-auto md:h-[300px] md:w-[250px] md:shrink-0 md:self-end">
-          <div className="jogo-radar pointer-events-none absolute left-1/2 top-[8%] aspect-square w-[118%] -translate-x-1/2 rounded-full bg-[conic-gradient(from_0deg,rgba(255,59,48,0.28),transparent_35%)] md:w-[100%]" aria-hidden />
-          <div className="pointer-events-none absolute left-1/2 top-[8%] aspect-square w-[118%] -translate-x-1/2 rounded-full ring-1 ring-[#FF3B30]/25 md:w-[100%]" aria-hidden />
           <button type="button" onClick={talk} className="group absolute inset-0 flex items-end justify-center" aria-label="Falar com o Instrutor Caveira">
             <Operador mood={mood} className="h-full transition-transform duration-300 group-hover:scale-[1.03] group-active:scale-95" />
           </button>
