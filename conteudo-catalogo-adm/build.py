@@ -7,6 +7,9 @@ pg = next(s for s in S if s["kind"] == "pegadinhas")
 pg["bodyMarkdown"] += "\n\n**Como as bancas cobram este tema**\n\n" + ib["bodyMarkdown"]
 pg["nodeKeys"] = sorted(set(pg["nodeKeys"] + ib["nodeKeys"]))[:40]
 S.remove(ib)
+MODULES = [(1,3,"Visão geral e lei seca"),(4,5,"Fundamentos da Administração Pública"),(6,8,"Organização administrativa"),(9,12,"Entidades da Administração Indireta"),(13,15,"Princípios expressos (LIMPE)"),(16,17,"Outros princípios administrativos"),(18,19,"Autotutela: anular e revogar"),(20,23,"Agentes e cargos públicos"),(24,25,"Responsabilidade civil do Estado"),(26,27,"Casos práticos e pegadinhas"),(28,30,"Revisão final")]
+for i, sec in enumerate(S, 1):
+    sec["module"] = next(t for a, b, t in MODULES if a <= i <= b)
 taught = sorted({k for s in S for k in s["nodeKeys"]})
 lesson = {
   "title": "Administração Pública (Noções de Direito Administrativo)",

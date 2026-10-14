@@ -19,6 +19,7 @@ import { useStored } from "@/components/use-stored";
 import { useStudyApi } from "@/components/study-api";
 import { LEVELS, levelStatus, type LevelKey } from "@/domain/progress/levels";
 import { SingleLevel } from "./levels-panel";
+import { groupIntoModules, type LessonModule } from "@/domain/content/modules";
 
 export interface ReaderSection {
   id: string;
@@ -29,6 +30,8 @@ export interface ReaderSection {
   verification_status: string;
   /** Exemplos "Na prática" da versão atual do catálogo (têm prioridade sobre os copiados na criação do estudo). */
   practice?: PracticeCase[];
+  /** Módulo (tema) a que a seção pertence, quando definido pela equipe no catálogo. */
+  module?: string | null;
 }
 
 export interface ReaderClarification {
@@ -101,6 +104,14 @@ export function LessonReader(props: ReaderProps) {
     list.push({ type: "fim" });
     return list;
   }, [sections, context]);
+
+  // Módulos (temas) da aula: blocos consecutivos de seções.
+  const modules = useMemo(() => groupIntoModules(sections), [sections]);
+  const moduleOf = useMemo(() => {
+    const m = new Map<string, { mod: LessonModule; pos: number }>();
+    for (const mod of modules) mod.sectionIds.forEach((id, i) => m.set(id, { mod, pos: i + 1 }));
+    return m;
+  }, [modules]);
 
   const [storedStep, setStoredStep] = useStored<number>(`na:passo:${lesson.id}`, 0);
   const step = Math.min(Math.max(storedStep, 0), steps.length - 1);
@@ -193,30 +204,98 @@ export function LessonReader(props: ReaderProps) {
     return "livre";
   };
 
+  const stepIndexOf = (id: string) => steps.findIndex((s) => s.type === "secao" && s.section.id === id);
+  const moduleDone = (mod: LessonModule) => mod.sectionIds.filter((id) => readingDone || seen.has(id)).length;
+
+  const tocItem = (s: Step, i: number, indent = false) => {
+    const st = stepState(s);
+    const anns = s.type === "secao" ? annotationsBySection.get(s.section.id) ?? [] : [];
+    return (
+      <li key={i}>
+        <button
+          type="button"
+          onClick={() => go(i)}
+          aria-current={st === "atual" ? "step" : undefined}
+          className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left t-small text-tinta-suave hover:bg-nevoa aria-[current=step]:bg-nevoa aria-[current=step]:font-semibold aria-[current=step]:text-destaque ${indent ? "pl-3" : ""}`}
+        >
+          <span className="w-6 shrink-0 tabular-nums text-tinta-fraca">{s.type === "secao" ? s.n : s.type === "fim" ? "→" : "?"}</span>
+          <span className="flex-1">{stepLabel(s)}</span>
+          {st === "feito" && <Icon name="check" className="mt-0.5 size-3.5 text-acerto" label="Concluído" />}
+          {st === "bloqueado" && <Icon name="cadeado" className="mt-0.5 size-3.5 text-tinta-fraca" label="Bloqueado" />}
+          {anns.some((a) => a.kind === "revisar") && <Icon name="bookmark" className="mt-0.5 size-3.5 text-destaque" label="Marcado para revisar" />}
+        </button>
+      </li>
+    );
+  };
+
+  const currentModule = current.type === "secao" ? moduleOf.get(current.section.id)?.mod : undefined;
+
   const toc = (
-    <ol className="flex flex-col gap-0.5">
-      {steps.map((s, i) => {
-        const st = stepState(s);
-        const anns = s.type === "secao" ? annotationsBySection.get(s.section.id) ?? [] : [];
-        const firstOfGroup = i === sections.length;
+    <div className="flex flex-col gap-2" data-testid="modulos-aula">
+      {modules.map((mod) => {
+        const done = moduleDone(mod);
+        const total = mod.sectionIds.length;
+        const isCur = currentModule === mod;
         return (
-          <li key={i} className={firstOfGroup ? "mt-2 border-t border-linha pt-2" : ""}>
-            <button
-              type="button"
-              onClick={() => go(i)}
-              aria-current={st === "atual" ? "step" : undefined}
-              className="flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left t-small text-tinta-suave hover:bg-nevoa aria-[current=step]:bg-nevoa aria-[current=step]:font-semibold aria-[current=step]:text-destaque"
-            >
-              <span className="w-6 shrink-0 tabular-nums text-tinta-fraca">{s.type === "secao" ? s.n : s.type === "fim" ? "→" : "?"}</span>
-              <span className="flex-1">{stepLabel(s)}</span>
-              {st === "feito" && <Icon name="check" className="mt-0.5 size-3.5 text-acerto" label="Concluído" />}
-              {st === "bloqueado" && <Icon name="cadeado" className="mt-0.5 size-3.5 text-tinta-fraca" label="Bloqueado" />}
-              {anns.some((a) => a.kind === "revisar") && <Icon name="bookmark" className="mt-0.5 size-3.5 text-destaque" label="Marcado para revisar" />}
-            </button>
-          </li>
+          <details key={mod.n} open className={`group rounded-[14px] border ${isCur ? "border-[#D90A00]/40 bg-[#FFF5F4]" : "border-linha bg-superficie"}`}>
+            <summary className="flex cursor-pointer list-none items-center gap-2.5 px-2.5 py-2">
+              <span className={`flex size-8 shrink-0 items-center justify-center rounded-[10px] text-[12px] font-black tabular-nums ${done === total ? "bg-acerto text-white" : isCur ? "bg-[#D90A00] text-white" : "bg-nevoa text-tinta-suave"}`}>
+                {done === total ? <Icon name="check" className="size-4" /> : String(mod.n).padStart(2, "0")}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate t-small font-bold text-tinta">{mod.title}</span>
+                <span className="mt-1 flex items-center gap-2">
+                  <span className="h-1 flex-1 overflow-hidden rounded-full bg-linha"><span className="block h-full rounded-full bg-[#D90A00]" style={{ width: `${(done / total) * 100}%` }} /></span>
+                  <span className="t-tiny tabular-nums text-tinta-fraca">{done}/{total}</span>
+                </span>
+              </span>
+              <Icon name="chevronDown" className="size-4 shrink-0 text-tinta-fraca transition-transform group-open:rotate-180" />
+            </summary>
+            <ol className="flex flex-col gap-0.5 px-1 pb-2">{mod.sectionIds.map((id) => tocItem(steps[stepIndexOf(id)]!, stepIndexOf(id), true))}</ol>
+          </details>
         );
       })}
-    </ol>
+      <div className="rounded-[14px] border border-linha bg-superficie px-1 py-1.5">
+        <p className="px-2.5 pb-1 pt-0.5 t-tiny font-bold uppercase tracking-[0.12em] text-tinta-fraca">Avaliação</p>
+        <ol className="flex flex-col gap-0.5">{steps.map((s, i) => (s.type === "secao" ? null : tocItem(s, i)))}</ol>
+      </div>
+    </div>
+  );
+
+  /** Mapa visual dos módulos (no início da aula). */
+  const moduleMap = (
+    <div className="mt-5" aria-label="Módulos da aula">
+      <p className="t-tiny font-bold uppercase tracking-[0.14em] text-tinta-fraca">Mapa da aula · {modules.length} módulos</p>
+      <ol className="mt-2 grid gap-2 sm:grid-cols-2">
+        {modules.map((mod) => {
+          const done = moduleDone(mod);
+          const total = mod.sectionIds.length;
+          return (
+            <li key={mod.n}>
+              <button
+                type="button"
+                onClick={() => go(stepIndexOf(mod.sectionIds[0]!))}
+                className="group flex w-full items-center gap-3 rounded-[16px] border border-linha bg-superficie p-3 text-left transition-[border-color,box-shadow,transform] hover:border-[#D90A00]/50 hover:shadow-[0_8px_22px_rgba(217,10,0,0.10)] active:scale-[0.99]"
+              >
+                <span className={`flex size-11 shrink-0 flex-col items-center justify-center rounded-[12px] ${done === total ? "bg-acerto text-white" : "bg-gradient-to-br from-[#E10600] to-[#8A0000] text-white"}`}>
+                  <span className="text-[9px] font-bold uppercase leading-none tracking-wider opacity-80">Mód.</span>
+                  <span className="text-[17px] font-black leading-none tabular-nums">{String(mod.n).padStart(2, "0")}</span>
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1.5 font-bold leading-snug">
+                    <Icon name={mod.icon} className="size-4 shrink-0 text-[#D90A00]" /> <span className="line-clamp-2">{mod.title}</span>
+                  </span>
+                  <span className="mt-1 flex items-center gap-2">
+                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-linha"><span className="block h-full rounded-full bg-[#D90A00]" style={{ width: `${(done / total) * 100}%` }} /></span>
+                    <span className="t-tiny tabular-nums text-tinta-fraca">{done}/{total} {total === 1 ? "tema" : "temas"}</span>
+                  </span>
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 
   const renderQuestion = (q: ReaderQuestion, n: number, label?: string) => (
@@ -271,7 +350,7 @@ export function LessonReader(props: ReaderProps) {
             </Link>
             <nav aria-label="Etapas da aula">
               <p className="mb-1 px-2 t-tiny font-semibold text-tinta-fraca">
-                Temas · <span className="tabular-nums" data-testid="secoes-vistas">{seenCount} de {sections.length}</span>
+                Módulos e temas · <span className="tabular-nums" data-testid="secoes-vistas">{seenCount} de {sections.length}</span>
               </p>
               {toc}
             </nav>
@@ -289,28 +368,41 @@ export function LessonReader(props: ReaderProps) {
                 <Icon name="indice" className="size-4" /> Etapas
               </button>
               <p className="min-w-0 flex-1 truncate t-small font-semibold">
-                <span className="text-tinta-fraca">{current.type === "secao" ? `Tema ${current.n} de ${sections.length}` : current.type === "fim" ? "Fim da aula" : "Avaliação"} · </span>
+                <span className="text-tinta-fraca">
+                  {current.type === "secao"
+                    ? (() => {
+                        const m = moduleOf.get(current.section.id);
+                        return m ? `Módulo ${m.mod.n} · tema ${m.pos} de ${m.mod.sectionIds.length}` : `Tema ${current.n} de ${sections.length}`;
+                      })()
+                    : current.type === "fim"
+                      ? "Fim da aula"
+                      : "Avaliação"}{" "}
+                  ·{" "}
+                </span>
                 {stepLabel(current)}
               </p>
               <button type="button" onClick={() => notesRef.current?.showModal()} className="inline-flex min-h-10 items-center rounded-md px-2 text-tinta-suave md:hidden" aria-label="Anotações">
                 <Icon name="nota" className="size-5" />
               </button>
             </div>
-            <div className="mt-2 flex h-1.5 gap-[3px]" role="progressbar" aria-label="Progresso na aula" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-              {steps.map((s, i) => {
-                const st = stepState(s);
-                return (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => go(i)}
-                    aria-label={`Ir para: ${stepLabel(s)}`}
-                    className={`h-full flex-1 rounded-full transition-colors ${
-                      st === "atual" ? "bg-azul" : st === "feito" ? "bg-acerto" : s.type === "nivel" ? "bg-linha-forte" : "bg-linha"
-                    }`}
-                  />
-                );
-              })}
+            <div className="mt-2 flex h-1.5 gap-2" role="progressbar" aria-label="Progresso na aula" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
+              {[...modules.map((mod) => mod.sectionIds.map((id) => stepIndexOf(id))), steps.map((s, i) => (s.type === "secao" ? -1 : i)).filter((i) => i >= 0)].map((group, gi) => (
+                <div key={gi} className="flex flex-1 gap-[2px]" style={{ flexGrow: group.length }}>
+                  {group.map((i) => {
+                    const s = steps[i]!;
+                    const st = stepState(s);
+                    return (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => go(i)}
+                        aria-label={`Ir para: ${stepLabel(s)}`}
+                        className={`h-full flex-1 rounded-full transition-colors ${st === "atual" ? "bg-azul" : st === "feito" ? "bg-acerto" : s.type === "nivel" ? "bg-linha-forte" : "bg-linha"}`}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
             </div>
           </div>
 
@@ -323,9 +415,10 @@ export function LessonReader(props: ReaderProps) {
                 <p className="mt-1 max-w-[68ch] text-tinta-suave">{lesson.objective}</p>
                 <div className="mt-3 flex flex-wrap items-center gap-2 t-tiny text-tinta-fraca">
                   {lesson.stateLabel && <Tag tone="azul">{lesson.stateLabel}</Tag>}
-                  <span>{sections.length} temas · 3 níveis de questões · ~{lesson.estimatedMinutes} min</span>
+                  <span>{modules.length} módulos · {sections.length} temas · 3 níveis de questões · ~{lesson.estimatedMinutes} min</span>
                   {counts.duvida > 0 && <Tag tone="ambar">{counts.duvida} dúvida(s) aberta(s)</Tag>}
                 </div>
+                {moduleMap}
                 <div className="mt-4 flex flex-col gap-3">{props.notices}</div>
                 <details className="mt-4 rounded-md border border-linha bg-superficie px-4 py-3 t-small">
                   <summary className="cursor-pointer font-semibold">Itens do seu conteúdo nesta aula ({nodes.length})</summary>
@@ -343,6 +436,51 @@ export function LessonReader(props: ReaderProps) {
 
             {current.type === "secao" && (
               <>
+                {(() => {
+                  const m = moduleOf.get(current.section.id);
+                  // No início da aula o mapa dos módulos já aparece acima.
+                  if (!m || step === 0) return null;
+                  const { mod, pos } = m;
+                  if (pos !== 1) {
+                    return (
+                      <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#FFF1F0] px-3 py-1 t-tiny font-bold uppercase tracking-[0.1em] text-[#B00800]">
+                        <Icon name={mod.icon} className="size-3.5" /> Módulo {String(mod.n).padStart(2, "0")} · {mod.title}
+                      </p>
+                    );
+                  }
+                  return (
+                    <div className="relative mb-6 overflow-hidden rounded-[20px] bg-gradient-to-br from-[#E10600] via-[#B80500] to-[#6E0000] p-5 text-white shadow-[0_14px_36px_rgba(217,10,0,0.22)]" data-testid="abertura-modulo">
+                      <span className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-white/10 blur-2xl" aria-hidden />
+                      <div className="relative flex items-start gap-4">
+                        <span className="flex size-14 shrink-0 flex-col items-center justify-center rounded-[14px] bg-black/30 ring-1 ring-white/20">
+                          <span className="text-[10px] font-bold uppercase leading-none tracking-wider opacity-80">Módulo</span>
+                          <span className="text-[24px] font-black leading-none tabular-nums">{String(mod.n).padStart(2, "0")}</span>
+                        </span>
+                        <div className="min-w-0 flex-1">
+                          <p className="t-tiny font-semibold uppercase tracking-[0.14em] text-white/75">Módulo {mod.n} de {modules.length}</p>
+                          <h2 className="mt-0.5 text-[22px] font-black leading-tight">{mod.title}</h2>
+                          <p className="mt-1 t-small text-white/80">{mod.sectionIds.length} {mod.sectionIds.length === 1 ? "tema" : "temas"} neste módulo</p>
+                        </div>
+                      </div>
+                      <ol className="relative mt-4 flex flex-col gap-1.5">
+                        {mod.sectionIds.map((id, k) => {
+                          const sec = sections.find((x) => x.id === id)!;
+                          const done = readingDone || seen.has(id);
+                          return (
+                            <li key={id}>
+                              <button type="button" onClick={() => go(stepIndexOf(id))} className={`flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2 text-left t-small ${id === current.section.id ? "bg-white text-[#8A0000]" : "bg-black/20 text-white/90 hover:bg-black/30"}`}>
+                                <span className={`flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${done ? "bg-acerto text-white" : id === current.section.id ? "bg-[#D90A00] text-white" : "bg-white/20"}`}>
+                                  {done ? <Icon name="check" className="size-3.5" /> : k + 1}
+                                </span>
+                                <span className="min-w-0 flex-1 truncate font-semibold">{sec.title}</span>
+                              </button>
+                            </li>
+                          );
+                        })}
+                      </ol>
+                    </div>
+                  );
+                })()}
                 <SectionBlock
                   section={current.section}
                   lessonId={lesson.id}

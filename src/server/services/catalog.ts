@@ -45,6 +45,16 @@ export async function catalogPracticeByTitle(topicId: string): Promise<Record<st
   return out;
 }
 
+/** Módulo (tema) de cada seção da versão publicada, por título de seção. */
+export async function catalogModulesByTitle(topicId: string): Promise<Record<string, string>> {
+  const db = createAdminClient();
+  const { data } = await db.from("catalog_topics").select("lesson").eq("id", topicId).eq("status", "publicado").maybeSingle();
+  const sections = ((data?.lesson as { sections?: Array<{ title: string; module?: string }> } | null)?.sections ?? []);
+  const out: Record<string, string> = {};
+  for (const s of sections) if (s.module) out[normalizeText(s.title)] = s.module;
+  return out;
+}
+
 // ---------------------------------------------------------------------------
 // Busca (aluno)
 // ---------------------------------------------------------------------------

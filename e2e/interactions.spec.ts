@@ -191,7 +191,7 @@ test.describe("tela de aula", () => {
 
   test("um tema por tela; pular para as questões não conta como leitura; depois avalia por níveis", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    await expect(page.getByText(/^Tema 1 de \d+/)).toBeVisible();
+    await expect(page.getByText(/^Módulo 1 · tema 1 de \d+/)).toBeVisible();
     // Pular direto para as questões não conclui a leitura.
     await page.getByRole("button", { name: "Ir para: Questões · Fácil" }).click();
     const fac = page.getByTestId("nivel-facil");

@@ -226,6 +226,9 @@ export async function getLessonForStudy(lessonId: string) {
   const practiceP: Promise<Record<string, PracticeCase[]>> = lesson.catalog_topic_id
     ? import("./services/catalog").then((m) => m.catalogPracticeByTitle(lesson.catalog_topic_id as string)).catch(() => ({}))
     : Promise.resolve({});
+  const modulesP: Promise<Record<string, string>> = lesson.catalog_topic_id
+    ? import("./services/catalog").then((m) => m.catalogModulesByTitle(lesson.catalog_topic_id as string)).catch(() => ({}))
+    : Promise.resolve({});
   const [sections, refs, questions, progress, nodes, siblings, annotations, clarifications, marks] = await Promise.all([
     db.from("lesson_sections").select("id, kind, title, body_markdown, sort_order, node_keys, verification_status").eq("lesson_id", lessonId).order("sort_order"),
     db.from("source_references").select("kind, citation, verified").eq("lesson_id", lessonId),
@@ -244,7 +247,7 @@ export async function getLessonForStudy(lessonId: string) {
     db.from("concept_clarifications").select("id, section_id, question, answer_markdown, verification_pending").eq("lesson_id", lessonId).order("created_at"),
     db.from("question_marks").select("question_id"),
   ]);
-  const practice = await practiceP;
+  const [practice, modules] = await Promise.all([practiceP, modulesP]);
   const nodeList = (nodes.data ?? [])
     .map((n) => ({ taught: n.taught as boolean, ...(n.content_nodes as unknown as { id: string; key: string; marker: string | null; title: string; path: string; kind: string }) }))
     .sort((a, b) => a.key.localeCompare(b.key));
@@ -264,6 +267,7 @@ export async function getLessonForStudy(lessonId: string) {
     sections: ((sections.data ?? []) as Array<{ id: string; kind: string; title: string; body_markdown: string; node_keys: string[]; verification_status: string }>).map((s) => ({
       ...s,
       practice: practice[normalizeText(s.title)] ?? [],
+      module: modules[normalizeText(s.title)] ?? null,
     })),
     references: (refs.data ?? []) as Array<{ kind: string; citation: string; verified: boolean }>,
     questions: (questions.data ?? []).map((q) => {
