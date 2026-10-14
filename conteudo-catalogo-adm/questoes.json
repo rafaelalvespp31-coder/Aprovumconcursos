@@ -1,0 +1,896 @@
+[
+ {
+  "level": "facil",
+  "type": "certo_errado",
+  "statement": "Os princípios expressos no caput do art. 37 da Constituição Federal são legalidade, impessoalidade, moralidade, publicidade e eficiência.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "É o LIMPE, literalmente previsto no caput do art. 37 da CF.",
+  "nodeKey": "N0034",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "certo_errado",
+  "statement": "Os órgãos públicos são dotados de personalidade jurídica própria, distinta da do ente a que pertencem.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "Órgãos não têm personalidade jurídica; quem a tem é a entidade (Lei 9.784/1999, art. 1º, § 2º). Os atos do órgão são imputados à pessoa jurídica (teoria do órgão).",
+  "nodeKey": "N0026",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "certo_errado",
+  "statement": "A autarquia é pessoa jurídica de direito público criada por lei específica.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Art. 37, XIX, da CF: somente por lei específica poderá ser criada autarquia; sua personalidade é de direito público.",
+  "nodeKey": "N0030",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "certo_errado",
+  "statement": "O prazo de validade do concurso público é de até dois anos, prorrogável uma vez, por igual período.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Literalidade do art. 37, III, da CF.",
+  "nodeKey": "N0004",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "certo_errado",
+  "statement": "Pela responsabilidade objetiva do Estado, a vítima precisa comprovar a culpa do servidor para ser indenizada.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "Na responsabilidade objetiva (art. 37, § 6º), a vítima prova conduta, dano e nexo causal; a culpa só importa na ação de regresso do Estado contra o agente.",
+  "nodeKey": "N0055",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "certo_errado",
+  "statement": "A revogação de um ato administrativo ocorre quando ele é ilegal.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "Ato ilegal é anulado. A revogação atinge ato válido que deixou de ser conveniente e oportuno (Súmula 473 do STF; Lei 9.784/1999, art. 53).",
+  "nodeKey": "N0046",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "multipla_escolha",
+  "statement": "Em sentido subjetivo (orgânico ou formal), a Administração Pública corresponde:",
+  "options": [
+   {
+    "label": "A",
+    "text": "ao conjunto de órgãos, entidades e agentes que exercem a função administrativa",
+    "correct": true,
+    "explanation": "Correta: o sentido subjetivo olha para QUEM administra."
+   },
+   {
+    "label": "B",
+    "text": "à atividade de prestação de serviços públicos",
+    "correct": false,
+    "explanation": "Isso é o sentido objetivo (material)."
+   },
+   {
+    "label": "C",
+    "text": "à função de fixar as diretrizes políticas do Estado",
+    "correct": false,
+    "explanation": "Isso é Governo, não Administração."
+   },
+   {
+    "label": "D",
+    "text": "ao exercício do poder de polícia",
+    "correct": false,
+    "explanation": "Atividade administrativa: sentido objetivo."
+   }
+  ],
+  "justification": "O sentido subjetivo identifica os sujeitos (órgãos, entidades e agentes); o objetivo, a atividade.",
+  "nodeKey": "N0020",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "multipla_escolha",
+  "statement": "Integram a Administração Pública Indireta:",
+  "options": [
+   {
+    "label": "A",
+    "text": "autarquias, fundações públicas, empresas públicas e sociedades de economia mista",
+    "correct": true,
+    "explanation": "Correta: são as quatro entidades da Indireta (DL 200/1967, art. 4º, II)."
+   },
+   {
+    "label": "B",
+    "text": "ministérios, secretarias, autarquias e fundações",
+    "correct": false,
+    "explanation": "Ministérios e secretarias são órgãos da Direta."
+   },
+   {
+    "label": "C",
+    "text": "concessionárias de serviço público e autarquias",
+    "correct": false,
+    "explanation": "Concessionárias são particulares; não integram a Indireta."
+   },
+   {
+    "label": "D",
+    "text": "União, Estados, Distrito Federal e Municípios",
+    "correct": false,
+    "explanation": "São os entes da Administração Direta."
+   }
+  ],
+  "justification": "A Indireta é composta pelas quatro entidades com personalidade jurídica própria.",
+  "nodeKey": "N0025",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "multipla_escolha",
+  "statement": "Qual princípio foi incluído no caput do art. 37 da Constituição pela Emenda Constitucional nº 19/1998?",
+  "options": [
+   {
+    "label": "A",
+    "text": "Eficiência",
+    "correct": true,
+    "explanation": "Correta: a EC 19/1998 (Reforma Administrativa) acrescentou a eficiência."
+   },
+   {
+    "label": "B",
+    "text": "Moralidade",
+    "correct": false,
+    "explanation": "Consta do texto original de 1988."
+   },
+   {
+    "label": "C",
+    "text": "Razoabilidade",
+    "correct": false,
+    "explanation": "Não está no art. 37; é expresso na Lei 9.784/1999."
+   },
+   {
+    "label": "D",
+    "text": "Publicidade",
+    "correct": false,
+    "explanation": "Consta do texto original de 1988."
+   }
+  ],
+  "justification": "A eficiência foi o último princípio a entrar no LIMPE, com a EC 19/1998.",
+  "nodeKey": "N0039",
+  "difficulty": 1,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "multipla_escolha",
+  "statement": "As funções de confiança, segundo o art. 37, V, da Constituição, são exercidas:",
+  "options": [
+   {
+    "label": "A",
+    "text": "exclusivamente por servidores ocupantes de cargo efetivo",
+    "correct": true,
+    "explanation": "Correta: literalidade do inciso V."
+   },
+   {
+    "label": "B",
+    "text": "por qualquer pessoa, independentemente de vínculo",
+    "correct": false,
+    "explanation": "Isso vale, com limites, para cargos em comissão."
+   },
+   {
+    "label": "C",
+    "text": "preferencialmente por servidores de carreira",
+    "correct": false,
+    "explanation": "O texto diz 'exclusivamente'."
+   },
+   {
+    "label": "D",
+    "text": "por empregados públicos contratados sem concurso",
+    "correct": false,
+    "explanation": "Não há essa previsão."
+   }
+  ],
+  "justification": "Função de confiança: exclusivamente servidor efetivo; cargo em comissão: qualquer pessoa, respeitado o percentual mínimo de servidores de carreira.",
+  "nodeKey": "N0006",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "multipla_escolha",
+  "statement": "A publicidade dos atos, programas, obras, serviços e campanhas dos órgãos públicos deve ter caráter:",
+  "options": [
+   {
+    "label": "A",
+    "text": "educativo, informativo ou de orientação social",
+    "correct": true,
+    "explanation": "Correta: art. 37, § 1º."
+   },
+   {
+    "label": "B",
+    "text": "promocional e eleitoral",
+    "correct": false,
+    "explanation": "É exatamente o que o § 1º proíbe."
+   },
+   {
+    "label": "C",
+    "text": "comercial, para financiar a obra",
+    "correct": false,
+    "explanation": "Não há essa previsão."
+   },
+   {
+    "label": "D",
+    "text": "pessoal, para identificar o gestor responsável",
+    "correct": false,
+    "explanation": "Nomes, símbolos ou imagens de promoção pessoal são vedados."
+   }
+  ],
+  "justification": "O § 1º do art. 37 veda nomes, símbolos ou imagens que caracterizem promoção pessoal de autoridades ou servidores.",
+  "nodeKey": "N0014",
+  "difficulty": 1,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "facil",
+  "type": "multipla_escolha",
+  "statement": "A distribuição de competências entre órgãos dentro da mesma pessoa jurídica, sem criação de nova pessoa, é chamada de:",
+  "options": [
+   {
+    "label": "A",
+    "text": "desconcentração",
+    "correct": true,
+    "explanation": "Correta: cria órgãos dentro da mesma pessoa, com hierarquia."
+   },
+   {
+    "label": "B",
+    "text": "descentralização por outorga",
+    "correct": false,
+    "explanation": "Cria (ou autoriza) outra pessoa jurídica."
+   },
+   {
+    "label": "C",
+    "text": "descentralização por delegação",
+    "correct": false,
+    "explanation": "Transfere a execução a um particular."
+   },
+   {
+    "label": "D",
+    "text": "privatização",
+    "correct": false,
+    "explanation": "Não é conceito de organização administrativa interna."
+   }
+  ],
+  "justification": "Desconcentração = dentro da mesma pessoa; descentralização = para outra pessoa.",
+  "nodeKey": "N0027",
+  "difficulty": 1,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "certo_errado",
+  "statement": "A empresa pública deve, obrigatoriamente, ser constituída sob a forma de sociedade anônima.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "A empresa pública pode adotar qualquer forma admitida em direito. A forma de S/A é obrigatória para a sociedade de economia mista (Lei 13.303/2016, arts. 3º e 4º).",
+  "nodeKey": "N0032",
+  "difficulty": 3,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "certo_errado",
+  "statement": "Entre a União e as autarquias federais existe relação de hierarquia, o que permite ao Ministério rever livremente qualquer ato da autarquia.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "Entre o ente e a entidade há vinculação (controle finalístico ou supervisão), nos limites da lei — não hierarquia. O recurso hierárquico impróprio só cabe se a lei previr.",
+  "nodeKey": "N0028",
+  "difficulty": 3,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "certo_errado",
+  "statement": "O direito da Administração de anular atos administrativos de que decorram efeitos favoráveis para os destinatários decai em cinco anos, contados da data em que foram praticados, salvo comprovada má-fé.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Literalidade do art. 54 da Lei 9.784/1999.",
+  "nodeKey": "N0047",
+  "difficulty": 3,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "certo_errado",
+  "statement": "É permitida a acumulação remunerada de um cargo de professor com outro técnico ou científico, desde que haja compatibilidade de horários.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Art. 37, XVI, 'b', da CF, observado também o teto remuneratório (inciso XI).",
+  "nodeKey": "N0052",
+  "difficulty": 3,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "certo_errado",
+  "statement": "A nomeação de primo do prefeito para cargo em comissão na prefeitura configura, por si só, violação à Súmula Vinculante 13.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "A SV 13 alcança parentes até o 3º grau. Primo é colateral de 4º grau. Normas locais podem ser mais rígidas, mas a SV 13, por si só, não alcança o primo.",
+  "nodeKey": "N0053",
+  "difficulty": 3,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "certo_errado",
+  "statement": "Os princípios da razoabilidade e da proporcionalidade estão expressamente previstos no caput do art. 37 da Constituição Federal.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "O caput traz só o LIMPE. Razoabilidade e proporcionalidade são implícitas na CF e expressas na Lei 9.784/1999, art. 2º.",
+  "nodeKey": "N0043",
+  "difficulty": 3,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "multipla_escolha",
+  "statement": "Sobre a sociedade de economia mista, assinale a alternativa correta.",
+  "options": [
+   {
+    "label": "A",
+    "text": "Tem personalidade de direito privado, é constituída sob a forma de sociedade anônima e a maioria das ações com direito a voto pertence ao poder público.",
+    "correct": true,
+    "explanation": "Correta: Lei 13.303/2016, art. 4º."
+   },
+   {
+    "label": "B",
+    "text": "Tem capital integralmente público e pode adotar qualquer forma societária.",
+    "correct": false,
+    "explanation": "Essa é a empresa pública."
+   },
+   {
+    "label": "C",
+    "text": "É criada diretamente por lei, sem necessidade de registro.",
+    "correct": false,
+    "explanation": "Sua criação é autorizada por lei; a personalidade nasce com o registro."
+   },
+   {
+    "label": "D",
+    "text": "Tem personalidade de direito público e goza de imunidade tributária em qualquer atividade.",
+    "correct": false,
+    "explanation": "É pessoa de direito privado."
+   },
+   {
+    "label": "E",
+    "text": "Por ser estatal, está sujeita à falência como qualquer empresa.",
+    "correct": false,
+    "explanation": "A Lei 11.101/2005, art. 2º, I, exclui empresas públicas e sociedades de economia mista."
+   }
+  ],
+  "justification": "SEM = direito privado, capital misto com controle público, sempre S/A, criação autorizada por lei.",
+  "nodeKey": "N0033",
+  "difficulty": 3,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "multipla_escolha",
+  "statement": "Quanto à anulação e à revogação de atos administrativos, é correto afirmar:",
+  "options": [
+   {
+    "label": "A",
+    "text": "O Poder Judiciário pode anular atos ilegais da Administração, mas não revogar atos válidos do Executivo por conveniência.",
+    "correct": true,
+    "explanation": "Correta: o Judiciário controla a legalidade, não o mérito de outro Poder."
+   },
+   {
+    "label": "B",
+    "text": "A revogação produz efeitos retroativos (ex tunc).",
+    "correct": false,
+    "explanation": "A revogação produz efeitos ex nunc."
+   },
+   {
+    "label": "C",
+    "text": "A anulação é uma faculdade; a revogação, um dever.",
+    "correct": false,
+    "explanation": "É o contrário: a Administração deve anular e pode revogar (art. 53)."
+   },
+   {
+    "label": "D",
+    "text": "Atos vinculados podem ser revogados a qualquer tempo.",
+    "correct": false,
+    "explanation": "Atos vinculados são irrevogáveis: não há mérito a reavaliar."
+   }
+  ],
+  "justification": "Anulação: ilegalidade, ex tunc, Administração ou Judiciário. Revogação: mérito, ex nunc, só a Administração.",
+  "nodeKey": "N0046",
+  "difficulty": 3,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "multipla_escolha",
+  "statement": "A respeito das fundações públicas, assinale a correta.",
+  "options": [
+   {
+    "label": "A",
+    "text": "Podem ter personalidade jurídica de direito público ou de direito privado, conforme a lei e a atividade.",
+    "correct": true,
+    "explanation": "Correta: posição majoritária e do STF (Tema 545)."
+   },
+   {
+    "label": "B",
+    "text": "São sempre pessoas de direito privado, por determinação constitucional.",
+    "correct": false,
+    "explanation": "A CF não impõe isso; existem fundações de direito público."
+   },
+   {
+    "label": "C",
+    "text": "São criadas por lei complementar.",
+    "correct": false,
+    "explanation": "A lei complementar só define as áreas de atuação (art. 37, XIX)."
+   },
+   {
+    "label": "D",
+    "text": "Podem ter finalidade lucrativa.",
+    "correct": false,
+    "explanation": "Fundações não têm fins lucrativos."
+   }
+  ],
+  "justification": "A fundação pública de direito público (fundação autárquica) é criada por lei; a de direito privado tem a criação autorizada por lei e depende de registro.",
+  "nodeKey": "N0031",
+  "difficulty": 3,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "multipla_escolha",
+  "statement": "Sobre o acesso a cargos e empregos públicos, segundo o art. 37 da Constituição:",
+  "options": [
+   {
+    "label": "A",
+    "text": "a investidura em cargo ou emprego público depende de aprovação prévia em concurso de provas ou de provas e títulos, ressalvados os cargos em comissão declarados em lei de livre nomeação e exoneração",
+    "correct": true,
+    "explanation": "Correta: literalidade do inciso II."
+   },
+   {
+    "label": "B",
+    "text": "o concurso pode ser apenas de títulos, se o cargo for de nível superior",
+    "correct": false,
+    "explanation": "Não existe concurso só de títulos: provas ou provas e títulos."
+   },
+   {
+    "label": "C",
+    "text": "o concurso só é exigido para cargos, não para empregos públicos",
+    "correct": false,
+    "explanation": "O inciso II fala em 'cargo ou emprego'."
+   },
+   {
+    "label": "D",
+    "text": "empresas públicas e sociedades de economia mista estão dispensadas do concurso",
+    "correct": false,
+    "explanation": "Também se submetem ao inciso II."
+   }
+  ],
+  "justification": "Regra: concurso de provas ou provas e títulos para cargo ou emprego, na Direta e na Indireta.",
+  "nodeKey": "N0003",
+  "difficulty": 3,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "situacional",
+  "statement": "Uma lei municipal cria cargos em comissão de 'técnico em contabilidade' para lançamentos contábeis rotineiros. À luz da Constituição e da jurisprudência do STF, essa criação é:",
+  "options": [
+   {
+    "label": "A",
+    "text": "inválida, porque cargos em comissão destinam-se apenas a direção, chefia e assessoramento",
+    "correct": true,
+    "explanation": "Correta: art. 37, V, e STF, Tema 1.010."
+   },
+   {
+    "label": "B",
+    "text": "válida, porque cabe ao município decidir livremente sobre seus cargos",
+    "correct": false,
+    "explanation": "A autonomia municipal não afasta o art. 37, V."
+   },
+   {
+    "label": "C",
+    "text": "válida, desde que os ocupantes tenham formação em contabilidade",
+    "correct": false,
+    "explanation": "A formação não transforma tarefa técnica rotineira em chefia."
+   },
+   {
+    "label": "D",
+    "text": "inválida, porque cargos em comissão só podem ser ocupados por servidores efetivos",
+    "correct": false,
+    "explanation": "Quem é exclusivo de efetivos é a função de confiança."
+   }
+  ],
+  "justification": "Atribuições técnicas, burocráticas ou operacionais exigem cargo efetivo provido por concurso.",
+  "nodeKey": "N0050",
+  "difficulty": 3,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "medio",
+  "type": "situacional",
+  "statement": "O secretário de administração altera critério de distribuição de vagas de estacionamento apenas para beneficiar o setor em que trabalha seu cunhado. O princípio mais diretamente violado é o da:",
+  "options": [
+   {
+    "label": "A",
+    "text": "impessoalidade",
+    "correct": true,
+    "explanation": "Correta: o ato favorece pessoa determinada, com desvio de finalidade."
+   },
+   {
+    "label": "B",
+    "text": "eficiência",
+    "correct": false,
+    "explanation": "Não há discussão sobre resultado ou uso de recursos."
+   },
+   {
+    "label": "C",
+    "text": "publicidade",
+    "correct": false,
+    "explanation": "O problema não é a falta de divulgação."
+   },
+   {
+    "label": "D",
+    "text": "continuidade do serviço público",
+    "correct": false,
+    "explanation": "Não houve interrupção de serviço."
+   }
+  ],
+  "justification": "Atos que favorecem ou perseguem pessoas determinadas violam a impessoalidade (e, em regra, a moralidade).",
+  "nodeKey": "N0036",
+  "difficulty": 3,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "certo_errado",
+  "statement": "Segundo o art. 37, XIX, da Constituição, cabe à lei complementar autorizar a instituição de empresa pública, de sociedade de economia mista e de fundação.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "A instituição é autorizada por lei específica (ordinária). A lei complementar, no caso das fundações, apenas define as áreas de sua atuação.",
+  "nodeKey": "N0012",
+  "difficulty": 4,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "certo_errado",
+  "statement": "Segundo o STF, o Estado responde objetivamente pela morte de detento quando descumpre o dever específico de proteção previsto no art. 5º, XLIX, da Constituição.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "STF, RE 841.526 (Tema 592): inobservado o dever específico de proteção, o Estado é responsável pela morte do detento.",
+  "nodeKey": "N0057",
+  "difficulty": 4,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "certo_errado",
+  "statement": "De acordo com o STF, a vítima de dano causado por agente público no exercício da função pode optar por ajuizar a ação diretamente contra o agente, sem incluir o Estado.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "STF, RE 1.027.633 (Tema 940): a ação deve ser ajuizada contra o Estado ou a prestadora de serviço público; o agente é parte ilegítima, assegurado o regresso nos casos de dolo ou culpa.",
+  "nodeKey": "N0056",
+  "difficulty": 4,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "certo_errado",
+  "statement": "Os atos de improbidade administrativa importarão a cassação dos direitos políticos, a perda da função pública, a indisponibilidade dos bens e o ressarcimento ao erário.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "O art. 37, § 4º, fala em SUSPENSÃO dos direitos políticos. A cassação é vedada pelo art. 15 da CF.",
+  "nodeKey": "N0016",
+  "difficulty": 4,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "certo_errado",
+  "statement": "A proibição de acumular cargos estende-se a empregos e funções e abrange autarquias, fundações, empresas públicas, sociedades de economia mista, suas subsidiárias e sociedades controladas, direta ou indiretamente, pelo poder público.",
+  "options": [],
+  "correctAnswerTrue": true,
+  "justification": "Literalidade do art. 37, XVII, da CF.",
+  "nodeKey": "N0011",
+  "difficulty": 4,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "certo_errado",
+  "statement": "Segundo o STF, o candidato aprovado fora do número de vagas tem direito subjetivo à nomeação sempre que surgirem novas vagas durante o prazo de validade do concurso.",
+  "options": [],
+  "correctAnswerTrue": false,
+  "justification": "STF, Tema 784: o surgimento de novas vagas ou a abertura de novo concurso não gera, por si só, direito à nomeação de quem está fora das vagas, salvo preterição arbitrária e imotivada. O direito subjetivo é de quem foi aprovado dentro das vagas (Tema 161).",
+  "nodeKey": "N0049",
+  "difficulty": 4,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "situacional",
+  "statement": "Em 2018, foi concedida por erro de interpretação, sem fraude do beneficiário, uma vantagem pecuniária paga mensalmente a um servidor. Em 2025, a Administração identifica o erro. Considerando a Lei 9.784/1999, assinale a correta.",
+  "options": [
+   {
+    "label": "A",
+    "text": "Operou-se a decadência do direito de anular, pois passaram mais de cinco anos desde a percepção do primeiro pagamento e não há má-fé.",
+    "correct": true,
+    "explanation": "Correta: art. 54 e § 1º."
+   },
+   {
+    "label": "B",
+    "text": "A Administração pode revogar o ato a qualquer tempo, por se tratar de ato ilegal.",
+    "correct": false,
+    "explanation": "Ato ilegal é anulado, não revogado; e o prazo decadencial se aplica."
+   },
+   {
+    "label": "C",
+    "text": "A anulação é sempre possível, pois ato ilegal não gera direitos.",
+    "correct": false,
+    "explanation": "A Súmula 473 convive com o prazo decadencial do art. 54 para atos favoráveis de boa-fé."
+   },
+   {
+    "label": "D",
+    "text": "O prazo de cinco anos conta da data em que a Administração descobriu o erro.",
+    "correct": false,
+    "explanation": "Nos efeitos patrimoniais contínuos, conta da percepção do primeiro pagamento."
+   },
+   {
+    "label": "E",
+    "text": "Basta à Administração suspender o pagamento, sem processo, por se tratar de autotutela.",
+    "correct": false,
+    "explanation": "Além da decadência, atos com efeitos concretos exigem processo com contraditório (Tema 138)."
+   }
+  ],
+  "justification": "O art. 54 protege a segurança jurídica: atos favoráveis, praticados sem má-fé, só podem ser anulados em cinco anos.",
+  "nodeKey": "N0047",
+  "difficulty": 5,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "multipla_escolha",
+  "statement": "Assinale a alternativa que apresenta diferença correta entre empresa pública e sociedade de economia mista federais.",
+  "options": [
+   {
+    "label": "A",
+    "text": "A empresa pública federal tem suas causas, em regra, na Justiça Federal; a sociedade de economia mista federal, na Justiça Estadual.",
+    "correct": true,
+    "explanation": "Correta: CF, art. 109, I, e Súmula 556 do STF (salvo intervenção da União — Súmula 517)."
+   },
+   {
+    "label": "B",
+    "text": "Somente a sociedade de economia mista exige concurso público para seus empregados.",
+    "correct": false,
+    "explanation": "Ambas exigem (art. 37, II)."
+   },
+   {
+    "label": "C",
+    "text": "Somente a empresa pública tem personalidade de direito privado.",
+    "correct": false,
+    "explanation": "Ambas têm personalidade de direito privado."
+   },
+   {
+    "label": "D",
+    "text": "A sociedade de economia mista é criada por lei; a empresa pública, autorizada por lei.",
+    "correct": false,
+    "explanation": "Ambas têm a criação autorizada por lei."
+   },
+   {
+    "label": "E",
+    "text": "A empresa pública pode ter acionistas privados minoritários.",
+    "correct": false,
+    "explanation": "Seu capital é integralmente público."
+   }
+  ],
+  "justification": "Diferenças centrais: capital (100% público × misto), forma (qualquer × S/A) e foro das federais (Justiça Federal × Estadual).",
+  "nodeKey": "N0033",
+  "difficulty": 5,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "multipla_escolha",
+  "statement": "Assinale a alternativa que classifica corretamente o princípio quanto à sua fonte normativa.",
+  "options": [
+   {
+    "label": "A",
+    "text": "Segurança jurídica: expresso na Lei 9.784/1999 e não no caput do art. 37 da CF.",
+    "correct": true,
+    "explanation": "Correta: consta do art. 2º da Lei 9.784/1999."
+   },
+   {
+    "label": "B",
+    "text": "Proporcionalidade: expresso no caput do art. 37 da CF.",
+    "correct": false,
+    "explanation": "Não está no caput; é implícito na CF e expresso em lei."
+   },
+   {
+    "label": "C",
+    "text": "Eficiência: previsto apenas na Lei 9.784/1999.",
+    "correct": false,
+    "explanation": "Está no caput do art. 37 desde a EC 19/1998 (e também na lei)."
+   },
+   {
+    "label": "D",
+    "text": "Supremacia do interesse público: expresso no caput do art. 37 da CF.",
+    "correct": false,
+    "explanation": "É princípio implícito, de construção doutrinária."
+   },
+   {
+    "label": "E",
+    "text": "Motivação: expresso no caput do art. 37 da CF.",
+    "correct": false,
+    "explanation": "Está na Lei 9.784/1999 (arts. 2º e 50), não no caput."
+   }
+  ],
+  "justification": "Caput do art. 37: só o LIMPE. Lei 9.784/1999, art. 2º: legalidade, finalidade, motivação, razoabilidade, proporcionalidade, moralidade, ampla defesa, contraditório, segurança jurídica, interesse público e eficiência.",
+  "nodeKey": "N0044",
+  "difficulty": 4,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "situacional",
+  "statement": "Durante uma tempestade de intensidade excepcional e imprevisível, uma árvore sadia, sob manutenção regular do Município, cai sobre um carro estacionado. À luz da teoria do risco administrativo:",
+  "options": [
+   {
+    "label": "A",
+    "text": "o Município pode afastar sua responsabilidade demonstrando a força maior, que rompe o nexo causal",
+    "correct": true,
+    "explanation": "Correta: o risco administrativo admite excludentes."
+   },
+   {
+    "label": "B",
+    "text": "o Município responde sempre, pois a responsabilidade é objetiva e adota o risco integral",
+    "correct": false,
+    "explanation": "O risco integral é exceção (ex.: dano nuclear)."
+   },
+   {
+    "label": "C",
+    "text": "o proprietário deve provar a culpa do servidor responsável pela poda",
+    "correct": false,
+    "explanation": "Na responsabilidade objetiva não se exige prova de culpa."
+   },
+   {
+    "label": "D",
+    "text": "a ação deve ser proposta contra o servidor encarregado da manutenção",
+    "correct": false,
+    "explanation": "Tema 940: a ação é contra o Município."
+   }
+  ],
+  "justification": "Responsabilidade objetiva não é automática: culpa exclusiva da vítima, caso fortuito/força maior e fato exclusivo de terceiro rompem o nexo.",
+  "nodeKey": "N0055",
+  "difficulty": 4,
+  "essential": false,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "situacional",
+  "statement": "O prefeito nomeia o filho do presidente da Câmara Municipal para cargo em comissão na prefeitura, e o presidente da Câmara nomeia a filha do prefeito para cargo em comissão no Legislativo. Considerando a Súmula Vinculante 13:",
+  "options": [
+   {
+    "label": "A",
+    "text": "há nepotismo cruzado, vedado pela súmula, que alcança o ajuste mediante designações recíprocas",
+    "correct": true,
+    "explanation": "Correta: a SV 13 menciona expressamente as designações recíprocas."
+   },
+   {
+    "label": "B",
+    "text": "não há nepotismo, porque cada autoridade nomeou parente de outra autoridade",
+    "correct": false,
+    "explanation": "É justamente o nepotismo cruzado."
+   },
+   {
+    "label": "C",
+    "text": "não há nepotismo, pois os Poderes são distintos",
+    "correct": false,
+    "explanation": "A SV 13 alcança qualquer dos Poderes e o ajuste recíproco."
+   },
+   {
+    "label": "D",
+    "text": "só haveria nepotismo se houvesse lei municipal proibindo",
+    "correct": false,
+    "explanation": "A vedação decorre diretamente da Constituição (moralidade e impessoalidade)."
+   }
+  ],
+  "justification": "A SV 13 veda nomeações de parentes até o 3º grau, inclusive mediante designações recíprocas, independentemente de lei.",
+  "nodeKey": "N0053",
+  "difficulty": 5,
+  "essential": true,
+  "dependsOnExternalSource": false
+ },
+ {
+  "level": "dificil",
+  "type": "multipla_escolha",
+  "statement": "Assinale a hipótese de acumulação remunerada admitida pela Constituição, havendo compatibilidade de horários.",
+  "options": [
+   {
+    "label": "A",
+    "text": "Dois cargos ou empregos privativos de profissionais de saúde, com profissões regulamentadas",
+    "correct": true,
+    "explanation": "Correta: art. 37, XVI, 'c'."
+   },
+   {
+    "label": "B",
+    "text": "Dois cargos técnicos ou científicos, sem relação com o magistério",
+    "correct": false,
+    "explanation": "O XVI exige que um deles seja de professor."
+   },
+   {
+    "label": "C",
+    "text": "Um cargo administrativo e um emprego em sociedade de economia mista",
+    "correct": false,
+    "explanation": "A vedação alcança empregos na Indireta (XVII)."
+   },
+   {
+    "label": "D",
+    "text": "Dois cargos em comissão em entes federativos diferentes",
+    "correct": false,
+    "explanation": "Não está entre as exceções."
+   },
+   {
+    "label": "E",
+    "text": "Qualquer acumulação, desde que a soma das remunerações respeite o teto",
+    "correct": false,
+    "explanation": "O teto é requisito adicional, não autoriza acumulações fora das hipóteses."
+   }
+  ],
+  "justification": "Exceções do XVI: professor + professor; professor + técnico/científico; dois privativos de saúde — sempre com horários compatíveis e teto.",
+  "nodeKey": "N0010",
+  "difficulty": 4,
+  "essential": false,
+  "dependsOnExternalSource": false
+ }
+]

@@ -110,6 +110,53 @@ function Scene({ kind, dots }: { kind: StripPanel["cenario"]; dots: string }) {
           <rect x={14} y={96} width={30} height={10} rx={2} fill="#C81E1E" stroke={INK} strokeWidth={1.6} />
         </g>
       );
+    case "reparticao":
+      return (
+        <g>
+          <rect width={W} height={H} fill="#E6E9EE" />
+          <rect width={W} height={H} fill={`url(#${dots})`} opacity={0.35} />
+          {/* quadro de avisos e bandeira (cantos livres) */}
+          <rect x={14} y={28} width={44} height={30} rx={2} fill="#C9A37A" stroke={INK} strokeWidth={1.8} />
+          <rect x={20} y={33} width={14} height={10} fill="#FFFFFF" stroke={INK} strokeWidth={1} />
+          <rect x={38} y={37} width={14} height={14} fill="#FDE68A" stroke={INK} strokeWidth={1} />
+          <path d="M214 30 v70" stroke={INK} strokeWidth={2.4} />
+          <rect x={214} y={30} width={20} height={14} fill="#16A34A" stroke={INK} strokeWidth={1.4} />
+          <path d="M224 32 l8 5 l-8 5 l-8 -5z" fill="#FACC15" />
+          <circle cx={224} cy={37} r={2.6} fill="#1D4ED8" />
+          <rect x={0} y={154} width={W} height={46} fill="#9CA3AF" />
+          <path d="M0 154 h240" {...ln} />
+          {/* mesa com pilha de processos */}
+          <rect x={150} y={128} width={80} height={28} fill="#7C5A3A" stroke={INK} strokeWidth={2} />
+          <rect x={160} y={114} width={22} height={14} fill="#F3F4F6" stroke={INK} strokeWidth={1.4} />
+          <path d="M160 118 h22 M160 122 h22" stroke={INK} strokeWidth={1} />
+        </g>
+      );
+    case "escola":
+      return (
+        <g>
+          <rect width={W} height={H} fill="#F5EBDD" />
+          <rect width={W} height={H} fill={`url(#${dots})`} opacity={0.35} />
+          <rect x={150} y={24} width={78} height={50} rx={3} fill="#1F5133" stroke="#7C5A3A" strokeWidth={4} />
+          <path d="M160 40 h30 M160 50 h44 M160 60 h22" stroke="#E5E7EB" strokeWidth={2} strokeLinecap="round" />
+          <rect x={0} y={154} width={W} height={46} fill="#C8A47E" />
+          <path d="M0 154 h240" {...ln} />
+        </g>
+      );
+    case "obra":
+      return (
+        <g>
+          <rect width={W} height={H} fill="#D6E6F2" />
+          <rect width={W} height={H} fill={`url(#${dots})`} opacity={0.4} />
+          <path d="M0 116 h60 v-46 h50 v46 h130" fill="#AFC0CE" stroke={INK} strokeWidth={2} />
+          <rect x={0} y={150} width={W} height={50} fill="#6B7280" />
+          <path d="M0 150 h240" {...ln} />
+          {/* buraco na via e cavalete de sinalização */}
+          <ellipse cx={176} cy={176} rx={36} ry={9} fill="#2B2B2B" stroke={INK} strokeWidth={2} />
+          <path d="M14 188 l8 -30 M40 188 l-8 -30" stroke={INK} strokeWidth={2.4} />
+          <rect x={8} y={152} width={40} height={10} fill="#F97316" stroke={INK} strokeWidth={1.6} />
+          <path d="M14 152 l6 10 M26 152 l6 10 M38 152 l6 10" stroke="#FFFFFF" strokeWidth={2.4} />
+        </g>
+      );
     case "hospital":
       return (
         <g>

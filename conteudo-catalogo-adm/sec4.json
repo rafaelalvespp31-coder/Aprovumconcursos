@@ -1,0 +1,116 @@
+[
+ {
+  "kind": "exemplos",
+  "title": "Módulo 9 — Casos práticos resolvidos",
+  "bodyMarkdown": "Cada caso traz a **situação**, a **pergunta**, as **possibilidades**, a **resposta** e a **justificativa**. Tente responder antes de ler o gabarito.\n\n**💡 Caso 1 — Favorecimento pessoal**\n\nO secretário de administração muda o critério de distribuição de vagas de estacionamento para que só o setor do seu cunhado tenha vagas cobertas.\n\n**Pergunta:** Qual princípio é violado?\n\n**Possibilidades:** (A) Eficiência • (B) Impessoalidade • (C) Publicidade\n\n✅ **Resposta:** **B — Impessoalidade** (e moralidade). O ato foi praticado para **favorecer pessoa determinada**, e não para atender o interesse público: há **desvio de finalidade**.\n\n**💡 Caso 2 — Publicidade institucional**\n\nO governo veicula campanha de vacinação com a frase-símbolo e a foto do governador.\n\n**Pergunta:** A campanha é regular?\n\n**Possibilidades:** (A) Sim, informa a população • (B) Não, há promoção pessoal\n\n✅ **Resposta:** **B.** A campanha deve ser **educativa, informativa ou de orientação social**, sem **nomes, símbolos ou imagens** de promoção pessoal (art. 37, § 1º).\n\n**💡 Caso 3 — Distribuição interna de competências**\n\nO Estado divide sua Secretaria de Segurança em superintendências regionais subordinadas ao secretário.\n\n**Pergunta:** Que fenômeno ocorreu?\n\n**Possibilidades:** (A) Descentralização por outorga • (B) Desconcentração • (C) Delegação\n\n✅ **Resposta:** **B — Desconcentração.** Competências foram distribuídas **dentro da mesma pessoa jurídica** (o Estado), criando **órgãos** com **hierarquia**. Nenhuma pessoa nova surgiu.\n\n**💡 Caso 4 — Criação de entidade administrativa**\n\nLei estadual autoriza a criação de empresa com capital 100% do Estado, organizada como sociedade limitada, para prestar serviços de informática ao governo.\n\n**Pergunta:** Que entidade é essa e é válida a forma?\n\n**Possibilidades:** (A) Sociedade de economia mista, inválida • (B) Empresa pública, válida • (C) Autarquia, inválida\n\n✅ **Resposta:** **B — Empresa pública, forma válida.** Capital **integralmente público** caracteriza **empresa pública**, que pode adotar **qualquer forma societária** (Lei 13.303/2016, art. 3º).\n\n**💡 Caso 5 — Ato ilegal**\n\nDescobre-se que uma licença de funcionamento foi concedida sem a vistoria que a lei exige. A licença foi expedida há 8 meses.\n\n**Pergunta:** O que a Administração deve fazer?\n\n**Possibilidades:** (A) Revogar, com efeitos futuros • (B) Anular, garantindo contraditório se houver efeitos concretos • (C) Nada, pois gerou direito adquirido\n\n✅ **Resposta:** **B.** Há **ilegalidade** → **anulação** (dever — Lei 9.784/1999, art. 53), com efeitos **retroativos**; como o ato já produziu efeitos, o desfazimento deve ser precedido de **processo administrativo** (STF, Tema 138). Ato ilegal não gera direito adquirido (Súmula 473).\n\n**💡 Caso 6 — Retirada de ato válido**\n\nA prefeitura autorizou, de forma precária, a instalação de mesas de bar na calçada. Agora a calçada será usada para uma ciclovia.\n\n**Pergunta:** Qual é a forma de retirada?\n\n**Possibilidades:** (A) Anulação • (B) Revogação • (C) Cassação por ilegalidade\n\n✅ **Resposta:** **B — Revogação.** O ato era **válido**; deixou de ser **conveniente e oportuno**. A revogação tem efeitos **ex nunc** e só pode ser feita pela própria Administração.\n\n**💡 Caso 7 — Concurso público**\n\nO edital fixa validade de 1 ano. No fim do prazo, a Administração prorroga por 2 anos.\n\n**Pergunta:** A prorrogação é válida?\n\n**Possibilidades:** (A) Sim, o máximo é 2 anos • (B) Não, a prorrogação deve ser por igual período (1 ano)\n\n✅ **Resposta:** **B.** Art. 37, III: validade **até 2 anos**, prorrogável **uma vez**, por **igual período**. Se a validade foi de 1 ano, a prorrogação só pode ser de **1 ano**.\n\n**💡 Caso 8 — Acumulação de cargos**\n\nUma professora da rede estadual (manhã) é aprovada para professora da rede municipal (tarde).\n\n**Pergunta:** Ela pode acumular?\n\n**Possibilidades:** (A) Não, a acumulação é vedada • (B) Sim, se houver compatibilidade de horários e respeitado o teto\n\n✅ **Resposta:** **B.** Dois cargos de **professor** é exceção expressa (art. 37, XVI, \"a\"), com **compatibilidade de horários** e observado o **teto** (inciso XI).\n\n**💡 Caso 9 — Eficiência administrativa**\n\nUm órgão adota agendamento on-line e metas de atendimento, reduzindo filas de 3 horas para 20 minutos, sem alterar requisitos legais.\n\n**Pergunta:** Qual princípio se destaca?\n\n**Possibilidades:** (A) Eficiência • (B) Publicidade • (C) Moralidade\n\n✅ **Resposta:** **A — Eficiência.** Melhor resultado com bom uso de recursos, **dentro da legalidade** — a Administração gerencial trazida pela EC 19/1998.\n\n**💡 Caso 10 — Responsabilidade estatal**\n\nDurante uma tempestade de intensidade excepcional e imprevisível, uma árvore saudável, sob manutenção regular, cai sobre um carro estacionado.\n\n**Pergunta:** O Município responde?\n\n**Possibilidades:** (A) Sempre, a responsabilidade é objetiva • (B) Não, se ficar provada a força maior que rompeu o nexo causal\n\n✅ **Resposta:** **B.** A teoria do **risco administrativo** admite **excludentes**: a **força maior** rompe o nexo causal. Se, ao contrário, a árvore estivesse condenada e o Município tivesse sido avisado, haveria responsabilidade.",
+  "nodeKeys": [
+   "N0035",
+   "N0038",
+   "N0027",
+   "N0032",
+   "N0046",
+   "N0004",
+   "N0052",
+   "N0039",
+   "N0055",
+   "N0057"
+  ]
+ },
+ {
+  "kind": "pegadinhas",
+  "title": "🚨 Certo ou errado? As pegadinhas mais cobradas",
+  "bodyMarkdown": "1. \"Na desconcentração, a Administração cria nova pessoa jurídica.\" → ❌ **Errado.** Cria **órgãos** dentro da mesma pessoa.\n2. \"Entre o ente federativo e a autarquia que ele criou há hierarquia.\" → ❌ **Errado.** Há **vinculação** (controle finalístico).\n3. \"Autarquia tem a criação autorizada por lei e adquire personalidade com o registro.\" → ❌ **Errado.** É **criada** por lei, sem registro.\n4. \"Empresa pública deve ser constituída sob a forma de sociedade anônima.\" → ❌ **Errado.** Pode adotar **qualquer forma**; S/A obrigatória é para a **sociedade de economia mista**.\n5. \"Sociedade de economia mista tem capital integralmente público.\" → ❌ **Errado.** Capital **misto**, com **maioria do capital votante** público.\n6. \"Fundação pública sempre tem personalidade de direito privado.\" → ❌ **Errado.** Pode ser de direito **público** ou **privado**.\n7. \"Razoabilidade está expressa no caput do art. 37.\" → ❌ **Errado.** Só o **LIMPE** está ali.\n8. \"A eficiência consta do art. 37 desde a promulgação da CF/1988.\" → ❌ **Errado.** Entrou com a **EC 19/1998**.\n9. \"O Judiciário pode revogar ato discricionário do Executivo por julgá-lo inconveniente.\" → ❌ **Errado.** O Judiciário **anula** atos ilegais; **não revoga** atos de outro Poder.\n10. \"A anulação produz efeitos ex nunc.\" → ❌ **Errado.** Em regra, **ex tunc** (retroativos).\n11. \"O concurso pode ser prorrogado duas vezes, desde que o total não passe de quatro anos.\" → ❌ **Errado.** Prorrogação **uma única vez**, por **igual período**.\n12. \"Função de confiança pode ser exercida por pessoa sem vínculo com a Administração.\" → ❌ **Errado.** **Exclusivamente** por servidor **efetivo**.\n13. \"É permitido acumular um cargo de professor com outro técnico ou científico, havendo compatibilidade de horários.\" → ✅ **Certo** (XVI, \"b\").\n14. \"Nomear primo do prefeito para cargo em comissão viola a SV 13.\" → ❌ **Errado pela SV 13**: primo é **4º grau** (a lei local pode proibir).\n15. \"A responsabilidade civil do Estado é objetiva e, por isso, ele responde por qualquer dano, sem exceção.\" → ❌ **Errado.** Há **excludentes** (culpa exclusiva da vítima, força maior, fato de terceiro).\n16. \"A vítima pode escolher processar diretamente o servidor causador do dano.\" → ❌ **Errado** segundo o STF (Tema 940): a ação é contra o **Estado**.\n17. \"O direito de regresso contra o agente depende de dolo ou culpa.\" → ✅ **Certo.**\n18. \"Improbidade administrativa importa a cassação dos direitos políticos.\" → ❌ **Errado.** **Suspensão** (art. 37, § 4º).",
+  "nodeKeys": [
+   "N0027",
+   "N0028",
+   "N0030",
+   "N0031",
+   "N0032",
+   "N0033",
+   "N0034",
+   "N0046",
+   "N0004",
+   "N0006",
+   "N0009",
+   "N0053",
+   "N0055",
+   "N0056",
+   "N0016"
+  ]
+ },
+ {
+  "kind": "interpretacao_banca",
+  "title": "Como as bancas cobram este tema",
+  "bodyMarkdown": "- **Estilo certo/errado (Cebraspe):** troca de **uma palavra** muda o gabarito — \"criada\" × \"autorizada\", \"hierarquia\" × \"vinculação\", \"ex tunc\" × \"ex nunc\", \"suspensão\" × \"cassação\", \"uma vez\" × \"duas vezes\". Leia devagar os verbos e as quantidades.\n- **Estilo múltipla escolha (FGV, Vunesp, outras):** casos práticos curtos pedindo o **princípio violado**, a **entidade** correta ou a **forma de retirada do ato** (anular × revogar). Muitas vezes duas alternativas parecem certas; a correta é a que usa o **fundamento exato**.\n- **Lei seca do art. 37:** incisos **II, III, V, XVI, XIX** e §§ **1º, 4º e 6º** aparecem com frequência na forma literal, com uma palavra trocada.\n- **Doutrina × lei × CF:** a banca adora perguntar **onde** está o princípio (art. 37 × Lei 9.784/1999 × implícito).\n- **Jurisprudência:** SV 13 (nepotismo), SV 43 e 44 (concurso), Súmulas 346 e 473 (autotutela), Temas 161 e 784 (nomeação), Tema 940 (dupla garantia) e Tema 592 (morte de detento).\n- 🎯 **Dica do professor:** quando a questão disser \"segundo o STF\", responda com a jurisprudência; quando disser \"segundo a doutrina majoritária\", responda com a doutrina — nos temas de **omissão estatal** e **cargos políticos x nepotismo**, as duas podem divergir.",
+  "nodeKeys": [
+   "N0018",
+   "N0001",
+   "N0034",
+   "N0045",
+   "N0048",
+   "N0054"
+  ]
+ },
+ {
+  "kind": "flashcards",
+  "title": "Flashcards de revisão",
+  "bodyMarkdown": "**Sentido subjetivo da Administração Pública?**\n→ **Quem** administra: órgãos, entidades e agentes (orgânico/formal).\n\n**Sentido objetivo?**\n→ **A atividade**: serviço público, polícia administrativa, fomento, intervenção (material/funcional).\n\n**Órgão tem personalidade jurídica?**\n→ **Não.** Entidade tem. Órgão = centro de competências (Lei 9.784/1999, art. 1º, § 2º).\n\n**Desconcentração × descentralização?**\n→ Desconcentração: **dentro** da mesma pessoa, com hierarquia. Descentralização: para **outra** pessoa, com vinculação.\n\n**Qual entidade da Indireta é CRIADA por lei?**\n→ A **autarquia** (e a fundação de direito público). EP, SEM e fundação privada: lei **autoriza**.\n\n**Empresa pública × sociedade de economia mista?**\n→ EP: capital **100% público**, **qualquer** forma. SEM: capital **misto** (maioria votante pública), **S/A**.\n\n**O que é o LIMPE?**\n→ **L**egalidade, **I**mpessoalidade, **M**oralidade, **P**ublicidade, **E**ficiência (art. 37, caput).\n\n**Quando a eficiência entrou na CF?**\n→ Com a **EC 19/1998**.\n\n**Anulação × revogação?**\n→ Anulação: **ilegalidade**, ex tunc, Administração ou Judiciário. Revogação: **mérito**, ex nunc, só a Administração.\n\n**Prazo para anular ato favorável?**\n→ **5 anos**, salvo **má-fé** (Lei 9.784/1999, art. 54).\n\n**Validade do concurso?**\n→ **Até 2 anos**, prorrogável **uma vez**, por **igual período** (art. 37, III).\n\n**Quem exerce função de confiança?**\n→ **Exclusivamente** servidor de **cargo efetivo** (art. 37, V).\n\n**Exceções à vedação de acumular?**\n→ Professor + professor; professor + técnico/científico; dois privativos de saúde — com **horários compatíveis** e **teto**.\n\n**SV 13 alcança até que grau?**\n→ **3º grau** (inclui tios e sobrinhos; primo, 4º grau, não).\n\n**Responsabilidade do Estado × regresso?**\n→ Estado: **objetiva**. Regresso contra o agente: **dolo ou culpa**.",
+  "nodeKeys": [
+   "N0019",
+   "N0020",
+   "N0026",
+   "N0027",
+   "N0030",
+   "N0032",
+   "N0033",
+   "N0034",
+   "N0039",
+   "N0046",
+   "N0047",
+   "N0004",
+   "N0006",
+   "N0052",
+   "N0053",
+   "N0055",
+   "N0056"
+  ]
+ },
+ {
+  "kind": "resumo",
+  "title": "Resumo por módulo, revisão de véspera e glossário",
+  "bodyMarkdown": "**🔁 Resumo estruturado**\n- **M1 — Fundamentos:** Administração executa; Governo decide. Subjetivo = quem; objetivo = atividade. Função administrativa existe nos três Poderes.\n- **M2 — Organização:** Direta = entes + órgãos (hierarquia). Indireta = autarquias, fundações, EP e SEM (vinculação). Órgão ≠ entidade. Desconcentração cria órgão; descentralização transfere para outra pessoa.\n- **M3 — Entidades:** autarquia (pública, **criada** por lei); fundação (pública ou privada; LC define áreas); EP (privada, capital 100% público, qualquer forma); SEM (privada, capital misto, S/A).\n- **M4 — LIMPE:** só esses cinco no caput; eficiência pela EC 19/1998; § 1º veda promoção pessoal; § 4º improbidade com **suspensão** de direitos políticos.\n- **M5 — Outros princípios:** supremacia (prerrogativas) × indisponibilidade (limites); continuidade; razoabilidade/proporcionalidade/motivação/segurança jurídica na Lei 9.784/1999; especialidade.\n- **M6 — Autotutela:** anula o ilegal (dever, ex tunc), revoga o inconveniente (faculdade, ex nunc); 5 anos para anular ato favorável, salvo má-fé; Súmulas 346 e 473.\n- **M7 — Cargos:** concurso de provas ou provas e títulos; validade até 2 + 2; comissão (qualquer pessoa) × confiança (só efetivo); acumulação só nas exceções; SV 13 até o 3º grau.\n- **M8 — Responsabilidade:** objetiva (risco administrativo, com excludentes); regresso exige dolo ou culpa; vítima processa o Estado (Tema 940); omissão específica → objetiva segundo o STF.\n\n**⏱️ Revisão de véspera (10 linhas)**\n1. LIMPE — e mais nada no caput. 2. Eficiência = EC 19/1998. 3. Autarquia **criada**; demais **autorizadas**. 4. EP 100% pública, qualquer forma; SEM mista, S/A. 5. Órgão sem personalidade. 6. Desconcentração = hierarquia; descentralização = vinculação. 7. Anula ilegal (ex tunc); revoga inconveniente (ex nunc). 8. Concurso: 2 anos + 1 prorrogação igual. 9. Confiança só efetivo; comissão qualquer pessoa. 10. Estado objetivo; agente só com dolo ou culpa.\n\n**📚 Glossário**\n- **Autotutela:** poder de rever os próprios atos sem ir ao Judiciário.\n- **Desvio de finalidade:** ato praticado para fim diverso do interesse público previsto na lei.\n- **Ex tunc / ex nunc:** efeitos retroativos / efeitos daqui para frente.\n- **Mérito administrativo:** margem de conveniência e oportunidade do ato discricionário.\n- **Nexo causal:** ligação entre a conduta e o dano.\n- **Outorga / delegação:** transferência por lei da titularidade e execução / transferência por contrato ou ato só da execução.\n- **Teoria do órgão:** a atuação do agente é imputada à pessoa jurídica.\n- **Vinculação (tutela):** controle finalístico do ente sobre a entidade que criou, nos limites da lei.",
+  "nodeKeys": [
+   "N0018",
+   "N0023",
+   "N0029",
+   "N0034",
+   "N0040",
+   "N0045",
+   "N0048",
+   "N0054"
+  ]
+ },
+ {
+  "kind": "checklist",
+  "title": "Checklist: você consegue…",
+  "bodyMarkdown": "- [ ] Diferenciar sentido **subjetivo** e **objetivo** e Administração × **Governo**?\n- [ ] Dar um exemplo de função **atípica** de cada Poder?\n- [ ] Explicar por que um **órgão** não tem personalidade e quem responde pelos atos dele?\n- [ ] Distinguir **desconcentração** e **descentralização** (outorga × delegação)?\n- [ ] Diferenciar **hierarquia** de **vinculação**?\n- [ ] Preencher, de cabeça, a tabela das **quatro entidades** da Indireta?\n- [ ] Explicar por que **EP** e **SEM** são diferentes quanto ao **capital** e à **forma**?\n- [ ] Dizer o **LIMPE** e onde estão a razoabilidade e a proporcionalidade?\n- [ ] Decidir entre **anular** e **revogar** um ato, com os efeitos e o prazo de 5 anos?\n- [ ] Aplicar as regras de **validade do concurso** e o direito à nomeação (Tema 161)?\n- [ ] Diferenciar **cargo em comissão** de **função de confiança**?\n- [ ] Listar as exceções à **vedação de acumular** cargos?\n- [ ] Dizer até que grau vai a **SV 13** e o que é nepotismo **cruzado**?\n- [ ] Resolver um caso de **responsabilidade civil** com excludentes e **regresso**?",
+  "nodeKeys": [
+   "N0019",
+   "N0020",
+   "N0021",
+   "N0022",
+   "N0026",
+   "N0027",
+   "N0028",
+   "N0029",
+   "N0034",
+   "N0046",
+   "N0049",
+   "N0051",
+   "N0052",
+   "N0053",
+   "N0055",
+   "N0056"
+  ]
+ }
+]

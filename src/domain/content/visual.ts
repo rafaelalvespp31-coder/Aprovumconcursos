@@ -7,11 +7,11 @@ import { z } from "zod";
  * Tudo é desenhado no app (SVG/HTML): sem imagens externas, leve e funciona offline.
  */
 
-export const ROLES = ["delegado", "pm", "policial_penal", "perito", "promotor", "juiz", "advogado", "vitima", "investigado", "preso", "cidadao"] as const;
-export const SCENES = ["delegacia", "local_crime", "cela", "forum", "rua", "casa", "bar", "hospital", "piscina"] as const;
+export const ROLES = ["delegado", "pm", "policial_penal", "perito", "promotor", "juiz", "advogado", "vitima", "investigado", "preso", "cidadao", "servidor", "gestor", "professor"] as const;
+export const SCENES = ["delegacia", "local_crime", "cela", "forum", "rua", "casa", "bar", "hospital", "piscina", "reparticao", "escola", "obra"] as const;
 export const POSES = ["neutro", "fala", "aponta", "pega", "ataca", "bracos_cruzados"] as const;
 export const MOODS = ["neutro", "serio", "bravo", "surpreso", "feliz", "triste"] as const;
-export const PROPS = ["arma", "documento", "celular", "maleta", "faca", "copo"] as const;
+export const PROPS = ["arma", "documento", "celular", "maleta", "faca", "copo", "carimbo"] as const;
 
 const character = z.object({
   p: z.enum(ROLES),

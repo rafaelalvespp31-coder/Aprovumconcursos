@@ -21,6 +21,7 @@ type Look = {
   patch?: string;
   glasses?: boolean;
   beard?: boolean;
+  lanyard?: string; // cordão de crachá
 };
 
 const LOOKS: Record<StripCharacter["p"], Look> = {
@@ -35,6 +36,11 @@ const LOOKS: Record<StripCharacter["p"], Look> = {
   investigado: { skin: "#E0AC7E", hair: "#2B1D14", hairStyle: "curto", torso: "#7A7A7A", pants: "#2E2E2E", beard: true },
   preso: { skin: "#C68B59", hair: "#1A1A1A", hairStyle: "raspado", torso: "#D9C7A3", pants: "#C4B08A" },
   cidadao: { skin: "#8D5524", hair: "#1A1A1A", hairStyle: "curto", torso: "#4CAF7A", pants: "#34495E" },
+  // Servidor público: camisa clara com crachá.
+  servidor: { skin: "#E0AC7E", hair: "#4A3020", hairStyle: "coque", torso: "#DCE6F0", pants: "#3A4656", lanyard: "#2563EB" },
+  // Gestor (prefeito, secretário, chefe do órgão): terno escuro e gravata azul.
+  gestor: { skin: "#F2C9A0", hair: "#5B5B5B", hairStyle: "curto", torso: "#1F2937", pants: "#111827", tie: "#1D4ED8", glasses: true },
+  professor: { skin: "#C68B59", hair: "#2B1D14", hairStyle: "longo", torso: "#B45309", pants: "#3F3F46", glasses: true },
 };
 
 const S = { stroke: INK, strokeWidth: 2.4, strokeLinejoin: "round" as const, strokeLinecap: "round" as const };
@@ -74,6 +80,13 @@ function Prop({ kind }: { kind: NonNullable<StripCharacter["objeto"]> }) {
           <path d="M3 -2 v-4 h8 v4" fill="none" />
           <rect x={-2} y={-2} width={18} height={13} rx={2} fill="#B0B7C0" />
           <path d="M5 4 h4 M7 2 v4" stroke="#C81E1E" strokeWidth={1.8} />
+        </g>
+      );
+    case "carimbo":
+      return (
+        <g {...S} strokeWidth={1.6}>
+          <rect x={1} y={-14} width={6} height={9} rx={2} fill="#7A4A2A" />
+          <rect x={-3} y={-5} width={14} height={6} rx={1.5} fill="#C81E1E" />
         </g>
       );
     case "copo":
@@ -184,6 +197,13 @@ export function Person({ c, x, faceLeft }: { c: StripCharacter; x: number; faceL
         {look.coat && <path d="M0 -82 v44 M-12 -60 h24" stroke={INK} strokeWidth={1.4} fill="none" opacity={0.6} />}
         {look.badge && <path d="M-8 -68 l3 -3 l3 3 l-3 4 z" fill="#E8B923" {...S} strokeWidth={1.2} />}
         {look.patch && <rect x={-9} y={-74} width={7} height={5} rx={1} fill={look.patch} stroke="none" />}
+        {look.lanyard && (
+          <g>
+            <path d="M-6 -82 l6 18 l6 -18" stroke={look.lanyard} strokeWidth={2} fill="none" />
+            <rect x={-4.5} y={-65} width={9} height={11} rx={1.5} fill="#FFFFFF" {...S} strokeWidth={1.3} />
+            <rect x={-2.5} y={-63} width={5} height={3.5} fill={look.lanyard} stroke="none" />
+          </g>
+        )}
         {/* cabeça */}
         <rect x={-4} y={-86} width={8} height={6} fill={look.skin} {...S} strokeWidth={1.6} />
         <circle cx={0} cy={-96} r={14} fill={look.skin} {...S} />
