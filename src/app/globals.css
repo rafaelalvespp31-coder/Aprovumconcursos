@@ -114,6 +114,13 @@ body {
 @keyframes scheme-grow-y { from { transform: scaleY(0); } to { transform: scaleY(1); } }
 @keyframes scheme-grow-x { from { transform: translateY(-50%) scaleX(0); } to { transform: translateY(-50%) scaleX(1); } }
 
+/* Modo Jogo: textos da aula em fundo escuro */
+.jogo-texto,
+.jogo-texto p,
+.jogo-texto li { color: rgba(255, 255, 255, 0.9); }
+.jogo-texto strong { color: #ff6b6b; }
+.jogo-texto a { color: #ffffff; }
+
 /* Foco sempre visível para navegação por teclado */
 :focus-visible {
   outline: 2px solid var(--color-azul);

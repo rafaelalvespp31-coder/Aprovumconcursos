@@ -6,7 +6,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   ArrowRight,
   Bell,
-  Brain,
+  Gamepad2,
   ChartColumn,
   ChevronRight,
   CircleHelp,
@@ -55,7 +55,7 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
   return [
     { id: "painel", href: `${base}/painel`, label: "Painel", icon: House, num: "1", desc: "Visão geral", title: "" },
     { id: "trilhas", href: `${base}/trilhas`, label: "Estudos", icon: MapIcon, num: "2", desc: plural(s.counts.trails, "conteúdo", "conteúdos"), also: [`${base}/trilha`, `${base}/aula`, `${base}/nova-trilha`], title: "Seus estudos" },
-    { id: "quiz", href: `${base}/quiz`, label: "Quiz", icon: Brain, num: "3", desc: "Complete a lei", title: "Modo Quiz" },
+    { id: "quiz", href: `${base}/quiz`, label: "Modo Jogo", short: "Jogo", icon: Gamepad2, num: "3", desc: "Complete a lei", title: "Modo Jogo" },
     { id: "questoes", href: `${base}/questoes`, label: "Questões", icon: CircleHelp, num: "4", desc: `Banco ${s.counts.questions}`, also: [`${base}/simulado`], title: "Banco de questões" },
     { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "5", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
     { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "6", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
@@ -102,6 +102,8 @@ export function PastelShell({
   }, [toast]);
 
   const shortcutsOn = !!active && SHORTCUT_ROUTES.includes(active.id) && !path.startsWith(`${basePath}/aula`);
+  // Modo Jogo: cabeçalho escuro, contínuo com o palco preto da página.
+  const dark = active?.id === "quiz";
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -196,7 +198,7 @@ export function PastelShell({
                         {!collapsed && (
                           <span className="min-w-0 flex-1">
                             <span className="flex items-center gap-2">
-                              <span className={`font-semibold tracking-tight ${on ? "text-white" : ""}`}>{s.short ?? s.label}</span>
+                              <span className={`font-semibold tracking-tight ${on ? "text-white" : ""}`}>{s.label}</span>
                               {!on && shortcutsOn && (
                                 <span className="rounded-full border border-[#2E2E2E] bg-[#1A1A1A] px-1.5 py-0.5 text-[10px]" aria-label={`atalho ${s.num}`}>{s.num}</span>
                               )}
@@ -276,13 +278,16 @@ export function PastelShell({
           </aside>
 
           <div className="min-w-0 flex-1">
-            <header className="sticky top-0 z-20 border-b border-black/[0.06] bg-white/75 backdrop-blur-[18px]" style={{ top: "env(safe-area-inset-top, 0px)" }}>
+            <header
+              className={`sticky top-0 z-20 border-b backdrop-blur-[18px] ${dark ? "border-white/10 bg-[#070707]/90 text-white" : "border-black/[0.06] bg-white/75"}`}
+              style={{ top: "env(safe-area-inset-top, 0px)" }}
+            >
               <div className="flex h-[88px] items-center justify-between gap-4 px-5 lg:px-10">
                 <div className="flex min-w-0 flex-1 items-center gap-4">
                   <Link
                     href={`${basePath}/perfil`}
                     aria-label="Perfil e conquistas"
-                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-[#E5E5E5] bg-[#F5F5F5] shadow lg:hidden"
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border shadow lg:hidden ${dark ? "border-white/15 bg-[#161616] text-white" : "border-[#E5E5E5] bg-[#F5F5F5]"}`}
                   >
                     <UserRound className="h-5 w-5" aria-hidden />
                   </Link>
@@ -292,8 +297,8 @@ export function PastelShell({
                     ) : (
                       <p className="flex items-center gap-2 truncate font-[Space_Grotesk] text-[24px] font-[800] leading-none tracking-[-0.02em] sm:text-[28px] lg:text-[34px]">{title}</p>
                     )}
-                    <div className="mt-2 hidden items-center gap-2 text-[13.5px] text-[#4D4D4D] sm:flex">
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full border border-[#E0E0E0] bg-[#F4F4F4]" aria-hidden>
+                    <div className={`mt-2 hidden items-center gap-2 text-[13.5px] sm:flex ${dark ? "text-white/65" : "text-[#4D4D4D]"}`}>
+                      <span className={`flex h-6 w-6 items-center justify-center rounded-full border ${dark ? "border-white/15 bg-[#161616]" : "border-[#E0E0E0] bg-[#F4F4F4]"}`} aria-hidden>
                         <Target className="h-3.5 w-3.5 text-[#FF1E1E]" />
                       </span>
                       <span className="truncate">

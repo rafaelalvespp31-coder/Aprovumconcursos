@@ -1,7 +1,7 @@
 import { getQuizHome, startRound, DAILY_GOAL, LIVES } from "@/server/services/quiz";
 import { QuizView } from "./quiz-view";
 
-export const metadata = { title: "Quiz" };
+export const metadata = { title: "Modo Jogo" };
 
 export default async function QuizPage({ searchParams }: { searchParams: Promise<{ tema?: string }> }) {
   const sp = await searchParams;
@@ -9,8 +9,8 @@ export default async function QuizPage({ searchParams }: { searchParams: Promise
   if (!home.topics.length) {
     return (
       <div className="mx-auto max-w-2xl">
-        <h1 className="t-h1">Quiz</h1>
-        <p className="mt-2 text-tinta-suave">Ainda não há conteúdos do catálogo com texto de lei para o quiz. Volte em breve.</p>
+        <h1 className="t-h1">Modo Jogo</h1>
+        <p className="mt-2 text-tinta-suave">Ainda não há conteúdos do catálogo com texto de lei para o Modo Jogo. Volte em breve.</p>
       </div>
     );
   }

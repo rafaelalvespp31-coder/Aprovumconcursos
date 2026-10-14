@@ -1,7 +1,7 @@
 import { QuizView } from "@/app/(app)/quiz/quiz-view";
 import { buildAll, type LawNode } from "@/domain/quiz/cloze";
 
-/** Prévia do Modo Quiz com dispositivos de exemplo (sem servidor: verificar não funciona aqui). */
+/** Prévia do Modo Jogo com dispositivos de exemplo (sem servidor: verificar não funciona aqui). */
 const N = (key: string, kind: string, marker: string | null, sourceText: string, parentKey: string | null = null): LawNode => ({ key, kind, marker, sourceText, parentKey, path: marker ?? key });
 const nodes: LawNode[] = [
   N("N0028", "artigo", "Art. 10", "Art. 10. O inquérito deverá terminar no prazo de 10 dias, se o indiciado tiver sido preso em flagrante, ou estiver preso preventivamente, ou no prazo de 30 dias, quando estiver solto, mediante fiança ou sem ela."),

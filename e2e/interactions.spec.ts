@@ -315,7 +315,7 @@ test.describe("casco pastel", () => {
     const nav = page.getByRole("navigation", { name: "Principal" });
     await expect(nav.getByRole("link", { name: /Painel/ })).toHaveAttribute("aria-current", "page");
     await expect(page.getByTestId("nav-desc-revisoes")).toHaveText("2 pendentes");
-    await expect(nav.getByRole("link", { name: /Quiz/ })).toHaveAttribute("href", `${G}/quiz`);
+    await expect(nav.getByRole("link", { name: /Modo Jogo/ })).toHaveAttribute("href", `${G}/quiz`);
     await page.keyboard.press("7");
     await expect(page).toHaveURL(new RegExp(`${G}/perfil`));
     await expect(page.getByTestId("nivel")).toHaveText("Nível 5");
@@ -418,10 +418,10 @@ test("flashcards viram com animação e certo/errado mostra o gabarito", async (
 });
 
 
-test.describe("modo quiz", () => {
+test.describe("modo jogo", () => {
   test("encaixa palavras do banco nos espaços e libera a verificação", async ({ page }) => {
     await page.goto(`${G}/quiz`);
-    const card = page.getByRole("region", { name: "Questão do quiz" });
+    const card = page.getByRole("region", { name: "Questão do jogo" });
     await expect(card.getByText("Instrutor Caveira")).toBeVisible();
     const verify = card.getByRole("button", { name: /Verificar resposta/ });
     await expect(verify).toBeDisabled();
