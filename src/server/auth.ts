@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createUserClient } from "./supabase";
 
@@ -8,12 +9,12 @@ export interface SessionUser {
 }
 
 /** Valida a sessão com o servidor de autenticação (não confia só no cookie). */
-export async function getSessionUser(): Promise<SessionUser | null> {
+export const getSessionUser = cache(async function getSessionUser(): Promise<SessionUser | null> {
   const supabase = await createUserClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
   return { id: data.user.id, email: data.user.email ?? null };
-}
+});
 
 export async function requireUser(next?: string): Promise<SessionUser> {
   const user = await getSessionUser();

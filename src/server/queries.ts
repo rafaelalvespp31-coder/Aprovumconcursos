@@ -1,6 +1,7 @@
 import "server-only";
 import { notFound } from "next/navigation";
 import { createUserClient } from "./supabase";
+import { getSessionUser } from "./auth";
 import { normalizeText } from "@/domain/catalog/match";
 import type { PracticeCase } from "@/domain/content/practice";
 import type { AuditReport } from "@/domain/content/audit";
@@ -302,9 +303,10 @@ export async function getDueReviews() {
 
 export async function getProfile() {
   const db = await createUserClient();
+  const me = (await getSessionUser())?.id ?? "00000000-0000-0000-0000-000000000000";
   const [p, s] = await Promise.all([
-    db.from("profiles").select("display_name, daily_questions_goal, weekly_lessons_goal, onboarding_completed, created_at").maybeSingle(),
-    db.from("subscriptions").select("status, plan_id, plans(name, max_active_trails, max_trail_builds_per_month, max_lesson_generations_per_month)").maybeSingle(),
+    db.from("profiles").select("display_name, daily_questions_goal, weekly_lessons_goal, onboarding_completed, created_at").eq("id", me).maybeSingle(),
+    db.from("subscriptions").select("status, plan_id, plans(name, max_active_trails, max_trail_builds_per_month, max_lesson_generations_per_month)").eq("user_id", me).maybeSingle(),
   ]);
   return { profile: p.data, subscription: s.data };
 }
@@ -456,13 +458,14 @@ export function moduleProgress(
 
 export async function getDashboard() {
   const db = await createUserClient();
+  const me = (await getSessionUser())?.id ?? "00000000-0000-0000-0000-000000000000";
   const now = new Date();
   const weekStart = new Date(now);
   weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7)); // segunda-feira
   weekStart.setHours(0, 0, 0, 0);
 
   const [profile, activity, weekLessons, lastProgress, qCount, attempted, marks] = await Promise.all([
-    db.from("profiles").select("display_name, daily_questions_goal, weekly_lessons_goal, onboarding_completed").maybeSingle(),
+    db.from("profiles").select("display_name, daily_questions_goal, weekly_lessons_goal, onboarding_completed").eq("id", me).maybeSingle(),
     db.rpc("my_daily_activity", { p_days: 14 }),
     db.rpc("my_lessons_completed_since", { p_since: weekStart.toISOString() }),
     db
@@ -601,12 +604,14 @@ export interface ShellSummary {
 
 export async function getShellSummary(email: string | null): Promise<ShellSummary> {
   const db = await createUserClient();
+  // Sempre filtra pelo próprio aluno: contas de equipe também leem dados de outros (RLS "admin le").
+  const me = (await getSessionUser())?.id ?? "00000000-0000-0000-0000-000000000000";
   const [profile, stats, trails, questions, reviews] = await Promise.all([
-    db.from("profiles").select("display_name").maybeSingle(),
+    db.from("profiles").select("display_name").eq("id", me).maybeSingle(),
     getStudyStats(),
-    db.from("study_trails").select("id", { count: "exact", head: true }).is("archived_at", null),
-    db.from("questions").select("id", { count: "exact", head: true }).eq("active", true),
-    db.from("review_schedules").select("lesson_id", { count: "exact", head: true }).lte("due_at", new Date().toISOString()),
+    db.from("study_trails").select("id", { count: "exact", head: true }).eq("user_id", me).is("archived_at", null),
+    db.from("questions").select("id", { count: "exact", head: true }).eq("user_id", me).eq("active", true),
+    db.from("review_schedules").select("lesson_id", { count: "exact", head: true }).eq("user_id", me).lte("due_at", new Date().toISOString()),
   ]);
   const g = computeGamification(stats);
   return {

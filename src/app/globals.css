@@ -461,3 +461,6 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 /* Painel — brilho que atravessa o banner claro */
 @keyframes marca-brilho-k { 0% { transform: translateX(-120%) skewX(-18deg); } 100% { transform: translateX(220%) skewX(-18deg); } }
 .marca-brilho { background: linear-gradient(90deg, transparent 0%, rgba(255, 255, 255, 0.55) 50%, transparent 100%); width: 40%; animation: marca-brilho-k 5.5s ease-in-out 1.4s infinite; }
+/* Painel — frases motivacionais que se alternam */
+@keyframes frase-in-k { 0% { opacity: 0; transform: translateY(70%); filter: blur(4px); } 100% { opacity: 1; transform: none; filter: none; } }
+.frase-in { animation: frase-in-k 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both; }

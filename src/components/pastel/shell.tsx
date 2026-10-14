@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { RotatingQuote } from "./rotating-quote";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
@@ -292,7 +293,13 @@ export function PastelShell({
                     <UserRound className="h-5 w-5" aria-hidden />
                   </Link>
                   <div className="min-w-0">
-                    {isPainel || active?.id === "perfil" ? (
+                    {isPainel ? (
+                      <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4">
+                        <h1 className="flex shrink-0 items-center gap-2 font-[Space_Grotesk] text-[24px] font-[800] leading-none tracking-[-0.02em] sm:text-[28px] lg:text-[34px]">{title}</h1>
+                        <span className="hidden h-7 w-[3px] shrink-0 rounded-full bg-[#D90A00] sm:block" aria-hidden />
+                        <RotatingQuote className="text-[15px] leading-tight sm:text-[19px] lg:text-[22px]" />
+                      </div>
+                    ) : active?.id === "perfil" ? (
                       <h1 className="flex items-center gap-2 truncate font-[Space_Grotesk] text-[24px] font-[800] leading-none tracking-[-0.02em] sm:text-[28px] lg:text-[34px]">{title}</h1>
                     ) : (
                       <p className="flex items-center gap-2 truncate font-[Space_Grotesk] text-[24px] font-[800] leading-none tracking-[-0.02em] sm:text-[28px] lg:text-[34px]">{title}</p>
