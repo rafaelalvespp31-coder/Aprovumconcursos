@@ -2,6 +2,8 @@
 
 import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from "react";
 import { BuildingOverlay } from "./building-overlay";
+import { CatalogPicker } from "./catalog-picker";
+import type { CatalogPickerGroup } from "@/domain/catalog/picker";
 import { Button, Notice, inputClass } from "@/components/ui";
 import { CONTENT_EXAMPLES, CONTENT_LIMITS, EXAM_BOARDS, trailRequestSchema, type ExamBoardSlug } from "@/domain/trail-input";
 import type { ContentType } from "@/domain/content/types";
@@ -12,7 +14,7 @@ const PLACEHOLDER =
 
 function Step({ n, title, done, children }: { n: number; title: string; done: boolean; children: React.ReactNode }) {
   return (
-    <fieldset className="border-l-2 border-linha pl-5 data-[done=true]:border-azul" data-done={done}>
+    <fieldset className="min-w-0 border-l-2 border-linha pl-5 data-[done=true]:border-azul" data-done={done}>
       <legend className="-ml-[2.15rem] flex items-center gap-3">
         <span
           className={`flex size-7 items-center justify-center rounded-full t-small font-bold ${done ? "bg-azul text-white" : "bg-superficie text-tinta-suave ring-1 ring-linha-forte"}`}
@@ -39,18 +41,25 @@ function guessType(text: string): ContentType {
 export function NewTrailForm({
   initialContent = "",
   aiOn = true,
-  available = [],
+  catalog = [],
   folders = [],
 }: {
   initialContent?: string;
   aiOn?: boolean;
-  available?: string[];
+  catalog?: CatalogPickerGroup[];
   folders?: Array<{ id: string; name: string }>;
 }) {
+  const allTopics = catalog.flatMap((g) => g.topics);
+  // Aula pré-escolhida pelo link (?conteudo=Título exato).
+  const preset = allTopics.find((t) => t.title === initialContent.trim()) ?? null;
+  const [picked, setPicked] = useState<{ id: string; title: string } | null>(preset);
+  // Com aulas no catálogo, o padrão é escolher uma; o texto livre só existe com a IA ligada.
+  const [mode, setMode] = useState<"catalogo" | "livre">(allTopics.length || !aiOn ? "catalogo" : "livre");
+  const fromCatalog = mode === "catalogo";
   const [state, action, pending] = useActionState<CreateTrailState, FormData>(createTrailAction, {});
   const [board, setBoard] = useState<ExamBoardSlug | null>(null);
   const [other, setOther] = useState("");
-  const [content, setContent] = useState(initialContent);
+  const [content, setContent] = useState(preset ? "" : initialContent);
   const [type, setType] = useState<ContentType>(() => guessType(initialContent));
   const [typeTouched, setTypeTouched] = useState(false);
   const [title, setTitle] = useState("");
@@ -64,6 +73,7 @@ export function NewTrailForm({
 
   // Sugestão ao vivo do catálogo revisado (o resultado final é decidido no servidor).
   useEffect(() => {
+    if (fromCatalog) return;
     const text = content.trim();
     if (text.length < 4 || text.length > 300) return;
     let alive = true;
@@ -75,12 +85,15 @@ export function NewTrailForm({
       alive = false;
       clearTimeout(t);
     };
-  }, [content]);
-  const catalog = hint && hint.for === content.trim() && hint.data.kind !== "nenhum" ? hint.data : null;
+  }, [content, fromCatalog]);
+  const catalogHint = hint && hint.for === content.trim() && hint.data.kind !== "nenhum" ? hint.data : null;
 
+  // No seletor, o "conteúdo" enviado é o título da aula escolhida (o servidor usa o id).
+  const sentContent = fromCatalog ? picked?.title ?? "" : content;
+  const sentType: ContentType = fromCatalog ? guessType(picked?.title ?? "") : type;
   const validation = useMemo(
-    () => trailRequestSchema.safeParse({ board: board ?? undefined, otherBoardName: other, contentType: type, content, title }),
-    [board, other, type, content, title],
+    () => trailRequestSchema.safeParse({ board: board ?? undefined, otherBoardName: other, contentType: sentType, content: sentContent, title }),
+    [board, other, sentType, sentContent, title],
   );
   const issues = validation.success ? {} : Object.fromEntries(validation.error.issues.map((i) => [String(i.path[0]), i.message]));
   const len = content.length;
@@ -95,7 +108,7 @@ export function NewTrailForm({
       action={action}
       onSubmit={(e) => {
         setTouched(true);
-        if (!validation.success) {
+        if (!validation.success || (fromCatalog && !picked)) {
           e.preventDefault();
           return;
         }
@@ -103,7 +116,7 @@ export function NewTrailForm({
         // No modo só catálogo, anima sempre — exceto quando já se sabe que o pedido não está no catálogo
         // (aí o aviso aparece na hora). Assim a animação não depende de a sugestão ter chegado a tempo.
         const knownMiss = !!hint && hint.for === content.trim() && hint.data.kind !== "completo";
-        const animate = !useAi && (catalog?.kind === "completo" || (!aiOn && !knownMiss));
+        const animate = fromCatalog || (!useAi && (catalogHint?.kind === "completo" || (!aiOn && !knownMiss)));
         if (animate) {
           e.preventDefault();
           const data = new FormData(e.currentTarget);
@@ -113,12 +126,36 @@ export function NewTrailForm({
       }}
       noValidate
     >
-      {building && <BuildingOverlay topic={catalog?.titles[0] ?? content.trim().slice(0, 80)} durationMs={BUILD_MS} />}
-      <input type="hidden" name="contentType" value={type} />
-      <Step n={1} title="O que você quer estudar agora?" done={!issues.content && content.trim().length > 0}>
+      {building && <BuildingOverlay topic={fromCatalog ? picked?.title ?? "" : catalogHint?.titles[0] ?? content.trim().slice(0, 80)} durationMs={BUILD_MS} />}
+      <input type="hidden" name="contentType" value={sentType} />
+      {fromCatalog && (
+        <>
+          <input type="hidden" name="content" value={sentContent} />
+          <input type="hidden" name="catalogTopicId" value={picked?.id ?? ""} />
+        </>
+      )}
+      <Step n={1} title={fromCatalog ? "Escolha a aula" : "O que você quer estudar agora?"} done={fromCatalog ? !!picked : !issues.content && content.trim().length > 0}>
+        {fromCatalog ? (
+          <>
+            <p className="mb-3 t-small text-tinta-suave">Aulas prontas e revisadas pela equipe, separadas por matéria. Cada uma vem com aula, três níveis de questões e PDF.</p>
+            <CatalogPicker groups={catalog} value={picked?.id ?? null} onChange={(t) => setPicked({ id: t.id, title: t.title })} invalid={touched && !picked} />
+            {touched && !picked && <p className="mt-2 t-tiny text-erro" role="alert">Escolha uma aula para continuar.</p>}
+            {aiOn && (
+              <button type="button" onClick={() => setMode("livre")} className="mt-4 t-small font-semibold text-destaque underline-offset-2 hover:underline">
+                Não achou? Escrever outro conteúdo para a IA gerar
+              </button>
+            )}
+          </>
+        ) : (
+        <>
         <p className="mb-3 t-small text-tinta-suave">
           Informe um tema, uma matéria, um artigo ou um capítulo. Não precisa do edital: a plataforma identifica o assunto, delimita o escopo e monta a aula e as avaliações só disso.
         </p>
+        {allTopics.length > 0 && (
+          <button type="button" onClick={() => setMode("catalogo")} className="mb-3 t-small font-semibold text-destaque underline-offset-2 hover:underline">
+            ← Voltar para as aulas do catálogo
+          </button>
+        )}
         <label htmlFor="content" className="sr-only">Conteúdo a estudar</label>
         <textarea
           id="content"
@@ -140,15 +177,15 @@ export function NewTrailForm({
         </div>
         {touched && issues.content && <p className="mt-2 t-tiny text-erro" role="alert">{issues.content}</p>}
         {/* Reconhecimento do catálogo: continua ativo (decide a animação), mas não aparece na tela. */}
-        {catalog && (
+        {!fromCatalog && catalogHint && (
           <div hidden className="mt-3 rounded-md border border-linha-forte bg-nevoa p-3 t-small" data-testid="catalogo-sugestao">
-            {catalog.kind === "completo" ? (
+            {catalogHint.kind === "completo" ? (
               <>
                 <p className="font-semibold">
                   <span className="mr-1.5 inline-block rounded-full bg-azul px-2 py-0.5 t-tiny text-white">Revisado</span>
                   Este conteúdo já está no catálogo do APROVUM: começa na hora, sem esperar a geração.
                 </p>
-                <p className="mt-1 text-tinta-suave">{catalog.titles.join(" · ")}</p>
+                <p className="mt-1 text-tinta-suave">{catalogHint.titles.join(" · ")}</p>
                 {aiOn && (
                   <label className="mt-2 flex items-center gap-2 text-tinta-suave">
                     <input type="checkbox" name="usarIa" value="1" checked={useAi} onChange={(e) => setUseAi(e.target.checked)} className="size-4 accent-azul" />
@@ -158,32 +195,10 @@ export function NewTrailForm({
               </>
             ) : (
               <p className="text-tinta-suave">
-                Parte do pedido está no catálogo ({catalog.titles.join(", ")}), mas não tudo{catalog.reason ? ` — ${catalog.reason}` : ""}.{" "}
+                Parte do pedido está no catálogo ({catalogHint.titles.join(", ")}), mas não tudo{catalogHint.reason ? ` — ${catalogHint.reason}` : ""}.{" "}
                 {aiOn ? "A aula será gerada pela IA." : "No momento, peça só o que já está no catálogo."}
               </p>
             )}
-          </div>
-        )}
-        {!aiOn && (
-          <div hidden className="mt-3 rounded-md border border-linha bg-superficie p-3 t-small" data-testid="catalogo-disponivel">
-            <p className="font-semibold">Conteúdos disponíveis agora</p>
-            {available.length ? (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {available.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => onContent(t)}
-                    className="rounded-full border border-azul bg-nevoa px-3 py-1.5 t-tiny font-semibold text-destaque hover:bg-azul hover:text-white"
-                  >
-                    {t}
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <p className="mt-1 text-tinta-suave">Novos conteúdos estão sendo cadastrados. Volte em breve.</p>
-            )}
-            <p className="mt-2 t-tiny text-tinta-fraca">Toque num conteúdo para escolher, ou escreva o tema ou o artigo (ex.: “homicídio”, “art. 121 do CP”).</p>
           </div>
         )}
         <div className="mt-3 flex flex-wrap gap-2" aria-label="Exemplos" hidden={!aiOn}>
@@ -202,6 +217,8 @@ export function NewTrailForm({
             </button>
           ))}
         </div>
+        </>
+        )}
         <div className="mt-4">
           <label htmlFor="title" className="t-small font-semibold">Título (opcional)</label>
           <input

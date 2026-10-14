@@ -21,7 +21,7 @@ export async function createTrailAction(_: CreateTrailState, form: FormData): Pr
       contentType: form.get("contentType") || undefined,
       content: String(form.get("content") ?? ""),
       title: form.get("title") || undefined,
-    }, { useCatalog: form.get("usarIa") !== "1" });
+    }, { useCatalog: form.get("usarIa") !== "1", catalogTopicId: topicId(form.get("catalogTopicId")) });
   } catch (err) {
     if (err instanceof UserFacingError) return { error: err.message };
     await logEvent("trail.create_error", { userId: user.id, error: (err as Error).message });
@@ -33,6 +33,11 @@ export async function createTrailAction(_: CreateTrailState, form: FormData): Pr
     await moveTrailToFolder(user.id, result.trailId, folderId).catch((e) => logEvent("folder.assign_failed", { error: (e as Error).message }));
   }
   redirect(result.jobId ? `/trilhas/${result.trailId}/processando?job=${result.jobId}` : `/trilhas/${result.trailId}?catalogo=1`);
+}
+
+function topicId(v: FormDataEntryValue | null): string | undefined {
+  const s = typeof v === "string" ? v.trim() : "";
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s) ? s : undefined;
 }
 
 export interface CatalogHint {

@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { getAIProvider } from "@/ai";
 import { completeLessonSections, delimitScope, generateLesson, generateQuestions } from "@/ai/services";
-import { DISCIPLINE_MODES, type DisciplineMode } from "@/ai/pedagogy";
+import { DISCIPLINE_LABELS, DISCIPLINE_MODES, type DisciplineMode } from "@/ai/pedagogy";
+import type { CatalogPickerGroup } from "@/domain/catalog/picker";
 import { lessonSchema, type LessonOutput } from "@/ai/schemas";
 import { normalizeContent } from "@/domain/content/normalize";
 import { extractStructure, type ExtractedNode } from "@/domain/content/extract";
@@ -63,6 +64,27 @@ export async function loadPublishedIndex(): Promise<CatalogTopicIndex[]> {
     articles: (t.articles as string[]) ?? [],
     aliases: (t.aliases as string[]) ?? [],
   }));
+}
+
+/** Aulas publicadas, agrupadas por matéria, para o seletor do novo estudo. */
+export async function catalogPicker(): Promise<CatalogPickerGroup[]> {
+  const db = createAdminClient();
+  const { data, error } = await db
+    .from("catalog_topics")
+    .select("id, title, summary, discipline_mode, estimated_minutes")
+    .eq("status", "publicado")
+    .limit(5000);
+  if (error) throw new Error(error.message);
+  const groups = new Map<string, CatalogPickerGroup>();
+  for (const t of data ?? []) {
+    const discipline = DISCIPLINE_LABELS[t.discipline_mode as DisciplineMode] ?? "Outras matérias";
+    const g = groups.get(discipline) ?? { discipline, topics: [] };
+    g.topics.push({ id: t.id as string, title: t.title as string, summary: (t.summary as string | null) ?? null, minutes: t.estimated_minutes as number });
+    groups.set(discipline, g);
+  }
+  const sorted = [...groups.values()].sort((a, b) => a.discipline.localeCompare(b.discipline, "pt-BR"));
+  for (const g of sorted) g.topics.sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
+  return sorted;
 }
 
 /** Títulos publicados, para orientar o aluno no modo só catálogo. */

@@ -464,3 +464,18 @@ test.describe("modo jogo", () => {
     await expect(dlg).toBeHidden();
   });
 });
+
+test("novo estudo: seletor de aulas do catálogo, separado por matéria", async ({ page }) => {
+  await page.goto(`${G}/novo-estudo`);
+  const picker = page.getByTestId("seletor-catalogo");
+  await expect(picker.getByRole("region", { name: "Direito Penal" })).toBeVisible();
+  await expect(page.getByLabel("Conteúdo a estudar")).toHaveCount(0);
+  await picker.getByRole("tab", { name: /Direito Processual Penal/ }).click();
+  await expect(picker.getByText("Homicídio (CP, art. 121)")).toBeHidden();
+  await picker.getByText("Inquérito Policial (CPP, arts. 4º a 23)").click();
+  await expect(picker.getByRole("radio", { name: /Inquérito Policial/ })).toBeChecked();
+  await picker.getByRole("tab", { name: /Todas/ }).click();
+  await page.getByLabel("Buscar aula").fill("limpe");
+  await expect(picker.getByText(/Administração Pública/)).toBeVisible();
+  await expect(picker.getByText("Homicídio (CP, art. 121)")).toBeHidden();
+});

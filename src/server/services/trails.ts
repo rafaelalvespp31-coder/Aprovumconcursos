@@ -10,7 +10,7 @@ import { advanceLessonJob, type LessonJobState } from "../pipeline/generate-less
 import type { BuildState, Job } from "../pipeline/types";
 import { SupabaseBuildRepo, SupabaseLessonRepo, JOB_COLUMNS, rowToJob, type JobRow } from "../repos/supabase-repos";
 import { auditLog, logEvent } from "../observability";
-import { catalogAvailableTitles, createStudyFromCatalog, findInCatalog } from "./catalog";
+import { catalogAvailableTitles, createStudyFromCatalog, findInCatalog, loadPublishedIndex } from "./catalog";
 
 /** Mensagem do modo só catálogo: diz o que falta e o que já está disponível. */
 async function catalogOnlyMessage(match: CatalogMatch): Promise<string> {
@@ -60,7 +60,7 @@ async function planLimits(userId: string) {
 export async function createTrail(
   userId: string,
   input: unknown,
-  opts: { useCatalog?: boolean } = {},
+  opts: { useCatalog?: boolean; catalogTopicId?: string } = {},
 ): Promise<{ trailId: string; jobId: string | null; fromCatalog: boolean }> {
   const parsed = trailRequestSchema.safeParse(input);
   if (!parsed.success) {
@@ -84,6 +84,13 @@ export async function createTrail(
   // Modelo híbrido: pedido coberto pelo catálogo revisado é montado sem IA (e sem consumir cota).
   // Com a IA desligada (modo só catálogo), o catálogo é o único caminho.
   const catalogOnly = !aiEnabled();
+  // Aula escolhida no seletor do catálogo: usa exatamente esse tema.
+  if (opts.catalogTopicId) {
+    const topic = (await loadPublishedIndex()).find((t) => t.id === opts.catalogTopicId);
+    if (!topic) throw new UserFacingError("Esta aula não está mais disponível no catálogo. Escolha outra.", "catalog_only");
+    const trailId = await createStudyFromCatalog(userId, req, { kind: "completo", topics: [topic], reason: `Tema: ${topic.title}` });
+    return { trailId, jobId: null, fromCatalog: true };
+  }
   if (opts.useCatalog !== false || catalogOnly) {
     const match = await findInCatalog(req.content).catch(async (e) => {
       await logEvent("catalog.match_failed", { error: (e as Error).message });
