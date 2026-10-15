@@ -173,6 +173,9 @@ function createDemoApi(): StudyApi {
         await delay();
         // Na galeria, a recuperação reaproveita a questão errada com um novo id (sem IA).
         const level = levelKey ?? LEVELS[Math.min(2, levelsPassed)]!.key;
+        const missing = reader.questions.filter((q) => q.level === level && !q.recovery_of && !answers.has(q.id)).map((q) => q.id);
+        if (missing.length)
+          return { ok: false, error: missing.length === 1 ? "Falta responder 1 questão deste nível antes da recuperação." : `Faltam responder ${missing.length} questões deste nível antes da recuperação.`, missing };
         const wrong = reader.questions.filter((q) => q.level === level && !q.recovery_of && answers.get(q.id)?.correct === false);
         if (!wrong.length) return { ok: false, error: "Não há erros a recuperar neste nível. Calcule o resultado do nível." };
         const created = wrong.map((w) => {

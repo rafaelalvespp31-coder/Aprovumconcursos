@@ -23,7 +23,7 @@ async function catalogOnlyMessage(match: CatalogMatch): Promise<string> {
 }
 
 export class UserFacingError extends Error {
-  constructor(message: string, public readonly code: string) {
+  constructor(message: string, public readonly code: string, public readonly data?: unknown) {
     super(message);
     this.name = "UserFacingError";
   }

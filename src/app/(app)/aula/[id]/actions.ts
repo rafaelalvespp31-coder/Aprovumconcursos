@@ -88,6 +88,8 @@ export interface RecoveryResult {
   wrong?: number;
   /** Exercícios de recuperação ainda não respondidos deste nível, prontos para mostrar na hora. */
   questions?: ReaderQuestion[];
+  /** Questões oficiais do nível ainda sem resposta (bloqueiam a recuperação). */
+  missing?: string[];
 }
 
 /** Recuperações pendentes (não respondidas) do nível, com as alternativas — sem gabarito. */
@@ -143,7 +145,10 @@ export async function generateRecoveryAction(lessonId: string, level?: LevelKey)
     revalidatePath(`/aula/${lessonId}`);
     return { ok: true, created: r.created, wrong: r.wrong, questions: await pendingRecoveries(lessonId, level ?? r.level) };
   } catch (e) {
-    if (e instanceof UserFacingError) return { ok: false, error: e.message };
+    if (e instanceof UserFacingError) {
+      const missing = e.code === "unanswered" ? ((e.data as { missing?: string[] } | undefined)?.missing ?? []) : undefined;
+      return { ok: false, error: e.message, missing };
+    }
     await logEvent("recovery.failed", { lessonId, error: (e as Error).message });
     return { ok: false, error: "Não foi possível gerar os exercícios de recuperação agora." };
   }

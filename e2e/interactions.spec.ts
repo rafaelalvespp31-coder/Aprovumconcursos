@@ -265,6 +265,21 @@ test.describe("tela de aula", () => {
     await expect(page.getByRole("link", { name: /Próximo tema/ }).first()).toBeVisible();
   });
 
+  test("questões do nível que ficaram sem resposta ao longo da aula aparecem no próprio nível", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    await page.getByRole("button", { name: "Ir para: Questões · Fácil" }).click();
+    const fac = page.getByTestId("nivel-facil");
+    const box = fac.getByTestId("faltam-facil");
+    await expect(box).toBeVisible();
+    await expect(box.getByRole("heading", { level: 4 })).toContainText(/Falta(m)? responder/);
+    const first = box.getByRole("article").first();
+    const radio = first.getByRole("radio").first();
+    await radio.evaluate((el) => (el as HTMLInputElement).click());
+    await first.getByRole("button", { name: "Responder", exact: true }).click();
+    // A questão continua na lista, agora com o gabarito.
+    await expect(first.getByText(/Resposta (correta|incorreta)/)).toBeVisible();
+  });
+
   test("nível reprovado oferece recuperação em vez de reiniciar", async ({ page }) => {
     await page.goto(`${G}/aula`);
     await walkThemes(page, async () => {

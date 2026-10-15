@@ -28,6 +28,7 @@ export function SingleLevel({
   renderQuestion,
   onPassed,
   onAdvance,
+  isAnswered,
 }: {
   lessonId: string;
   levelKey: LevelKey;
@@ -39,6 +40,8 @@ export function SingleLevel({
   onPassed: (n: number) => void;
   /** Avançar para o próximo nível (aula passo a passo). */
   onAdvance?: () => void;
+  /** Se a questão já foi respondida (para listar aqui as que faltam). */
+  isAnswered?: (id: string) => boolean;
 }) {
   const level = LEVELS.find((l) => l.key === levelKey)!;
   return (
@@ -52,6 +55,7 @@ export function SingleLevel({
       renderQuestion={renderQuestion}
       onPassed={onPassed}
       onAdvance={onAdvance}
+      isAnswered={isAnswered}
     />
   );
 }
@@ -145,6 +149,7 @@ function LevelBlock({
   renderQuestion,
   onPassed,
   onAdvance,
+  isAnswered,
 }: {
   lessonId: string;
   level: (typeof LEVELS)[number];
@@ -155,6 +160,7 @@ function LevelBlock({
   renderQuestion: (q: ReaderQuestion, number: number, label?: string) => ReactNode;
   onPassed: (n: number) => void;
   onAdvance?: () => void;
+  isAnswered?: (id: string) => boolean;
 }) {
   const api = useStudyApi();
   const router = useRouter();
@@ -171,6 +177,16 @@ function LevelBlock({
   const need = requiredCorrect(official.length, MIN_PCT / 100);
   const passedNow = status === "aprovado" || (result?.ok && (result.levelsPassed ?? 0) >= level.n);
   const shown = official.filter((q) => !interleavedIds.has(q.id));
+  // Questões do nível que ficaram ao longo da aula e ainda não foram respondidas: aparecem
+  // aqui para responder sem procurar. Uma vez listada, a questão fica (para ver o gabarito).
+  const missingRef = useRef<HTMLDivElement>(null);
+  const missingNow = isAnswered ? official.filter((q) => interleavedIds.has(q.id) && !isAnswered(q.id)).map((q) => q.id) : [];
+  const [missingIds, setMissingIds] = useState<string[]>(missingNow);
+  const newlyMissing = missingNow.filter((id) => !missingIds.includes(id));
+  if (newlyMissing.length) setMissingIds([...missingIds, ...newlyMissing]);
+  const addMissing = (ids: string[]) => setMissingIds((cur) => [...cur, ...ids.filter((id) => !cur.includes(id))]);
+  const missingList = official.filter((q) => missingIds.includes(q.id) && interleavedIds.has(q.id));
+  const stillMissing = missingList.filter((q) => !isAnswered || !isAnswered(q.id)).length;
   const headingId = `nivel-${level.key}-titulo`;
   const nextLevel = LEVELS.find((l) => l.n === level.n + 1);
   const advance = onAdvance && nextLevel && (
@@ -234,6 +250,25 @@ function LevelBlock({
         <div className="mt-4 flex flex-col gap-4">{shown.map((q) => renderQuestion(q, numberOf.get(q.id)!))}</div>
       )}
 
+      {missingList.length > 0 && (
+        <div ref={missingRef} className="mt-6 scroll-mt-24 rounded-lg border-2 border-destaque/40 bg-nevoa/60 p-4" data-testid={`faltam-${level.key}`}>
+          <h4 className="flex items-center gap-2 font-semibold">
+            <Icon name="raio" className="size-4 text-destaque" />
+            {stillMissing === 0 ? "Questões que faltavam: respondidas" : stillMissing === 1 ? "Falta responder 1 questão deste nível" : `Faltam responder ${stillMissing} questões deste nível`}
+          </h4>
+          <p className="mt-1 t-small text-tinta-suave">
+            {stillMissing === 0 ? (
+              <>Agora toque em <strong>Calcular resultado</strong> logo abaixo.</>
+            ) : (
+              <>Ela{stillMissing === 1 ? "" : "s"} apareceu{stillMissing === 1 ? "" : "ram"} ao longo da aula. Responda aqui mesmo; depois calcule o resultado do nível.</>
+            )}
+          </p>
+          <div className="mt-3 flex flex-col gap-4">
+            {missingList.map((q) => renderQuestion(q, numberOf.get(q.id)!, `Questão ${numberOf.get(q.id)} do nível ${level.label.toLowerCase()}`))}
+          </div>
+        </div>
+      )}
+
       {recoveries.length > 0 && (
         <div ref={recRef} className="mt-6 scroll-mt-24 rounded-lg border-2 border-destaque/40 bg-nevoa/60 p-4" data-testid={`recuperacao-${level.key}`}>
           <h4 className="flex items-center gap-2 font-semibold"><Icon name="raio" className="size-4 text-destaque" /> Exercícios de recuperação</h4>
@@ -291,6 +326,10 @@ function LevelBlock({
                 startRec(async () => {
                   const r = await api.generateRecovery(lessonId, level.key);
                   setRecovery(r);
+                  if (!r.ok && r.missing?.length) {
+                    addMissing(r.missing);
+                    requestAnimationFrame(() => missingRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                  }
                   if (r.ok) {
                     setFresh(r.questions ?? []);
                     // O resultado reprovado sai de cena: agora é responder os exercícios.

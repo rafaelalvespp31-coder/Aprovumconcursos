@@ -47,7 +47,12 @@ export async function generateRecovery(userId: string, input: { lessonId: string
     .in("question_id", rows.map((r) => r.id).length ? rows.map((r) => r.id) : ["00000000-0000-0000-0000-000000000000"]);
   if (att.error) throw new Error(att.error.message);
   const { wrong, unanswered } = wrongRoots(rows, (att.data ?? []) as Array<{ question_id: string; is_correct: boolean; created_at: string }>);
-  if (unanswered.length) throw new UserFacingError(`Responda as ${unanswered.length} questão(ões) restantes do nível antes da recuperação.`, "unanswered");
+  if (unanswered.length)
+    throw new UserFacingError(
+      unanswered.length === 1 ? "Falta responder 1 questão deste nível antes da recuperação." : `Faltam responder ${unanswered.length} questões deste nível antes da recuperação.`,
+      "unanswered",
+      { missing: unanswered.map((q) => q.id) },
+    );
   if (!wrong.length) throw new UserFacingError("Não há erros a recuperar neste nível. Calcule o resultado do nível.", "nothing_wrong");
 
   const repo = new SupabaseLessonRepo(db);

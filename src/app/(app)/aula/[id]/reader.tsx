@@ -528,6 +528,7 @@ export function LessonReader(props: ReaderProps) {
                   renderQuestion={renderQuestion}
                   onPassed={(n) => setLevelsPassed((p) => Math.max(p, n))}
                   onAdvance={() => go(step + 1)}
+                  isAnswered={(id) => !!savedFor(id)}
                 />
               </section>
             )}
