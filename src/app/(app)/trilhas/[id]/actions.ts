@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/server/auth";
 import { activateTrail, answerClarification, deleteTrail, setTrailArchived, UserFacingError } from "@/server/services/trails";
-import { createStudyPdf } from "@/server/services/pdf";
+import { createStudyPdf, deleteStudyPdf } from "@/server/services/pdf";
 import { logEvent } from "@/server/observability";
 
 export async function startTrailAction(trailId: string) {
@@ -78,4 +78,18 @@ export async function createPdfAction(trailId: string, _prev: PdfState): Promise
     await logEvent("study_pdf.failed", { trailId, error: (e as Error).message });
     return { error: "Não foi possível gerar o PDF agora. Tente novamente." };
   }
+}
+
+/** Exclui uma versão do PDF do conteúdo. */
+export async function deletePdfAction(trailId: string, pdfId: string): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser();
+  try {
+    await deleteStudyPdf(user.id, pdfId);
+  } catch (e) {
+    if (e instanceof UserFacingError) return { ok: false, error: e.message };
+    await logEvent("study_pdf.delete_failed", { trailId, pdfId, error: (e as Error).message });
+    return { ok: false, error: "Não foi possível excluir o PDF agora. Tente novamente." };
+  }
+  revalidatePath(`/trilhas/${trailId}`);
+  return { ok: true };
 }

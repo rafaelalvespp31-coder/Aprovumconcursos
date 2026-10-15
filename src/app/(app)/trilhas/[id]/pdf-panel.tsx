@@ -1,17 +1,33 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { Button, Notice } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import type { StudyPdfItem } from "@/server/queries";
-import { createPdfAction, type PdfState } from "./actions";
+import { createPdfAction, deletePdfAction, type PdfState } from "./actions";
 
 /**
  * PDF individual do conteúdo: liberado quando todas as unidades passaram nos três
- * níveis. Cada geração cria uma nova versão; as anteriores continuam disponíveis.
+ * níveis. Cada geração cria uma nova versão; as anteriores continuam disponíveis até o
+ * aluno excluí-las (com confirmação).
  */
 export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs }: { trailId: string; ready: boolean; unitsDone: number; unitsTotal: number; pdfs: StudyPdfItem[] }) {
   const [state, action, pending] = useActionState<PdfState, FormData>(createPdfAction.bind(null, trailId), {});
+  const router = useRouter();
+  const [confirming, setConfirming] = useState<string | null>(null);
+  const [deleted, setDeleted] = useState<{ version: number } | null>(null);
+  const [delError, setDelError] = useState<string | null>(null);
+  const [removing, startRemoving] = useTransition();
+  const remove = (id: string, version: number) =>
+    startRemoving(async () => {
+      const r = await deletePdfAction(trailId, id);
+      setConfirming(null);
+      if (!r.ok) return setDelError(r.error ?? "Não foi possível excluir.");
+      setDelError(null);
+      setDeleted({ version });
+      router.refresh();
+    });
   return (
     <section id="pdf" className="scroll-mt-6 rounded-lg border border-linha bg-superficie p-5" aria-labelledby="pdf-titulo">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -33,7 +49,9 @@ export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs }: { trai
         </p>
       )}
       {state.error && <div className="mt-3"><Notice tone="erro">{state.error}</Notice></div>}
-      {state.created && <div className="mt-3"><Notice tone="sucesso">PDF versão {state.created} gerado. Ele está na lista abaixo.</Notice></div>}
+      {state.created && !deleted && <div className="mt-3"><Notice tone="sucesso">PDF versão {state.created} gerado. Ele está na lista abaixo.</Notice></div>}
+      {deleted && <div className="mt-3"><Notice tone="sucesso">PDF versão {deleted.version} excluído.</Notice></div>}
+      {delError && <div className="mt-3"><Notice tone="erro">{delError}</Notice></div>}
       {pdfs.length > 0 && (
         <ul className="mt-4 divide-y divide-linha rounded-md border border-linha">
           {pdfs.map((p) => (
@@ -42,9 +60,34 @@ export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs }: { trai
                 <span className="font-semibold">Versão {p.pdf_version}</span>
                 <span className="text-tinta-fraca"> · {new Date(p.created_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })} · {p.questions} questão(ões)</span>
               </span>
-              <a href={`/api/pdf/${p.id}`} className="inline-flex min-h-10 items-center gap-1.5 font-semibold text-destaque underline underline-offset-2" download>
-                <Icon name="download" className="size-4" /> Baixar
-              </a>
+              {confirming === p.id ? (
+                <span className="flex flex-wrap items-center gap-2" role="group" aria-label={`Confirmar exclusão da versão ${p.pdf_version}`}>
+                  <span className="font-semibold text-erro">Excluir esta versão?</span>
+                  <button type="button" disabled={removing} onClick={() => remove(p.id, p.pdf_version)} className="inline-flex min-h-10 items-center gap-1.5 rounded-full bg-erro px-4 font-semibold text-white disabled:opacity-60">
+                    {removing ? "Excluindo…" : "Sim, excluir"}
+                  </button>
+                  <button type="button" disabled={removing} onClick={() => setConfirming(null)} className="inline-flex min-h-10 items-center rounded-full border border-linha-forte px-4 font-semibold">
+                    Cancelar
+                  </button>
+                </span>
+              ) : (
+                <span className="flex items-center gap-4">
+                  <a href={`/api/pdf/${p.id}`} className="inline-flex min-h-10 items-center gap-1.5 font-semibold text-destaque underline underline-offset-2" download>
+                    <Icon name="download" className="size-4" /> Baixar
+                  </a>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setConfirming(p.id);
+                      setDeleted(null);
+                    }}
+                    className="inline-flex min-h-10 items-center gap-1.5 font-semibold text-tinta-suave hover:text-erro"
+                    aria-label={`Excluir a versão ${p.pdf_version} do PDF`}
+                  >
+                    <Icon name="lixeira" className="size-4" /> Excluir
+                  </button>
+                </span>
+              )}
             </li>
           ))}
         </ul>

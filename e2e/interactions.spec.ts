@@ -58,6 +58,12 @@ test.describe("modo de questões", () => {
     await page.getByText("anular a licença, por ilegalidade", { exact: false }).click();
     await page.getByRole("button", { name: "Responder", exact: true }).click();
     const box = page.getByTestId("comentarios-questao");
+    // Começa recolhido (só a aba com o número de comentários); abre ao tocar.
+    const aba = box.getByTestId("comentarios-aba");
+    await expect(aba).toHaveAttribute("aria-expanded", "false");
+    await expect(box.getByText("Marina S.")).toHaveCount(0);
+    await aba.click();
+    await expect(aba).toHaveAttribute("aria-expanded", "true");
     await expect(box.getByText("Marina S.")).toBeVisible();
     await expect(box.getByText(/Visíveis para todos os alunos/)).toBeVisible();
     const publish = box.getByRole("button", { name: "Publicar comentário" });
@@ -71,6 +77,10 @@ test.describe("modo de questões", () => {
     const other = box.getByRole("listitem").filter({ hasText: "Carlos R." });
     await other.getByRole("button", { name: "Denunciar" }).click();
     await expect(other.getByText("Denunciado")).toBeVisible();
+    // Tocar de novo fecha a aba.
+    await aba.click();
+    await expect(aba).toHaveAttribute("aria-expanded", "false");
+    await expect(box.getByLabel("Seu comentário")).toHaveCount(0);
   });
 
   test("atalhos de teclado: letra escolhe, Enter responde, J avança", async ({ page }) => {

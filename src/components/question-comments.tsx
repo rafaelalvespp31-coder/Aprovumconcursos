@@ -20,6 +20,7 @@ function ago(iso: string) {
 /**
  * Comentários dos alunos sobre a questão. Ficam registrados e aparecem para todos os
  * alunos que responderam a mesma questão. Só abre depois da resposta (evita spoiler).
+ * Fica recolhido numa aba: toca para abrir e toca de novo para fechar (ocupa menos espaço).
  */
 export function QuestionComments({ questionId }: { questionId: string }) {
   const api = useStudyApi();
@@ -28,6 +29,7 @@ export function QuestionComments({ questionId }: { questionId: string }) {
   const [error, setError] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const [pending, start] = useTransition();
   const [busy, setBusy] = useState<string | null>(null);
 
@@ -64,12 +66,26 @@ export function QuestionComments({ questionId }: { questionId: string }) {
   const shown = open ? (list ?? []) : (list ?? []).slice(-3);
 
   return (
-    <section aria-labelledby={`${formId}-t`} className="mt-3 rounded-lg border border-linha bg-superficie p-4 sm:p-5" data-testid="comentarios-questao">
-      <div className="flex flex-wrap items-center gap-2">
-        <h4 id={`${formId}-t`} className="mr-auto inline-flex items-center gap-1.5 font-semibold">
-          <Icon name="duvida" className="size-4 text-destaque" /> Comentários dos alunos
+    <section aria-labelledby={`${formId}-t`} className="mt-3 rounded-lg border border-linha bg-superficie" data-testid="comentarios-questao">
+      <h4 id={`${formId}-t`} className="m-0">
+        <button
+          type="button"
+          onClick={() => setExpanded((x) => !x)}
+          aria-expanded={expanded}
+          aria-controls={`${formId}-p`}
+          className="flex min-h-12 w-full items-center gap-2 rounded-lg px-4 py-3 text-left font-semibold transition-colors hover:bg-nevoa/60 sm:px-5"
+          data-testid="comentarios-aba"
+        >
+          <Icon name="duvida" className="size-4 shrink-0 text-destaque" />
+          <span className="mr-auto">Comentários dos alunos</span>
           <span className="rounded-full bg-nevoa px-2 py-0.5 t-tiny font-bold text-tinta-suave">{list ? n : "…"}</span>
-        </h4>
+          <span className="t-tiny font-semibold text-tinta-suave">{expanded ? "Fechar" : "Abrir"}</span>
+          <Icon name="chevronDown" className={`size-4 shrink-0 text-tinta-suave transition-transform duration-200 ${expanded ? "rotate-180" : ""}`} />
+        </button>
+      </h4>
+      {expanded && (
+      <div id={`${formId}-p`} className="border-t border-linha px-4 pb-4 pt-3 sm:px-5 sm:pb-5">
+      <div className="flex flex-wrap items-center gap-2">
         {n > 3 && (
           <button type="button" onClick={() => setOpen(!open)} className="t-small font-semibold text-destaque">
             {open ? "Mostrar só os recentes" : `Ver todos os ${n}`}
@@ -138,6 +154,8 @@ export function QuestionComments({ questionId }: { questionId: string }) {
           </Button>
         </div>
       </form>
+      </div>
+      )}
     </section>
   );
 }

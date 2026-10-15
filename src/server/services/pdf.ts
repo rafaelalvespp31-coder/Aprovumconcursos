@@ -198,3 +198,16 @@ export async function createStudyPdf(userId: string, trailIdInput: string): Prom
   await logEvent("study_pdf.created", { trailId, version: out.pdfVersion });
   return out;
 }
+
+/** Exclui um PDF gerado pelo próprio aluno (só o registro dele; nunca de outro aluno). */
+export async function deleteStudyPdf(userId: string, pdfIdInput: string): Promise<{ trailId: string }> {
+  const pdfId = z.uuid().parse(pdfIdInput);
+  await enforceRateLimit(userId, "pdf_delete", 30, 600);
+  const db = createAdminClient();
+  const r = await db.from("study_pdfs").delete().eq("id", pdfId).eq("user_id", userId).select("trail_id, pdf_version");
+  if (r.error) throw new Error(`excluir PDF: ${r.error.message}`);
+  const row = r.data?.[0] as { trail_id: string; pdf_version: number } | undefined;
+  if (!row) throw new UserFacingError("PDF não encontrado.", "not_found");
+  await auditLog(db, { actorId: userId, userId, action: "study_pdf.deleted", entity: "study_pdfs", entityId: pdfId, meta: { trailId: row.trail_id, pdfVersion: row.pdf_version } });
+  return { trailId: row.trail_id };
+}
