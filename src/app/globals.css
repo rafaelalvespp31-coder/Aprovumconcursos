@@ -776,3 +776,151 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 
 @keyframes login-entra { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
 @keyframes login-brilho { 0%, 100% { opacity: 0.85; } 50% { opacity: 1; text-shadow: 0 0 16px rgba(255, 30, 18, 0.85); } }
+
+/* ============================================================================
+   Modo Jogo — abertura "Conquiste sua evolução" (classes jh-*; só nesta página)
+   Layout por container query: a largura real da área de conteúdo decide (com ou sem
+   barra lateral). Celular: arte no topo e uma coluna. Largo: arte à direita, textos à
+   esquerda, progresso + placa lado a lado, atalhos em linha.
+   ========================================================================== */
+.jh { container-type: inline-size; position: relative; margin: -1.5rem -1rem 0; font-family: "Chakra Petch", system-ui, sans-serif; }
+@media (min-width: 640px) { .jh { margin-left: -1.25rem; margin-right: -1.25rem; } }
+@media (min-width: 1024px) { .jh { margin-left: -2.5rem; margin-right: -2.5rem; } }
+.jh-palco { --arte-h: clamp(270px, 80cqw, 460px); position: relative; overflow: hidden; isolation: isolate; }
+.jh-arte { position: absolute; z-index: -2; top: 0; left: 50%; height: var(--arte-h); aspect-ratio: 1244 / 680; transform: translateX(-38%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%); }
+.jh-arte img { display: block; width: 100%; height: 100%; }
+.jh-sombra {
+  position: absolute; z-index: -1; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(to bottom, rgba(7, 7, 7, 0.55) 0, transparent 22%, transparent calc(var(--arte-h) - 170px), #070707 calc(var(--arte-h) - 10px)),
+    radial-gradient(60% 40% at 50% 100%, rgba(225, 6, 0, 0.14), transparent 70%);
+}
+.jh-conteudo { position: relative; padding: calc(var(--arte-h) - 5.5rem) 1rem 0; }
+@media (min-width: 640px) { .jh-conteudo { padding-left: 1.25rem; padding-right: 1.25rem; } }
+@media (min-width: 1024px) { .jh-conteudo { padding-left: 2.5rem; padding-right: 2.5rem; } }
+
+.jh-kicker {
+  display: inline-flex; align-items: center; gap: 0.6rem; padding: 0.3rem 0.75rem 0.3rem 0.65rem;
+  border-left: 2px solid #e10600; background: linear-gradient(90deg, rgba(225, 6, 0, 0.22), rgba(225, 6, 0, 0));
+  color: #ff2a1f; font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3em;
+}
+.jh-kicker span { font-style: italic; letter-spacing: -0.08em; text-shadow: 0 0 10px rgba(255, 30, 18, 0.6); }
+.jh-titulo {
+  margin-top: 0.85rem; font-family: "Orbitron", "Chakra Petch", system-ui, sans-serif; font-weight: 900; text-transform: uppercase;
+  font-size: clamp(1.75rem, 0.9rem + 4.2cqw, 3.5rem); line-height: 1.04; letter-spacing: 0.015em; color: #fff;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6);
+}
+.jh-titulo span { text-shadow: 0 0 22px rgba(255, 30, 18, 0.45), 0 2px 18px rgba(0, 0, 0, 0.6); }
+.jh-desc { margin-top: 1rem; max-width: 27rem; color: rgba(255, 255, 255, 0.84); font-size: 1rem; line-height: 1.5; font-weight: 500; }
+
+.jh-linha { margin-top: 1.5rem; display: flex; flex-direction: column; gap: 1rem; }
+
+/* Progresso */
+.jh-progresso {
+  --c: 14px; display: flex; flex-direction: column; position: relative;
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+  background:
+    linear-gradient(180deg, rgba(26, 8, 8, 0.88), rgba(9, 9, 11, 0.94)) padding-box,
+    linear-gradient(135deg, #ff1e12, rgba(255, 30, 18, 0.25) 35%, rgba(255, 30, 18, 0.25) 65%, #ff1e12) border-box;
+  border: 1.5px solid transparent;
+  box-shadow: inset 0 0 40px rgba(225, 6, 0, 0.08);
+}
+.jh-progresso-geral { display: flex; align-items: center; gap: 1.1rem; padding: 1rem 1.15rem; }
+.jh-anel { position: relative; flex-shrink: 0; width: 86px; height: 86px; }
+.jh-anel svg { width: 100%; height: 100%; transform: rotate(-90deg); overflow: visible; }
+.jh-anel circle { fill: none; stroke-width: 9; }
+.jh-anel-trilho { stroke: rgba(255, 255, 255, 0.09); }
+.jh-anel-valor { stroke: #ff1e12; stroke-linecap: round; filter: drop-shadow(0 0 6px rgba(255, 30, 18, 0.8)); transition: stroke-dasharray 0.8s ease; }
+.jh-anel > span { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: "Orbitron", system-ui, sans-serif; font-weight: 900; font-size: 1.2rem; }
+.jh-rotulo { font-size: 0.74rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.14em; color: rgba(255, 255, 255, 0.82); }
+.jh-numero { margin-top: 0.15rem; font-size: 1.85rem; font-weight: 700; line-height: 1.1; color: #fff; font-variant-numeric: tabular-nums; }
+.jh-numero span { font-size: 1.35rem; font-weight: 600; color: rgba(255, 255, 255, 0.55); }
+.jh-legenda { margin-top: 0.15rem; font-size: 0.85rem; color: rgba(255, 255, 255, 0.66); }
+.jh-foco { display: flex; align-items: center; gap: 0.9rem; padding: 0.85rem 1.15rem 1rem; border-top: 1px solid rgba(255, 255, 255, 0.1); }
+.jh-foco-icone { width: 2.4rem; height: 2.4rem; flex-shrink: 0; color: #ff2a1f; fill: rgba(255, 42, 31, 0.85); filter: drop-shadow(0 0 10px rgba(255, 42, 31, 0.7)); }
+.jh-foco-rotulo { font-size: 0.8rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.22em; color: #ff5a4f; }
+.jh-foco-valor { font-size: 1rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.16em; color: #ff2a1f; }
+.jh-foco-barras { display: flex; gap: 4px; margin-top: 0.4rem; }
+.jh-foco-barras span { width: 15px; height: 6px; transform: skewX(-28deg); background: rgba(255, 255, 255, 0.14); }
+.jh-foco-barras span[data-on="1"] { background: #ff1e12; box-shadow: 0 0 8px rgba(255, 30, 18, 0.7); }
+
+/* Placa da marca */
+.jh-placa { --p: polygon(4.5% 0, 100% 0, 95.5% 100%, 0 100%); position: relative; filter: drop-shadow(0 0 16px rgba(225, 6, 0, 0.45)); }
+.jh-placa::before {
+  content: ""; position: absolute; inset: 0; clip-path: var(--p);
+  background: linear-gradient(90deg, #ff1e12 0%, rgba(255, 30, 18, 0.35) 22%, rgba(140, 150, 170, 0.3) 50%, rgba(255, 30, 18, 0.35) 78%, #ff1e12 100%);
+}
+.jh-placa-miolo {
+  position: relative; margin: 2px; clip-path: var(--p); display: flex; align-items: center; justify-content: center;
+  padding: 1.1rem 2rem; background: radial-gradient(120% 140% at 50% 0%, #19191c 0%, #0a0a0b 55%, #050505 100%);
+}
+.jh-placa-miolo img { display: block; width: min(100%, 400px); height: auto; }
+
+/* Atalhos */
+.jh-atalhos { list-style: none; margin: 1.5rem 0 0; padding: 0 1rem; display: grid; grid-template-columns: 1fr; gap: 0.7rem; }
+@media (min-width: 640px) { .jh-atalhos { padding: 0 1.25rem; } }
+@media (min-width: 1024px) { .jh-atalhos { padding: 0 2.5rem; } }
+.jh-atalhos li { display: flex; }
+.jh-atalho {
+  --c: 12px; width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 0.9rem;
+  padding: 0.95rem 1rem; text-align: left; color: #fff; cursor: pointer;
+  clip-path: polygon(var(--c) 0, 100% 0, 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, 0 100%, 0 var(--c));
+  background:
+    linear-gradient(180deg, rgba(28, 9, 9, 0.92), rgba(10, 10, 12, 0.96)) padding-box,
+    linear-gradient(160deg, #ff1e12, rgba(255, 30, 18, 0.28) 40%, rgba(255, 30, 18, 0.28) 70%, #ff1e12) border-box;
+  border: 1.5px solid transparent; transition: transform 0.2s, filter 0.2s;
+}
+.jh-atalho:hover { transform: translateY(-2px); filter: brightness(1.15) drop-shadow(0 0 12px rgba(225, 6, 0, 0.35)); }
+.jh-atalho:focus-visible { outline: 2px solid #ff3b2f; outline-offset: 3px; }
+.jh-atalho-icone { width: 2.1rem; height: 2.1rem; color: #ff2a1f; filter: drop-shadow(0 0 8px rgba(255, 42, 31, 0.55)); }
+.jh-atalho-texto { display: flex; flex-direction: column; gap: 0.25rem; min-width: 0; }
+.jh-atalho-titulo { font-size: 0.86rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
+.jh-atalho-desc { font-size: 0.82rem; line-height: 1.35; color: rgba(255, 255, 255, 0.72); }
+.jh-atalho-seta { width: 1.3rem; height: 1.3rem; color: #ff2a1f; }
+
+@container (min-width: 560px) {
+  .jh-atalhos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .jh-progresso { flex-direction: row; align-items: stretch; }
+  .jh-progresso-geral { flex: 1; }
+  .jh-foco { border-top: 0; border-left: 1px solid rgba(255, 255, 255, 0.1); padding: 1rem 1.4rem; }
+}
+
+/* Largo (área de conteúdo ≥ 880 px): composição da referência */
+@container (min-width: 880px) {
+  .jh-palco { --arte-h: 100%; min-height: clamp(520px, 44cqw, 640px); display: flex; }
+  .jh-arte { left: auto; right: 0; height: 90%; transform: none; -webkit-mask-image: none; mask-image: none; }
+  .jh-sombra {
+    background:
+      linear-gradient(to right, #070707 0%, rgba(7, 7, 7, 0.94) 22%, rgba(7, 7, 7, 0.55) 40%, rgba(7, 7, 7, 0) 58%),
+      linear-gradient(to top, #070707 0%, rgba(7, 7, 7, 0.75) 14%, rgba(7, 7, 7, 0) 34%),
+      linear-gradient(to bottom, rgba(7, 7, 7, 0.6) 0%, rgba(7, 7, 7, 0) 18%);
+  }
+  .jh-conteudo { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding-top: clamp(3.5rem, 7cqw, 6rem); }
+  .jh-texto { max-width: 46cqw; }
+  .jh-titulo { font-size: clamp(2.1rem, 3.6cqw, 3.4rem); }
+  .jh-titulo, .jh-titulo span { white-space: nowrap; }
+  .jh-desc { max-width: 26rem; }
+  .jh-linha { margin-top: 2.5rem; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: end; gap: clamp(1.25rem, 3cqw, 2.75rem); }
+  .jh-anel { width: 104px; height: 104px; }
+  .jh-anel > span { font-size: 1.45rem; }
+  .jh-numero { font-size: 2.15rem; }
+  .jh-placa-miolo { padding: 1.5rem 2.6rem; }
+}
+@container (min-width: 1000px) {
+  .jh-atalhos { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 0.9rem; margin-top: 1.75rem; }
+  .jh-atalho { grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto 1fr; grid-template-areas: "icone icone" "texto seta"; align-items: start; row-gap: 0.85rem; padding: 1.1rem 1rem 1.15rem 1.1rem; }
+  .jh-atalho-icone { grid-area: icone; width: 2.4rem; height: 2.4rem; }
+  .jh-atalho-texto { grid-area: texto; }
+  .jh-atalho-seta { grid-area: seta; align-self: end; }
+  .jh-atalho-titulo { font-size: 0.8rem; letter-spacing: 0.05em; }
+  .jh-atalho-desc { font-size: 0.78rem; }
+}
+
+/* Rodapé técnico do Modo Jogo */
+.jogo-rodape { display: flex; align-items: center; gap: 0.8rem; margin-top: 2.5rem; font: 500 0.62rem "Chakra Petch", system-ui, sans-serif; text-transform: uppercase; letter-spacing: 0.16em; color: rgba(255, 255, 255, 0.85); }
+.jogo-rodape p { display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+.jogo-rodape-linha { flex: 1; min-width: 1rem; height: 1px; background: linear-gradient(90deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.04)); }
+.jogo-rodape-barras { color: #ff1e12; font-weight: 700; font-style: italic; letter-spacing: -0.1em; }
+@media (min-width: 640px) { .jogo-rodape { font-size: 0.74rem; letter-spacing: 0.2em; } }
+.jogo-cabecalho-barras { flex-shrink: 0; color: #ff1e12; font: italic 900 2.6rem/1 "Orbitron", system-ui, sans-serif; letter-spacing: -0.22em; margin-right: 0.7rem; text-shadow: 0 0 14px rgba(255, 30, 18, 0.6); transform: skewX(-8deg); }

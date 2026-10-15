@@ -479,6 +479,26 @@ test("flashcards viram com animação e certo/errado mostra o gabarito", async (
 
 
 test.describe("modo jogo", () => {
+  test("abertura: título, progresso real, placa da marca e atalhos funcionais", async ({ page }) => {
+    await page.goto(`${G}/quiz`);
+    await expect(page.getByRole("heading", { name: /Conquiste\s*sua evolução/i })).toBeVisible();
+    const prog = page.getByTestId("jogo-progresso");
+    // Galeria: 13 + 0 de 42 + 20 dispositivos dominados.
+    await expect(prog.getByRole("img", { name: "21% dos dispositivos dominados" })).toBeVisible();
+    await expect(prog).toContainText("13");
+    await expect(prog).toContainText("/ 62");
+    await expect(prog).toContainText("3 dias");
+    await expect(page.getByRole("img", { name: /APROVUM — Sua preparação/ })).toBeVisible();
+    const atalhos = page.getByRole("list", { name: "Recursos do APROVUM" });
+    await expect(atalhos.getByRole("link", { name: /Aulas inteligentes/ })).toHaveAttribute("href", "/trilhas");
+    await expect(atalhos.getByRole("link", { name: /Questões de prova/ })).toHaveAttribute("href", "/questoes");
+    await expect(atalhos.getByRole("link", { name: /Seu progresso/ })).toHaveAttribute("href", "/desempenho");
+    await atalhos.getByRole("button", { name: /Gamificação/ }).click();
+    await expect(page.getByRole("region", { name: "Questão do jogo" })).toBeInViewport();
+    const vw = page.viewportSize()!.width;
+    expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(vw);
+  });
+
   test("banner: o Instrutor responde ao toque e mostra o placar da rodada", async ({ page }) => {
     await page.goto(`${G}/quiz`);
     const banner = page.getByTestId("jogo-banner");
@@ -560,7 +580,7 @@ test("novo estudo: seletor de aulas do catálogo, separado por matéria", async 
 });
 
 test("banners: arte e animações aparecem juntas, mesmo com a imagem demorando", async ({ page }) => {
-  for (const [path, id, img] of [["painel", "painel-banner", /banner-estudo(-sm)?\.webp/], ["quiz", "jogo-banner-marca", /banner-jogo(-sm)?\.webp/]] as const) {
+  for (const [path, id, img] of [["painel", "painel-banner", /banner-estudo(-sm)?\.webp/], ["quiz", "jogo-banner-marca", /jogo-hero-arte(-sm)?\.webp/]] as const) {
     let release: () => void = () => {};
     const gate = new Promise<void>((r) => (release = r));
     await page.route(img, async (route) => {

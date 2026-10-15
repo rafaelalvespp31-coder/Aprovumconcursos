@@ -285,6 +285,11 @@ export function PastelShell({
             >
               <div className="flex h-[88px] items-center justify-between gap-4 px-5 lg:px-10">
                 <div className="flex min-w-0 flex-1 items-center gap-4">
+                  {dark && (
+                    <span className="jogo-cabecalho-barras hidden sm:block" aria-hidden>
+                      {"//"}
+                    </span>
+                  )}
                   <Link
                     href={`${basePath}/perfil`}
                     aria-label="Perfil e conquistas"
@@ -315,7 +320,28 @@ export function PastelShell({
                   </div>
                 </div>
                 <div className="flex shrink-0 items-center gap-2.5">
-                  <QuickSearch inputRef={searchRef} basePath={basePath} items={items} />
+                  <QuickSearch inputRef={searchRef} basePath={basePath} items={items} dark={dark} />
+                  {dark && (
+                    <>
+                      <Link
+                        href={`${basePath}/revisoes`}
+                        aria-label={`Revisões pendentes: ${summary.counts.dueReviews}`}
+                        className="relative hidden h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-[#111113] text-white transition hover:border-[#FF1E1E]/60 md:flex"
+                      >
+                        <Bell className="h-5 w-5" aria-hidden />
+                        {summary.counts.dueReviews > 0 && (
+                          <span className="absolute -right-0.5 -top-0.5 min-w-[18px] rounded-full bg-[#E10600] px-1 text-center text-[10.5px] font-bold leading-[18px] text-white">{summary.counts.dueReviews}</span>
+                        )}
+                      </Link>
+                      <Link
+                        href={`${basePath}/perfil`}
+                        aria-label="Perfil e conquistas"
+                        className="hidden h-11 w-11 items-center justify-center rounded-full border-2 border-white/70 bg-[#111113] text-white transition hover:border-[#FF1E1E] lg:flex"
+                      >
+                        <UserRound className="h-5 w-5" aria-hidden />
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
             </header>
@@ -372,7 +398,7 @@ export function PastelShell({
 // ---------------------------------------------------------------------------
 // Busca (⌘K): atalhos de navegação + trilhas, temas e revisões reais do aluno
 // ---------------------------------------------------------------------------
-function QuickSearch({ inputRef, basePath, items }: { inputRef: React.RefObject<HTMLInputElement | null>; basePath: string; items: NavItem[] }) {
+function QuickSearch({ inputRef, basePath, items, dark = false }: { inputRef: React.RefObject<HTMLInputElement | null>; basePath: string; items: NavItem[]; dark?: boolean }) {
   const api = useStudyApi();
   const router = useRouter();
   const [q, setQ] = useState("");
@@ -416,7 +442,7 @@ function QuickSearch({ inputRef, basePath, items }: { inputRef: React.RefObject<
 
   return (
     <div className="relative hidden md:flex">
-      <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5C5C5C]" aria-hidden />
+      <Search className={`absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 ${dark ? "text-white/80" : "text-[#5C5C5C]"}`} aria-hidden />
       <input
         ref={inputRef}
         value={q}
@@ -447,7 +473,7 @@ function QuickSearch({ inputRef, basePath, items }: { inputRef: React.RefObject<
           }
         }}
         placeholder="Buscar (⌘K) ..."
-        className="h-11 w-[220px] rounded-[14px] border border-[#E5E5E5] bg-white/95 pl-10 pr-4 text-[13px] shadow-[0_2px_12px_rgba(225,6,0,0.06)] outline-none transition-all placeholder:text-[#5C5C5C] focus:border-[#FF1E1E]/30 focus:shadow-[0_4px_20px_rgba(225,6,0,0.12)] xl:w-[260px]"
+        className={`h-11 w-[220px] rounded-[14px] border pl-10 pr-4 text-[13px] outline-none transition-all xl:w-[260px] ${dark ? "border-white/15 bg-[#111113] text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.02)] placeholder:text-white/70 focus:border-[#FF1E1E]/60 focus:shadow-[0_0_20px_rgba(225,6,0,0.25)] xl:w-[340px]" : "border-[#E5E5E5] bg-white/95 shadow-[0_2px_12px_rgba(225,6,0,0.06)] placeholder:text-[#5C5C5C] focus:border-[#FF1E1E]/30 focus:shadow-[0_4px_20px_rgba(225,6,0,0.12)]"}`}
       />
       {open && q && (
         <div id="busca-resultados" role="listbox" className="absolute left-0 right-0 top-[52px] z-50 overflow-hidden rounded-[16px] border border-[#E5E5E5] bg-[#F5F5F5] shadow-[0_16px_48px_rgba(0,0,0,0.12)]">

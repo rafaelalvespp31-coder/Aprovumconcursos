@@ -64,6 +64,11 @@ export function QuizView({
   const pct = Math.round((topicMastered / Math.max(1, topic.total)) * 100);
   const filled = slots.filter(Boolean).length;
   const used = useMemo(() => new Set(slots.filter(Boolean) as string[]), [slots]);
+  // Progresso geral do Modo Jogo: dispositivos dominados somando todos os temas (atualiza ao acertar).
+  const overall = useMemo(
+    () => home.topics.reduce((acc, t) => ({ mastered: acc.mastered + Math.min(t.total, mastered.get(t.id) ?? t.mastered), total: acc.total + t.total }), { mastered: 0, total: 0 }),
+    [home.topics, mastered],
+  );
   const disciplines = useMemo(() => ["Todos", ...new Set(home.topics.map((t) => t.discipline))], [home.topics]);
 
   // O cronômetro só corre com a questão na tela e a aba ativa (não pune quem ainda está lendo o banner).
@@ -158,8 +163,14 @@ export function QuizView({
     // Modo Jogo: palco preto ocupando toda a área de conteúdo; cards vermelhos; texto branco.
     <div className="jogo relative -mx-4 -mb-28 -mt-7 min-h-[calc(100dvh-5rem)] bg-[#070707] px-4 pb-32 pt-6 text-white sm:-mx-5 sm:px-5 lg:-mx-10 lg:-mb-12 lg:px-10 lg:pb-14" data-testid="quiz">
       <div className="pointer-events-none absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_at_top,rgba(225,6,0,0.22),transparent_65%)]" aria-hidden />
-      {/* Banner da marca em tela cheia, com fogo animado nos olhos */}
-      <JogoHero />
+      {/* Abertura: arte com fogo nos olhos, progresso real, placa da marca e atalhos */}
+      <JogoHero
+        mastered={overall.mastered}
+        total={overall.total}
+        streak={home.streak.current}
+        last7={home.streak.last7}
+        onPlay={() => cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+      />
       <div className="relative mx-auto max-w-[1180px]">
         <GameBanner
           topicTitle={topic.title}
@@ -488,6 +499,14 @@ export function QuizView({
             </div>
           </section>
         </aside>
+      </div>
+      <div className="jogo-rodape relative mx-auto max-w-[1180px]">
+        <p>
+          <span className="jogo-rodape-barras" aria-hidden>{"///"}</span> APROVUM <span aria-hidden className="text-[#ff1e12]">•</span>
+          <span className="text-white/60">Preparação de alto desempenho</span>
+        </p>
+        <span className="jogo-rodape-linha" aria-hidden />
+        <span className="jogo-rodape-barras" aria-hidden>{"///"}</span>
       </div>
     </div>
   );

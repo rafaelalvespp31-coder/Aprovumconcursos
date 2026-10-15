@@ -1,70 +1,168 @@
 /**
- * Banner do Modo Jogo (arte "APROVUM — operadores caveira"), de ponta a ponta.
- * - Celular: largura total, arte inteira (sem cortar textos).
- * - Desktop: faixa com a altura da tela; arte inteira no centro e laterais com a
- *   própria arte desfocada e escurecida.
- * Os olhos em brasa ganham fogo animado: chamas com distorção de turbulência (SVG),
- * brilho pulsante e brasas subindo. Sobre a arte flutuam brasas e cinzas, como depois
- * de uma explosão. Tudo é decorativo (aria-hidden).
+ * Abertura do Modo Jogo (referência "Conquiste sua evolução").
+ * - Arte dos operadores caveira como camada de imagem, com fogo animado nos olhos e brasas
+ *   flutuando; todo o resto (títulos, progresso, placa da marca, atalhos) é HTML real.
+ * - Desktop: arte à direita ocupando a faixa; textos à esquerda; progresso e placa da marca
+ *   lado a lado; cinco atalhos em linha.
+ * - Celular: arte no topo (centrada no operador principal), textos e cartões em uma coluna.
+ * O progresso vem dos dados reais do aluno (dispositivos dominados e ofensiva).
  */
 
+import Link from "next/link";
+import { BrainCircuit, ChartNoAxesCombined, ChevronRight, Crosshair, FileText, Flame, Gamepad2 } from "lucide-react";
 import { BannerGate } from "@/components/banner-gate";
 
-const W = 1664;
-const H = 1536;
+/** Recorte da arte (public/images/jogo-hero-arte.webp), em px. */
+const W = 1244;
+const H = 680;
 
-/** Olhos na arte original (px) e tamanho da chama (px de largura). */
+/** Olhos no recorte (px) e tamanho da chama (px de largura). */
 const EYES = [
-  { x: 810, y: 346, w: 86, d: 0 },
-  { x: 921, y: 324, w: 94, d: 0.35 },
-  { x: 493, y: 381, w: 58, d: 0.7 },
-  { x: 561, y: 369, w: 62, d: 0.15 },
+  { x: 390, y: 346, w: 86, d: 0 },
+  { x: 501, y: 324, w: 94, d: 0.35 },
+  { x: 73, y: 381, w: 58, d: 0.7 },
+  { x: 141, y: 369, w: 62, d: 0.15 },
 ] as const;
 
-export function JogoHero() {
-  const bottomFade = "linear-gradient(to bottom, #000 0%, #000 90%, transparent 100%)";
-  const sideFade = "linear-gradient(to right, transparent 0%, #000 7%, #000 93%, transparent 100%)";
+export function JogoHero({
+  mastered,
+  total,
+  streak,
+  last7,
+  onPlay,
+}: {
+  /** Dispositivos dominados no Modo Jogo (todos os temas). */
+  mastered: number;
+  total: number;
+  /** Dias seguidos de estudo e os últimos 7 dias (o último é hoje). */
+  streak: number;
+  last7: boolean[];
+  onPlay: () => void;
+}) {
+  const pct = total ? Math.round((mastered / total) * 100) : 0;
+  const recent = last7.slice(-5);
+  const fmt = (n: number) => n.toLocaleString("pt-BR");
   return (
-    <BannerGate
-      className="relative -mx-4 -mt-6 mb-5 overflow-hidden sm:-mx-5 lg:-mx-10 lg:h-[min(calc(100dvh-6rem),900px)] lg:min-h-[560px]"
-      style={{ maskImage: bottomFade, WebkitMaskImage: bottomFade }}
-      testId="jogo-banner-marca"
-      assets={["/banner-jogo-fundo.webp"]}
-    >
-      <FireFilter />
-      {/* Laterais no desktop: a própria arte, desfocada e escurecida */}
-      <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden>
-        <img src="/banner-jogo-fundo.webp" alt="" className="h-full w-full scale-110 object-cover blur-2xl" />
-        <div className="absolute inset-0 bg-[#070707]/70" />
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_50%_35%,rgba(225,6,0,0.22),transparent_62%)]" />
-      </div>
-
-      <div
-        className="relative mx-auto aspect-[1664/1536] w-full lg:h-full lg:w-auto lg:max-w-full lg:[mask-image:var(--lado)] lg:[-webkit-mask-image:var(--lado)]"
-        style={{ ["--lado" as string]: sideFade }}
-      >
-        <img
-          src="/banner-jogo.webp"
-          srcSet="/banner-jogo-sm.webp 1040w, /banner-jogo.webp 1664w"
-          sizes="(min-width: 1024px) 975px, 100vw"
-          width={W}
-          height={H}
-          alt="APROVUM — Sua preparação. Seu próximo cargo. O PWA de estudos para concursos com IA e gamificação: aulas inteligentes, gamificação, todos os concursos, questões reais e seu progresso. Mais que estudo, é estratégia."
-          className="marca-zoom block h-full w-full object-contain"
-          fetchPriority="high"
-          data-banner-main
-          decoding="async"
-        />
-        {/* Fogo nos olhos (posição em % da arte, então acompanha qualquer tamanho de tela) */}
-        <div className="pointer-events-none absolute inset-0" aria-hidden>
-          {EYES.map((e, i) => (
-            <FireEye key={i} left={(e.x / W) * 100} top={(e.y / H) * 100} width={(e.w / W) * 100} delay={e.d} />
-          ))}
+    <section className="jh" aria-labelledby="jh-titulo">
+      <BannerGate className="jh-palco" testId="jogo-banner-marca" assets={["/images/aprovum-login-logo.png"]}>
+        <FireFilter />
+        {/* Arte (posições dos olhos em % do recorte: acompanham qualquer tamanho) */}
+        <div className="jh-arte" aria-hidden>
+          <img
+            src="/images/jogo-hero-arte.webp"
+            srcSet="/images/jogo-hero-arte-sm.webp 760w, /images/jogo-hero-arte.webp 1244w"
+            sizes="(min-width: 1024px) 900px, 760px"
+            width={W}
+            height={H}
+            alt=""
+            fetchPriority="high"
+            decoding="async"
+            data-banner-main
+          />
+          <div className="pointer-events-none absolute inset-0">
+            {EYES.map((e, i) => (
+              <FireEye key={i} left={(e.x / W) * 100} top={(e.y / H) * 100} width={(e.w / W) * 100} delay={e.d} />
+            ))}
+          </div>
         </div>
-      </div>
-      {/* Brasas e cinzas flutuando sobre todo o banner (inclusive as laterais do desktop) */}
-      <Embers />
-    </BannerGate>
+        <div className="jh-sombra" aria-hidden />
+        <Embers />
+
+        <div className="jh-conteudo">
+          <div className="jh-texto">
+            <p className="jh-kicker">
+              Modo Jogo <span aria-hidden>{"///"}</span>
+            </p>
+            <h2 id="jh-titulo" className="jh-titulo">
+              Conquiste <span className="block text-[#FF1E12]">sua evolução</span>
+            </h2>
+            <p className="jh-desc">Transforme seus estudos em uma missão. Complete a lei, acumule pontos e evolua no seu objetivo.</p>
+          </div>
+
+          <div className="jh-linha">
+            {/* Progresso real do aluno */}
+            <div className="jh-progresso" data-testid="jogo-progresso">
+              <div className="jh-progresso-geral">
+                <div className="jh-anel" role="img" aria-label={`${pct}% dos dispositivos dominados`}>
+                  <svg viewBox="0 0 120 120" aria-hidden>
+                    <circle cx="60" cy="60" r="50" className="jh-anel-trilho" />
+                    <circle cx="60" cy="60" r="50" className="jh-anel-valor" pathLength={100} strokeDasharray={`${pct} 100`} />
+                  </svg>
+                  <span>{pct}%</span>
+                </div>
+                <div className="min-w-0">
+                  <p className="jh-rotulo">Seu progresso geral</p>
+                  <p className="jh-numero">
+                    {fmt(mastered)} <span>/ {fmt(total)}</span>
+                  </p>
+                  <p className="jh-legenda">dispositivos dominados</p>
+                </div>
+              </div>
+              <div className="jh-foco">
+                <Flame className="jh-foco-icone" aria-hidden />
+                <div>
+                  <p className="jh-foco-rotulo">Foco</p>
+                  <p className="jh-foco-valor">
+                    {streak} {streak === 1 ? "dia" : "dias"}
+                  </p>
+                  <span className="jh-foco-barras" role="img" aria-label={`Estudou em ${recent.filter(Boolean).length} dos últimos ${recent.length} dias`}>
+                    {recent.map((on, i) => (
+                      <span key={i} data-on={on ? "1" : "0"} />
+                    ))}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Placa da marca */}
+            <div className="jh-placa">
+              <div className="jh-placa-miolo">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/aprovum-login-logo.png" alt="APROVUM — Sua preparação. Seu próximo cargo." width={523} height={107} />
+              </div>
+            </div>
+          </div>
+        </div>
+      </BannerGate>
+
+      {/* Atalhos */}
+      <ul className="jh-atalhos" aria-label="Recursos do APROVUM">
+        {FEATURES.map((f) => (
+          <li key={f.title}>
+            {f.href ? (
+              <Link href={f.href} className="jh-atalho">
+                <Feature {...f} />
+              </Link>
+            ) : (
+              <button type="button" onClick={onPlay} className="jh-atalho">
+                <Feature {...f} />
+              </button>
+            )}
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
+const FEATURES = [
+  { icon: BrainCircuit, title: "Aulas inteligentes", text: "Conteúdo direto ao ponto, com fontes verificadas.", href: "/trilhas" },
+  { icon: Gamepad2, title: "Gamificação", text: "Estude, evolua, conquiste.", href: null },
+  { icon: Crosshair, title: "Todos os concursos", text: "Das carreiras policiais aos demais órgãos.", href: "/nova-trilha" },
+  { icon: FileText, title: "Questões de prova", text: "Fácil, médio e difícil, com gabarito comentado.", href: "/questoes" },
+  { icon: ChartNoAxesCombined, title: "Seu progresso", text: "Acompanhe sua evolução em tempo real.", href: "/desempenho" },
+] as const;
+
+function Feature({ icon: Icon, title, text }: { icon: React.ComponentType<{ className?: string }>; title: string; text: string }) {
+  return (
+    <>
+      <Icon className="jh-atalho-icone" aria-hidden />
+      <span className="jh-atalho-texto">
+        <span className="jh-atalho-titulo">{title}</span>
+        <span className="jh-atalho-desc">{text}</span>
+      </span>
+      <ChevronRight className="jh-atalho-seta" aria-hidden />
+    </>
   );
 }
 
