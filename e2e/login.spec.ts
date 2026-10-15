@@ -6,13 +6,26 @@ import { expect, test } from "@playwright/test";
  * homologação — ver authenticated.spec.ts).
  */
 test.describe("tela de login", () => {
-  test("identidade visual: logo, título, arte e quatro pilares", async ({ page }) => {
+  test("identidade visual: logo, título, arte e quatro pilares", async ({ page }, info) => {
     await page.goto("/entrar");
     await expect(page.getByRole("img", { name: /APROVUM/ })).toBeVisible();
     await expect(page.getByRole("heading", { level: 1 })).toHaveText(/Acesso à\s*plataforma/i);
-    const arte = page.locator(".login-arte img");
-    await expect(arte).toBeVisible();
-    expect(await arte.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
+    if (info.project.name === "mobile") {
+      const arte = page.locator(".login-arte img");
+      await expect(arte).toBeVisible();
+      expect(await arte.evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
+    } else {
+      // Desktop: a cena de fundo cobre a tela inteira, com os soldados e a fumaça.
+      const cena = page.locator(".login-cena");
+      const box = await cena.boundingBox();
+      const vp = page.viewportSize()!;
+      expect(box!.x).toBe(0);
+      expect(box!.width).toBeGreaterThanOrEqual(vp.width - 1);
+      expect(box!.height).toBeGreaterThanOrEqual(vp.height);
+      const bg = await cena.evaluate((e) => getComputedStyle(e, "::after").backgroundImage + getComputedStyle(e, "::before").backgroundImage);
+      expect(bg).toContain("aprovum-login-hero.webp");
+      expect(bg).toContain("aprovum-login-fumaca.jpg");
+    }
     await expect(page.locator(".login-pilares li")).toHaveCount(4);
     await expect(page.getByText("Preparação de alto desempenho")).toBeVisible();
   });
@@ -58,7 +71,7 @@ test.describe("tela de login", () => {
   test("composição: celular empilhado com pilares 2×2; desktop com painel à direita e pilares em linha", async ({ page }, info) => {
     await page.goto("/entrar");
     const painel = await page.locator(".login-painel").boundingBox();
-    const arte = await page.locator(".login-arte").boundingBox();
+    const arte = info.project.name === "mobile" ? await page.locator(".login-arte").boundingBox() : null;
     const pilares = page.locator(".login-pilares li");
     const tops = await pilares.evaluateAll((els) => els.map((e) => Math.round(e.getBoundingClientRect().top)));
     const vw = page.viewportSize()!.width;

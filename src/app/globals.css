@@ -635,23 +635,39 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   animation: login-entra 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
 }
 @media (min-width: 900px) {
-  /* A linha cresce com o painel (nunca corta o formulário); a arte acompanha a altura da linha. */
+  /* A linha cresce com o painel (nunca corta o formulário). A arte sai da coluna e vira a
+     cena de fundo da tela inteira (.login-cena). */
   .login-palco {
     display: grid; grid-template-columns: minmax(0, 1fr) minmax(370px, 450px); align-items: center;
     min-height: clamp(560px, calc(100dvh - 290px), 780px); padding: 1.5rem 3rem 0;
   }
-  .login-arte { position: relative; align-self: stretch; margin: 0; min-width: 0; }
-  /* Sobe por trás do cabeçalho e desce até os pilares, como na referência; a borda direita
-     já vem transparente no próprio arquivo (o painel real fica por cima dessa área). */
-  .login-arte img {
-    position: absolute; right: -7rem; top: -5.5rem; height: calc(100% + 11rem); width: auto; max-width: none;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 82%, transparent 100%), linear-gradient(to right, transparent 0%, #000 12%);
-    -webkit-mask-composite: source-in;
-    mask-image: linear-gradient(to bottom, transparent 0%, #000 12%, #000 82%, transparent 100%), linear-gradient(to right, transparent 0%, #000 12%);
-    mask-composite: intersect;
-  }
+  .login-arte { display: none; }
+  .login-painel-wrap { grid-column: 2; }
   .login-painel-wrap { margin: 0; max-width: none; }
 }
+
+/* Cena de fundo do desktop: ocupa a tela toda. Soldados presos à borda esquerda, do alto
+   da tela até os pilares (a borda direita da arte já vem transparente e se funde à fumaça);
+   fumaça em textura repetida por toda a área. Só carrega a partir de 900 px. */
+.login-cena { display: none; }
+@media (min-width: 900px) {
+  .login-cena { display: block; position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .login-cena::before {
+    content: ""; position: absolute; inset: 0;
+    background: url("/images/aprovum-login-fumaca.jpg") 0 0 / 640px 640px repeat;
+    mix-blend-mode: screen; opacity: 0.55;
+  }
+  .login-cena::after {
+    content: ""; position: absolute; inset: 0;
+    background: url("/images/aprovum-login-hero.webp") left 0 top 4.5rem / auto max(calc(100% - 4.5rem), 112vh) no-repeat;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 4.5rem, #000 13rem, #000 78%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, transparent 4.5rem, #000 13rem, #000 78%, transparent 100%);
+  }
+}
+@media (min-width: 900px) and (prefers-reduced-motion: no-preference) {
+  .login-cena::before { animation: login-fumaca 90s linear infinite; }
+}
+@keyframes login-fumaca { from { background-position: 0 0; } to { background-position: 640px -640px; } }
 
 /* Painel com cantos chanfrados, contorno vermelho nos cantos e brilho ciano */
 .login-painel {
