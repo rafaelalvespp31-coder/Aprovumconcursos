@@ -173,7 +173,29 @@ export function LessonReader(props: ReaderProps) {
 
   const goToSection = useCallback((sectionId: string) => go(steps.findIndex((s) => s.type === "secao" && s.section.id === sectionId)), [go, steps]);
 
+  // Trava do "Próximo": com questão sem resposta na etapa, não avança e leva até ela.
+  const stepRef = useRef<HTMLDivElement>(null);
+  const [blocked, setBlocked] = useState<string | null>(null);
+  useEffect(() => {
+    if (!blocked) return;
+    const t = setTimeout(() => setBlocked(null), 4000);
+    return () => clearTimeout(t);
+  }, [blocked]);
+  const firstUnanswered = () =>
+    [...(stepRef.current?.querySelectorAll<HTMLElement>('article[data-questao][data-respondida="0"]') ?? [])].find((el) => !el.closest("details:not([open])")) ?? null;
   const next = () => {
+    const pendingQ = firstUnanswered();
+    if (pendingQ) {
+      const total = [...(stepRef.current?.querySelectorAll<HTMLElement>('article[data-questao][data-respondida="0"]') ?? [])].filter((el) => !el.closest("details:not([open])")).length;
+      setBlocked(total === 1 ? `Responda a ${pendingQ.getAttribute("aria-label")?.toLowerCase() ?? "questão"} para avançar.` : `Faltam ${total} questões nesta etapa. Responda para avançar.`);
+      pendingQ.scrollIntoView({ behavior: "smooth", block: "center" });
+      pendingQ.classList.remove("questao-pendente");
+      void pendingQ.offsetWidth;
+      pendingQ.classList.add("questao-pendente");
+      pendingQ.focus({ preventScroll: true });
+      return;
+    }
+    setBlocked(null);
     if (current.type === "secao") {
       markSeen(current.section.id);
       const lastSection = current.n === sections.length;
@@ -347,6 +369,11 @@ export function LessonReader(props: ReaderProps) {
   return (
     <div>
       <div ref={topRef} className="scroll-mt-4" />
+      {blocked && (
+        <p role="alert" className="pointer-events-none fixed inset-x-4 bottom-28 z-50 mx-auto flex max-w-md items-center justify-center gap-2 rounded-2xl bg-tinta px-4 py-3 text-center t-small font-semibold text-white shadow-[0_16px_40px_rgba(0,0,0,0.3)] md:bottom-8" data-testid="trava-proximo">
+          <Icon name="cadeado" className="size-4 shrink-0" /> {blocked}
+        </p>
+      )}
 
       <div className="md:grid md:grid-cols-[230px_minmax(0,1fr)] md:gap-10 lg:grid-cols-[250px_minmax(0,1fr)]">
         <aside className="hidden md:block">
@@ -413,7 +440,7 @@ export function LessonReader(props: ReaderProps) {
           </div>
 
           {/* No computador, a aula fica centralizada num card. */}
-          <div key={step} className="entrar mt-5 md:mx-auto md:max-w-[820px] md:rounded-[24px] md:border md:border-linha md:bg-superficie md:p-8 md:shadow-[0_18px_50px_rgba(0,0,0,0.07)] lg:p-10">
+          <div key={step} ref={stepRef} className="entrar mt-5 md:mx-auto md:max-w-[820px] md:rounded-[24px] md:border md:border-linha md:bg-superficie md:p-8 md:shadow-[0_18px_50px_rgba(0,0,0,0.07)] lg:p-10">
             {step === 0 && (
               <header className="mb-5">
                 <Link href={`/trilhas/${lesson.trailId}`} className="t-small text-destaque underline underline-offset-2 md:hidden">{lesson.trailTitle}</Link>

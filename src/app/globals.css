@@ -924,3 +924,10 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .jogo-rodape-barras { color: #ff1e12; font-weight: 700; font-style: italic; letter-spacing: -0.1em; }
 @media (min-width: 640px) { .jogo-rodape { font-size: 0.74rem; letter-spacing: 0.2em; } }
 .jogo-cabecalho-barras { flex-shrink: 0; color: #ff1e12; font: italic 900 2.6rem/1 "Orbitron", system-ui, sans-serif; letter-spacing: -0.22em; margin-right: 0.7rem; text-shadow: 0 0 14px rgba(255, 30, 18, 0.6); transform: skewX(-8deg); }
+
+/* Aula: questão que falta responder ao tentar avançar */
+.questao-pendente { animation: questao-pendente 1.6s ease-out; outline: none; }
+@keyframes questao-pendente {
+  0%, 40% { box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.85), 0 0 26px rgba(225, 6, 0, 0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(225, 6, 0, 0); }
+}

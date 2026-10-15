@@ -151,6 +151,9 @@ export function QuestionCard({
               : "border-linha bg-superficie"
       }`}
       data-resultado={showFeedback ? (fb!.correct ? "acerto" : "erro") : undefined}
+      data-questao=""
+      data-respondida={fb ? "1" : "0"}
+      tabIndex={-1}
       aria-label={`Questão ${number}`}
     >
       <header className="flex flex-wrap items-center gap-2 t-tiny text-tinta-fraca">

@@ -258,11 +258,38 @@ test.describe("tela de aula", () => {
     await expect(fac.getByText(/Nível fácil aprovado com 100%/)).toBeVisible();
     await page.getByRole("button", { name: /^Próximo/ }).click();
     await expect(page.getByTestId("nivel-medio")).toContainText("Liberado");
+    // Nível médio com questões sem resposta: o Próximo trava e leva até a questão.
     await page.getByRole("button", { name: /^Próximo/ }).click();
+    await expect(page.getByTestId("trava-proximo")).toBeVisible();
+    await expect(page.getByTestId("nivel-medio")).toBeVisible();
+    await page.getByRole("button", { name: /^Ir para: Questões · Difícil/ }).first().click();
     await expect(page.getByTestId("nivel-dificil")).toContainText("Bloqueado");
     // Fim: botão para o próximo tema da mesma matéria.
     await page.getByRole("button", { name: /^Concluir/ }).click();
     await expect(page.getByRole("link", { name: /Próximo tema/ }).first()).toBeVisible();
+  });
+
+  test("Próximo trava com questão sem resposta na etapa e leva até ela", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    const pending = page.locator('article[data-questao][data-respondida="0"]');
+    // Avança até a primeira etapa que tem questão.
+    for (let i = 0; i < 12 && !(await pending.count()); i++) await page.getByRole("button", { name: /^(Próximo|Ir para as questões)/ }).click();
+    await expect(pending.first()).toBeAttached();
+    const etapa = await page.getByText(/^Módulo \d+ · tema \d+ de \d+/).first().textContent();
+    await page.getByRole("button", { name: /^(Próximo|Ir para as questões)/ }).click();
+    await expect(page.getByTestId("trava-proximo")).toContainText(/para avançar/);
+    await expect(pending.first()).toBeInViewport();
+    await expect(page.getByText(/^Módulo \d+ · tema \d+ de \d+/).first()).toHaveText(etapa!);
+    // Respondida a questão, o Próximo volta a funcionar.
+    while (await pending.count()) {
+      const label = await pending.first().getAttribute("aria-label");
+      const q = page.locator(`article[aria-label="${label}"]`);
+      await q.getByRole("radio").first().evaluate((el) => (el as HTMLInputElement).click());
+      await q.getByRole("button", { name: "Responder", exact: true }).click();
+      await expect(q).toHaveAttribute("data-respondida", "1");
+    }
+    await page.getByRole("button", { name: /^(Próximo|Ir para as questões)/ }).click();
+    await expect(page.getByText(/^Módulo \d+ · tema \d+ de \d+/).first()).not.toHaveText(etapa!);
   });
 
   test("questões do nível que ficaram sem resposta ao longo da aula aparecem no próprio nível", async ({ page }) => {
