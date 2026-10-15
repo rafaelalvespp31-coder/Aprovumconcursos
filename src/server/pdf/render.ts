@@ -1,22 +1,34 @@
 /**
- * Renderização do PDF de um conteúdo estudado (pdf-lib, fontes padrão embutidas no
- * próprio pacote — nada lido do disco, funciona em ambiente serverless).
- * Entrada: o retrato congelado (PdfSnapshot). Saída: bytes do PDF.
+ * Renderização do PDF de um conteúdo estudado, com a identidade visual do APROVUM
+ * (preto, branco e vermelho; logo oficial na capa e no cabeçalho de cada página).
+ * pdf-lib com fontes padrão e logos embutidas no código — nada lido do disco, funciona em
+ * ambiente serverless. Entrada: o retrato congelado (PdfSnapshot). Saída: bytes do PDF.
+ *
+ * Estrutura: capa → sumário → escopo → teoria (por unidade) → questões respondidas →
+ * pontos de revisão → referências → conteúdo informado.
  */
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage, type RGB } from "pdf-lib";
 import { fromMarkdown } from "mdast-util-from-markdown";
 import { gfmFromMarkdown } from "mdast-util-gfm";
 import { gfm } from "micromark-extension-gfm";
-import type { PhrasingContent, RootContent } from "mdast";
+import type { PhrasingContent, RootContent, Table } from "mdast";
 import type { PdfSnapshot } from "./types";
+import { LOGO_CLARA_PNG, LOGO_ESCURA_PNG, LOGO_OFICIAL_JPG } from "./logos";
 
 const A4: [number, number] = [595.28, 841.89];
-const M = { top: 64, bottom: 64, left: 56, right: 56 };
+const M = { top: 96, bottom: 72, left: 54, right: 54 };
+
+// Paleta APROVUM
 const INK = rgb(0.04, 0.04, 0.04);
-const MUTED = rgb(0.32, 0.32, 0.32);
+const WHITE = rgb(1, 1, 1);
+const MUTED = rgb(0.36, 0.36, 0.38);
+const FAINT = rgb(0.55, 0.55, 0.57);
 const RED = rgb(0.882, 0.024, 0);
-const LINE = rgb(0.86, 0.86, 0.86);
-const SOFT = rgb(0.965, 0.965, 0.965);
+const RED_SOFT = rgb(0.995, 0.93, 0.925);
+const LINE = rgb(0.85, 0.85, 0.86);
+const SOFT = rgb(0.958, 0.958, 0.962);
+const ZEBRA = rgb(0.975, 0.975, 0.978);
+const DARK2 = rgb(0.11, 0.11, 0.12);
 
 const LEVEL_LABEL = { facil: "Fácil", medio: "Médio", dificil: "Difícil" } as const;
 const TYPE_LABEL: Record<string, string> = { multipla_escolha: "Múltipla escolha", certo_errado: "Certo ou errado", situacional: "Situacional", discursiva: "Discursiva" };
@@ -25,15 +37,17 @@ interface Run {
   text: string;
   bold?: boolean;
   italic?: boolean;
+  color?: RGB;
 }
+type Word = { text: string; run: Run; w: number; space: number };
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
-const fmtDateTime = (iso: string) =>
-  new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" });
+const fmtDateTime = (iso: string) => new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" });
+const b64 = (s: string) => Uint8Array.from(Buffer.from(s, "base64"));
 
 /**
  * Largura sem kerning: o pdf-lib mede com kerning, mas desenha sem — medir caractere
- * a caractere evita palavras "coladas" (ex.: "P," ficava mais largo que o medido).
+ * a caractere evita palavras "coladas".
  */
 const widthCache = new WeakMap<PDFFont, Map<string, number>>();
 function measure(font: PDFFont, text: string, size: number): number {
@@ -48,12 +62,23 @@ function measure(font: PDFFont, text: string, size: number): number {
   return (total * size) / 1000;
 }
 
+interface TocEntry {
+  title: string;
+  level: 1 | 2;
+  page: PDFPage;
+}
+
 /** Escreve páginas com quebra automática de linha e de página. */
 class Writer {
   doc: PDFDocument;
   page!: PDFPage;
   y = 0;
-  fonts: { regular: PDFFont; bold: PDFFont; italic: PDFFont; boldItalic: PDFFont };
+  left = M.left;
+  right = A4[0] - M.right;
+  /** Modo de medição: calcula alturas sem desenhar nem quebrar página. */
+  dry = false;
+  toc: TocEntry[] = [];
+  fonts: { regular: PDFFont; bold: PDFFont; italic: PDFFont; boldItalic: PDFFont; mono: PDFFont };
   private charset: Set<number>;
 
   constructor(doc: PDFDocument, fonts: Writer["fonts"]) {
@@ -64,7 +89,7 @@ class Writer {
   }
 
   get width() {
-    return A4[0] - M.left - M.right;
+    return this.right - this.left;
   }
 
   newPage() {
@@ -73,7 +98,26 @@ class Writer {
   }
 
   ensure(h: number) {
-    if (this.y - h < M.bottom) this.newPage();
+    if (!this.dry && this.y - h < M.bottom) this.newPage();
+  }
+
+  /** Espaço livre até o rodapé. */
+  get room() {
+    return this.y - M.bottom;
+  }
+
+  // Desenho (ignorado no modo de medição)
+  drawText(t: string, o: Parameters<PDFPage["drawText"]>[1]) {
+    if (!this.dry) this.page.drawText(t, o);
+  }
+  drawRect(o: Parameters<PDFPage["drawRectangle"]>[0]) {
+    if (!this.dry) this.page.drawRectangle(o);
+  }
+  drawLine(o: Parameters<PDFPage["drawLine"]>[0]) {
+    if (!this.dry) this.page.drawLine(o);
+  }
+  drawCircle(o: Parameters<PDFPage["drawCircle"]>[0]) {
+    if (!this.dry) this.page.drawCircle(o);
   }
 
   /** Converte o texto para o que as fontes padrão (WinAnsi) conseguem desenhar. */
@@ -105,18 +149,12 @@ class Writer {
     return this.fonts.regular;
   }
 
-  /** Parágrafo com trechos em negrito/itálico, quebrando por palavra. */
-  rich(runs: Run[], opts: { size?: number; indent?: number; color?: RGB; gap?: number; lineHeight?: number; width?: number } = {}) {
-    const size = opts.size ?? 10.5;
-    const lh = opts.lineHeight ?? size * 1.45;
-    const indent = opts.indent ?? 0;
-    const maxW = (opts.width ?? this.width) - indent;
-    type Word = { text: string; run: Run; w: number; space: number };
+  /** Quebra trechos em linhas que cabem em `maxW`. */
+  layout(runs: Run[], size: number, maxW: number): Word[][] {
     const words: Word[] = [];
     const lines: Word[][] = [[]];
     for (const r of runs) {
-      const parts = this.clean(r.text).split(/(\s+)/);
-      for (const p of parts) {
+      for (const p of this.clean(r.text).split(/(\s+)/)) {
         if (!p) continue;
         if (/^\s+$/.test(p)) {
           if (p.includes("\n")) words.push({ text: "\n", run: r, w: 0, space: 0 });
@@ -135,33 +173,52 @@ class Writer {
         continue;
       }
       if (cur.length && lineW + w.w > maxW) {
-        lines.push([w]);
-        lineW = w.w + w.space;
-      } else {
-        // Palavra maior que a linha: corta em pedaços.
-        if (!cur.length && w.w > maxW) {
-          let chunk = "";
-          for (const ch of w.text) {
-            if (measure(this.font(w.run), chunk + ch, size) > maxW) {
-              cur.push({ ...w, text: chunk, w: measure(this.font(w.run), chunk, size), space: 0 });
-              lines.push([]);
-              chunk = "";
-            }
-            chunk += ch;
-          }
-          lines[lines.length - 1]!.push({ ...w, text: chunk, w: measure(this.font(w.run), chunk, size) });
-          lineW = measure(this.font(w.run), chunk, size) + w.space;
-          continue;
+        if (w.w > maxW) {
+          lines.push([]);
+          lineW = this.split(w, size, maxW, lines);
+        } else {
+          lines.push([w]);
+          lineW = w.w + w.space;
         }
+      } else if (!cur.length && w.w > maxW) {
+        lineW = this.split(w, size, maxW, lines);
+      } else {
         cur.push(w);
         lineW += w.w + w.space;
       }
     }
-    for (const line of lines) {
+    return lines;
+  }
+
+  /** Palavra maior que a linha: corta em pedaços. */
+  private split(w: Word, size: number, maxW: number, lines: Word[][]): number {
+    const f = this.font(w.run);
+    let chunk = "";
+    for (const ch of w.text) {
+      if (chunk && measure(f, chunk + ch, size) > maxW) {
+        lines[lines.length - 1]!.push({ ...w, text: chunk, w: measure(f, chunk, size), space: 0 });
+        lines.push([]);
+        chunk = "";
+      }
+      chunk += ch;
+    }
+    const last = { ...w, text: chunk, w: measure(f, chunk, size) };
+    lines[lines.length - 1]!.push(last);
+    return last.w + w.space;
+  }
+
+  /** Parágrafo com trechos em negrito/itálico, quebrando por palavra e por página. */
+  rich(runs: Run[], opts: { size?: number; indent?: number; color?: RGB; gap?: number; lineHeight?: number; align?: "left" | "center" } = {}) {
+    const size = opts.size ?? 10.5;
+    const lh = opts.lineHeight ?? size * 1.5;
+    const indent = opts.indent ?? 0;
+    const maxW = this.width - indent;
+    for (const line of this.layout(runs, size, maxW)) {
       this.ensure(lh);
-      let x = M.left + indent;
+      const lw = line.reduce((a, w, i) => a + w.w + (i < line.length - 1 ? w.space : 0), 0);
+      let x = this.left + indent + (opts.align === "center" ? (maxW - lw) / 2 : 0);
       for (const w of line) {
-        this.page.drawText(w.text, { x, y: this.y - size, size, font: this.font(w.run), color: opts.color ?? INK });
+        this.drawText(w.text, { x, y: this.y - size, size, font: this.font(w.run), color: w.run.color ?? opts.color ?? INK });
         x += w.w + w.space;
       }
       this.y -= lh;
@@ -173,35 +230,110 @@ class Writer {
     this.rich([{ text: s, bold: opts.bold, italic: opts.italic }], opts);
   }
 
-  heading(s: string, level: 1 | 2 | 3) {
-    const size = level === 1 ? 20 : level === 2 ? 14.5 : 12;
-    this.ensure(size * 3);
-    this.y -= level === 1 ? 4 : 10;
-    if (level <= 2) {
-      this.page.drawRectangle({ x: M.left, y: this.y - size - 1, width: 3, height: size + 2, color: RED });
-      this.rich([{ text: s, bold: true }], { size, indent: 10, gap: level === 1 ? 10 : 6 });
-    } else {
-      this.rich([{ text: s, bold: true }], { size, gap: 4 });
+  /** Texto em caixa alta com espaçamento entre letras (rótulos, chips, faixas). */
+  spaced(s: string, x: number, y: number, size: number, font: PDFFont, color: RGB, tracking = 0.12) {
+    const t = this.clean(s.toLocaleUpperCase("pt-BR"));
+    let cx = x;
+    for (const ch of t) {
+      this.drawText(ch, { x: cx, y, size, font, color });
+      cx += measure(font, ch, size) + size * tracking;
     }
+    return cx - x - size * tracking;
+  }
+  spacedWidth(s: string, size: number, font: PDFFont, tracking = 0.12) {
+    const t = this.clean(s.toLocaleUpperCase("pt-BR"));
+    return measure(font, t, size) + Math.max(0, [...t].length - 1) * size * tracking;
   }
 
-  rule() {
-    this.ensure(10);
-    this.page.drawLine({ start: { x: M.left, y: this.y - 4 }, end: { x: A4[0] - M.right, y: this.y - 4 }, thickness: 0.6, color: LINE });
-    this.y -= 12;
-  }
-
-  /** Bloco destacado por uma faixa vermelha lateral (desenhada ao fim, sem cobrir o texto). */
-  box(draw: () => void, accent: RGB = RED) {
-    this.ensure(40);
-    const startPage = this.page;
-    const top = this.y;
-    this.y -= 4;
+  /** Mede a altura de um bloco sem desenhar. */
+  measureBlock(draw: () => void): number {
+    const save = { y: this.y, dry: this.dry };
+    this.dry = true;
+    this.y = 1e6;
     draw();
-    if (this.page === startPage) {
-      startPage.drawRectangle({ x: M.left - 8, y: this.y + 2, width: 2.5, height: top - this.y - 2, color: accent });
+    const h = 1e6 - this.y;
+    this.y = save.y;
+    this.dry = save.dry;
+    return h;
+  }
+
+  /**
+   * Cartão: fundo, borda e faixa lateral desenhados antes do conteúdo (medido antes).
+   * Se não couber numa página, o conteúdo segue sem o fundo (nada é cortado).
+   */
+  card(draw: () => void, o: { bg?: RGB; border?: RGB; accent?: RGB; pad?: number; padX?: number; gap?: number } = {}) {
+    const pad = o.pad ?? 12;
+    const padX = o.padX ?? pad;
+    const inner = () => {
+      const l = this.left;
+      const r = this.right;
+      this.left += padX + (o.accent ? 3 : 0);
+      this.right -= padX;
+      draw();
+      this.left = l;
+      this.right = r;
+    };
+    const h = this.measureBlock(inner) + pad * 2;
+    const fits = h <= A4[1] - M.top - M.bottom;
+    if (fits) this.ensure(h);
+    if (fits && !this.dry) {
+      const y0 = this.y - h;
+      if (o.bg || o.border) this.drawRect({ x: this.left, y: y0, width: this.width, height: h, color: o.bg, borderColor: o.border, borderWidth: o.border ? 0.8 : 0 });
+      if (o.accent) this.drawRect({ x: this.left, y: y0, width: 3, height: h, color: o.accent });
     }
-    this.y -= 8;
+    this.y -= pad;
+    inner();
+    this.y -= pad - 4;
+    this.y -= o.gap ?? 8;
+  }
+
+  /** Faixa de seção (nível 1): barra preta com marcador vermelho e título em caixa alta. */
+  section(title: string, opts: { newPage?: boolean } = {}) {
+    if (opts.newPage) this.newPage();
+    this.ensure(70);
+    const h = 34;
+    const y0 = this.y - h;
+    this.drawRect({ x: this.left, y: y0, width: this.width, height: h, color: INK });
+    this.drawRect({ x: this.left, y: y0, width: 6, height: h, color: RED });
+    const slash = this.spaced("///", this.left + 16, y0 + 12, 11, this.fonts.boldItalic, RED, 0);
+    this.spaced(title, this.left + 22 + slash, y0 + 12.5, 12, this.fonts.bold, WHITE, 0.1);
+    this.y = y0 - 18;
+    if (!this.dry) this.toc.push({ title, level: 1, page: this.page });
+  }
+
+  /** Título de unidade (nível 2): rótulo vermelho, título forte e sublinhado vermelho. */
+  unit(kicker: string, title: string) {
+    this.ensure(90);
+    this.y -= 6;
+    this.spaced(kicker, this.left, this.y - 8, 7.5, this.fonts.bold, RED, 0.22);
+    this.y -= 16;
+    if (!this.dry) this.toc.push({ title, level: 2, page: this.page });
+    this.rich([{ text: title, bold: true }], { size: 15, lineHeight: 19, gap: 4 });
+    this.drawRect({ x: this.left, y: this.y, width: 38, height: 2.2, color: RED });
+    this.drawLine({ start: { x: this.left + 42, y: this.y + 1.1 }, end: { x: this.right, y: this.y + 1.1 }, thickness: 0.6, color: LINE });
+    this.y -= 14;
+  }
+
+  /** Subtítulo (nível 3): quadradinho vermelho + texto em negrito. */
+  subheading(s: string, suffix?: string) {
+    this.ensure(40);
+    this.y -= 4;
+    this.drawRect({ x: this.left, y: this.y - 9.5, width: 5, height: 5, color: RED });
+    this.rich([{ text: s, bold: true }, ...(suffix ? [{ text: `  ${suffix}`, italic: true, color: RED }] : [])], { size: 11.5, indent: 11, gap: 3 });
+  }
+
+  /** Chip arredondado; devolve a largura. */
+  chip(label: string, x: number, yTop: number, o: { bg: RGB; fg: RGB; border?: RGB; size?: number }) {
+    const size = o.size ?? 7;
+    const w = this.spacedWidth(label, size, this.fonts.bold, 0.1) + 12;
+    const h = size + 8;
+    if (!this.dry) {
+      const r = h / 2;
+      const path = `M ${r} 0 H ${w - r} A ${r} ${r} 0 0 1 ${w - r} ${h} H ${r} A ${r} ${r} 0 0 1 ${r} 0 Z`;
+      this.page.drawSvgPath(path, { x, y: yTop, color: o.bg, borderColor: o.border, borderWidth: o.border ? 0.7 : 0 });
+    }
+    this.spaced(label, x + 6, yTop - h + 4.6, size, this.fonts.bold, o.fg, 0.1);
+    return w;
   }
 }
 
@@ -226,8 +358,6 @@ function inlineRuns(nodes: PhrasingContent[], style: Omit<Run, "text"> = {}): Ru
         out.push({ text: "\n", ...style });
         break;
       case "link":
-        out.push(...inlineRuns(n.children, style));
-        break;
       case "delete":
         out.push(...inlineRuns(n.children, style));
         break;
@@ -239,75 +369,148 @@ function inlineRuns(nodes: PhrasingContent[], style: Omit<Run, "text"> = {}): Ru
   return out;
 }
 
-function plain(nodes: PhrasingContent[]): string {
-  return inlineRuns(nodes).map((r) => r.text).join("");
+/**
+ * Tabela: larguras pelo conteúdo, cabeçalho preto repetido a cada página, linhas zebradas,
+ * texto quebrado dentro da célula (a altura da linha é a da maior célula).
+ */
+function drawTable(w: Writer, rows: Run[][][], opts: { size?: number; header?: boolean; align?: Array<"left" | "right" | "center"> } = {}) {
+  if (!rows.length) return;
+  const size = opts.size ?? 9;
+  const lh = size * 1.42;
+  const padX = 6;
+  const padY = 5;
+  const cols = Math.max(...rows.map((r) => r.length));
+  const avail = w.width;
+  const fontOf = (r: Run) => w.font(r);
+  const cellText = (cell: Run[] | undefined) => cell ?? [];
+  // Larguras: natural (texto numa linha) e mínima (maior palavra).
+  const natural = Array(cols).fill(0) as number[];
+  const minimum = Array(cols).fill(0) as number[];
+  rows.forEach((r, ri) =>
+    r.forEach((cell, ci) => {
+      const runs = ri === 0 && opts.header !== false ? cell.map((c) => ({ ...c, bold: true })) : cell;
+      const flat = runs.map((c) => measure(fontOf(c), w.clean(c.text), size)).reduce((a, b) => a + b, 0);
+      natural[ci] = Math.max(natural[ci]!, flat + padX * 2);
+      for (const c of runs) for (const word of w.clean(c.text).split(/\s+/)) minimum[ci] = Math.max(minimum[ci]!, measure(fontOf(c), word, size) + padX * 2);
+    }),
+  );
+  const minCap = avail / cols;
+  const mins = minimum.map((m) => Math.min(m, Math.max(minCap, 48)));
+  let widths: number[];
+  const totalNat = natural.reduce((a, b) => a + b, 0);
+  if (totalNat <= avail) {
+    widths = natural.map((n) => n + (avail - totalNat) * (n / totalNat));
+  } else {
+    const extra = avail - mins.reduce((a, b) => a + b, 0);
+    const want = natural.map((n, i) => Math.max(0, n - mins[i]!));
+    const wantSum = want.reduce((a, b) => a + b, 0) || 1;
+    widths = mins.map((m, i) => m + Math.max(0, extra) * (want[i]! / wantSum));
+    const sum = widths.reduce((a, b) => a + b, 0);
+    widths = widths.map((x) => (x * avail) / sum);
+  }
+
+  const layoutRow = (r: Run[][], header: boolean) =>
+    Array.from({ length: cols }, (_, ci) => {
+      const runs = cellText(r[ci]).map((c) => (header ? { ...c, bold: true, color: WHITE } : c));
+      return w.layout(runs, size, widths[ci]! - padX * 2);
+    });
+  const heightOf = (cells: Word[][][]) => Math.max(...cells.map((ls) => ls.length)) * lh + padY * 2;
+
+  const drawRow = (cells: Word[][][], kind: "header" | "even" | "odd") => {
+    const h = heightOf(cells);
+    const top = w.y;
+    const bg = kind === "header" ? INK : kind === "odd" ? ZEBRA : WHITE;
+    w.drawRect({ x: w.left, y: top - h, width: avail, height: h, color: bg });
+    if (kind === "header") w.drawRect({ x: w.left, y: top - h, width: avail, height: 1.6, color: RED });
+    let x = w.left;
+    cells.forEach((lines, ci) => {
+      let y = top - padY;
+      for (const line of lines) {
+        const lw = line.reduce((a, wd, i) => a + wd.w + (i < line.length - 1 ? wd.space : 0), 0);
+        const al = opts.align?.[ci] ?? "left";
+        let cx = x + padX + (al === "right" ? widths[ci]! - padX * 2 - lw : al === "center" ? (widths[ci]! - padX * 2 - lw) / 2 : 0);
+        for (const wd of line) {
+          w.drawText(wd.text, { x: cx, y: y - size, size, font: w.font(wd.run), color: wd.run.color ?? INK });
+          cx += wd.w + wd.space;
+        }
+        y -= lh;
+      }
+      if (ci > 0 && kind !== "header") w.drawLine({ start: { x, y: top }, end: { x, y: top - h }, thickness: 0.4, color: LINE });
+      x += widths[ci]!;
+    });
+    if (kind !== "header") w.drawLine({ start: { x: w.left, y: top - h }, end: { x: w.left + avail, y: top - h }, thickness: 0.5, color: LINE });
+    w.y = top - h;
+  };
+
+  const header = opts.header !== false ? layoutRow(rows[0]!, true) : null;
+  const body = (header ? rows.slice(1) : rows).map((r) => layoutRow(r, false));
+  w.y -= 2;
+  if (header) {
+    w.ensure(heightOf(header) + (body[0] ? heightOf(body[0]) : 0));
+    drawRow(header, "header");
+  }
+  body.forEach((cells, i) => {
+    const h = heightOf(cells);
+    if (!w.dry && w.y - h < M.bottom) {
+      w.newPage();
+      if (header) drawRow(header, "header");
+    }
+    drawRow(cells, i % 2 ? "odd" : "even");
+  });
+  // Contorno
+  w.y -= 12;
 }
 
-/** Desenha Markdown (títulos, parágrafos, listas, citações, tabelas) no Writer. */
+/** Desenha Markdown (títulos, parágrafos, listas, citações, tabelas, código) no Writer. */
 export function drawMarkdown(w: Writer, md: string, indent = 0) {
   const tree = fromMarkdown(md, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] });
-  const block = (node: RootContent, ind: number, bullet?: string) => {
+  const block = (node: RootContent, ind: number, bullet?: { kind: "dot" | "num"; label: string }) => {
     switch (node.type) {
       case "heading":
+        w.y -= 3;
         w.rich(inlineRuns(node.children, { bold: true }), { size: node.depth <= 2 ? 12 : 11, indent: ind, gap: 3 });
         break;
       case "paragraph":
         if (bullet) {
           w.ensure(16);
-          w.page.drawText(w.clean(bullet), { x: M.left + ind - 12, y: w.y - 10.5, size: 10.5, font: w.fonts.regular, color: RED });
+          if (bullet.kind === "dot") w.drawRect({ x: w.left + ind - 10, y: w.y - 8.2, width: 3.6, height: 3.6, color: RED });
+          else w.drawText(w.clean(bullet.label), { x: w.left + ind - 14, y: w.y - 10.5, size: 10, font: w.fonts.bold, color: RED });
         }
-        w.rich(inlineRuns(node.children), { indent: ind, gap: 4 });
+        w.rich(inlineRuns(node.children), { indent: ind, gap: bullet ? 2 : 6 });
         break;
       case "list": {
         let n = node.start ?? 1;
         for (const item of node.children) {
-          item.children.forEach((c, i) => block(c, ind + 14, i === 0 ? (node.ordered ? `${n}.` : "•") : undefined));
+          item.children.forEach((c, i) => block(c, ind + 16, i === 0 ? { kind: node.ordered ? "num" : "dot", label: `${n}.` } : undefined));
           n++;
         }
-        w.y -= 2;
+        w.y -= 4;
         break;
       }
-      case "blockquote": {
-        const startY = w.y;
-        const startPage = w.page;
-        node.children.forEach((c) => block(c, ind + 12));
-        if (w.page === startPage) {
-          w.page.drawRectangle({ x: M.left + ind, y: w.y + 4, width: 2.5, height: startY - w.y - 4, color: RED });
-        }
+      case "blockquote":
+        w.card(() => node.children.forEach((c) => block(c, 0)), { bg: SOFT, accent: RED, pad: 9, padX: 12 });
         break;
-      }
       case "table": {
-        const rows = node.children.map((r) => r.children.map((c) => plain(c.children as PhrasingContent[])));
-        const cols = Math.max(...rows.map((r) => r.length));
-        const colW = (w.width - ind) / cols;
-        rows.forEach((r, ri) => {
-          const size = 9.5;
-          // Altura da linha = maior célula.
-          const heights = r.map((cell) => {
-            const lines = Math.max(1, Math.ceil(measure(w.fonts.regular, w.clean(cell), size) / (colW - 8)) + (cell.match(/\n/g)?.length ?? 0));
-            return lines * size * 1.4 + 6;
-          });
-          const h = Math.max(...heights);
-          w.ensure(h);
-          const top = w.y;
-          if (ri === 0) w.page.drawRectangle({ x: M.left + ind, y: top - h, width: w.width - ind, height: h, color: SOFT });
-          r.forEach((cell, ci) => {
-            const saveY = w.y;
-            w.y = top - 3;
-            w.rich([{ text: cell, bold: ri === 0 }], { size, indent: ind + ci * colW + 4, width: ind + (ci + 1) * colW - 4 + 0, gap: 0, lineHeight: size * 1.4 });
-            w.y = saveY;
-          });
-          w.page.drawLine({ start: { x: M.left + ind, y: top - h }, end: { x: A4[0] - M.right, y: top - h }, thickness: 0.5, color: LINE });
-          w.y = top - h;
-        });
-        w.y -= 8;
+        const t = node as Table;
+        const rows = t.children.map((r) => r.children.map((c) => inlineRuns(c.children as PhrasingContent[])));
+        const save = w.left;
+        w.left += ind;
+        drawTable(w, rows, { align: t.align?.map((a) => (a === "right" ? "right" : a === "center" ? "center" : "left")) });
+        w.left = save;
         break;
       }
       case "code":
-        w.text(node.value, { indent: ind + 8, size: 9.5, color: MUTED });
+        w.card(
+          () => {
+            for (const line of w.clean(node.value).split("\n")) w.rich([{ text: line || " " }], { size: 9, gap: 0, lineHeight: 12.5 });
+          },
+          { bg: SOFT, pad: 8 },
+        );
         break;
       case "thematicBreak":
-        w.rule();
+        w.ensure(14);
+        w.drawLine({ start: { x: w.left, y: w.y - 5 }, end: { x: w.right, y: w.y - 5 }, thickness: 0.6, color: LINE });
+        w.y -= 14;
         break;
       default:
         if ("children" in node) (node as { children: RootContent[] }).children.forEach((c) => block(c, ind));
@@ -316,12 +519,238 @@ export function drawMarkdown(w: Writer, md: string, indent = 0) {
   tree.children.forEach((c) => block(c, indent));
 }
 
+function drawCover(w: Writer, s: PdfSnapshot, meta: { pdfVersion: number; contentHash: string }, logo: PDFImage) {
+  const p = w.page;
+  const [W, H] = A4;
+  const band = 380;
+  // Faixa preta (mesmo preto da logo) com diagonais vermelhas nas bordas
+  p.drawRectangle({ x: 0, y: H - band, width: W, height: band, color: rgb(0, 0, 0) });
+  for (const [x0, t, op] of [[W - 26, 14, 0.95], [W + 2, 4, 0.6], [W + 16, 2, 0.45], [78, 3, 0.35], [92, 1.5, 0.25]] as const) {
+    p.drawSvgPath(`M ${x0} 0 L ${x0 + t} 0 L ${x0 + t - 90} ${band} L ${x0 - 90} ${band} Z`, { x: 0, y: H, color: RED, opacity: op });
+  }
+  // Logo oficial
+  const lw = 175;
+  const lh = (lw * logo.height) / logo.width;
+  p.drawImage(logo, { x: (W - lw) / 2, y: H - 40 - lh, width: lw, height: lh });
+
+  // Rótulo + título (centralizados)
+  w.y = H - 40 - lh - 26;
+  const kicker = "Material de estudo";
+  const kw = w.spacedWidth(kicker, 8, w.fonts.bold, 0.3);
+  w.spaced(kicker, (W - kw) / 2, w.y - 8, 8, w.fonts.bold, RED, 0.3);
+  w.y -= 22;
+  const save = { l: w.left, r: w.right };
+  w.left = 70;
+  w.right = W - 70;
+  w.rich([{ text: s.content.title, bold: true }], { size: 22, lineHeight: 27, color: WHITE, align: "center", gap: 2 });
+  if (s.content.subject && s.content.subject !== s.content.title) w.rich([{ text: s.content.subject }], { size: 11, color: rgb(0.78, 0.78, 0.8), align: "center", gap: 0 });
+  w.left = save.l;
+  w.right = save.r;
+  p.drawRectangle({ x: 0, y: H - band - 4, width: W, height: 4, color: RED });
+
+  // Quadro de informações (2 x 2)
+  const lvl = Math.min(...s.units.map((u) => u.levelsPassed));
+  const info: Array<[string, string]> = [
+    ["Estudante", s.student.name ?? "—"],
+    ["Banca de referência", s.content.board],
+    ["Tipo de conteúdo", s.content.contentTypeLabel],
+    ["Níveis concluídos", lvl >= 3 ? "Fácil, médio e difícil (≥ 90% em cada)" : `${Math.max(0, lvl)} de 3`],
+  ];
+  const gx = 12;
+  const cw = (W - M.left - M.right - gx) / 2;
+  const ch = 52;
+  let top = H - band - 30;
+  info.forEach(([k, v], i) => {
+    const x = M.left + (i % 2) * (cw + gx);
+    const y = top - Math.floor(i / 2) * (ch + 10);
+    p.drawRectangle({ x, y: y - ch, width: cw, height: ch, color: SOFT });
+    p.drawRectangle({ x, y: y - ch, width: 3, height: ch, color: RED });
+    w.spaced(k, x + 14, y - 17, 7, w.fonts.bold, RED, 0.2);
+    const val = w.clean(v);
+    let size = 11.5;
+    while (size > 8 && measure(w.fonts.bold, val, size) > cw - 26) size -= 0.5;
+    p.drawText(val.length > 80 ? val.slice(0, 79) + "…" : val, { x: x + 14, y: y - 37, size, font: w.fonts.bold, color: INK });
+  });
+  top -= 2 * (ch + 10) + 10;
+
+  // Números do estudo (dados reais do retrato)
+  const total = s.questions.length;
+  const hits = s.questions.filter((q) => q.answer.correct).length;
+  const stats: Array<[string, string]> = [
+    [String(total), total === 1 ? "questão respondida" : "questões respondidas"],
+    [total ? `${Math.round((hits / total) * 100)}%` : "—", "acerto na última resposta"],
+    [String(s.units.length), s.units.length === 1 ? "unidade estudada" : "unidades estudadas"],
+    [String(s.review.length), s.review.length === 1 ? "ponto de revisão" : "pontos de revisão"],
+  ];
+  const sw = (W - M.left - M.right - 3 * 8) / 4;
+  stats.forEach(([n, label], i) => {
+    const x = M.left + i * (sw + 8);
+    p.drawRectangle({ x, y: top - 62, width: sw, height: 62, color: INK });
+    p.drawRectangle({ x, y: top - 62, width: sw, height: 2.5, color: RED });
+    const nw = measure(w.fonts.bold, n, 20);
+    p.drawText(n, { x: x + (sw - nw) / 2, y: top - 30, size: 20, font: w.fonts.bold, color: WHITE });
+    const lt = w.clean(label);
+    const lw2 = measure(w.fonts.regular, lt, 7.5);
+    p.drawText(lt, { x: x + (sw - lw2) / 2, y: top - 46, size: 7.5, font: w.fonts.regular, color: rgb(0.75, 0.75, 0.78) });
+  });
+  top -= 62 + 18;
+
+  // Controle de versão
+  w.y = top;
+  w.card(
+    () => {
+      drawTable(
+        w,
+        [
+          [[{ text: "Versão do PDF", bold: true }], [{ text: String(meta.pdfVersion) }], [{ text: "Gerado em", bold: true }], [{ text: fmtDateTime(s.generatedAt) }]],
+          [[{ text: "Conteúdo informado", bold: true }], [{ text: `versão ${s.content.sourceVersion}, de ${fmtDate(s.content.sourceCreatedAt)}` }], [{ text: "Aulas atualizadas em", bold: true }], [{ text: [...new Set(s.units.map((u) => (u.generatedAt ? fmtDate(u.generatedAt) : "—")))].join(", ") }]],
+          [[{ text: "Identificador (SHA-256)", bold: true }], [{ text: meta.contentHash.slice(0, 40) + "…" }], [{ text: "" }], [{ text: "" }]],
+        ],
+        { size: 8, header: false },
+      );
+    },
+    { pad: 0, padX: 0, gap: 0 },
+  );
+}
+
+/** Sumário: inserido depois da capa, com os números de página finais. */
+function drawToc(doc: PDFDocument, w: Writer) {
+  const perPage = 30;
+  const entries = w.toc;
+  const n = Math.max(1, Math.ceil(entries.length / perPage));
+  const pages = Array.from({ length: n }, (_, i) => doc.insertPage(1 + i, A4));
+  const all = doc.getPages();
+  pages.forEach((page, pi) => {
+    w.page = page;
+    w.y = A4[1] - M.top;
+    w.section(pi === 0 ? "Sumário" : "Sumário (continuação)");
+    w.toc.pop(); // o próprio sumário não entra na lista
+    for (const e of entries.slice(pi * perPage, (pi + 1) * perPage)) {
+      const num = String(all.indexOf(e.page) + 1);
+      const size = e.level === 1 ? 10.5 : 9.5;
+      const font = e.level === 1 ? w.fonts.bold : w.fonts.regular;
+      const x = w.left + (e.level === 1 ? 0 : 16);
+      if (e.level === 1) w.y -= 6;
+      let t = w.clean(e.level === 1 ? e.title.toLocaleUpperCase("pt-BR") : e.title);
+      const maxT = w.right - x - 40;
+      while (measure(font, t, size) > maxT && t.length > 4) t = t.slice(0, -2);
+      if (t !== w.clean(e.level === 1 ? e.title.toLocaleUpperCase("pt-BR") : e.title)) t = t.trimEnd() + "…";
+      page.drawText(t, { x, y: w.y - size, size, font, color: INK });
+      const tw = measure(font, t, size);
+      const nw = measure(w.fonts.bold, num, size);
+      // Pontilhado até o número
+      for (let dx = x + tw + 6; dx < w.right - nw - 6; dx += 4) page.drawCircle({ x: dx, y: w.y - size + 2.5, size: 0.45, color: FAINT });
+      page.drawText(num, { x: w.right - nw, y: w.y - size, size, font: w.fonts.bold, color: e.level === 1 ? RED : INK });
+      w.y -= size * 1.9;
+    }
+  });
+  return n;
+}
+
+/** Cabeçalho (logo) e rodapé (marca + paginação) em todas as páginas, menos a capa. */
+function drawChrome(doc: PDFDocument, w: Writer, s: PdfSnapshot, meta: { pdfVersion: number }, logo: PDFImage) {
+  const pages = doc.getPages();
+  const [W, H] = A4;
+  pages.forEach((p, i) => {
+    if (i === 0) return;
+    // Cabeçalho
+    const lh = 22;
+    const lw = (lh * logo.width) / logo.height;
+    p.drawImage(logo, { x: M.left, y: H - 34 - lh, width: lw, height: lh });
+    w.page = p;
+    const tag = "Material de estudo";
+    const tw = w.spacedWidth(tag, 6.5, w.fonts.bold, 0.22);
+    w.dry = false;
+    w.spaced(tag, W - M.right - tw, H - 41, 6.5, w.fonts.bold, RED, 0.22);
+    let title = w.clean(s.content.title);
+    while (measure(w.fonts.regular, title, 8) > 210 && title.length > 4) title = title.slice(0, -2);
+    if (title !== w.clean(s.content.title)) title = title.trimEnd() + "…";
+    p.drawText(title, { x: W - M.right - measure(w.fonts.regular, title, 8), y: H - 54, size: 8, font: w.fonts.regular, color: MUTED });
+    p.drawRectangle({ x: M.left, y: H - 66, width: 46, height: 2, color: RED });
+    p.drawLine({ start: { x: M.left + 50, y: H - 65 }, end: { x: W - M.right, y: H - 65 }, thickness: 0.6, color: LINE });
+
+    // Rodapé
+    p.drawLine({ start: { x: M.left, y: 48 }, end: { x: W - M.right, y: 48 }, thickness: 0.6, color: LINE });
+    const sl = w.spaced("///", M.left, 32, 8, w.fonts.boldItalic, RED, 0);
+    const brand = w.spaced("Aprovum", M.left + sl + 6, 32, 7.5, w.fonts.bold, INK, 0.18);
+    w.spaced(`•  Preparação de alto desempenho  •  PDF v${meta.pdfVersion}`, M.left + sl + 12 + brand, 32, 6.5, w.fonts.regular, MUTED, 0.14);
+    const num = `${i + 1} / ${pages.length}`;
+    const nw = measure(w.fonts.bold, num, 8);
+    p.drawRectangle({ x: W - M.right - nw - 14, y: 27, width: nw + 14, height: 15, color: INK });
+    p.drawText(num, { x: W - M.right - nw - 7, y: 31.5, size: 8, font: w.fonts.bold, color: WHITE });
+  });
+}
+
+function drawQuestion(w: Writer, q: PdfSnapshot["questions"][number], n: number) {
+  w.card(
+    () => {
+      // Cabeçalho do cartão: número, chips e resultado
+      w.ensure(24);
+      const top = w.y;
+      const label = `Questão ${String(n).padStart(2, "0")}`;
+      const lw = w.spaced(label, w.left, top - 10, 9, w.fonts.bold, INK, 0.12);
+      let x = w.left + lw + 10;
+      x += w.chip(LEVEL_LABEL[q.level], x, top - 1, { bg: SOFT, fg: INK, border: LINE }) + 5;
+      x += w.chip(TYPE_LABEL[q.type] ?? q.type, x, top - 1, { bg: SOFT, fg: INK, border: LINE }) + 5;
+      if (q.recovery) x += w.chip("Recuperação", x, top - 1, { bg: RED_SOFT, fg: RED, border: RED }) + 5;
+      const res = q.answer.correct ? "Acertou" : "Errou";
+      const rw = w.spacedWidth(res, 7, w.fonts.bold, 0.1) + 12;
+      w.chip(res, w.right - rw, top - 1, { bg: q.answer.correct ? INK : RED, fg: WHITE });
+      w.y = top - 22;
+      if (q.topic) w.rich([{ text: q.topic, italic: true }], { size: 8.5, color: MUTED, gap: 2 });
+      w.rich([{ text: q.statement }], { size: 10.5, gap: 8 });
+
+      if (q.type === "certo_errado") {
+        const gab = q.correctAnswerTrue ? "Certo" : "Errado";
+        const mine = q.answer.bool === null ? "—" : q.answer.bool ? "Certo" : "Errado";
+        drawTable(
+          w,
+          [
+            [[{ text: "Gabarito" }], [{ text: "Sua resposta" }]],
+            [[{ text: gab.toUpperCase(), bold: true }], [{ text: mine.toUpperCase(), bold: true, color: q.answer.correct ? INK : RED }]],
+          ],
+          { size: 9 },
+        );
+      } else {
+        for (const o of q.options) {
+          const mine = q.answer.label === o.label;
+          w.ensure(22);
+          const cy = w.y - 7;
+          const fill = o.correct ? INK : mine ? RED : undefined;
+          w.drawCircle({ x: w.left + 8, y: cy, size: 7.5, color: fill ?? WHITE, borderColor: fill ?? FAINT, borderWidth: 0.8 });
+          const lt = w.clean(o.label);
+          w.drawText(lt, { x: w.left + 8 - measure(w.fonts.bold, lt, 8) / 2, y: cy - 2.8, size: 8, font: w.fonts.bold, color: fill ? WHITE : INK });
+          const tags: Run[] = [];
+          if (o.correct) tags.push({ text: mine ? "   CORRETA · SUA RESPOSTA" : "   CORRETA", bold: true, color: INK });
+          else if (mine) tags.push({ text: "   SUA RESPOSTA", bold: true, color: RED });
+          w.rich([{ text: o.text, bold: o.correct }, ...tags], { size: 10, indent: 22, gap: 1 });
+          if (o.explanation) w.rich([{ text: o.explanation }], { size: 8.8, indent: 22, color: MUTED, gap: 5, lineHeight: 12.5 });
+        }
+      }
+      w.y -= 2;
+      w.card(
+        () => {
+          w.spaced("Comentário", w.left, w.y - 7, 7, w.fonts.bold, RED, 0.2);
+          w.y -= 13;
+          w.rich([{ text: q.justification }], { size: 9.5, gap: 0, lineHeight: 13.5 });
+        },
+        { bg: SOFT, accent: RED, pad: 9, padX: 10, gap: 4 },
+      );
+      const notes: string[] = [`Tentativas: ${q.attempts}`, `última em ${fmtDateTime(q.answer.at)}`];
+      if (q.everWrong && q.answer.correct) notes.push("errou antes e corrigiu depois");
+      w.rich([{ text: notes.join("  ·  ") }], { size: 7.8, color: FAINT, gap: 0 });
+    },
+    { border: LINE, pad: 12, gap: 10 },
+  );
+}
+
 export async function renderStudyPdf(s: PdfSnapshot, meta: { pdfVersion: number; contentHash: string }): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(`${s.content.title} — APROVUM`);
   doc.setAuthor("APROVUM");
   doc.setSubject(s.content.subject ?? s.content.title);
   doc.setCreator("APROVUM");
+  doc.setProducer("APROVUM");
   doc.setCreationDate(new Date(s.generatedAt));
   doc.setLanguage("pt-BR");
   const w = new Writer(doc, {
@@ -329,170 +758,121 @@ export async function renderStudyPdf(s: PdfSnapshot, meta: { pdfVersion: number;
     bold: await doc.embedFont(StandardFonts.HelveticaBold),
     italic: await doc.embedFont(StandardFonts.HelveticaOblique),
     boldItalic: await doc.embedFont(StandardFonts.HelveticaBoldOblique),
+    mono: await doc.embedFont(StandardFonts.Courier),
   });
+  const logoCover = await doc.embedJpg(b64(LOGO_OFICIAL_JPG));
+  const logoHeader = await doc.embedPng(b64(LOGO_ESCURA_PNG));
+  void LOGO_CLARA_PNG;
 
   // ---- Capa ----
-  w.page.drawRectangle({ x: 0, y: A4[1] - 150, width: A4[0], height: 150, color: rgb(0.04, 0.04, 0.04) });
-  w.page.drawText("APRO", { x: M.left, y: A4[1] - 78, size: 26, font: w.fonts.bold, color: rgb(1, 1, 1) });
-  const aproW = measure(w.fonts.bold, "APRO", 26);
-  w.page.drawText("V", { x: M.left + aproW, y: A4[1] - 78, size: 26, font: w.fonts.bold, color: RED });
-  w.page.drawText("UM", { x: M.left + aproW + measure(w.fonts.bold, "V", 26), y: A4[1] - 78, size: 26, font: w.fonts.bold, color: rgb(1, 1, 1) });
-  w.page.drawText(w.clean("SUA PREPARAÇÃO. SEU PRÓXIMO CARGO."), { x: M.left, y: A4[1] - 100, size: 8.5, font: w.fonts.regular, color: rgb(0.75, 0.75, 0.75) });
-  w.y = A4[1] - 190;
-  w.heading(s.content.title, 1);
-  if (s.content.subject && s.content.subject !== s.content.title) w.text(s.content.subject, { size: 12, color: MUTED, gap: 8 });
-  w.rich(
-    [
-      { text: "Estudante: ", bold: true },
-      { text: s.student.name ?? "—" },
-      { text: "\nBanca de referência: ", bold: true },
-      { text: s.content.board },
-      { text: "\nTipo de conteúdo: ", bold: true },
-      { text: s.content.contentTypeLabel },
-      { text: "\nConcluído nos três níveis (fácil, médio e difícil) com pelo menos 90% em cada um.", italic: true },
-    ],
-    { gap: 10 },
-  );
-  w.box(() => {
-    w.rich(
-      [
-        { text: "Versão do PDF: ", bold: true },
-        { text: String(meta.pdfVersion) },
-        { text: "\nGerado em: ", bold: true },
-        { text: fmtDateTime(s.generatedAt) },
-        { text: "\nConteúdo informado: ", bold: true },
-        { text: `versão ${s.content.sourceVersion}, de ${fmtDate(s.content.sourceCreatedAt)}` },
-        { text: "\nAulas atualizadas em: ", bold: true },
-        { text: [...new Set(s.units.map((u) => (u.generatedAt ? fmtDate(u.generatedAt) : "—")))].join(", ") },
-        { text: "\nIdentificador (SHA-256): ", bold: true },
-        { text: meta.contentHash.slice(0, 32) + "…" },
-      ],
-      { size: 9.5, indent: 4 },
-    );
-  });
+  drawCover(w, s, meta, logoCover);
 
-  if (s.content.scopeStatement) {
-    w.heading("Escopo deste estudo", 2);
-    w.text(s.content.scopeStatement);
-    if (s.content.legalReferences.length) {
-      w.text("Dispositivos e normas", { bold: true, gap: 2 });
-      for (const r of s.content.legalReferences) w.rich([{ text: `${r.norm}: `, bold: true }, { text: r.provisions }], { indent: 12, gap: 2 });
-    }
-    if (s.content.outOfScope.length) {
-      w.text("Fica de fora (fora do pedido)", { bold: true, gap: 2 });
-      for (const o of s.content.outOfScope) w.text(`• ${o}`, { indent: 12, gap: 1 });
-    }
-    if (s.content.aiOutline) {
-      w.text("Subtemas organizados pela IA a partir do seu pedido", { bold: true, gap: 2 });
-      w.text(s.content.aiOutline, { indent: 12, size: 9.5, color: MUTED });
-    }
+  // ---- Escopo ----
+  w.section("Escopo deste estudo", { newPage: true });
+  if (s.content.scopeStatement) w.text(s.content.scopeStatement, { gap: 10 });
+  if (s.content.legalReferences.length) {
+    w.subheading("Dispositivos e normas");
+    drawTable(w, [[[{ text: "Norma" }], [{ text: "Dispositivos" }]], ...s.content.legalReferences.map((r) => [[{ text: r.norm, bold: true }], [{ text: r.provisions }]])]);
+  }
+  if (s.content.outOfScope.length) {
+    w.subheading("Fica de fora (fora do pedido)");
+    for (const o of s.content.outOfScope) drawMarkdown(w, `- ${o.replace(/\n/g, " ")}`);
+  }
+  if (s.content.aiOutline) {
+    w.subheading("Subtemas organizados pela IA a partir do seu pedido");
+    w.card(() => w.text(s.content.aiOutline!, { size: 9.5, color: MUTED, gap: 0 }), { bg: SOFT, accent: RED, pad: 10 });
+  }
+  if (!s.content.scopeStatement && !s.content.legalReferences.length && !s.content.outOfScope.length && !s.content.aiOutline) {
+    w.text("Estudo do conteúdo informado, conforme o pedido do aluno.", { color: MUTED });
   }
 
   // ---- Teoria ----
-  w.newPage();
-  w.heading("Teoria", 1);
-  for (const u of s.units) {
-    w.heading(u.title, 2);
-    w.text(u.objective, { italic: true, color: MUTED, gap: 8 });
+  w.section("Teoria", { newPage: true });
+  s.units.forEach((u, i) => {
+    if (i > 0) w.y -= 10;
+    w.unit(`Unidade ${i + 1} de ${s.units.length}`, u.title);
+    w.card(
+      () => {
+        w.spaced("Objetivo", w.left, w.y - 7, 7, w.fonts.bold, RED, 0.2);
+        w.y -= 13;
+        w.rich([{ text: u.objective, italic: true }], { size: 10, gap: 0 });
+      },
+      { bg: SOFT, accent: RED, pad: 9, padX: 10, gap: 10 },
+    );
     for (const sec of u.sections) {
-      w.text(sec.title + (sec.verificationStatus === "pendente" ? "  [não verificado]" : ""), { bold: true, size: 11.5, gap: 3 });
+      w.subheading(sec.title, sec.verificationStatus === "pendente" ? "[não verificado]" : undefined);
       drawMarkdown(w, sec.body);
       w.y -= 4;
     }
     if (u.unverifiedClaims.length) {
-      w.text("Pontos pendentes de verificação na fonte oficial", { bold: true, color: RED, gap: 2 });
-      for (const c of u.unverifiedClaims) w.text(`• ${c}`, { indent: 12, size: 9.5, gap: 1 });
+      w.card(
+        () => {
+          w.spaced("Pendente de verificação na fonte oficial", w.left, w.y - 7, 7, w.fonts.bold, RED, 0.2);
+          w.y -= 14;
+          for (const c of u.unverifiedClaims) drawMarkdown(w, `- ${c.replace(/\n/g, " ")}`);
+        },
+        { bg: RED_SOFT, accent: RED, pad: 10 },
+      );
     }
-  }
+  });
 
   // ---- Questões ----
-  w.newPage();
-  w.heading("Questões respondidas", 1);
+  w.section("Questões respondidas", { newPage: true });
   w.text(
-    `${s.questions.length} questão(ões) respondida(s) por você, com a sua última resposta, o gabarito e os comentários. Exercícios de recuperação aparecem logo depois do nível a que pertencem. São questões de treino elaboradas pela plataforma, não questões oficiais.`,
-    { color: MUTED, gap: 8 },
+    `${s.questions.length} ${s.questions.length === 1 ? "questão respondida" : "questões respondidas"} por você, com a sua última resposta, o gabarito e os comentários. Exercícios de recuperação aparecem logo depois do nível a que pertencem. São questões de treino elaboradas pela plataforma, não questões oficiais.`,
+    { color: MUTED, size: 9.5, gap: 10 },
   );
   let n = 0;
   for (const level of ["facil", "medio", "dificil"] as const) {
     const qs = s.questions.filter((q) => q.level === level);
     if (!qs.length) continue;
-    w.heading(`Nível ${LEVEL_LABEL[level]}`, 2);
-    for (const q of qs) {
-      n++;
-      w.ensure(80);
-      w.rich(
-        [
-          { text: `${n}. `, bold: true },
-          { text: `${q.recovery ? "Recuperação · " : ""}${TYPE_LABEL[q.type] ?? q.type}${q.topic ? ` · ${q.topic}` : ""}`, italic: true },
-        ],
-        { size: 9.5, color: MUTED, gap: 2 },
-      );
-      w.text(q.statement, { gap: 4 });
-      if (q.type === "certo_errado") {
-        w.rich(
-          [
-            { text: "Gabarito: ", bold: true },
-            { text: q.correctAnswerTrue ? "CERTO" : "ERRADO" },
-            { text: "   Sua resposta: ", bold: true },
-            { text: q.answer.bool === null ? "—" : q.answer.bool ? "CERTO" : "ERRADO" },
-            { text: q.answer.correct ? "  (acertou)" : "  (errou)", bold: true },
-          ],
-          { indent: 12, size: 10 },
-        );
-      } else {
-        for (const o of q.options) {
-          const mine = q.answer.label === o.label;
-          w.rich(
-            [
-              { text: `${o.label}) `, bold: true },
-              { text: o.text, bold: o.correct },
-              ...(o.correct ? [{ text: "  [correta]", bold: true }] : []),
-              ...(mine ? [{ text: "  [sua resposta]", italic: true }] : []),
-            ],
-            { indent: 12, size: 10, gap: 1 },
-          );
-          w.text(o.explanation, { indent: 26, size: 9, color: MUTED, gap: 3 });
-        }
-        w.rich([{ text: q.answer.correct ? "Você acertou." : "Você errou.", bold: true }], { indent: 12, size: 10, color: q.answer.correct ? INK : RED });
-      }
-      w.rich([{ text: "Comentário: ", bold: true }, { text: q.justification }], { indent: 12, size: 10 });
-      if (q.everWrong && q.answer.correct) w.text("Você errou esta questão (ou a original) antes e corrigiu depois.", { indent: 12, size: 9, italic: true, color: MUTED });
-      w.text(`Tentativas: ${q.attempts} · última em ${fmtDateTime(q.answer.at)}`, { indent: 12, size: 8.5, color: MUTED, gap: 8 });
-    }
+    const ok = qs.filter((q) => q.answer.correct).length;
+    // Título do nível nunca fica sozinho no fim da página: precisa caber junto da 1ª questão.
+    const firstH = w.measureBlock(() => drawQuestion(w, qs[0]!, n + 1));
+    if (w.room < firstH + 80 && firstH + 80 < A4[1] - M.top - M.bottom) w.newPage();
+    w.unit(`${qs.length} ${qs.length === 1 ? "questão" : "questões"} · ${ok} ${ok === 1 ? "acerto" : "acertos"}`, `Nível ${LEVEL_LABEL[level]}`);
+    for (const q of qs) drawQuestion(w, q, ++n);
   }
 
   // ---- Revisão ----
-  w.heading("Explicação dos erros e pontos de revisão", 1);
+  w.section("Pontos de revisão", { newPage: true });
   if (!s.review.length) {
-    w.text("Você não errou nenhuma questão deste conteúdo. Mesmo assim, faça as revisões espaçadas para manter o domínio.");
+    w.card(() => w.text("Você não errou nenhuma questão deste conteúdo. Mesmo assim, faça as revisões espaçadas para manter o domínio.", { gap: 0 }), { bg: SOFT, accent: INK, pad: 10 });
   } else {
-    w.text("Itens em que você errou ao menos uma vez. Releia a teoria correspondente e refaça as questões antes da revisão espaçada.", { color: MUTED, gap: 6 });
-    for (const r of s.review) w.rich([{ text: `• ${r.topic}`, bold: true }, { text: ` — ${r.unitTitle} (${r.wrongAttempts} erro(s))` }], { indent: 6, gap: 2 });
+    w.text("Itens em que você errou ao menos uma vez. Releia a teoria correspondente e refaça as questões antes da revisão espaçada.", { color: MUTED, size: 9.5, gap: 8 });
+    drawTable(
+      w,
+      [[[{ text: "Ponto" }], [{ text: "Unidade" }], [{ text: "Erros" }]], ...s.review.map((r) => [[{ text: r.topic, bold: true }], [{ text: r.unitTitle }], [{ text: String(r.wrongAttempts), bold: true, color: RED }]])],
+      { align: ["left", "left", "center"] },
+    );
   }
 
   // ---- Referências ----
-  w.heading("Referências e fontes", 1);
-  w.rich([{ text: "Conteúdo informado pelo aluno: ", bold: true }, { text: `versão ${s.content.sourceVersion} (${fmtDate(s.content.sourceCreatedAt)}), SHA-256 ${s.content.sourceSha256.slice(0, 16)}…` }], { gap: 4 });
+  w.section("Referências e fontes", { newPage: w.room < 220 });
   const refs = s.units.flatMap((u) => u.references.map((r) => ({ ...r, unit: u.title })));
   if (refs.length) {
-    for (const r of refs) w.rich([{ text: `• ${r.citation}` }, { text: r.verified ? "" : "  (não verificada)", italic: true }], { indent: 6, size: 10, gap: 2 });
+    drawTable(
+      w,
+      [[[{ text: "Nº" }], [{ text: "Referência" }], [{ text: "Situação" }]], ...refs.map((r, i) => [[{ text: String(i + 1), bold: true }], [{ text: r.citation }], [{ text: r.verified ? "Verificada" : "Não verificada", bold: !r.verified, color: r.verified ? INK : RED }]])],
+      { align: ["center", "left", "left"] },
+    );
   } else {
     w.text("Nenhuma referência externa citada nas aulas.", { color: MUTED });
   }
-  w.text(
-    "Dispositivos legais, doutrina e jurisprudência citados devem ser conferidos na fonte oficial: o texto legal só é transcrito quando foi colado por você.",
-    { size: 9, italic: true, color: MUTED, gap: 8 },
+  w.card(
+    () =>
+      w.text(
+        "Dispositivos legais, doutrina e jurisprudência citados devem ser conferidos na fonte oficial: o texto legal só é transcrito quando foi colado por você.",
+        { size: 9, italic: true, color: MUTED, gap: 0 },
+      ),
+    { bg: SOFT, accent: RED, pad: 9 },
   );
-  w.heading("Conteúdo informado", 2);
+  w.subheading("Conteúdo informado");
+  w.rich([{ text: `Versão ${s.content.sourceVersion} (${fmtDate(s.content.sourceCreatedAt)}) · SHA-256 ${s.content.sourceSha256.slice(0, 16)}…`, italic: true }], { size: 8.5, color: FAINT, gap: 6 });
   w.text(s.content.sourceText.slice(0, 20_000) + (s.content.sourceText.length > 20_000 ? "\n[…]" : ""), { size: 9, color: MUTED });
 
-  // ---- Rodapé com paginação ----
-  const pages = doc.getPages();
-  pages.forEach((p, i) => {
-    const footer = w.clean(`APROVUM · ${s.content.title.slice(0, 60)} · PDF v${meta.pdfVersion} · ${fmtDate(s.generatedAt)}`);
-    p.drawText(footer, { x: M.left, y: 32, size: 8, font: w.fonts.regular, color: MUTED });
-    const num = `${i + 1}/${pages.length}`;
-    p.drawText(num, { x: A4[0] - M.right - measure(w.fonts.regular, num, 8), y: 32, size: 8, font: w.fonts.regular, color: MUTED });
-  });
+  // ---- Sumário, cabeçalho e rodapé ----
+  drawToc(doc, w);
+  drawChrome(doc, w, s, meta, logoHeader);
   return doc.save();
 }
