@@ -13,15 +13,15 @@ import { BrainCircuit, ChartNoAxesCombined, ChevronRight, Crosshair, FileText, F
 import { BannerGate } from "@/components/banner-gate";
 
 /** Recorte da arte (public/images/jogo-hero-arte.webp), em px. */
-const W = 1244;
+const W = 1664;
 const H = 680;
 
 /** Olhos no recorte (px) e tamanho da chama (px de largura). */
 const EYES = [
-  { x: 390, y: 346, w: 86, d: 0 },
-  { x: 501, y: 324, w: 94, d: 0.35 },
-  { x: 73, y: 381, w: 58, d: 0.7 },
-  { x: 141, y: 369, w: 62, d: 0.15 },
+  { x: 810, y: 346, w: 86, d: 0 },
+  { x: 921, y: 324, w: 94, d: 0.35 },
+  { x: 493, y: 381, w: 58, d: 0.7 },
+  { x: 561, y: 369, w: 62, d: 0.15 },
 ] as const;
 
 export function JogoHero({
@@ -50,8 +50,8 @@ export function JogoHero({
         <div className="jh-arte" aria-hidden>
           <img
             src="/images/jogo-hero-arte.webp"
-            srcSet="/images/jogo-hero-arte-sm.webp 760w, /images/jogo-hero-arte.webp 1244w"
-            sizes="(min-width: 1024px) 900px, 760px"
+            srcSet="/images/jogo-hero-arte-sm.webp 1000w, /images/jogo-hero-arte.webp 1664w"
+            sizes="(min-width: 1024px) 1600px, 1000px"
             width={W}
             height={H}
             alt=""

@@ -787,7 +787,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 @media (min-width: 640px) { .jh { margin-left: -1.25rem; margin-right: -1.25rem; } }
 @media (min-width: 1024px) { .jh { margin-left: -2.5rem; margin-right: -2.5rem; } }
 .jh-palco { --arte-h: clamp(270px, 80cqw, 460px); position: relative; overflow: hidden; isolation: isolate; }
-.jh-arte { position: absolute; z-index: -2; top: 0; left: 50%; height: var(--arte-h); aspect-ratio: 1244 / 680; transform: translateX(-38%);
+.jh-arte { position: absolute; z-index: -2; top: 0; left: 50%; height: var(--arte-h); aspect-ratio: 1664 / 680; transform: translateX(-52%);
   -webkit-mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%); mask-image: linear-gradient(to right, transparent 0, #000 7%, #000 93%, transparent 100%); }
 .jh-arte img { display: block; width: 100%; height: 100%; }
 .jh-sombra {
@@ -888,17 +888,18 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 
 /* Largo (área de conteúdo ≥ 880 px): composição da referência */
 @container (min-width: 880px) {
-  .jh-palco { --arte-h: 100%; min-height: clamp(520px, 44cqw, 640px); display: flex; }
-  .jh-arte { left: auto; right: 0; height: 90%; transform: none; -webkit-mask-image: none; mask-image: none; }
+  .jh-palco { --arte-h: 100%; min-height: clamp(540px, 42cqw, 700px); display: flex; }
+  /* A arte cobre toda a largura (e a altura) da faixa: sem área preta nas laterais. */
+  .jh-arte { left: auto; right: 0; height: max(100%, calc(100cqw * 680 / 1664)); transform: none; -webkit-mask-image: none; mask-image: none; }
   .jh-sombra {
     background:
-      linear-gradient(to right, #070707 0%, rgba(7, 7, 7, 0.94) 22%, rgba(7, 7, 7, 0.55) 40%, rgba(7, 7, 7, 0) 58%),
+      linear-gradient(to right, rgba(7, 7, 7, 0.9) 0%, rgba(7, 7, 7, 0.72) 22%, rgba(7, 7, 7, 0.3) 40%, rgba(7, 7, 7, 0) 52%),
       linear-gradient(to top, #070707 0%, rgba(7, 7, 7, 0.75) 14%, rgba(7, 7, 7, 0) 34%),
       linear-gradient(to bottom, rgba(7, 7, 7, 0.6) 0%, rgba(7, 7, 7, 0) 18%);
   }
   .jh-conteudo { flex: 1; display: flex; flex-direction: column; justify-content: space-between; padding-top: clamp(3.5rem, 7cqw, 6rem); }
-  .jh-texto { max-width: 46cqw; }
-  .jh-titulo { font-size: clamp(2.1rem, 3.6cqw, 3.4rem); }
+  .jh-texto { max-width: 40cqw; }
+  .jh-titulo { font-size: clamp(2rem, 3.2cqw, 3.3rem); }
   .jh-titulo, .jh-titulo span { white-space: nowrap; }
   .jh-desc { max-width: 26rem; }
   .jh-linha { margin-top: 2.5rem; display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: end; gap: clamp(1.25rem, 3cqw, 2.75rem); }
