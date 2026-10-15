@@ -136,8 +136,8 @@ export function PastelShell({
 
   return (
     <ToastCtx.Provider value={setToast}>
-      <div className="pastel relative min-h-screen w-full overflow-x-hidden font-[Inter,system-ui,sans-serif] text-[#0A0A0A] antialiased selection:bg-[#E10600]/25">
-        <div className="pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden bg-white" />
+      <div className="pastel relative min-h-screen w-full overflow-x-clip font-[Inter,system-ui,sans-serif] text-[#0A0A0A] antialiased selection:bg-[#E10600]/25">
+        <div className={`pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden ${dark ? "bg-[#070707]" : "bg-white"}`} />
         <div className="pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden" aria-hidden>
           <div className="absolute -top-[220px] -left-[140px] h-[min(620px,80vw)] w-[min(620px,80vw)] animate-[meshMove_18s_ease-in-out_infinite] rounded-full bg-[#E10600]/[0.05] blur-[70px]" />
           <div className="absolute -top-[120px] -right-[120px] h-[min(560px,70vw)] w-[min(560px,70vw)] animate-[meshMove_22s_ease-in-out_infinite_2s] rounded-full bg-black/[0.025] blur-[70px]" />
@@ -148,11 +148,11 @@ export function PastelShell({
         <div className="relative flex min-h-screen w-full max-w-[100vw]">
           {/* Barra lateral (desktop) */}
           <aside
-            className={`sticky top-0 z-30 hidden h-screen shrink-0 flex-col transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:flex ${collapsed ? "w-[100px]" : "w-[320px]"}`}
+            className={`sticky top-0 z-30 hidden h-screen shrink-0 flex-col transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:flex ${collapsed ? "w-[100px]" : "w-[272px] xl:w-[292px]"}`}
             style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
           >
-            <div className="m-4 flex flex-1 flex-col overflow-hidden rounded-[32px] border border-[#1F1F1F] bg-[#0A0A0A] text-white shadow-[0_16px_48px_rgba(225,6,0,0.10),inset_0_1px_0_rgba(255,255,255,0.05)]">
-              <div className="flex items-center gap-3.5 p-[22px]">
+            <div className="barra-lateral m-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[32px] border border-[#1F1F1F] bg-[#0A0A0A] text-white shadow-[0_16px_48px_rgba(225,6,0,0.10),inset_0_1px_0_rgba(255,255,255,0.05)]">
+              <div className="barra-topo flex items-center gap-3.5 p-[22px]">
                 <Link
                   href={`${basePath}/painel`}
                   aria-label="APROVUM — ir para o painel"
@@ -171,15 +171,15 @@ export function PastelShell({
                 )}
               </div>
 
-              <div className="relative flex-1 px-3">
+              <div className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 [scrollbar-width:none]">
                 {activeIndex >= 0 && (
                   <div
                     aria-hidden
-                    className="absolute left-3 right-3 h-[56px] rounded-[18px] bg-gradient-to-r from-[#FF1E1E] to-[#B30000] shadow-[0_10px_24px_rgba(225,6,0,0.32),inset_0_1px_0_rgba(255,255,255,0.3)] transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-                    style={{ transform: `translateY(${activeIndex * 64}px)` }}
+                    className="barra-indicador absolute left-3 right-3 rounded-[18px] bg-gradient-to-r from-[#FF1E1E] to-[#B30000] shadow-[0_10px_24px_rgba(225,6,0,0.32),inset_0_1px_0_rgba(255,255,255,0.3)] transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
+                    style={{ transform: `translateY(calc(${activeIndex} * var(--passo)))` }}
                   />
                 )}
-                <nav aria-label="Principal" className="relative space-y-2">
+                <nav aria-label="Principal" className="barra-nav relative flex flex-col">
                   {items.map((s) => {
                     const on = active?.id === s.id;
                     return (
@@ -191,7 +191,7 @@ export function PastelShell({
                         onClick={() => {
                           if (path === s.href) setToast(`${s.label} já está aberto ✨`);
                         }}
-                        className={`group relative flex h-[56px] w-full items-center gap-3.5 rounded-[18px] px-4 text-left text-[14.5px] font-medium transition-all duration-300 ${on ? "text-white" : "text-[#B3B3B3] hover:bg-white/[0.06] hover:text-white"}`}
+                        className={`barra-item group relative flex w-full items-center gap-3.5 rounded-[18px] px-4 text-left text-[14.5px] font-medium transition-all duration-300 ${on ? "text-white" : "text-[#B3B3B3] hover:bg-white/[0.06] hover:text-white"}`}
                       >
                         <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-all duration-300 ${on ? "bg-white/20 text-white" : "bg-[#1A1A1A] group-hover:rotate-[-6deg] group-hover:scale-110 group-hover:bg-[#1C1C1C]"}`}>
                           <s.icon className="h-[18px] w-[18px]" aria-hidden />
@@ -219,10 +219,10 @@ export function PastelShell({
                 </nav>
               </div>
 
-              <div className="mt-auto p-4">
+              <div className="barra-base mt-auto shrink-0 p-4">
                 {!collapsed ? (
                   <>
-                    <PastelCard delay={600} noTilt glowColor="225,6,0" className="!rounded-[20px] !shadow-none border-[#2E2E2E] bg-gradient-to-br from-[#1A1A1A] to-[#120606]">
+                    <PastelCard delay={600} noTilt glowColor="225,6,0" className="barra-streak !rounded-[20px] !shadow-none border-[#2E2E2E] bg-gradient-to-br from-[#1A1A1A] to-[#120606]">
                       <div className="p-4" data-testid="streak-card">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5">

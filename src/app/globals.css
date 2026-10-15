@@ -932,3 +932,18 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   0%, 40% { box-shadow: 0 0 0 3px rgba(225, 6, 0, 0.85), 0 0 26px rgba(225, 6, 0, 0.35); }
   100% { box-shadow: 0 0 0 0 rgba(225, 6, 0, 0); }
 }
+
+/* Barra lateral (desktop): tamanhos que se ajustam à altura da tela, para caber inteira */
+.barra-lateral { --item: 56px; --passo: 64px; }
+.barra-nav { gap: calc(var(--passo) - var(--item)); }
+.barra-item, .barra-indicador { height: var(--item); }
+@media (max-height: 820px) {
+  .barra-lateral { --item: 48px; --passo: 54px; }
+  .barra-topo { padding: 16px 18px; }
+  .barra-base { padding: 12px; }
+}
+@media (max-height: 700px) {
+  .barra-lateral { --item: 44px; --passo: 48px; }
+  .barra-topo { padding: 12px 16px; }
+  .barra-streak { display: none; }
+}
