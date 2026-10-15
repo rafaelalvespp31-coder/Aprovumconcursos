@@ -13,7 +13,7 @@ import { gfmFromMarkdown } from "mdast-util-gfm";
 import { gfm } from "micromark-extension-gfm";
 import type { PhrasingContent, RootContent, Table } from "mdast";
 import type { PdfSnapshot } from "./types";
-import { LOGO_CLARA_PNG, LOGO_ESCURA_PNG, LOGO_OFICIAL_JPG } from "./logos";
+import { CAPA_JPG, LOGO_ESCURA_PNG } from "./logos";
 
 const A4: [number, number] = [595.28, 841.89];
 const M = { top: 96, bottom: 72, left: 54, right: 54 };
@@ -519,61 +519,63 @@ export function drawMarkdown(w: Writer, md: string, indent = 0) {
   tree.children.forEach((c) => block(c, indent));
 }
 
-function drawCover(w: Writer, s: PdfSnapshot, meta: { pdfVersion: number; contentHash: string }, logo: PDFImage) {
+/**
+ * Capa: arte em página inteira (operador caveira + escrita APROVUM do banner) e, por cima,
+ * o rótulo, o título do conteúdo e o quadro do estudante, na parte escurecida da arte.
+ */
+function drawCover(w: Writer, s: PdfSnapshot, art: PDFImage) {
   const p = w.page;
   const [W, H] = A4;
-  const band = 380;
-  // Faixa preta (mesmo preto da logo) com diagonais vermelhas nas bordas
-  p.drawRectangle({ x: 0, y: H - band, width: W, height: band, color: rgb(0, 0, 0) });
-  for (const [x0, t, op] of [[W - 26, 14, 0.95], [W + 2, 4, 0.6], [W + 16, 2, 0.45], [78, 3, 0.35], [92, 1.5, 0.25]] as const) {
-    p.drawSvgPath(`M ${x0} 0 L ${x0 + t} 0 L ${x0 + t - 90} ${band} L ${x0 - 90} ${band} Z`, { x: 0, y: H, color: RED, opacity: op });
-  }
-  // Logo oficial
-  const lw = 175;
-  const lh = (lw * logo.height) / logo.width;
-  p.drawImage(logo, { x: (W - lw) / 2, y: H - 40 - lh, width: lw, height: lh });
+  p.drawRectangle({ x: 0, y: 0, width: W, height: H, color: rgb(0, 0, 0) });
+  p.drawImage(art, { x: 0, y: 0, width: W, height: H });
 
-  // Rótulo + título (centralizados)
-  w.y = H - 40 - lh - 26;
+  // Rótulo + título, logo abaixo da escrita APROVUM da arte
+  w.y = 236;
   const kicker = "Material de estudo";
-  const kw = w.spacedWidth(kicker, 8, w.fonts.bold, 0.3);
-  w.spaced(kicker, (W - kw) / 2, w.y - 8, 8, w.fonts.bold, RED, 0.3);
-  w.y -= 22;
+  const kw = w.spacedWidth(kicker, 8, w.fonts.bold, 0.32);
+  w.spaced(kicker, (W - kw) / 2, w.y - 8, 8, w.fonts.bold, RED, 0.32);
+  w.y -= 20;
   const save = { l: w.left, r: w.right };
-  w.left = 70;
-  w.right = W - 70;
-  w.rich([{ text: s.content.title, bold: true }], { size: 22, lineHeight: 27, color: WHITE, align: "center", gap: 2 });
-  if (s.content.subject && s.content.subject !== s.content.title) w.rich([{ text: s.content.subject }], { size: 11, color: rgb(0.78, 0.78, 0.8), align: "center", gap: 0 });
+  w.left = 60;
+  w.right = W - 60;
+  // Títulos longos diminuem para caber em até 2 linhas.
+  let size = 22;
+  while (size > 14 && w.layout([{ text: s.content.title, bold: true }], size, w.width).length > 2) size -= 1;
+  w.rich([{ text: s.content.title, bold: true }], { size, lineHeight: size * 1.2, color: WHITE, align: "center", gap: 1 });
+  if (s.content.subject && s.content.subject !== s.content.title) w.rich([{ text: s.content.subject }], { size: 10, color: rgb(0.78, 0.78, 0.8), align: "center", gap: 0 });
   w.left = save.l;
   w.right = save.r;
-  p.drawRectangle({ x: 0, y: H - band - 4, width: W, height: 4, color: RED });
 
-  // Quadro de informações (2 x 2)
+  // Quadro do estudante (4 colunas, fundo escuro translúcido)
   const lvl = Math.min(...s.units.map((u) => u.levelsPassed));
   const info: Array<[string, string]> = [
     ["Estudante", s.student.name ?? "—"],
-    ["Banca de referência", s.content.board],
+    ["Banca", s.content.board],
     ["Tipo de conteúdo", s.content.contentTypeLabel],
-    ["Níveis concluídos", lvl >= 3 ? "Fácil, médio e difícil (≥ 90% em cada)" : `${Math.max(0, lvl)} de 3`],
+    ["Níveis concluídos", lvl >= 3 ? "Fácil, médio e difícil" : `${Math.max(0, lvl)} de 3`],
   ];
-  const gx = 12;
-  const cw = (W - M.left - M.right - gx) / 2;
-  const ch = 52;
-  let top = H - band - 30;
+  const x0 = 40;
+  const cw = (W - 2 * x0) / 4;
+  const ch = 44;
+  const yb = 40;
+  p.drawRectangle({ x: x0, y: yb, width: W - 2 * x0, height: ch, color: rgb(0.06, 0.06, 0.07), opacity: 0.85, borderColor: rgb(0.25, 0.25, 0.27), borderWidth: 0.6 });
+  p.drawRectangle({ x: x0, y: yb + ch - 2, width: W - 2 * x0, height: 2, color: RED });
   info.forEach(([k, v], i) => {
-    const x = M.left + (i % 2) * (cw + gx);
-    const y = top - Math.floor(i / 2) * (ch + 10);
-    p.drawRectangle({ x, y: y - ch, width: cw, height: ch, color: SOFT });
-    p.drawRectangle({ x, y: y - ch, width: 3, height: ch, color: RED });
-    w.spaced(k, x + 14, y - 17, 7, w.fonts.bold, RED, 0.2);
-    const val = w.clean(v);
-    let size = 11.5;
-    while (size > 8 && measure(w.fonts.bold, val, size) > cw - 26) size -= 0.5;
-    p.drawText(val.length > 80 ? val.slice(0, 79) + "…" : val, { x: x + 14, y: y - 37, size, font: w.fonts.bold, color: INK });
+    const x = x0 + i * cw;
+    if (i > 0) p.drawLine({ start: { x, y: yb + 8 }, end: { x, y: yb + ch - 10 }, thickness: 0.5, color: rgb(0.3, 0.3, 0.32) });
+    w.spaced(k, x + 10, yb + ch - 16, 6, w.fonts.bold, RED, 0.18);
+    let val = w.clean(v);
+    let vs = 9.5;
+    while (vs > 7 && measure(w.fonts.bold, val, vs) > cw - 20) vs -= 0.5;
+    while (measure(w.fonts.bold, val, vs) > cw - 20 && val.length > 4) val = val.slice(0, -2);
+    if (val !== w.clean(v)) val = val.trimEnd() + "…";
+    p.drawText(val, { x: x + 10, y: yb + 11, size: vs, font: w.fonts.bold, color: WHITE });
   });
-  top -= 2 * (ch + 10) + 10;
+  p.drawRectangle({ x: 0, y: 0, width: W, height: 4, color: RED });
+}
 
-  // Números do estudo (dados reais do retrato)
+/** Resumo do estudo: números reais do retrato e controle de versão do PDF. */
+function drawSummary(w: Writer, s: PdfSnapshot, meta: { pdfVersion: number; contentHash: string }) {
   const total = s.questions.length;
   const hits = s.questions.filter((q) => q.answer.correct).length;
   const stats: Array<[string, string]> = [
@@ -582,35 +584,30 @@ function drawCover(w: Writer, s: PdfSnapshot, meta: { pdfVersion: number; conten
     [String(s.units.length), s.units.length === 1 ? "unidade estudada" : "unidades estudadas"],
     [String(s.review.length), s.review.length === 1 ? "ponto de revisão" : "pontos de revisão"],
   ];
-  const sw = (W - M.left - M.right - 3 * 8) / 4;
+  const gap = 8;
+  const sw = (w.width - 3 * gap) / 4;
+  const top = w.y;
   stats.forEach(([n, label], i) => {
-    const x = M.left + i * (sw + 8);
-    p.drawRectangle({ x, y: top - 62, width: sw, height: 62, color: INK });
-    p.drawRectangle({ x, y: top - 62, width: sw, height: 2.5, color: RED });
-    const nw = measure(w.fonts.bold, n, 20);
-    p.drawText(n, { x: x + (sw - nw) / 2, y: top - 30, size: 20, font: w.fonts.bold, color: WHITE });
+    const x = w.left + i * (sw + gap);
+    w.drawRect({ x, y: top - 58, width: sw, height: 58, color: INK });
+    w.drawRect({ x, y: top - 58, width: sw, height: 2.5, color: RED });
+    const nw = measure(w.fonts.bold, n, 19);
+    w.drawText(n, { x: x + (sw - nw) / 2, y: top - 28, size: 19, font: w.fonts.bold, color: WHITE });
     const lt = w.clean(label);
-    const lw2 = measure(w.fonts.regular, lt, 7.5);
-    p.drawText(lt, { x: x + (sw - lw2) / 2, y: top - 46, size: 7.5, font: w.fonts.regular, color: rgb(0.75, 0.75, 0.78) });
+    const lw = measure(w.fonts.regular, lt, 7.3);
+    w.drawText(lt, { x: x + (sw - lw) / 2, y: top - 44, size: 7.3, font: w.fonts.regular, color: rgb(0.75, 0.75, 0.78) });
   });
-  top -= 62 + 18;
-
-  // Controle de versão
-  w.y = top;
-  w.card(
-    () => {
-      drawTable(
-        w,
-        [
-          [[{ text: "Versão do PDF", bold: true }], [{ text: String(meta.pdfVersion) }], [{ text: "Gerado em", bold: true }], [{ text: fmtDateTime(s.generatedAt) }]],
-          [[{ text: "Conteúdo informado", bold: true }], [{ text: `versão ${s.content.sourceVersion}, de ${fmtDate(s.content.sourceCreatedAt)}` }], [{ text: "Aulas atualizadas em", bold: true }], [{ text: [...new Set(s.units.map((u) => (u.generatedAt ? fmtDate(u.generatedAt) : "—")))].join(", ") }]],
-          [[{ text: "Identificador (SHA-256)", bold: true }], [{ text: meta.contentHash.slice(0, 40) + "…" }], [{ text: "" }], [{ text: "" }]],
-        ],
-        { size: 8, header: false },
-      );
-    },
-    { pad: 0, padX: 0, gap: 0 },
+  w.y = top - 58 - 14;
+  drawTable(
+    w,
+    [
+      [[{ text: "Versão do PDF", bold: true }], [{ text: String(meta.pdfVersion) }], [{ text: "Gerado em", bold: true }], [{ text: fmtDateTime(s.generatedAt) }]],
+      [[{ text: "Conteúdo informado", bold: true }], [{ text: `versão ${s.content.sourceVersion}, de ${fmtDate(s.content.sourceCreatedAt)}` }], [{ text: "Aulas atualizadas em", bold: true }], [{ text: [...new Set(s.units.map((u) => (u.generatedAt ? fmtDate(u.generatedAt) : "—")))].join(", ") }]],
+      [[{ text: "Identificador (SHA-256)", bold: true }], [{ text: meta.contentHash.slice(0, 40) + "…" }], [{ text: "" }], [{ text: "" }]],
+    ],
+    { size: 8, header: false },
   );
+  w.y -= 6;
 }
 
 /** Sumário: inserido depois da capa, com os números de página finais. */
@@ -760,15 +757,16 @@ export async function renderStudyPdf(s: PdfSnapshot, meta: { pdfVersion: number;
     boldItalic: await doc.embedFont(StandardFonts.HelveticaBoldOblique),
     mono: await doc.embedFont(StandardFonts.Courier),
   });
-  const logoCover = await doc.embedJpg(b64(LOGO_OFICIAL_JPG));
+  const coverArt = await doc.embedJpg(b64(CAPA_JPG));
   const logoHeader = await doc.embedPng(b64(LOGO_ESCURA_PNG));
-  void LOGO_CLARA_PNG;
 
   // ---- Capa ----
-  drawCover(w, s, meta, logoCover);
+  drawCover(w, s, coverArt);
 
   // ---- Escopo ----
-  w.section("Escopo deste estudo", { newPage: true });
+  w.section("Resumo do estudo", { newPage: true });
+  drawSummary(w, s, meta);
+  w.section("Escopo deste estudo");
   if (s.content.scopeStatement) w.text(s.content.scopeStatement, { gap: 10 });
   if (s.content.legalReferences.length) {
     w.subheading("Dispositivos e normas");
