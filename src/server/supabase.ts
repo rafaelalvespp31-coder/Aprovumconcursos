@@ -4,6 +4,17 @@ import { createServerClient } from "@supabase/ssr";
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { ConfigError, publicEnv } from "@/lib/env";
 
+/** Cookie que marca "não manter conectado": a sessão vale só até fechar o navegador. */
+export const SESSION_ONLY_COOKIE = "aprovum_sessao";
+
+/** Sem "Manter conectado", os cookies de sessão perdem a validade fixa (somem ao fechar o navegador). */
+export function sessionCookieOptions<T extends { maxAge?: number; expires?: Date } | undefined>(options: T, browserOnly: boolean): T {
+  if (!browserOnly || !options || (options.maxAge !== undefined && options.maxAge <= 0)) return options;
+  const { maxAge: _m, expires: _e, ...rest } = options;
+  void _m; void _e;
+  return rest as T;
+}
+
 /**
  * Cliente com a sessão do usuário (cookies). Sujeito à RLS: só lê dados do próprio aluno.
  */
@@ -19,7 +30,8 @@ export async function createUserClient(): Promise<SupabaseClient> {
       getAll: () => store.getAll(),
       setAll: (list) => {
         try {
-          for (const { name, value, options } of list) store.set(name, value, options);
+          const browserOnly = store.get(SESSION_ONLY_COOKIE)?.value === "navegador";
+          for (const { name, value, options } of list) store.set(name, value, sessionCookieOptions(options, browserOnly));
         } catch {
           // Chamado a partir de Server Component: a renovação de sessão é feita no proxy.
         }

@@ -19,7 +19,12 @@ export async function proxy(request: NextRequest) {
       setAll: (list) => {
         for (const { name, value } of list) request.cookies.set(name, value);
         response = NextResponse.next({ request });
-        for (const { name, value, options } of list) response.cookies.set(name, value, options);
+        // Sem "Manter conectado": cookies de sessão sem validade fixa (somem ao fechar o navegador).
+        const browserOnly = request.cookies.get("aprovum_sessao")?.value === "navegador";
+        for (const { name, value, options } of list) {
+          const opts = browserOnly && options && !(options.maxAge !== undefined && options.maxAge <= 0) ? { ...options, maxAge: undefined, expires: undefined } : options;
+          response.cookies.set(name, value, opts);
+        }
       },
     },
   });

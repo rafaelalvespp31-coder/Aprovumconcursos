@@ -1,9 +1,9 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { headers } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { z } from "zod";
-import { createUserClient, createAdminClient } from "@/server/supabase";
+import { createUserClient, createAdminClient, SESSION_ONLY_COOKIE } from "@/server/supabase";
 import { publicEnv } from "@/lib/env";
 
 export interface AuthState {
@@ -61,6 +61,13 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error) };
   if (await rateLimited("signin", 20)) return { error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
+
+  // "Manter conectado": marcado (padrão) mantém a sessão; desmarcado, ela vale só até fechar o navegador.
+  const store = await cookies();
+  // O formulário envia "rememberField" junto do checkbox; sem ele (formulários antigos), mantém conectado.
+  const remember = !form.has("rememberField") || form.get("remember") === "on";
+  if (remember) store.delete(SESSION_ONLY_COOKIE);
+  else store.set(SESSION_ONLY_COOKIE, "navegador", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
 
   const supabase = await createUserClient();
   const { error } = await supabase.auth.signInWithPassword(parsed.data);
@@ -136,5 +143,6 @@ export async function updatePassword(_: AuthState, form: FormData): Promise<Auth
 export async function signOut() {
   const supabase = await createUserClient();
   await supabase.auth.signOut();
+  (await cookies()).delete(SESSION_ONLY_COOKIE);
   redirect("/entrar?saiu=1");
 }
