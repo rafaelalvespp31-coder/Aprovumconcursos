@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition, type ReactNode } from "react";
+import { useRef, useState, useTransition, type ReactNode } from "react";
 import { Icon } from "@/components/icons";
 import { Button, Notice, Tag } from "@/components/ui";
 import { useStudyApi } from "@/components/study-api";
@@ -27,6 +27,7 @@ export function SingleLevel({
   readingDone,
   renderQuestion,
   onPassed,
+  onAdvance,
 }: {
   lessonId: string;
   levelKey: LevelKey;
@@ -36,6 +37,8 @@ export function SingleLevel({
   readingDone: boolean;
   renderQuestion: (q: ReaderQuestion, number: number, label?: string) => ReactNode;
   onPassed: (n: number) => void;
+  /** Avançar para o próximo nível (aula passo a passo). */
+  onAdvance?: () => void;
 }) {
   const level = LEVELS.find((l) => l.key === levelKey)!;
   return (
@@ -48,6 +51,7 @@ export function SingleLevel({
       readingDone={readingDone}
       renderQuestion={renderQuestion}
       onPassed={onPassed}
+      onAdvance={onAdvance}
     />
   );
 }
@@ -140,6 +144,7 @@ function LevelBlock({
   readingDone,
   renderQuestion,
   onPassed,
+  onAdvance,
 }: {
   lessonId: string;
   level: (typeof LEVELS)[number];
@@ -149,6 +154,7 @@ function LevelBlock({
   readingDone: boolean;
   renderQuestion: (q: ReaderQuestion, number: number, label?: string) => ReactNode;
   onPassed: (n: number) => void;
+  onAdvance?: () => void;
 }) {
   const api = useStudyApi();
   const router = useRouter();
@@ -156,13 +162,22 @@ function LevelBlock({
   const [recovery, setRecovery] = useState<RecoveryResult | null>(null);
   const [pending, start] = useTransition();
   const [recPending, startRec] = useTransition();
+  // Recuperações criadas agora aparecem na hora (sem esperar a página recarregar).
+  const [fresh, setFresh] = useState<ReaderQuestion[]>([]);
+  const recRef = useRef<HTMLDivElement>(null);
   const official = questions.filter((q) => !q.recovery_of);
-  const recoveries = questions.filter((q) => q.recovery_of);
+  const recoveries = [...questions.filter((q) => q.recovery_of), ...fresh.filter((f) => !questions.some((q) => q.id === f.id))];
   const numberOf = new Map(official.map((q, i) => [q.id, i + 1]));
   const need = requiredCorrect(official.length, MIN_PCT / 100);
   const passedNow = status === "aprovado" || (result?.ok && (result.levelsPassed ?? 0) >= level.n);
   const shown = official.filter((q) => !interleavedIds.has(q.id));
   const headingId = `nivel-${level.key}-titulo`;
+  const nextLevel = LEVELS.find((l) => l.n === level.n + 1);
+  const advance = onAdvance && nextLevel && (
+    <Button className="mt-3 self-start" onClick={onAdvance} data-testid="avancar-nivel">
+      Avançar para o nível {nextLevel.n} · {nextLevel.label} <Icon name="setaDireita" className="size-4" />
+    </Button>
+  );
 
   const header = (
     <div className="flex flex-wrap items-center justify-between gap-2">
@@ -197,7 +212,8 @@ function LevelBlock({
             </Notice>
           </div>
         )}
-        <details className="mt-2 t-small">
+        {advance}
+        <details className="mt-3 t-small">
           <summary className="cursor-pointer font-semibold text-tinta-suave">Rever as {official.length} questões deste nível</summary>
           <div className="mt-3 flex flex-col gap-4">{official.map((q) => renderQuestion(q, numberOf.get(q.id)!))}</div>
         </details>
@@ -219,9 +235,16 @@ function LevelBlock({
       )}
 
       {recoveries.length > 0 && (
-        <div className="mt-6">
-          <h4 className="font-semibold">Exercícios de recuperação</h4>
-          <p className="mt-1 t-small text-tinta-suave">Cada um substitui uma questão que você errou, no mesmo ponto. Vale a sua resposta mais recente.</p>
+        <div ref={recRef} className="mt-6 scroll-mt-24 rounded-lg border-2 border-destaque/40 bg-nevoa/60 p-4" data-testid={`recuperacao-${level.key}`}>
+          <h4 className="flex items-center gap-2 font-semibold"><Icon name="raio" className="size-4 text-destaque" /> Exercícios de recuperação</h4>
+          <p className="mt-1 t-small text-tinta-suave">
+            Cada um substitui uma questão que você errou, no mesmo ponto. Responda todos e depois toque em <strong>Calcular resultado</strong> logo abaixo para tentar o nível de novo.
+          </p>
+          {recovery?.ok && (
+            <p className="mt-2 t-small font-semibold text-destaque" role="status">
+              {recovery.created === 1 ? "1 exercício pronto" : `${recovery.created} exercícios prontos`} para {recovery.wrong === 1 ? "a questão que você errou" : `as ${recovery.wrong} questões que você errou`}.
+            </p>
+          )}
           <div className="mt-3 flex flex-col gap-4">
             {recoveries.map((q, i) => renderQuestion(q, official.length + i + 1, `Recuperação da questão ${numberOf.get(q.recovery_of!) ?? "?"}`))}
           </div>
@@ -247,7 +270,7 @@ function LevelBlock({
               })
             }
           >
-            {pending ? "Calculando…" : `Calcular resultado do nível ${level.label.toLowerCase()}`}
+            {pending ? "Calculando…" : `Calcular resultado do nível ${level.label.toLowerCase()}${recoveries.length ? " de novo" : ""}`}
           </Button>
         )}
         {result && !result.ok && <Notice tone="erro">{result.error}</Notice>}
@@ -268,18 +291,19 @@ function LevelBlock({
                 startRec(async () => {
                   const r = await api.generateRecovery(lessonId, level.key);
                   setRecovery(r);
-                  if (r.ok) router.refresh();
+                  if (r.ok) {
+                    setFresh(r.questions ?? []);
+                    // O resultado reprovado sai de cena: agora é responder os exercícios.
+                    setResult(null);
+                    requestAnimationFrame(() => recRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+                    router.refresh();
+                  }
                 })
               }
             >
               {recPending ? "Gerando exercícios…" : "Gerar exercícios de recuperação"}
             </Button>
             {recovery && !recovery.ok && <Notice tone="erro">{recovery.error}</Notice>}
-            {recovery?.ok && (
-              <p className="t-small text-tinta-suave" role="status">
-                {recovery.created} exercício(s) criado(s) para {recovery.wrong} questão(ões) errada(s). Eles aparecem acima, em “Exercícios de recuperação”.
-              </p>
-            )}
           </div>
         )}
       </div>

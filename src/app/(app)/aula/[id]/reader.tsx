@@ -527,6 +527,7 @@ export function LessonReader(props: ReaderProps) {
                   readingDone={readingDone}
                   renderQuestion={renderQuestion}
                   onPassed={(n) => setLevelsPassed((p) => Math.max(p, n))}
+                  onAdvance={() => go(step + 1)}
                 />
               </section>
             )}

@@ -275,9 +275,19 @@ test.describe("tela de aula", () => {
     await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
     await expect(fac.getByText(/mínimo para avançar é 90%/)).toBeVisible();
     await fac.getByRole("button", { name: "Gerar exercícios de recuperação" }).click();
-    await expect(fac.getByText(/galeria de demonstração não há IA/)).toBeVisible();
-    await page.getByRole("button", { name: /^Próximo/ }).click();
-    await expect(page.getByTestId("nivel-medio")).toContainText("Bloqueado");
+    // Os exercícios aparecem na hora, já na tela, prontos para responder.
+    const rec = page.getByTestId("recuperacao-facil");
+    await expect(rec).toBeVisible();
+    await expect(rec).toBeInViewport();
+    await expect(rec.getByText(/exercício(s)? pronto/)).toBeVisible();
+    await rec.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
+    await rec.getByRole("button", { name: "Responder", exact: true }).click();
+    await expect(rec.getByText("Resposta correta")).toBeVisible();
+    // Depois de responder, recalcula e avança para o nível 2.
+    await fac.getByRole("button", { name: "Calcular resultado do nível fácil de novo" }).click();
+    await expect(fac.getByText(/Nível fácil aprovado/)).toBeVisible();
+    await fac.getByTestId("avancar-nivel").click();
+    await expect(page.getByTestId("nivel-medio")).toContainText("Liberado");
   });
 });
 

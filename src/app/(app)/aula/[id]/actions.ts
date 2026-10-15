@@ -8,6 +8,8 @@ import { completeReading, evaluateLessonQuiz, startLesson } from "@/server/servi
 import { logEvent } from "@/server/observability";
 import { generateRecovery } from "@/server/services/recovery";
 import type { LevelKey } from "@/domain/progress/levels";
+import { createUserClient } from "@/server/supabase";
+import type { ReaderQuestion } from "./reader";
 
 export async function generateLessonAction(lessonId: string) {
   const user = await requireUser();
@@ -84,6 +86,53 @@ export interface RecoveryResult {
   error?: string;
   created?: number;
   wrong?: number;
+  /** Exercícios de recuperação ainda não respondidos deste nível, prontos para mostrar na hora. */
+  questions?: ReaderQuestion[];
+}
+
+/** Recuperações pendentes (não respondidas) do nível, com as alternativas — sem gabarito. */
+async function pendingRecoveries(lessonId: string, level: LevelKey | undefined): Promise<ReaderQuestion[]> {
+  const db = await createUserClient();
+  let q = db
+    .from("questions")
+    .select("id, type, statement, difficulty, essential, board_style, depends_on_external_source, node_id, level, recovery_of, created_at, question_options(id, label, text, sort_order)")
+    .eq("lesson_id", lessonId)
+    .eq("active", true)
+    .not("recovery_of", "is", null)
+    .order("created_at");
+  if (level) q = q.eq("level", level);
+  const { data, error } = await q;
+  if (error || !data?.length) return [];
+  const ids = data.map((r) => r.id as string);
+  const [att, nodes] = await Promise.all([
+    db.from("answer_attempts").select("question_id").in("question_id", ids),
+    db.from("content_nodes").select("id, key, title").in("id", [...new Set(data.map((r) => r.node_id as string))]),
+  ]);
+  const answered = new Set((att.data ?? []).map((a) => a.question_id as string));
+  const node = new Map((nodes.data ?? []).map((n) => [n.id as string, n as { id: string; key: string; title: string }]));
+  return data
+    .filter((r) => !answered.has(r.id as string))
+    .map((r) => {
+      const row = r as unknown as {
+        id: string; type: ReaderQuestion["type"]; statement: string; difficulty: number; essential: boolean; board_style: string | null;
+        depends_on_external_source: boolean; node_id: string; level: LevelKey; recovery_of: string;
+        question_options: Array<{ id: string; label: string; text: string; sort_order: number }> | null;
+      };
+      return {
+        id: row.id,
+        type: row.type,
+        statement: row.statement,
+        difficulty: row.difficulty,
+        essential: row.essential,
+        board_style: row.board_style,
+        depends_on_external_source: row.depends_on_external_source,
+        level: row.level,
+        recovery_of: row.recovery_of,
+        nodeKey: node.get(row.node_id)?.key ?? null,
+        topic: node.get(row.node_id)?.title ?? null,
+        options: (row.question_options ?? []).sort((x, y) => x.sort_order - y.sort_order).map(({ id, label, text }) => ({ id, label, text })),
+      };
+    });
 }
 
 /** Gera exercícios de recuperação para os erros do nível atual. */
@@ -92,7 +141,7 @@ export async function generateRecoveryAction(lessonId: string, level?: LevelKey)
   try {
     const r = await generateRecovery(user.id, { lessonId, level });
     revalidatePath(`/aula/${lessonId}`);
-    return { ok: true, created: r.created, wrong: r.wrong };
+    return { ok: true, created: r.created, wrong: r.wrong, questions: await pendingRecoveries(lessonId, level ?? r.level) };
   } catch (e) {
     if (e instanceof UserFacingError) return { ok: false, error: e.message };
     await logEvent("recovery.failed", { lessonId, error: (e as Error).message });

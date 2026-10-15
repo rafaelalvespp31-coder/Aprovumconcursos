@@ -37,6 +37,7 @@ function createDemoApi(): StudyApi {
     let annotations: Annotation[] = [...reader.annotations];
     let seq = 0;
     let levelsPassed = 0;
+    const recoveryOf = new Map<string, string>();
     // Comentários de exemplo (fictícios, só para a galeria), compartilhados por enunciado.
     const comments = new Map<string, QuestionComment[]>();
     const sample = (id: string, author: string, body: string, minsAgo: number): QuestionComment => ({ id, author, body, createdAt: new Date(Date.now() - minsAgo * 60_000).toISOString(), isMine: false, reported: false });
@@ -78,6 +79,9 @@ function createDemoApi(): StudyApi {
             : q.options.find((o) => o.id === input.optionId)?.label === key.label;
         attempts.set(q.id, (attempts.get(q.id) ?? q.history?.length ?? 0) + 1);
         answers.set(q.id, { correct, essential: q.essential });
+        // Recuperação: a resposta nova substitui a da questão errada (mesma regra do produto).
+        const root = recoveryOf.get(q.id);
+        if (root) answers.set(root, { correct, essential: questions.get(root)?.essential ?? false });
         return { ok: true, data: feedbackFor(q.id, correct) };
       },
       async toggleQuestionMark(_id, marked) {
@@ -165,9 +169,20 @@ function createDemoApi(): StudyApi {
           total: ids.size,
         };
       },
-      async generateRecovery() {
+      async generateRecovery(_lessonId: string, levelKey?: LevelKey) {
         await delay();
-        return { ok: false, error: "Na galeria de demonstração não há IA: os exercícios de recuperação só são gerados no app." };
+        // Na galeria, a recuperação reaproveita a questão errada com um novo id (sem IA).
+        const level = levelKey ?? LEVELS[Math.min(2, levelsPassed)]!.key;
+        const wrong = reader.questions.filter((q) => q.level === level && !q.recovery_of && answers.get(q.id)?.correct === false);
+        if (!wrong.length) return { ok: false, error: "Não há erros a recuperar neste nível. Calcule o resultado do nível." };
+        const created = wrong.map((w) => {
+          const id = `00000000-0000-4000-8000-${String(990000 + ++seq).padStart(12, "0")}`;
+          questions.set(id, { ...questions.get(w.id)!, id });
+          KEY[id] = KEY[w.id] ?? { label: "A", why: "Na demonstração, a alternativa A é a correta." };
+          recoveryOf.set(id, w.id);
+          return { ...w, id, recovery_of: w.id };
+        });
+        return { ok: true, created: created.length, wrong: wrong.length, questions: created };
       },
       async listComments(questionId) {
         await delay(150);
