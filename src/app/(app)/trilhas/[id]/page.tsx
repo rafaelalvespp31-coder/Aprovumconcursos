@@ -52,7 +52,6 @@ export default async function TrailPage({
   const review = trail.status === "review";
   const nextLesson = lessons.find((l) => l.state && ["disponivel", "em_andamento", "aula_concluida", "em_revisao"].includes(l.state));
   const errors = audit?.issues.filter((i) => i.severity === "error") ?? [];
-  const warnings = audit?.issues.filter((i) => i.severity === "warning") ?? [];
   const infos = audit?.issues.filter((i) => i.severity === "info") ?? [];
   const typeLabel = CONTENT_TYPE_OPTIONS.find((o) => o.value === trail.content_type)?.label;
   const unitsDone = lessons.filter((l) => l.levelsPassed >= 3).length;
@@ -146,11 +145,6 @@ export default async function TrailPage({
             </Notice>
           ) : (
             <Notice tone="sucesso" title="Todos os itens identificados têm aula correspondente." />
-          )}
-          {warnings.length > 0 && (
-            <Notice tone="alerta" title={`${warnings.length} ponto(s) para conferir`}>
-              <ul className="list-disc pl-5">{warnings.slice(0, 8).map((i, n) => <li key={n}>{i.message}</li>)}</ul>
-            </Notice>
           )}
           {infos.map((i, n) => <Notice key={n} tone="info">{i.message}</Notice>)}
           {(audit?.repairs?.length ?? 0) > 0 && (
