@@ -16,13 +16,15 @@ export function CatalogPicker({
   value,
   onChange,
   invalid,
+  initialSubject,
 }: {
   groups: CatalogPickerGroup[];
+  initialSubject?: string;
   value: string | null;
   onChange: (t: CatalogPickItem) => void;
   invalid?: boolean;
 }) {
-  const [subject, setSubject] = useState<string>("Todas");
+  const [subject, setSubject] = useState<string>(() => (initialSubject && groups.some((g) => g.discipline === initialSubject) ? initialSubject : "Todas"));
   const [q, setQ] = useState("");
   const total = groups.reduce((n, g) => n + g.topics.length, 0);
 

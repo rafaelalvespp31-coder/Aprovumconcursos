@@ -43,8 +43,11 @@ export function NewTrailForm({
   aiOn = true,
   catalog = [],
   folders = [],
+  initialSubject,
 }: {
   initialContent?: string;
+  /** Matéria aberta no seletor do catálogo (?materia=). */
+  initialSubject?: string;
   aiOn?: boolean;
   catalog?: CatalogPickerGroup[];
   folders?: Array<{ id: string; name: string }>;
@@ -138,7 +141,7 @@ export function NewTrailForm({
         {fromCatalog ? (
           <>
             <p className="mb-3 t-small text-tinta-suave">Aulas prontas e revisadas pela equipe, separadas por matéria. Cada uma vem com aula, três níveis de questões e PDF.</p>
-            <CatalogPicker groups={catalog} value={picked?.id ?? null} onChange={(t) => setPicked({ id: t.id, title: t.title })} invalid={touched && !picked} />
+            <CatalogPicker groups={catalog} initialSubject={initialSubject} value={picked?.id ?? null} onChange={(t) => setPicked({ id: t.id, title: t.title })} invalid={touched && !picked} />
             {touched && !picked && <p className="mt-2 t-tiny text-erro" role="alert">Escolha uma aula para continuar.</p>}
             {aiOn && (
               <button type="button" onClick={() => setMode("livre")} className="mt-4 t-small font-semibold text-destaque underline-offset-2 hover:underline">

@@ -7,6 +7,8 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import {
   ArrowRight,
   Bell,
+  Menu,
+  X,
   Gamepad2,
   ChartColumn,
   ChevronRight,
@@ -125,6 +127,8 @@ export function PastelShell({
   }, [items, router, shortcutsOn]);
 
   const isPainel = active?.id === "painel";
+  // Página de Estudos: cabeçalho com saudação (desktop) e logo + menu (celular).
+  const isEstudos = path === `${basePath}/trilhas`;
   const title = isPainel ? (
     <>
       {summary.name ? `Olá, ${summary.name} ` : "Olá! "}
@@ -283,6 +287,9 @@ export function PastelShell({
               className={`sticky top-0 z-20 border-b backdrop-blur-[18px] ${dark ? "border-transparent bg-[#070707] text-white" : "border-black/[0.06] bg-white/75"}`}
               style={{ top: "env(safe-area-inset-top, 0px)" }}
             >
+              {isEstudos ? (
+                <EstudosHeader summary={summary} basePath={basePath} items={items} searchRef={searchRef} />
+              ) : (
               <div className="flex h-[88px] items-center justify-between gap-4 px-5 lg:px-10">
                 <div className="flex min-w-0 flex-1 items-center gap-4">
                   {dark && (
@@ -344,6 +351,7 @@ export function PastelShell({
                   )}
                 </div>
               </div>
+              )}
             </header>
 
             <ConnectivityBanner />
@@ -501,5 +509,118 @@ function QuickSearch({ inputRef, basePath, items, dark = false }: { inputRef: Re
         </div>
       )}
     </div>
+  );
+}
+
+
+// ---------------------------------------------------------------------------
+// Cabeçalho da página de Estudos
+// ---------------------------------------------------------------------------
+function EstudosHeader({ summary, basePath, items, searchRef }: { summary: ShellSummary; basePath: string; items: NavItem[]; searchRef: React.RefObject<HTMLInputElement | null> }) {
+  const menuRef = useRef<HTMLDialogElement>(null);
+  const path = usePathname();
+  const bell = (
+    <Link
+      href={`${basePath}/revisoes`}
+      aria-label={`Revisões pendentes: ${summary.counts.dueReviews}`}
+      className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-[#0A0A0A] transition hover:bg-black/[0.05]"
+    >
+      <Bell className="h-[22px] w-[22px]" aria-hidden />
+      {summary.counts.dueReviews > 0 && (
+        <span className="absolute right-0.5 top-0.5 min-w-[18px] rounded-full bg-[#F01820] px-1 text-center text-[10.5px] font-bold leading-[18px] text-white ring-2 ring-white">{summary.counts.dueReviews}</span>
+      )}
+    </Link>
+  );
+  const avatar = (
+    <Link href={`${basePath}/perfil`} aria-label="Perfil e conquistas" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#080808] text-white shadow-[0_6px_16px_rgba(0,0,0,0.18)] transition hover:ring-2 hover:ring-[#F01820]/60">
+      <UserRound className="h-5 w-5" aria-hidden />
+    </Link>
+  );
+  return (
+    <>
+      {/* Celular: menu, logo, avisos e perfil */}
+      <div className="flex h-[72px] items-center gap-3 px-4 lg:hidden">
+        <button type="button" onClick={() => menuRef.current?.showModal()} aria-label="Abrir menu" aria-haspopup="dialog" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] text-[#0A0A0A] hover:bg-black/[0.05]">
+          <Menu className="h-6 w-6" aria-hidden />
+        </button>
+        <Link href={`${basePath}/painel`} aria-label="APROVUM — ir para o painel" className="min-w-0 flex-1 border-l border-[#E5E8ED] pl-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/images/aprovum-logo-escura.png" alt="APROVUM — Sua preparação. Seu próximo cargo." width={523} height={107} className="h-auto w-full max-w-[210px]" />
+        </Link>
+        {bell}
+        <span className="h-7 w-px bg-[#E5E8ED]" aria-hidden />
+        {avatar}
+      </div>
+      {/* Desktop: saudação com o nome real, busca, avisos e perfil */}
+      <div className="hidden h-[88px] items-center justify-between gap-4 px-10 lg:flex">
+        <div className="flex min-w-0 items-center gap-5">
+          <span className="estudos-barras" aria-hidden>{"///"}</span>
+          <div className="min-w-0">
+            <h1 className="flex items-center gap-2 truncate font-[Space_Grotesk] text-[28px] font-[800] leading-none tracking-[-0.02em] xl:text-[30px]">
+              {summary.name ? `Olá, ${summary.name}` : "Olá!"} <span className="inline-block animate-[float_3s_ease-in-out_infinite]" aria-hidden>👋</span>
+            </h1>
+            <p className="mt-1.5 truncate text-[15px] font-medium text-[#15171B]">
+              <span className="text-[#F01820]">Disciplina</span> hoje, <span className="text-[#F01820]">resultado</span> amanhã.
+            </p>
+          </div>
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <QuickSearch inputRef={searchRef} basePath={basePath} items={items} />
+          {bell}
+          <span className="h-8 w-px bg-[#E5E8ED]" aria-hidden />
+          {avatar}
+        </div>
+      </div>
+
+      {/* Menu do celular (hambúrguer) */}
+      <dialog
+        ref={menuRef}
+        aria-label="Menu"
+        className="m-0 h-dvh max-h-none w-[min(86vw,340px)] max-w-none bg-transparent p-0 backdrop:bg-black/50 open:animate-[enter_0.3s_ease-out]"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) e.currentTarget.close();
+        }}
+      >
+        <nav aria-label="Menu principal" className="flex h-full flex-col overflow-y-auto bg-[#0A0A0A] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] text-white">
+          <div className="flex items-center justify-between gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/aprovum-login-logo.png" alt="APROVUM" width={523} height={107} className="h-auto w-[190px]" />
+            <button type="button" onClick={() => menuRef.current?.close()} aria-label="Fechar menu" className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.06] hover:bg-white/[0.12]">
+              <X className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
+          <ul className="mt-6 flex flex-col gap-1.5">
+            {items.map((s) => {
+              const on = path === s.href || (s.also ?? []).some((a) => path.startsWith(a));
+              return (
+                <li key={s.id}>
+                  <Link
+                    href={s.href}
+                    onClick={() => menuRef.current?.close()}
+                    aria-current={on ? "page" : undefined}
+                    className={`flex min-h-14 items-center gap-3.5 rounded-[16px] px-3.5 ${on ? "bg-gradient-to-r from-[#FF1E1E] to-[#B30000] text-white" : "text-[#C9C9C9] hover:bg-white/[0.06]"}`}
+                  >
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-[12px] ${on ? "bg-white/20" : "bg-[#1A1A1A]"}`}>
+                      <s.icon className="h-[18px] w-[18px]" aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold">{s.label}</span>
+                      <span className={`block text-[11.5px] ${on ? "text-white/80" : "text-[#9A9A9A]"}`}>{s.desc}</span>
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+          <Link
+            href={`${basePath}/nova-trilha`}
+            onClick={() => menuRef.current?.close()}
+            className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-[16px] bg-gradient-to-br from-[#FF1E1E] to-[#B30000] font-semibold text-white"
+          >
+            <Plus className="h-5 w-5" aria-hidden /> Novo estudo
+          </Link>
+        </nav>
+      </dialog>
+    </>
   );
 }

@@ -6,7 +6,7 @@ import { NewTrailForm } from "./form";
 
 export const metadata = { title: "Novo estudo" };
 
-export default async function NewTrailPage({ searchParams }: { searchParams: Promise<{ conteudo?: string }> }) {
+export default async function NewTrailPage({ searchParams }: { searchParams: Promise<{ conteudo?: string; materia?: string }> }) {
   const sp = await searchParams;
   const initial = (sp.conteudo ?? "").slice(0, 2000);
   const aiOn = aiEnabled();
@@ -19,7 +19,7 @@ export default async function NewTrailPage({ searchParams }: { searchParams: Pro
         Cada conteúdo é um estudo independente, com aula, três níveis de avaliação e PDF próprios. O edital nunca é obrigatório.
       </p>
       <div className="mt-8">
-        <NewTrailForm initialContent={initial} aiOn={aiOn} catalog={catalog} folders={folders.map((f) => ({ id: f.id, name: f.name }))} />
+        <NewTrailForm initialContent={initial} initialSubject={sp.materia?.slice(0, 80)} aiOn={aiOn} catalog={catalog} folders={folders.map((f) => ({ id: f.id, name: f.name }))} />
       </div>
     </div>
   );

@@ -13,7 +13,7 @@ async function noHorizontalScroll(page: Page) {
 }
 
 test.describe("galeria: todas as telas carregam sem erro e sem rolagem horizontal", () => {
-  for (const path of ["painel", "perfil", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo", "banco", "quiz", "na-pratica"]) {
+  for (const path of ["painel", "perfil", "trilhas", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo", "banco", "quiz", "na-pratica"]) {
     test(path, async ({ page }) => {
       const errors: string[] = [];
       page.on("pageerror", (e) => errors.push(e.message));
@@ -27,7 +27,7 @@ test.describe("galeria: todas as telas carregam sem erro e sem rolagem horizonta
 
 test.describe("celulares pequenos (320px): nenhuma tela rola para o lado", () => {
   test.use({ viewport: { width: 320, height: 640 } });
-  for (const path of ["painel", "perfil", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo", "banco", "quiz", "na-pratica"]) {
+  for (const path of ["painel", "perfil", "trilhas", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo", "banco", "quiz", "na-pratica"]) {
     test(path, async ({ page }) => {
       await page.goto(`${G}/${path}`);
       await noHorizontalScroll(page);
@@ -650,4 +650,46 @@ test("banners: arte e animações aparecem juntas, mesmo com a imagem demorando"
     await expect(banner).toHaveAttribute("data-pronto", "1");
     await page.unroute(img);
   }
+});
+
+test.describe("página de estudos", () => {
+  test("saudação, banner, progresso real, seus estudos, aulas inteligentes e Modo Jogo", async ({ page }, info) => {
+    await page.goto(`${G}/trilhas`);
+    const mobile = info.project.name === "mobile";
+    await expect(page.getByRole("heading", { name: /Olá, Rafael/ }).first()).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Evolução é\s*questão de\s*Disciplina/i })).toBeVisible();
+    await expect(page.getByTestId("banner-continuar")).toHaveAttribute("href", /\/dev\/galeria\/aula\//);
+    const prog = page.getByTestId("progresso-geral");
+    await expect(prog.getByRole("img", { name: "38% das questões concluídas" })).toBeVisible();
+    await expect(prog).toContainText("111");
+    await expect(prog).toContainText("/ 290");
+    await expect(prog).toContainText("9 / 29");
+    // Seus estudos: o estudo em andamento vem primeiro e abre a aula.
+    const estudos = page.getByTestId("seus-estudos");
+    const andamento = estudos.getByRole("link", { name: /em andamento, continuar/ });
+    await expect(andamento).toHaveAttribute("href", /\/dev\/galeria\/aula\//);
+    await expect(andamento.getByText("Em andamento")).toBeVisible();
+    // Aulas inteligentes: cada matéria abre o catálogo filtrado.
+    const aulas = page.getByTestId("aulas-inteligentes");
+    await expect(aulas.getByRole("link", { name: /Direito Constitucional/ })).toHaveAttribute("href", "/dev/galeria/nova-trilha?materia=Direito%20Constitucional");
+    await expect(page.getByRole("link", { name: /Jogar agora/i })).toHaveAttribute("href", "/dev/galeria/quiz");
+    // Carrossel: no celular, os pontos levam à próxima página de estudos.
+    if (mobile) {
+      const dots = estudos.getByRole("tab");
+      await dots.nth(1).click();
+      await expect(dots.nth(1)).toHaveAttribute("aria-selected", "true");
+    }
+    expect(await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)).toBeLessThanOrEqual(0);
+  });
+
+  test("celular: menu hambúrguer abre a navegação completa e fecha", async ({ page }, info) => {
+    test.skip(info.project.name !== "mobile", "menu hambúrguer é do celular");
+    await page.goto(`${G}/trilhas`);
+    await page.getByRole("button", { name: "Abrir menu" }).click();
+    const menu = page.getByRole("dialog", { name: "Menu" });
+    await expect(menu.getByRole("link", { name: /Modo Jogo/ })).toHaveAttribute("href", "/dev/galeria/quiz");
+    await expect(menu.getByRole("link", { name: /Novo estudo/ })).toBeVisible();
+    await menu.getByRole("button", { name: "Fechar menu" }).click();
+    await expect(menu).toBeHidden();
+  });
 });

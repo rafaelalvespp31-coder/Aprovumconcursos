@@ -3,8 +3,10 @@ import { listFolders, listTrailProgress, listTrails } from "@/server/queries";
 import { ButtonLink, EmptyState, Tag } from "@/components/ui";
 import { boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
 import { FolderBoard, type BoardTrail } from "./folder-board";
+import { getStudiesHome } from "@/server/studies-home";
+import { StudiesPage } from "@/components/estudos/studies-page";
 
-export const metadata = { title: "Meus estudos" };
+export const metadata = { title: "Seus estudos" };
 
 const STATUS: Record<string, BoardTrail["status"]> = {
   pending: { label: "Na fila", tone: "neutro" },
@@ -17,17 +19,17 @@ const STATUS: Record<string, BoardTrail["status"]> = {
 
 export default async function TrailsPage({ searchParams }: { searchParams: Promise<{ arquivadas?: string }> }) {
   const { arquivadas } = await searchParams;
-  const [all, folders, progress] = await Promise.all([listTrails(true), listFolders(), listTrailProgress()]);
+  const [all, folders, progress, home] = await Promise.all([listTrails(true), listFolders(), listTrailProgress(), getStudiesHome()]);
   const showArchived = arquivadas === "1";
   const trails = all.filter((t) => (showArchived ? t.archived_at : !t.archived_at));
   const archivedCount = all.filter((t) => t.archived_at).length;
   const subtitle = (t: (typeof all)[number]) =>
     `${boardDisplayName(t.board_slug as ExamBoardSlug, t.other_board_name)}${t.last_studied_at ? ` · estudado em ${new Date(t.last_studied_at).toLocaleDateString("pt-BR")}` : ""}`;
 
-  return (
-    <div>
+  const board = (
+    <div id="pastas" className="scroll-mt-24">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="t-h1">{showArchived ? "Estudos arquivados" : "Minhas pastas"}</h1>
+        {showArchived ? <h1 className="t-h1">Estudos arquivados</h1> : <h2 className="t-h2">Todos os seus estudos, por pasta</h2>}
         <ButtonLink href="/nova-trilha">Novo estudo</ButtonLink>
       </div>
       {!showArchived && (
@@ -75,4 +77,6 @@ export default async function TrailsPage({ searchParams }: { searchParams: Promi
       )}
     </div>
   );
+  if (showArchived) return board;
+  return <StudiesPage data={home}>{board}</StudiesPage>;
 }
