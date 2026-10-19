@@ -1,0 +1,646 @@
+{
+ "slug": "cp-art-155-furto",
+ "title": "Furto (CP, art. 155)",
+ "kind": "dispositivo",
+ "law_code": "CP",
+ "articles": [
+  "155"
+ ],
+ "aliases": [
+  "furto",
+  "art. 155",
+  "art 155",
+  "artigo 155",
+  "art. 155 do código penal",
+  "crimes contra o patrimônio",
+  "crimes contra o patrimonio",
+  "furto simples",
+  "furto qualificado",
+  "repouso noturno",
+  "furto privilegiado",
+  "furto de energia",
+  "furto mediante fraude",
+  "furto eletrônico",
+  "furto eletronico",
+  "furto famélico",
+  "furto famelico",
+  "furto de uso",
+  "furto de celular",
+  "gato de energia",
+  "crime de furto"
+ ],
+ "discipline_mode": "direito_penal",
+ "summary": "Art. 155 do CP completo e atualizado (Leis 15.181/2025, 15.358/2026, 15.397/2026 e 15.517/2026): elementos, consumação e tentativa (Tema 934), furto simples, repouso noturno (Temas 1.144 e 1.087), privilégio (Súm. 511), energia × estelionato, qualificadoras e formas especiais, insignificância, processo, jurisprudência, pegadinhas e glossário.",
+ "source_text": "Art. 155 - Subtrair, para si ou para outrem, coisa alheia móvel:\nPena - reclusão, de 1 (um) a 6 (seis) anos, e multa.\n§ 1º A pena aumenta-se de metade, se o crime é praticado durante o repouso noturno.\n§ 2º Se o criminoso é primário, e é de pequeno valor a coisa furtada, o juiz pode substituir a pena de reclusão pela de detenção, diminuí-la de um a dois terços, ou aplicar somente a pena de multa.\n§ 3º Equipara-se à coisa móvel a energia elétrica ou qualquer outra que tenha valor econômico.\n§ 4º A pena é de reclusão, de 2 (dois) a 8 (oito) anos, e multa, se o crime é cometido:\nI - com destruição ou rompimento de obstáculo à subtração da coisa;\nII - com abuso de confiança, ou mediante fraude, escalada ou destreza;\nIII - com emprego de chave falsa;\nIV - mediante concurso de duas ou mais pessoas;\nV - contra quaisquer bens que comprometam o funcionamento de órgãos da União, de Estado, do Distrito Federal ou de Município ou de estabelecimentos públicos ou privados que prestem serviços essenciais.\n§ 4º-A A pena é de reclusão de 4 (quatro) a 10 (dez) anos e multa, se houver emprego de explosivo ou de artefato análogo que cause perigo comum.\n§ 4º-B A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se o furto mediante fraude é cometido por meio de dispositivo eletrônico ou informático, conectado ou não à rede de computadores, com ou sem a violação de mecanismo de segurança ou a utilização de programa malicioso, ou por qualquer outro meio fraudulento análogo.\n§ 4º-C A pena prevista no § 4º-B deste artigo, considerada a relevância do resultado gravoso:\nI - aumenta-se de 1/3 (um terço) a 2/3 (dois terços), se o crime é praticado mediante a utilização de servidor mantido fora do território nacional;\nII - aumenta-se de 1/3 (um terço) ao dobro, se o crime é praticado contra idoso ou vulnerável.\n§ 5º A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se a subtração for de veículo automotor que venha a ser transportado para outro Estado ou para o exterior.\n§ 6º A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se a subtração for:\nI - de semovente domesticável de produção, ainda que abatido ou dividido em partes no local da subtração, ou de animal doméstico;\nII - de aparelho de telefonia celular, de computador, inclusive portátil, ou de qualquer outro dispositivo eletrônico ou informático semelhante.\n§ 7º A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se a subtração for:\nI - de substâncias explosivas ou de acessórios que, conjunta ou isoladamente, possibilitem sua fabricação, montagem ou emprego;\nII - de arma de fogo.\n§ 8º A pena é de reclusão, de 2 (dois) a 8 (oito) anos, e multa, se a subtração for de fios, cabos ou equipamentos utilizados para fornecimento ou transmissão de energia elétrica ou de telefonia ou para transferência de dados, bem como equipamentos ou materiais ferroviários ou metroviários, aplicável, em qualquer caso, o disposto no § 2º deste artigo.\n§ 9º A pena é de reclusão de 4 (quatro) a 10 (dez) anos e multa, se a subtração, para si ou para outrem, de coisa alheia móvel é cometida por integrante de organização criminosa ultraviolenta, grupo paramilitar ou milícia privada, no contexto da atuação ou para a consecução das condutas previstas no art. 2º da Lei nº 15.358, de 24 de março de 2026.\n§ 10. A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se a subtração for de petróleo e derivados, gás natural e suas frações recuperáveis, álcool etílico hidratado carburante e demais combustíveis fluidos carburantes, inclusive biocombustíveis, ou de óleos lubrificantes, removidos dos estabelecimentos de produção ou de quaisquer instalações de armazenamento e de transporte de combustíveis, incluídos os dutos e as unidades de transporte em qualquer modal.\n§ 11. A pena prevista no § 10 deste artigo aumenta-se de 1/3 (um terço) se o crime é cometido:\nI - com destruição ou rompimento de obstáculo à subtração ou com dano de qualquer natureza;\nII - mediante concurso de duas ou mais pessoas;\nIII - com abuso de confiança ou por quem tenha vínculo, atual ou passado, com o ente lesado;\nIV - por ocupante de cargo, emprego ou função pública.\n§ 12. A pena prevista no § 10 deste artigo aumenta-se de 2/3 (dois terços) se do crime resultar:\nI - suspensão ou paralisação das atividades do estabelecimento;\nII - desabastecimento;\nIII - incêndio;\nIV - poluição efetiva ou potencial ao meio ambiente;\nV - lesão corporal grave;\nVI - morte.",
+ "nodes": [
+  {
+   "key": "N0001",
+   "kind": "artigo",
+   "marker": "Art. 155",
+   "title": "Subtrair, para si ou para outrem, coisa alheia móvel",
+   "sourceText": "Art. 155 - Subtrair, para si ou para outrem, coisa alheia móvel:",
+   "span": {
+    "start": 0,
+    "end": 64
+   },
+   "parentKey": null,
+   "depth": 0,
+   "order": 0,
+   "path": "Art. 155",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0002",
+   "kind": "item",
+   "marker": null,
+   "title": "Pena - reclusão, de 1 (um) a 6 (seis) anos, e multa",
+   "sourceText": "Pena - reclusão, de 1 (um) a 6 (seis) anos, e multa.",
+   "span": {
+    "start": 65,
+    "end": 117
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 0,
+   "path": "Art. 155 › Pena - reclusão, de 1 (um) a 6 (seis) anos, e multa",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0003",
+   "kind": "paragrafo",
+   "marker": "§ 1º",
+   "title": "A pena aumenta-se de metade, se o crime é praticado durante o repouso noturno",
+   "sourceText": "§ 1º A pena aumenta-se de metade, se o crime é praticado durante o repouso noturno.",
+   "span": {
+    "start": 118,
+    "end": 201
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 1,
+   "path": "Art. 155 › § 1º",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0004",
+   "kind": "paragrafo",
+   "marker": "§ 2º",
+   "title": "Se o criminoso é primário, e é de pequeno valor a coisa furtada, o juiz pode substituir a pena de reclusão pela de detenção, diminuí-la de um a dois terços, ou aplicar somente a pena de multa",
+   "sourceText": "§ 2º Se o criminoso é primário, e é de pequeno valor a coisa furtada, o juiz pode substituir a pena de reclusão pela de detenção, diminuí-la de um a dois terços, ou aplicar somente a pena de multa.",
+   "span": {
+    "start": 202,
+    "end": 399
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 2,
+   "path": "Art. 155 › § 2º",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0005",
+   "kind": "paragrafo",
+   "marker": "§ 3º",
+   "title": "Equipara-se à coisa móvel a energia elétrica ou qualquer outra que tenha valor econômico",
+   "sourceText": "§ 3º Equipara-se à coisa móvel a energia elétrica ou qualquer outra que tenha valor econômico.",
+   "span": {
+    "start": 400,
+    "end": 494
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 3,
+   "path": "Art. 155 › § 3º",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0006",
+   "kind": "paragrafo",
+   "marker": "§ 4º",
+   "title": "A pena é de reclusão, de 2 (dois) a 8 (oito) anos, e multa, se o crime é cometido",
+   "sourceText": "§ 4º A pena é de reclusão, de 2 (dois) a 8 (oito) anos, e multa, se o crime é cometido:",
+   "span": {
+    "start": 495,
+    "end": 582
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 4,
+   "path": "Art. 155 › § 4º",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0007",
+   "kind": "inciso",
+   "marker": "I",
+   "title": "com destruição ou rompimento de obstáculo à subtração da coisa",
+   "sourceText": "I - com destruição ou rompimento de obstáculo à subtração da coisa;",
+   "span": {
+    "start": 583,
+    "end": 650
+   },
+   "parentKey": "N0006",
+   "depth": 2,
+   "order": 0,
+   "path": "Art. 155 › § 4º › I",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0008",
+   "kind": "inciso",
+   "marker": "II",
+   "title": "com abuso de confiança, ou mediante fraude, escalada ou destreza",
+   "sourceText": "II - com abuso de confiança, ou mediante fraude, escalada ou destreza;",
+   "span": {
+    "start": 651,
+    "end": 721
+   },
+   "parentKey": "N0006",
+   "depth": 2,
+   "order": 1,
+   "path": "Art. 155 › § 4º › II",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0009",
+   "kind": "inciso",
+   "marker": "III",
+   "title": "com emprego de chave falsa",
+   "sourceText": "III - com emprego de chave falsa;",
+   "span": {
+    "start": 722,
+    "end": 755
+   },
+   "parentKey": "N0006",
+   "depth": 2,
+   "order": 2,
+   "path": "Art. 155 › § 4º › III",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0010",
+   "kind": "inciso",
+   "marker": "IV",
+   "title": "mediante concurso de duas ou mais pessoas",
+   "sourceText": "IV - mediante concurso de duas ou mais pessoas;",
+   "span": {
+    "start": 756,
+    "end": 803
+   },
+   "parentKey": "N0006",
+   "depth": 2,
+   "order": 3,
+   "path": "Art. 155 › § 4º › IV",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0011",
+   "kind": "inciso",
+   "marker": "V",
+   "title": "contra quaisquer bens que comprometam o funcionamento de órgãos da União, de Estado, do Distrito Federal ou de Município ou de estabelecimentos públicos ou privados que prestem serviços essenciais",
+   "sourceText": "V - contra quaisquer bens que comprometam o funcionamento de órgãos da União, de Estado, do Distrito Federal ou de Município ou de estabelecimentos públicos ou privados que prestem serviços essenciais.",
+   "span": {
+    "start": 804,
+    "end": 1005
+   },
+   "parentKey": "N0006",
+   "depth": 2,
+   "order": 4,
+   "path": "Art. 155 › § 4º › V",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0012",
+   "kind": "paragrafo",
+   "marker": "§ 4º-A",
+   "title": "A pena é de reclusão de 4 (quatro) a 10 (dez) anos e multa, se houver emprego de explosivo ou de artefato análogo que cause perigo comum",
+   "sourceText": "§ 4º-A A pena é de reclusão de 4 (quatro) a 10 (dez) anos e multa, se houver emprego de explosivo ou de artefato análogo que cause perigo comum.",
+   "span": {
+    "start": 1006,
+    "end": 1150
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 5,
+   "path": "Art. 155 › § 4º-A",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0013",
+   "kind": "paragrafo",
+   "marker": "§ 4º-B",
+   "title": "A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se o furto mediante fraude é cometido por meio de dispositivo eletrônico ou informático, conectado ou não à rede de computadores, com ou sem a violação de mecanismo de segurança ou a utilização de programa malicioso, ou por qualquer outro meio fraudulento análogo",
+   "sourceText": "§ 4º-B A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se o furto mediante fraude é cometido por meio de dispositivo eletrônico ou informático, conectado ou não à rede de computadores, com ou sem a violação de mecanismo de segurança ou a utilização de programa malicioso, ou por qualquer outro meio fraudulento análogo.",
+   "span": {
+    "start": 1151,
+    "end": 1484
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 6,
+   "path": "Art. 155 › § 4º-B",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0014",
+   "kind": "paragrafo",
+   "marker": "§ 4º-C",
+   "title": "A pena prevista no § 4º-B deste artigo, considerada a relevância do resultado gravoso",
+   "sourceText": "§ 4º-C A pena prevista no § 4º-B deste artigo, considerada a relevância do resultado gravoso:",
+   "span": {
+    "start": 1485,
+    "end": 1578
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 7,
+   "path": "Art. 155 › § 4º-C",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0015",
+   "kind": "inciso",
+   "marker": "I",
+   "title": "aumenta-se de 1/3 (um terço) a 2/3 (dois terços), se o crime é praticado mediante a utilização de servidor mantido fora do território nacional",
+   "sourceText": "I - aumenta-se de 1/3 (um terço) a 2/3 (dois terços), se o crime é praticado mediante a utilização de servidor mantido fora do território nacional;",
+   "span": {
+    "start": 1579,
+    "end": 1726
+   },
+   "parentKey": "N0014",
+   "depth": 2,
+   "order": 0,
+   "path": "Art. 155 › § 4º-C › I",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0016",
+   "kind": "inciso",
+   "marker": "II",
+   "title": "aumenta-se de 1/3 (um terço) ao dobro, se o crime é praticado contra idoso ou vulnerável",
+   "sourceText": "II - aumenta-se de 1/3 (um terço) ao dobro, se o crime é praticado contra idoso ou vulnerável.",
+   "span": {
+    "start": 1727,
+    "end": 1821
+   },
+   "parentKey": "N0014",
+   "depth": 2,
+   "order": 1,
+   "path": "Art. 155 › § 4º-C › II",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0017",
+   "kind": "paragrafo",
+   "marker": "§ 5º",
+   "title": "A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se a subtração for de veículo automotor que venha a ser transportado para outro Estado ou para o exterior",
+   "sourceText": "§ 5º A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se a subtração for de veículo automotor que venha a ser transportado para outro Estado ou para o exterior.",
+   "span": {
+    "start": 1822,
+    "end": 1995
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 8,
+   "path": "Art. 155 › § 5º",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0018",
+   "kind": "paragrafo",
+   "marker": "§ 6º",
+   "title": "A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se a subtração for",
+   "sourceText": "§ 6º A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se a subtração for:",
+   "span": {
+    "start": 1996,
+    "end": 2082
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 9,
+   "path": "Art. 155 › § 6º",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0019",
+   "kind": "inciso",
+   "marker": "I",
+   "title": "de semovente domesticável de produção, ainda que abatido ou dividido em partes no local da subtração, ou de animal doméstico",
+   "sourceText": "I - de semovente domesticável de produção, ainda que abatido ou dividido em partes no local da subtração, ou de animal doméstico;",
+   "span": {
+    "start": 2083,
+    "end": 2212
+   },
+   "parentKey": "N0018",
+   "depth": 2,
+   "order": 0,
+   "path": "Art. 155 › § 6º › I",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0020",
+   "kind": "inciso",
+   "marker": "II",
+   "title": "de aparelho de telefonia celular, de computador, inclusive portátil, ou de qualquer outro dispositivo eletrônico ou informático semelhante",
+   "sourceText": "II - de aparelho de telefonia celular, de computador, inclusive portátil, ou de qualquer outro dispositivo eletrônico ou informático semelhante.",
+   "span": {
+    "start": 2213,
+    "end": 2357
+   },
+   "parentKey": "N0018",
+   "depth": 2,
+   "order": 1,
+   "path": "Art. 155 › § 6º › II",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0021",
+   "kind": "paragrafo",
+   "marker": "§ 7º",
+   "title": "A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se a subtração for",
+   "sourceText": "§ 7º A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se a subtração for:",
+   "span": {
+    "start": 2358,
+    "end": 2444
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 10,
+   "path": "Art. 155 › § 7º",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0022",
+   "kind": "inciso",
+   "marker": "I",
+   "title": "de substâncias explosivas ou de acessórios que, conjunta ou isoladamente, possibilitem sua fabricação, montagem ou emprego",
+   "sourceText": "I - de substâncias explosivas ou de acessórios que, conjunta ou isoladamente, possibilitem sua fabricação, montagem ou emprego;",
+   "span": {
+    "start": 2445,
+    "end": 2572
+   },
+   "parentKey": "N0021",
+   "depth": 2,
+   "order": 0,
+   "path": "Art. 155 › § 7º › I",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0023",
+   "kind": "inciso",
+   "marker": "II",
+   "title": "de arma de fogo",
+   "sourceText": "II - de arma de fogo.",
+   "span": {
+    "start": 2573,
+    "end": 2594
+   },
+   "parentKey": "N0021",
+   "depth": 2,
+   "order": 1,
+   "path": "Art. 155 › § 7º › II",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0024",
+   "kind": "paragrafo",
+   "marker": "§ 8º",
+   "title": "A pena é de reclusão, de 2 (dois) a 8 (oito) anos, e multa, se a subtração for de fios, cabos ou equipamentos utilizados para fornecimento ou transmissão de energia elétrica ou de telefonia ou para transferência de dados, bem como equipamentos ou materiais ferroviários ou metroviários, aplicável, em qualquer caso, o disposto no § 2º deste artigo",
+   "sourceText": "§ 8º A pena é de reclusão, de 2 (dois) a 8 (oito) anos, e multa, se a subtração for de fios, cabos ou equipamentos utilizados para fornecimento ou transmissão de energia elétrica ou de telefonia ou para transferência de dados, bem como equipamentos ou materiais ferroviários ou metroviários, aplicável, em qualquer caso, o disposto no § 2º deste artigo.",
+   "span": {
+    "start": 2595,
+    "end": 2948
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 11,
+   "path": "Art. 155 › § 8º",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0025",
+   "kind": "paragrafo",
+   "marker": "§ 9º",
+   "title": "A pena é de reclusão de 4 (quatro) a 10 (dez) anos e multa, se a subtração, para si ou para outrem, de coisa alheia móvel é cometida por integrante de organização criminosa ultraviolenta, grupo paramilitar ou milícia privada, no contexto da atuação ou para a consecução das condutas previstas no art. 2º da Lei nº 15.358, de 24 de março de 2026",
+   "sourceText": "§ 9º A pena é de reclusão de 4 (quatro) a 10 (dez) anos e multa, se a subtração, para si ou para outrem, de coisa alheia móvel é cometida por integrante de organização criminosa ultraviolenta, grupo paramilitar ou milícia privada, no contexto da atuação ou para a consecução das condutas previstas no art. 2º da Lei nº 15.358, de 24 de março de 2026.",
+   "span": {
+    "start": 2949,
+    "end": 3299
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 12,
+   "path": "Art. 155 › § 9º",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0026",
+   "kind": "paragrafo",
+   "marker": "§ 10",
+   "title": "A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se a subtração for de petróleo e derivados, gás natural e suas frações recuperáveis, álcool etílico hidratado carburante e demais combustíveis fluidos carburantes, inclusive biocombustíveis, ou de óleos lubrificantes, removidos dos estabelecimentos de produção ou de quaisquer instalações de armazenamento e de transporte de combustíveis, incluídos os dutos e as unidades de transporte em qualquer modal",
+   "sourceText": "§ 10. A pena é de reclusão, de 4 (quatro) a 10 (dez) anos, e multa, se a subtração for de petróleo e derivados, gás natural e suas frações recuperáveis, álcool etílico hidratado carburante e demais combustíveis fluidos carburantes, inclusive biocombustíveis, ou de óleos lubrificantes, removidos dos estabelecimentos de produção ou de quaisquer instalações de armazenamento e de transporte de combustíveis, incluídos os dutos e as unidades de transporte em qualquer modal.",
+   "span": {
+    "start": 3300,
+    "end": 3772
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 13,
+   "path": "Art. 155 › § 10",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0027",
+   "kind": "paragrafo",
+   "marker": "§ 11",
+   "title": "A pena prevista no § 10 deste artigo aumenta-se de 1/3 (um terço) se o crime é cometido",
+   "sourceText": "§ 11. A pena prevista no § 10 deste artigo aumenta-se de 1/3 (um terço) se o crime é cometido:",
+   "span": {
+    "start": 3773,
+    "end": 3867
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 14,
+   "path": "Art. 155 › § 11",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0028",
+   "kind": "inciso",
+   "marker": "I",
+   "title": "com destruição ou rompimento de obstáculo à subtração ou com dano de qualquer natureza",
+   "sourceText": "I - com destruição ou rompimento de obstáculo à subtração ou com dano de qualquer natureza;",
+   "span": {
+    "start": 3868,
+    "end": 3959
+   },
+   "parentKey": "N0027",
+   "depth": 2,
+   "order": 0,
+   "path": "Art. 155 › § 11 › I",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0029",
+   "kind": "inciso",
+   "marker": "II",
+   "title": "mediante concurso de duas ou mais pessoas",
+   "sourceText": "II - mediante concurso de duas ou mais pessoas;",
+   "span": {
+    "start": 3960,
+    "end": 4007
+   },
+   "parentKey": "N0027",
+   "depth": 2,
+   "order": 1,
+   "path": "Art. 155 › § 11 › II",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0030",
+   "kind": "inciso",
+   "marker": "III",
+   "title": "com abuso de confiança ou por quem tenha vínculo, atual ou passado, com o ente lesado",
+   "sourceText": "III - com abuso de confiança ou por quem tenha vínculo, atual ou passado, com o ente lesado;",
+   "span": {
+    "start": 4008,
+    "end": 4100
+   },
+   "parentKey": "N0027",
+   "depth": 2,
+   "order": 2,
+   "path": "Art. 155 › § 11 › III",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0031",
+   "kind": "inciso",
+   "marker": "IV",
+   "title": "por ocupante de cargo, emprego ou função pública",
+   "sourceText": "IV - por ocupante de cargo, emprego ou função pública.",
+   "span": {
+    "start": 4101,
+    "end": 4155
+   },
+   "parentKey": "N0027",
+   "depth": 2,
+   "order": 3,
+   "path": "Art. 155 › § 11 › IV",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0032",
+   "kind": "paragrafo",
+   "marker": "§ 12",
+   "title": "A pena prevista no § 10 deste artigo aumenta-se de 2/3 (dois terços) se do crime resultar",
+   "sourceText": "§ 12. A pena prevista no § 10 deste artigo aumenta-se de 2/3 (dois terços) se do crime resultar:",
+   "span": {
+    "start": 4156,
+    "end": 4252
+   },
+   "parentKey": "N0001",
+   "depth": 1,
+   "order": 15,
+   "path": "Art. 155 › § 12",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0033",
+   "kind": "inciso",
+   "marker": "I",
+   "title": "suspensão ou paralisação das atividades do estabelecimento",
+   "sourceText": "I - suspensão ou paralisação das atividades do estabelecimento;",
+   "span": {
+    "start": 4253,
+    "end": 4316
+   },
+   "parentKey": "N0032",
+   "depth": 2,
+   "order": 0,
+   "path": "Art. 155 › § 12 › I",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0034",
+   "kind": "inciso",
+   "marker": "II",
+   "title": "desabastecimento",
+   "sourceText": "II - desabastecimento;",
+   "span": {
+    "start": 4317,
+    "end": 4339
+   },
+   "parentKey": "N0032",
+   "depth": 2,
+   "order": 1,
+   "path": "Art. 155 › § 12 › II",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0035",
+   "kind": "inciso",
+   "marker": "III",
+   "title": "incêndio",
+   "sourceText": "III - incêndio;",
+   "span": {
+    "start": 4340,
+    "end": 4355
+   },
+   "parentKey": "N0032",
+   "depth": 2,
+   "order": 2,
+   "path": "Art. 155 › § 12 › III",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0036",
+   "kind": "inciso",
+   "marker": "IV",
+   "title": "poluição efetiva ou potencial ao meio ambiente",
+   "sourceText": "IV - poluição efetiva ou potencial ao meio ambiente;",
+   "span": {
+    "start": 4356,
+    "end": 4408
+   },
+   "parentKey": "N0032",
+   "depth": 2,
+   "order": 3,
+   "path": "Art. 155 › § 12 › IV",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0037",
+   "kind": "inciso",
+   "marker": "V",
+   "title": "lesão corporal grave",
+   "sourceText": "V - lesão corporal grave;",
+   "span": {
+    "start": 4409,
+    "end": 4434
+   },
+   "parentKey": "N0032",
+   "depth": 2,
+   "order": 4,
+   "path": "Art. 155 › § 12 › V",
+   "requiresDirectCoverage": true
+  },
+  {
+   "key": "N0038",
+   "kind": "inciso",
+   "marker": "VI",
+   "title": "morte",
+   "sourceText": "VI - morte.",
+   "span": {
+    "start": 4435,
+    "end": 4446
+   },
+   "parentKey": "N0032",
+   "depth": 2,
+   "order": 5,
+   "path": "Art. 155 › § 12 › VI",
+   "requiresDirectCoverage": true
+  }
+ ],
+ "estimated_minutes": 240
+}
