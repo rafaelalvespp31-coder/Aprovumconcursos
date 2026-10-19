@@ -742,6 +742,17 @@ test("painel: banner de saudação reveza com os banners de aprovação a cada 3
   await rot.getByRole("button", { name: /Pausar troca automática/ }).click();
   await page.waitForTimeout(3600);
   await expect(rot).toHaveAttribute("data-slide", "2");
+  // Card na proporção exata das artes (2000×711): o banner ativo preenche 100% do card.
+  await page.waitForTimeout(1000);
+  const fit = await page.evaluate(() => {
+    const card = document.querySelector("[data-testid=painel-banner]")!.getBoundingClientRect();
+    const art = document.querySelector(".br-slide-aprovado[data-ativo='1'] .br-arte")!.getBoundingClientRect();
+    return { ratio: card.width / card.height, dw: Math.abs(art.width - card.width), dh: Math.abs(art.height - card.height), dx: Math.abs(art.left - card.left) };
+  });
+  expect(Math.abs(fit.ratio - 2000 / 711)).toBeLessThan(0.02);
+  expect(fit.dw).toBeLessThan(2);
+  expect(fit.dh).toBeLessThan(2);
+  expect(fit.dx).toBeLessThan(2);
   await noHorizontalScroll(page);
 });
 
