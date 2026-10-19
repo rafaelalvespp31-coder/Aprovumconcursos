@@ -187,7 +187,7 @@ export function buildLessonBoard(input: {
 
   // 3. Lei
   const lawSec = sections.find((s) => s.kind === "texto_legal") ?? null;
-  const lawItems = nodes.filter((n) => n.marker).slice(0, 8).map((n) => ({ marker: n.marker, text: clip(n.title, 140) }));
+  const lawItems = nodes.filter((n) => isLegalMarker(n.marker)).slice(0, 8).map((n) => ({ marker: n.marker, text: clip(n.title, 140) }));
   const law = lawSec || lawItems.length ? { markdown: lawSec ? clip(lawSec.body_markdown.trim(), 700) : null, items: lawItems, sectionId: lawSec?.id ?? null } : null;
 
   // 4. Destrinche: tabela → termos em negrito → dispositivos
@@ -308,11 +308,37 @@ const CARD_OF_KIND: Record<string, number> = {
 };
 
 /**
+ * Marcador de dispositivo legal (artigo, parágrafo, inciso, alínea). Tópicos numerados de
+ * um programa ("1", "1.1") não são lei e não aparecem como dispositivos.
+ */
+export function isLegalMarker(marker: string | null | undefined): boolean {
+  if (!marker) return false;
+  return /^(art\.?|artigo|§|par[áa]grafo|caput)/i.test(marker.trim()) || /^[IVXLCDM]+(-[A-Z])?$/.test(marker.trim()) || /^[a-z]\)?$/.test(marker.trim());
+}
+
+/** Aula com base legal (texto de lei ou dispositivo no título)? */
+export function isLegalBoard(board: Pick<LessonBoard, "law" | "legalBasis">): boolean {
+  return !!(board.law || board.legalBasis);
+}
+
+/**
+ * Título de cada card. Em aulas sem texto legal (ex.: Língua Portuguesa), os cards 3 e 4
+ * falam de texto e conceitos em vez de lei.
+ */
+export function cardTitle(n: number, legal = true): string {
+  if (!legal && n === 3) return "Leia o texto";
+  if (!legal && n === 4) return "Destrinche os conceitos";
+  return BOARD_CARDS.find((c) => c.n === n)?.title ?? "";
+}
+
+/**
  * Distribui TODAS as seções da aula pelos nove cards, na ordem original de cada uma.
  * Nenhuma seção fica de fora: tipo desconhecido vai para o card 1 (conceito).
+ * Em aulas sem texto legal, os textos-base comentados (tipo "doutrina") ocupam o card 3.
  */
-export function assignSectionsToCards<T extends { id: string; kind: string }>(sections: T[]): Map<number, T[]> {
+export function assignSectionsToCards<T extends { id: string; kind: string }>(sections: T[], opts: { legal?: boolean } = {}): Map<number, T[]> {
+  const legal = opts.legal ?? true;
   const out = new Map<number, T[]>(BOARD_CARDS.map((c) => [c.n, []]));
-  for (const s of sections) out.get(CARD_OF_KIND[s.kind] ?? 1)!.push(s);
+  for (const s of sections) out.get(!legal && s.kind === "doutrina" ? 3 : (CARD_OF_KIND[s.kind] ?? 1))!.push(s);
   return out;
 }

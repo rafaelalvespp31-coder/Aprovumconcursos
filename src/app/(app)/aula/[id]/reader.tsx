@@ -19,7 +19,7 @@ import { useStored } from "@/components/use-stored";
 import { useStudyApi } from "@/components/study-api";
 import { LEVELS, levelStatus, type LevelKey } from "@/domain/progress/levels";
 import { SingleLevel } from "./levels-panel";
-import { BOARD_CARDS, assignSectionsToCards, buildLessonBoard } from "@/domain/content/board";
+import { BOARD_CARDS, assignSectionsToCards, buildLessonBoard, cardTitle, isLegalBoard } from "@/domain/content/board";
 import { LessonBoardView, LessonTreePortal, type BoardOutlineItem } from "@/components/aula/lesson-board";
 
 export interface ReaderSection {
@@ -106,7 +106,8 @@ export function LessonReader(props: ReaderProps) {
   }, [lesson.id, api]);
 
   const board = useMemo(() => buildLessonBoard({ title: lesson.title, sections, nodes }), [lesson.title, sections, nodes]);
-  const byCard = useMemo(() => assignSectionsToCards(sections), [sections]);
+  const legal = isLegalBoard(board);
+  const byCard = useMemo(() => assignSectionsToCards(sections, { legal }), [sections, legal]);
   /** Cards com conteúdo próprio (abrem os temas), na ordem dos números. */
   const contentCards = useMemo(() => BOARD_CARDS.filter((c) => c.n !== 8 && byCard.get(c.n)!.length > 0).map((c) => c.n), [byCard]);
 
@@ -260,7 +261,7 @@ export function LessonReader(props: ReaderProps) {
     const ready = pend === 0;
     const nxt = flowNext(n);
     const prev = flowPrev(n);
-    const nxtTitle = nxt ? BOARD_CARDS.find((c) => c.n === nxt)!.title : null;
+    const nxtTitle = nxt ? cardTitle(nxt, legal) : null;
     const hasThemes = byCard.get(n)!.length > 0;
     const label = completing ? "Salvando…" : nxt === 8 ? "Concluir e ir para as questões" : hasThemes ? "Concluir e ir ao próximo card" : "Ir ao próximo card";
     return (

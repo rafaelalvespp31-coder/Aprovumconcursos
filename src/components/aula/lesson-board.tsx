@@ -23,7 +23,7 @@ import {
   Target,
 } from "lucide-react";
 import { Markdown } from "@/components/markdown";
-import { BOARD_CARDS, type LessonBoard as Board } from "@/domain/content/board";
+import { BOARD_CARDS, cardTitle, isLegalBoard, type LessonBoard as Board } from "@/domain/content/board";
 
 export interface BoardLessonInfo {
   id: string;
@@ -177,6 +177,7 @@ export function LessonBoardView({
   after?: ReactNode;
 }) {
   const card = (n: number) => ({ meta: cards[n], themes: themes[n], footer: footers[n] });
+  const legal = isLegalBoard(board);
 
   const n2 = (i: number) => String(i).padStart(2, "0");
   return (
@@ -244,11 +245,11 @@ export function LessonBoardView({
                 aria-current={active === c.n ? "step" : undefined}
                 data-situacao={situation(cards[c.n]?.pct ?? 0)}
                 data-concluido={cards[c.n]?.done ? "1" : undefined}
-                aria-label={`Card ${c.n}: ${c.title} — ${cards[c.n]?.pct ?? 0}% estudado${cards[c.n]?.done ? " (concluído)" : ""}`}
+                aria-label={`Card ${c.n}: ${cardTitle(c.n, legal)} — ${cards[c.n]?.pct ?? 0}% estudado${cards[c.n]?.done ? " (concluído)" : ""}`}
               >
                 <ProgressRing pct={cards[c.n]?.pct ?? 0} />
                 <span className="al-passo-titulo" aria-hidden>
-                  <span className="al-passo-n">{c.n}</span> {c.title}
+                  <span className="al-passo-n">{c.n}</span> {cardTitle(c.n, legal)}
                 </span>
               </button>
             </li>
@@ -309,7 +310,7 @@ export function LessonBoardView({
 
         {/* 3 */}
         {active === 3 && (
-        <CardShell n={3} title="Leia a lei" subtitle={board.legalBasis ?? undefined} {...card(3)} testId="card-lei">
+        <CardShell n={3} title={cardTitle(3, legal)} subtitle={board.legalBasis ?? (legal ? undefined : "Textos-base comentados")} {...card(3)} testId="card-lei">
           {board.law ? (
             <>
               {board.law.markdown && (
@@ -336,7 +337,7 @@ export function LessonBoardView({
               <p className="al-nota">O texto legal exibido é o do seu conteúdo. Confira sempre a redação vigente na fonte oficial.</p>
             </>
           ) : (
-            <Empty>Este conteúdo não tem texto legal.</Empty>
+            legal ? <Empty>Este conteúdo não tem texto legal.</Empty> : null
           )}
         </CardShell>
         )}
@@ -345,8 +346,8 @@ export function LessonBoardView({
         {active === 4 && (
         <CardShell
           n={4}
-          title="Destrinche a lei"
-          subtitle={board.glossary?.source === "dispositivos" ? "Cada dispositivo do conteúdo" : "Entenda o significado de cada palavra"}
+          title={cardTitle(4, legal)}
+          subtitle={board.glossary?.source === "dispositivos" ? "Cada dispositivo do conteúdo" : legal ? "Entenda o significado de cada palavra" : "Cada conceito, em linguagem simples"}
           {...card(4)}
           testId="card-destrinche"
         >

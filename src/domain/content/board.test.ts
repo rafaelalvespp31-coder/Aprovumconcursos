@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { assignSectionsToCards, buildLessonBoard, clip } from "./board";
+import { assignSectionsToCards, buildLessonBoard, cardTitle, clip, isLegalBoard, isLegalMarker } from "./board";
 
 const sections = [
   { id: "s1", kind: "introducao", title: "Introdução", body_markdown: "Homicídio é **matar outra pessoa**. Protege a vida humana.\n\n:::exemplo\nSituação: João atira em Pedro, que morre.\nPergunta: Que crime é?\nResposta: Homicídio consumado.\n:::" },
@@ -64,5 +64,30 @@ describe("visão da aula (nove cards) a partir das seções reais", () => {
     expect(m.get(8)!.map((s) => s.id)).toEqual(["f"]);
     expect(m.get(9)!.map((s) => s.id)).toEqual(["s7"]);
     expect([...m.values()].flat()).toHaveLength(sections.length + 2);
+  });
+});
+
+describe("aulas sem texto legal (ex.: Língua Portuguesa)", () => {
+  it("só marcadores de lei contam como dispositivos", () => {
+    expect(isLegalMarker("Art. 155")).toBe(true);
+    expect(isLegalMarker("§ 4º-A")).toBe(true);
+    expect(isLegalMarker("IV")).toBe(true);
+    expect(isLegalMarker("a)")).toBe(true);
+    expect(isLegalMarker("1.1")).toBe(false);
+    expect(isLegalMarker("2")).toBe(false);
+    expect(isLegalMarker(null)).toBe(false);
+  });
+  it("tópicos numerados não viram 'lei' e os cards 3 e 4 mudam de nome", () => {
+    const b = buildLessonBoard({ title: "Interpretação de textos", sections: [], nodes: [{ key: "N1", marker: "1.1", title: "Gêneros textuais" }] });
+    expect(b.law).toBeNull();
+    expect(isLegalBoard(b)).toBe(false);
+    expect(cardTitle(3, false)).toBe("Leia o texto");
+    expect(cardTitle(4, false)).toBe("Destrinche os conceitos");
+    expect(cardTitle(3, true)).toBe("Leia a lei");
+  });
+  it("textos-base comentados (doutrina) vão para o card 3 só em aulas sem lei", () => {
+    const secs = [{ id: "1", kind: "doutrina" }, { id: "2", kind: "texto_legal" }];
+    expect(assignSectionsToCards(secs, { legal: false }).get(3)!.map((s) => s.id)).toEqual(["1", "2"]);
+    expect(assignSectionsToCards(secs).get(1)!.map((s) => s.id)).toEqual(["1"]);
   });
 });
