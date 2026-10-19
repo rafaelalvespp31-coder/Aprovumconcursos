@@ -16,6 +16,7 @@ import {
   Lightbulb,
   ListChecks,
   Network,
+  NotebookPen,
   Quote,
   ScrollText,
   Sparkles,
@@ -39,27 +40,16 @@ export interface BoardOutlineItem {
   module: string | null;
 }
 
-/** Abas da aula: visão em cards (padrão) ou estudo guiado (etapas com leitura e níveis). */
-export function LessonModeTabs({ mode, onChange }: { mode: "visao" | "guiado"; onChange: (m: "visao" | "guiado") => void }) {
-  return (
-    <div className="al-abas" role="tablist" aria-label="Modo da aula">
-      {(
-        [
-          ["visao", "Visão da aula"],
-          ["guiado", "Estudo guiado"],
-        ] as const
-      ).map(([k, label]) => (
-        <button key={k} type="button" role="tab" aria-selected={mode === k} onClick={() => onChange(k)}>
-          {label}
-        </button>
-      ))}
-    </div>
-  );
+export interface BoardCardMeta {
+  /** Temas (seções) que o card abre. */
+  count: number;
+  /** Todos os temas do card já lidos (card 8: os três níveis aprovados). */
+  done: boolean;
 }
 
-function CardShell({ n, title, subtitle, children, onStudy, testId, className = "" }: { n: number; title: string; subtitle?: string; children: ReactNode; onStudy?: () => void; testId?: string; className?: string }) {
+function CardShell({ n, title, subtitle, children, action, testId, className = "" }: { n: number; title: string; subtitle?: string; children: ReactNode; action?: { label: string; done: boolean; onClick: () => void }; testId?: string; className?: string }) {
   return (
-    <article className={`al-card ${className}`} aria-labelledby={`al-card-${n}`} data-testid={testId}>
+    <article className={`al-card ${className}`} aria-labelledby={`al-card-${n}`} data-testid={testId} data-concluido={action?.done ? "1" : undefined}>
       <header className="al-card-topo">
         <span className="al-num" aria-hidden>
           {n}
@@ -67,12 +57,13 @@ function CardShell({ n, title, subtitle, children, onStudy, testId, className = 
         <h2 id={`al-card-${n}`} className="al-card-titulo">
           {title}
         </h2>
+        {action?.done && <CircleCheck className="al-card-ok" aria-label="Concluído" />}
       </header>
       {subtitle && <p className="al-card-sub">{subtitle}</p>}
       <div className="al-card-corpo">{children}</div>
-      {onStudy && (
-        <button type="button" className="al-estudar" onClick={onStudy}>
-          Estudar no passo a passo <ChevronRight className="size-4" aria-hidden />
+      {action && (
+        <button type="button" className="al-estudar" onClick={action.onClick}>
+          {action.label} <ChevronRight className="size-4" aria-hidden />
         </button>
       )}
     </article>
@@ -94,7 +85,16 @@ export function LessonBoardView({
   prevId,
   nextId,
   quiz,
-  onStudy,
+  reading,
+  levelsPassed,
+  cards,
+  startLabel,
+  onStart,
+  onOpen,
+  notesCount,
+  onNotes,
+  notices,
+  after,
 }: {
   board: Board;
   lesson: BoardLessonInfo;
@@ -105,9 +105,24 @@ export function LessonBoardView({
   nextId: string | null;
   /** Questão de fixação (motor real de questões) — renderizada pelo leitor. */
   quiz: { node: ReactNode; label: string; onNext: (() => void) | null } | null;
-  onStudy: (sectionId: string | null) => void;
+  reading: { seen: number; total: number };
+  levelsPassed: number;
+  cards: Record<number, BoardCardMeta>;
+  startLabel: string;
+  onStart: () => void;
+  /** Abre o card com o conteúdo completo (temas, questões do tema, anotações). */
+  onOpen: (n: number) => void;
+  notesCount: number;
+  onNotes: () => void;
+  notices?: ReactNode;
+  after?: ReactNode;
 }) {
-  const study = (id: string | null) => () => onStudy(id);
+  const act = (n: number) => {
+    const c = cards[n];
+    if (!c || (n !== 8 && c.count === 0)) return undefined;
+    const label = n === 8 ? (c.done ? "Rever questões por nível" : "Abrir questões por nível") : c.done ? `Rever conteúdo completo · ${c.count} ${c.count === 1 ? "tema" : "temas"}` : `Abrir conteúdo completo · ${c.count} ${c.count === 1 ? "tema" : "temas"}`;
+    return { label, done: c.done, onClick: () => onOpen(n) };
+  };
   const n2 = (i: number) => String(i).padStart(2, "0");
   return (
     <div className="al" data-testid="visao-aula">
@@ -128,7 +143,7 @@ export function LessonBoardView({
           <div className="al-meta">
             {position && <span className="al-chip-aula">Aula {n2(position.index + 1)}</span>}
             {moduleTitle && <span className="al-chip-modulo">{moduleTitle}</span>}
-            <span className="al-pct">{progressPct}%</span>
+            <span className="al-pct" data-testid="progresso-aula">{progressPct}%</span>
             <span className="al-barra" role="progressbar" aria-label="Progresso nesta aula" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100}>
               <span style={{ width: `${progressPct}%` }} />
             </span>
@@ -139,11 +154,16 @@ export function LessonBoardView({
           {board.legalBasis && <p className="al-base">{board.legalBasis}</p>}
           <p className="al-desc">{lesson.objective}</p>
           <div className="al-acoes">
-            <button type="button" className="al-btn al-btn-vermelho" onClick={study(null)}>
-              Estudo guiado <ArrowRight className="size-4" aria-hidden />
+            <button type="button" className="al-btn al-btn-vermelho" onClick={onStart}>
+              {startLabel} <ArrowRight className="size-4" aria-hidden />
             </button>
-            <span className="al-tempo">~{lesson.estimatedMinutes} min</span>
+            <button type="button" className="al-btn al-btn-contorno" onClick={onNotes}>
+              <NotebookPen className="size-4" aria-hidden /> Minhas anotações ({notesCount})
+            </button>
           </div>
+          <p className="al-tempo">
+            <span data-testid="secoes-vistas">{reading.seen} de {reading.total}</span> temas lidos · {levelsPassed} de 3 níveis aprovados · ~{lesson.estimatedMinutes} min
+          </p>
         </div>
         <div className="al-banner" aria-hidden>
           <span className="al-banner-arte" />
@@ -159,9 +179,11 @@ export function LessonBoardView({
         </div>
       </div>
 
+      {notices && <div className="al-avisos">{notices}</div>}
+
       <div className="al-grade">
         {/* 1 */}
-        <CardShell n={1} title="Entenda o conceito" onStudy={board.concept ? study(board.concept.sectionId) : undefined} testId="card-conceito">
+        <CardShell n={1} title="Entenda o conceito" action={act(1)} testId="card-conceito">
           {board.concept ? (
             <>
               <div className="al-conceito">
@@ -190,7 +212,7 @@ export function LessonBoardView({
           n={2}
           title="Visualize"
           subtitle={board.scheme.source === "temas" ? "Os temas desta aula" : board.scheme.source === "esquema" ? "Esquema do conteúdo" : "Os conceitos-chave"}
-          onStudy={board.scheme.sectionId ? study(board.scheme.sectionId) : undefined}
+          action={act(2)}
           testId="card-visualize"
         >
           <ol className="al-esquema">
@@ -207,7 +229,7 @@ export function LessonBoardView({
         </CardShell>
 
         {/* 3 */}
-        <CardShell n={3} title="Leia a lei" subtitle={board.legalBasis ?? undefined} onStudy={board.law?.sectionId ? study(board.law.sectionId) : undefined} testId="card-lei">
+        <CardShell n={3} title="Leia a lei" subtitle={board.legalBasis ?? undefined} action={act(3)} testId="card-lei">
           {board.law ? (
             <>
               {board.law.markdown && (
@@ -243,14 +265,14 @@ export function LessonBoardView({
           n={4}
           title="Destrinche a lei"
           subtitle={board.glossary?.source === "dispositivos" ? "Cada dispositivo do conteúdo" : "Entenda o significado de cada palavra"}
-          onStudy={board.glossary?.sectionId ? study(board.glossary.sectionId) : undefined}
+          action={act(4)}
           testId="card-destrinche"
         >
           {board.glossary ? <BoardTable headers={board.glossary.headers} rows={board.glossary.rows} firstRed /> : <Empty>Esta aula não tem termos destrinchados em tabela.</Empty>}
         </CardShell>
 
         {/* 5 */}
-        <CardShell n={5} title="Diferencie" subtitle={board.compare?.title} onStudy={board.compare ? study(board.compare.sectionId) : undefined} testId="card-diferencie">
+        <CardShell n={5} title="Diferencie" subtitle={board.compare?.title} action={act(5)} testId="card-diferencie">
           {board.compare ? (
             board.compare.panels ? (
               <div className="al-paineis">
@@ -287,7 +309,7 @@ export function LessonBoardView({
         </CardShell>
 
         {/* 6 */}
-        <CardShell n={6} title="Veja na prática" subtitle="Exemplos completos" onStudy={board.examples.sectionId ? study(board.examples.sectionId) : undefined} testId="card-pratica">
+        <CardShell n={6} title="Veja na prática" subtitle="Exemplos completos" action={act(6)} testId="card-pratica">
           {board.examples.items.length ? (
             <ol className="al-exemplos">
               {board.examples.items.map((e, i) => (
@@ -311,7 +333,7 @@ export function LessonBoardView({
         </CardShell>
 
         {/* 7 */}
-        <CardShell n={7} title="Atenção à banca" subtitle="Pegadinhas e exceções" onStudy={board.traps.sectionId ? study(board.traps.sectionId) : undefined} testId="card-banca">
+        <CardShell n={7} title="Atenção à banca" subtitle="Pegadinhas e exceções" action={act(7)} testId="card-banca">
           {board.traps.items.length ? (
             <ul className="al-alertas">
               {board.traps.items.map((t, i) => (
@@ -330,7 +352,15 @@ export function LessonBoardView({
         </CardShell>
 
         {/* 8 */}
-        <CardShell n={8} title="Questão de fixação" subtitle={quiz?.label} testId="card-questao" className="al-card-questao">
+        <CardShell n={8} title="Questões de fixação" subtitle={quiz?.label} testId="card-questao" className="al-card-questao" action={act(8)}>
+          <ol className="al-niveis-resumo" aria-label="Níveis de questões">
+            {["Fácil", "Médio", "Difícil"].map((l, i) => (
+              <li key={l} data-status={levelsPassed > i ? "aprovado" : levelsPassed === i ? "liberado" : "bloqueado"}>
+                {levelsPassed > i ? <CircleCheck className="size-3.5" aria-hidden /> : null} {l}
+                <span className="sr-only">{levelsPassed > i ? " (aprovado)" : levelsPassed === i ? " (liberado)" : " (bloqueado)"}</span>
+              </li>
+            ))}
+          </ol>
           {quiz ? (
             <>
               {quiz.node}
@@ -346,7 +376,7 @@ export function LessonBoardView({
         </CardShell>
 
         {/* 9 */}
-        <CardShell n={9} title="Mapa mental" testId="card-mapa">
+        <CardShell n={9} title="Mapa mental" testId="card-mapa" action={act(9)}>
           <MindMap center={board.mindmap.center} branches={board.mindmap.branches} />
         </CardShell>
       </div>
@@ -373,6 +403,8 @@ export function LessonBoardView({
           </ul>
         </section>
       )}
+
+      {after}
 
       {/* Navegação entre aulas */}
       <nav className="al-nav" aria-label="Navegação entre aulas">

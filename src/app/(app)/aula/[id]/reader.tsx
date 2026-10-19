@@ -19,9 +19,8 @@ import { useStored } from "@/components/use-stored";
 import { useStudyApi } from "@/components/study-api";
 import { LEVELS, levelStatus, type LevelKey } from "@/domain/progress/levels";
 import { SingleLevel } from "./levels-panel";
-import { groupIntoModules, type LessonModule } from "@/domain/content/modules";
-import { buildLessonBoard } from "@/domain/content/board";
-import { LessonBoardView, LessonModeTabs, LessonTreePortal, type BoardOutlineItem } from "@/components/aula/lesson-board";
+import { BOARD_CARDS, assignSectionsToCards, buildLessonBoard } from "@/domain/content/board";
+import { LessonBoardView, LessonTreePortal, type BoardOutlineItem } from "@/components/aula/lesson-board";
 
 export interface ReaderSection {
   id: string;
@@ -76,18 +75,13 @@ export type ReaderQuestion = QuestionData & { nodeKey: string | null; level?: Le
 
 const sectionDomId = (id: string) => `secao-${id}`;
 
-type Step =
-  | { type: "secao"; section: ReaderSection; n: number }
-  | { type: "nivel"; level: LevelKey }
-  | { type: "revisao" }
-  | { type: "fim" };
-
 const LEVEL_TITLE: Record<LevelKey, string> = { facil: "Questões · Fácil", medio: "Questões · Médio", dificil: "Questões · Difícil" };
 
 /**
- * Aula passo a passo: um tema (bloco) por tela, cada um seguido da sua pergunta rápida;
- * depois as questões separadas por dificuldade (fácil → médio → difícil) e, no fim,
- * o botão para o próximo tema ou assunto da mesma matéria.
+ * Aula numa tela só: a visão em nove cards. Cada card abre, por cima da tela, o conteúdo
+ * completo que pertence a ele (temas com anotações, esclarecimentos e a questão de cada
+ * tema). O card 8 reúne as questões por nível (fácil → médio → difícil) com recuperação.
+ * Concluir todos os cards de conteúdo registra a leitura (libera o cálculo dos níveis).
  */
 export function LessonReader(props: ReaderProps) {
   const api = useStudyApi();
@@ -96,47 +90,39 @@ export function LessonReader(props: ReaderProps) {
   const [readingDone, setReadingDone] = useState(props.readingDone);
   const [levelsPassed, setLevelsPassed] = useState(props.levelsPassed);
   const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
-  // Respostas dadas nesta visita: as etapas desmontam os cards, então a resposta fica guardada aqui.
+  // Respostas dadas nesta visita (o card fechado desmonta as questões; a resposta fica aqui).
   const [sessionAnswers, setSessionAnswers] = useState<Record<string, SavedAnswer>>({});
   const savedFor = (id: string) => sessionAnswers[id] ?? props.answers?.[id];
   const remember = (o: AnswerOutcome) => setSessionAnswers((m) => ({ ...m, [o.questionId]: { choice: o.choice, feedback: o.feedback } }));
   const [completing, startCompleting] = useTransition();
-  const tocRef = useRef<HTMLDialogElement>(null);
   const notesRef = useRef<HTMLDialogElement>(null);
-  const topRef = useRef<HTMLDivElement>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   // Registra a abertura da aula (máquina de estados no servidor).
   useEffect(() => {
     void api.startLesson(lesson.id);
   }, [lesson.id, api]);
 
-  const steps = useMemo<Step[]>(() => {
-    const list: Step[] = sections.map((s, i) => ({ type: "secao", section: s, n: i + 1 }));
-    if (context === "revisao") list.push({ type: "revisao" });
-    else for (const l of LEVELS) list.push({ type: "nivel", level: l.key });
-    list.push({ type: "fim" });
-    return list;
-  }, [sections, context]);
-
-  // Módulos (temas) da aula: blocos consecutivos de seções.
-  const modules = useMemo(() => groupIntoModules(sections), [sections]);
-  const moduleOf = useMemo(() => {
-    const m = new Map<string, { mod: LessonModule; pos: number }>();
-    for (const mod of modules) mod.sectionIds.forEach((id, i) => m.set(id, { mod, pos: i + 1 }));
+  const board = useMemo(() => buildLessonBoard({ title: lesson.title, sections, nodes }), [lesson.title, sections, nodes]);
+  const byCard = useMemo(() => assignSectionsToCards(sections), [sections]);
+  const cardOfSection = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const [n, list] of byCard) for (const s of list) m.set(s.id, n);
     return m;
-  }, [modules]);
+  }, [byCard]);
+  /** Cards com conteúdo próprio (abrem os temas), na ordem dos números. */
+  const contentCards = useMemo(() => BOARD_CARDS.filter((c) => c.n !== 8 && byCard.get(c.n)!.length > 0).map((c) => c.n), [byCard]);
 
-  const [storedStep, setStoredStep] = useStored<number>(`na:passo:${lesson.id}`, 0);
-  const step = Math.min(Math.max(storedStep, 0), steps.length - 1);
-  const current = steps[step]!;
-
-  // Blocos percorridos: contam quando o aluno passa adiante (ou chega ao último).
+  // Temas lidos: contam quando o aluno conclui o card que os contém.
   const [seenList, setSeenList] = useStored<string[]>(`na:secoes-vistas:${lesson.id}`, []);
   const seen = useMemo(() => new Set(seenList), [seenList]);
-  const seenCount = readingDone ? sections.length : sections.filter((s) => seen.has(s.id)).length;
+  const isSeen = (id: string) => readingDone || seen.has(id);
+  const seenCount = sections.filter((s) => isSeen(s.id)).length;
+  const cardDone = (n: number) => byCard.get(n)!.every((s) => isSeen(s.id));
 
-  // Pergunta rápida logo após o bloco que ensina o item (nível fácil).
-  const { interleaved } = useMemo(() => {
+  // Questão rápida de cada tema (nível fácil), logo depois do tema que ensina o item.
+  const interleaved = useMemo(() => {
     const placed = new Set<string>();
     const inter = new Map<string, ReaderQuestion[]>();
     const quick = questions.filter((q) => !q.recovery_of && (q.level ?? "facil") === "facil");
@@ -147,7 +133,7 @@ export function LessonReader(props: ReaderProps) {
         inter.set(s.id, [q]);
       }
     }
-    return { interleaved: inter };
+    return inter;
   }, [sections, questions]);
   const interleavedIds = useMemo(() => new Set([...interleaved.values()].flat().map((q) => q.id)), [interleaved]);
   const numberOf = useMemo(() => new Map(questions.map((q, i) => [q.id, i + 1])), [questions]);
@@ -161,190 +147,81 @@ export function LessonReader(props: ReaderProps) {
     return m;
   }, [annotations]);
 
-  const markSeen = useCallback(
-    (id: string) => {
-      if (!seen.has(id)) setSeenList([...seen, id]);
-    },
-    [seen, setSeenList],
-  );
-
-  const go = useCallback(
-    (to: number) => {
-      const target = Math.min(Math.max(to, 0), steps.length - 1);
-      setStoredStep(target);
-      tocRef.current?.close();
-      requestAnimationFrame(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
-    },
-    [steps.length, setStoredStep],
-  );
-
-  const goToSection = useCallback((sectionId: string) => go(steps.findIndex((s) => s.type === "secao" && s.section.id === sectionId)), [go, steps]);
-
-  // Visão da aula (nove cards) × estudo guiado (etapas). A escolha fica salva no navegador.
-  const [mode, setMode] = useStored<"visao" | "guiado">("na:modo-aula", "visao");
-  const board = useMemo(() => buildLessonBoard({ title: lesson.title, sections, nodes }), [lesson.title, sections, nodes]);
-  const quizPool = useMemo(() => questions.filter((q) => !q.recovery_of && (q.level ?? "facil") === "facil"), [questions]);
-  const [quizIdx, setQuizIdx] = useState<number | null>(null);
-  const quizStart = useMemo(() => Math.max(0, quizPool.findIndex((q) => !props.answers?.[q.id])), [quizPool, props.answers]);
-  const quizAt = quizIdx ?? quizStart;
-  const openGuided = (sectionId: string | null) => {
-    setMode("guiado");
-    if (sectionId) goToSection(sectionId);
-    else requestAnimationFrame(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  };
-
-  // Trava do "Próximo": com questão sem resposta na etapa, não avança e leva até ela.
-  const stepRef = useRef<HTMLDivElement>(null);
+  // Aviso da trava (questão sem resposta no card aberto).
   const [blocked, setBlocked] = useState<string | null>(null);
   useEffect(() => {
     if (!blocked) return;
     const t = setTimeout(() => setBlocked(null), 4000);
     return () => clearTimeout(t);
   }, [blocked]);
-  const firstUnanswered = () =>
-    [...(stepRef.current?.querySelectorAll<HTMLElement>('article[data-questao][data-respondida="0"]') ?? [])].find((el) => !el.closest("details:not([open])")) ?? null;
-  const next = () => {
-    const pendingQ = firstUnanswered();
-    if (pendingQ) {
-      const total = [...(stepRef.current?.querySelectorAll<HTMLElement>('article[data-questao][data-respondida="0"]') ?? [])].filter((el) => !el.closest("details:not([open])")).length;
-      setBlocked(total === 1 ? `Responda a ${pendingQ.getAttribute("aria-label")?.toLowerCase() ?? "questão"} para avançar.` : `Faltam ${total} questões nesta etapa. Responda para avançar.`);
-      pendingQ.scrollIntoView({ behavior: "smooth", block: "center" });
-      pendingQ.classList.remove("questao-pendente");
-      void pendingQ.offsetWidth;
-      pendingQ.classList.add("questao-pendente");
-      pendingQ.focus({ preventScroll: true });
+
+  // Card aberto (diálogo por cima da visão da aula).
+  const [openCard, setOpenCard] = useState<number | null>(null);
+  const firstOpenLevel = LEVELS.find((l) => levelStatus(levelsPassed, l.n) !== "aprovado")?.key ?? "dificil";
+  const [levelTab, setLevelTab] = useState<LevelKey>(firstOpenLevel);
+  const scrollBodyTop = () => requestAnimationFrame(() => bodyRef.current?.scrollTo({ top: 0, behavior: "smooth" }));
+  const openCardN = useCallback(
+    (n: number, sectionId?: string) => {
+      setBlocked(null);
+      setOpenCard(n);
+      if (!dialogRef.current?.open) dialogRef.current?.showModal();
+      requestAnimationFrame(() => {
+        if (sectionId) document.getElementById(sectionDomId(sectionId))?.scrollIntoView({ block: "start" });
+        else bodyRef.current?.scrollTo({ top: 0 });
+      });
+    },
+    [],
+  );
+  const closeCard = () => dialogRef.current?.close();
+
+  // Trava: com questão sem resposta no card aberto, não avança e leva até ela.
+  const pendingInDialog = () =>
+    [...(bodyRef.current?.querySelectorAll<HTMLElement>('article[data-questao][data-respondida="0"]') ?? [])].filter((el) => !el.closest("details:not([open])"));
+  const guard = (): boolean => {
+    const pending = pendingInDialog();
+    const first = pending[0];
+    if (!first) return true;
+    setBlocked(pending.length === 1 ? `Responda a ${first.getAttribute("aria-label")?.toLowerCase() ?? "questão"} para avançar.` : `Faltam ${pending.length} questões neste card. Responda para avançar.`);
+    first.scrollIntoView({ behavior: "smooth", block: "center" });
+    first.classList.remove("questao-pendente");
+    void first.offsetWidth;
+    first.classList.add("questao-pendente");
+    first.focus({ preventScroll: true });
+    return false;
+  };
+
+  const nextContentCard = (from: number) => contentCards.find((n) => n > from) ?? null;
+  const prevCardOf = (n: number) => (n === 8 ? contentCards.at(-1) ?? null : [...contentCards].reverse().find((c) => c < n) ?? null);
+
+  /** Conclui o card aberto: marca os temas como lidos e segue para o próximo card. */
+  const concludeCard = (n: number) => {
+    if (!guard()) return;
+    setBlocked(null);
+    const ids = byCard.get(n)!.map((s) => s.id);
+    const nextSeen = new Set([...seen, ...ids]);
+    setSeenList([...nextSeen]);
+    const goNext = () => openCardN(nextContentCard(n) ?? 8);
+    if (!readingDone && sections.every((s) => nextSeen.has(s.id))) {
+      startCompleting(async () => {
+        await api.completeReading(lesson.id);
+        setReadingDone(true);
+        goNext();
+      });
       return;
     }
+    goNext();
+  };
+
+  const levelIndex = LEVELS.findIndex((l) => l.key === levelTab);
+  const nextLevel = () => {
+    if (!guard()) return;
     setBlocked(null);
-    if (current.type === "secao") {
-      markSeen(current.section.id);
-      const lastSection = current.n === sections.length;
-      const unseenAfter = sections.filter((s) => !seen.has(s.id) && s.id !== current.section.id).length;
-      const willHaveAll = readingDone || unseenAfter === 0;
-      // Saindo do último bloco: registra a leitura concluída e segue para as questões.
-      if (lastSection && !readingDone && willHaveAll) {
-        startCompleting(async () => {
-          await api.completeReading(lesson.id);
-          setReadingDone(true);
-          go(step + 1);
-        });
-        return;
-      }
-    }
-    go(step + 1);
+    const nxt = LEVELS[levelIndex + 1];
+    if (nxt) {
+      setLevelTab(nxt.key);
+      scrollBodyTop();
+    } else closeCard();
   };
-
-  const counts = {
-    duvida: annotations.filter((a) => a.kind === "duvida" && !a.resolved).length,
-  };
-
-  const stepLabel = (s: Step): string =>
-    s.type === "secao" ? s.section.title || SECTION_LABELS[s.section.kind as LessonSectionKind] : s.type === "nivel" ? LEVEL_TITLE[s.level] : s.type === "revisao" ? "Questões de revisão" : "Concluir e avançar";
-
-  const stepState = (s: Step): "feito" | "atual" | "bloqueado" | "livre" => {
-    if (s === current) return "atual";
-    if (s.type === "secao") return readingDone || seen.has(s.section.id) ? "feito" : "livre";
-    if (s.type === "nivel") {
-      const n = LEVELS.find((l) => l.key === s.level)!.n;
-      const st = levelStatus(levelsPassed, n);
-      return st === "aprovado" ? "feito" : st === "bloqueado" ? "bloqueado" : "livre";
-    }
-    return "livre";
-  };
-
-  const stepIndexOf = (id: string) => steps.findIndex((s) => s.type === "secao" && s.section.id === id);
-  const moduleDone = (mod: LessonModule) => mod.sectionIds.filter((id) => readingDone || seen.has(id)).length;
-
-  const tocItem = (s: Step, i: number, indent = false) => {
-    const st = stepState(s);
-    const anns = s.type === "secao" ? annotationsBySection.get(s.section.id) ?? [] : [];
-    return (
-      <li key={i}>
-        <button
-          type="button"
-          onClick={() => go(i)}
-          aria-current={st === "atual" ? "step" : undefined}
-          className={`flex w-full items-start gap-2 rounded-md px-2 py-1.5 text-left t-small text-tinta-suave hover:bg-nevoa aria-[current=step]:bg-nevoa aria-[current=step]:font-semibold aria-[current=step]:text-destaque ${indent ? "pl-3" : ""}`}
-        >
-          <span className="w-6 shrink-0 tabular-nums text-tinta-fraca">{s.type === "secao" ? s.n : s.type === "fim" ? "→" : "?"}</span>
-          <span className="flex-1">{stepLabel(s)}</span>
-          {st === "feito" && <Icon name="check" className="mt-0.5 size-3.5 text-acerto" label="Concluído" />}
-          {st === "bloqueado" && <Icon name="cadeado" className="mt-0.5 size-3.5 text-tinta-fraca" label="Bloqueado" />}
-          {anns.some((a) => a.kind === "revisar") && <Icon name="bookmark" className="mt-0.5 size-3.5 text-destaque" label="Marcado para revisar" />}
-        </button>
-      </li>
-    );
-  };
-
-  const currentModule = current.type === "secao" ? moduleOf.get(current.section.id)?.mod : undefined;
-
-  const toc = (
-    <div className="flex flex-col gap-2" data-testid="modulos-aula">
-      {modules.map((mod) => {
-        const done = moduleDone(mod);
-        const total = mod.sectionIds.length;
-        const isCur = currentModule === mod;
-        return (
-          <details key={mod.n} open className={`group rounded-[14px] border ${isCur ? "border-[#D90A00]/40 bg-[#FFF5F4]" : "border-linha bg-superficie"}`}>
-            <summary className="flex cursor-pointer list-none items-center gap-2.5 px-2.5 py-2">
-              <span className={`flex size-8 shrink-0 items-center justify-center rounded-[10px] text-[12px] font-black tabular-nums ${done === total ? "bg-acerto text-white" : isCur ? "bg-[#D90A00] text-white" : "bg-nevoa text-tinta-suave"}`}>
-                {done === total ? <Icon name="check" className="size-4" /> : String(mod.n).padStart(2, "0")}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate t-small font-bold text-tinta">{mod.title}</span>
-                <span className="mt-1 flex items-center gap-2">
-                  <span className="h-1 flex-1 overflow-hidden rounded-full bg-linha"><span className="block h-full rounded-full bg-[#D90A00]" style={{ width: `${(done / total) * 100}%` }} /></span>
-                  <span className="t-tiny tabular-nums text-tinta-fraca">{done}/{total}</span>
-                </span>
-              </span>
-              <Icon name="chevronDown" className="size-4 shrink-0 text-tinta-fraca transition-transform group-open:rotate-180" />
-            </summary>
-            <ol className="flex flex-col gap-0.5 px-1 pb-2">{mod.sectionIds.map((id) => tocItem(steps[stepIndexOf(id)]!, stepIndexOf(id), true))}</ol>
-          </details>
-        );
-      })}
-      <div className="rounded-[14px] border border-linha bg-superficie px-1 py-1.5">
-        <p className="px-2.5 pb-1 pt-0.5 t-tiny font-bold uppercase tracking-[0.12em] text-tinta-fraca">Avaliação</p>
-        <ol className="flex flex-col gap-0.5">{steps.map((s, i) => (s.type === "secao" ? null : tocItem(s, i)))}</ol>
-      </div>
-    </div>
-  );
-
-  /** Mapa visual dos módulos (no início da aula). */
-  const moduleMap = (
-    <div className="mt-5" aria-label="Módulos da aula">
-      <p className="t-tiny font-bold uppercase tracking-[0.14em] text-tinta-fraca">Mapa da aula · {modules.length} módulos</p>
-      <ol className="mt-2 grid gap-2 sm:grid-cols-2">
-        {modules.map((mod) => {
-          const done = moduleDone(mod);
-          const total = mod.sectionIds.length;
-          return (
-            <li key={mod.n}>
-              <button
-                type="button"
-                onClick={() => go(stepIndexOf(mod.sectionIds[0]!))}
-                className="group flex w-full items-center gap-3 rounded-[16px] border border-linha bg-superficie p-3 text-left transition-[border-color,box-shadow,transform] hover:border-[#D90A00]/50 hover:shadow-[0_8px_22px_rgba(217,10,0,0.10)] active:scale-[0.99]"
-              >
-                <span className={`flex size-11 shrink-0 flex-col items-center justify-center rounded-[12px] ${done === total ? "bg-acerto text-white" : "bg-gradient-to-br from-[#E10600] to-[#8A0000] text-white"}`}>
-                  <span className="text-[9px] font-bold uppercase leading-none tracking-wider opacity-80">Mód.</span>
-                  <span className="text-[17px] font-black leading-none tabular-nums">{String(mod.n).padStart(2, "0")}</span>
-                </span>
-                <span className="min-w-0 flex-1">
-                  <span className="flex items-center gap-1.5 font-bold leading-snug">
-                    <Icon name={mod.icon} className="size-4 shrink-0 text-[#D90A00]" /> <span className="line-clamp-2">{mod.title}</span>
-                  </span>
-                  <span className="mt-1 flex items-center gap-2">
-                    <span className="h-1.5 flex-1 overflow-hidden rounded-full bg-linha"><span className="block h-full rounded-full bg-[#D90A00]" style={{ width: `${(done / total) * 100}%` }} /></span>
-                    <span className="t-tiny tabular-nums text-tinta-fraca">{done}/{total} {total === 1 ? "tema" : "temas"}</span>
-                  </span>
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-    </div>
-  );
 
   const renderQuestion = (q: ReaderQuestion, n: number, label?: string) => (
     <div key={q.id} onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
@@ -353,312 +230,222 @@ export function LessonReader(props: ReaderProps) {
     </div>
   );
 
-  const pct = Math.round(((step + 1) / steps.length) * 100);
-  const isLast = step === steps.length - 1;
+  // Prévia do card 8: uma questão rápida por vez (motor real de questões).
+  const quizPool = useMemo(() => questions.filter((q) => !q.recovery_of && (q.level ?? "facil") === "facil"), [questions]);
+  const [quizIdx, setQuizIdx] = useState<number | null>(null);
+  const quizStart = useMemo(() => Math.max(0, quizPool.findIndex((q) => !props.answers?.[q.id])), [quizPool, props.answers]);
+  const quizAt = (quizIdx ?? quizStart) % Math.max(1, quizPool.length);
 
-  const navButtons = (
-    <>
-          <button
-        type="button"
-        onClick={() => go(step - 1)}
-        disabled={step === 0}
-        className="inline-flex min-h-12 items-center gap-1.5 rounded-full border border-linha-forte bg-superficie px-4 font-semibold shadow-sm transition-transform active:scale-95 disabled:opacity-40"
-      >
-        <Icon name="setaEsquerda" className="size-4" /> Anterior
-      </button>
-      {!isLast ? (
-        <button
-          type="button"
-          onClick={next}
-          disabled={completing}
-          className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-azul px-5 font-semibold text-white shadow-md transition-transform active:scale-95 disabled:opacity-60"
-        >
-          {completing ? "Salvando…" : current.type === "secao" && current.n === sections.length ? "Ir para as questões" : steps[step + 1]?.type === "fim" ? "Concluir" : "Próximo"}
-          <Icon name="setaDireita" className="size-4" />
-        </button>
-      ) : props.nextHref ? (
-        <Link href={props.nextHref} className="inline-flex min-h-12 items-center gap-1.5 rounded-full bg-azul px-5 font-semibold text-white shadow-md transition-transform active:scale-95">
-          Próximo tema <Icon name="setaDireita" className="size-4" />
+  const sectionsBody = (n: number) =>
+    byCard.get(n)!.map((s) => (
+      <div key={s.id}>
+        <SectionBlock
+          section={s}
+          lessonId={lesson.id}
+          nodes={nodes}
+          annotations={annotationsBySection.get(s.id) ?? []}
+          clarifications={props.clarifications.filter((c) => c.section_id === s.id)}
+          onAnnotation={(a, removed) => setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : [a, ...list.filter((x) => x.id !== a.id)]))}
+        />
+        {(interleaved.get(s.id) ?? []).map((q) => (
+          <div key={q.id} className="mt-5" onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
+            <p className="mb-2 inline-flex items-center gap-1.5 t-small font-semibold text-destaque">
+              <Icon name="raio" className="size-4" /> Questão sobre este tema
+            </p>
+            <QuestionCard q={q} number={numberOf.get(q.id)!} context={context} compact active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} saved={savedFor(q.id)} onAnswered={remember} />
+          </div>
+        ))}
+      </div>
+    ));
+
+  const finished = levelsPassed >= 3;
+  const conclusion = (
+    <section className="flex flex-col gap-3" aria-label="Concluir e avançar" data-testid="conclusao-aula">
+      {finished || context === "revisao" ? (
+        <Notice tone="sucesso" title="Tema concluído">Você passou por todos os temas e aprovou os três níveis desta aula.</Notice>
+      ) : (
+        <Notice tone="info" title="Ainda falta aprovar os níveis">
+          {LEVELS.filter((l) => levelStatus(levelsPassed, l.n) !== "aprovado").map((l) => l.label).join(", ")} ainda não aprovado(s). Você pode avançar e voltar depois.
+        </Notice>
+      )}
+      {props.nextHref ? (
+        <Link href={props.nextHref} className="flex items-center justify-between gap-3 rounded-lg bg-[#E50914] px-5 py-4 text-white transition-transform active:scale-[0.98]">
+          <span>
+            <span className="block t-tiny font-semibold uppercase tracking-wide text-white/80">Próximo tema</span>
+            <span className="block text-lg font-bold">{props.nextLabel}</span>
+          </span>
+          <Icon name="setaDireita" className="size-6 shrink-0" />
         </Link>
       ) : (
-        <span />
+        <p className="t-small text-tinta-suave">Este é o último tema desta matéria. Para continuar, crie um estudo novo ou coloque outros temas nesta pasta.</p>
       )}
-    </>
+      <div className="flex flex-wrap gap-4 t-small">
+        <Link href={`/trilhas/${lesson.trailId}#pdf`} className="font-semibold text-destaque">PDF do conteúdo</Link>
+        <Link href="/trilhas" className="font-semibold text-destaque">Minhas pastas e estudos</Link>
+      </div>
+    </section>
   );
+
+  const questionsBody =
+    context === "revisao" ? (
+      <section aria-label="Questões de revisão">
+        <div className="flex flex-col gap-4">{questions.filter((q) => !interleavedIds.has(q.id)).map((q) => renderQuestion(q, numberOf.get(q.id)!))}</div>
+        <UnitResult lessonId={lesson.id} context={context} readingDone={readingDone} nextId={props.nextId} total={questions.length} />
+      </section>
+    ) : (
+      <>
+        {byCard.get(8)!.length > 0 && <div className="mb-6">{sectionsBody(8)}</div>}
+        <p className="mb-3 t-small text-tinta-suave">
+          Três níveis, nesta ordem: fácil, médio e difícil. Cada um exige pelo menos 90% de acerto para liberar o seguinte. Errou? A recuperação refaz só os pontos errados.
+        </p>
+        <div className="al-niveis" role="tablist" aria-label="Níveis de questões">
+          {LEVELS.map((l) => {
+            const st = levelStatus(levelsPassed, l.n);
+            return (
+              <button key={l.key} type="button" role="tab" aria-selected={levelTab === l.key} onClick={() => setLevelTab(l.key)} data-status={st}>
+                {st === "aprovado" ? <Icon name="check" className="size-3.5" /> : st === "bloqueado" ? <Icon name="cadeado" className="size-3.5" /> : null}
+                {l.label}
+              </button>
+            );
+          })}
+        </div>
+        <section aria-label={LEVEL_TITLE[levelTab]} className="mt-4">
+          <SingleLevel
+            key={levelTab}
+            lessonId={lesson.id}
+            levelKey={levelTab}
+            questions={questions}
+            interleavedIds={interleavedIds}
+            levelsPassed={levelsPassed}
+            readingDone={readingDone}
+            renderQuestion={renderQuestion}
+            onPassed={(n) => setLevelsPassed((p) => Math.max(p, n))}
+            onAdvance={() => {
+              const nxt = LEVELS[levelIndex + 1];
+              if (nxt) {
+                setLevelTab(nxt.key);
+                scrollBodyTop();
+              }
+            }}
+            isAnswered={(id) => !!savedFor(id)}
+          />
+        </section>
+        {levelTab === "dificil" && <div className="mt-6">{conclusion}</div>}
+      </>
+    );
+
+  const cardMeta = Object.fromEntries(
+    BOARD_CARDS.map((c) => [c.n, { count: byCard.get(c.n)!.length, done: c.n === 8 ? finished : byCard.get(c.n)!.length > 0 && cardDone(c.n) }]),
+  ) as Record<number, { count: number; done: boolean }>;
+  const nextToStudy = contentCards.find((n) => !cardDone(n)) ?? 8;
+  const readingFrac = sections.length ? seenCount / sections.length : 0;
+  const open = openCard ? BOARD_CARDS.find((c) => c.n === openCard)! : null;
+  const prevOfOpen = openCard ? prevCardOf(openCard) : null;
+
+  // O aviso fica dentro do card aberto (o diálogo modal cobre o resto da tela).
+  const blockedToast = blocked ? (
+        <p role="alert" className="pointer-events-none fixed inset-x-4 bottom-24 z-[60] mx-auto flex max-w-md items-center justify-center gap-2 rounded-2xl bg-tinta px-4 py-3 text-center t-small font-semibold text-white shadow-[0_16px_40px_rgba(0,0,0,0.3)] md:bottom-28" data-testid="trava-proximo">
+          <Icon name="cadeado" className="size-4 shrink-0" /> {blocked}
+        </p>
+  ) : null;
 
   return (
     <div>
-      <div ref={topRef} className="scroll-mt-4" />
-      {blocked && (
-        <p role="alert" className="pointer-events-none fixed inset-x-4 bottom-28 z-50 mx-auto flex max-w-md items-center justify-center gap-2 rounded-2xl bg-tinta px-4 py-3 text-center t-small font-semibold text-white shadow-[0_16px_40px_rgba(0,0,0,0.3)] md:bottom-8" data-testid="trava-proximo">
-          <Icon name="cadeado" className="size-4 shrink-0" /> {blocked}
-        </p>
-      )}
+      {!openCard && blockedToast}
 
       {props.outline && <LessonTreePortal trailId={lesson.trailId} trailTitle={lesson.trailTitle} outline={props.outline} currentId={lesson.id} />}
-      <LessonModeTabs mode={mode} onChange={(m) => setMode(m)} />
 
-      {mode === "visao" ? (
-        <LessonBoardView
-          board={board}
-          lesson={lesson}
-          position={props.position ?? null}
-          moduleTitle={props.moduleTitle ?? null}
-          progressPct={Math.round((((readingDone ? 1 : 0) + levelsPassed) / 4) * 100)}
-          prevId={props.prevId}
-          nextId={props.nextId}
-          quiz={
-            quizPool.length
-              ? {
-                  node: renderQuestion(quizPool[quizAt % quizPool.length]!, numberOf.get(quizPool[quizAt % quizPool.length]!.id)!),
-                  label: `Questão ${(quizAt % quizPool.length) + 1} de ${quizPool.length} · nível fácil`,
-                  onNext: quizPool.length > 1 ? () => setQuizIdx((quizAt + 1) % quizPool.length) : null,
-                }
-              : null
-          }
-          onStudy={openGuided}
-        />
-      ) : (
-      <>
-      <div className="md:grid md:grid-cols-[230px_minmax(0,1fr)] md:gap-10 lg:grid-cols-[250px_minmax(0,1fr)]">
-        <aside className="hidden md:block">
-          <div className="sticky top-6 flex max-h-[calc(100dvh-3rem)] flex-col gap-4 overflow-y-auto pb-6">
-            <Link href={`/trilhas/${lesson.trailId}`} className="inline-flex items-center gap-1 t-small font-semibold text-destaque">
-              <Icon name="chevronLeft" className="size-4" /> {lesson.trailTitle}
-            </Link>
-            <nav aria-label="Etapas da aula">
-              <p className="mb-1 px-2 t-tiny font-semibold text-tinta-fraca">
-                Módulos e temas · <span className="tabular-nums" data-testid="secoes-vistas">{seenCount} de {sections.length}</span>
-              </p>
-              {toc}
-            </nav>
-            <button type="button" onClick={() => notesRef.current?.showModal()} className="mx-2 inline-flex items-center gap-2 t-small font-semibold text-tinta-suave hover:text-destaque">
-              <Icon name="nota" className="size-4" /> Minhas anotações ({annotations.length})
-            </button>
-          </div>
-        </aside>
-
-        <article id="corpo-aula" className="min-w-0 pb-28 md:pb-10">
-          {/* Cabeçalho fixo: onde estou e quanto falta */}
-          <div className="sticky top-0 z-20 -mx-4 border-b border-linha bg-papel/95 px-4 pb-2 pt-2 backdrop-blur md:mx-auto md:max-w-[820px] md:px-0">
-            <div className="flex items-center gap-2">
-              <button type="button" onClick={() => tocRef.current?.showModal()} className="inline-flex min-h-10 items-center gap-1.5 rounded-md border border-linha-forte bg-superficie px-3 t-small font-semibold md:hidden">
-                <Icon name="indice" className="size-4" /> Etapas
-              </button>
-              <p className="min-w-0 flex-1 truncate t-small font-semibold">
-                <span className="text-tinta-fraca">
-                  {current.type === "secao"
-                    ? (() => {
-                        const m = moduleOf.get(current.section.id);
-                        return m ? `Módulo ${m.mod.n} · tema ${m.pos} de ${m.mod.sectionIds.length}` : `Tema ${current.n} de ${sections.length}`;
-                      })()
-                    : current.type === "fim"
-                      ? "Fim da aula"
-                      : "Avaliação"}{" "}
-                  ·{" "}
-                </span>
-                {stepLabel(current)}
-              </p>
-              <button type="button" onClick={() => notesRef.current?.showModal()} className="inline-flex min-h-10 items-center rounded-md px-2 text-tinta-suave md:hidden" aria-label="Anotações">
-                <Icon name="nota" className="size-5" />
-              </button>
-            </div>
-            <div className="mt-2 flex h-1.5 gap-2" role="progressbar" aria-label="Progresso na aula" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}>
-              {[...modules.map((mod) => mod.sectionIds.map((id) => stepIndexOf(id))), steps.map((s, i) => (s.type === "secao" ? -1 : i)).filter((i) => i >= 0)].map((group, gi) => (
-                <div key={gi} className="flex flex-1 gap-[2px]" style={{ flexGrow: group.length }}>
-                  {group.map((i) => {
-                    const s = steps[i]!;
-                    const st = stepState(s);
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => go(i)}
-                        aria-label={`Ir para: ${stepLabel(s)}`}
-                        className={`h-full flex-1 rounded-full transition-colors ${st === "atual" ? "bg-azul" : st === "feito" ? "bg-acerto" : s.type === "nivel" ? "bg-linha-forte" : "bg-linha"}`}
-                      />
-                    );
-                  })}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* No computador, a aula fica centralizada num card. */}
-          <div key={step} ref={stepRef} className="entrar mt-5 md:mx-auto md:max-w-[820px] md:rounded-[24px] md:border md:border-linha md:bg-superficie md:p-8 md:shadow-[0_18px_50px_rgba(0,0,0,0.07)] lg:p-10">
-            {step === 0 && (
-              <header className="mb-5">
-                <Link href={`/trilhas/${lesson.trailId}`} className="t-small text-destaque underline underline-offset-2 md:hidden">{lesson.trailTitle}</Link>
-                <h1 className="mt-1 t-h1">{lesson.title}</h1>
-                <p className="mt-1 max-w-[68ch] text-tinta-suave">{lesson.objective}</p>
-                <div className="mt-3 flex flex-wrap items-center gap-2 t-tiny text-tinta-fraca">
-                  {lesson.stateLabel && <Tag tone="azul">{lesson.stateLabel}</Tag>}
-                  <span>{modules.length} módulos · {sections.length} temas · 3 níveis de questões · ~{lesson.estimatedMinutes} min</span>
-                  {counts.duvida > 0 && <Tag tone="ambar">{counts.duvida} dúvida(s) aberta(s)</Tag>}
-                </div>
-                {moduleMap}
-                <div className="mt-4 flex flex-col gap-3">{props.notices}</div>
-                <details className="mt-4 rounded-md border border-linha bg-superficie px-4 py-3 t-small">
-                  <summary className="cursor-pointer font-semibold">Itens do seu conteúdo nesta aula ({nodes.length})</summary>
-                  <ul className="mt-2 flex flex-col gap-1">
-                    {nodes.map((n) => (
-                      <li key={n.key} className="flex items-start justify-between gap-3">
-                        <span className={/\brevogad[oa]s?\b/i.test(n.title) ? "item-revogado" : undefined}>{n.marker && <span className="mr-1 font-semibold text-destaque">{n.marker}</span>}{n.title}</span>
-                        <Tag tone={n.taught ? "azul" : "ambar"}>{n.taught ? "Ensinado" : "Pendente"}</Tag>
-                      </li>
-                    ))}
-                  </ul>
-                </details>
-              </header>
-            )}
-
-            {current.type === "secao" && (
-              <>
-                {(() => {
-                  const m = moduleOf.get(current.section.id);
-                  // No início da aula o mapa dos módulos já aparece acima.
-                  if (!m || step === 0) return null;
-                  const { mod, pos } = m;
-                  if (pos !== 1) {
-                    return (
-                      <p className="mb-3 inline-flex items-center gap-2 rounded-full bg-[#FFF1F0] px-3 py-1 t-tiny font-bold uppercase tracking-[0.1em] text-[#B00800]">
-                        <Icon name={mod.icon} className="size-3.5" /> Módulo {String(mod.n).padStart(2, "0")} · {mod.title}
-                      </p>
-                    );
-                  }
-                  return (
-                    <div className="relative mb-6 overflow-hidden rounded-[20px] bg-gradient-to-br from-[#E10600] via-[#B80500] to-[#6E0000] p-5 text-white shadow-[0_14px_36px_rgba(217,10,0,0.22)]" data-testid="abertura-modulo">
-                      <span className="pointer-events-none absolute -right-10 -top-12 size-44 rounded-full bg-white/10 blur-2xl" aria-hidden />
-                      <div className="relative flex items-start gap-4">
-                        <span className="flex size-14 shrink-0 flex-col items-center justify-center rounded-[14px] bg-black/30 ring-1 ring-white/20">
-                          <span className="text-[10px] font-bold uppercase leading-none tracking-wider opacity-80">Módulo</span>
-                          <span className="text-[24px] font-black leading-none tabular-nums">{String(mod.n).padStart(2, "0")}</span>
-                        </span>
-                        <div className="min-w-0 flex-1">
-                          <p className="t-tiny font-semibold uppercase tracking-[0.14em] text-white/75">Módulo {mod.n} de {modules.length}</p>
-                          <h2 className="mt-0.5 text-[22px] font-black leading-tight">{mod.title}</h2>
-                          <p className="mt-1 t-small text-white/80">{mod.sectionIds.length} {mod.sectionIds.length === 1 ? "tema" : "temas"} neste módulo</p>
-                        </div>
-                      </div>
-                      <ol className="relative mt-4 flex flex-col gap-1.5">
-                        {mod.sectionIds.map((id, k) => {
-                          const sec = sections.find((x) => x.id === id)!;
-                          const done = readingDone || seen.has(id);
-                          return (
-                            <li key={id}>
-                              <button type="button" onClick={() => go(stepIndexOf(id))} className={`flex w-full items-center gap-2.5 rounded-[12px] px-3 py-2 text-left t-small ${id === current.section.id ? "bg-white text-[#8A0000]" : "bg-black/20 text-white/90 hover:bg-black/30"}`}>
-                                <span className={`flex size-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${done ? "bg-acerto text-white" : id === current.section.id ? "bg-[#D90A00] text-white" : "bg-white/20"}`}>
-                                  {done ? <Icon name="check" className="size-3.5" /> : k + 1}
-                                </span>
-                                <span className="min-w-0 flex-1 truncate font-semibold">{sec.title}</span>
-                              </button>
-                            </li>
-                          );
-                        })}
-                      </ol>
-                    </div>
-                  );
-                })()}
-                <SectionBlock
-                  section={current.section}
-                  lessonId={lesson.id}
-                  nodes={nodes}
-                  annotations={annotationsBySection.get(current.section.id) ?? []}
-                  clarifications={props.clarifications.filter((c) => c.section_id === current.section.id)}
-                  onAnnotation={(a, removed) => setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : [a, ...list.filter((x) => x.id !== a.id)]))}
-                />
-                {(interleaved.get(current.section.id) ?? []).map((q) => (
-                  <div key={q.id} className="mt-6" onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
-                    <p className="mb-2 inline-flex items-center gap-1.5 t-small font-semibold text-destaque">
-                      <Icon name="raio" className="size-4" /> Questão sobre este tema
-                    </p>
-                    <QuestionCard q={q} number={numberOf.get(q.id)!} context={context} compact active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} saved={savedFor(q.id)} onAnswered={remember} />
-                  </div>
+      <LessonBoardView
+        board={board}
+        lesson={lesson}
+        position={props.position ?? null}
+        moduleTitle={props.moduleTitle ?? null}
+        progressPct={Math.round(((readingDone ? 1 : readingFrac) + levelsPassed) / 4 * 100)}
+        reading={{ seen: seenCount, total: sections.length }}
+        levelsPassed={levelsPassed}
+        prevId={props.prevId}
+        nextId={props.nextId}
+        cards={cardMeta}
+        startLabel={seenCount === 0 ? "Começar a aula" : finished ? "Rever a aula" : "Continuar a aula"}
+        onStart={() => openCardN(nextToStudy)}
+        onOpen={(n) => openCardN(n)}
+        notesCount={annotations.length}
+        onNotes={() => notesRef.current?.showModal()}
+        notices={props.notices}
+        quiz={
+          quizPool.length
+            ? {
+                node: renderQuestion(quizPool[quizAt]!, numberOf.get(quizPool[quizAt]!.id)!),
+                label: `Questão ${quizAt + 1} de ${quizPool.length} · nível fácil`,
+                onNext: quizPool.length > 1 ? () => setQuizIdx((quizAt + 1) % quizPool.length) : null,
+              }
+            : null
+        }
+        after={
+          <>
+            {finished && conclusion}
+            <details className="rounded-[12px] border border-[#E6E8EC] bg-white px-4 py-3 t-small">
+              <summary className="cursor-pointer font-semibold">Itens do seu conteúdo nesta aula ({nodes.length})</summary>
+              <ul className="mt-2 flex flex-col gap-1">
+                {nodes.map((n) => (
+                  <li key={n.key} className="flex items-start justify-between gap-3">
+                    <span className={/\brevogad[oa]s?\b/i.test(n.title) ? "item-revogado" : undefined}>{n.marker && <span className="mr-1 font-semibold text-destaque">{n.marker}</span>}{n.title}</span>
+                    <Tag tone={n.taught ? "azul" : "ambar"}>{n.taught ? "Ensinado" : "Pendente"}</Tag>
+                  </li>
                 ))}
-                {current.n === sections.length && !readingDone && sections.some((s) => !seen.has(s.id) && s.id !== current.section.id) && (
-                  <div className="mt-6">
-                    <Notice tone="alerta" title="Faltam temas">
-                      Passe por todos os temas antes das questões. Toque em “Etapas” para ver os que faltam.
-                    </Notice>
-                  </div>
-                )}
-              </>
-            )}
+              </ul>
+            </details>
+          </>
+        }
+      />
 
-            {current.type === "nivel" && (
-              <section aria-label={LEVEL_TITLE[current.level]}>
-                <p className="mb-3 t-small text-tinta-suave">
-                  Três níveis, nesta ordem: fácil, médio e difícil. Cada um exige pelo menos 90% de acerto para liberar o seguinte. Errou? A recuperação refaz só os pontos errados.
+      {/* Card aberto: conteúdo completo do card */}
+      <dialog ref={dialogRef} className="al-dialogo" aria-labelledby="al-dialogo-titulo" onClose={() => setOpenCard(null)}>
+        {open && (
+          <div className="al-dialogo-caixa">
+            <header className="al-dialogo-topo">
+              <span className="al-num" aria-hidden>{open.n}</span>
+              <div className="min-w-0 flex-1">
+                <p className="al-dialogo-sobre">
+                  {open.n === 8 ? (context === "revisao" ? "Revisão" : "Avaliação por níveis") : `Card ${open.n} · ${byCard.get(open.n)!.length} ${byCard.get(open.n)!.length === 1 ? "tema" : "temas"}`}
                 </p>
-                <SingleLevel
-                  lessonId={lesson.id}
-                  levelKey={current.level}
-                  questions={questions}
-                  interleavedIds={interleavedIds}
-                  levelsPassed={levelsPassed}
-                  readingDone={readingDone}
-                  renderQuestion={renderQuestion}
-                  onPassed={(n) => setLevelsPassed((p) => Math.max(p, n))}
-                  onAdvance={() => go(step + 1)}
-                  isAnswered={(id) => !!savedFor(id)}
-                />
-              </section>
-            )}
-
-            {current.type === "revisao" && (
-              <section aria-label="Questões de revisão">
-                <div className="flex flex-col gap-4">{questions.filter((q) => !interleavedIds.has(q.id)).map((q) => renderQuestion(q, numberOf.get(q.id)!))}</div>
-                <UnitResult lessonId={lesson.id} context={context} readingDone={readingDone} nextId={props.nextId} total={questions.length} />
-              </section>
-            )}
-
-            {current.type === "fim" && (
-              <section className="flex flex-col gap-4" aria-label="Concluir e avançar">
-                {levelsPassed >= 3 || context === "revisao" ? (
-                  <Notice tone="sucesso" title="Tema concluído">Você passou por todos os temas e aprovou os três níveis desta aula.</Notice>
+                <h2 id="al-dialogo-titulo" className="al-dialogo-titulo">{open.title}</h2>
+              </div>
+              <button type="button" onClick={closeCard} className="al-dialogo-fechar" aria-label="Fechar e voltar aos cards">
+                <Icon name="x" className="size-5" />
+              </button>
+            </header>
+            <div ref={bodyRef} className="al-dialogo-corpo" key={open.n}>
+              {open.n === 8 ? questionsBody : <div className="flex flex-col gap-6">{sectionsBody(open.n)}</div>}
+            </div>
+            {blockedToast}
+            <nav className="al-dialogo-base" aria-label="Navegação entre cards">
+              <button type="button" className="al-btn al-btn-contorno" disabled={!prevOfOpen} onClick={() => prevOfOpen && openCardN(prevOfOpen)}>
+                <Icon name="setaEsquerda" className="size-4" /> <span className="hidden sm:inline">Card anterior</span><span className="sm:hidden">Anterior</span>
+              </button>
+              {open.n === 8 ? (
+                context === "revisao" ? (
+                  <button type="button" className="al-btn al-btn-vermelho" onClick={closeCard}>Voltar aos cards</button>
                 ) : (
-                  <Notice tone="info" title="Ainda falta aprovar os níveis">
-                    {LEVELS.filter((l) => levelStatus(levelsPassed, l.n) !== "aprovado").map((l) => l.label).join(", ")} ainda não aprovado(s). Você pode avançar e voltar depois.
-                  </Notice>
-                )}
-                {props.nextHref ? (
-                  <Link
-                    href={props.nextHref}
-                    className="flex items-center justify-between gap-3 rounded-lg bg-azul px-5 py-4 text-white transition-transform active:scale-[0.98]"
-                  >
-                    <span>
-                      <span className="block t-tiny font-semibold uppercase tracking-wide text-white/80">Próximo tema</span>
-                      <span className="block text-lg font-bold">{props.nextLabel}</span>
-                    </span>
-                    <Icon name="setaDireita" className="size-6 shrink-0" />
-                  </Link>
-                ) : (
-                  <p className="t-small text-tinta-suave">Este é o último tema desta matéria. Para continuar, crie um estudo novo ou coloque outros temas nesta pasta.</p>
-                )}
-                <div className="flex flex-wrap gap-4 t-small">
-                  <Link href={`/trilhas/${lesson.trailId}#pdf`} className="font-semibold text-destaque">PDF do conteúdo</Link>
-                  <Link href="/trilhas" className="font-semibold text-destaque">Minhas pastas e estudos</Link>
-                </div>
-              </section>
-            )}
-            <nav aria-label="Navegação da aula (computador)" className="mt-8 hidden items-center justify-between gap-3 border-t border-linha pt-5 md:flex">{navButtons}</nav>
+                  <button type="button" className="al-btn al-btn-vermelho" onClick={nextLevel}>
+                    {LEVELS[levelIndex + 1] ? `Próximo nível: ${LEVELS[levelIndex + 1]!.label}` : "Concluir e voltar aos cards"} <Icon name="setaDireita" className="size-4" />
+                  </button>
+                )
+              ) : (
+                <button type="button" className="al-btn al-btn-vermelho" disabled={completing} onClick={() => concludeCard(open.n)}>
+                  {completing ? (
+                    "Salvando…"
+                  ) : (
+                    <>
+                      <span className="sr-only sm:not-sr-only">{nextContentCard(open.n) ? "Concluir e ir ao próximo card" : "Concluir e ir para as questões"}</span>
+                      <span aria-hidden className="sm:hidden">{nextContentCard(open.n) ? "Concluir card" : "Ir para as questões"}</span>
+                    </>
+                  )} <Icon name="setaDireita" className="size-4" />
+                </button>
+              )}
+            </nav>
           </div>
-        </article>
-      </div>
-
-      {/* Navegação fixa no celular: anterior / próximo (no computador fica no fim do card) */}
-      <nav aria-label="Navegação da aula" className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+5.5rem)] z-30 px-4 md:hidden">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">{navButtons}</div>
-      </nav>
-
-      <dialog ref={tocRef} className="m-0 mt-auto w-full max-w-none rounded-t-lg border border-linha bg-superficie p-4 backdrop:bg-black/40 md:hidden" aria-label="Etapas da aula">
-        <div className="mb-2 flex items-center justify-between">
-          <p className="t-h3">Etapas da aula</p>
-          <button type="button" onClick={() => tocRef.current?.close()} className="rounded-md p-2 hover:bg-nevoa" aria-label="Fechar">
-            <Icon name="x" />
-          </button>
-        </div>
-        <div className="max-h-[65dvh] overflow-y-auto">{toc}</div>
+        )}
       </dialog>
 
       <AnnotationsDialog
@@ -666,12 +453,10 @@ export function LessonReader(props: ReaderProps) {
         annotations={annotations}
         onGo={(id) => {
           notesRef.current?.close();
-          if (id) goToSection(id);
+          if (id) openCardN(cardOfSection.get(id) ?? 1, id);
         }}
         onChange={(a, removed) => setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : list.map((x) => (x.id === a.id ? a : x))))}
       />
-      </>
-      )}
     </div>
   );
 }

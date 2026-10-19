@@ -11,9 +11,12 @@
  * - Letras e frases: um reflexo de luz que atravessa os textos devagar (máscara gerada
  *   a partir da própria arte, então só as letras brilham).
  * - "V" do APROVUM: letreiro de neon — halo vermelho, tubo aceso e falhas de acendimento.
+ *
+ * A cada 3 segundos o banner se reveza com os banners de aprovação dos alunos.
  */
 
 import { BannerGate } from "@/components/banner-gate";
+import { BannerRotator } from "./banner-rotator";
 
 const W = 1664;
 const H = 1536;
@@ -35,6 +38,7 @@ export function BrandBanner() {
       testId="painel-banner"
       assets={["/banner-estudo-fundo.webp", "/banner-estudo-texto.png", "/banner-estudo-v.png", "/banner-estudo-olhos.png", "/fogo-textura.webp"]}
     >
+      <BannerRotator>
       {/* Laterais no desktop: a própria arte, ampliada e desfocada */}
       <div className="pointer-events-none absolute inset-0 hidden lg:block" aria-hidden>
         <img src="/banner-estudo-fundo.webp" alt="" className="h-full w-full scale-110 object-cover blur-2xl" />
@@ -81,6 +85,7 @@ export function BrandBanner() {
           </div>
         </div>
       </div>
+      </BannerRotator>
     </BannerGate>
   );
 }

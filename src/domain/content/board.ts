@@ -268,3 +268,51 @@ export function buildLessonBoard(input: {
     mindmap: { center: (t.lead ? `${t.lead} ${t.highlight}` : t.highlight).toLocaleUpperCase("pt-BR"), branches: branches.slice(0, 6) },
   };
 }
+
+/** Os nove cards da visão da aula (número → título). */
+export const BOARD_CARDS = [
+  { n: 1, title: "Entenda o conceito" },
+  { n: 2, title: "Visualize" },
+  { n: 3, title: "Leia a lei" },
+  { n: 4, title: "Destrinche a lei" },
+  { n: 5, title: "Diferencie" },
+  { n: 6, title: "Veja na prática" },
+  { n: 7, title: "Atenção à banca" },
+  { n: 8, title: "Questões de fixação" },
+  { n: 9, title: "Mapa mental" },
+] as const;
+
+const CARD_OF_KIND: Record<string, number> = {
+  objetivo: 1,
+  conhecimentos_previos: 1,
+  introducao: 1,
+  explicacao: 1,
+  aprofundamento: 1,
+  doutrina: 1,
+  esquema: 2,
+  texto_legal: 3,
+  jurisprudencia: 3,
+  conceitos_fundamentais: 4,
+  comparacao: 5,
+  quadro_comparativo: 5,
+  exemplos: 6,
+  aplicacao: 6,
+  pegadinhas: 7,
+  excecoes: 7,
+  interpretacao_banca: 7,
+  flashcards: 8,
+  resumo: 9,
+  checklist: 9,
+  referencias: 9,
+  proxima_etapa: 9,
+};
+
+/**
+ * Distribui TODAS as seções da aula pelos nove cards, na ordem original de cada uma.
+ * Nenhuma seção fica de fora: tipo desconhecido vai para o card 1 (conceito).
+ */
+export function assignSectionsToCards<T extends { id: string; kind: string }>(sections: T[]): Map<number, T[]> {
+  const out = new Map<number, T[]>(BOARD_CARDS.map((c) => [c.n, []]));
+  for (const s of sections) out.get(CARD_OF_KIND[s.kind] ?? 1)!.push(s);
+  return out;
+}

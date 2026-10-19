@@ -125,66 +125,75 @@ test.describe("simulado", () => {
   });
 });
 
-/** Avança tema a tema até as questões; `onStep` roda em cada tela de tema. */
-async function walkThemes(page: Page, onStep?: () => Promise<void>) {
-  for (let i = 0; i < 60; i++) {
+/** Percorre os cards de conteúdo pela ordem até as questões; `onStep` roda em cada card aberto. */
+async function walkCards(page: Page, onStep?: () => Promise<void>) {
+  await page.getByRole("button", { name: /^(Começar|Continuar) a aula/ }).click();
+  for (let i = 0; i < 20; i++) {
     if (onStep) await onStep();
-    const toQuestions = page.getByRole("button", { name: /^Ir para as questões/ });
+    const toQuestions = page.getByRole("button", { name: /^Concluir e ir para as questões/ });
     if (await toQuestions.isVisible()) {
       await toQuestions.click();
+      await expect(cardDialog(page)).toContainText("Questões de fixação");
       return;
     }
-    await page.getByRole("button", { name: /^Próximo/ }).click();
+    await page.getByRole("button", { name: /^Concluir e ir ao próximo card/ }).click();
   }
   throw new Error("não chegou às questões");
 }
 
+const cardDialog = (page: Page) => page.locator("dialog.al-dialogo");
+async function openCard(page: Page, testId: string) {
+  await page.getByTestId(testId).getByRole("button", { name: /(conteúdo completo|questões por nível)/ }).click();
+  await expect(cardDialog(page)).toBeVisible();
+  return cardDialog(page);
+}
+
+/** Onde responder: o card aberto (diálogo) quando houver; senão, a página. */
+const scope = async (page: Page) => ((await page.locator("dialog.al-dialogo[open]").count()) ? page.locator("dialog.al-dialogo[open]") : page.locator("body"));
+
 async function answerErradoIfVisible(page: Page) {
-  const radio = page.getByRole("radio", { name: /Errado/ }).first();
+  const root = await scope(page);
+  const radio = root.getByRole("radio", { name: /Errado/ }).first();
   if ((await radio.count()) && (await radio.isEnabled()) && !(await radio.isChecked())) {
     // O rádio é visualmente oculto (o rótulo é o alvo de toque); clica direto no elemento.
     await radio.evaluate((el) => (el as HTMLInputElement).click());
     await expect(radio).toBeChecked();
-    await page.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
-    await expect(page.getByText(/Resposta (correta|incorreta)/).first()).toBeVisible();
+    await root.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
+    await expect(root.getByText(/Resposta (correta|incorreta)/).first()).toBeVisible();
   }
 }
 
 async function answerIfVisible(page: Page, optionText: string) {
-  const opt = page.getByText(optionText, { exact: false }).first();
+  const root = await scope(page);
+  const opt = root.getByText(optionText, { exact: false }).first();
   // Questão já respondida (resposta gravada) não tem botão "Responder" ativo: segue em frente.
-  const radio = page.getByRole("radio", { name: new RegExp(optionText) }).first();
+  const radio = root.getByRole("radio", { name: new RegExp(optionText) }).first();
   if ((await opt.isVisible()) && (await radio.isEnabled())) {
     await opt.click();
-    await page.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
-    await expect(page.getByText(/Resposta (correta|incorreta)/).first()).toBeVisible();
+    await root.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
+    await expect(root.getByText(/Resposta (correta|incorreta)/).first()).toBeVisible();
   }
 }
 
-test.describe("tela de aula", () => {
-  // Estes testes cobrem o estudo guiado (etapas, níveis e recuperação).
-  test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem("na:modo-aula", JSON.stringify("guiado")));
+test.describe("tela de aula: o conteúdo completo abre dentro dos cards", () => {
+  test("card abre os seus temas por cima da tela e fecha de volta aos cards", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    const d = await openCard(page, "card-diferencie");
+    await expect(d.getByRole("heading", { name: "Diferencie", level: 2 })).toBeVisible();
+    await expect(d.getByRole("heading", { name: "Anulação × revogação", level: 2 })).toBeVisible();
+    await d.getByRole("button", { name: "Fechar e voltar aos cards" }).click();
+    await expect(d).toBeHidden();
+    await expect(page.getByTestId("visao-aula")).toBeVisible();
+    await noHorizontalScroll(page);
   });
 
-  test("etapas levam direto a um tema", async ({ page, isMobile }) => {
+  test("exemplos são casos interativos: situação, tocar e conferir o enquadramento; negrito em vermelho-sangue", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    if (isMobile) await page.getByRole("button", { name: "Etapas", exact: true }).click();
-    const toc = isMobile ? page.getByRole("dialog", { name: "Etapas da aula" }) : page.getByRole("navigation", { name: "Etapas da aula" });
-    await toc.getByRole("button", { name: /Convalidação/ }).click();
-    await expect(page.getByRole("heading", { name: "Convalidação", level: 2 })).toBeVisible();
-    if (isMobile) await expect(toc).toBeHidden();
-  });
-
-  test("exemplos são casos interativos: situação, tocar e conferir o enquadramento; negrito em vermelho-sangue", async ({ page, isMobile }) => {
-    await page.goto(`${G}/aula`);
-    // Negrito do conteúdo em vermelho-sangue.
-    const bold = page.locator(".leitura strong").first();
-    await expect(bold).toHaveCSS("color", "rgb(138, 3, 3)");
-    if (isMobile) await page.getByRole("button", { name: "Etapas", exact: true }).click();
-    const toc = isMobile ? page.getByRole("dialog", { name: "Etapas da aula" }) : page.getByRole("navigation", { name: "Etapas da aula" });
-    await toc.getByRole("button", { name: /Exemplos/ }).click();
-    const box = page.getByTestId("exemplos-interativos");
+    let d = await openCard(page, "card-conceito");
+    await expect(d.locator(".leitura strong").first()).toHaveCSS("color", "rgb(138, 3, 3)");
+    await d.getByRole("button", { name: "Fechar e voltar aos cards" }).click();
+    d = await openCard(page, "card-pratica");
+    const box = d.getByTestId("exemplos-interativos");
     await expect(box.getByText("0 de 2 conferidos")).toBeVisible();
     await expect(box.getByText("Documento falso", { exact: true })).toBeVisible();
     await expect(box.getByText("Enquadramento", { exact: true })).toHaveCount(0);
@@ -195,144 +204,138 @@ test.describe("tela de aula", () => {
 
   test("marcar trecho para revisar e criar anotação", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    const actions = page.getByRole("toolbar", { name: "Ações da seção Introdução" });
+    const d = await openCard(page, "card-conceito");
+    const actions = d.getByRole("toolbar", { name: "Ações da seção Introdução" });
     await actions.getByRole("button", { name: "Revisar depois" }).click();
     await expect(actions.getByRole("button", { name: "Marcado para revisar" })).toBeVisible();
-
     await actions.getByRole("button", { name: "Anotar" }).click();
-    await page.getByRole("textbox").last().fill("Lembrar: anulação retroage.");
-    await page.getByRole("button", { name: /Salvar/ }).last().click();
-    await page.getByRole("button", { name: /^(Minhas anotações|Anotações)/ }).first().click();
+    await d.getByRole("textbox").last().fill("Lembrar: anulação retroage.");
+    await d.getByRole("button", { name: /Salvar/ }).last().click();
+    await d.getByRole("button", { name: "Fechar e voltar aos cards" }).click();
+    await page.getByRole("button", { name: /^Minhas anotações/ }).first().click();
     await expect(page.getByText("Lembrar: anulação retroage.")).toBeVisible();
+  });
+
+  test("anotação leva de volta ao tema dentro do card", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    await page.getByRole("button", { name: /^Minhas anotações/ }).first().click();
+    const notes = page.getByRole("dialog", { name: /anotações/i });
+    await notes.getByRole("button", { name: /Convalidação/ }).first().click();
+    await expect(cardDialog(page).getByRole("heading", { name: "Destrinche a lei", level: 2 })).toBeVisible();
+    await expect(cardDialog(page).getByRole("heading", { name: "Convalidação", level: 2 })).toBeInViewport();
   });
 
   test("esclarecer um conceito sem sair da aula", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    const actions = page.getByRole("toolbar", { name: "Ações da seção Introdução" });
+    const d = await openCard(page, "card-conceito");
+    const actions = d.getByRole("toolbar", { name: "Ações da seção Introdução" });
     await actions.getByRole("button", { name: "Esclarecer" }).click();
-    await page.getByRole("textbox", { name: "O que não ficou claro?" }).first().fill("O que é efeito ex tunc?");
-    await page.getByRole("button", { name: "Pedir explicação" }).first().click();
-    await expect(page.getByText(/Resposta de demonstração da galeria/)).toBeVisible();
+    await d.getByRole("textbox", { name: "O que não ficou claro?" }).first().fill("O que é efeito ex tunc?");
+    await d.getByRole("button", { name: "Pedir explicação" }).first().click();
+    await expect(d.getByText(/Resposta de demonstração da galeria/)).toBeVisible();
     await expect(page).toHaveURL(/\/dev\/galeria\/aula/);
   });
 
   test("questão do tema corrige na hora e o card fica verde no acerto", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    let answered = false;
-    for (let i = 0; i < 60 && !answered; i++) {
-      const opt = page.getByText("anular a licença, por ilegalidade", { exact: false }).first();
-      if (await opt.isVisible()) {
-        await opt.click();
-        await page.getByRole("button", { name: "Responder", exact: true }).first().click();
-        answered = true;
-      } else await page.getByRole("button", { name: /^(Próximo|Ir para as questões)/ }).click();
-    }
-    await expect(page.getByText("Resposta correta").first()).toBeVisible();
-    await expect(page.locator('[data-resultado="acerto"]').first()).toBeVisible();
+    const d = await openCard(page, "card-conceito");
+    await d.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
+    await d.getByRole("button", { name: "Responder", exact: true }).first().click();
+    await expect(d.getByText("Resposta correta").first()).toBeVisible();
+    await expect(d.locator('[data-resultado="acerto"]').first()).toBeVisible();
   });
 
-  test("respostas ficam gravadas: reabrir a questão mostra a resposta e o gabarito", async ({ page, isMobile }) => {
+  test("respostas ficam gravadas: reabrir o card mostra a resposta e o gabarito", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    // Resposta gravada em visita anterior: a questão já abre respondida.
-    if (isMobile) await page.getByRole("button", { name: "Etapas", exact: true }).click();
-    const toc = isMobile ? page.getByRole("dialog", { name: "Etapas da aula" }) : page.getByRole("navigation", { name: "Etapas da aula" });
-    await toc.getByRole("button", { name: /Anulação × revogação/ }).click();
-    const saved = page.getByRole("article", { name: /Questão/ }).filter({ hasText: "A revogação de ato administrativo pode ser feita" });
+    let d = await openCard(page, "card-diferencie");
+    const saved = d.getByRole("article", { name: /Questão/ }).filter({ hasText: "A revogação de ato administrativo pode ser feita" });
     await expect(saved.getByText("Resposta gravada anteriormente")).toBeVisible();
     await expect(saved.getByText("Resposta correta")).toBeVisible();
-    await expect(page.getByTestId("gabarito-comentado").first()).toBeVisible();
-    // Responde outra questão, sai da etapa e volta: continua respondida.
-    if (isMobile) await page.getByRole("button", { name: "Etapas", exact: true }).click();
-    await toc.getByRole("button", { name: /Introdução/ }).click();
-    await page.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
-    await page.getByRole("button", { name: "Responder", exact: true }).first().click();
-    await expect(page.getByText("Resposta correta").first()).toBeVisible();
-    await page.getByRole("button", { name: /^Próximo/ }).click();
-    await page.getByRole("button", { name: /Anterior/ }).first().click();
-    const again = page.getByRole("article", { name: /Questão/ }).filter({ hasText: "Um servidor obteve licença" });
+    await expect(d.getByTestId("gabarito-comentado").first()).toBeVisible();
+    await d.getByRole("button", { name: "Fechar e voltar aos cards" }).click();
+    d = await openCard(page, "card-conceito");
+    await d.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
+    await d.getByRole("button", { name: "Responder", exact: true }).first().click();
+    await expect(d.getByText("Resposta correta").first()).toBeVisible();
+    await d.getByRole("button", { name: "Fechar e voltar aos cards" }).click();
+    d = await openCard(page, "card-conceito");
+    const again = d.getByRole("article", { name: /Questão/ }).filter({ hasText: "Um servidor obteve licença" });
     await expect(again.getByText("Resposta correta")).toBeVisible();
-    await expect(page.getByRole("button", { name: "Refazer questão" }).first()).toBeVisible();
+    await expect(d.getByRole("button", { name: "Refazer questão" }).first()).toBeVisible();
   });
 
-  test("um tema por tela; pular para as questões não conta como leitura; depois avalia por níveis", async ({ page }) => {
+  test("abrir as questões antes de ler não conta como leitura; concluir os cards libera os níveis", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    await expect(page.getByText(/^Módulo 1 · tema 1 de \d+/)).toBeVisible();
-    // Pular direto para as questões não conclui a leitura.
-    await page.getByRole("button", { name: "Ir para: Questões · Fácil" }).click();
-    const fac = page.getByTestId("nivel-facil");
+    let d = await openCard(page, "card-questao");
+    const fac = d.getByTestId("nivel-facil");
     await expect(fac.getByRole("button", { name: "Calcular resultado do nível fácil" })).toBeDisabled();
-    await page.getByRole("button", { name: /^Ir para: / }).first().click();
+    await d.getByRole("button", { name: "Fechar e voltar aos cards" }).click();
+    await expect(page.getByTestId("secoes-vistas")).toHaveText(/^0 de \d+/);
 
-    // Percorre tema a tema, respondendo à questão que aparece junto do tema.
-    await walkThemes(page, async () => {
+    await walkCards(page, async () => {
       await answerIfVisible(page, "anular a licença, por ilegalidade");
       await answerErradoIfVisible(page);
     });
-    await expect(fac).toBeVisible();
+    d = cardDialog(page);
     await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
     await expect(fac.getByText(/Nível fácil aprovado com 100%/)).toBeVisible();
-    await page.getByRole("button", { name: /^Próximo/ }).click();
-    await expect(page.getByTestId("nivel-medio")).toContainText("Liberado");
-    // Nível médio com questões sem resposta: o Próximo trava e leva até a questão.
-    await page.getByRole("button", { name: /^Próximo/ }).click();
+    await d.getByRole("button", { name: /^Próximo nível: Médio/ }).click();
+    await expect(d.getByTestId("nivel-medio")).toContainText("Liberado");
+    // Nível médio com questão sem resposta: o botão trava e leva até a questão.
+    await d.getByRole("button", { name: /^Próximo nível: Difícil/ }).click();
     await expect(page.getByTestId("trava-proximo")).toBeVisible();
-    await expect(page.getByTestId("nivel-medio")).toBeVisible();
-    await page.getByRole("button", { name: /^Ir para: Questões · Difícil/ }).first().click();
-    await expect(page.getByTestId("nivel-dificil")).toContainText("Bloqueado");
+    await expect(d.getByTestId("nivel-medio")).toBeVisible();
+    await d.getByRole("tab", { name: /Difícil/ }).click();
+    await expect(d.getByTestId("nivel-dificil")).toContainText("Bloqueado");
     // Fim: botão para o próximo tema da mesma matéria.
-    await page.getByRole("button", { name: /^Concluir/ }).click();
-    await expect(page.getByRole("link", { name: /Próximo tema/ }).first()).toBeVisible();
+    await expect(d.getByRole("link", { name: /Próximo tema/ })).toBeVisible();
+    await d.getByRole("button", { name: /^Concluir e voltar aos cards/ }).click();
+    await expect(page.getByTestId("secoes-vistas")).toHaveText(/^(\d+) de \1/);
+    await expect(page.getByTestId("card-conceito")).toHaveAttribute("data-concluido", "1");
   });
 
-  test("Próximo trava com questão sem resposta na etapa e leva até ela", async ({ page }) => {
+  test("Concluir trava com questão sem resposta no card e leva até ela", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    const pending = page.locator('article[data-questao][data-respondida="0"]');
-    // Avança até a primeira etapa que tem questão.
-    for (let i = 0; i < 12 && !(await pending.count()); i++) await page.getByRole("button", { name: /^(Próximo|Ir para as questões)/ }).click();
+    const d = await openCard(page, "card-conceito");
+    const pending = d.locator('article[data-questao][data-respondida="0"]');
     await expect(pending.first()).toBeAttached();
-    const etapa = await page.getByText(/^Módulo \d+ · tema \d+ de \d+/).first().textContent();
-    await page.getByRole("button", { name: /^(Próximo|Ir para as questões)/ }).click();
+    await d.getByRole("button", { name: /^Concluir e ir ao próximo card/ }).click();
     await expect(page.getByTestId("trava-proximo")).toContainText(/para avançar/);
     await expect(pending.first()).toBeInViewport();
-    await expect(page.getByText(/^Módulo \d+ · tema \d+ de \d+/).first()).toHaveText(etapa!);
-    // Respondida a questão, o Próximo volta a funcionar.
+    await expect(d.getByRole("heading", { name: "Entenda o conceito", level: 2 })).toBeVisible();
     while (await pending.count()) {
       const label = await pending.first().getAttribute("aria-label");
-      const q = page.locator(`article[aria-label="${label}"]`);
+      const q = d.locator(`article[aria-label="${label}"]`);
       await q.getByRole("radio").first().evaluate((el) => (el as HTMLInputElement).click());
       await q.getByRole("button", { name: "Responder", exact: true }).click();
       await expect(q).toHaveAttribute("data-respondida", "1");
     }
-    await page.getByRole("button", { name: /^(Próximo|Ir para as questões)/ }).click();
-    await expect(page.getByText(/^Módulo \d+ · tema \d+ de \d+/).first()).not.toHaveText(etapa!);
+    await d.getByRole("button", { name: /^Concluir e ir ao próximo card/ }).click();
+    await expect(d.getByRole("heading", { name: "Leia a lei", level: 2 })).toBeVisible();
   });
 
   test("questões do nível que ficaram sem resposta ao longo da aula aparecem no próprio nível", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    await page.getByRole("button", { name: "Ir para: Questões · Fácil" }).click();
-    const fac = page.getByTestId("nivel-facil");
-    const box = fac.getByTestId("faltam-facil");
+    const d = await openCard(page, "card-questao");
+    const box = d.getByTestId("nivel-facil").getByTestId("faltam-facil");
     await expect(box).toBeVisible();
     await expect(box.getByRole("heading", { level: 4 })).toContainText(/Falta(m)? responder/);
     const first = box.getByRole("article").first();
-    const radio = first.getByRole("radio").first();
-    await radio.evaluate((el) => (el as HTMLInputElement).click());
+    await first.getByRole("radio").first().evaluate((el) => (el as HTMLInputElement).click());
     await first.getByRole("button", { name: "Responder", exact: true }).click();
-    // A questão continua na lista, agora com o gabarito.
     await expect(first.getByText(/Resposta (correta|incorreta)/)).toBeVisible();
   });
 
   test("nível reprovado oferece recuperação em vez de reiniciar", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    await walkThemes(page, async () => {
+    await walkCards(page, async () => {
       await answerIfVisible(page, "revogar a licença, por conveniência");
       await answerErradoIfVisible(page);
     });
-    const fac = page.getByTestId("nivel-facil");
+    const fac = cardDialog(page).getByTestId("nivel-facil");
     await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
     await expect(fac.getByText(/mínimo para avançar é 90%/)).toBeVisible();
     await fac.getByRole("button", { name: "Gerar exercícios de recuperação" }).click();
-    // Os exercícios aparecem na hora, já na tela, prontos para responder.
     const rec = page.getByTestId("recuperacao-facil");
     await expect(rec).toBeVisible();
     await expect(rec).toBeInViewport();
@@ -340,11 +343,10 @@ test.describe("tela de aula", () => {
     await rec.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
     await rec.getByRole("button", { name: "Responder", exact: true }).click();
     await expect(rec.getByText("Resposta correta")).toBeVisible();
-    // Depois de responder, recalcula e avança para o nível 2.
     await fac.getByRole("button", { name: "Calcular resultado do nível fácil de novo" }).click();
     await expect(fac.getByText(/Nível fácil aprovado/)).toBeVisible();
     await fac.getByTestId("avancar-nivel").click();
-    await expect(page.getByTestId("nivel-medio")).toContainText("Liberado");
+    await expect(cardDialog(page).getByTestId("nivel-medio")).toContainText("Liberado");
   });
 });
 
@@ -382,12 +384,12 @@ test.describe("painel e trilha", () => {
     const first = await time.textContent();
     await page.waitForTimeout(2100);
     expect(await time.textContent()).not.toBe(first);
-    await page.getByRole("button", { name: "Pausar" }).click();
+    await page.getByRole("button", { name: "Pausar", exact: true }).click();
     const paused = await time.textContent();
     await page.waitForTimeout(1500);
     await expect(time).toHaveText(paused!);
     await page.reload();
-    await expect(page.getByRole("button", { name: "Retomar" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Retomar", exact: true })).toBeVisible();
     await page.getByRole("button", { name: "Encerrar" }).click();
     await expect(page.getByRole("button", { name: "Ativar foco" })).toBeVisible();
   });
@@ -700,10 +702,6 @@ test.describe("página de estudos", () => {
 });
 
 test.describe("visão da aula (nove cards)", () => {
-  test.beforeEach(async ({ page }) => {
-    await page.addInitScript(() => localStorage.setItem("na:modo-aula", JSON.stringify("visao")));
-  });
-
   test("cabeçalho, nove cards, pontos-chave e navegação com dados da aula", async ({ page }) => {
     await page.goto(`${G}/aula`);
     const v = page.getByTestId("visao-aula");
@@ -731,15 +729,6 @@ test.describe("visão da aula (nove cards)", () => {
     await expect(card.getByText(/Resposta (correta|incorreta)/)).toBeVisible();
   });
 
-  test("'Estudar no passo a passo' abre o estudo guiado no tema do card", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    await page.getByTestId("card-diferencie").getByRole("button", { name: /Estudar no passo a passo/ }).click();
-    await expect(page.getByTestId("visao-aula")).toHaveCount(0);
-    await expect(page.getByRole("tab", { name: "Estudo guiado" })).toHaveAttribute("aria-selected", "true");
-    await page.getByRole("tab", { name: "Visão da aula" }).click();
-    await expect(page.getByTestId("visao-aula")).toBeVisible();
-  });
-
   test("árvore de aulas: barra lateral no desktop, menu no celular", async ({ page, isMobile }) => {
     await page.goto(`${G}/aula`);
     if (isMobile) await page.getByRole("button", { name: "Abrir menu" }).click();
@@ -748,4 +737,19 @@ test.describe("visão da aula (nove cards)", () => {
     await expect(tree.locator('[aria-current="page"]')).toBeVisible();
     await expect(tree.getByRole("link", { name: /Ver página do estudo/ })).toBeVisible();
   });
+});
+
+test("painel: banner da marca reveza com os banners de aprovação a cada 3 s", async ({ page }) => {
+  await page.goto(`${G}/painel`);
+  const rot = page.getByTestId("banner-rotator");
+  await expect(rot).toHaveAttribute("data-slide", "0");
+  await expect(rot).toHaveAttribute("data-slide", "1", { timeout: 5000 });
+  await expect(rot.getByRole("img", { name: /William Abreu/ })).toBeVisible();
+  // Pontos levam direto a um banner; pausa interrompe a troca.
+  await rot.getByRole("button", { name: "Mostrar banner 3 de 4" }).click();
+  await expect(rot.getByRole("img", { name: /Fábio Bezerra/ })).toBeVisible();
+  await rot.getByRole("button", { name: /Pausar troca automática/ }).click();
+  await page.waitForTimeout(3600);
+  await expect(rot).toHaveAttribute("data-slide", "2");
+  await noHorizontalScroll(page);
 });

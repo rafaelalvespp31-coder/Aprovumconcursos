@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildLessonBoard, clip } from "./board";
+import { assignSectionsToCards, buildLessonBoard, clip } from "./board";
 
 const sections = [
   { id: "s1", kind: "introducao", title: "Introdução", body_markdown: "Homicídio é **matar outra pessoa**. Protege a vida humana.\n\n:::exemplo\nSituação: João atira em Pedro, que morre.\nPergunta: Que crime é?\nResposta: Homicídio consumado.\n:::" },
@@ -51,5 +51,18 @@ describe("visão da aula (nove cards) a partir das seções reais", () => {
   it("clip corta em frase ou palavra", () => {
     expect(clip("Uma frase curta. Outra frase bem mais longa que passa do limite", 24)).toBe("Uma frase curta.");
     expect(clip("palavra ".repeat(10).trim(), 20)).toBe("palavra palavra…");
+  });
+
+  it("distribui todas as seções pelos cards, sem perder nenhuma", () => {
+    const m = assignSectionsToCards([...sections, { id: "x", kind: "desconhecido", title: "X", body_markdown: "" }, { id: "f", kind: "flashcards", title: "F", body_markdown: "" }]);
+    expect(m.get(1)!.map((s) => s.id)).toEqual(["s1", "x"]);
+    expect(m.get(2)!.map((s) => s.id)).toEqual(["s3"]);
+    expect(m.get(3)!.map((s) => s.id)).toEqual(["s2"]);
+    expect(m.get(4)!.map((s) => s.id)).toEqual(["s4"]);
+    expect(m.get(5)!.map((s) => s.id)).toEqual(["s5"]);
+    expect(m.get(7)!.map((s) => s.id)).toEqual(["s6"]);
+    expect(m.get(8)!.map((s) => s.id)).toEqual(["f"]);
+    expect(m.get(9)!.map((s) => s.id)).toEqual(["s7"]);
+    expect([...m.values()].flat()).toHaveLength(sections.length + 2);
   });
 });
