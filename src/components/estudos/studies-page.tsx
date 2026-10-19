@@ -3,12 +3,11 @@ import type { StudiesHome } from "@/domain/studies/home";
 import { StudiesHeroBanner } from "./hero-banner";
 import { OverallProgress } from "./overall-progress";
 import { StudySubjectsSection } from "./subjects-section";
-import { SmartLessonsSection } from "./smart-lessons";
 import { GameModeBanner } from "./game-banner";
 
 /**
  * Página de Estudos (desktop e celular): saudação, banner, progresso geral, seus estudos,
- * aulas inteligentes, Modo Jogo e rodapé. `children` recebe a organização em pastas.
+ * Modo Jogo e rodapé. `children` recebe a organização em pastas.
  */
 export function StudiesPage({ data, base = "", children }: { data: StudiesHome; base?: string; children?: React.ReactNode }) {
   const continueHref = data.current ? `${base}/aula/${data.current.lessonId}` : data.studies[0] ? `${base}/trilhas/${data.studies[0].id}` : `${base}/nova-trilha`;
@@ -31,10 +30,7 @@ export function StudiesPage({ data, base = "", children }: { data: StudiesHome; 
       <StudiesHeroBanner continueHref={continueHref} continueLabel={continueLabel} />
       <OverallProgress data={data} />
       <StudySubjectsSection data={data} base={base} />
-      <div className="estudos-linha">
-        <SmartLessonsSection data={data} base={base} />
-        <GameModeBanner base={base} />
-      </div>
+      <GameModeBanner base={base} />
 
       {children}
 

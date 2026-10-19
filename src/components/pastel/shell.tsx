@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { RotatingQuote } from "./rotating-quote";
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   Bell,
@@ -32,6 +32,7 @@ import type { SearchItem } from "@/app/(app)/study-actions";
 import type { ShellSummary } from "@/server/queries";
 import { useStored } from "@/components/use-stored";
 import { PastelCard } from "./card";
+import { SubjectsSubmenu } from "./subjects-submenu";
 
 // ---------------------------------------------------------------------------
 // Toast (mensagens curtas de confirmação, como no design original)
@@ -93,6 +94,18 @@ export function PastelShell({
   const items = useMemo(() => navItems(summary, basePath), [summary, basePath]);
   const active = items.find((i) => [i.href, ...(i.also ?? [])].some((p) => path === p || path.startsWith(`${p}/`))) ?? null;
   const activeIndex = active ? items.indexOf(active) : -1;
+  // Submenu de matérias logo abaixo de "Estudos": o destaque deslizante dos itens
+  // seguintes desce a altura do submenu (medida no navegador).
+  const studiesIndex = items.findIndex((i) => i.id === "trilhas");
+  const subRef = useRef<HTMLDivElement>(null);
+  const [subH, setSubH] = useState(0);
+  useEffect(() => {
+    const el = subRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setSubH(el.offsetHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  });
   const [collapsed, setCollapsedStored] = useStored("na:sidebar-recolhida", false);
   const toggleCollapsed = () => setCollapsedStored(!collapsed);
   const [toast, setToast] = useState<string | null>(null);
@@ -182,15 +195,20 @@ export function PastelShell({
                   <div
                     aria-hidden
                     className="barra-indicador absolute left-3 right-3 rounded-[18px] bg-gradient-to-r from-[#FF1E1E] to-[#B30000] shadow-[0_10px_24px_rgba(225,6,0,0.32),inset_0_1px_0_rgba(255,255,255,0.3)] transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-                    style={{ transform: `translateY(calc(${activeIndex} * var(--passo)))` }}
+                    style={{
+                      transform:
+                        !collapsed && summary.subjects.length > 0 && subH > 0 && activeIndex > studiesIndex
+                          ? `translateY(calc(${activeIndex} * var(--passo) + ${subH}px + var(--passo) - var(--item)))`
+                          : `translateY(calc(${activeIndex} * var(--passo)))`,
+                    }}
                   />
                 )}
                 <nav aria-label="Principal" className="barra-nav relative flex flex-col">
                   {items.map((s) => {
                     const on = active?.id === s.id;
                     return (
+                      <Fragment key={s.id}>
                       <Link
-                        key={s.id}
                         href={s.href}
                         aria-current={on ? "page" : undefined}
                         aria-label={collapsed ? s.label : undefined}
@@ -220,6 +238,12 @@ export function PastelShell({
                           </span>
                         )}
                       </Link>
+                      {s.id === "trilhas" && !collapsed && summary.subjects.length > 0 && (
+                        <div ref={subRef}>
+                          <SubjectsSubmenu subjects={summary.subjects} base={basePath} path={path} />
+                        </div>
+                      )}
+                      </Fragment>
                     );
                   })}
                 </nav>
@@ -616,6 +640,7 @@ function EstudosHeader({ summary, basePath, items, searchRef, mobileOnly = false
                       <span className={`block text-[11.5px] ${on ? "text-white/80" : "text-[#9A9A9A]"}`}>{s.desc}</span>
                     </span>
                   </Link>
+                  {s.id === "trilhas" && <SubjectsSubmenu subjects={summary.subjects} base={basePath} path={path} variant="menu" onNavigate={() => menuRef.current?.close()} />}
                 </li>
               );
             })}

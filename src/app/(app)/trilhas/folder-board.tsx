@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
+import { callAction } from "@/components/safe-action";
 import { Icon } from "@/components/icons";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
 import { deleteTrailAction } from "./[id]/actions";
@@ -77,7 +78,8 @@ export function FolderBoard({ folders, trails }: { folders: BoardFolder[]; trail
 
   const act = (fn: () => Promise<FolderResult>, after?: () => void) =>
     start(async () => {
-      const r = await fn();
+      const r = await callAction(fn, setError);
+      if (!r) return;
       if (!r.ok) return setError(r.error ?? "Erro.");
       setError(null);
       after?.();
@@ -129,6 +131,13 @@ export function FolderBoard({ folders, trails }: { folders: BoardFolder[]; trail
       </div>
 
       {error && <Notice tone="erro">{error}</Notice>}
+      {/* Aviso também fixo na tela: o erro pode acontecer longe do topo da lista. */}
+      {error && (
+        <p role="alert" className="fixed inset-x-4 bottom-28 z-50 mx-auto max-w-md rounded-2xl bg-[#B00800] px-4 py-3 text-center t-small font-semibold text-white shadow-[0_16px_40px_rgba(0,0,0,0.3)] md:bottom-8" data-testid="erro-pastas">
+          {error}
+          <button type="button" onClick={() => setError(null)} className="ml-3 underline underline-offset-2">Fechar</button>
+        </p>
+      )}
 
       {folders.map((f) => (
         <FolderCard

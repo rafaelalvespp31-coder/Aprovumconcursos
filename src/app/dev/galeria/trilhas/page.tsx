@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { StudiesPage } from "@/components/estudos/studies-page";
+import { FolderBoard } from "@/app/(app)/trilhas/folder-board";
 import { buildStudiesHome, type StudiesRaw } from "@/domain/studies/home";
 
 /**
@@ -56,19 +56,20 @@ export default function Page() {
   const data = buildStudiesHome(raw);
   return (
     <StudiesPage data={data} base="/dev/galeria">
-      <section id="pastas" className="scroll-mt-24 rounded-[18px] border border-[#E5E8ED] bg-white p-5">
+      <div id="pastas" className="scroll-mt-24">
         <h2 className="t-h2">Todos os seus estudos, por pasta</h2>
-        <p className="mt-1 t-small text-tinta-suave">Na página real, aqui ficam as pastas por matéria (organizar, renomear, ordenar).</p>
-        <ul className="mt-3 divide-y divide-[#E5E8ED]">
-          {data.studies.map((s) => (
-            <li key={s.id} className="py-2">
-              <Link href="/dev/galeria/trilha" className="font-semibold hover:text-[#F01820]">
-                {s.title}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
+        <FolderBoard
+          folders={[{ id: "00000000-0000-4000-8300-000000000001", name: "Direito Administrativo", color: "vermelho" }]}
+          trails={data.studies.map((s, i) => ({
+            id: s.id,
+            title: s.title,
+            subtitle: "Exemplo",
+            status: { label: "Em estudo", tone: "verde" as const },
+            folderId: i === 0 ? "00000000-0000-4000-8300-000000000001" : null,
+            progress: { done: 0, total: 1 },
+          }))}
+        />
+      </div>
     </StudiesPage>
   );
 }

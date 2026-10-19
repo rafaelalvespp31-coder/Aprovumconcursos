@@ -645,7 +645,7 @@ test("banners: arte e animações aparecem juntas, mesmo com a imagem demorando"
 });
 
 test.describe("página de estudos", () => {
-  test("saudação, banner, progresso real, seus estudos, aulas inteligentes e Modo Jogo", async ({ page }, info) => {
+  test("saudação, banner, progresso real, seus estudos e Modo Jogo (sem o card de aulas inteligentes)", async ({ page }, info) => {
     await page.goto(`${G}/trilhas`);
     const mobile = info.project.name === "mobile";
     await expect(page.getByRole("heading", { name: /Olá, Rafael/ }).first()).toBeVisible();
@@ -661,9 +661,8 @@ test.describe("página de estudos", () => {
     const andamento = estudos.getByRole("link", { name: /em andamento, continuar/ });
     await expect(andamento).toHaveAttribute("href", /\/dev\/galeria\/aula\//);
     await expect(andamento.getByText("Em andamento")).toBeVisible();
-    // Aulas inteligentes: cada matéria abre o catálogo filtrado.
-    const aulas = page.getByTestId("aulas-inteligentes");
-    await expect(aulas.getByRole("link", { name: /Direito Constitucional/ })).toHaveAttribute("href", "/dev/galeria/nova-trilha?materia=Direito%20Constitucional");
+    // O card "Aulas e conteúdos inteligentes" foi removido da página.
+    await expect(page.getByTestId("aulas-inteligentes")).toHaveCount(0);
     await expect(page.getByRole("link", { name: /Jogar agora/i })).toHaveAttribute("href", "/dev/galeria/quiz");
     // Carrossel: no celular, os pontos levam à próxima página de estudos.
     if (mobile) {
@@ -739,4 +738,27 @@ test("painel: banner da marca reveza com os banners de aprovação a cada 3 s", 
   await page.waitForTimeout(3600);
   await expect(rot).toHaveAttribute("data-slide", "2");
   await noHorizontalScroll(page);
+});
+
+test("menu Estudos: submenu com as matérias abre os assuntos estudados", async ({ page, isMobile }) => {
+  // No celular o menu completo (hambúrguer) fica no topo da página de Estudos.
+  await page.goto(`${G}/${isMobile ? "trilhas" : "painel"}`);
+  if (isMobile) await page.getByRole("button", { name: "Abrir menu" }).click();
+  const sub = page.getByTestId(isMobile ? "submenu-materias-menu" : "submenu-materias-lateral");
+  await expect(sub.getByRole("button", { name: /Direito Penal/ })).toBeVisible();
+  await expect(sub.getByRole("link", { name: /Homicídio/ })).toHaveCount(0);
+  await sub.getByRole("button", { name: /Direito Penal/ }).click();
+  await expect(sub.getByRole("button", { name: /Direito Penal/ })).toHaveAttribute("aria-expanded", "true");
+  await expect(sub.getByRole("link", { name: /Homicídio/ })).toBeVisible();
+  await sub.getByRole("link", { name: /Teoria do crime/ }).click();
+  await expect(page).toHaveURL(/\/dev\/galeria\/trilha$/);
+  await noHorizontalScroll(page);
+});
+
+test("pastas e estudos: falha ao excluir aparece na tela (nunca um clique mudo)", async ({ page }) => {
+  // Na galeria não há sessão: a ação do servidor falha de propósito.
+  await page.goto(`${G}/trilhas`);
+  await page.getByRole("button", { name: /^Excluir estudo Ato/ }).click();
+  await page.getByRole("button", { name: "Excluir estudo", exact: true }).click();
+  await expect(page.getByTestId("erro-pastas")).toBeVisible();
 });

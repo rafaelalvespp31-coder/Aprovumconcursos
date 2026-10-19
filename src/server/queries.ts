@@ -1,6 +1,8 @@
 import "server-only";
 import { notFound } from "next/navigation";
-import { createUserClient } from "./supabase";
+import { createAdminClient, createUserClient } from "./supabase";
+import { buildSubjectsMenu, type SubjectMenuItem } from "@/domain/studies/subjects-menu";
+import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import { getSessionUser } from "./auth";
 import { normalizeText } from "@/domain/catalog/match";
 import type { PracticeCase } from "@/domain/content/practice";
@@ -47,9 +49,13 @@ export interface ScopeSummary {
 
 const TRAIL_COLS = "id, title, board_slug, other_board_name, content_type, status, archived_at, last_studied_at, updated_at, created_at, folder_id, folder_order";
 
+/** Id do aluno logado (contas de equipe também leem dados de outros pela RLS "admin le"). */
+const myId = async () => (await getSessionUser())?.id ?? "00000000-0000-0000-0000-000000000000";
+
 export async function listTrails(includeArchived = false): Promise<TrailSummary[]> {
   const db = await createUserClient();
-  let q = db.from("study_trails").select(TRAIL_COLS).order("updated_at", { ascending: false });
+  // Só os estudos do próprio aluno (a conta de equipe não vê nem tenta excluir estudos de outros).
+  let q = db.from("study_trails").select(TRAIL_COLS).eq("user_id", await myId()).order("updated_at", { ascending: false });
   if (!includeArchived) q = q.is("archived_at", null);
   const { data, error } = await q;
   if (error) throw new Error(error.message);
@@ -59,9 +65,10 @@ export async function listTrails(includeArchived = false): Promise<TrailSummary[
 /** Progresso por estudo: aulas com os 3 níveis vencidos / total de aulas. */
 export async function listTrailProgress(): Promise<Record<string, { done: number; total: number }>> {
   const db = await createUserClient();
+  const me = await myId();
   const [lessons, progress] = await Promise.all([
-    db.from("lessons").select("id, trail_id"),
-    db.from("learning_progress").select("lesson_id, levels_passed"),
+    db.from("lessons").select("id, trail_id").eq("user_id", me),
+    db.from("learning_progress").select("lesson_id, levels_passed").eq("user_id", me),
   ]);
   if (lessons.error) throw new Error(lessons.error.message);
   const passed = new Set(((progress.data ?? []) as Array<{ lesson_id: string; levels_passed: number | null }>).filter((p) => (p.levels_passed ?? 0) >= 3).map((p) => p.lesson_id));
@@ -619,26 +626,42 @@ export interface ShellSummary {
   streak: { current: number; last7: boolean[]; message: string };
   level: number;
   counts: { trails: number; questions: number; dueReviews: number; answered: number };
+  /** Submenu "Estudos": matérias e os assuntos (estudos) de cada uma. */
+  subjects: SubjectMenuItem[];
 }
 
 export async function getShellSummary(email: string | null): Promise<ShellSummary> {
   const db = await createUserClient();
   // Sempre filtra pelo próprio aluno: contas de equipe também leem dados de outros (RLS "admin le").
   const me = (await getSessionUser())?.id ?? "00000000-0000-0000-0000-000000000000";
-  const [profile, stats, trails, questions, reviews] = await Promise.all([
+  const [profile, stats, trails, questions, reviews, mine, folders] = await Promise.all([
     db.from("profiles").select("display_name").eq("id", me).maybeSingle(),
     getStudyStats(),
     db.from("study_trails").select("id", { count: "exact", head: true }).eq("user_id", me).is("archived_at", null),
     db.from("questions").select("id", { count: "exact", head: true }).eq("user_id", me).eq("active", true),
     db.from("review_schedules").select("lesson_id", { count: "exact", head: true }).eq("user_id", me).lte("due_at", new Date().toISOString()),
+    db.from("study_trails").select("id, title, folder_id, last_studied_at, updated_at, scope_summary").eq("user_id", me).is("archived_at", null).limit(300),
+    db.from("study_folders").select("id, name").eq("user_id", me),
   ]);
   const g = computeGamification(stats);
+  type MineRow = { id: string; title: string; folder_id: string | null; last_studied_at: string | null; updated_at: string; scope_summary: { catalogTopics?: Array<{ id: string }> } | null };
+  const mineRows = ((mine.data ?? []) as MineRow[]).map((t) => ({ ...t, catalogTopicIds: (t.scope_summary?.catalogTopics ?? []).map((c) => c.id) }));
+  const topicIds = [...new Set(mineRows.flatMap((t) => t.catalogTopicIds))];
+  const topicDiscipline = new Map<string, string>();
+  if (topicIds.length) {
+    const { data: topics } = await createAdminClient().from("catalog_topics").select("id, discipline_mode").in("id", topicIds);
+    for (const t of (topics ?? []) as Array<{ id: string; discipline_mode: string }>) {
+      const label = DISCIPLINE_LABELS[t.discipline_mode as DisciplineMode];
+      if (label) topicDiscipline.set(t.id, label);
+    }
+  }
   return {
     name: (profile.data?.display_name as string | null | undefined)?.split(" ")[0] ?? null,
     email,
     streak: { current: g.streak.current, last7: g.streak.last7, message: streakMessage(g.streak) },
     level: g.level.level,
     counts: { trails: trails.count ?? 0, questions: questions.count ?? 0, dueReviews: reviews.count ?? 0, answered: stats.answered },
+    subjects: buildSubjectsMenu({ trails: mineRows, folders: (folders.data ?? []) as Array<{ id: string; name: string }>, topicDiscipline }),
   };
 }
 
@@ -697,7 +720,7 @@ export interface StudyFolder {
 
 export async function listFolders(): Promise<StudyFolder[]> {
   const db = await createUserClient();
-  const { data, error } = await db.from("study_folders").select("id, name, color, sort_order").order("sort_order").order("created_at");
+  const { data, error } = await db.from("study_folders").select("id, name, color, sort_order").eq("user_id", await myId()).order("sort_order").order("created_at");
   if (error) return [];
   return (data ?? []) as StudyFolder[];
 }

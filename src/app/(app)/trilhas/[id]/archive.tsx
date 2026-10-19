@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { ConfirmAction } from "@/components/interactive";
 import { Button } from "@/components/ui";
+import { callAction } from "@/components/safe-action";
 import { archiveTrailAction, deleteTrailAction } from "./actions";
 
 export function DeleteTrail({ trailId }: { trailId: string }) {
@@ -14,7 +15,8 @@ export function DeleteTrail({ trailId }: { trailId: string }) {
       description="Aulas, questões, respostas, progresso, revisões, anotações e PDF deste estudo serão apagados permanentemente. Não dá para desfazer. Se quiser só tirá-lo da frente, use Arquivar."
       confirmLabel="Excluir definitivamente"
       onConfirm={async () => {
-        const r = await deleteTrailAction(trailId);
+        const r = await callAction(() => deleteTrailAction(trailId), (m) => alert(m));
+        if (!r) return;
         if (!r.ok) {
           alert(r.error ?? "Não foi possível excluir.");
           return;
