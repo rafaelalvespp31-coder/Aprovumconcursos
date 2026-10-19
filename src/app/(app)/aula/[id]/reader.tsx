@@ -152,7 +152,19 @@ export function LessonReader(props: ReaderProps) {
   const firstOpenLevel = LEVELS.find((l) => levelStatus(levelsPassed, l.n) !== "aprovado")?.key ?? "dificil";
   const [levelTab, setLevelTab] = useState<LevelKey>(firstOpenLevel);
   const cardEl = (n: number) => document.querySelector<HTMLElement>(`[data-card="${n}"]`);
-  const scrollToCard = (n: number) => requestAnimationFrame(() => cardEl(n)?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  // Um card por vez. Ordem de estudo: conteúdo (1–7), mapa mental com o resumo (9) e, por fim, as questões (8).
+  const FLOW = [1, 2, 3, 4, 5, 6, 7, 9, 8];
+  const [storedCard, setActiveCard] = useStored<number>(`na:card:${lesson.id}`, 1);
+  const activeCard = FLOW.includes(storedCard) ? storedCard : 1;
+  const flowNext = (n: number) => FLOW[FLOW.indexOf(n) + 1] ?? null;
+  const flowPrev = (n: number) => FLOW[FLOW.indexOf(n) - 1] ?? null;
+  const scrollToCards = () => requestAnimationFrame(() => document.getElementById("al-cards")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  const scrollToCard = (n: number) => {
+    setBlocked(null);
+    setActiveCard(n);
+    scrollToCards();
+  };
+  const cardOfSection = (id: string) => BOARD_CARDS.find((c) => byCard.get(c.n)!.some((s) => s.id === id))?.n ?? 1;
 
   // Trava: com questão sem resposta no card, não avança e leva até ela.
   const guard = (n: number): boolean => {
@@ -168,7 +180,6 @@ export function LessonReader(props: ReaderProps) {
     return false;
   };
 
-  const nextContentCard = (from: number) => contentCards.find((n) => n > from) ?? null;
   /** Questões do card que ainda faltam responder (a questão de cada tema). */
   const pendingOf = (n: number) => byCard.get(n)!.flatMap((s) => interleaved.get(s.id) ?? []).filter((q) => !savedFor(q.id)).length;
 
@@ -178,7 +189,10 @@ export function LessonReader(props: ReaderProps) {
     setBlocked(null);
     const nextSeen = new Set([...seen, ...byCard.get(n)!.map((s) => s.id)]);
     setSeenList([...nextSeen]);
-    const goNext = () => scrollToCard(nextContentCard(n) ?? 8);
+    const goNext = () => {
+      const nxt = flowNext(n);
+      if (nxt) scrollToCard(nxt);
+    };
     if (!readingDone && sections.every((s) => nextSeen.has(s.id))) {
       startCompleting(async () => {
         await api.completeReading(lesson.id);
@@ -194,7 +208,7 @@ export function LessonReader(props: ReaderProps) {
   const levelPending = questions.filter((q) => !q.recovery_of && (q.level ?? "facil") === levelTab && !savedFor(q.id)).length;
   const goLevel = (k: LevelKey) => {
     setLevelTab(k);
-    scrollToCard(8);
+    scrollToCards();
   };
   const nextLevel = () => {
     if (!guard(8)) return;
@@ -233,28 +247,40 @@ export function LessonReader(props: ReaderProps) {
       </div>
     ));
 
-  /** Rodapé do card: libera o avanço quando as questões do card estão respondidas. */
+  /** Rodapé do card: voltar e avançar. O avanço é liberado quando as questões do card estão respondidas. */
   const cardFooter = (n: number) => {
     const pend = pendingOf(n);
     const ready = pend === 0;
-    const nxt = nextContentCard(n);
-    const label = completing ? "Salvando…" : nxt ? "Concluir e ir ao próximo card" : "Concluir e ir para as questões";
+    const nxt = flowNext(n);
+    const prev = flowPrev(n);
+    const nxtTitle = nxt ? BOARD_CARDS.find((c) => c.n === nxt)!.title : null;
+    const hasThemes = byCard.get(n)!.length > 0;
+    const label = completing ? "Salvando…" : nxt === 8 ? "Concluir e ir para as questões" : hasThemes ? "Concluir e ir ao próximo card" : "Ir ao próximo card";
     return (
       <div className="al-card-fim">
         <p className="al-card-fim-info">
-          {cardDone(n) ? (
+          {hasThemes && cardDone(n) ? (
             <>
               <CircleCheckIcon /> Card concluído.
             </>
           ) : ready ? (
-            "Terminou? Avance para o próximo card."
+            nxtTitle ? `Próximo: ${nxtTitle}.` : "Fim dos cards."
           ) : (
             `Responda ${pend === 1 ? "a questão" : `as ${pend} questões`} deste card para liberar o avanço.`
           )}
         </p>
-        <button type="button" className="al-btn al-btn-vermelho" aria-disabled={!ready || completing} data-liberado={ready ? "1" : "0"} onClick={() => !completing && concludeCard(n)} data-testid={`concluir-card-${n}`}>
-          {label} <Icon name="setaDireita" className="size-4" />
-        </button>
+        <div className="al-card-fim-botoes">
+          {prev && (
+            <button type="button" className="al-btn al-btn-contorno" onClick={() => scrollToCard(prev)} data-testid={`voltar-card-${n}`}>
+              <Icon name="setaEsquerda" className="size-4" /> <span className="sr-only sm:not-sr-only">Card anterior</span>
+            </button>
+          )}
+          {nxt && (
+            <button type="button" className="al-btn al-btn-vermelho" aria-disabled={!ready || completing} data-liberado={ready ? "1" : "0"} onClick={() => !completing && concludeCard(n)} data-testid={`concluir-card-${n}`}>
+              {label} <Icon name="setaDireita" className="size-4" />
+            </button>
+          )}
+        </div>
       </div>
     );
   };
@@ -332,24 +358,27 @@ export function LessonReader(props: ReaderProps) {
           <p className="al-card-fim-info">
             {levelPending === 0 ? "Terminou este nível? Avance." : `Responda ${levelPending === 1 ? "a questão" : `as ${levelPending} questões`} do nível ${LEVELS[levelIndex]!.label.toLowerCase()} para liberar o avanço.`}
           </p>
+          <div className="al-card-fim-botoes">
+          <button type="button" className="al-btn al-btn-contorno" onClick={() => scrollToCard(flowPrev(8)!)} data-testid="voltar-card-8">
+            <Icon name="setaEsquerda" className="size-4" /> <span className="sr-only sm:not-sr-only">Card anterior</span>
+          </button>
           <button type="button" className="al-btn al-btn-vermelho" aria-disabled={levelPending > 0} data-liberado={levelPending === 0 ? "1" : "0"} onClick={nextLevel} data-testid="proximo-nivel">
             {LEVELS[levelIndex + 1] ? `Próximo nível: ${LEVELS[levelIndex + 1]!.label}` : "Concluir a aula"} <Icon name="setaDireita" className="size-4" />
           </button>
+          </div>
         </div>
         {levelTab === "dificil" && <div className="mt-6">{conclusion}</div>}
       </>
     );
 
   const themes: Record<number, ReactNode> = {};
+  const footers: Record<number, ReactNode> = {};
   for (const c of BOARD_CARDS) {
     if (c.n === 8) themes[8] = questionsBody;
-    else if (byCard.get(c.n)!.length)
-      themes[c.n] = (
-        <>
-          <div className="flex flex-col gap-6">{sectionsBody(c.n)}</div>
-          {cardFooter(c.n)}
-        </>
-      );
+    else {
+      if (byCard.get(c.n)!.length) themes[c.n] = <div className="flex flex-col gap-6">{sectionsBody(c.n)}</div>;
+      footers[c.n] = cardFooter(c.n);
+    }
   }
   const cardMeta = Object.fromEntries(
     BOARD_CARDS.map((c) => [c.n, { count: byCard.get(c.n)!.length, done: c.n === 8 ? finished : byCard.get(c.n)!.length > 0 && cardDone(c.n) }]),
@@ -379,6 +408,9 @@ export function LessonReader(props: ReaderProps) {
         nextId={props.nextId}
         cards={cardMeta}
         themes={themes}
+        footers={footers}
+        active={activeCard}
+        onSelect={scrollToCard}
         startLabel={seenCount === 0 ? "Começar a aula" : finished ? "Rever a aula" : "Continuar a aula"}
         onStart={() => scrollToCard(nextToStudy)}
         notesCount={annotations.length}
@@ -407,7 +439,10 @@ export function LessonReader(props: ReaderProps) {
         annotations={annotations}
         onGo={(id) => {
           notesRef.current?.close();
-          if (id) requestAnimationFrame(() => document.getElementById(sectionDomId(id))?.scrollIntoView({ behavior: "smooth", block: "start" }));
+          if (id) {
+            setActiveCard(cardOfSection(id));
+            setTimeout(() => document.getElementById(sectionDomId(id))?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+          }
         }}
         onChange={(a, removed) => setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : list.map((x) => (x.id === a.id ? a : x))))}
       />

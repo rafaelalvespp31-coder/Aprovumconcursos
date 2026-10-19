@@ -23,7 +23,7 @@ import {
   Target,
 } from "lucide-react";
 import { Markdown } from "@/components/markdown";
-import type { LessonBoard as Board } from "@/domain/content/board";
+import { BOARD_CARDS, type LessonBoard as Board } from "@/domain/content/board";
 
 export interface BoardLessonInfo {
   id: string;
@@ -55,6 +55,7 @@ function CardShell({
   meta,
   themes,
   keepPreview = false,
+  footer,
   testId,
   className = "",
 }: {
@@ -67,6 +68,8 @@ function CardShell({
   themes?: ReactNode;
   /** Mantém a prévia visual acima dos temas (ex.: mapa mental). */
   keepPreview?: boolean;
+  /** Rodapé do card (navegação entre cards). */
+  footer?: ReactNode;
   testId?: string;
   className?: string;
 }) {
@@ -96,6 +99,7 @@ function CardShell({
       {subtitle && <p className="al-card-sub">{subtitle}</p>}
       {(!full || keepPreview) && children && <div className="al-card-corpo">{children}</div>}
       {full && <div className="al-card-temas">{themes}</div>}
+      {footer}
     </article>
   );
 }
@@ -118,6 +122,9 @@ export function LessonBoardView({
   levelsPassed,
   cards,
   themes,
+  footers,
+  active,
+  onSelect,
   startLabel,
   onStart,
   notesCount,
@@ -139,12 +146,17 @@ export function LessonBoardView({
   onStart: () => void;
   /** Conteúdo completo de cada card (número → temas/questões), exposto no próprio card. */
   themes: Record<number, ReactNode>;
+  /** Rodapé de cada card (avançar/voltar). */
+  footers: Record<number, ReactNode>;
+  /** Card exibido (um por vez). */
+  active: number;
+  onSelect: (n: number) => void;
   notesCount: number;
   onNotes: () => void;
   notices?: ReactNode;
   after?: ReactNode;
 }) {
-  const card = (n: number) => ({ meta: cards[n], themes: themes[n] });
+  const card = (n: number) => ({ meta: cards[n], themes: themes[n], footer: footers[n] });
 
   const n2 = (i: number) => String(i).padStart(2, "0");
   return (
@@ -204,8 +216,32 @@ export function LessonBoardView({
 
       {notices && <div className="al-avisos">{notices}</div>}
 
-      <div className="al-grade">
+      <nav className="al-passos" aria-label="Cards da aula" id="al-cards">
+        <ol>
+          {BOARD_CARDS.map((c) => (
+            <li key={c.n}>
+              <button
+                type="button"
+                onClick={() => onSelect(c.n)}
+                aria-current={active === c.n ? "step" : undefined}
+                data-concluido={cards[c.n]?.done ? "1" : undefined}
+                aria-label={`Card ${c.n}: ${c.title}${cards[c.n]?.done ? " (concluído)" : ""}`}
+              >
+                <span className="al-passo-num" aria-hidden>
+                  {cards[c.n]?.done ? <CircleCheck className="size-4" /> : c.n}
+                </span>
+                <span className="al-passo-titulo" aria-hidden>
+                  {c.title}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </nav>
+
+      <div className="al-grade" data-card-ativo={active}>
         {/* 1 */}
+        {active === 1 && (
         <CardShell n={1} title="Entenda o conceito" {...card(1)} testId="card-conceito">
           {board.concept ? (
             <>
@@ -229,8 +265,10 @@ export function LessonBoardView({
             <Empty>Esta aula não tem uma explicação introdutória. Veja o conteúdo no estudo guiado.</Empty>
           )}
         </CardShell>
+        )}
 
         {/* 2 */}
+        {active === 2 && (
         <CardShell
           n={2}
           title="Visualize"
@@ -250,8 +288,10 @@ export function LessonBoardView({
             ))}
           </ol>
         </CardShell>
+        )}
 
         {/* 3 */}
+        {active === 3 && (
         <CardShell n={3} title="Leia a lei" subtitle={board.legalBasis ?? undefined} {...card(3)} testId="card-lei">
           {board.law ? (
             <>
@@ -282,8 +322,10 @@ export function LessonBoardView({
             <Empty>Este conteúdo não tem texto legal.</Empty>
           )}
         </CardShell>
+        )}
 
         {/* 4 */}
+        {active === 4 && (
         <CardShell
           n={4}
           title="Destrinche a lei"
@@ -293,8 +335,10 @@ export function LessonBoardView({
         >
           {board.glossary ? <BoardTable headers={board.glossary.headers} rows={board.glossary.rows} firstRed /> : <Empty>Esta aula não tem termos destrinchados em tabela.</Empty>}
         </CardShell>
+        )}
 
         {/* 5 */}
+        {active === 5 && (
         <CardShell n={5} title="Diferencie" subtitle={board.compare?.title} {...card(5)} testId="card-diferencie">
           {board.compare ? (
             board.compare.panels ? (
@@ -330,8 +374,10 @@ export function LessonBoardView({
             <Empty>Esta aula não tem um quadro comparativo.</Empty>
           )}
         </CardShell>
+        )}
 
         {/* 6 */}
+        {active === 6 && (
         <CardShell n={6} title="Veja na prática" subtitle="Exemplos completos" {...card(6)} testId="card-pratica">
           {board.examples.items.length ? (
             <ol className="al-exemplos">
@@ -354,8 +400,10 @@ export function LessonBoardView({
             <Empty>Esta aula não tem exemplos práticos.</Empty>
           )}
         </CardShell>
+        )}
 
         {/* 7 */}
+        {active === 7 && (
         <CardShell n={7} title="Atenção à banca" subtitle="Pegadinhas e exceções" {...card(7)} testId="card-banca">
           {board.traps.items.length ? (
             <ul className="al-alertas">
@@ -373,16 +421,21 @@ export function LessonBoardView({
             <Empty>Esta aula não tem pegadinhas destacadas.</Empty>
           )}
         </CardShell>
+        )}
 
         {/* 8 */}
+        {active === 8 && (
         <CardShell n={8} title="Questões de fixação" subtitle="Fácil → médio → difícil" testId="card-questao" className="al-card-questao" {...card(8)}>
           <Empty>As questões desta aula ainda não foram geradas.</Empty>
         </CardShell>
+        )}
 
         {/* 9 */}
+        {active === 9 && (
         <CardShell n={9} title="Mapa mental" testId="card-mapa" keepPreview {...card(9)}>
           <MindMap center={board.mindmap.center} branches={board.mindmap.branches} />
         </CardShell>
+        )}
       </div>
 
       {/* Pontos-chave */}

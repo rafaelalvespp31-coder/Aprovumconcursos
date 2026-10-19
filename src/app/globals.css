@@ -1563,11 +1563,9 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .al-card-temas { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
 .al-card-fim { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; border-top: 1px solid #E6E8EC; }
 .al-card-fim-info { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #5E6570; }
-.al-card-fim .al-btn { flex: 1 1 auto; max-width: 100%; }
 .al-btn[aria-disabled="true"] { background: #C9CDD3; color: #fff; box-shadow: none; cursor: not-allowed; }
 @container (min-width: 600px) {
   .al-card-completo { padding: 24px 28px 26px; }
-  .al-card-fim .al-btn { flex: 0 0 auto; }
 }
 .al-niveis { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: #EEF0F3; }
 .al-niveis button { display: inline-flex; flex: 1; align-items: center; justify-content: center; gap: 5px; min-height: 40px; border-radius: 9px; font-size: 13.5px; font-weight: 700; color: #4A505A; }
@@ -1608,3 +1606,20 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   .br-pontos button[aria-current="true"] { width: 16px; }
   .br-pausa { width: 22px; height: 22px; }
 }
+
+/* Um card por vez: barra com os nove cards */
+.al-passos { scroll-margin-top: 12px; overflow-x: auto; margin: 0 -4px; padding: 2px 4px 4px; scrollbar-width: none; }
+.al-passos::-webkit-scrollbar { display: none; }
+.al-passos ol { list-style: none; margin: 0; padding: 0; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(92px, 1fr); gap: 6px; }
+.al-passos button { display: flex; width: 100%; height: 100%; flex-direction: column; align-items: center; gap: 5px; padding: 8px 6px; border-radius: 12px; border: 1px solid #E6E8EC; background: #fff; text-align: center; transition: border-color 0.2s, box-shadow 0.2s, transform 0.2s; }
+.al-passos button:hover { border-color: #0B0C0F; }
+.al-passo-num { display: flex; width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 7px; background: #EEF0F3; color: #0B0C0F; font-size: 13px; font-weight: 800; }
+.al-passo-titulo { font-size: 11px; font-weight: 700; line-height: 1.2; color: #4A505A; }
+.al-passos button[data-concluido="1"] .al-passo-num { background: #EAF7EF; color: #12A150; }
+.al-passos button[aria-current="step"] { border-color: #E50914; box-shadow: 0 6px 16px rgba(229, 9, 20, 0.16); }
+.al-passos button[aria-current="step"] .al-passo-num { background: #0B0C0F; color: #fff; box-shadow: inset -3px 0 0 #E50914; }
+.al-passos button[aria-current="step"] .al-passo-titulo { color: #0B0C0F; }
+.al-card-fim-botoes { display: flex; flex: 1 1 auto; justify-content: flex-end; gap: 10px; }
+.al-card-fim-botoes .al-btn-contorno { flex: 0 0 auto; }
+.al-card-fim-botoes .al-btn-vermelho { flex: 1 1 auto; }
+@container (min-width: 600px) { .al-card-fim-botoes .al-btn-vermelho { flex: 0 0 auto; } }
