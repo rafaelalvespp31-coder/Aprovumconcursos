@@ -1,27 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   BookOpen,
+  CalendarClock,
   ChartColumn,
   CircleAlert,
-  CircleHelp,
+  CircleCheck,
   Clock,
-  Clock3,
+  FileText,
   Flame,
-  GraduationCap,
+  FolderOpen,
   Library,
   Play,
   Star,
-  Trophy,
+  Target,
   X,
-  Zap,
 } from "lucide-react";
 import { PastelCard, rgbOf } from "@/components/pastel/card";
-import { usePastelToast } from "@/components/pastel/shell";
-import { useStored } from "@/components/use-stored";
 import type { UnitState } from "@/domain/progress/state-machine";
 import { STAGE_LABELS, goalHint, type Stage, type TrailCard } from "./model";
 
@@ -55,15 +53,8 @@ export interface DashboardData {
   basePath?: string;
 }
 
-const WEEKDAY = ["D", "S", "T", "Q", "Q", "S", "S"];
 const WEEKDAY_LONG = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const weekdayOf = (iso: string) => new Date(`${iso}T12:00:00Z`).getUTCDay();
-const gradientText = (c1: string, c2: string) => ({
-  background: `linear-gradient(90deg, ${c1}, ${c2})`,
-  WebkitBackgroundClip: "text" as const,
-  backgroundClip: "text" as const,
-  color: "transparent",
-});
 
 /** Anima um valor de 0 até `target` (instantâneo para quem pediu menos movimento). */
 function useCountUp(target: number, delay: number) {
@@ -94,14 +85,7 @@ function useCountUp(target: number, delay: number) {
 
 export function DashboardView(d: DashboardData) {
   const base = d.basePath ?? "";
-  const toast = usePastelToast();
   const [modal, setModal] = useState<TrailCard | null>(null);
-  const [tooltip, setTooltip] = useState<{ x: number; y: number; text: string } | null>(null);
-  const [barsIn, setBarsIn] = useState(false);
-  useEffect(() => {
-    const t = setTimeout(() => setBarsIn(true), 400);
-    return () => clearTimeout(t);
-  }, []);
 
   const c = d.continueLesson;
   const qGoal = d.goals.dailyQuestions;
@@ -115,7 +99,7 @@ export function DashboardView(d: DashboardData) {
       color2: "#B30000",
       text: "#C80500",
       bg: "#FDECEC",
-      emoji: "🎯",
+      icon: <Target className="h-5 w-5 text-[#E10600]" aria-hidden />,
       sub: goalHint(d.today.answered, qGoal, "questões"),
       href: qGoal ? `${base}/questoes` : `${base}/perfil#metas`,
     },
@@ -127,286 +111,146 @@ export function DashboardView(d: DashboardData) {
       color2: "#5C5C5C",
       text: "#262626",
       bg: "#EDEDED",
-      emoji: "📚",
+      icon: <BookOpen className="h-5 w-5 text-[#262626]" aria-hidden />,
       sub: goalHint(d.weekLessonsCompleted, lGoal, "aulas"),
       href: lGoal ? `${base}/trilhas` : `${base}/perfil#metas`,
     },
   ];
-  const maxDay = Math.max(1, ...d.days.map((x) => x.correct + x.wrong));
-  const qPct = d.questions.total ? Math.round((d.questions.unanswered / d.questions.total) * 100) : 0;
   const activeTrails = d.trails.length;
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.65fr_0.85fr]">
-        {/* Tema atual */}
+    <div className="space-y-5" data-testid="painel">
+      {/* Cinco cards: tema atual, metas (2), revisões e últimos 14 dias */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-[minmax(0,2.1fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.95fr)_minmax(0,2fr)]">
         {c ? (
-          <PastelCard delay={0} glowColor="225,6,0" className="!p-0 group/hero" href={`${base}/aula/${c.id}`} label={`Continuar estudando: ${c.title}`} testId="hero">
-            <div className="relative overflow-hidden">
-              <div className="absolute inset-0" aria-hidden>
-                <div className="absolute -top-24 -right-20 h-[360px] w-[360px] animate-[meshMove_10s_ease-in-out_infinite] rounded-full bg-gradient-to-br from-[#E10600]/10 to-transparent blur-[30px]" />
-                <div className="absolute -bottom-28 -left-20 h-[420px] w-[420px] animate-[meshMove_12s_ease-in-out_infinite_1s] rounded-full bg-gradient-to-br from-black/[0.03] to-transparent blur-[32px]" />
-                <div className="absolute top-1/2 left-1/2 h-[320px] w-[500px] -translate-x-1/2 -translate-y-1/2 rounded-[40px] bg-gradient-to-br from-white/80 via-white/60 to-[#F7F7F7]/60 blur-[10px]" />
+          <PastelCard delay={0} radius={18} glowColor="225,6,0" className="h-full" outerClassName="col-span-2 h-full xl:col-span-1" href={`${base}/aula/${c.id}`} label={`Continuar estudando: ${c.title}`} testId="hero">
+            <div className="flex h-full flex-col p-5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-[#0A0A0A] px-2.5 py-1 text-[10.5px] font-semibold text-white">
+                  <Library className="h-3 w-3 shrink-0" aria-hidden /> <span className="truncate">{c.trailTitle}</span>
+                </span>
               </div>
-              <div className="relative flex gap-5 p-6 sm:p-7 lg:p-8">
-                <div className="hidden h-[72px] w-[72px] shrink-0 items-center justify-center rounded-[20px] border border-[#E5E5E5] bg-gradient-to-br from-white to-[#F5F5F5] shadow-[0_8px_24px_rgba(225,6,0,0.12),inset_0_1px_0_white] transition-all duration-700 group-hover/hero:rotate-[-8deg] group-hover/hero:scale-110 sm:flex" aria-hidden>
-                  <div className="flex h-[48px] w-[48px] items-center justify-center rounded-[14px] bg-gradient-to-br from-[#FF1E1E] to-[#B30000] shadow-[0_6px_16px_rgba(225,6,0,0.35)]">
-                    <BookOpen className="h-6 w-6 text-[#0A0A0A]" />
-                  </div>
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2.5">
-                    <div className="relative inline-flex items-center gap-2 rounded-full border border-[#E0E0E0] bg-[#F5F5F5] py-1 pl-1 pr-3 shadow-[0_2px_10px_rgba(225,6,0,0.08)]">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F4F4F4]" aria-hidden>
-                        <span className="h-2 w-2 animate-[pulse-soft_1.4s_ease-in-out_infinite] rounded-full bg-[#FF1E1E]" />
-                      </div>
-                      <span className="text-[11px] font-bold uppercase tracking-wide text-[#C80500]">Em andamento</span>
-                    </div>
-                    <span className="inline-flex max-w-full items-center gap-1.5 truncate rounded-full bg-[#0A0A0A] px-2.5 py-1 text-[11px] font-semibold text-white">
-                      <Library className="h-3 w-3 shrink-0" aria-hidden /> <span className="truncate">{c.trailTitle}</span>
-                    </span>
-                    {c.position && c.totalLessons ? (
-                      <span className="hidden items-center gap-1 text-[11px] text-[#5C5C5C] sm:inline-flex">
-                        <span className="h-1 w-1 rounded-full bg-[#9A9A9A]" aria-hidden /> Unidade {c.position} de {c.totalLessons}
-                      </span>
-                    ) : null}
-                  </div>
-                  <h2 className="mt-3.5 font-[Space_Grotesk] text-[19px] font-[700] leading-[1.2] tracking-[-0.01em] sm:text-[20px] lg:text-[22px]">
-                    {c.moduleTitle ? `${c.moduleTitle} / ${c.title}` : c.title}
-                  </h2>
-                  <p className="mt-2.5 line-clamp-2 max-w-[56ch] text-[13.5px] leading-[1.6] text-[#4D4D4D]">{c.objective}</p>
-                  <div className="mt-5 flex flex-wrap items-center gap-3">
-                    <span className="group/btn inline-flex h-11 items-center gap-2.5 rounded-[14px] bg-[#E10600] pl-5 pr-4 text-[13px] font-semibold text-white shadow-[0_8px_20px_rgba(0,0,0,0.20)] transition-all group-hover/hero:bg-[#B80500]">
-                      Continuar
-                      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 transition-colors group-hover/hero:bg-white group-hover/hero:text-black">
-                        <ArrowRight className="h-4 w-4 transition-transform group-hover/hero:translate-x-0.5" aria-hidden />
-                      </span>
-                    </span>
-                    <span className="flex items-center gap-1.5 text-[12px] text-[#5C5C5C]">
-                      <Clock className="h-3.5 w-3.5" aria-hidden /> ~{c.estimatedMinutes} min (estimativa)
-                    </span>
-                  </div>
-                </div>
-                <div className="hidden shrink-0 flex-col items-center justify-center gap-3 lg:flex">
-                  <div className="flex h-[92px] w-[92px] rotate-3 items-center justify-center rounded-[24px] border border-[#EBEBEB] bg-[#F5F5F5] text-[34px] shadow-[0_8px_24px_rgba(225,6,0,0.10)] transition-transform duration-700 group-hover/hero:rotate-0" aria-hidden>
-                    {c.stage === "ensino" ? "📚" : c.stage === "fixacao" ? "✍️" : "🧠"}
-                  </div>
-                  <div className="flex items-center gap-1 rounded-full border border-[#E0E0E0] bg-[#F4F4F4] px-2.5 py-1 text-[10px] font-bold uppercase text-[#C80500]" data-testid="hero-stage">
-                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-[#FF1E1E]" aria-hidden /> Etapa: {STAGE_LABELS[c.stage]}
-                  </div>
-                </div>
+              {c.position && c.totalLessons ? (
+                <p className="mt-2 flex items-center gap-1.5 text-[11px] text-[#5C5C5C]" data-testid="hero-stage">
+                  <span className="h-1 w-1 rounded-full bg-[#9A9A9A]" aria-hidden /> Unidade {c.position} de {c.totalLessons} · {STAGE_LABELS[c.stage]}
+                </p>
+              ) : (
+                <p className="mt-2 text-[11px] text-[#5C5C5C]" data-testid="hero-stage">Etapa: {STAGE_LABELS[c.stage]}</p>
+              )}
+              <h2 className="mt-2 line-clamp-3 font-[Space_Grotesk] text-[16.5px] font-[700] leading-[1.25] tracking-[-0.01em] text-[#0A0A0A]">
+                {c.moduleTitle ? `${c.moduleTitle} / ${c.title}` : c.title}
+              </h2>
+              <p className="mt-2 line-clamp-2 text-[12px] leading-[1.5] text-[#6B7280]">{c.objective}</p>
+              <div className="mt-auto flex flex-wrap items-center gap-3 pt-4">
+                <span className="inline-flex h-10 items-center gap-2 rounded-[10px] bg-[#E10600] px-5 text-[13px] font-semibold text-white shadow-[0_8px_18px_rgba(225,6,0,0.28)] transition-all group-hover:scale-[1.02] group-hover:bg-[#B80500]">
+                  Continuar <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </span>
+                <span className="flex items-center gap-1.5 text-[11.5px] text-[#6B7280]">
+                  <Clock className="h-3.5 w-3.5" aria-hidden /> ~{c.estimatedMinutes} min (estimativa)
+                </span>
               </div>
-              <div className="relative h-[6px] overflow-hidden bg-[#F4F4F4]" role="progressbar" aria-label="Unidades aprovadas neste estudo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.trailProgress}>
-                <div className="absolute inset-y-0 left-0 overflow-hidden rounded-full bg-gradient-to-r from-[#FF1E1E] via-[#E10600] to-[#B30000]" style={{ width: `${Math.max(c.trailProgress, 2)}%` }}>
-                  <div className="absolute inset-0 animate-[shimmer_1.8s_linear_infinite] bg-gradient-to-r from-transparent via-white/40 to-transparent" />
-                </div>
-              </div>
+            </div>
+            <div className="relative h-[4px] bg-[#F4F4F4]" role="progressbar" aria-label="Unidades aprovadas neste estudo" aria-valuemin={0} aria-valuemax={100} aria-valuenow={c.trailProgress}>
+              <div className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-[#FF1E1E] to-[#B30000]" style={{ width: `${Math.max(c.trailProgress, 2)}%` }} />
             </div>
           </PastelCard>
         ) : (
-          <PastelCard delay={0} glowColor="225,6,0" href={activeTrails ? `${base}/trilhas` : `${base}/nova-trilha`} label={activeTrails ? "Escolher um tema nas trilhas" : "Começar o primeiro estudo"} testId="hero">
-            <div className="flex gap-5 p-7 lg:p-8">
-              <div className="flex h-[48px] w-[48px] shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-[#FF1E1E] to-[#B30000] shadow-[0_6px_16px_rgba(225,6,0,0.35)]" aria-hidden>
-                <BookOpen className="h-6 w-6 text-[#0A0A0A]" />
-              </div>
-              <div>
-                <h2 className="font-[Space_Grotesk] text-[20px] font-[700] lg:text-[22px]">{activeTrails ? "Escolha o próximo tema" : "Comece seu primeiro estudo"}</h2>
-                <p className="mt-2 max-w-[56ch] text-[13.5px] leading-[1.6] text-[#4D4D4D]">
-                  {activeTrails
-                    ? "Abra um estudo e continue pela próxima unidade liberada. Cada unidade tem aula completa e avaliação em três níveis."
-                    : "Informe o tema, o artigo ou a matéria que você quer estudar agora. Não precisa do edital."}
-                </p>
-                <span className="mt-5 inline-flex h-11 items-center gap-2.5 rounded-[14px] bg-[#E10600] pl-5 pr-4 text-[13px] font-semibold text-white">
-                  {activeTrails ? "Ver estudos" : "Novo estudo"} <ArrowRight className="h-4 w-4" aria-hidden />
-                </span>
-              </div>
+          <PastelCard delay={0} radius={18} glowColor="225,6,0" className="h-full" outerClassName="col-span-2 h-full xl:col-span-1" href={activeTrails ? `${base}/trilhas` : `${base}/nova-trilha`} label={activeTrails ? "Escolher um tema nos estudos" : "Começar o primeiro estudo"} testId="hero">
+            <div className="flex h-full flex-col p-5">
+              <h2 className="font-[Space_Grotesk] text-[17px] font-[700]">{activeTrails ? "Escolha o próximo tema" : "Comece seu primeiro estudo"}</h2>
+              <p className="mt-2 text-[12px] leading-[1.5] text-[#6B7280]">
+                {activeTrails
+                  ? "Abra um estudo e continue pela próxima unidade liberada. Cada unidade tem aula completa e avaliação em três níveis."
+                  : "Informe o tema, o artigo ou a matéria que você quer estudar agora. Não precisa do edital."}
+              </p>
+              <span className="mt-auto inline-flex h-10 w-fit items-center gap-2 rounded-[10px] bg-[#E10600] px-5 text-[13px] font-semibold text-white">
+                {activeTrails ? "Ver estudos" : "Novo estudo"} <ArrowRight className="h-4 w-4" aria-hidden />
+              </span>
             </div>
           </PastelCard>
         )}
 
-        {/* Metas */}
-        <div className="grid grid-cols-2 gap-4">
-          {rings.map((s, i) => (
-            <Ring key={s.label} s={s} index={i} />
-          ))}
-        </div>
-      </div>
+        {rings.map((s, i) => (
+          <Ring key={s.label} s={s} index={i} />
+        ))}
 
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-        {/* Revisões */}
-        <PastelCard delay={160} glowColor="225,6,0" className="relative overflow-hidden border-[#F8D7D7] p-6" href={d.reviews.top ? `${base}/aula/${d.reviews.top.lessonId}?revisao=1#questoes` : `${base}/revisoes`} label={`Revisões pendentes: ${d.reviews.count}`} testId="card-revisoes">
-          <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#E10600]/10 blur-[18px]" aria-hidden />
-          {d.reviews.count > 0 && <div className="absolute inset-0 rounded-[32px] border border-[#E10600]/30 opacity-60" style={{ animation: "borderPulse 2.2s ease-in-out infinite" }} aria-hidden />}
-          <div className="relative flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`flex h-12 w-12 items-center justify-center rounded-[14px] bg-gradient-to-br from-[#E10600] to-[#C80500] shadow-[0_8px_20px_rgba(225,6,0,0.35)] ${d.reviews.count ? "animate-[pulse-soft_2s_ease-in-out_infinite]" : ""}`} aria-hidden>
-                <Clock3 className="h-5 w-5 text-[#0A0A0A]" />
+        {/* Revisões pendentes */}
+        <PastelCard delay={160} radius={18} glowColor="225,6,0" className="h-full p-4" outerClassName="col-span-2 h-full sm:col-span-1" href={d.reviews.top ? `${base}/aula/${d.reviews.top.lessonId}?revisao=1#questoes` : `${base}/revisoes`} label={`Revisões pendentes: ${d.reviews.count}`} testId="card-revisoes">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-gradient-to-br from-[#FF1E1E] to-[#C80500] shadow-[0_8px_18px_rgba(225,6,0,0.32)]" aria-hidden>
+                <CalendarClock className="h-5 w-5 text-white" />
               </div>
-              <div>
-                <div className="font-[Space_Grotesk] text-[13.5px] font-bold tracking-tight">Revisões pendentes</div>
-                <div className="text-[11.5px] text-[#5C5C5C]">mantém o cérebro fresquinho</div>
+              <div className="min-w-0">
+                <div className="font-[Space_Grotesk] text-[13.5px] font-bold leading-tight">Revisões pendentes</div>
+                <div className="text-[11px] leading-tight text-[#6B7280]">pratique leve, sem pressão</div>
               </div>
             </div>
-            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#F5C2C2] bg-[#FDECEC] text-[12px] font-bold text-[#C80500]" data-testid="reviews-count">{d.reviews.count}</div>
+            <div className="flex h-7 min-w-7 shrink-0 items-center justify-center rounded-full border border-[#F5C2C2] bg-[#FDECEC] px-2 text-[12px] font-bold text-[#C80500]" data-testid="reviews-count">{d.reviews.count}</div>
           </div>
-          <div className="relative mt-5 flex gap-3 rounded-[18px] border border-[#F8D7D7] bg-[#FFF5F5] p-3.5 shadow-[inset_0_1px_0_white]">
-            <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-[#F8D7D7] bg-[#F5F5F5] text-[18px] ${d.reviews.top ? "animate-[shake_2.5s_ease-in-out_infinite]" : ""}`} aria-hidden>
-              {d.reviews.top ? "📄" : "✅"}
+          <div className="mt-4 rounded-[14px] border border-[#F8D7D7] bg-[#FFF6F6] p-3">
+            <div className="flex items-center gap-3">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[10px] border border-[#EDEDED] bg-white" aria-hidden>
+                {d.reviews.top ? <FileText className="h-4 w-4 text-[#404040]" /> : <CircleCheck className="h-4 w-4 text-[#16A34A]" />}
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-[12.5px] font-semibold">{d.reviews.top ? d.reviews.top.title : "Nenhuma revisão para hoje"}</div>
+                <div className="text-[10.5px] text-[#6B7280]">{d.reviews.top ? "revisão do tema" : "As revisões aparecem aqui no prazo."}</div>
+              </div>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-[13px] font-semibold">{d.reviews.top ? d.reviews.top.title : "Nenhuma revisão para hoje"}</div>
-              {d.reviews.top ? (
-                <div className="mt-1 inline-flex items-center gap-1.5 rounded-full bg-[#E10600] px-2.5 py-1 text-[10px] font-bold text-white shadow-[0_4px_12px_rgba(225,6,0,0.35)]">
+            {d.reviews.top && (
+              <div className="mt-2.5 flex justify-center">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E10600] px-3 py-1.5 text-[10.5px] font-bold text-white shadow-[0_4px_12px_rgba(225,6,0,0.35)]">
                   <CircleAlert className="h-3 w-3" aria-hidden />
                   {d.reviews.top.overdueDays > 0 ? `Atrasada há ${d.reviews.top.overdueDays} dia${d.reviews.top.overdueDays > 1 ? "s" : ""}` : "Para hoje"}
-                </div>
-              ) : (
-                <div className="mt-1 text-[11px] text-[#5C5C5C]">As revisões aparecem aqui quando chegam no prazo.</div>
-              )}
-            </div>
-          </div>
-          <span className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-[14px] bg-[#E10600] text-[13px] font-semibold text-white shadow-[0_6px_16px_rgba(0,0,0,0.18)] transition group-hover:bg-[#B80500]">
-            {d.reviews.top ? "Revisar agora" : "Ver revisões"} <Zap className="h-3.5 w-3.5" aria-hidden />
-          </span>
-        </PastelCard>
-
-        {/* Questões a resolver */}
-        <PastelCard delay={240} glowColor="225,6,0" className="p-6" href={`${base}/questoes?situacao=nao_respondidas`} label={`Questões a resolver: ${d.questions.unanswered} de ${d.questions.total}`} testId="card-questoes">
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-gradient-to-br from-[#FF1E1E] to-[#B30000] shadow-[0_8px_20px_rgba(225,6,0,0.32)]" aria-hidden>
-                <CircleHelp className="h-5 w-5 text-[#0A0A0A]" />
+                </span>
               </div>
-              <div>
-                <div className="font-[Space_Grotesk] text-[13.5px] font-bold">Questões a resolver</div>
-                <div className="text-[11.5px] text-[#5C5C5C]">pratique leve, sem pressão</div>
-              </div>
-            </div>
-            <div className="rounded-full border border-[#E0E0E0] bg-[#F4F4F4] px-2.5 py-1 text-[11px] font-bold text-[#C80500]">
-              {d.questions.unanswered} / {d.questions.total}
-            </div>
-          </div>
-          <div className="mt-6">
-            <div className="h-2.5 overflow-hidden rounded-full bg-[#F4F4F4] p-1">
-              <div className="relative h-full overflow-hidden rounded-full bg-gradient-to-r from-[#FF1E1E] to-[#B30000]" style={{ width: `${qPct}%` }}>
-                <div className="absolute inset-0 animate-[shimmer_2s_linear_infinite] bg-white/40" />
-              </div>
-            </div>
-            <div className="mt-3 flex items-center justify-between text-[12px]">
-              <span className="text-[#4D4D4D]">{d.questions.unanswered} de {d.questions.total} sem resposta</span>
-              <span className="rounded-full border border-[#D4D4D4] bg-[#F5F5F5] px-2.5 py-1 text-[11px] font-medium text-[#404040]">{d.questions.marked} para depois</span>
-            </div>
-          </div>
-          <div className="mt-5 grid grid-cols-3 gap-2">
-            {[
-              { k: "Fácil", v: d.questions.unansweredByLevel.facil, c: "bg-[#F5F5F5] text-[#0A0A0A] border-[#D4D4D4]" },
-              { k: "Médio", v: d.questions.unansweredByLevel.medio, c: "bg-[#F5F5F5] text-[#404040] border-[#D4D4D4]" },
-              { k: "Difícil", v: d.questions.unansweredByLevel.dificil, c: "bg-[#FDECEC] text-[#C80500] border-[#F5C2C2]" },
-            ].map((s) => (
-              <div key={s.k} className={`rounded-[12px] border px-2.5 py-2 text-center ${s.c}`}>
-                <div className="text-[11px] font-semibold">{s.k}</div>
-                <div className="text-[14px] font-bold">{s.v}</div>
-              </div>
-            ))}
+            )}
           </div>
         </PastelCard>
 
         {/* Últimos 14 dias */}
-        <PastelCard delay={320} glowColor="10,10,10" className="p-6" noTilt testId="card-14dias">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#0A0A0A] shadow-[0_6px_16px_rgba(0,0,0,0.22)]" aria-hidden>
+        <PastelCard delay={240} radius={18} glowColor="10,10,10" className="col-span-2 h-full p-4 sm:col-span-1" noTilt testId="card-14dias">
+          <div className="flex items-start justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] bg-[#0A0A0A] shadow-[0_6px_16px_rgba(0,0,0,0.22)]" aria-hidden>
                 <ChartColumn className="h-5 w-5 text-white" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <div className="font-[Space_Grotesk] text-[13.5px] font-bold">Últimos 14 dias</div>
-                <div className="text-[11.5px] text-[#5C5C5C]">{d.answered14d ? "sua constância, dia a dia" : "responda questões para ver sua evolução"}</div>
+                <div className="text-[11px] leading-tight text-[#6B7280]">{d.answered14d ? "sua constância, dia a dia" : "responda questões para ver sua evolução"}</div>
               </div>
             </div>
-            <Link href={`${base}/desempenho`} className="text-[12px] font-semibold text-[#C80500] hover:text-[#B30000]">Detalhes</Link>
+            <Link href={`${base}/desempenho`} className="shrink-0 text-[12px] font-semibold text-[#C80500] hover:text-[#B30000]">Detalhes</Link>
           </div>
-          <div className="mt-4 flex items-baseline gap-2.5">
-            <span className="font-[Space_Grotesk] text-[30px] font-[800] leading-none tracking-tight">{d.answered14d}</span>
-            <span className="text-[12px] text-[#4D4D4D]">respostas</span>
+          <div className="mt-3 flex items-baseline gap-2">
+            <span className="font-[Space_Grotesk] text-[26px] font-[800] leading-none tracking-tight">{d.answered14d}</span>
+            <span className="text-[11.5px] text-[#6B7280]">respostas</span>
             {d.accuracy14d !== null && (
-              <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[#D4D4D4] bg-[#F5F5F5] px-2.5 py-1 text-[11px] font-bold text-[#0A0A0A]">
-                <Flame className="h-3 w-3" aria-hidden /> {Math.round(d.accuracy14d * 100)}% acerto
+              <span className="ml-auto inline-flex items-center gap-1 rounded-full border border-[#E5E5E5] bg-[#F7F7F7] px-2 py-0.5 text-[10.5px] font-bold text-[#0A0A0A]">
+                <Flame className="h-3 w-3 text-[#E10600]" aria-hidden /> {Math.round(d.accuracy14d * 100)}% acerto
               </span>
             )}
           </div>
-          <div className="mt-5 flex h-[72px] items-end gap-[5px]" role="list" aria-label="Respostas por dia nos últimos 14 dias">
-            {d.days.map((s, i) => {
-              const total = s.correct + s.wrong;
-              const h = total ? 18 + (total / maxDay) * 42 : 6;
-              const acc = total ? (s.correct / total) * 100 : 0;
-              const wd = weekdayOf(s.day);
-              const text = total ? `${WEEKDAY_LONG[wd]} ${s.day.slice(8, 10)}/${s.day.slice(5, 7)}: ${s.correct}/${total} • ${Math.round(acc)}% acerto` : `${WEEKDAY_LONG[wd]} ${s.day.slice(8, 10)}/${s.day.slice(5, 7)}: sem respostas`;
-              const isToday = i === d.days.length - 1;
-              const show = (el: HTMLElement) => {
-                const r = el.getBoundingClientRect();
-                setTooltip({ x: r.left + r.width / 2, y: r.top - 8, text });
-              };
-              return (
-                <div key={s.day} role="listitem" className="group/bar relative flex flex-1 flex-col items-center gap-1.5">
-                  <div className="relative flex w-full justify-center" style={{ height: "60px" }}>
-                    <div
-                      tabIndex={0}
-                      aria-label={text}
-                      className={`absolute bottom-0 w-full max-w-[22px] cursor-pointer overflow-hidden rounded-full transition-all duration-300 hover:scale-y-110 hover:brightness-110 ${total ? "bg-gradient-to-t from-[#5C5C5C] to-[#0A0A0A] shadow-[0_3px_10px_rgba(0,0,0,0.12)]" : "bg-[#E5E5E5]"}`}
-                      style={{
-                        height: barsIn ? `${h}px` : "6px",
-                        transitionDelay: `${i * 35}ms`,
-                        animation: barsIn ? "springIn 0.6s cubic-bezier(0.34,1.56,0.64,1) both" : undefined,
-                        animationDelay: `${i * 45}ms`,
-                        transformOrigin: "bottom",
-                      }}
-                      onMouseEnter={(e) => show(e.currentTarget)}
-                      onFocus={(e) => show(e.currentTarget)}
-                      onMouseLeave={() => setTooltip(null)}
-                      onBlur={() => setTooltip(null)}
-                    >
-                      {total > 0 && s.wrong > 0 && (
-                        <div className="absolute bottom-0 left-0 right-0 rounded-full bg-[#E10600]" style={{ height: `${100 - acc}%`, minHeight: "5px" }} />
-                      )}
-                    </div>
-                  </div>
-                  <span className={`text-[10px] font-medium ${isToday ? "font-bold text-[#C80500]" : "text-[#5C5C5C] group-hover/bar:text-[#0A0A0A]"}`} aria-hidden>
-                    {WEEKDAY[wd]}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-3 flex gap-3 text-[10.5px]">
-            <span className="flex items-center gap-1.5">
-              <span className="h-2.5 w-2.5 rounded-full bg-gradient-to-r from-[#5C5C5C] to-[#0A0A0A]" aria-hidden /> acertos
-            </span>
-            <span className="flex items-center gap-1.5 text-[#5C5C5C]">
-              <span className="h-2.5 w-2.5 rounded-full bg-[#E10600]" aria-hidden /> erros
-            </span>
-          </div>
+          <AreaChart days={d.days} />
         </PastelCard>
       </div>
 
-      {/* Trilhas */}
-      <div>
-        <div className="mb-5 flex flex-wrap items-center justify-between gap-3">
-          <h2 className="flex flex-wrap items-center gap-2.5 font-[Space_Grotesk] text-[18px] font-bold">
-            <span className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[#0A0A0A] text-white shadow-[0_4px_12px_rgba(0,0,0,0.20)]" aria-hidden>
-              <GraduationCap className="h-4.5 w-4.5" />
+      {/* Seus estudos */}
+      <section aria-labelledby="painel-estudos">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <h2 id="painel-estudos" className="flex items-center gap-2.5 font-[Space_Grotesk] text-[17px] font-bold">
+            <span className="flex h-8 w-8 items-center justify-center rounded-[10px] bg-[#0A0A0A] text-white shadow-[0_4px_12px_rgba(0,0,0,0.20)]" aria-hidden>
+              <FolderOpen className="h-4 w-4" />
             </span>
             Seus estudos
-            <span className="ml-1 rounded-full border border-[#E5E5E5] bg-[#F5F5F5] px-2.5 py-0.5 font-[Inter,system-ui,sans-serif] text-[11px] font-semibold text-[#4D4D4D] shadow-sm">
-              {activeTrails} {activeTrails === 1 ? "ativa" : "ativas"}
-              {d.trails.slice(0, 2).map((t) => ` • ${t.passedLessons}/${t.totalLessons}`).join("")}
-            </span>
           </h2>
           <Link href={`${base}/trilhas`} className="group flex items-center gap-1 text-[13px] font-semibold text-[#C80500] hover:text-[#B30000]">
             Ver tudo <ArrowRight className="h-3.5 w-3.5 transition-transform group-hover:translate-x-0.5" aria-hidden />
           </Link>
         </div>
         {d.pendingTrails.length > 0 && (
-          <div className="mb-4 flex flex-wrap gap-2">
+          <div className="mb-3 flex flex-wrap gap-2">
             {d.pendingTrails.map((t) => (
               <Link key={t.id} href={`${base}/trilhas/${t.id}`} className="inline-flex items-center gap-2 rounded-full border border-[#D4D4D4] bg-[#F5F5F5] px-3 py-1.5 text-[12px] font-medium text-[#404040]">
                 {t.title} — {t.status === "review" ? "revise o plano" : t.status === "failed" ? "falhou: tente de novo" : "em preparação"}
@@ -415,43 +259,130 @@ export function DashboardView(d: DashboardData) {
           </div>
         )}
         {d.trails.length ? (
-          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-            {d.trails.slice(0, 2).map((t, i) => (
-              <TrailTile key={t.id} t={t} delay={400 + i * 80} onOpen={() => setModal(t)} />
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+            {d.trails.slice(0, 4).map((t, i) => (
+              <TrailTile key={t.id} t={t} delay={320 + i * 60} onOpen={() => setModal(t)} />
             ))}
           </div>
         ) : (
-          <PastelCard href={`${base}/nova-trilha`} className="flex min-h-[160px] flex-col items-center justify-center border-2 border-dashed !bg-transparent p-8 !shadow-none" label="Começar novo estudo">
+          <PastelCard href={`${base}/nova-trilha`} radius={18} className="flex min-h-[120px] flex-col items-center justify-center border-2 border-dashed !bg-transparent p-6 !shadow-none" label="Começar novo estudo">
             <div className="font-bold">Nenhum estudo ativo</div>
             <div className="mt-1 text-[12px] text-[#5C5C5C]">Informe um tema, um artigo ou uma matéria para começar.</div>
           </PastelCard>
         )}
-      </div>
-
-      <FocusTip onToast={toast} />
-
-      {tooltip && (
-        <div className="pointer-events-none fixed z-[70] -translate-x-1/2 -translate-y-full rounded-[12px] border border-[#333] bg-[#1C1C1C] px-3 py-2 text-[11px] font-medium text-white shadow-[0_12px_32px_rgba(0,0,0,0.22)]" style={{ left: tooltip.x, top: tooltip.y }} role="tooltip">
-          {tooltip.text}
-          <div className="absolute left-1/2 top-full -mt-1 h-2 w-2 -translate-x-1/2 rotate-45 border-b border-r border-[#333] bg-[#1C1C1C]" />
-        </div>
-      )}
+      </section>
 
       <TrailModal t={modal} base={base} onClose={() => setModal(null)} />
     </div>
   );
 }
 
-function Ring({ s, index }: { s: { label: string; done: number; total: number | null; color1: string; color2: string; text: string; bg: string; emoji: string; sub: string; href: string }; index: number }) {
+/** Gráfico de área das respostas por dia (14 dias), com pontos e rótulos de valor no toque. */
+function AreaChart({ days }: { days: DashboardData["days"] }) {
+  const [hover, setHover] = useState<number | null>(null);
+  const W = 260;
+  const H = 92;
+  const pad = { l: 24, r: 6, t: 8, b: 16 };
+  const totals = days.map((x) => x.correct + x.wrong);
+  const max = Math.max(4, ...totals);
+  const step = Math.ceil(max / 4);
+  const top = step * 4;
+  const x = (i: number) => pad.l + (i * (W - pad.l - pad.r)) / Math.max(1, days.length - 1);
+  const y = (v: number) => pad.t + (1 - v / top) * (H - pad.t - pad.b);
+  const pts = totals.map((v, i) => [x(i), y(v)] as const);
+  // Curva suave (Catmull-Rom → Bézier).
+  const path = pts.reduce((acc, [px, py], i) => {
+    if (i === 0) return `M${px},${py}`;
+    const [x0, y0] = pts[i - 2] ?? pts[i - 1]!;
+    const [x1, y1] = pts[i - 1]!;
+    const [x3, y3] = pts[i + 1] ?? [px, py];
+    const c1x = x1 + (px - x0) / 6;
+    const c1y = y1 + (py - y0) / 6;
+    const c2x = px - (x3 - x1) / 6;
+    const c2y = py - (y3 - y1) / 6;
+    return `${acc} C${c1x},${c1y} ${c2x},${c2y} ${px},${py}`;
+  }, "");
+  const area = `${path} L${x(days.length - 1)},${H - pad.b} L${x(0)},${H - pad.b} Z`;
+  const fmt = (iso: string) => `${iso.slice(8, 10)}/${iso.slice(5, 7)}`;
+  const label = (i: number) => {
+    const s = days[i]!;
+    const t = s.correct + s.wrong;
+    return `${WEEKDAY_LONG[weekdayOf(s.day)]} ${fmt(s.day)}: ${t ? `${t} respostas, ${Math.round((s.correct / t) * 100)}% acerto` : "sem respostas"}`;
+  };
+  return (
+    <div className="relative mt-2">
+      <svg viewBox={`0 0 ${W} ${H}`} className="h-auto w-full overflow-visible" role="img" aria-label="Respostas por dia nos últimos 14 dias">
+        <defs>
+          <linearGradient id="painel-linha" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor="#E10600" />
+            <stop offset="55%" stopColor="#B4239A" />
+            <stop offset="100%" stopColor="#3B82F6" />
+          </linearGradient>
+          <linearGradient id="painel-area" x1="0" x2="1" y1="0" y2="0">
+            <stop offset="0%" stopColor="#E10600" stopOpacity="0.22" />
+            <stop offset="55%" stopColor="#B4239A" stopOpacity="0.2" />
+            <stop offset="100%" stopColor="#3B82F6" stopOpacity="0.22" />
+          </linearGradient>
+          <linearGradient id="painel-sombra" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stopColor="#fff" stopOpacity="0" />
+            <stop offset="100%" stopColor="#fff" stopOpacity="0.9" />
+          </linearGradient>
+        </defs>
+        {[0, 1, 2, 3, 4].map((k) => (
+          <g key={k}>
+            <line x1={pad.l} x2={W - pad.r} y1={y(k * step)} y2={y(k * step)} stroke="#EEF0F3" strokeWidth="1" />
+            <text x={pad.l - 4} y={y(k * step) + 3} textAnchor="end" fontSize="7" fill="#9CA3AF">{k * step}</text>
+          </g>
+        ))}
+        <path d={area} fill="url(#painel-area)" />
+        <path d={area} fill="url(#painel-sombra)" />
+        <path d={path} fill="none" stroke="url(#painel-linha)" strokeWidth="2" strokeLinecap="round" />
+        {pts.map(([px, py], i) =>
+          totals[i]! > 0 || hover === i ? (
+            <circle key={i} cx={px} cy={py} r={hover === i ? 3.6 : 2.6} fill="#fff" stroke={i / (pts.length - 1) > 0.55 ? "#3B82F6" : "#E10600"} strokeWidth="1.6" />
+          ) : null,
+        )}
+        {pts.map(([px], i) => (
+          <rect
+            key={`h${i}`}
+            x={px - (W - pad.l - pad.r) / (2 * Math.max(1, days.length - 1))}
+            y={0}
+            width={(W - pad.l - pad.r) / Math.max(1, days.length - 1)}
+            height={H}
+            fill="transparent"
+            tabIndex={0}
+            aria-label={label(i)}
+            onMouseEnter={() => setHover(i)}
+            onMouseLeave={() => setHover(null)}
+            onFocus={() => setHover(i)}
+            onBlur={() => setHover(null)}
+          />
+        ))}
+        {[0, Math.floor((days.length - 1) / 2), days.length - 1].map((i) => (
+          <text key={`d${i}`} x={x(i)} y={H - 3} textAnchor={i === 0 ? "start" : i === days.length - 1 ? "end" : "middle"} fontSize="7" fill="#9CA3AF">
+            {i === days.length - 1 ? "hoje" : fmt(days[i]!.day)}
+          </text>
+        ))}
+      </svg>
+      {hover !== null && (
+        <div className="pointer-events-none absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full whitespace-nowrap rounded-[10px] bg-[#1C1C1C] px-2.5 py-1.5 text-[10.5px] font-medium text-white shadow-lg" role="tooltip">
+          {label(hover)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Ring({ s, index }: { s: { label: string; done: number; total: number | null; color1: string; color2: string; text: string; bg: string; icon: ReactNode; sub: string; href: string }; index: number }) {
   const pct = s.total ? Math.min(100, Math.round((s.done / s.total) * 100)) : 0;
   const v = useCountUp(pct, 500 + index * 200);
   return (
-    <PastelCard delay={80 + index * 80} glowColor={rgbOf(s.color1)} className="flex flex-col items-center p-4 text-center sm:p-5" href={s.href} label={`${s.label}: ${s.done}${s.total ? ` de ${s.total}` : ""}`} testId={`ring-${index}`}>
-      <div className="flex flex-col items-center">
-        <div className="relative h-[92px] w-[92px] sm:h-[106px] sm:w-[106px]">
+    <PastelCard delay={80 + index * 60} radius={18} glowColor={rgbOf(s.color1)} className="h-full" outerClassName="h-full" href={s.href} label={`${s.label}: ${s.done}${s.total ? ` de ${s.total}` : ""}`} testId={`ring-${index}`}>
+      <div className="flex h-full flex-col items-center justify-center p-4 text-center">
+        <div className="relative h-[88px] w-[88px]">
           <svg className="h-full w-full -rotate-90" viewBox="0 0 100 100" aria-hidden>
-            <circle cx="50" cy="50" r="42" fill="none" stroke={s.bg} strokeWidth="10" />
-            <circle cx="50" cy="50" r="42" fill="none" stroke={`url(#ring-g${index})`} strokeWidth="10" strokeLinecap="round" strokeDasharray={`${(v / 100) * 264} 264`} style={{ filter: "drop-shadow(0 2px 8px rgba(0,0,0,0.08))" }} />
+            <circle cx="50" cy="50" r="42" fill="none" stroke={s.bg} strokeWidth="9" />
+            <circle cx="50" cy="50" r="42" fill="none" stroke={`url(#ring-g${index})`} strokeWidth="9" strokeLinecap="round" strokeDasharray={`${(v / 100) * 264} 264`} />
             <defs>
               <linearGradient id={`ring-g${index}`} x1="0%" y1="0%" x2="100%" y2="100%">
                 <stop offset="0%" stopColor={s.color1} />
@@ -459,22 +390,18 @@ function Ring({ s, index }: { s: { label: string; done: number; total: number | 
               </linearGradient>
             </defs>
           </svg>
-          <div className="glass absolute inset-[12px] flex flex-col items-center justify-center rounded-full border border-[#E5E5E5] bg-white/90 shadow-[inset_0_1px_0_white]">
-            <span className="text-[14px] sm:text-[16px]" aria-hidden>{s.emoji}</span>
-            <span className="text-[19px] font-[800] leading-none tracking-tight sm:text-[22px]" style={gradientText(s.color1, s.color2)}>
-              {s.total ? `${Math.round(v)}%` : "—"}
-            </span>
+          <div className="absolute inset-[11px] flex flex-col items-center justify-center gap-0.5 rounded-full border border-[#EEEEEE] bg-white shadow-[inset_0_1px_0_white,0_4px_14px_rgba(0,0,0,0.06)]">
+            {s.icon}
+            <span className="text-[13px] font-[800] leading-none" style={{ color: s.text }}>{s.total ? `${Math.round(v)}%` : "—"}</span>
           </div>
         </div>
-        <div className="mt-4">
-          <div className="font-[Space_Grotesk] text-[13px] font-semibold">{s.label}</div>
-          <div className="mt-1 text-[22px] font-[800] leading-none">
-            <span style={gradientText(s.color1, s.color2)}>{s.done}</span>
-            <span className="text-[14px] font-medium text-[#5C5C5C]">/{s.total ?? "?"}</span>
-          </div>
-          <div className="mt-2.5 inline-flex rounded-full px-3 py-1 text-[10px] font-bold" style={{ background: s.bg, color: s.text }}>
-            {s.sub}
-          </div>
+        <div className="mt-3 text-[12.5px] font-semibold text-[#1A1A1A]">{s.label}</div>
+        <div className="mt-1 text-[20px] font-[800] leading-none">
+          <span style={{ color: s.text }}>{s.done}</span>
+          <span className="text-[13px] font-medium text-[#6B7280]">/{s.total ?? "?"}</span>
+        </div>
+        <div className="mt-2.5 inline-flex rounded-full px-3 py-1 text-[10px] font-bold" style={{ background: s.bg, color: s.text }}>
+          {s.sub}
         </div>
       </div>
     </PastelCard>
@@ -482,107 +409,56 @@ function Ring({ s, index }: { s: { label: string; done: number; total: number | 
 }
 
 function TrailTile({ t, delay, onOpen }: { t: TrailCard; delay: number; onOpen: () => void }) {
-  const filled = Math.round((t.progress / 100) * 18);
+  const studied = t.totalLessons > 0 && t.passedLessons >= t.totalLessons;
   return (
-    <PastelCard delay={delay} glowColor={rgbOf(t.color)} className="!p-0 overflow-hidden" onActivate={onOpen} label={`Abrir estudo ${t.title}`} testId="trail-tile">
-      <div className="relative h-[96px] overflow-hidden p-4" style={{ background: `linear-gradient(135deg, ${t.color}14, ${t.color2}14, #FFFFFF)` }}>
-        <div className="absolute inset-0 opacity-[0.06]" style={{ backgroundImage: `radial-gradient(circle at 2px 2px, ${t.color} 1px, transparent 0)`, backgroundSize: "16px 16px" }} aria-hidden />
-        <div className="absolute -right-10 -top-10 h-32 w-32 rounded-full bg-white/90 blur-[14px]" aria-hidden />
-        <div className="relative flex items-center justify-between gap-3">
-          <div className="flex min-w-0 items-center gap-3">
-            {t.totalLessons > 0 && t.passedLessons >= t.totalLessons ? (
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#e9f7ee] text-[22px] ring-2 ring-[#15803d]" role="img" aria-label="Estudado" data-testid="avatar-estudado">
-                ✅
-              </div>
-            ) : (
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[14px] border border-[#E5E5E5] bg-[#F5F5F5] text-[22px] shadow-[0_4px_12px_rgba(0,0,0,0.08)] transition-transform duration-500 group-hover:rotate-[-8deg]" aria-hidden>
-                {t.icon}
-              </div>
-            )}
-            <div className="min-w-0">
-              <div className="truncate font-[Space_Grotesk] text-[14.5px] font-bold leading-tight">{t.title}</div>
-              <div className="text-[11px] text-[#5C5C5C]">
-                {t.modules.length} {t.modules.length === 1 ? "matéria" : "matérias"} • {t.totalLessons} temas
-              </div>
+    <PastelCard delay={delay} radius={16} glowColor={rgbOf(t.color)} className="h-full" onActivate={onOpen} label={`Abrir estudo ${t.title}`} testId="trail-tile">
+      <div className="flex h-full flex-col p-4">
+        <div className="flex items-start gap-3">
+          {studied ? (
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#e9f7ee] ring-2 ring-[#15803d]" role="img" aria-label="Estudado" data-testid="avatar-estudado">
+              <CircleCheck className="h-5 w-5 text-[#15803d]" />
+            </div>
+          ) : (
+            <FolderIcon />
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="line-clamp-2 font-[Space_Grotesk] text-[13.5px] font-bold leading-snug text-[#0A0A0A]">{t.title}</div>
+            <div className="mt-0.5 text-[10.5px] text-[#6B7280]">
+              {t.modules.length} {t.modules.length === 1 ? "matéria" : "matérias"} · {t.totalLessons} {t.totalLessons === 1 ? "tema" : "temas"}
             </div>
           </div>
-          <div className="flex shrink-0 items-center gap-1.5">
-            {t.progress >= 85 && t.progress < 100 && (
-              <div className="flex items-center gap-1 rounded-full bg-[#E10600] px-2.5 py-1 text-[10px] font-bold text-white shadow-[0_4px_12px_rgba(0,0,0,0.15)]">
-                <Trophy className="h-3 w-3 text-[#FF2A2A]" aria-hidden /> Quase lá!
-              </div>
-            )}
-            {t.progress === 100 && (
-              <div className="flex items-center gap-1 rounded-full bg-[#E10600] px-2.5 py-1 text-[10px] font-bold text-white">
-                <Trophy className="h-3 w-3 text-[#FF2A2A]" aria-hidden /> Concluída
-              </div>
-            )}
-            <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#E5E5E5] bg-[#F5F5F5] shadow" aria-hidden>
-              <Star className="h-3.5 w-3.5 fill-[#FF2A2A] text-[#FF2A2A]" />
-            </div>
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#F5C2C2] bg-[#FFF5F5]" aria-hidden>
+            <Star className="h-3.5 w-3.5 fill-[#E10600] text-[#E10600]" />
           </div>
         </div>
-        <div className="absolute bottom-3 left-4 right-4 flex gap-1.5" role="img" aria-label={`${t.progress}% dos temas aprovados`}>
-          {Array.from({ length: 18 }, (_, k) => (
-            <div
-              key={k}
-              className="h-1.5 flex-1 rounded-full transition-all duration-700"
-              style={{
-                background: k < filled ? `linear-gradient(90deg, ${t.color}, ${t.color2})` : "#E0E0E0",
-                opacity: k < filled ? 1 - k * 0.03 : 0.5,
-                boxShadow: k < filled ? `0 0 8px ${t.color}66` : undefined,
-              }}
-            />
-          ))}
-        </div>
-      </div>
-      <div className="space-y-3.5 p-5">
-        {t.modules.slice(0, 3).map((m) => {
-          const pct = m.total ? Math.round((m.passed / m.total) * 100) : 0;
-          const done = pct === 100;
-          return (
-            <div key={m.id} className="group/item">
-              <div className="mb-1.5 flex items-center justify-between gap-3 text-[12px]">
-                <span className="flex min-w-0 items-center gap-1.5 font-medium">
-                  {done && <span className="shrink-0" role="img" aria-label="Matéria estudada">✅</span>}
-                  <span className="truncate">{m.title}</span>
-                </span>
-                <span className={`shrink-0 font-bold ${done ? "text-[#15803d]" : "text-[#4D4D4D]"}`}>
-                  {m.passed}/{m.total}
-                </span>
-              </div>
-              <div className="relative h-2.5 overflow-hidden rounded-full bg-[#F4F4F4] p-0.5">
-                <div
-                  className="relative h-full overflow-hidden rounded-full transition-all duration-700"
-                  style={{ width: `${pct}%`, background: done ? "linear-gradient(90deg, #0A0A0A, #404040)" : `linear-gradient(90deg, ${t.color}, ${t.color2})`, boxShadow: `0 0 12px ${t.color}55` }}
-                >
-                  <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent transition-transform duration-1000 group-hover/item:translate-x-full" />
-                </div>
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-between px-1" aria-hidden>
-                  {Array.from({ length: 6 }, (_, z) => (
-                    <div key={z} className={`h-1 w-1 rounded-full transition-all ${z * 16 < pct ? "bg-[#F5F5F5] shadow-[0_0_6px_rgba(255,255,255,0.7)]" : "bg-[#E5E5E5]"}`} />
-                  ))}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-        {t.modules.length > 3 && <div className="text-[11px] text-[#5C5C5C]">+ {t.modules.length - 3} matéria(s)</div>}
-      </div>
-      <div className="flex items-center justify-between px-5 pb-4">
-        <div className="flex -space-x-1.5" aria-hidden>
-          {["🧠", "📘", "✨"].map((e) => (
-            <div key={e} className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-[#E5E5E5] bg-[#F5F5F5] text-[11px] shadow">{e}</div>
-          ))}
-        </div>
-        <span className="flex items-center gap-1.5 text-[11.5px] font-medium text-[#5C5C5C] transition-colors group-hover:text-[#C80500]">
-          Ver matérias
-          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#F4F4F4] transition-colors group-hover:bg-[#FF1E1E] group-hover:text-[#0A0A0A]">
-            <ArrowRight className="h-3 w-3" aria-hidden />
+        <div className="mt-3 truncate text-[11.5px] text-[#4B5563]">{t.modules[0]?.title ?? "—"}</div>
+        <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+          <div className="flex min-w-0 items-center gap-2" role="img" aria-label={`${t.progress}% dos temas aprovados`}>
+            <span className="h-1.5 w-16 overflow-hidden rounded-full bg-[#EEF0F3]">
+              <span className="block h-full rounded-full" style={{ width: `${Math.max(t.progress, 3)}%`, background: studied ? "#16A34A" : `linear-gradient(90deg, ${t.color}, ${t.color2})` }} />
+            </span>
+            <span className="text-[10.5px] font-bold text-[#4B5563]">{t.passedLessons}/{t.totalLessons}</span>
+          </div>
+          <span className="flex items-center gap-1 text-[11px] font-medium text-[#6B7280] transition-colors group-hover:text-[#C80500]">
+            Ver matérias
+            <span className="flex h-5 w-5 items-center justify-center rounded-full bg-[#F4F4F4] transition-colors group-hover:bg-[#E10600] group-hover:text-white">
+              <ArrowRight className="h-3 w-3" aria-hidden />
+            </span>
           </span>
-        </span>
+        </div>
       </div>
     </PastelCard>
+  );
+}
+
+/** Pasta azul (ícone dos cards de estudo). */
+function FolderIcon() {
+  return (
+    <svg viewBox="0 0 40 32" className="h-9 w-10 shrink-0 drop-shadow-[0_4px_8px_rgba(37,99,235,0.25)]" aria-hidden>
+      <path d="M3 5a3 3 0 0 1 3-3h9l4 4h15a3 3 0 0 1 3 3v2H3z" fill="#2F7BEA" />
+      <rect x="3" y="9" width="34" height="21" rx="3" fill="#4B95F5" />
+      <rect x="3" y="9" width="34" height="5" rx="2" fill="#6AAAF8" opacity="0.6" />
+    </svg>
   );
 }
 
@@ -650,94 +526,5 @@ function TrailModal({ t, base, onClose }: { t: TrailCard | null; base: string; o
         </div>
       )}
     </dialog>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Dica de leveza + modo foco (25 min de estudo, 5 min de pausa) com cronômetro real
-// ---------------------------------------------------------------------------
-type Focus = { mode: "idle" } | { mode: "foco" | "pausa"; endsAt: number; pausedLeft: number | null };
-const FOCUS_MIN = 25;
-const BREAK_MIN = 5;
-const FOCUS_KEY = "na:modo-foco";
-
-function FocusTip({ onToast }: { onToast: (m: string) => void }) {
-  const [f, save] = useStored<Focus>(FOCUS_KEY, { mode: "idle" });
-  const [now, setNow] = useState(() => Date.now());
-
-  // Um tique por segundo; a troca foco → pausa → fim acontece no próprio tique.
-  useEffect(() => {
-    if (f.mode === "idle" || f.pausedLeft !== null) return;
-    const tick = () => {
-      const t = Date.now();
-      setNow(t);
-      if (t < f.endsAt) return;
-      if (f.mode === "foco") {
-        onToast("Foco concluído! Pausa de 5 min ☕");
-        save({ mode: "pausa", endsAt: t + BREAK_MIN * 60_000, pausedLeft: null });
-      } else {
-        onToast("Pausa encerrada. Bora para o próximo bloco 🍃");
-        save(null);
-      }
-    };
-    const id = setInterval(tick, 1000);
-    const first = setTimeout(tick, 0);
-    return () => {
-      clearInterval(id);
-      clearTimeout(first);
-    };
-  }, [f, onToast, save]);
-
-  const left = f.mode === "idle" ? 0 : f.pausedLeft ?? Math.max(0, f.endsAt - now);
-  const mm = String(Math.floor(left / 60_000)).padStart(2, "0");
-  const ss = String(Math.floor((left % 60_000) / 1000)).padStart(2, "0");
-
-  return (
-    <PastelCard delay={560} noTilt className="!rounded-[20px] !border-[#3A0A0A] bg-gradient-to-r from-[#141414] to-[#2A0303] p-0 text-white" testId="foco">
-      <div className="flex flex-col items-start justify-between gap-3 p-5 sm:flex-row sm:items-center">
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-[14px] border border-white/10 bg-white/10 backdrop-blur" aria-hidden>
-            {f.mode === "idle" ? "💡" : f.mode === "foco" ? "🎧" : "☕"}
-          </div>
-          <div>
-            <div className="text-[13.5px] font-semibold">{f.mode === "idle" ? "Dica de leveza" : f.mode === "foco" ? "Modo foco" : "Pausa"}</div>
-            <div className="text-[12px] text-white/70" aria-live="polite">
-              {f.mode === "idle" ? (
-                "Estude 25 min e faça 5 min de pausa. Um tema por vez rende mais."
-              ) : (
-                <>
-                  <span className="font-mono text-[14px] font-bold text-white" data-testid="foco-tempo">{mm}:{ss}</span>
-                  {f.pausedLeft !== null ? " • pausado" : f.mode === "foco" ? " restantes de foco" : " restantes de pausa"}
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          {f.mode === "idle" ? (
-            <button type="button" onClick={() => { save({ mode: "foco", endsAt: Date.now() + FOCUS_MIN * 60_000, pausedLeft: null }); setNow(Date.now()); onToast("Modo foco ativado 🍃"); }} className="h-10 rounded-[12px] bg-white px-4 text-[12px] font-bold text-black shadow transition hover:bg-[#E6E6E6]">
-              Ativar foco
-            </button>
-          ) : (
-            <>
-              <button
-                type="button"
-                onClick={() =>
-                  f.pausedLeft !== null
-                    ? (save({ ...f, endsAt: Date.now() + f.pausedLeft, pausedLeft: null }), setNow(Date.now()))
-                    : save({ ...f, pausedLeft: Math.max(0, f.endsAt - Date.now()) })
-                }
-                className="h-10 rounded-[12px] bg-white px-4 text-[12px] font-bold text-black shadow transition hover:bg-[#E6E6E6]"
-              >
-                {f.pausedLeft !== null ? "Retomar" : "Pausar"}
-              </button>
-              <button type="button" onClick={() => { save(null); onToast("Modo foco encerrado"); }} className="h-10 rounded-[12px] border border-white/20 px-4 text-[12px] font-bold text-white transition hover:bg-white/10">
-                Encerrar
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-    </PastelCard>
   );
 }

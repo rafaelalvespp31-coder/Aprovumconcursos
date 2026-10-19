@@ -1656,3 +1656,10 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .al-passos button[data-situacao="concluido"] { border-color: #BFE3CB; background: #F3FBF6; }
 .al-passos button[aria-current="step"] { border-color: #E50914; box-shadow: 0 6px 16px rgba(229, 9, 20, 0.16); }
 .al-passo-n { color: #8A9099; font-weight: 800; }
+
+/* Banner do painel: no celular, desbota embaixo; no desktop, faixa arredondada sem desbotar */
+@media (max-width: 1023.98px) { .painel-banner { mask-image: var(--fade); -webkit-mask-image: var(--fade); } }
+@media (min-width: 1024px) {
+  .painel-banner .banner-rotator { height: 100%; }
+  .painel-banner .br-controles { bottom: 12px; }
+}

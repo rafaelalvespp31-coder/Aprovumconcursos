@@ -26,7 +26,8 @@ const ESTILOS = [
   "font-hud font-semibold text-[#0A0A0A]",
 ];
 
-export function RotatingQuote({ className = "" }: { className?: string }) {
+/** `uniform`: mesmo estilo em todas as frases (caixa alta vermelha, como no painel). */
+export function RotatingQuote({ className = "", uniform = false }: { className?: string; uniform?: boolean }) {
   const [i, setI] = useState(0);
   useEffect(() => {
     // Troca a cada 4,5 s, passando por todas as frases.
@@ -35,7 +36,7 @@ export function RotatingQuote({ className = "" }: { className?: string }) {
   }, []);
   return (
     <span className={`relative block min-w-0 overflow-hidden ${className}`} aria-live="off" data-testid="frase-motivacional">
-      <span key={i} className={`frase-in block truncate ${ESTILOS[i % ESTILOS.length]}`}>{FRASES[i]}</span>
+      <span key={i} className={`frase-in block truncate ${uniform ? "font-hud font-bold uppercase tracking-[0.08em] text-[#D90A00]" : ESTILOS[i % ESTILOS.length]}`}>{FRASES[i]}</span>
     </span>
   );
 }

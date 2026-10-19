@@ -1,8 +1,8 @@
 /**
  * Banner da marca no topo do painel (modo estudo), de ponta a ponta da área de conteúdo.
  * - Celular: largura total, arte inteira (sem cortar textos).
- * - Desktop: faixa com a altura da tela; arte inteira no centro e laterais preenchidas
- *   pela própria arte desfocada, sem caixa nem contorno.
+ * - Desktop: faixa larga com cantos arredondados (proporção dos banners de aprovação);
+ *   a arte da marca fica inteira no centro e as laterais são a própria arte desfocada.
  *
  * Animações (todas decorativas e suaves):
  * - Olhos: fogo dentro do contorno exato do brilho dos olhos (máscara recortada da própria
@@ -33,8 +33,8 @@ export function BrandBanner() {
   const sideFade = "linear-gradient(to right, transparent 0%, #000 6%, #000 94%, transparent 100%)";
   return (
     <BannerGate
-      className="relative -mx-4 -mt-7 mb-4 overflow-hidden sm:-mx-5 lg:-mx-10 lg:mb-6 lg:h-[min(calc(100dvh-6rem),880px)] lg:min-h-[560px]"
-      style={{ maskImage: bottomFade, WebkitMaskImage: bottomFade }}
+      className="painel-banner relative -mx-4 -mt-7 mb-4 overflow-hidden sm:-mx-5 lg:mx-0 lg:mt-0 lg:mb-5 lg:aspect-[2000/711] lg:rounded-[18px] lg:bg-[#0A0A0A] lg:shadow-[0_14px_40px_rgba(0,0,0,0.18)]"
+      style={{ ["--fade" as string]: bottomFade }}
       testId="painel-banner"
       assets={["/banner-estudo-fundo.webp", "/banner-estudo-texto.png", "/banner-estudo-v.png", "/banner-estudo-olhos.png", "/fogo-textura.webp"]}
     >

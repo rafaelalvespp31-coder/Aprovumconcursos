@@ -253,7 +253,7 @@ export function PastelShell({
               <div className="barra-base mt-auto shrink-0 p-4">
                 {!collapsed ? (
                   <>
-                    <PastelCard delay={600} noTilt glowColor="225,6,0" className={`barra-streak ${isAula ? "!hidden" : ""} !rounded-[20px] !shadow-none border-[#2E2E2E] bg-gradient-to-br from-[#1A1A1A] to-[#120606]`}>
+                    <PastelCard delay={600} noTilt glowColor="225,6,0" className={`barra-streak ${isAula || isPainel ? "!hidden" : ""} !rounded-[20px] !shadow-none border-[#2E2E2E] bg-gradient-to-br from-[#1A1A1A] to-[#120606]`}>
                       <div className="p-4" data-testid="streak-card">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5">
@@ -337,9 +337,9 @@ export function PastelShell({
                   <div className="min-w-0">
                     {isPainel ? (
                       <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4">
-                        <h1 className="flex shrink-0 items-center gap-2 font-[Space_Grotesk] text-[24px] font-[800] leading-none tracking-[-0.02em] sm:text-[28px] lg:text-[34px]">{title}</h1>
+                        <h1 className="flex shrink-0 items-center gap-2 font-[Space_Grotesk] text-[24px] font-[800] leading-none tracking-[-0.02em] sm:text-[26px] lg:text-[28px]">{title}</h1>
                         <span className="hidden h-7 w-[3px] shrink-0 rounded-full bg-[#D90A00] sm:block" aria-hidden />
-                        <RotatingQuote className="text-[15px] leading-tight sm:text-[19px] lg:text-[22px]" />
+                        <RotatingQuote uniform className="text-[14px] leading-tight sm:text-[16px] lg:text-[18px]" />
                       </div>
                     ) : active?.id === "perfil" ? (
                       <h1 className="flex items-center gap-2 truncate font-[Space_Grotesk] text-[24px] font-[800] leading-none tracking-[-0.02em] sm:text-[28px] lg:text-[34px]">{title}</h1>

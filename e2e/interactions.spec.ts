@@ -342,7 +342,10 @@ test.describe("painel e trilha", () => {
     await expect(page.getByRole("banner").getByRole("link", { name: /Nova|Novo estudo/ })).toHaveCount(0);
     await expect(page.getByRole("link", { name: /Continuar estudando/ })).toHaveAttribute("href", new RegExp(`${G}/aula/`));
     await expect(page.locator("a", { has: page.getByTestId("card-revisoes") })).toHaveAttribute("href", /\/aula\/.*revisao=1/);
-    await expect(page.getByRole("link", { name: /Questões a resolver/ })).toHaveAttribute("href", /\/questoes\?situacao=nao_respondidas/);
+    // Estrutura do painel: tema atual + metas (2) + revisões + últimos 14 dias, e "Seus estudos".
+    await expect(page.getByRole("link", { name: /Questões a resolver/ })).toHaveCount(0);
+    await expect(page.getByTestId("card-14dias").getByRole("img", { name: /Respostas por dia/ })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Seus estudos" })).toBeVisible();
     await expect(page.getByRole("link", { name: /Questões hoje: 13 de 20/ })).toBeVisible();
     await expect(page.getByTestId("hero-stage")).toContainText("Ensino");
   });
@@ -358,26 +361,6 @@ test.describe("painel e trilha", () => {
     await expect(dialog).toBeHidden();
   });
 
-  test("modo foco inicia um cronômetro real, pausa e encerra", async ({ page }) => {
-    await page.goto(`${G}/painel`);
-    await page.evaluate(() => localStorage.removeItem("na:modo-foco"));
-    await page.reload();
-    await page.getByRole("button", { name: "Ativar foco" }).click();
-    await expect(page.getByText("Modo foco ativado")).toBeVisible();
-    const time = page.getByTestId("foco-tempo");
-    await expect(time).toHaveText(/^2[45]:\d\d$/);
-    const first = await time.textContent();
-    await page.waitForTimeout(2100);
-    expect(await time.textContent()).not.toBe(first);
-    await page.getByRole("button", { name: "Pausar", exact: true }).click();
-    const paused = await time.textContent();
-    await page.waitForTimeout(1500);
-    await expect(time).toHaveText(paused!);
-    await page.reload();
-    await expect(page.getByRole("button", { name: "Retomar", exact: true })).toBeVisible();
-    await page.getByRole("button", { name: "Encerrar" }).click();
-    await expect(page.getByRole("button", { name: "Ativar foco" })).toBeVisible();
-  });
   test("módulos expansíveis e pré-requisitos visíveis", async ({ page }) => {
     await page.goto(`${G}/trilha`);
     await expect(page.getByText(/Depende de:/).first()).toBeVisible();
