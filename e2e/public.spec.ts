@@ -13,6 +13,38 @@ test.describe("páginas públicas", () => {
     await expect(page.getByRole("listitem").filter({ hasText: "ninguém será submetido a tortura" })).toBeVisible();
   });
 
+  test("landing: navegação, carrossel de carreiras e chamadas para o cadastro", async ({ page }, info) => {
+    await page.goto("/");
+    const mobile = (page.viewportSize()?.width ?? 1200) < 900;
+    if (mobile) {
+      await page.getByRole("button", { name: "Abrir menu" }).click();
+      const menu = page.locator("#lp-menu");
+      await expect(menu.getByRole("link", { name: "Entrar" })).toHaveAttribute("href", "/entrar");
+      await expect(menu.getByRole("link", { name: "Criar conta" })).toHaveAttribute("href", "/cadastro");
+      await menu.getByRole("link", { name: "Como Funciona" }).click();
+      await expect(menu).toBeHidden();
+    } else {
+      const nav = page.getByRole("navigation", { name: "Seções da página" });
+      await expect(page.getByRole("banner").getByRole("link", { name: "Entrar" })).toHaveAttribute("href", "/entrar");
+      await nav.getByRole("link", { name: "Como Funciona" }).click();
+    }
+    await expect(page.getByRole("heading", { name: "Simples, direto e feito para o seu resultado." })).toBeInViewport();
+    // Carrossel: seta e pontos trocam o slide.
+    const car = page.getByTestId("carrossel-carreiras");
+    await car.scrollIntoViewIfNeeded();
+    const dots = car.getByRole("tab");
+    await expect(dots.nth(0)).toHaveAttribute("aria-selected", "true");
+    await car.getByRole("button", { name: "Próximo" }).click();
+    await expect(dots.nth(1)).toHaveAttribute("aria-selected", "true");
+    await dots.nth(2).click();
+    await expect(dots.nth(2)).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("link", { name: /Criar conta grátis/ })).toHaveAttribute("href", "/cadastro");
+    await expect(page.getByRole("link", { name: /Criar conta agora/ })).toHaveAttribute("href", "/cadastro");
+    await page.getByRole("link", { name: /Conheça o método/ }).click();
+    await expect(page.getByRole("heading", { name: "Exemplo de conteúdo" })).toBeInViewport();
+    void info;
+  });
+
   test("sem rolagem horizontal", async ({ page }) => {
     for (const path of ["/", "/entrar", "/cadastro", "/offline"]) {
       await page.goto(path);
