@@ -13,6 +13,7 @@ import type { SavedAnswer } from "@/components/question-card";
 import type { AnswerFeedback } from "./services/study";
 import { summarizePerformance, type AttemptRecord } from "@/domain/progress/performance";
 import { computeGamification, streakMessage, type StudyStats } from "@/domain/progress/gamification";
+import { buildActivities, buildSubjects, lessonPct, type Activity, type ProgressRow, type RecentLesson, type SubjectProgress } from "@/app/(app)/painel/model";
 
 /**
  * Leituras das telas. Usam o cliente com a sessão do aluno: a RLS garante no banco
@@ -675,6 +676,108 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
       topicDiscipline,
       status: new Map<string, StudyStatus>(mineRows.map((t) => [t.id, studyStatus(lessonCount.get(t.id) ?? 0, progressBy.get(t.id) ?? [])])),
     }),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Painel: matérias, aulas recentes, atividades e totais (somente do próprio aluno)
+// ---------------------------------------------------------------------------
+export interface PainelOverview {
+  subjects: SubjectProgress[];
+  recent: RecentLesson[];
+  activities: Activity[];
+  totals: {
+    /** Respostas registradas (todas as tentativas) e acertos. */
+    answered: number;
+    correct: number;
+    /** Aulas com a leitura concluída. */
+    lessonsRead: number;
+    /** Aulas aprovadas nos três níveis / total de aulas dos estudos. */
+    lessonsPassed: number;
+    lessonsTotal: number;
+    streak: number;
+  };
+}
+
+const OPEN_LESSON_STATES = new Set(["disponivel", "em_andamento", "aula_concluida", "em_revisao", "aguardando_dominio"]);
+
+export async function getPainelOverview(base = ""): Promise<PainelOverview> {
+  const db = await createUserClient();
+  const me = (await getSessionUser())?.id ?? "00000000-0000-0000-0000-000000000000";
+  const [stats, mine, folders, lessons, progress, attempts] = await Promise.all([
+    getStudyStats(),
+    db.from("study_trails").select("id, title, folder_id, last_studied_at, updated_at, scope_summary").eq("user_id", me).is("archived_at", null).limit(300),
+    db.from("study_folders").select("id, name").eq("user_id", me),
+    db.from("lessons").select("id, trail_id, title, sort_order").eq("user_id", me).order("sort_order").limit(5000),
+    db.from("learning_progress").select("lesson_id, trail_id, state, levels_passed, reading_completed_at, updated_at").eq("user_id", me).order("updated_at", { ascending: false }).limit(5000),
+    db.from("answer_attempts").select("created_at, is_correct, questions(lesson_id)").eq("user_id", me).order("created_at", { ascending: false }).limit(80),
+  ]);
+  type MineRow = { id: string; title: string; folder_id: string | null; last_studied_at: string | null; updated_at: string; scope_summary: { catalogTopics?: Array<{ id: string }> } | null };
+  const trails = ((mine.data ?? []) as MineRow[]).map((t) => ({ ...t, catalogTopicIds: (t.scope_summary?.catalogTopics ?? []).map((c) => c.id) }));
+  const activeTrail = new Set(trails.map((t) => t.id));
+  const lessonRows = ((lessons.data ?? []) as Array<{ id: string; trail_id: string; title: string; sort_order: number }>).filter((l) => activeTrail.has(l.trail_id));
+  const lessonInfo = new Map<string, { title: string; trailId: string; position: number }>();
+  const lessonsByTrail = new Map<string, number>();
+  for (const l of lessonRows) {
+    const n = (lessonsByTrail.get(l.trail_id) ?? 0) + 1;
+    lessonsByTrail.set(l.trail_id, n);
+    lessonInfo.set(l.id, { title: l.title, trailId: l.trail_id, position: n });
+  }
+  const rows: ProgressRow[] = ((progress.data ?? []) as Array<{ lesson_id: string; trail_id: string; state: string; levels_passed: number | null; reading_completed_at: string | null; updated_at: string }>)
+    .filter((p) => activeTrail.has(p.trail_id) && lessonInfo.has(p.lesson_id))
+    .map((p) => ({ lessonId: p.lesson_id, trailId: p.trail_id, state: p.state, levelsPassed: p.levels_passed ?? 0, readingCompletedAt: p.reading_completed_at, updatedAt: p.updated_at, lessonTitle: lessonInfo.get(p.lesson_id)!.title }));
+  const doneByTrail = new Map<string, number>();
+  const progressByTrail = new Map<string, Array<{ state: string; levels_passed: number; reading_completed_at: string | null }>>();
+  for (const r of rows) {
+    if (r.levelsPassed >= 3) doneByTrail.set(r.trailId, (doneByTrail.get(r.trailId) ?? 0) + 1);
+    progressByTrail.set(r.trailId, [...(progressByTrail.get(r.trailId) ?? []), { state: r.state, levels_passed: r.levelsPassed, reading_completed_at: r.readingCompletedAt }]);
+  }
+
+  // Matéria de cada estudo: mesma regra do submenu "Estudos" (catálogo → pasta → outras).
+  const topicIds = [...new Set(trails.flatMap((t) => t.catalogTopicIds))];
+  const topicDiscipline = new Map<string, string>();
+  if (topicIds.length) {
+    const { data: topics } = await createAdminClient().from("catalog_topics").select("id, discipline_mode").in("id", topicIds);
+    for (const t of (topics ?? []) as Array<{ id: string; discipline_mode: string }>) {
+      const label = DISCIPLINE_LABELS[t.discipline_mode as DisciplineMode];
+      if (label) topicDiscipline.set(t.id, label);
+    }
+  }
+  const groups = buildSubjectsMenu({
+    trails,
+    folders: (folders.data ?? []) as Array<{ id: string; name: string }>,
+    topicDiscipline,
+    status: new Map<string, StudyStatus>(trails.map((t) => [t.id, studyStatus(lessonsByTrail.get(t.id) ?? 0, progressByTrail.get(t.id) ?? [])])),
+  });
+  const subjectOfTrail = new Map<string, string>(groups.flatMap((g) => g.studies.map((s) => [s.id, g.name] as const)));
+
+  const recent: RecentLesson[] = [];
+  for (const r of rows) {
+    if (recent.length >= 4) break;
+    if (!OPEN_LESSON_STATES.has(r.state)) continue;
+    const pct = lessonPct(!!r.readingCompletedAt, r.levelsPassed);
+    if (pct >= 100) continue;
+    recent.push({ lessonId: r.lessonId, title: r.lessonTitle, subject: subjectOfTrail.get(r.trailId) ?? "Estudo", position: lessonInfo.get(r.lessonId)?.position ?? null, pct, at: r.updatedAt });
+  }
+
+  const attemptRows = ((attempts.data ?? []) as unknown as Array<{ created_at: string; is_correct: boolean; questions: { lesson_id: string | null } | null }>)
+    .map((a) => ({ at: a.created_at, correct: a.is_correct, lessonId: a.questions?.lesson_id ?? "" }))
+    .filter((a) => lessonInfo.has(a.lessonId))
+    .map((a) => ({ ...a, lessonTitle: lessonInfo.get(a.lessonId)!.title }));
+  const trailOfLesson = new Map([...lessonInfo].map(([id, l]) => [id, l.trailId] as const));
+
+  return {
+    subjects: buildSubjects(groups, lessonsByTrail, doneByTrail),
+    recent,
+    activities: buildActivities(rows.slice(0, 30), attemptRows, subjectOfTrail, trailOfLesson, new Date(), base),
+    totals: {
+      answered: stats.answered,
+      correct: stats.correct,
+      lessonsRead: rows.filter((r) => !!r.readingCompletedAt).length,
+      lessonsPassed: [...doneByTrail.values()].reduce((a, b) => a + b, 0),
+      lessonsTotal: lessonRows.length,
+      streak: computeGamification(stats).streak.current,
+    },
   };
 }
 

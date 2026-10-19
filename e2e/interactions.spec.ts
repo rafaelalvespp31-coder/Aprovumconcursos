@@ -340,25 +340,38 @@ test.describe("painel e trilha", () => {
     await page.goto(`${G}/painel`);
     // O topo não tem mais o botão "+ Nova" (novo estudo fica na barra inferior do celular e na página Estudos).
     await expect(page.getByRole("banner").getByRole("link", { name: /Nova|Novo estudo/ })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /Continuar estudando/ })).toHaveAttribute("href", new RegExp(`${G}/aula/`));
-    await expect(page.locator("a", { has: page.getByTestId("card-revisoes") })).toHaveAttribute("href", /\/aula\/.*revisao=1/);
-    // Estrutura do painel: tema atual + metas (2) + revisões + últimos 14 dias, e "Seus estudos".
-    await expect(page.getByRole("link", { name: /Questões a resolver/ })).toHaveCount(0);
-    await expect(page.getByTestId("card-14dias").getByRole("img", { name: /Respostas por dia/ })).toBeVisible();
-    await expect(page.getByRole("heading", { name: "Seus estudos" })).toBeVisible();
-    await expect(page.getByRole("link", { name: /Questões hoje: 13 de 20/ })).toBeVisible();
-    await expect(page.getByTestId("hero-stage")).toContainText("Ensino");
+    // Saudação com o nome real fica no banner principal (uma vez só).
+    await expect(page.getByRole("heading", { level: 1, name: /Olá, Rafael!/ })).toHaveCount(1);
+    await expect(page.getByRole("link", { name: /Continuar estudando: Anulação/ })).toHaveAttribute("href", new RegExp(`${G}/aula/`));
+    const prog = page.getByTestId("progresso-geral");
+    await expect(prog.getByRole("img", { name: "35% das aulas concluídas" })).toBeVisible();
+    await expect(prog.getByText("156").first()).toBeAttached();
+    await expect(page.getByTestId("atividades-recentes").getByRole("link", { name: /respondeu 12 questões/ })).toHaveAttribute("href", /\/aula\//);
+    await expect(page.getByTestId("promo-jogo")).toHaveAttribute("href", `${G}/quiz`);
+    await expect(page.getByTestId("seu-desempenho").getByRole("img", { name: "Aproveitamento: 72%" })).toBeVisible();
+    await expect(page.getByTestId("sequencia")).toHaveText("4 dias");
+    // Continue estudando não repete a aula do card principal.
+    const band = page.getByTestId("continue-estudando");
+    await expect(band.getByRole("link", { name: /Continuar a aula/ })).toHaveCount(3);
+    await expect(band.getByRole("link", { name: /Continuar a aula Anulação/ })).toHaveCount(0);
+    // Acesso rápido: rotas reais.
+    const rotas: Record<string, RegExp> = { estudos: /\/trilhas$/, jogo: /\/quiz$/, questoes: /\/questoes$/, revisoes: /\/aula\/.*revisao=1/, evolucao: /\/desempenho$/, perfil: /\/perfil$/ };
+    for (const [id, re] of Object.entries(rotas)) await expect(page.getByTestId(`atalho-${id}`)).toHaveAttribute("href", re);
+    await expect(page.getByTestId("atalho-revisoes")).toContainText("2 pendentes");
+    await expect(page.getByTestId("painel-rodape").getByRole("link", { name: "Como funciona" })).toHaveAttribute("href", "/#como-funciona");
+    await noHorizontalScroll(page);
   });
 
-  test("trilha abre o detalhe com matérias reais e fecha com Esc", async ({ page }) => {
+  test("minhas matérias: abas filtram e cada matéria abre o estudo", async ({ page }) => {
     await page.goto(`${G}/painel`);
-    await page.getByRole("button", { name: /Abrir estudo Língua Portuguesa/ }).click();
-    const dialog = page.getByRole("dialog", { name: /Língua Portuguesa/ });
-    await expect(dialog).toBeVisible();
-    await expect(dialog.getByText("Matéria fechada ✓")).toBeVisible();
-    await expect(dialog.getByRole("link", { name: "Continuar" })).toHaveAttribute("href", /\/aula\//);
-    await page.keyboard.press("Escape");
-    await expect(dialog).toBeHidden();
+    const card = page.getByTestId("minhas-materias");
+    await expect(card.getByRole("tab", { name: "Em andamento (3)" })).toHaveAttribute("aria-selected", "true");
+    await expect(card.getByRole("link", { name: /Língua Portuguesa/ })).toHaveCount(0);
+    await card.getByRole("tab", { name: "Concluídas (1)" }).click();
+    await expect(card.getByRole("link", { name: /Língua Portuguesa: 4 de 4 aulas, 100%/ })).toBeVisible();
+    await card.getByRole("tab", { name: "Todas (4)" }).click();
+    const penal = card.getByRole("link", { name: /Direito Penal: 3 de 8 aulas, 38%/ });
+    await expect(penal).toHaveAttribute("href", /\/dev\/galeria\/trilhas\//);
   });
 
   test("módulos expansíveis e pré-requisitos visíveis", async ({ page }) => {
@@ -607,7 +620,7 @@ test("novo estudo: seletor de aulas do catálogo, separado por matéria", async 
 });
 
 test("banners: arte e animações aparecem juntas, mesmo com a imagem demorando", async ({ page }) => {
-  for (const [path, id, img] of [["painel", "painel-banner", /banner-estudo(-sm)?\.webp/], ["quiz", "jogo-banner-marca", /jogo-hero-arte(-sm)?\.webp/]] as const) {
+  for (const [path, id, img] of [["painel", "painel-banner", /aprovum-login-hero-mobile\.webp/], ["quiz", "jogo-banner-marca", /jogo-hero-arte(-sm)?\.webp/]] as const) {
     let release: () => void = () => {};
     const gate = new Promise<void>((r) => (release = r));
     await page.route(img, async (route) => {
@@ -717,7 +730,7 @@ test.describe("visão da aula (nove cards)", () => {
   });
 });
 
-test("painel: banner da marca reveza com os banners de aprovação a cada 3 s", async ({ page }) => {
+test("painel: banner de saudação reveza com os banners de aprovação a cada 3 s", async ({ page }) => {
   await page.goto(`${G}/painel`);
   const rot = page.getByTestId("banner-rotator");
   await expect(rot).toHaveAttribute("data-slide", "0");

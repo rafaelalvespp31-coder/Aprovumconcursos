@@ -1,6 +1,5 @@
 /** Dados de EXEMPLO para a galeria de design (nunca usados em produção). */
 import type { DashboardData } from "@/app/(app)/painel/view";
-import { trailCard, type PlanModule } from "@/app/(app)/painel/model";
 import type { ShellSummary } from "@/server/queries";
 import { computeGamification, streakMessage, type StudyStats } from "@/domain/progress/gamification";
 import type { ReaderProps } from "@/app/(app)/aula/[id]/reader";
@@ -165,21 +164,19 @@ export const performance = {
 // ---------------------------------------------------------------------------
 // Painel "Leveza Pastel" e casco (EXEMPLO)
 // ---------------------------------------------------------------------------
-const portugues: PlanModule[] = [
-  { id: id(21), title: "Coesão e coerência", lessons: Array.from({ length: 9 }, (_, i) => ({ id: id(200 + i), title: `Tema ${i + 1}`, state: i < 8 ? "dominada" : "em_andamento" })) },
-  { id: id(22), title: "Crase", lessons: Array.from({ length: 4 }, (_, i) => ({ id: id(210 + i), title: `Tema ${i + 1}`, state: i < 4 ? "aguardando_dominio" : null })) },
-];
+const dashDays = Array.from({ length: 14 }, (_, i) => {
+  const d = new Date(Date.UTC(2026, 8, 27 + i));
+  const c = [6, 9, 0, 12, 8, 4, 0, 10, 14, 7, 11, 0, 9, 10][i]!;
+  return { day: d.toISOString().slice(0, 10), correct: c, wrong: Math.round(c * 0.35) };
+});
+const hoursAgo = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
 
-export const dashboard: DashboardData = {
+export const dashboard: DashboardData & { days: typeof dashDays; weekLessonsCompleted: number } = {
   name: "Rafael",
   goals: { dailyQuestions: 20, weeklyLessons: 5 },
   today: { answered: 13, correct: 10 },
   weekLessonsCompleted: 3,
-  days: Array.from({ length: 14 }, (_, i) => {
-    const d = new Date(Date.UTC(2026, 8, 27 + i));
-    const c = [6, 9, 0, 12, 8, 4, 0, 10, 14, 7, 11, 0, 9, 10][i]!;
-    return { day: d.toISOString().slice(0, 10), correct: c, wrong: Math.round(c * 0.35) };
-  }),
+  days: dashDays,
   accuracy14d: 0.74,
   answered14d: 136,
   continueLesson: {
@@ -196,12 +193,29 @@ export const dashboard: DashboardData = {
     trailProgress: 17,
     estimatedMinutes: 35,
   },
-  questions: { total: 84, unanswered: 31, marked: 4, unansweredByLevel: { facil: 12, medio: 14, dificil: 5 } },
+  questions: { total: 84, unanswered: 31, marked: 4 },
   reviews: { count: 2, top: { lessonId: id(102), title: "Atributos do ato administrativo", overdueDays: 2 } },
-  trails: [
-    trailCard({ id: id(10), title: "Polícia Penal MG — Direito Administrativo", disciplineMode: "direito_administrativo" }, trailModules, 0),
-    trailCard({ id: id(20), title: "Língua Portuguesa — FGV", disciplineMode: "lingua_portuguesa" }, portugues, 1),
-  ],
+  overview: {
+    subjects: [
+      { name: "Direito Administrativo", detail: "Polícia Penal MG — Direito Administrativo", done: 1, total: 6, pct: 17, status: "andamento", studyId: id(10) },
+      { name: "Direito Penal", detail: "Homicídio (CP, art. 121) e mais 1", done: 3, total: 8, pct: 38, status: "andamento", studyId: id(40) },
+      { name: "Direito Processual Penal", detail: "Inquérito Policial (CPP, arts. 4º a 23)", done: 0, total: 5, pct: 0, status: "nao_iniciado", studyId: id(41) },
+      { name: "Língua Portuguesa", detail: "Língua Portuguesa — FGV", done: 4, total: 4, pct: 100, status: "concluido", studyId: id(20) },
+    ],
+    recent: [
+      { lessonId: id(103), title: "Anulação, revogação e convalidação", subject: "Direito Administrativo", position: 3, pct: 25, at: hoursAgo(2) },
+      { lessonId: id(401), title: "Homicídio simples", subject: "Direito Penal", position: 3, pct: 50, at: hoursAgo(5) },
+      { lessonId: id(402), title: "Furto (CP, art. 155)", subject: "Direito Penal", position: 4, pct: 25, at: hoursAgo(26) },
+      { lessonId: id(403), title: "Notitia criminis e instauração", subject: "Direito Processual Penal", position: 1, pct: 0, at: hoursAgo(50) },
+    ],
+    activities: [
+      { kind: "questoes", title: "Você respondeu 12 questões de Homicídio simples (Direito Penal)", detail: "9 acertos · há 2 horas", at: hoursAgo(2), href: `/dev/galeria/aula/${id(401)}` },
+      { kind: "aula", title: "Aula: Furto (CP, art. 155) (Direito Penal)", detail: "Acessada há 4 horas", at: hoursAgo(4), href: `/dev/galeria/aula/${id(402)}` },
+      { kind: "leitura", title: "Você concluiu a aula Anulação, revogação e convalidação (Direito Administrativo)", detail: "há 6 horas", at: hoursAgo(6), href: `/dev/galeria/aula/${id(103)}` },
+      { kind: "aula", title: "Aula: Notitia criminis e instauração (Direito Processual Penal)", detail: "Acessada há 1 dia", at: hoursAgo(26), href: `/dev/galeria/aula/${id(403)}` },
+    ],
+    totals: { answered: 156, correct: 112, lessonsRead: 23, lessonsPassed: 8, lessonsTotal: 23, streak: 4 },
+  },
   pendingTrails: [{ id: id(30), title: "Lei 7.210/1984 — Execução Penal", status: "review" }],
   basePath: "/dev/galeria",
 };

@@ -336,9 +336,9 @@ export function PastelShell({
                   </Link>
                   <div className="min-w-0">
                     {isPainel ? (
-                      <div className="flex min-w-0 flex-col gap-1.5 sm:flex-row sm:items-center sm:gap-4">
-                        <h1 className="flex shrink-0 items-center gap-2 font-[Space_Grotesk] text-[24px] font-[800] leading-none tracking-[-0.02em] sm:text-[26px] lg:text-[28px]">{title}</h1>
-                        <span className="hidden h-7 w-[3px] shrink-0 rounded-full bg-[#D90A00] sm:block" aria-hidden />
+                      // Painel: a saudação com o nome fica no banner principal; aqui, só o lema.
+                      <div className="flex min-w-0 items-center gap-3">
+                        <span className="h-7 w-[3px] shrink-0 rounded-full bg-[#D90A00]" aria-hidden />
                         <RotatingQuote uniform className="text-[14px] leading-tight sm:text-[16px] lg:text-[18px]" />
                       </div>
                     ) : active?.id === "perfil" ? (

@@ -3,6 +3,7 @@
  * Puro (sem I/O) para ser testado e reaproveitado pela galeria.
  */
 import type { UnitState } from "@/domain/progress/state-machine";
+import type { StudyStatus } from "@/domain/studies/subjects-menu";
 
 export const PASSED_STATES: ReadonlySet<UnitState> = new Set(["aguardando_dominio", "dominada"]);
 
@@ -104,4 +105,147 @@ export function goalHint(done: number, goal: number | null, unit: string): strin
 
 export function overdueDays(dueAt: string, now = new Date()): number {
   return Math.max(0, Math.floor((now.getTime() - new Date(dueAt).getTime()) / 86_400_000));
+}
+
+// ---------------------------------------------------------------------------
+// Painel (layout de referência): matérias, aulas recentes e atividades — tudo derivado
+// de dados reais do aluno. Funções puras, testadas em model.test.ts.
+// ---------------------------------------------------------------------------
+
+export interface ProgressRow {
+  lessonId: string;
+  trailId: string;
+  state: string;
+  levelsPassed: number;
+  readingCompletedAt: string | null;
+  updatedAt: string;
+  lessonTitle: string;
+}
+
+export interface SubjectProgress {
+  name: string;
+  /** Assunto mais recente da matéria (linha secundária). */
+  detail: string;
+  /** Aulas (unidades) aprovadas nos três níveis / total de aulas da matéria. */
+  done: number;
+  total: number;
+  pct: number;
+  status: StudyStatus;
+  /** Estudo a abrir (leva direto à aula atual). */
+  studyId: string;
+}
+
+export interface RecentLesson {
+  lessonId: string;
+  title: string;
+  subject: string;
+  /** Posição da aula no estudo (1 = primeira). */
+  position: number | null;
+  pct: number;
+  at: string;
+}
+
+export type ActivityKind = "aula" | "leitura" | "questoes";
+export interface Activity {
+  kind: ActivityKind;
+  title: string;
+  detail: string;
+  at: string;
+  href: string;
+}
+
+/** Andamento de uma aula: leitura concluída + três níveis aprovados (cada etapa vale 25%). */
+export function lessonPct(readingDone: boolean, levelsPassed: number): number {
+  return Math.round((((readingDone ? 1 : 0) + Math.min(3, Math.max(0, levelsPassed))) / 4) * 100);
+}
+
+/** "agora", "há 5 min", "há 2 horas", "há 1 dia"… */
+export function timeAgo(iso: string, now = new Date()): string {
+  const s = Math.max(0, (now.getTime() - new Date(iso).getTime()) / 1000);
+  if (s < 60) return "agora";
+  const m = Math.floor(s / 60);
+  if (m < 60) return `há ${m} min`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `há ${h} hora${h > 1 ? "s" : ""}`;
+  const d = Math.floor(h / 24);
+  if (d < 30) return `há ${d} dia${d > 1 ? "s" : ""}`;
+  const mo = Math.floor(d / 30);
+  return `há ${mo} ${mo > 1 ? "meses" : "mês"}`;
+}
+
+/** Situação da matéria a partir da situação dos assuntos. */
+export function subjectStatus(statuses: StudyStatus[]): StudyStatus {
+  if (statuses.length && statuses.every((s) => s === "concluido")) return "concluido";
+  return statuses.some((s) => s !== "nao_iniciado") ? "andamento" : "nao_iniciado";
+}
+
+export function buildSubjects(
+  groups: Array<{ name: string; studies: Array<{ id: string; title: string; status: StudyStatus }> }>,
+  lessonsByTrail: Map<string, number>,
+  doneByTrail: Map<string, number>,
+): SubjectProgress[] {
+  return groups
+    .filter((g) => g.studies.length > 0)
+    .map((g) => {
+      const total = g.studies.reduce((s, t) => s + (lessonsByTrail.get(t.id) ?? 0), 0);
+      const done = g.studies.reduce((s, t) => s + Math.min(lessonsByTrail.get(t.id) ?? 0, doneByTrail.get(t.id) ?? 0), 0);
+      const first = g.studies.find((t) => t.status === "andamento") ?? g.studies.find((t) => t.status === "nao_iniciado") ?? g.studies[0]!;
+      return {
+        name: g.name,
+        detail: g.studies.length > 1 ? `${first.title} e mais ${g.studies.length - 1}` : first.title,
+        done,
+        total,
+        pct: total ? Math.round((done / total) * 100) : 0,
+        status: subjectStatus(g.studies.map((t) => t.status)),
+        studyId: first.id,
+      };
+    });
+}
+
+/**
+ * Linha do tempo do aluno: aulas acessadas, leituras concluídas e blocos de questões
+ * respondidas (agrupados por aula e por dia). Mais recentes primeiro.
+ */
+export function buildActivities(
+  progress: ProgressRow[],
+  attempts: Array<{ at: string; correct: boolean; lessonId: string; lessonTitle: string }>,
+  subjectOfTrail: Map<string, string>,
+  trailOfLesson: Map<string, string>,
+  now = new Date(),
+  base = "",
+  limit = 4,
+): Activity[] {
+  const out: Activity[] = [];
+  for (const p of progress) {
+    const subject = subjectOfTrail.get(p.trailId);
+    const where = subject ? ` (${subject})` : "";
+    if (p.readingCompletedAt) {
+      out.push({ kind: "leitura", title: `Você concluiu a aula ${p.lessonTitle}${where}`, detail: timeAgo(p.readingCompletedAt, now), at: p.readingCompletedAt, href: `${base}/aula/${p.lessonId}` });
+    }
+    const touched = new Date(p.updatedAt).getTime();
+    const sameAsReading = p.readingCompletedAt && Math.abs(touched - new Date(p.readingCompletedAt).getTime()) < 120_000;
+    if (!sameAsReading && p.state !== "nao_iniciada") {
+      out.push({ kind: "aula", title: `Aula: ${p.lessonTitle}${where}`, detail: `Acessada ${timeAgo(p.updatedAt, now)}`, at: p.updatedAt, href: `${base}/aula/${p.lessonId}` });
+    }
+  }
+  const blocks = new Map<string, { lessonId: string; title: string; n: number; ok: number; at: string }>();
+  for (const a of attempts) {
+    const key = `${a.lessonId}|${a.at.slice(0, 10)}`;
+    const b = blocks.get(key) ?? { lessonId: a.lessonId, title: a.lessonTitle, n: 0, ok: 0, at: a.at };
+    b.n += 1;
+    b.ok += a.correct ? 1 : 0;
+    if (a.at > b.at) b.at = a.at;
+    blocks.set(key, b);
+  }
+  for (const b of blocks.values()) {
+    const subject = subjectOfTrail.get(trailOfLesson.get(b.lessonId) ?? "");
+    out.push({
+      kind: "questoes",
+      title: `Você respondeu ${b.n} ${b.n === 1 ? "questão" : "questões"} de ${b.title}${subject ? ` (${subject})` : ""}`,
+      detail: `${b.ok} ${b.ok === 1 ? "acerto" : "acertos"} · ${timeAgo(b.at, now)}`,
+      at: b.at,
+      href: `${base}/aula/${b.lessonId}`,
+    });
+  }
+  return out.sort((a, b) => b.at.localeCompare(a.at)).slice(0, limit);
 }

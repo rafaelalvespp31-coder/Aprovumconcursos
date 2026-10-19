@@ -36,7 +36,7 @@ const INTERVAL_MS = 3000;
  * a cada 3 segundos, com transição suave. Pausa com a aba oculta e no botão de pausa;
  * os pontos levam direto a cada banner (e a contagem recomeça dali).
  */
-export function BannerRotator({ children, banners = APPROVAL_BANNERS }: { children: ReactNode; banners?: ApprovalBanner[] }) {
+export function BannerRotator({ children, banners = APPROVAL_BANNERS, className = "" }: { children: ReactNode; banners?: ApprovalBanner[]; className?: string }) {
   const total = banners.length + 1;
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
@@ -57,7 +57,7 @@ export function BannerRotator({ children, banners = APPROVAL_BANNERS }: { childr
 
   return (
     <div
-      className="banner-rotator relative"
+      className={`banner-rotator relative ${className}`}
       role="region"
       aria-roledescription="carrossel"
       aria-label="Banners do APROVUM"
