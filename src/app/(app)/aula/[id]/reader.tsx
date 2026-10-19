@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Markdown } from "@/components/markdown";
 import { ExampleCards, parseExamples } from "@/components/examples";
 import { Flashcards } from "@/components/flashcards";
@@ -78,10 +78,11 @@ const sectionDomId = (id: string) => `secao-${id}`;
 const LEVEL_TITLE: Record<LevelKey, string> = { facil: "Questões · Fácil", medio: "Questões · Médio", dificil: "Questões · Difícil" };
 
 /**
- * Aula numa tela só: a visão em nove cards. Cada card abre, por cima da tela, o conteúdo
- * completo que pertence a ele (temas com anotações, esclarecimentos e a questão de cada
- * tema). O card 8 reúne as questões por nível (fácil → médio → difícil) com recuperação.
- * Concluir todos os cards de conteúdo registra a leitura (libera o cálculo dos níveis).
+ * Aula numa tela só: a visão em nove cards, com o conteúdo completo exposto em cada card
+ * (temas com anotações, esclarecimentos e a questão de cada tema). No fim de cada card,
+ * o botão de avançar é liberado quando as questões do card estão respondidas e leva ao
+ * card seguinte. O card 8 reúne as questões por nível (fácil → médio → difícil) com
+ * recuperação. Concluir todos os cards de conteúdo registra a leitura.
  */
 export function LessonReader(props: ReaderProps) {
   const api = useStudyApi();
@@ -96,8 +97,6 @@ export function LessonReader(props: ReaderProps) {
   const remember = (o: AnswerOutcome) => setSessionAnswers((m) => ({ ...m, [o.questionId]: { choice: o.choice, feedback: o.feedback } }));
   const [completing, startCompleting] = useTransition();
   const notesRef = useRef<HTMLDialogElement>(null);
-  const dialogRef = useRef<HTMLDialogElement>(null);
-  const bodyRef = useRef<HTMLDivElement>(null);
 
   // Registra a abertura da aula (máquina de estados no servidor).
   useEffect(() => {
@@ -106,11 +105,6 @@ export function LessonReader(props: ReaderProps) {
 
   const board = useMemo(() => buildLessonBoard({ title: lesson.title, sections, nodes }), [lesson.title, sections, nodes]);
   const byCard = useMemo(() => assignSectionsToCards(sections), [sections]);
-  const cardOfSection = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const [n, list] of byCard) for (const s of list) m.set(s.id, n);
-    return m;
-  }, [byCard]);
   /** Cards com conteúdo próprio (abrem os temas), na ordem dos números. */
   const contentCards = useMemo(() => BOARD_CARDS.filter((c) => c.n !== 8 && byCard.get(c.n)!.length > 0).map((c) => c.n), [byCard]);
 
@@ -147,7 +141,7 @@ export function LessonReader(props: ReaderProps) {
     return m;
   }, [annotations]);
 
-  // Aviso da trava (questão sem resposta no card aberto).
+  // Aviso da trava (questão sem resposta no card).
   const [blocked, setBlocked] = useState<string | null>(null);
   useEffect(() => {
     if (!blocked) return;
@@ -155,30 +149,14 @@ export function LessonReader(props: ReaderProps) {
     return () => clearTimeout(t);
   }, [blocked]);
 
-  // Card aberto (diálogo por cima da visão da aula).
-  const [openCard, setOpenCard] = useState<number | null>(null);
   const firstOpenLevel = LEVELS.find((l) => levelStatus(levelsPassed, l.n) !== "aprovado")?.key ?? "dificil";
   const [levelTab, setLevelTab] = useState<LevelKey>(firstOpenLevel);
-  const scrollBodyTop = () => requestAnimationFrame(() => bodyRef.current?.scrollTo({ top: 0, behavior: "smooth" }));
-  const openCardN = useCallback(
-    (n: number, sectionId?: string) => {
-      setBlocked(null);
-      setOpenCard(n);
-      if (!dialogRef.current?.open) dialogRef.current?.showModal();
-      requestAnimationFrame(() => {
-        if (sectionId) document.getElementById(sectionDomId(sectionId))?.scrollIntoView({ block: "start" });
-        else bodyRef.current?.scrollTo({ top: 0 });
-      });
-    },
-    [],
-  );
-  const closeCard = () => dialogRef.current?.close();
+  const cardEl = (n: number) => document.querySelector<HTMLElement>(`[data-card="${n}"]`);
+  const scrollToCard = (n: number) => requestAnimationFrame(() => cardEl(n)?.scrollIntoView({ behavior: "smooth", block: "start" }));
 
-  // Trava: com questão sem resposta no card aberto, não avança e leva até ela.
-  const pendingInDialog = () =>
-    [...(bodyRef.current?.querySelectorAll<HTMLElement>('article[data-questao][data-respondida="0"]') ?? [])].filter((el) => !el.closest("details:not([open])"));
-  const guard = (): boolean => {
-    const pending = pendingInDialog();
+  // Trava: com questão sem resposta no card, não avança e leva até ela.
+  const guard = (n: number): boolean => {
+    const pending = [...(cardEl(n)?.querySelectorAll<HTMLElement>('article[data-questao][data-respondida="0"]') ?? [])].filter((el) => !el.closest("details:not([open])"));
     const first = pending[0];
     if (!first) return true;
     setBlocked(pending.length === 1 ? `Responda a ${first.getAttribute("aria-label")?.toLowerCase() ?? "questão"} para avançar.` : `Faltam ${pending.length} questões neste card. Responda para avançar.`);
@@ -191,16 +169,16 @@ export function LessonReader(props: ReaderProps) {
   };
 
   const nextContentCard = (from: number) => contentCards.find((n) => n > from) ?? null;
-  const prevCardOf = (n: number) => (n === 8 ? contentCards.at(-1) ?? null : [...contentCards].reverse().find((c) => c < n) ?? null);
+  /** Questões do card que ainda faltam responder (a questão de cada tema). */
+  const pendingOf = (n: number) => byCard.get(n)!.flatMap((s) => interleaved.get(s.id) ?? []).filter((q) => !savedFor(q.id)).length;
 
-  /** Conclui o card aberto: marca os temas como lidos e segue para o próximo card. */
+  /** Conclui o card: marca os temas como lidos e leva ao próximo card. */
   const concludeCard = (n: number) => {
-    if (!guard()) return;
+    if (!guard(n)) return;
     setBlocked(null);
-    const ids = byCard.get(n)!.map((s) => s.id);
-    const nextSeen = new Set([...seen, ...ids]);
+    const nextSeen = new Set([...seen, ...byCard.get(n)!.map((s) => s.id)]);
     setSeenList([...nextSeen]);
-    const goNext = () => openCardN(nextContentCard(n) ?? 8);
+    const goNext = () => scrollToCard(nextContentCard(n) ?? 8);
     if (!readingDone && sections.every((s) => nextSeen.has(s.id))) {
       startCompleting(async () => {
         await api.completeReading(lesson.id);
@@ -213,14 +191,17 @@ export function LessonReader(props: ReaderProps) {
   };
 
   const levelIndex = LEVELS.findIndex((l) => l.key === levelTab);
+  const levelPending = questions.filter((q) => !q.recovery_of && (q.level ?? "facil") === levelTab && !savedFor(q.id)).length;
+  const goLevel = (k: LevelKey) => {
+    setLevelTab(k);
+    scrollToCard(8);
+  };
   const nextLevel = () => {
-    if (!guard()) return;
+    if (!guard(8)) return;
     setBlocked(null);
     const nxt = LEVELS[levelIndex + 1];
-    if (nxt) {
-      setLevelTab(nxt.key);
-      scrollBodyTop();
-    } else closeCard();
+    if (nxt) goLevel(nxt.key);
+    else requestAnimationFrame(() => document.querySelector('[data-testid="conclusao-aula"]')?.scrollIntoView({ behavior: "smooth", block: "center" }));
   };
 
   const renderQuestion = (q: ReaderQuestion, n: number, label?: string) => (
@@ -230,15 +211,9 @@ export function LessonReader(props: ReaderProps) {
     </div>
   );
 
-  // Prévia do card 8: uma questão rápida por vez (motor real de questões).
-  const quizPool = useMemo(() => questions.filter((q) => !q.recovery_of && (q.level ?? "facil") === "facil"), [questions]);
-  const [quizIdx, setQuizIdx] = useState<number | null>(null);
-  const quizStart = useMemo(() => Math.max(0, quizPool.findIndex((q) => !props.answers?.[q.id])), [quizPool, props.answers]);
-  const quizAt = (quizIdx ?? quizStart) % Math.max(1, quizPool.length);
-
   const sectionsBody = (n: number) =>
     byCard.get(n)!.map((s) => (
-      <div key={s.id}>
+      <div key={s.id} className="al-tema">
         <SectionBlock
           section={s}
           lessonId={lesson.id}
@@ -257,6 +232,32 @@ export function LessonReader(props: ReaderProps) {
         ))}
       </div>
     ));
+
+  /** Rodapé do card: libera o avanço quando as questões do card estão respondidas. */
+  const cardFooter = (n: number) => {
+    const pend = pendingOf(n);
+    const ready = pend === 0;
+    const nxt = nextContentCard(n);
+    const label = completing ? "Salvando…" : nxt ? "Concluir e ir ao próximo card" : "Concluir e ir para as questões";
+    return (
+      <div className="al-card-fim">
+        <p className="al-card-fim-info">
+          {cardDone(n) ? (
+            <>
+              <CircleCheckIcon /> Card concluído.
+            </>
+          ) : ready ? (
+            "Terminou? Avance para o próximo card."
+          ) : (
+            `Responda ${pend === 1 ? "a questão" : `as ${pend} questões`} deste card para liberar o avanço.`
+          )}
+        </p>
+        <button type="button" className="al-btn al-btn-vermelho" aria-disabled={!ready || completing} data-liberado={ready ? "1" : "0"} onClick={() => !completing && concludeCard(n)} data-testid={`concluir-card-${n}`}>
+          {label} <Icon name="setaDireita" className="size-4" />
+        </button>
+      </div>
+    );
+  };
 
   const finished = levelsPassed >= 3;
   const conclusion = (
@@ -294,7 +295,7 @@ export function LessonReader(props: ReaderProps) {
       </section>
     ) : (
       <>
-        {byCard.get(8)!.length > 0 && <div className="mb-6">{sectionsBody(8)}</div>}
+        {byCard.get(8)!.length > 0 && <div className="mb-6 flex flex-col gap-6">{sectionsBody(8)}</div>}
         <p className="mb-3 t-small text-tinta-suave">
           Três níveis, nesta ordem: fácil, médio e difícil. Cada um exige pelo menos 90% de acerto para liberar o seguinte. Errou? A recuperação refaz só os pontos errados.
         </p>
@@ -322,36 +323,47 @@ export function LessonReader(props: ReaderProps) {
             onPassed={(n) => setLevelsPassed((p) => Math.max(p, n))}
             onAdvance={() => {
               const nxt = LEVELS[levelIndex + 1];
-              if (nxt) {
-                setLevelTab(nxt.key);
-                scrollBodyTop();
-              }
+              if (nxt) goLevel(nxt.key);
             }}
             isAnswered={(id) => !!savedFor(id)}
           />
         </section>
+        <div className="al-card-fim">
+          <p className="al-card-fim-info">
+            {levelPending === 0 ? "Terminou este nível? Avance." : `Responda ${levelPending === 1 ? "a questão" : `as ${levelPending} questões`} do nível ${LEVELS[levelIndex]!.label.toLowerCase()} para liberar o avanço.`}
+          </p>
+          <button type="button" className="al-btn al-btn-vermelho" aria-disabled={levelPending > 0} data-liberado={levelPending === 0 ? "1" : "0"} onClick={nextLevel} data-testid="proximo-nivel">
+            {LEVELS[levelIndex + 1] ? `Próximo nível: ${LEVELS[levelIndex + 1]!.label}` : "Concluir a aula"} <Icon name="setaDireita" className="size-4" />
+          </button>
+        </div>
         {levelTab === "dificil" && <div className="mt-6">{conclusion}</div>}
       </>
     );
 
+  const themes: Record<number, ReactNode> = {};
+  for (const c of BOARD_CARDS) {
+    if (c.n === 8) themes[8] = questionsBody;
+    else if (byCard.get(c.n)!.length)
+      themes[c.n] = (
+        <>
+          <div className="flex flex-col gap-6">{sectionsBody(c.n)}</div>
+          {cardFooter(c.n)}
+        </>
+      );
+  }
   const cardMeta = Object.fromEntries(
     BOARD_CARDS.map((c) => [c.n, { count: byCard.get(c.n)!.length, done: c.n === 8 ? finished : byCard.get(c.n)!.length > 0 && cardDone(c.n) }]),
   ) as Record<number, { count: number; done: boolean }>;
   const nextToStudy = contentCards.find((n) => !cardDone(n)) ?? 8;
   const readingFrac = sections.length ? seenCount / sections.length : 0;
-  const open = openCard ? BOARD_CARDS.find((c) => c.n === openCard)! : null;
-  const prevOfOpen = openCard ? prevCardOf(openCard) : null;
-
-  // O aviso fica dentro do card aberto (o diálogo modal cobre o resto da tela).
-  const blockedToast = blocked ? (
-        <p role="alert" className="pointer-events-none fixed inset-x-4 bottom-24 z-[60] mx-auto flex max-w-md items-center justify-center gap-2 rounded-2xl bg-tinta px-4 py-3 text-center t-small font-semibold text-white shadow-[0_16px_40px_rgba(0,0,0,0.3)] md:bottom-28" data-testid="trava-proximo">
-          <Icon name="cadeado" className="size-4 shrink-0" /> {blocked}
-        </p>
-  ) : null;
 
   return (
     <div>
-      {!openCard && blockedToast}
+      {blocked && (
+        <p role="alert" className="pointer-events-none fixed inset-x-4 bottom-28 z-[60] mx-auto flex max-w-md items-center justify-center gap-2 rounded-2xl bg-tinta px-4 py-3 text-center t-small font-semibold text-white shadow-[0_16px_40px_rgba(0,0,0,0.3)] md:bottom-8" data-testid="trava-proximo">
+          <Icon name="cadeado" className="size-4 shrink-0" /> {blocked}
+        </p>
+      )}
 
       {props.outline && <LessonTreePortal trailId={lesson.trailId} trailTitle={lesson.trailTitle} outline={props.outline} currentId={lesson.id} />}
 
@@ -360,27 +372,18 @@ export function LessonReader(props: ReaderProps) {
         lesson={lesson}
         position={props.position ?? null}
         moduleTitle={props.moduleTitle ?? null}
-        progressPct={Math.round(((readingDone ? 1 : readingFrac) + levelsPassed) / 4 * 100)}
+        progressPct={Math.round((((readingDone ? 1 : readingFrac) + levelsPassed) / 4) * 100)}
         reading={{ seen: seenCount, total: sections.length }}
         levelsPassed={levelsPassed}
         prevId={props.prevId}
         nextId={props.nextId}
         cards={cardMeta}
+        themes={themes}
         startLabel={seenCount === 0 ? "Começar a aula" : finished ? "Rever a aula" : "Continuar a aula"}
-        onStart={() => openCardN(nextToStudy)}
-        onOpen={(n) => openCardN(n)}
+        onStart={() => scrollToCard(nextToStudy)}
         notesCount={annotations.length}
         onNotes={() => notesRef.current?.showModal()}
         notices={props.notices}
-        quiz={
-          quizPool.length
-            ? {
-                node: renderQuestion(quizPool[quizAt]!, numberOf.get(quizPool[quizAt]!.id)!),
-                label: `Questão ${quizAt + 1} de ${quizPool.length} · nível fácil`,
-                onNext: quizPool.length > 1 ? () => setQuizIdx((quizAt + 1) % quizPool.length) : null,
-              }
-            : null
-        }
         after={
           <>
             {finished && conclusion}
@@ -399,67 +402,20 @@ export function LessonReader(props: ReaderProps) {
         }
       />
 
-      {/* Card aberto: conteúdo completo do card */}
-      <dialog ref={dialogRef} className="al-dialogo" aria-labelledby="al-dialogo-titulo" onClose={() => setOpenCard(null)}>
-        {open && (
-          <div className="al-dialogo-caixa">
-            <header className="al-dialogo-topo">
-              <span className="al-num" aria-hidden>{open.n}</span>
-              <div className="min-w-0 flex-1">
-                <p className="al-dialogo-sobre">
-                  {open.n === 8 ? (context === "revisao" ? "Revisão" : "Avaliação por níveis") : `Card ${open.n} · ${byCard.get(open.n)!.length} ${byCard.get(open.n)!.length === 1 ? "tema" : "temas"}`}
-                </p>
-                <h2 id="al-dialogo-titulo" className="al-dialogo-titulo">{open.title}</h2>
-              </div>
-              <button type="button" onClick={closeCard} className="al-dialogo-fechar" aria-label="Fechar e voltar aos cards">
-                <Icon name="x" className="size-5" />
-              </button>
-            </header>
-            <div ref={bodyRef} className="al-dialogo-corpo" key={open.n}>
-              {open.n === 8 ? questionsBody : <div className="flex flex-col gap-6">{sectionsBody(open.n)}</div>}
-            </div>
-            {blockedToast}
-            <nav className="al-dialogo-base" aria-label="Navegação entre cards">
-              <button type="button" className="al-btn al-btn-contorno" disabled={!prevOfOpen} onClick={() => prevOfOpen && openCardN(prevOfOpen)}>
-                <Icon name="setaEsquerda" className="size-4" /> <span className="hidden sm:inline">Card anterior</span><span className="sm:hidden">Anterior</span>
-              </button>
-              {open.n === 8 ? (
-                context === "revisao" ? (
-                  <button type="button" className="al-btn al-btn-vermelho" onClick={closeCard}>Voltar aos cards</button>
-                ) : (
-                  <button type="button" className="al-btn al-btn-vermelho" onClick={nextLevel}>
-                    {LEVELS[levelIndex + 1] ? `Próximo nível: ${LEVELS[levelIndex + 1]!.label}` : "Concluir e voltar aos cards"} <Icon name="setaDireita" className="size-4" />
-                  </button>
-                )
-              ) : (
-                <button type="button" className="al-btn al-btn-vermelho" disabled={completing} onClick={() => concludeCard(open.n)}>
-                  {completing ? (
-                    "Salvando…"
-                  ) : (
-                    <>
-                      <span className="sr-only sm:not-sr-only">{nextContentCard(open.n) ? "Concluir e ir ao próximo card" : "Concluir e ir para as questões"}</span>
-                      <span aria-hidden className="sm:hidden">{nextContentCard(open.n) ? "Concluir card" : "Ir para as questões"}</span>
-                    </>
-                  )} <Icon name="setaDireita" className="size-4" />
-                </button>
-              )}
-            </nav>
-          </div>
-        )}
-      </dialog>
-
       <AnnotationsDialog
         refEl={notesRef}
         annotations={annotations}
         onGo={(id) => {
           notesRef.current?.close();
-          if (id) openCardN(cardOfSection.get(id) ?? 1, id);
+          if (id) requestAnimationFrame(() => document.getElementById(sectionDomId(id))?.scrollIntoView({ behavior: "smooth", block: "start" }));
         }}
         onChange={(a, removed) => setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : list.map((x) => (x.id === a.id ? a : x))))}
       />
     </div>
   );
 }
+
+const CircleCheckIcon = () => <Icon name="check" className="size-4 text-acerto" />;
 
 
 // ---------------------------------------------------------------------------

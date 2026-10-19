@@ -1411,7 +1411,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .al-banner-logo { position: absolute; right: 22px; bottom: 18px; width: 38%; max-width: 150px; height: auto; }
 
 /* Grade de cards */
-.al-grade { display: grid; grid-template-columns: minmax(0, 1fr); gap: 14px; }
+.al-grade { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; }
 .al-card { display: flex; flex-direction: column; padding: 16px; border-radius: 12px; border: 1px solid var(--borda); background: #fff; box-shadow: 0 2px 10px rgba(16, 18, 24, 0.04); }
 .al-card-topo { display: flex; align-items: center; gap: 12px; }
 .al-num { display: flex; width: 34px; height: 34px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 6px; background: var(--preto); color: #fff; font-size: 16px; font-weight: 800; box-shadow: inset -4px 0 0 var(--vermelho); }
@@ -1522,7 +1522,6 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .al-nav-pos .al-barra { max-width: 140px; }
 
 @container (min-width: 600px) {
-  .al-grade { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .al-pontos ul { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .al-nav { grid-template-columns: auto 1fr auto; }
   .al-nav-pos { grid-column: 2; }
@@ -1534,7 +1533,6 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   .al-banner-frase { font-size: clamp(18px, 2.4cqw, 26px); }
 }
 @container (min-width: 900px) {
-  .al-grade { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .al-pontos { padding: 20px 26px; }
   .al-pontos ul { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px 22px; }
 }
@@ -1555,35 +1553,21 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .al-arvore-ver { margin-top: 8px; display: inline-flex; align-items: center; gap: 4px; min-height: 34px; padding: 0 8px; font-size: 12px; color: rgba(255, 255, 255, 0.6); }
 .al-arvore-ver:hover { color: #fff; }
 
-/* Card aberto: conteúdo completo por cima da visão da aula */
+/* Conteúdo completo exposto em cada card + avanço entre cards */
 .al-card[data-concluido="1"] { border-color: #BFE3CB; }
 .al-card-ok { margin-left: auto; width: 22px; height: 22px; flex-shrink: 0; color: #12A150; }
 .al-avisos { display: flex; flex-direction: column; gap: 10px; }
-.al-niveis-resumo { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
-.al-niveis-resumo li { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; border-radius: 999px; border: 1px solid #E6E8EC; font-size: 11.5px; font-weight: 700; color: #5E6570; }
-.al-niveis-resumo li[data-status="aprovado"] { border-color: #BFE3CB; background: #EAF7EF; color: #0E7A3D; }
-.al-niveis-resumo li[data-status="liberado"] { border-color: #F2C4C6; background: #FFF1F1; color: #B80710; }
-.al-dialogo { --vermelho: #E50914; --vermelho-esc: #B80710; --preto: #0B0C0F; --cinza: #5E6570; --borda: #E6E8EC; --suave: #F5F6F8; margin: 0; padding: 0; width: 100%; max-width: 100%; height: 100dvh; max-height: 100dvh; border: 0; background: transparent; color: #0B0C0F; }
-.al-dialogo::backdrop { background: rgba(8, 9, 11, 0.62); backdrop-filter: blur(2px); }
-.al-dialogo[open] { display: flex; overflow: clip; }
-.al-dialogo-caixa { display: flex; flex-direction: column; width: 100%; height: 100%; overflow: clip; background: #fff; }
-.al-dialogo-topo { display: flex; align-items: center; gap: 12px; padding: max(12px, env(safe-area-inset-top)) 16px 12px; border-bottom: 1px solid #E6E8EC; }
-.al-dialogo-sobre { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #E50914; }
-.al-dialogo-titulo { font-size: 19px; font-weight: 900; letter-spacing: -0.015em; line-height: 1.15; }
-.al-dialogo-fechar { display: flex; width: 44px; height: 44px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 10px; color: #30353D; }
-.al-dialogo-fechar:hover { background: #F5F6F8; }
-.al-dialogo-corpo { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding: 18px 16px 28px; }
-.al-dialogo-base { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px max(12px, env(safe-area-inset-bottom)); border-top: 1px solid #E6E8EC; background: #fff; }
-.al-dialogo-base .al-btn { min-width: 0; padding: 0 14px; font-size: 13.5px; }
-.al-dialogo-base .al-btn-vermelho { flex: 1; max-width: 360px; }
-.al-dialogo-base .al-btn:disabled { opacity: 0.4; pointer-events: none; box-shadow: none; }
-@media (min-width: 768px) {
-  .al-dialogo { margin: auto; width: min(880px, calc(100% - 48px)); height: min(92dvh, 1000px); }
-  .al-dialogo-caixa { border-radius: 18px; overflow: clip; box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35); }
-  .al-dialogo-topo { padding: 16px 24px; }
-  .al-dialogo-corpo { padding: 24px 32px 36px; }
-  .al-dialogo-base { padding: 14px 24px; }
-  .al-dialogo-titulo { font-size: 22px; }
+.al-card-completo { padding: 18px 16px 20px; }
+.al-card-qtd { margin-left: auto; padding: 3px 9px; border-radius: 999px; background: #F5F6F8; font-size: 11.5px; font-weight: 700; color: #5E6570; white-space: nowrap; }
+.al-card-qtd + .al-card-ok { margin-left: 0; }
+.al-card-temas { margin-top: 14px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.al-card-fim { margin-top: 18px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding-top: 16px; border-top: 1px solid #E6E8EC; }
+.al-card-fim-info { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #5E6570; }
+.al-card-fim .al-btn { flex: 1 1 auto; max-width: 100%; }
+.al-btn[aria-disabled="true"] { background: #C9CDD3; color: #fff; box-shadow: none; cursor: not-allowed; }
+@container (min-width: 600px) {
+  .al-card-completo { padding: 24px 28px 26px; }
+  .al-card-fim .al-btn { flex: 0 0 auto; }
 }
 .al-niveis { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: #EEF0F3; }
 .al-niveis button { display: inline-flex; flex: 1; align-items: center; justify-content: center; gap: 5px; min-height: 40px; border-radius: 9px; font-size: 13.5px; font-weight: 700; color: #4A505A; }
@@ -1611,4 +1595,16 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 @media (prefers-reduced-motion: reduce) {
   .br-slide, .br-slide[data-ativo="1"] { transition: none; transform: none; }
   .br-slide-aprovado[data-ativo="1"] .br-arte { animation: none; }
+}
+
+/* Celular: a altura acompanha a arte do slide ativo (sem faixas vazias acima/abaixo) */
+@media (max-width: 1023.98px) {
+  .banner-rotator { height: calc(100vw * 1536 / 1664); transition: height 0.6s ease; }
+  .banner-rotator[data-formato="largo"] { height: calc(100vw * 711 / 2000); }
+  .br-slide-base { position: absolute; inset: 0; }
+  .br-fundo { display: none; }
+  .br-controles { bottom: 8px; padding: 4px 8px; gap: 8px; }
+  .br-pontos button { width: 6px; height: 6px; }
+  .br-pontos button[aria-current="true"] { width: 16px; }
+  .br-pausa { width: 22px; height: 22px; }
 }

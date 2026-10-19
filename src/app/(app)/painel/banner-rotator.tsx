@@ -63,6 +63,7 @@ export function BannerRotator({ children, banners = APPROVAL_BANNERS }: { childr
       aria-label="Banners do APROVUM"
       data-testid="banner-rotator"
       data-slide={index}
+      data-formato={index === 0 ? "marca" : "largo"}
     >
       {/* Slide 0: banner da marca (fica no fluxo e define a altura) */}
       <div className="br-slide br-slide-base" data-ativo={index === 0 ? "1" : "0"} aria-hidden={index !== 0} inert={index !== 0}>

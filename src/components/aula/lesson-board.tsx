@@ -47,9 +47,38 @@ export interface BoardCardMeta {
   done: boolean;
 }
 
-function CardShell({ n, title, subtitle, children, action, testId, className = "" }: { n: number; title: string; subtitle?: string; children: ReactNode; action?: { label: string; done: boolean; onClick: () => void }; testId?: string; className?: string }) {
+function CardShell({
+  n,
+  title,
+  subtitle,
+  children,
+  meta,
+  themes,
+  keepPreview = false,
+  testId,
+  className = "",
+}: {
+  n: number;
+  title: string;
+  subtitle?: string;
+  children?: ReactNode;
+  meta?: BoardCardMeta;
+  /** Conteúdo completo do card (temas, questões e botão de avançar). Substitui a prévia. */
+  themes?: ReactNode;
+  /** Mantém a prévia visual acima dos temas (ex.: mapa mental). */
+  keepPreview?: boolean;
+  testId?: string;
+  className?: string;
+}) {
+  const full = themes != null;
   return (
-    <article className={`al-card ${className}`} aria-labelledby={`al-card-${n}`} data-testid={testId} data-concluido={action?.done ? "1" : undefined}>
+    <article
+      className={`al-card ${full ? "al-card-completo" : ""} ${className}`}
+      aria-labelledby={`al-card-${n}`}
+      data-testid={testId}
+      data-card={n}
+      data-concluido={meta?.done ? "1" : undefined}
+    >
       <header className="al-card-topo">
         <span className="al-num" aria-hidden>
           {n}
@@ -57,15 +86,16 @@ function CardShell({ n, title, subtitle, children, action, testId, className = "
         <h2 id={`al-card-${n}`} className="al-card-titulo">
           {title}
         </h2>
-        {action?.done && <CircleCheck className="al-card-ok" aria-label="Concluído" />}
+        {full && n !== 8 && meta && meta.count > 0 && (
+          <span className="al-card-qtd">
+            {meta.count} {meta.count === 1 ? "tema" : "temas"}
+          </span>
+        )}
+        {meta?.done && <CircleCheck className="al-card-ok" aria-label="Concluído" />}
       </header>
       {subtitle && <p className="al-card-sub">{subtitle}</p>}
-      <div className="al-card-corpo">{children}</div>
-      {action && (
-        <button type="button" className="al-estudar" onClick={action.onClick}>
-          {action.label} <ChevronRight className="size-4" aria-hidden />
-        </button>
-      )}
+      {(!full || keepPreview) && children && <div className="al-card-corpo">{children}</div>}
+      {full && <div className="al-card-temas">{themes}</div>}
     </article>
   );
 }
@@ -84,13 +114,12 @@ export function LessonBoardView({
   progressPct,
   prevId,
   nextId,
-  quiz,
   reading,
   levelsPassed,
   cards,
+  themes,
   startLabel,
   onStart,
-  onOpen,
   notesCount,
   onNotes,
   notices,
@@ -103,26 +132,20 @@ export function LessonBoardView({
   progressPct: number;
   prevId: string | null;
   nextId: string | null;
-  /** Questão de fixação (motor real de questões) — renderizada pelo leitor. */
-  quiz: { node: ReactNode; label: string; onNext: (() => void) | null } | null;
   reading: { seen: number; total: number };
   levelsPassed: number;
   cards: Record<number, BoardCardMeta>;
   startLabel: string;
   onStart: () => void;
-  /** Abre o card com o conteúdo completo (temas, questões do tema, anotações). */
-  onOpen: (n: number) => void;
+  /** Conteúdo completo de cada card (número → temas/questões), exposto no próprio card. */
+  themes: Record<number, ReactNode>;
   notesCount: number;
   onNotes: () => void;
   notices?: ReactNode;
   after?: ReactNode;
 }) {
-  const act = (n: number) => {
-    const c = cards[n];
-    if (!c || (n !== 8 && c.count === 0)) return undefined;
-    const label = n === 8 ? (c.done ? "Rever questões por nível" : "Abrir questões por nível") : c.done ? `Rever conteúdo completo · ${c.count} ${c.count === 1 ? "tema" : "temas"}` : `Abrir conteúdo completo · ${c.count} ${c.count === 1 ? "tema" : "temas"}`;
-    return { label, done: c.done, onClick: () => onOpen(n) };
-  };
+  const card = (n: number) => ({ meta: cards[n], themes: themes[n] });
+
   const n2 = (i: number) => String(i).padStart(2, "0");
   return (
     <div className="al" data-testid="visao-aula">
@@ -183,7 +206,7 @@ export function LessonBoardView({
 
       <div className="al-grade">
         {/* 1 */}
-        <CardShell n={1} title="Entenda o conceito" action={act(1)} testId="card-conceito">
+        <CardShell n={1} title="Entenda o conceito" {...card(1)} testId="card-conceito">
           {board.concept ? (
             <>
               <div className="al-conceito">
@@ -212,7 +235,7 @@ export function LessonBoardView({
           n={2}
           title="Visualize"
           subtitle={board.scheme.source === "temas" ? "Os temas desta aula" : board.scheme.source === "esquema" ? "Esquema do conteúdo" : "Os conceitos-chave"}
-          action={act(2)}
+          {...card(2)}
           testId="card-visualize"
         >
           <ol className="al-esquema">
@@ -229,7 +252,7 @@ export function LessonBoardView({
         </CardShell>
 
         {/* 3 */}
-        <CardShell n={3} title="Leia a lei" subtitle={board.legalBasis ?? undefined} action={act(3)} testId="card-lei">
+        <CardShell n={3} title="Leia a lei" subtitle={board.legalBasis ?? undefined} {...card(3)} testId="card-lei">
           {board.law ? (
             <>
               {board.law.markdown && (
@@ -265,14 +288,14 @@ export function LessonBoardView({
           n={4}
           title="Destrinche a lei"
           subtitle={board.glossary?.source === "dispositivos" ? "Cada dispositivo do conteúdo" : "Entenda o significado de cada palavra"}
-          action={act(4)}
+          {...card(4)}
           testId="card-destrinche"
         >
           {board.glossary ? <BoardTable headers={board.glossary.headers} rows={board.glossary.rows} firstRed /> : <Empty>Esta aula não tem termos destrinchados em tabela.</Empty>}
         </CardShell>
 
         {/* 5 */}
-        <CardShell n={5} title="Diferencie" subtitle={board.compare?.title} action={act(5)} testId="card-diferencie">
+        <CardShell n={5} title="Diferencie" subtitle={board.compare?.title} {...card(5)} testId="card-diferencie">
           {board.compare ? (
             board.compare.panels ? (
               <div className="al-paineis">
@@ -309,7 +332,7 @@ export function LessonBoardView({
         </CardShell>
 
         {/* 6 */}
-        <CardShell n={6} title="Veja na prática" subtitle="Exemplos completos" action={act(6)} testId="card-pratica">
+        <CardShell n={6} title="Veja na prática" subtitle="Exemplos completos" {...card(6)} testId="card-pratica">
           {board.examples.items.length ? (
             <ol className="al-exemplos">
               {board.examples.items.map((e, i) => (
@@ -333,7 +356,7 @@ export function LessonBoardView({
         </CardShell>
 
         {/* 7 */}
-        <CardShell n={7} title="Atenção à banca" subtitle="Pegadinhas e exceções" action={act(7)} testId="card-banca">
+        <CardShell n={7} title="Atenção à banca" subtitle="Pegadinhas e exceções" {...card(7)} testId="card-banca">
           {board.traps.items.length ? (
             <ul className="al-alertas">
               {board.traps.items.map((t, i) => (
@@ -352,31 +375,12 @@ export function LessonBoardView({
         </CardShell>
 
         {/* 8 */}
-        <CardShell n={8} title="Questões de fixação" subtitle={quiz?.label} testId="card-questao" className="al-card-questao" action={act(8)}>
-          <ol className="al-niveis-resumo" aria-label="Níveis de questões">
-            {["Fácil", "Médio", "Difícil"].map((l, i) => (
-              <li key={l} data-status={levelsPassed > i ? "aprovado" : levelsPassed === i ? "liberado" : "bloqueado"}>
-                {levelsPassed > i ? <CircleCheck className="size-3.5" aria-hidden /> : null} {l}
-                <span className="sr-only">{levelsPassed > i ? " (aprovado)" : levelsPassed === i ? " (liberado)" : " (bloqueado)"}</span>
-              </li>
-            ))}
-          </ol>
-          {quiz ? (
-            <>
-              {quiz.node}
-              {quiz.onNext && (
-                <button type="button" className="al-btn al-btn-contorno mt-3" onClick={quiz.onNext}>
-                  Próxima questão <ArrowRight className="size-4" aria-hidden />
-                </button>
-              )}
-            </>
-          ) : (
-            <Empty>As questões desta aula ainda não foram geradas.</Empty>
-          )}
+        <CardShell n={8} title="Questões de fixação" subtitle="Fácil → médio → difícil" testId="card-questao" className="al-card-questao" {...card(8)}>
+          <Empty>As questões desta aula ainda não foram geradas.</Empty>
         </CardShell>
 
         {/* 9 */}
-        <CardShell n={9} title="Mapa mental" testId="card-mapa" action={act(9)}>
+        <CardShell n={9} title="Mapa mental" testId="card-mapa" keepPreview {...card(9)}>
           <MindMap center={board.mindmap.center} branches={board.mindmap.branches} />
         </CardShell>
       </div>

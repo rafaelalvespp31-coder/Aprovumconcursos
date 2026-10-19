@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 
 /**
  * Interações reais dos componentes de estudo, na galeria de desenvolvimento
@@ -125,34 +125,23 @@ test.describe("simulado", () => {
   });
 });
 
-/** Percorre os cards de conteúdo pela ordem até as questões; `onStep` roda em cada card aberto. */
-async function walkCards(page: Page, onStep?: () => Promise<void>) {
-  await page.getByRole("button", { name: /^(Começar|Continuar) a aula/ }).click();
-  for (let i = 0; i < 20; i++) {
-    if (onStep) await onStep();
-    const toQuestions = page.getByRole("button", { name: /^Concluir e ir para as questões/ });
-    if (await toQuestions.isVisible()) {
-      await toQuestions.click();
-      await expect(cardDialog(page)).toContainText("Questões de fixação");
-      return;
-    }
-    await page.getByRole("button", { name: /^Concluir e ir ao próximo card/ }).click();
+/** Percorre os cards de conteúdo pela ordem, concluindo cada um, até as questões. */
+async function walkCards(page: Page, onCard?: (card: Locator) => Promise<void>) {
+  const buttons = page.locator('[data-testid^="concluir-card-"]');
+  const n = await buttons.count();
+  for (let i = 0; i < n; i++) {
+    const btn = buttons.nth(i);
+    const card = page.locator("article[data-card]", { has: btn });
+    if (onCard) await onCard(card);
+    await expect(btn).toHaveAttribute("data-liberado", "1");
+    await btn.click();
   }
-  throw new Error("não chegou às questões");
-}
-
-const cardDialog = (page: Page) => page.locator("dialog.al-dialogo");
-async function openCard(page: Page, testId: string) {
-  await page.getByTestId(testId).getByRole("button", { name: /(conteúdo completo|questões por nível)/ }).click();
-  await expect(cardDialog(page)).toBeVisible();
-  return cardDialog(page);
+  await expect(page.getByTestId("card-questao")).toBeInViewport();
 }
 
 /** Onde responder: o card aberto (diálogo) quando houver; senão, a página. */
-const scope = async (page: Page) => ((await page.locator("dialog.al-dialogo[open]").count()) ? page.locator("dialog.al-dialogo[open]") : page.locator("body"));
-
-async function answerErradoIfVisible(page: Page) {
-  const root = await scope(page);
+async function answerErradoIfVisible(page: Page, within?: Locator) {
+  const root = within ?? page.locator("body");
   const radio = root.getByRole("radio", { name: /Errado/ }).first();
   if ((await radio.count()) && (await radio.isEnabled()) && !(await radio.isChecked())) {
     // O rádio é visualmente oculto (o rótulo é o alvo de toque); clica direto no elemento.
@@ -163,8 +152,8 @@ async function answerErradoIfVisible(page: Page) {
   }
 }
 
-async function answerIfVisible(page: Page, optionText: string) {
-  const root = await scope(page);
+async function answerIfVisible(page: Page, optionText: string, within?: Locator) {
+  const root = within ?? page.locator("body");
   const opt = root.getByText(optionText, { exact: false }).first();
   // Questão já respondida (resposta gravada) não tem botão "Responder" ativo: segue em frente.
   const radio = root.getByRole("radio", { name: new RegExp(optionText) }).first();
@@ -175,25 +164,21 @@ async function answerIfVisible(page: Page, optionText: string) {
   }
 }
 
-test.describe("tela de aula: o conteúdo completo abre dentro dos cards", () => {
-  test("card abre os seus temas por cima da tela e fecha de volta aos cards", async ({ page }) => {
+test.describe("tela de aula: o conteúdo completo fica exposto em cada card", () => {
+  test("temas aparecem direto nos cards, sem clicar", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    const d = await openCard(page, "card-diferencie");
-    await expect(d.getByRole("heading", { name: "Diferencie", level: 2 })).toBeVisible();
-    await expect(d.getByRole("heading", { name: "Anulação × revogação", level: 2 })).toBeVisible();
-    await d.getByRole("button", { name: "Fechar e voltar aos cards" }).click();
-    await expect(d).toBeHidden();
-    await expect(page.getByTestId("visao-aula")).toBeVisible();
+    await expect(page.getByTestId("card-diferencie").getByRole("heading", { name: "Anulação × revogação", level: 2 })).toBeVisible();
+    await expect(page.getByTestId("card-conceito").getByRole("heading", { name: "Introdução", level: 2 })).toBeVisible();
+    await expect(page.getByTestId("card-destrinche").getByRole("heading", { name: "Convalidação", level: 2 })).toBeVisible();
+    await expect(page.getByTestId("card-mapa").getByRole("heading", { name: "Resumo", level: 2 })).toBeVisible();
+    await expect(page.getByTestId("card-questao").getByRole("tab", { name: /Fácil/ })).toBeVisible();
     await noHorizontalScroll(page);
   });
 
   test("exemplos são casos interativos: situação, tocar e conferir o enquadramento; negrito em vermelho-sangue", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    let d = await openCard(page, "card-conceito");
-    await expect(d.locator(".leitura strong").first()).toHaveCSS("color", "rgb(138, 3, 3)");
-    await d.getByRole("button", { name: "Fechar e voltar aos cards" }).click();
-    d = await openCard(page, "card-pratica");
-    const box = d.getByTestId("exemplos-interativos");
+    await expect(page.getByTestId("card-conceito").locator(".leitura strong").first()).toHaveCSS("color", "rgb(138, 3, 3)");
+    const box = page.getByTestId("card-pratica").getByTestId("exemplos-interativos");
     await expect(box.getByText("0 de 2 conferidos")).toBeVisible();
     await expect(box.getByText("Documento falso", { exact: true })).toBeVisible();
     await expect(box.getByText("Enquadramento", { exact: true })).toHaveCount(0);
@@ -204,14 +189,12 @@ test.describe("tela de aula: o conteúdo completo abre dentro dos cards", () => 
 
   test("marcar trecho para revisar e criar anotação", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    const d = await openCard(page, "card-conceito");
-    const actions = d.getByRole("toolbar", { name: "Ações da seção Introdução" });
+    const actions = page.getByRole("toolbar", { name: "Ações da seção Introdução" });
     await actions.getByRole("button", { name: "Revisar depois" }).click();
     await expect(actions.getByRole("button", { name: "Marcado para revisar" })).toBeVisible();
     await actions.getByRole("button", { name: "Anotar" }).click();
-    await d.getByRole("textbox").last().fill("Lembrar: anulação retroage.");
-    await d.getByRole("button", { name: /Salvar/ }).last().click();
-    await d.getByRole("button", { name: "Fechar e voltar aos cards" }).click();
+    await page.getByTestId("card-conceito").getByRole("textbox").last().fill("Lembrar: anulação retroage.");
+    await page.getByTestId("card-conceito").getByRole("button", { name: /Salvar/ }).last().click();
     await page.getByRole("button", { name: /^Minhas anotações/ }).first().click();
     await expect(page.getByText("Lembrar: anulação retroage.")).toBeVisible();
   });
@@ -219,105 +202,89 @@ test.describe("tela de aula: o conteúdo completo abre dentro dos cards", () => 
   test("anotação leva de volta ao tema dentro do card", async ({ page }) => {
     await page.goto(`${G}/aula`);
     await page.getByRole("button", { name: /^Minhas anotações/ }).first().click();
-    const notes = page.getByRole("dialog", { name: /anotações/i });
-    await notes.getByRole("button", { name: /Convalidação/ }).first().click();
-    await expect(cardDialog(page).getByRole("heading", { name: "Destrinche a lei", level: 2 })).toBeVisible();
-    await expect(cardDialog(page).getByRole("heading", { name: "Convalidação", level: 2 })).toBeInViewport();
+    await page.getByRole("dialog", { name: /anotações/i }).getByRole("button", { name: /Convalidação/ }).first().click();
+    await expect(page.getByTestId("card-destrinche").getByRole("heading", { name: "Convalidação", level: 2 })).toBeInViewport();
   });
 
   test("esclarecer um conceito sem sair da aula", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    const d = await openCard(page, "card-conceito");
-    const actions = d.getByRole("toolbar", { name: "Ações da seção Introdução" });
-    await actions.getByRole("button", { name: "Esclarecer" }).click();
-    await d.getByRole("textbox", { name: "O que não ficou claro?" }).first().fill("O que é efeito ex tunc?");
-    await d.getByRole("button", { name: "Pedir explicação" }).first().click();
-    await expect(d.getByText(/Resposta de demonstração da galeria/)).toBeVisible();
+    const card = page.getByTestId("card-conceito");
+    await card.getByRole("toolbar", { name: "Ações da seção Introdução" }).getByRole("button", { name: "Esclarecer" }).click();
+    await card.getByRole("textbox", { name: "O que não ficou claro?" }).first().fill("O que é efeito ex tunc?");
+    await card.getByRole("button", { name: "Pedir explicação" }).first().click();
+    await expect(card.getByText(/Resposta de demonstração da galeria/)).toBeVisible();
     await expect(page).toHaveURL(/\/dev\/galeria\/aula/);
   });
 
   test("questão do tema corrige na hora e o card fica verde no acerto", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    const d = await openCard(page, "card-conceito");
-    await d.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
-    await d.getByRole("button", { name: "Responder", exact: true }).first().click();
-    await expect(d.getByText("Resposta correta").first()).toBeVisible();
-    await expect(d.locator('[data-resultado="acerto"]').first()).toBeVisible();
+    const card = page.getByTestId("card-conceito");
+    await card.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
+    await card.getByRole("button", { name: "Responder", exact: true }).first().click();
+    await expect(card.getByText("Resposta correta").first()).toBeVisible();
+    await expect(card.locator('[data-resultado="acerto"]').first()).toBeVisible();
   });
 
-  test("respostas ficam gravadas: reabrir o card mostra a resposta e o gabarito", async ({ page }) => {
+  test("respostas ficam gravadas: a questão já respondida abre com a resposta e o gabarito", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    let d = await openCard(page, "card-diferencie");
-    const saved = d.getByRole("article", { name: /Questão/ }).filter({ hasText: "A revogação de ato administrativo pode ser feita" });
+    const card = page.getByTestId("card-diferencie");
+    const saved = card.getByRole("article", { name: /Questão/ }).filter({ hasText: "A revogação de ato administrativo pode ser feita" });
     await expect(saved.getByText("Resposta gravada anteriormente")).toBeVisible();
     await expect(saved.getByText("Resposta correta")).toBeVisible();
-    await expect(d.getByTestId("gabarito-comentado").first()).toBeVisible();
-    await d.getByRole("button", { name: "Fechar e voltar aos cards" }).click();
-    d = await openCard(page, "card-conceito");
-    await d.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
-    await d.getByRole("button", { name: "Responder", exact: true }).first().click();
-    await expect(d.getByText("Resposta correta").first()).toBeVisible();
-    await d.getByRole("button", { name: "Fechar e voltar aos cards" }).click();
-    d = await openCard(page, "card-conceito");
-    const again = d.getByRole("article", { name: /Questão/ }).filter({ hasText: "Um servidor obteve licença" });
-    await expect(again.getByText("Resposta correta")).toBeVisible();
-    await expect(d.getByRole("button", { name: "Refazer questão" }).first()).toBeVisible();
+    await expect(card.getByTestId("gabarito-comentado").first()).toBeVisible();
+    // Card com a questão já respondida: o avanço já vem liberado.
+    await expect(card.getByTestId("concluir-card-5")).toHaveAttribute("data-liberado", "1");
   });
 
-  test("abrir as questões antes de ler não conta como leitura; concluir os cards libera os níveis", async ({ page }) => {
+  test("botão de avançar só libera quando o card termina e leva ao próximo card", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    let d = await openCard(page, "card-questao");
-    const fac = d.getByTestId("nivel-facil");
-    await expect(fac.getByRole("button", { name: "Calcular resultado do nível fácil" })).toBeDisabled();
-    await d.getByRole("button", { name: "Fechar e voltar aos cards" }).click();
-    await expect(page.getByTestId("secoes-vistas")).toHaveText(/^0 de \d+/);
+    const card = page.getByTestId("card-conceito");
+    const btn = card.getByTestId("concluir-card-1");
+    await expect(btn).toHaveAttribute("aria-disabled", "true");
+    await expect(card.getByText(/Responda a questão deste card para liberar o avanço/)).toBeVisible();
+    // Tocar no botão travado leva até a questão que falta.
+    await btn.click({ force: true }); // aria-disabled: o toque continua possível e explica o que falta
+    await expect(page.getByTestId("trava-proximo")).toContainText(/para avançar/);
+    const pending = card.locator('article[data-questao][data-respondida="0"]');
+    await expect(pending.first()).toBeInViewport();
+    const label = await pending.first().getAttribute("aria-label");
+    const q = card.locator(`article[aria-label="${label}"]`);
+    await q.getByRole("radio").first().evaluate((el) => (el as HTMLInputElement).click());
+    await q.getByRole("button", { name: "Responder", exact: true }).click();
+    await expect(q).toHaveAttribute("data-respondida", "1");
+    await expect(btn).toHaveAttribute("data-liberado", "1");
+    await btn.click();
+    await expect(page.getByTestId("card-lei")).toBeInViewport();
+    await expect(card).toHaveAttribute("data-concluido", "1");
+    await expect(page.getByTestId("secoes-vistas")).toHaveText(/^1 de \d+/);
+  });
 
-    await walkCards(page, async () => {
-      await answerIfVisible(page, "anular a licença, por ilegalidade");
-      await answerErradoIfVisible(page);
+  test("questões antes da leitura não calculam; concluir os cards libera os níveis", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    const q8 = page.getByTestId("card-questao");
+    const fac = q8.getByTestId("nivel-facil");
+    await expect(fac.getByRole("button", { name: "Calcular resultado do nível fácil" })).toBeDisabled();
+    await walkCards(page, async (card) => {
+      await answerIfVisible(page, "anular a licença, por ilegalidade", card);
+      await answerErradoIfVisible(page, card);
     });
-    d = cardDialog(page);
     await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
     await expect(fac.getByText(/Nível fácil aprovado com 100%/)).toBeVisible();
-    await d.getByRole("button", { name: /^Próximo nível: Médio/ }).click();
-    await expect(d.getByTestId("nivel-medio")).toContainText("Liberado");
-    // Nível médio com questão sem resposta: o botão trava e leva até a questão.
-    await d.getByRole("button", { name: /^Próximo nível: Difícil/ }).click();
+    await q8.getByTestId("proximo-nivel").click();
+    await expect(q8.getByTestId("nivel-medio")).toContainText("Liberado");
+    // Nível médio com questão sem resposta: o botão fica travado e leva até a questão.
+    await expect(q8.getByTestId("proximo-nivel")).toHaveAttribute("aria-disabled", "true");
+    await q8.getByTestId("proximo-nivel").click({ force: true });
     await expect(page.getByTestId("trava-proximo")).toBeVisible();
-    await expect(d.getByTestId("nivel-medio")).toBeVisible();
-    await d.getByRole("tab", { name: /Difícil/ }).click();
-    await expect(d.getByTestId("nivel-dificil")).toContainText("Bloqueado");
-    // Fim: botão para o próximo tema da mesma matéria.
-    await expect(d.getByRole("link", { name: /Próximo tema/ })).toBeVisible();
-    await d.getByRole("button", { name: /^Concluir e voltar aos cards/ }).click();
+    await q8.getByRole("tab", { name: /Difícil/ }).click();
+    await expect(q8.getByTestId("nivel-dificil")).toContainText("Bloqueado");
+    await expect(q8.getByRole("link", { name: /Próximo tema/ })).toBeVisible();
     await expect(page.getByTestId("secoes-vistas")).toHaveText(/^(\d+) de \1/);
-    await expect(page.getByTestId("card-conceito")).toHaveAttribute("data-concluido", "1");
-  });
-
-  test("Concluir trava com questão sem resposta no card e leva até ela", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    const d = await openCard(page, "card-conceito");
-    const pending = d.locator('article[data-questao][data-respondida="0"]');
-    await expect(pending.first()).toBeAttached();
-    await d.getByRole("button", { name: /^Concluir e ir ao próximo card/ }).click();
-    await expect(page.getByTestId("trava-proximo")).toContainText(/para avançar/);
-    await expect(pending.first()).toBeInViewport();
-    await expect(d.getByRole("heading", { name: "Entenda o conceito", level: 2 })).toBeVisible();
-    while (await pending.count()) {
-      const label = await pending.first().getAttribute("aria-label");
-      const q = d.locator(`article[aria-label="${label}"]`);
-      await q.getByRole("radio").first().evaluate((el) => (el as HTMLInputElement).click());
-      await q.getByRole("button", { name: "Responder", exact: true }).click();
-      await expect(q).toHaveAttribute("data-respondida", "1");
-    }
-    await d.getByRole("button", { name: /^Concluir e ir ao próximo card/ }).click();
-    await expect(d.getByRole("heading", { name: "Leia a lei", level: 2 })).toBeVisible();
   });
 
   test("questões do nível que ficaram sem resposta ao longo da aula aparecem no próprio nível", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    const d = await openCard(page, "card-questao");
-    const box = d.getByTestId("nivel-facil").getByTestId("faltam-facil");
+    const box = page.getByTestId("card-questao").getByTestId("nivel-facil").getByTestId("faltam-facil");
     await expect(box).toBeVisible();
     await expect(box.getByRole("heading", { level: 4 })).toContainText(/Falta(m)? responder/);
     const first = box.getByRole("article").first();
@@ -328,11 +295,12 @@ test.describe("tela de aula: o conteúdo completo abre dentro dos cards", () => 
 
   test("nível reprovado oferece recuperação em vez de reiniciar", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    await walkCards(page, async () => {
-      await answerIfVisible(page, "revogar a licença, por conveniência");
-      await answerErradoIfVisible(page);
+    await walkCards(page, async (card) => {
+      await answerIfVisible(page, "revogar a licença, por conveniência", card);
+      await answerErradoIfVisible(page, card);
     });
-    const fac = cardDialog(page).getByTestId("nivel-facil");
+    const q8 = page.getByTestId("card-questao");
+    const fac = q8.getByTestId("nivel-facil");
     await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
     await expect(fac.getByText(/mínimo para avançar é 90%/)).toBeVisible();
     await fac.getByRole("button", { name: "Gerar exercícios de recuperação" }).click();
@@ -346,7 +314,7 @@ test.describe("tela de aula: o conteúdo completo abre dentro dos cards", () => 
     await fac.getByRole("button", { name: "Calcular resultado do nível fácil de novo" }).click();
     await expect(fac.getByText(/Nível fácil aprovado/)).toBeVisible();
     await fac.getByTestId("avancar-nivel").click();
-    await expect(cardDialog(page).getByTestId("nivel-medio")).toContainText("Liberado");
+    await expect(q8.getByTestId("nivel-medio")).toContainText("Liberado");
   });
 });
 
@@ -711,7 +679,7 @@ test.describe("visão da aula (nove cards)", () => {
       await expect(page.getByTestId(`card-${id}`)).toBeVisible();
     }
     await expect(page.getByTestId("card-lei")).toContainText("Art. 53");
-    await expect(page.getByTestId("card-diferencie").getByRole("region", { name: "Anulação" })).toBeVisible();
+    await expect(page.getByTestId("card-diferencie")).toContainText("Ilegalidade");
     await expect(page.getByRole("heading", { name: /Pontos-chave/ })).toBeVisible();
     await expect(v.getByText("3 de 6 aulas")).toBeVisible();
     await expect(v.getByRole("link", { name: /Próxima aula/ })).toHaveAttribute("href", /\/aula\//);
@@ -726,7 +694,7 @@ test.describe("visão da aula (nove cards)", () => {
       await radio.evaluate((el) => (el as HTMLInputElement).click());
       await card.getByRole("button", { name: "Responder", exact: true }).click();
     }
-    await expect(card.getByText(/Resposta (correta|incorreta)/)).toBeVisible();
+    await expect(card.getByText(/Resposta (correta|incorreta)/).first()).toBeVisible();
   });
 
   test("árvore de aulas: barra lateral no desktop, menu no celular", async ({ page, isMobile }) => {
