@@ -10,6 +10,22 @@ import { DisciplineIcon, Ring } from "./parts";
 const FRAMES = ["0 0, 8% 45%", "0 0, 30% 42%", "0 0, 52% 38%", "0 0, 82% 62%", "0 0, 86% 14%", "0 0, 60% 70%"];
 
 /**
+ * Arte de fundo própria de cada matéria (uma por matéria, qualquer que seja o tema:
+ * Homicídio e Furto usam a de Direito Penal). Matérias sem arte própria ficam com a
+ * arte tática padrão.
+ */
+export function subjectArt(discipline: string | null | undefined): string | null {
+  const n = (discipline ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (n.includes("portugues")) return "/images/materias/lingua-portuguesa.webp";
+  if (n.includes("processual penal") || n.includes("processo penal")) return "/images/materias/processo-penal.webp";
+  if (n.includes("penal")) return "/images/materias/direito-penal.webp";
+  if (n.includes("raciocinio") || n.includes("matematica")) return "/images/materias/raciocinio-logico.webp";
+  return null;
+}
+
+const ART_SHADE = "linear-gradient(100deg, rgba(14, 14, 16, 0.97) 30%, rgba(14, 14, 16, 0.55) 70%, rgba(14, 14, 16, 0.35))";
+
+/**
  * "Seus estudos": faixa escura com os estudos do aluno em carrossel horizontal (toque,
  * mouse, teclado), progresso real de cada um e destaque do estudo em andamento.
  */
@@ -80,7 +96,16 @@ export function StudySubjectsSection({ data, base = "" }: { data: StudiesHome; b
               return (
                 <li key={s.id} className="es-item">
                   <Link href={href} className="es-card" data-andamento={s.inProgress ? "1" : "0"} aria-label={`${s.title}${s.inProgress ? " — em andamento, continuar" : ""}`}>
-                    <span className="es-card-arte" aria-hidden style={{ backgroundPosition: FRAMES[i % FRAMES.length] }} />
+                    <span
+                      className="es-card-arte"
+                      aria-hidden
+                      data-arte={subjectArt(s.discipline) ?? "padrao"}
+                      style={
+                        subjectArt(s.discipline)
+                          ? { backgroundImage: `${ART_SHADE}, url("${subjectArt(s.discipline)}")`, backgroundSize: "100% 100%, cover", backgroundPosition: "0 0, center" }
+                          : { backgroundPosition: FRAMES[i % FRAMES.length] }
+                      }
+                    />
                     {s.inProgress && <span className="es-badge">Em andamento</span>}
                     <span className="es-card-icone">
                       <DisciplineIcon discipline={s.discipline} className="size-7" />
