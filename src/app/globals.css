@@ -1790,3 +1790,5 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   .pc, .pc-jogo, .pc-faixa-card, .pc-botao, .pc-barra > span { transition: none; }
   .pc-link:hover, .pc-jogo:hover, .pc-faixa-card:hover { transform: none; }
 }
+/* Frase em pincel do topo da página inicial: quebra em linhas equilibradas, sem invadir a arte */
+.lp-pincel { white-space: normal; text-wrap: balance; }

@@ -3,7 +3,7 @@ import { expect, test } from "@playwright/test";
 test.describe("páginas públicas", () => {
   test("landing: estudo por conteúdo específico, com decomposição real de um artigo", async ({ page }) => {
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Cole o que vai estudar hoje. Saia dominando.");
+    await expect(page.getByRole("heading", { level: 1 })).toHaveText("Você não precisa estudar mais. Precisa aprender melhor.");
     await expect(page.getByText(/sem precisar do edital/)).toBeVisible();
     // A régua mostra um segmento por item extraído pelo motor real.
     const ruler = page.getByRole("img", { name: /Cobertura do exemplo/ });

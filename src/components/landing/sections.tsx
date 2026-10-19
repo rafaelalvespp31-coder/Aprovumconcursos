@@ -4,14 +4,14 @@ import { ArrowRight, BookOpenText, BrainCircuit, ChevronRight, ClipboardCheck, C
 import { CoverageRuler, RulerLegend, type RulerState } from "@/components/coverage-ruler";
 import type { ExtractedNode } from "@/domain/content/extract";
 
-/** Hero: título com "Saia dominando." em pincel, texto, botões e o operador caveira. */
+/** Hero: título com "Precisa aprender melhor." em pincel, texto, botões e o operador caveira. */
 export function LandingHero({ primaryHref, primaryLabel }: { primaryHref: string; primaryLabel: string }) {
   return (
     <section id="inicio" className="lp-hero scroll-mt-24">
       <div className="lp-hero-texto">
         <p className="lp-kicker">Concursos públicos</p>
         <h1 className="lp-titulo">
-          <span>Cole o que vai estudar hoje.</span> <span className="lp-pincel">Saia dominando.</span>
+          <span>Você não precisa estudar mais.</span> <span className="lp-pincel">Precisa aprender melhor.</span>
         </h1>
         <p className="lp-hero-desc">
           Um tema, um artigo de lei, um capítulo ou uma matéria — sem precisar do edital. O APROVUM delimita o escopo, ensina em blocos curtos, avalia em três níveis (fácil, médio e
