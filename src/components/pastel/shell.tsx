@@ -129,6 +129,8 @@ export function PastelShell({
   const isPainel = active?.id === "painel";
   // Página de Estudos: cabeçalho com saudação (desktop) e logo + menu (celular).
   const isEstudos = path === `${basePath}/trilhas`;
+  // Aula: no celular, cabeçalho com menu (árvore de aulas no menu); no desktop, árvore na barra lateral.
+  const isAula = path.startsWith(`${basePath}/aula`);
   const title = isPainel ? (
     <>
       {summary.name ? `Olá, ${summary.name} ` : "Olá! "}
@@ -221,12 +223,13 @@ export function PastelShell({
                     );
                   })}
                 </nav>
+                {isAula && !collapsed && <div id="aula-arvore-desktop" className="mt-4 border-t border-white/10 px-1 pt-4" />}
               </div>
 
               <div className="barra-base mt-auto shrink-0 p-4">
                 {!collapsed ? (
                   <>
-                    <PastelCard delay={600} noTilt glowColor="225,6,0" className="barra-streak !rounded-[20px] !shadow-none border-[#2E2E2E] bg-gradient-to-br from-[#1A1A1A] to-[#120606]">
+                    <PastelCard delay={600} noTilt glowColor="225,6,0" className={`barra-streak ${isAula ? "!hidden" : ""} !rounded-[20px] !shadow-none border-[#2E2E2E] bg-gradient-to-br from-[#1A1A1A] to-[#120606]`}>
                       <div className="p-4" data-testid="streak-card">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2.5">
@@ -290,6 +293,9 @@ export function PastelShell({
               {isEstudos ? (
                 <EstudosHeader summary={summary} basePath={basePath} items={items} searchRef={searchRef} />
               ) : (
+                <>
+                {isAula && <EstudosHeader summary={summary} basePath={basePath} items={items} searchRef={searchRef} mobileOnly />}
+                <div className={isAula ? "hidden lg:block" : undefined}>
               <div className="flex h-[88px] items-center justify-between gap-4 px-5 lg:px-10">
                 <div className="flex min-w-0 flex-1 items-center gap-4">
                   {dark && (
@@ -351,6 +357,8 @@ export function PastelShell({
                   )}
                 </div>
               </div>
+                </div>
+                </>
               )}
             </header>
 
@@ -516,7 +524,7 @@ function QuickSearch({ inputRef, basePath, items, dark = false }: { inputRef: Re
 // ---------------------------------------------------------------------------
 // Cabeçalho da página de Estudos
 // ---------------------------------------------------------------------------
-function EstudosHeader({ summary, basePath, items, searchRef }: { summary: ShellSummary; basePath: string; items: NavItem[]; searchRef: React.RefObject<HTMLInputElement | null> }) {
+function EstudosHeader({ summary, basePath, items, searchRef, mobileOnly = false }: { summary: ShellSummary; basePath: string; items: NavItem[]; searchRef: React.RefObject<HTMLInputElement | null>; mobileOnly?: boolean }) {
   const menuRef = useRef<HTMLDialogElement>(null);
   const path = usePathname();
   const bell = (
@@ -552,7 +560,7 @@ function EstudosHeader({ summary, basePath, items, searchRef }: { summary: Shell
         {avatar}
       </div>
       {/* Desktop: saudação com o nome real, busca, avisos e perfil */}
-      <div className="hidden h-[88px] items-center justify-between gap-4 px-10 lg:flex">
+      <div className={`hidden h-[88px] items-center justify-between gap-4 px-10 ${mobileOnly ? "" : "lg:flex"}`}>
         <div className="flex min-w-0 items-center gap-5">
           <span className="estudos-barras" aria-hidden>{"///"}</span>
           <div className="min-w-0">
@@ -619,6 +627,7 @@ function EstudosHeader({ summary, basePath, items, searchRef }: { summary: Shell
           >
             <Plus className="h-5 w-5" aria-hidden /> Novo estudo
           </Link>
+          {path.includes("/aula") && <div id="aula-arvore-movel" className="mt-5 border-t border-white/10 pt-4" />}
         </nav>
       </dialog>
     </>

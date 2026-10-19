@@ -145,6 +145,9 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       nextHref={nextInSubject?.href ?? null}
       nextLabel={nextInSubject?.label ?? null}
       notices={notices}
+      position={idx >= 0 ? { index: idx, total: siblings.length } : null}
+      moduleTitle={lesson.learning_modules?.title ?? null}
+      outline={siblings.map((s) => ({ id: s.id, title: s.title, module: s.module }))}
     />
   );
 }

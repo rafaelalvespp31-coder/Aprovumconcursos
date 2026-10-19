@@ -162,6 +162,11 @@ async function answerIfVisible(page: Page, optionText: string) {
 }
 
 test.describe("tela de aula", () => {
+  // Estes testes cobrem o estudo guiado (etapas, níveis e recuperação).
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("na:modo-aula", JSON.stringify("guiado")));
+  });
+
   test("etapas levam direto a um tema", async ({ page, isMobile }) => {
     await page.goto(`${G}/aula`);
     if (isMobile) await page.getByRole("button", { name: "Etapas", exact: true }).click();
@@ -691,5 +696,56 @@ test.describe("página de estudos", () => {
     await expect(menu.getByRole("link", { name: /Novo estudo/ })).toBeVisible();
     await menu.getByRole("button", { name: "Fechar menu" }).click();
     await expect(menu).toBeHidden();
+  });
+});
+
+test.describe("visão da aula (nove cards)", () => {
+  test.beforeEach(async ({ page }) => {
+    await page.addInitScript(() => localStorage.setItem("na:modo-aula", JSON.stringify("visao")));
+  });
+
+  test("cabeçalho, nove cards, pontos-chave e navegação com dados da aula", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    const v = page.getByTestId("visao-aula");
+    await expect(v.getByRole("heading", { level: 1 })).toContainText("convalidação");
+    await expect(v.getByText("Aula 03")).toBeVisible();
+    for (const id of ["conceito", "visualize", "lei", "destrinche", "diferencie", "pratica", "banca", "questao", "mapa"]) {
+      await expect(page.getByTestId(`card-${id}`)).toBeVisible();
+    }
+    await expect(page.getByTestId("card-lei")).toContainText("Art. 53");
+    await expect(page.getByTestId("card-diferencie").getByRole("region", { name: "Anulação" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /Pontos-chave/ })).toBeVisible();
+    await expect(v.getByText("3 de 6 aulas")).toBeVisible();
+    await expect(v.getByRole("link", { name: /Próxima aula/ })).toHaveAttribute("href", /\/aula\//);
+    await noHorizontalScroll(page);
+  });
+
+  test("questão de fixação usa o motor real de questões", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    const card = page.getByTestId("card-questao");
+    const radio = card.getByRole("radio").first();
+    if (await radio.isEnabled()) {
+      await radio.evaluate((el) => (el as HTMLInputElement).click());
+      await card.getByRole("button", { name: "Responder", exact: true }).click();
+    }
+    await expect(card.getByText(/Resposta (correta|incorreta)/)).toBeVisible();
+  });
+
+  test("'Estudar no passo a passo' abre o estudo guiado no tema do card", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    await page.getByTestId("card-diferencie").getByRole("button", { name: /Estudar no passo a passo/ }).click();
+    await expect(page.getByTestId("visao-aula")).toHaveCount(0);
+    await expect(page.getByRole("tab", { name: "Estudo guiado" })).toHaveAttribute("aria-selected", "true");
+    await page.getByRole("tab", { name: "Visão da aula" }).click();
+    await expect(page.getByTestId("visao-aula")).toBeVisible();
+  });
+
+  test("árvore de aulas: barra lateral no desktop, menu no celular", async ({ page, isMobile }) => {
+    await page.goto(`${G}/aula`);
+    if (isMobile) await page.getByRole("button", { name: "Abrir menu" }).click();
+    const tree = page.getByRole("navigation", { name: "Aulas deste estudo" }).filter({ visible: true });
+    await expect(tree).toHaveCount(1);
+    await expect(tree.locator('[aria-current="page"]')).toBeVisible();
+    await expect(tree.getByRole("link", { name: /Ver página do estudo/ })).toBeVisible();
   });
 });

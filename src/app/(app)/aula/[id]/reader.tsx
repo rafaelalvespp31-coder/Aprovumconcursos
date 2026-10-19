@@ -20,6 +20,8 @@ import { useStudyApi } from "@/components/study-api";
 import { LEVELS, levelStatus, type LevelKey } from "@/domain/progress/levels";
 import { SingleLevel } from "./levels-panel";
 import { groupIntoModules, type LessonModule } from "@/domain/content/modules";
+import { buildLessonBoard } from "@/domain/content/board";
+import { LessonBoardView, LessonModeTabs, LessonTreePortal, type BoardOutlineItem } from "@/components/aula/lesson-board";
 
 export interface ReaderSection {
   id: string;
@@ -62,7 +64,12 @@ export interface ReaderProps {
   nextHref: string | null;
   nextLabel: string | null;
   notices: React.ReactNode;
-  /** Pré-visualização de design: não dispara efeitos no servidor. */
+  /** Posição da aula no estudo (para "Aula 03" e "3 de 12 aulas"). */
+  position?: { index: number; total: number } | null;
+  /** Módulo da aula (plano do estudo). */
+  moduleTitle?: string | null;
+  /** Aulas do estudo, em ordem, com o módulo de cada uma (árvore da barra lateral). */
+  outline?: BoardOutlineItem[];
 }
 
 export type ReaderQuestion = QuestionData & { nodeKey: string | null; level?: LevelKey; recovery_of?: string | null };
@@ -172,6 +179,19 @@ export function LessonReader(props: ReaderProps) {
   );
 
   const goToSection = useCallback((sectionId: string) => go(steps.findIndex((s) => s.type === "secao" && s.section.id === sectionId)), [go, steps]);
+
+  // Visão da aula (nove cards) × estudo guiado (etapas). A escolha fica salva no navegador.
+  const [mode, setMode] = useStored<"visao" | "guiado">("na:modo-aula", "visao");
+  const board = useMemo(() => buildLessonBoard({ title: lesson.title, sections, nodes }), [lesson.title, sections, nodes]);
+  const quizPool = useMemo(() => questions.filter((q) => !q.recovery_of && (q.level ?? "facil") === "facil"), [questions]);
+  const [quizIdx, setQuizIdx] = useState<number | null>(null);
+  const quizStart = useMemo(() => Math.max(0, quizPool.findIndex((q) => !props.answers?.[q.id])), [quizPool, props.answers]);
+  const quizAt = quizIdx ?? quizStart;
+  const openGuided = (sectionId: string | null) => {
+    setMode("guiado");
+    if (sectionId) goToSection(sectionId);
+    else requestAnimationFrame(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   // Trava do "Próximo": com questão sem resposta na etapa, não avança e leva até ela.
   const stepRef = useRef<HTMLDivElement>(null);
@@ -375,6 +395,31 @@ export function LessonReader(props: ReaderProps) {
         </p>
       )}
 
+      {props.outline && <LessonTreePortal trailId={lesson.trailId} trailTitle={lesson.trailTitle} outline={props.outline} currentId={lesson.id} />}
+      <LessonModeTabs mode={mode} onChange={(m) => setMode(m)} />
+
+      {mode === "visao" ? (
+        <LessonBoardView
+          board={board}
+          lesson={lesson}
+          position={props.position ?? null}
+          moduleTitle={props.moduleTitle ?? null}
+          progressPct={Math.round((((readingDone ? 1 : 0) + levelsPassed) / 4) * 100)}
+          prevId={props.prevId}
+          nextId={props.nextId}
+          quiz={
+            quizPool.length
+              ? {
+                  node: renderQuestion(quizPool[quizAt % quizPool.length]!, numberOf.get(quizPool[quizAt % quizPool.length]!.id)!),
+                  label: `Questão ${(quizAt % quizPool.length) + 1} de ${quizPool.length} · nível fácil`,
+                  onNext: quizPool.length > 1 ? () => setQuizIdx((quizAt + 1) % quizPool.length) : null,
+                }
+              : null
+          }
+          onStudy={openGuided}
+        />
+      ) : (
+      <>
       <div className="md:grid md:grid-cols-[230px_minmax(0,1fr)] md:gap-10 lg:grid-cols-[250px_minmax(0,1fr)]">
         <aside className="hidden md:block">
           <div className="sticky top-6 flex max-h-[calc(100dvh-3rem)] flex-col gap-4 overflow-y-auto pb-6">
@@ -625,6 +670,8 @@ export function LessonReader(props: ReaderProps) {
         }}
         onChange={(a, removed) => setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : list.map((x) => (x.id === a.id ? a : x))))}
       />
+      </>
+      )}
     </div>
   );
 }

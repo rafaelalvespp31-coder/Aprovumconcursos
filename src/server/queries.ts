@@ -214,7 +214,7 @@ export async function getLessonForStudy(lessonId: string) {
   const db = await createUserClient();
   const { data: lesson } = await db
     .from("lessons")
-    .select("id, trail_id, key, title, objective, sort_order, estimated_minutes, status, supplementary, verification_pending, unverified_claims, generation_error, generated_at, catalog_topic_id, catalog_version, study_trails(title, board_slug, other_board_name)")
+    .select("id, trail_id, key, title, objective, sort_order, estimated_minutes, status, supplementary, verification_pending, unverified_claims, generation_error, generated_at, catalog_topic_id, catalog_version, study_trails(title, board_slug, other_board_name), learning_modules(title, sort_order)")
     .eq("id", lessonId)
     .maybeSingle();
   if (!lesson) notFound();
@@ -244,7 +244,7 @@ export async function getLessonForStudy(lessonId: string) {
       .order("created_at"),
     db.from("learning_progress").select("state, reading_completed_at, passed_at, mastered_at, levels_passed").eq("lesson_id", lessonId).maybeSingle(),
     db.from("lesson_nodes").select("taught, content_nodes(id, key, marker, title, path, kind)").eq("lesson_id", lessonId),
-    db.from("lessons").select("id, title, sort_order").eq("trail_id", lesson.trail_id as string).order("sort_order"),
+    db.from("lessons").select("id, title, sort_order, learning_modules(title, sort_order)").eq("trail_id", lesson.trail_id as string).order("sort_order"),
     db.from("lesson_annotations").select("id, section_id, section_title, kind, body, resolved, updated_at").eq("lesson_id", lessonId).order("created_at", { ascending: false }),
     db.from("concept_clarifications").select("id, section_id, question, answer_markdown, verification_pending").eq("lesson_id", lessonId).order("created_at"),
     db.from("question_marks").select("question_id"),
@@ -268,6 +268,7 @@ export async function getLessonForStudy(lessonId: string) {
       unverified_claims: string[]; generation_error: string | null; generated_at: string | null;
       catalog_topic_id: string | null; catalog_version: number | null;
       study_trails: { title: string; board_slug: string; other_board_name: string | null };
+      learning_modules: { title: string; sort_order: number } | null;
     },
     catalog: lesson.catalog_topic_id
       ? { version: lesson.catalog_version as number | null, latest: catalogLatest, outdated: catalogLatest !== null && (lesson.catalog_version ?? 0) < catalogLatest }
@@ -295,7 +296,12 @@ export async function getLessonForStudy(lessonId: string) {
     }),
     progress: progress.data as { state: UnitState; reading_completed_at: string | null; passed_at: string | null; mastered_at: string | null; levels_passed: number } | null,
     nodes: nodeList,
-    siblings: (siblings.data ?? []) as Array<{ id: string; title: string; sort_order: number }>,
+    siblings: ((siblings.data ?? []) as unknown as Array<{ id: string; title: string; sort_order: number; learning_modules: { title: string; sort_order: number } | null }>).map((x) => ({
+      id: x.id,
+      title: x.title,
+      sort_order: x.sort_order,
+      module: x.learning_modules?.title ?? null,
+    })),
     annotations: (annotations.data ?? []) as Array<{ id: string; section_id: string | null; section_title: string | null; kind: "nota" | "revisar" | "duvida"; body: string; resolved: boolean; updated_at: string }>,
     clarifications: (clarifications.data ?? []) as Array<{ id: string; section_id: string | null; question: string; answer_markdown: string; verification_pending: boolean }>,
     markedQuestionIds: (marks.data ?? []).map((m) => m.question_id as string),
