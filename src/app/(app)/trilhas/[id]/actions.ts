@@ -71,7 +71,7 @@ export async function createPdfAction(trailId: string, _prev: PdfState): Promise
   const user = await requireUser();
   try {
     const r = await createStudyPdf(user.id, trailId);
-    revalidatePath(`/trilhas/${trailId}`);
+    revalidatePath("/aula/[id]", "page");
     return { created: r.pdfVersion };
   } catch (e) {
     if (e instanceof UserFacingError) return { error: e.message };
@@ -90,6 +90,6 @@ export async function deletePdfAction(trailId: string, pdfId: string): Promise<{
     await logEvent("study_pdf.delete_failed", { trailId, pdfId, error: (e as Error).message });
     return { ok: false, error: "Não foi possível excluir o PDF agora. Tente novamente." };
   }
-  revalidatePath(`/trilhas/${trailId}`);
+  revalidatePath("/aula/[id]", "page");
   return { ok: true };
 }

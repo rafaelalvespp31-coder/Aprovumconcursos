@@ -63,6 +63,8 @@ export interface ReaderProps {
   nextHref: string | null;
   nextLabel: string | null;
   notices: React.ReactNode;
+  /** Painel do PDF do conteúdo (gerar, baixar e excluir versões). */
+  pdf?: React.ReactNode;
   /** Posição da aula no estudo (para "Aula 03" e "3 de 12 aulas"). */
   position?: { index: number; total: number } | null;
   /** Módulo da aula (plano do estudo). */
@@ -312,7 +314,7 @@ export function LessonReader(props: ReaderProps) {
         <p className="t-small text-tinta-suave">Este é o último tema desta matéria. Para continuar, crie um estudo novo ou coloque outros temas nesta pasta.</p>
       )}
       <div className="flex flex-wrap gap-4 t-small">
-        <Link href={`/trilhas/${lesson.trailId}#pdf`} className="font-semibold text-destaque">PDF do conteúdo</Link>
+        <a href="#pdf" className="font-semibold text-destaque">PDF do conteúdo</a>
         <Link href="/trilhas" className="font-semibold text-destaque">Minhas pastas e estudos</Link>
       </div>
     </section>
@@ -449,6 +451,7 @@ export function LessonReader(props: ReaderProps) {
         after={
           <>
             {finished && conclusion}
+            {props.pdf}
             <details className="rounded-[12px] border border-[#E6E8EC] bg-white px-4 py-3 t-small">
               <summary className="cursor-pointer font-semibold">Itens do seu conteúdo nesta aula ({nodes.length})</summary>
               <ul className="mt-2 flex flex-col gap-1">

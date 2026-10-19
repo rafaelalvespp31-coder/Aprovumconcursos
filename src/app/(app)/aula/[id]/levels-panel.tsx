@@ -62,7 +62,6 @@ export function SingleLevel({
 
 export function LevelsPanel({
   lessonId,
-  trailId,
   questions,
   interleavedIds,
   initialLevelsPassed,
@@ -125,9 +124,9 @@ export function LevelsPanel({
                 Próxima unidade <Icon name="setaDireita" className="size-4" />
               </Link>
             )}
-            <Link href={`/trilhas/${trailId}#pdf`} className="inline-flex items-center gap-1.5 font-semibold text-destaque">
+            <a href="#pdf" className="inline-flex items-center gap-1.5 font-semibold text-destaque">
               PDF do conteúdo <Icon name="setaDireita" className="size-4" />
-            </Link>
+            </a>
           </div>
         </Notice>
       )}

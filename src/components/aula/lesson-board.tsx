@@ -187,9 +187,7 @@ export function LessonBoardView({
           <nav aria-label="Trilha" className="al-trilha">
             <Link href="/trilhas">Estudos</Link>
             <ChevronRight className="size-3.5" aria-hidden />
-            <Link href={`/trilhas/${lesson.trailId}`} className="truncate">
-              {lesson.trailTitle}
-            </Link>
+            <span className="truncate">{lesson.trailTitle}</span>
             <ChevronRight className="size-3.5" aria-hidden />
             <span aria-current="page" className="truncate">
               {board.title.lead ? `${board.title.lead} ${board.title.highlight}` : board.title.highlight}
@@ -640,8 +638,8 @@ function LessonTree({ trailId, trailTitle, outline, currentId }: { trailId: stri
           ))}
         </ol>
       )}
-      <Link href={`/trilhas/${trailId}`} className="al-arvore-ver">
-        Ver página do estudo <ChevronRight className="size-3.5" aria-hidden />
+      <Link href={`/trilhas/${trailId}/cobertura`} className="al-arvore-ver">
+        Ver cobertura do estudo <ChevronRight className="size-3.5" aria-hidden />
       </Link>
     </nav>
   );

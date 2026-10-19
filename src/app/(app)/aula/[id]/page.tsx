@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { getLatestJob, getLessonForStudy, getNextInSubject } from "@/server/queries";
+import { getLatestJob, getLessonForStudy, getNextInSubject, getTrailPlan, listStudyPdfs } from "@/server/queries";
+import { PdfPanel } from "@/app/(app)/trilhas/[id]/pdf-panel";
 import { Button, ButtonLink, Notice, Tag } from "@/components/ui";
 import { JobRunner, type PublicJob } from "@/components/job-runner";
 import { STATE_LABELS } from "@/domain/progress/state-machine";
@@ -85,7 +86,13 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
   }
 
   const notTaught = nodes.filter((n) => !n.taught);
-  const nextInSubject = await getNextInSubject(lesson.trail_id, next ? { id: next.id, title: next.title } : null).catch(() => null);
+  const [nextInSubject, plan, pdfs] = await Promise.all([
+    getNextInSubject(lesson.trail_id, next ? { id: next.id, title: next.title } : null).catch(() => null),
+    getTrailPlan(lesson.trail_id).catch(() => []),
+    listStudyPdfs(lesson.trail_id).catch(() => []),
+  ]);
+  const units = plan.flatMap((m) => m.lessons);
+  const unitsDone = units.filter((l) => l.levelsPassed >= 3).length;
   const notices = (
     <>
       {data.catalog?.outdated && (
@@ -145,6 +152,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       nextHref={nextInSubject?.href ?? null}
       nextLabel={nextInSubject?.label ?? null}
       notices={notices}
+      pdf={<PdfPanel trailId={lesson.trail_id} ready={units.length > 0 && unitsDone === units.length} unitsDone={unitsDone} unitsTotal={units.length} pdfs={pdfs} />}
       position={idx >= 0 ? { index: idx, total: siblings.length } : null}
       moduleTitle={lesson.learning_modules?.title ?? null}
       outline={siblings.map((s) => ({ id: s.id, title: s.title, module: s.module }))}

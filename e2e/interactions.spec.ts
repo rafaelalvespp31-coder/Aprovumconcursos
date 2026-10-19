@@ -687,6 +687,15 @@ test.describe("visão da aula (nove cards)", () => {
     await noHorizontalScroll(page);
   });
 
+  test("o PDF do conteúdo fica dentro da própria aula", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    const pdf = page.locator("section#pdf");
+    await expect(pdf.getByRole("heading", { name: "PDF deste conteúdo" })).toBeVisible();
+    await expect(pdf.getByRole("button", { name: /Gerar PDF/ })).toBeDisabled();
+    await expect(pdf.getByText("2 de 6 concluída(s)", { exact: false })).toBeVisible();
+    await noHorizontalScroll(page);
+  });
+
   test("questão de fixação usa o motor real de questões", async ({ page }) => {
     await page.goto(`${G}/aula`);
     const card = await goCard(page, 8);
@@ -704,7 +713,7 @@ test.describe("visão da aula (nove cards)", () => {
     const tree = page.getByRole("navigation", { name: "Aulas deste estudo" }).filter({ visible: true });
     await expect(tree).toHaveCount(1);
     await expect(tree.locator('[aria-current="page"]')).toBeVisible();
-    await expect(tree.getByRole("link", { name: /Ver página do estudo/ })).toBeVisible();
+    await expect(tree.getByRole("link", { name: /Ver cobertura do estudo/ })).toHaveAttribute("href", /\/cobertura$/);
   });
 });
 
