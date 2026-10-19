@@ -225,8 +225,8 @@ export const shellSummary: ShellSummary = {
   level: g.level.level,
   counts: { trails: 2, questions: 84, dueReviews: 2, answered: 136 },
   subjects: [
-    { name: "Direito Administrativo", studies: [{ id: id(10), title: "Polícia Penal MG — Direito Administrativo" }] },
-    { name: "Direito Penal", studies: [{ id: id(12), title: "Teoria do crime: fato típico" }, { id: id(13), title: "Homicídio (CP, art. 121)" }] },
-    { name: "Direito Processual Penal", studies: [{ id: id(14), title: "Inquérito policial (CPP, arts. 4º a 23)" }] },
+    { name: "Direito Administrativo", studies: [{ id: id(10), title: "Polícia Penal MG — Direito Administrativo", status: "andamento" }] },
+    { name: "Direito Penal", studies: [{ id: id(12), title: "Teoria do crime: fato típico", status: "concluido" }, { id: id(13), title: "Homicídio (CP, art. 121)", status: "nao_iniciado" }] },
+    { name: "Direito Processual Penal", studies: [{ id: id(14), title: "Inquérito policial (CPP, arts. 4º a 23)", status: "andamento" }] },
   ],
 };

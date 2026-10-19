@@ -267,7 +267,7 @@ test.describe("tela de aula: o conteúdo completo fica exposto em cada card", ()
     // Troca para o card seguinte (Visualize) e marca o card 1 como concluído na barra.
     await expect(page.getByTestId("card-visualize")).toBeVisible();
     await expect(card).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Card 1: Entenda o conceito (concluído)" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Card 1: Entenda o conceito — 100% estudado \(concluído\)/ })).toBeVisible();
     await page.getByTestId("voltar-card-2").click();
     await expect(page.getByTestId("card-conceito")).toHaveAttribute("data-concluido", "1");
     await expect(page.getByTestId("secoes-vistas")).toHaveText(/^1 de \d+/);
@@ -750,6 +750,9 @@ test("menu Estudos: submenu com as matérias abre os assuntos estudados", async 
   await sub.getByRole("button", { name: /Direito Penal/ }).click();
   await expect(sub.getByRole("button", { name: /Direito Penal/ })).toHaveAttribute("aria-expanded", "true");
   await expect(sub.getByRole("link", { name: /Homicídio/ })).toBeVisible();
+  // Situação de cada assunto: verde concluído, laranja em andamento, vermelho não iniciado.
+  await expect(sub.getByRole("link", { name: /Teoria do crime.*concluído/ })).toHaveAttribute("data-status", "concluido");
+  await expect(sub.getByRole("link", { name: /Homicídio.*não iniciado/ })).toHaveAttribute("data-status", "nao_iniciado");
   await sub.getByRole("link", { name: /Teoria do crime/ }).click();
   await expect(page).toHaveURL(/\/dev\/galeria\/trilha$/);
   await noHorizontalScroll(page);
@@ -761,4 +764,20 @@ test("pastas e estudos: falha ao excluir aparece na tela (nunca um clique mudo)"
   await page.getByRole("button", { name: /^Excluir estudo Ato/ }).click();
   await page.getByRole("button", { name: "Excluir estudo", exact: true }).click();
   await expect(page.getByTestId("erro-pastas")).toBeVisible();
+});
+
+test("barra dos cards: % estudado em gráfico, laranja em andamento e verde ao concluir", async ({ page }) => {
+  await page.goto(`${G}/aula`);
+  const bar = page.getByRole("navigation", { name: "Cards da aula" });
+  const c1 = bar.getByRole("button", { name: /^Card 1:/ });
+  await expect(c1).toHaveAttribute("data-situacao", "andamento");
+  await expect(c1).toContainText("33%");
+  await expect(bar.getByRole("button", { name: /^Card 3:/ })).toHaveAttribute("data-situacao", "nao_iniciado");
+  const card = page.getByTestId("card-conceito");
+  await card.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
+  await card.getByRole("button", { name: "Responder", exact: true }).first().click();
+  await expect(c1).toContainText("67%");
+  await card.getByTestId("concluir-card-1").click();
+  await expect(c1).toHaveAttribute("data-situacao", "concluido");
+  await expect(c1).toHaveAccessibleName(/100% estudado/);
 });

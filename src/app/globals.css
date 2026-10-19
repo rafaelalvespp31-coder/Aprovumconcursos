@@ -1632,7 +1632,27 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .sub-materia-nome { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sub-materia-qtd { padding: 1px 6px; border-radius: 999px; background: #1A1A1A; border: 1px solid #2E2E2E; font-size: 10px; color: #A3A3A3; }
 .sub-assuntos { list-style: none; margin: 2px 0 4px 13px; padding: 0 0 0 10px; border-left: 1px solid rgba(255, 255, 255, 0.12); display: flex; flex-direction: column; }
-.sub-assuntos a { display: block; padding: 6px 8px; border-radius: 8px; font-size: 12px; line-height: 1.3; color: #A3A3A3; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.sub-materias-menu .sub-assuntos a { padding: 9px 8px; font-size: 13px; white-space: normal; }
+.sub-assuntos a { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 8px; font-size: 12px; line-height: 1.3; color: #A3A3A3; }
+.sub-assunto-titulo { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sub-assunto-status { width: 8px; height: 8px; flex-shrink: 0; border-radius: 999px; background: #E5383B; box-shadow: 0 0 6px rgba(229, 56, 59, 0.7); }
+.sub-assuntos a[data-status="andamento"] .sub-assunto-status { background: #F59E0B; box-shadow: 0 0 6px rgba(245, 158, 11, 0.7); }
+.sub-assuntos a[data-status="concluido"] .sub-assunto-status { background: #22C55E; box-shadow: 0 0 6px rgba(34, 197, 94, 0.7); }
+.sub-materias-menu .sub-assuntos a { padding: 9px 8px; font-size: 13px; }
+.sub-materias-menu .sub-assunto-titulo { white-space: normal; }
 .sub-assuntos a:hover { color: #fff; background: rgba(255, 255, 255, 0.05); }
 .sub-assuntos a[aria-current="page"] { color: #FF3B44; font-weight: 600; }
+/* % estudado em cada card da barra (gráfico circular) */
+.al-anel { position: relative; display: block; width: 40px; height: 40px; flex-shrink: 0; }
+.al-anel svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.al-anel circle { fill: none; stroke-width: 3.5; }
+.al-anel-trilho { stroke: #E9EBEF; }
+.al-anel-valor { stroke: #C9CDD3; stroke-linecap: round; transition: stroke-dashoffset 0.6s ease, stroke 0.3s; }
+.al-anel-texto { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 10px; letter-spacing: -0.02em; font-weight: 800; color: #5E6570; font-variant-numeric: tabular-nums; }
+.al-passos button[data-situacao="andamento"] .al-anel-valor { stroke: #F59E0B; }
+.al-passos button[data-situacao="andamento"] .al-anel-texto { color: #B45309; }
+.al-passos button[data-situacao="andamento"] { border-color: #FCD9A0; background: #FFFBF3; }
+.al-passos button[data-situacao="concluido"] .al-anel-valor { stroke: #16A34A; }
+.al-passos button[data-situacao="concluido"] .al-anel-texto { color: #15803D; }
+.al-passos button[data-situacao="concluido"] { border-color: #BFE3CB; background: #F3FBF6; }
+.al-passos button[aria-current="step"] { border-color: #E50914; box-shadow: 0 6px 16px rgba(229, 9, 20, 0.16); }
+.al-passo-n { color: #8A9099; font-weight: 800; }

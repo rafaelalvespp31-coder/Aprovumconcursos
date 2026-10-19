@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSubjectsMenu } from "./subjects-menu";
+import { buildSubjectsMenu, studyStatus } from "./subjects-menu";
 
 describe("submenu de matérias", () => {
   it("agrupa os estudos por matéria do catálogo, depois pasta, depois 'Outras matérias'", () => {
@@ -15,5 +15,13 @@ describe("submenu de matérias", () => {
     });
     expect(menu.map((m) => m.name)).toEqual(["Direito Penal", "Processo Penal", "Outras matérias"]);
     expect(menu[0]!.studies.map((s) => s.title)).toEqual(["Furto", "Homicídio"]);
+  });
+
+  it("situação do assunto: concluído, em andamento ou não iniciado", () => {
+    expect(studyStatus(2, [{ state: "dominada", levels_passed: 3, reading_completed_at: "x" }, { state: "dominada", levels_passed: 3, reading_completed_at: "x" }])).toBe("concluido");
+    expect(studyStatus(2, [{ state: "dominada", levels_passed: 3, reading_completed_at: "x" }])).toBe("andamento");
+    expect(studyStatus(3, [{ state: "em_andamento", levels_passed: 0, reading_completed_at: null }])).toBe("andamento");
+    expect(studyStatus(3, [{ state: "disponivel", levels_passed: 0, reading_completed_at: null }])).toBe("nao_iniciado");
+    expect(studyStatus(0, [])).toBe("nao_iniciado");
   });
 });

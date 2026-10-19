@@ -159,9 +159,13 @@ export function LessonReader(props: ReaderProps) {
   const flowNext = (n: number) => FLOW[FLOW.indexOf(n) + 1] ?? null;
   const flowPrev = (n: number) => FLOW[FLOW.indexOf(n) - 1] ?? null;
   const scrollToCards = () => requestAnimationFrame(() => document.getElementById("al-cards")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  // Cards já abertos e cards concluídos pelo botão (contam no % de cada card da barra).
+  const [visitedList, setVisitedList] = useStored<number[]>(`na:cards-vistos:${lesson.id}`, []);
+  const [passedList, setPassedList] = useStored<number[]>(`na:cards-concluidos:${lesson.id}`, []);
   const scrollToCard = (n: number) => {
     setBlocked(null);
     setActiveCard(n);
+    if (!visitedList.includes(n)) setVisitedList([...visitedList, n]);
     scrollToCards();
   };
   const cardOfSection = (id: string) => BOARD_CARDS.find((c) => byCard.get(c.n)!.some((s) => s.id === id))?.n ?? 1;
@@ -187,6 +191,7 @@ export function LessonReader(props: ReaderProps) {
   const concludeCard = (n: number) => {
     if (!guard(n)) return;
     setBlocked(null);
+    if (!passedList.includes(n)) setPassedList([...passedList, n]);
     const nextSeen = new Set([...seen, ...byCard.get(n)!.map((s) => s.id)]);
     setSeenList([...nextSeen]);
     const goNext = () => {
@@ -380,9 +385,34 @@ export function LessonReader(props: ReaderProps) {
       footers[c.n] = cardFooter(c.n);
     }
   }
+  /**
+   * % estudado de cada card (gráfico na barra): passos reais do card.
+   * - Card com temas: abrir + responder a questão de cada tema + concluir.
+   * - Card só de visão (sem temas próprios): abrir + avançar.
+   * - Card 8: níveis aprovados + parte respondida do nível em curso.
+   */
+  const visited = new Set([...visitedList, activeCard]);
+  const cardPct = (n: number): number => {
+    if (n === 8) {
+      if (finished) return 100;
+      const lv = LEVELS[Math.min(levelsPassed, 2)]!.key;
+      const official = questions.filter((q) => !q.recovery_of && (q.level ?? "facil") === lv);
+      const part = official.length ? official.filter((q) => savedFor(q.id)).length / official.length : 0;
+      return Math.min(99, Math.round(((levelsPassed + part) / 3) * 100));
+    }
+    const secs = byCard.get(n)!;
+    if (!secs.length) return passedList.includes(n) ? 100 : visited.has(n) ? 50 : 0;
+    if (cardDone(n)) return 100;
+    const qs = secs.flatMap((s) => interleaved.get(s.id) ?? []);
+    const answered = qs.filter((q) => savedFor(q.id)).length;
+    return Math.min(99, Math.round((((visited.has(n) ? 1 : 0) + answered) / (qs.length + 2)) * 100));
+  };
   const cardMeta = Object.fromEntries(
-    BOARD_CARDS.map((c) => [c.n, { count: byCard.get(c.n)!.length, done: c.n === 8 ? finished : byCard.get(c.n)!.length > 0 && cardDone(c.n) }]),
-  ) as Record<number, { count: number; done: boolean }>;
+    BOARD_CARDS.map((c) => {
+      const pct = cardPct(c.n);
+      return [c.n, { count: byCard.get(c.n)!.length, done: pct === 100, pct }];
+    }),
+  ) as Record<number, { count: number; done: boolean; pct: number }>;
   const nextToStudy = contentCards.find((n) => !cardDone(n)) ?? 8;
   const readingFrac = sections.length ? seenCount / sections.length : 0;
 

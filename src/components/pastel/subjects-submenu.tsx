@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import { useStored } from "@/components/use-stored";
-import type { SubjectMenuItem } from "@/domain/studies/subjects-menu";
+import type { StudyStatus, SubjectMenuItem } from "@/domain/studies/subjects-menu";
+
+const STATUS_LABEL: Record<StudyStatus, string> = { concluido: "concluído", andamento: "em andamento", nao_iniciado: "não iniciado" };
 
 /**
  * Submenu de "Estudos": as matérias que o aluno estuda; tocar numa matéria abre os
@@ -43,8 +45,10 @@ export function SubjectsSubmenu({
               <ul className="sub-assuntos">
                 {m.studies.map((s) => (
                   <li key={s.id}>
-                    <Link href={studyHref(s.id)} onClick={onNavigate} aria-current={path === `/trilhas/${s.id}` ? "page" : undefined}>
-                      {s.title}
+                    <Link href={studyHref(s.id)} onClick={onNavigate} aria-current={path === `/trilhas/${s.id}` ? "page" : undefined} data-status={s.status}>
+                      <span className="sub-assunto-status" aria-hidden />
+                      <span className="sub-assunto-titulo">{s.title}</span>
+                      <span className="sr-only"> — {STATUS_LABEL[s.status]}</span>
                     </Link>
                   </li>
                 ))}

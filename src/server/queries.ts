@@ -1,7 +1,7 @@
 import "server-only";
 import { notFound } from "next/navigation";
 import { createAdminClient, createUserClient } from "./supabase";
-import { buildSubjectsMenu, type SubjectMenuItem } from "@/domain/studies/subjects-menu";
+import { buildSubjectsMenu, studyStatus, type StudyStatus, type SubjectMenuItem } from "@/domain/studies/subjects-menu";
 import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import { getSessionUser } from "./auth";
 import { normalizeText } from "@/domain/catalog/match";
@@ -634,7 +634,7 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
   const db = await createUserClient();
   // Sempre filtra pelo próprio aluno: contas de equipe também leem dados de outros (RLS "admin le").
   const me = (await getSessionUser())?.id ?? "00000000-0000-0000-0000-000000000000";
-  const [profile, stats, trails, questions, reviews, mine, folders] = await Promise.all([
+  const [profile, stats, trails, questions, reviews, mine, folders, myLessons, myProgress] = await Promise.all([
     db.from("profiles").select("display_name").eq("id", me).maybeSingle(),
     getStudyStats(),
     db.from("study_trails").select("id", { count: "exact", head: true }).eq("user_id", me).is("archived_at", null),
@@ -642,8 +642,16 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
     db.from("review_schedules").select("lesson_id", { count: "exact", head: true }).eq("user_id", me).lte("due_at", new Date().toISOString()),
     db.from("study_trails").select("id, title, folder_id, last_studied_at, updated_at, scope_summary").eq("user_id", me).is("archived_at", null).limit(300),
     db.from("study_folders").select("id, name").eq("user_id", me),
+    db.from("lessons").select("trail_id").eq("user_id", me).limit(5000),
+    db.from("learning_progress").select("trail_id, state, levels_passed, reading_completed_at").eq("user_id", me).limit(5000),
   ]);
   const g = computeGamification(stats);
+  const lessonCount = new Map<string, number>();
+  for (const l of (myLessons.data ?? []) as Array<{ trail_id: string }>) lessonCount.set(l.trail_id, (lessonCount.get(l.trail_id) ?? 0) + 1);
+  const progressBy = new Map<string, Array<{ state: string; levels_passed: number; reading_completed_at: string | null }>>();
+  for (const p of (myProgress.data ?? []) as Array<{ trail_id: string; state: string; levels_passed: number | null; reading_completed_at: string | null }>) {
+    progressBy.set(p.trail_id, [...(progressBy.get(p.trail_id) ?? []), { state: p.state, levels_passed: p.levels_passed ?? 0, reading_completed_at: p.reading_completed_at }]);
+  }
   type MineRow = { id: string; title: string; folder_id: string | null; last_studied_at: string | null; updated_at: string; scope_summary: { catalogTopics?: Array<{ id: string }> } | null };
   const mineRows = ((mine.data ?? []) as MineRow[]).map((t) => ({ ...t, catalogTopicIds: (t.scope_summary?.catalogTopics ?? []).map((c) => c.id) }));
   const topicIds = [...new Set(mineRows.flatMap((t) => t.catalogTopicIds))];
@@ -661,7 +669,12 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
     streak: { current: g.streak.current, last7: g.streak.last7, message: streakMessage(g.streak) },
     level: g.level.level,
     counts: { trails: trails.count ?? 0, questions: questions.count ?? 0, dueReviews: reviews.count ?? 0, answered: stats.answered },
-    subjects: buildSubjectsMenu({ trails: mineRows, folders: (folders.data ?? []) as Array<{ id: string; name: string }>, topicDiscipline }),
+    subjects: buildSubjectsMenu({
+      trails: mineRows,
+      folders: (folders.data ?? []) as Array<{ id: string; name: string }>,
+      topicDiscipline,
+      status: new Map<string, StudyStatus>(mineRows.map((t) => [t.id, studyStatus(lessonCount.get(t.id) ?? 0, progressBy.get(t.id) ?? [])])),
+    }),
   };
 }
 

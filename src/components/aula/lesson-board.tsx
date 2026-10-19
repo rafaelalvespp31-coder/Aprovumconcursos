@@ -45,6 +45,8 @@ export interface BoardCardMeta {
   count: number;
   /** Todos os temas do card já lidos (card 8: os três níveis aprovados). */
   done: boolean;
+  /** % estudado do card (0–100). */
+  pct: number;
 }
 
 function CardShell({
@@ -105,6 +107,24 @@ function CardShell({
 }
 
 const Empty = ({ children }: { children: ReactNode }) => <p className="al-vazio">{children}</p>;
+
+const situation = (pct: number) => (pct >= 100 ? "concluido" : pct > 0 ? "andamento" : "nao_iniciado");
+
+/** Gráfico circular do % estudado (verde concluído, laranja em andamento). */
+function ProgressRing({ pct }: { pct: number }) {
+  const r = 15;
+  const c = 2 * Math.PI * r;
+  const v = Math.max(0, Math.min(100, pct));
+  return (
+    <span className="al-anel" aria-hidden>
+      <svg viewBox="0 0 36 36">
+        <circle cx="18" cy="18" r={r} className="al-anel-trilho" />
+        <circle cx="18" cy="18" r={r} className="al-anel-valor" strokeDasharray={c} strokeDashoffset={c * (1 - v / 100)} />
+      </svg>
+      <span className="al-anel-texto">{v}%</span>
+    </span>
+  );
+}
 
 /**
  * Visão da aula: cabeçalho, banner, nove cards didáticos, pontos-chave e navegação entre
@@ -224,14 +244,13 @@ export function LessonBoardView({
                 type="button"
                 onClick={() => onSelect(c.n)}
                 aria-current={active === c.n ? "step" : undefined}
+                data-situacao={situation(cards[c.n]?.pct ?? 0)}
                 data-concluido={cards[c.n]?.done ? "1" : undefined}
-                aria-label={`Card ${c.n}: ${c.title}${cards[c.n]?.done ? " (concluído)" : ""}`}
+                aria-label={`Card ${c.n}: ${c.title} — ${cards[c.n]?.pct ?? 0}% estudado${cards[c.n]?.done ? " (concluído)" : ""}`}
               >
-                <span className="al-passo-num" aria-hidden>
-                  {cards[c.n]?.done ? <CircleCheck className="size-4" /> : c.n}
-                </span>
+                <ProgressRing pct={cards[c.n]?.pct ?? 0} />
                 <span className="al-passo-titulo" aria-hidden>
-                  {c.title}
+                  <span className="al-passo-n">{c.n}</span> {c.title}
                 </span>
               </button>
             </li>
