@@ -1,0 +1,281 @@
+APROVUM — DIREITO PENAL
+
+MÓDULO 2/16 — ROUBO PRÓPRIO, ROUBO IMPRÓPRIO E FORMAS DE VIOLÊNCIA
+
+Tema central: Art. 157, caput e § 1º, do Código Penal
+Nível: Concursos policiais — intermediário a avançado
+Objetivo: Diferenciar roubo próprio e impróprio, identificar o momento da violência ou grave ameaça e reconhecer as principais pegadinhas das bancas.
+
+⸻
+
+1. VISÃO GERAL: AS DUAS MODALIDADES DE ROUBO
+
+O Código Penal permite distinguir duas modalidades fundamentais de roubo:
+
+Característica	Roubo próprio	Roubo impróprio
+Previsão legal	Art. 157, caput	Art. 157, § 1º
+Momento da violência ou grave ameaça	Antes ou durante a subtração	Logo depois da subtração
+Finalidade	Viabilizar a subtração	Assegurar a impunidade ou a detenção da coisa
+Exemplo	O agente ameaça a vítima para pegar seu celular	O agente pega o celular escondido e, ao ser surpreendido, agride a vítima para fugir com ele
+
+Regra de memorização:
+
+* Roubo próprio: violência ou grave ameaça para conseguir subtrair.
+* Roubo impróprio: subtrai primeiro e usa violência ou grave ameaça logo depois para assegurar a impunidade ou conservar a coisa.
+
+A diferença não está simplesmente em o agente ter usado violência antes ou depois. É necessário observar o contexto e a finalidade da conduta.
+
+Exemplo visual
+
+Situação A — Roubo próprio
+
+O agente aponta uma arma para a vítima, exige o celular e foge com o aparelho.
+
+Sequência: ameaça → subtração → fuga.
+
+Situação B — Roubo impróprio
+
+O agente pega o celular da vítima sem ser percebido. Quando a vítima o alcança e tenta recuperar o aparelho, o agente a agride para conseguir fugir com o bem.
+
+Sequência: subtração → descoberta ou reação → violência para conservar a coisa ou assegurar a impunidade.
+
+A segunda situação pode configurar roubo impróprio, desde que estejam presentes os requisitos legais.
+
+⸻
+
+2. ROUBO PRÓPRIO — ART. 157, CAPUT
+
+O roubo próprio ocorre quando o agente subtrai coisa móvel alheia para si ou para outra pessoa mediante:
+
+1. Violência contra a pessoa;
+2. Grave ameaça; ou
+3. Qualquer outro meio que reduza a vítima à impossibilidade de resistência.
+
+A violência ou a ameaça funciona como meio para viabilizar a subtração.
+
+Exemplo 1 — Grave ameaça
+
+O agente diz à vítima: “Entregue o celular ou vou atirar”, criando uma situação de grave ameaça, e toma o aparelho.
+
+Exemplo 2 — Violência física
+
+O agente derruba a vítima e toma sua mochila mediante força física.
+
+Exemplo 3 — Redução da capacidade de resistência
+
+O agente emprega uma substância para incapacitar a vítima e, aproveitando-se dessa condição, subtrai seus pertences.
+
+A classificação jurídica depende das circunstâncias concretas, inclusive da efetiva redução da capacidade de resistência e do nexo entre o meio empregado e a subtração.
+
+Pena do roubo simples
+
+Na redação vigente consultada do art. 157, caput, a pena é de reclusão de 6 a 10 anos e multa.
+
+Atenção: não confunda a pena do roubo com a do furto simples, que possui faixa penal diferente.
+
+⸻
+
+3. ROUBO IMPRÓPRIO — ART. 157, § 1º
+
+O roubo impróprio ocorre quando o agente, logo depois de subtraída a coisa, emprega violência contra pessoa ou grave ameaça para:
+
+* Assegurar a impunidade do crime; ou
+* Garantir a detenção da coisa para si ou para terceiro.
+
+A expressão “logo depois” é importante. O dispositivo exige uma conexão temporal e funcional entre a subtração e a violência ou grave ameaça posterior.
+
+Exemplo 1 — Assegurar a impunidade
+
+O agente furta uma carteira. Ao ser reconhecido e abordado pela vítima imediatamente depois, ameaça matá-la para impedir que ela o identifique ou denuncie, no contexto de assegurar a impunidade do crime.
+
+Exemplo 2 — Garantir a detenção da coisa
+
+O agente pega uma bolsa sem ser percebido. A vítima tenta recuperá-la, e o agente a agride para manter a bolsa em seu poder.
+
+Atenção à finalidade
+
+Não basta que ocorra uma agressão depois de um furto. É necessário verificar se a violência ou a grave ameaça foi empregada logo depois da subtração e com uma das finalidades previstas no § 1º.
+
+Se a violência acontecer muito tempo depois, em contexto autônomo, a classificação pode ser diferente. É preciso examinar os fatos, o dolo e a relação entre as condutas.
+
+Pena do roubo impróprio
+
+O § 1º determina a aplicação da mesma pena prevista no caput: reclusão de 6 a 10 anos e multa, conforme a redação vigente consultada.
+
+Pegadinha: a modalidade imprópria não recebe, por definição, pena inferior à do roubo próprio.
+
+⸻
+
+4. AS TRÊS FORMAS DE VIOLÊNCIA OU COAÇÃO
+
+O art. 157, caput, menciona formas distintas de superar a resistência da vítima.
+
+4.1. Violência física — vis absoluta
+
+É o emprego de força física contra a pessoa para viabilizar a subtração.
+
+Exemplos:
+
+* Empurrar a vítima para tomar seu telefone;
+* Derrubar a vítima para pegar sua bolsa;
+* Imobilizar fisicamente a vítima para retirar seus pertences.
+
+Ponto de prova: a violência relevante para o roubo é dirigida à pessoa. A simples força empregada exclusivamente contra a coisa, sem violência contra a pessoa, grave ameaça ou outro meio de redução da resistência, não configura automaticamente roubo.
+
+4.2. Grave ameaça — vis compulsiva
+
+É a intimidação séria, capaz de constranger a vítima e fazê-la temer um mal relevante.
+
+Exemplos:
+
+* Ameaçar atirar;
+* Afirmar que vai matar a vítima caso ela não entregue o objeto;
+* Simular uma situação de perigo de modo a produzir grave intimidação, conforme as circunstâncias.
+
+A grave ameaça não precisa necessariamente ser acompanhada de arma verdadeira. O que importa é a análise da idoneidade intimidatória da conduta no caso concreto.
+
+Pegadinha: a utilização de simulacro de arma de fogo pode caracterizar grave ameaça para a configuração do roubo, embora não corresponda ao emprego de arma de fogo real para fins de uma majorante específica.
+
+4.3. Outro meio que reduza a vítima à impossibilidade de resistência
+
+O tipo penal também abrange meio diverso da violência física e da grave ameaça que efetivamente reduza a vítima à impossibilidade de resistir.
+
+Exemplos possíveis, conforme a prova dos fatos:
+
+* Ministrar substância que incapacite a vítima;
+* Provocar deliberadamente um estado de inconsciência para realizar a subtração;
+* Empregar outro meio que retire efetivamente a possibilidade de resistência.
+
+Atenção: não basta que a vítima esteja distraída, seja vulnerável ou tenha dificuldade de reagir. É necessário avaliar se houve o meio descrito no tipo penal e se ele efetivamente reduziu a vítima à impossibilidade de resistência.
+
+⸻
+
+5. QUADRO COMPARATIVO: FURTO, ROUBO PRÓPRIO E ROUBO IMPRÓPRIO
+
+Situação	Classificação em tese	Elemento decisivo
+O agente pega o celular sem violência ou ameaça e foge	Furto, em princípio	Ausência dos meios típicos do roubo
+O agente ameaça a vítima e pega o celular	Roubo próprio	A ameaça viabiliza a subtração
+O agente pega a bolsa e, logo depois, agride a vítima para conservá-la	Roubo impróprio, em tese	Violência posterior com finalidade prevista no § 1º
+O agente agride alguém por motivo independente, muito depois de uma subtração anterior	Depende do caso concreto	Pode haver condutas autônomas, sem roubo impróprio
+
+O enquadramento definitivo depende dos fatos provados e dos elementos subjetivos exigidos pelo tipo penal.
+
+⸻
+
+6. PEGADINHAS DE CONCURSO
+
+Pegadinha 1 — “No roubo próprio, a violência deve ocorrer necessariamente antes da subtração.”
+
+Errado. Pode ocorrer antes ou durante a subtração, servindo para viabilizá-la.
+
+Pegadinha 2 — “No roubo impróprio, o agente utiliza violência logo depois de subtrair a coisa.”
+
+A afirmação está incompleta. Também é necessário que a violência ou grave ameaça tenha a finalidade de assegurar a impunidade ou a detenção da coisa, nos termos do § 1º.
+
+Pegadinha 3 — “Toda violência praticada depois de um furto transforma o fato em roubo impróprio.”
+
+Errado. A proximidade temporal e a finalidade legal são elementos essenciais da análise.
+
+Pegadinha 4 — “O roubo impróprio possui pena necessariamente menor que o roubo próprio.”
+
+Errado. O § 1º remete à pena do caput.
+
+Pegadinha 5 — “Somente uma arma verdadeira pode gerar grave ameaça.”
+
+Errado. A grave ameaça pode existir sem arma real. O simulacro, por exemplo, pode ser suficiente para caracterizá-la, dependendo das circunstâncias.
+
+⸻
+
+7. QUESTÕES COMENTADAS — PADRÃO APROVUM
+
+Questão 1
+
+Durante a abordagem de uma vítima, o agente ameaça agredi-la caso não entregue o celular. A vítima entrega o aparelho, e o agente foge. Em tese, a conduta caracteriza:
+
+A) Furto simples.
+B) Roubo próprio.
+C) Roubo impróprio.
+D) Apropriação indébita.
+
+Gabarito: B — Roubo próprio.
+
+Comentário: a grave ameaça foi empregada para viabilizar a subtração. A situação corresponde, em tese, ao art. 157, caput.
+
+Questão 2
+
+Um agente subtrai uma bolsa sem ser percebido. Logo depois, ao ser alcançado pela vítima, agride-a para manter a bolsa em seu poder. Em tese, a conduta pode caracterizar:
+
+A) Furto simples em qualquer hipótese.
+B) Roubo impróprio, desde que presentes os requisitos do § 1º.
+C) Roubo próprio obrigatoriamente.
+D) Apropriação indébita.
+
+Gabarito: B.
+
+Comentário: a violência posterior pode caracterizar roubo impróprio quando ocorre logo depois da subtração e tem a finalidade de assegurar a impunidade ou a detenção da coisa.
+
+Questão 3
+
+Assinale a alternativa correta:
+
+A) O roubo impróprio exige violência anterior à subtração.
+B) A grave ameaça é irrelevante para o roubo próprio.
+C) O roubo próprio pode ocorrer mediante violência, grave ameaça ou meio que reduza a vítima à impossibilidade de resistência.
+D) Qualquer agressão posterior a um furto configura necessariamente roubo impróprio.
+
+Gabarito: C.
+
+Comentário: a alternativa reproduz as modalidades previstas no caput. As demais alternativas ignoram elementos legais importantes.
+
+Questão 4
+
+O agente subtrai um objeto e, muito tempo depois, agride o proprietário por motivo inteiramente independente da subtração. A agressão posterior, por si só, permite concluir que houve roubo impróprio?
+
+Gabarito: Não.
+
+Comentário: é necessário examinar a relação temporal e funcional entre a subtração e a violência, além da finalidade específica exigida pelo § 1º. Uma agressão autônoma não transforma automaticamente o furto anterior em roubo impróprio.
+
+Questão 5 — Nível avançado
+
+A respeito do roubo próprio e do impróprio, assinale a alternativa correta:
+
+A) Ambos exigem que a violência anteceda a subtração.
+B) O roubo impróprio pressupõe subtração anterior e violência ou grave ameaça logo depois, com uma das finalidades previstas em lei.
+C) O roubo próprio somente existe se houver lesão corporal.
+D) O roubo impróprio é sempre punido com pena inferior à do furto qualificado.
+
+Gabarito: B.
+
+Comentário: a sequência temporal e a finalidade específica do § 1º são fundamentais para reconhecer o roubo impróprio. Não é indispensável que a violência produza lesão corporal.
+
+⸻
+
+8. REVISÃO DE 60 SEGUNDOS
+
+* Roubo próprio: violência, grave ameaça ou meio incapacitante para viabilizar a subtração.
+* Roubo impróprio: subtração primeiro; violência ou grave ameaça logo depois para assegurar a impunidade ou a detenção da coisa.
+* Violência física: força contra a pessoa.
+* Grave ameaça: intimidação séria capaz de constranger a vítima.
+* Outro meio incapacitante: deve reduzir efetivamente a vítima à impossibilidade de resistência.
+* Pena do caput e do § 1º: reclusão de 6 a 10 anos e multa, conforme a redação vigente consultada.
+
+FONTES E CONFERÊNCIA
+
+Fonte legal principal: Código Penal, art. 157, caput e § 1º, em sua redação vigente. Antes da publicação definitiva, confira o texto consolidado no Portal da Legislação da Presidência da República:
+
+https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm
+
+⸻
+
+INSTRUÇÃO DE CATALOGAÇÃO — CLAUDE CODE
+
+Catalogar este conteúdo como Módulo 2/16 da aula existente “Roubo — Art. 157 do Código Penal”.
+
+1. Inspecione a estrutura real do projeto e siga o padrão utilizado no Módulo 1 e na aula de Furto.
+2. Reutilize o identificador da aula principal; não crie uma nova aula independente.
+3. Preserve integralmente o conteúdo deste módulo, incluindo tabelas, exemplos, pegadinhas, questões e comentários.
+4. Mantenha o módulo na sequência correta, após o Módulo 1.
+5. Não duplique o Módulo 1 nem sobrescreva conteúdos já catalogados.
+6. Use o esquema real do Supabase e os componentes já existentes no projeto; não invente tabelas ou colunas.
+7. Se houver suporte a módulos ou blocos ordenados, registre este conteúdo como posição 2 de 16. Se não houver, identifique a adaptação necessária antes de alterar a estrutura.
+8. Ao terminar, informe quais registros foram criados ou atualizados e confirme se o conteúdo integral ficou disponível na mesma aula dentro da plataforma.

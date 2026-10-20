@@ -130,22 +130,27 @@ HEAD = "Questão autoral (APROVUM), inspirada no estilo das bancas de concursos 
 
 
 def ME(level, diff, node, statement, opts, correct, why, fundamento, pegadinha, dica, essential=False):
-    """Múltipla escolha A–E. `correct` é a letra na ordem escrita; o gabarito é redistribuído."""
+    """Múltipla escolha com 4 (A–D) ou 5 (A–E) alternativas. `correct` é a letra na ordem escrita;
+    o gabarito é redistribuído entre as letras para não concentrar respostas."""
     assert level in ("facil", "medio", "dificil") and 1 <= diff <= 5
-    assert len(opts) == 5 and correct in _L, statement[:60]
+    n = len(opts)
+    letters = _L[:n]
+    assert n in (4, 5) and correct in letters, statement[:60]
     n_me = sum(1 for x in QS if x["type"] == "multipla_escolha")
-    target = _ROT[n_me % len(_ROT)]
-    shift = (_L.index(target) - _L.index(correct)) % 5
-    order = [None] * 5
-    for i in range(5):
-        order[(i + shift) % 5] = i
-    remap = {_L[old]: _L[new] for new, old in enumerate(order)}
-    fix = lambda t: _re.sub(r"\(([A-E](?:, [A-E])*)\)", lambda mm: "(" + ", ".join(sorted(remap[x] for x in mm.group(1).split(", "))) + ")",
-                            _re.sub(r"\b(alternativa|alternativas) ([A-E])\b", lambda mm: f"{mm.group(1)} {remap[mm.group(2)]}", t))
+    rot = [c for c in _ROT if c in letters]
+    target = rot[n_me % len(rot)]
+    shift = (letters.index(target) - letters.index(correct)) % n
+    order = [None] * n
+    for i in range(n):
+        order[(i + shift) % n] = i
+    remap = {letters[old]: letters[new] for new, old in enumerate(order)}
+    pat = "A-" + letters[-1]
+    fix = lambda t: _re.sub(r"\(([" + pat + r"](?:, [" + pat + r"])*)\)", lambda mm: "(" + ", ".join(sorted(remap[x] for x in mm.group(1).split(", "))) + ")",
+                            _re.sub(r"\b(alternativa|alternativas) ([" + pat + r"])\b", lambda mm: f"{mm.group(1)} {remap[mm.group(2)]}", t))
     opts = [opts[o] for o in order]
     correct = remap[correct]
     why, pegadinha, dica = fix(why), fix(pegadinha), fix(dica)
-    options = [{"label": _L[i], "text": t, "correct": _L[i] == correct, "explanation": e} for i, (t, e) in enumerate(opts)]
+    options = [{"label": letters[i], "text": t, "correct": letters[i] == correct, "explanation": e} for i, (t, e) in enumerate(opts)]
     just = f"Gabarito: {correct}. {why}\n\nFundamentação: {fundamento}\nPegadinha usada: {pegadinha}\nDica de resolução: {dica}"
     QS.append({"level": level, "type": "multipla_escolha", "statement": HEAD + "\n\n" + statement, "options": options,
                "correctAnswerTrue": False, "justification": just, "nodeKey": node, "difficulty": diff,
