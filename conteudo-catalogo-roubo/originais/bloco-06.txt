@@ -1,0 +1,445 @@
+APROVUM — DIREITO PENAL
+
+MÓDULO 6/16 — RESTRIÇÃO DA LIBERDADE, CONCURSO DE PESSOAS E OUTRAS MAJORANTES DO ROUBO
+
+Base legal: Art. 157, § 2º, II a VI, do Código Penal, e dispositivos relacionados.
+Nível: Concursos policiais — intermediário e avançado.
+Objetivo: Identificar as majorantes, compreender seus requisitos e diferenciá-las de crimes autônomos e de outras circunstâncias da dosimetria.
+
+⸻
+
+1. COMO ANALISAR UMA MAJORANTE NA PROVA
+
+Ao ler uma questão sobre roubo, siga esta sequência:
+
+1. Identifique a subtração e o emprego de violência, grave ameaça ou meio legalmente previsto.
+2. Verifique se existe uma circunstância especial descrita no art. 157.
+3. Confira se a hipótese exige algum requisito específico, como o conhecimento de determinada circunstância pelo agente.
+4. Identifique a fração de aumento aplicável.
+5. Analise se os fatos também podem configurar outro delito.
+6. Evite contar a mesma circunstância duas vezes na dosimetria, pelo mesmo fundamento.
+
+Regra de ouro: não basta que o fato pareça grave. A causa de aumento precisa corresponder a uma hipótese prevista em lei.
+
+⸻
+
+2. CONCURSO DE PESSOAS — ART. 157, § 2º, II
+
+A pena aumenta de 1/3 até metade quando o roubo é praticado mediante concurso de duas ou mais pessoas.
+
+O concurso de pessoas deve ser analisado à luz das regras gerais de participação e coautoria previstas no Código Penal.
+
+2.1. É necessário que todos executem a subtração?
+
+Não. Os participantes podem desempenhar funções diferentes, desde que exista contribuição penalmente relevante e estejam presentes os requisitos do concurso de pessoas.
+
+Exemplo
+
+Dois agentes combinam um roubo. Um aborda a vítima e subtrai o celular; o outro, conforme o plano comum, auxilia a execução e garante a fuga.
+
+Em tese, pode incidir a majorante do concurso de pessoas.
+
+Exemplo de distinção
+
+Uma pessoa presencia o roubo, mas não contribui para sua execução nem adere à conduta criminosa.
+
+A mera presença no local não demonstra, por si só, concurso de pessoas.
+
+2.2. Quantas pessoas são necessárias?
+
+A lei exige duas ou mais pessoas em concurso.
+
+O agente que executa diretamente a subtração não precisa ser o único responsável por todos os atos materiais. O que importa é a existência de atuação conjunta juridicamente relevante.
+
+2.3. E se um dos participantes não for identificado?
+
+A falta de identificação de todos os envolvidos não impede automaticamente o reconhecimento do concurso de pessoas, desde que existam provas suficientes de que o crime foi cometido em concurso.
+
+Pegadinha: “A majorante só pode ser aplicada quando todos os participantes são identificados e presos.”
+
+Errado. A identificação e a prisão de todos não são requisitos legais expressos. A existência do concurso precisa, porém, ser comprovada.
+
+⸻
+
+3. VÍTIMA EM SERVIÇO DE TRANSPORTE DE VALORES — ART. 157, § 2º, III
+
+A majorante exige que a vítima esteja em serviço de transporte de valores e que o agente conheça essa circunstância.
+
+Exemplo
+
+Um agente, sabendo que determinada pessoa está transportando valores no exercício de seu serviço, pratica roubo contra ela.
+
+Se os requisitos legais forem comprovados, pode incidir o aumento previsto no inciso III.
+
+O que a banca pode explorar?
+
+* A vítima deve estar em serviço de transporte de valores.
+* O agente deve conhecer essa circunstância.
+* Não basta que a vítima possua dinheiro ou objetos valiosos.
+* A condição específica da vítima deve ser analisada à luz das provas.
+
+Pegadinha
+
+“Qualquer roubo contra uma pessoa que esteja com dinheiro configura a majorante do transporte de valores.”
+
+Errado. O dispositivo exige uma situação específica de serviço de transporte de valores e o conhecimento do agente.
+
+⸻
+
+4. VEÍCULO AUTOMOTOR TRANSPORTADO PARA OUTRO ESTADO OU EXTERIOR — INCISO IV
+
+O inciso IV prevê aumento de 1/3 até metade quando o roubo envolve veículo automotor que venha a ser transportado para outro Estado ou para o exterior.
+
+Exemplo
+
+Um veículo é roubado em Minas Gerais e posteriormente transportado para o Espírito Santo.
+
+A majorante pode incidir se estiverem comprovados os requisitos legais.
+
+Atenção à redação
+
+O dispositivo não exige que o veículo seja levado exclusivamente para outro país. O transporte para outro Estado também está previsto.
+
+A aplicação concreta deve considerar a prova da destinação e do transporte, conforme a interpretação jurídica aplicável.
+
+Pegadinha
+
+“Somente existe a majorante quando o veículo cruza uma fronteira internacional.”
+
+Errado. A lei também menciona o transporte para outro Estado.
+
+⸻
+
+5. RESTRIÇÃO DA LIBERDADE DA VÍTIMA — ART. 157, § 2º, V
+
+Esta é uma das hipóteses mais importantes para concursos policiais.
+
+O aumento de 1/3 até metade está previsto quando o agente mantém a vítima em seu poder, restringindo sua liberdade.
+
+5.1. Exemplo prático
+
+O agente anuncia o roubo, obriga a vítima a permanecer dentro de um veículo e a mantém sob seu controle enquanto realiza a subtração ou facilita a fuga.
+
+A situação pode configurar a majorante, desde que os requisitos legais estejam presentes.
+
+5.2. A restrição precisa durar várias horas?
+
+O inciso V não estabelece uma duração mínima expressa em horas.
+
+A análise deve considerar o contexto, a efetiva restrição da liberdade, a finalidade da conduta e a relação com o roubo.
+
+Não é correto afirmar que qualquer contato físico ou ordem momentânea configura automaticamente a majorante.
+
+5.3. Restrição da liberdade e privação da liberdade
+
+É necessário diferenciar a restrição de liberdade relevante para o roubo de situações que possam configurar outros crimes contra a liberdade individual.
+
+A classificação depende de fatores como:
+
+* Duração e intensidade da restrição;
+* Finalidade da conduta;
+* Relação entre a restrição e a execução do roubo;
+* Eventual existência de um crime autônomo;
+* Circunstâncias concretas comprovadas.
+
+Não existe uma regra automática de que toda restrição de liberdade gera concurso de crimes, nem de que toda situação é absorvida pelo roubo.
+
+5.4. Exemplo comparativo
+
+Situação A: o agente mantém a vítima sob controle durante a execução do roubo para facilitar a subtração e a fuga.
+
+Deve-se examinar a majorante do art. 157, § 2º, V.
+
+Situação B: o agente mantém a vítima privada de liberdade por período prolongado, com circunstâncias que podem ultrapassar a restrição relacionada à execução do roubo.
+
+É necessário analisar se, além da majorante, existe delito autônomo, observadas a jurisprudência e as regras de concurso de crimes.
+
+Pegadinha
+
+“A restrição da liberdade da vítima sempre configura apenas a majorante do roubo, independentemente da duração e das circunstâncias.”
+
+Errado. A conclusão depende do caso concreto e da possível autonomia de outra conduta criminosa.
+
+⸻
+
+6. SUBSTÂNCIAS EXPLOSIVAS E ACESSÓRIOS — INCISO VI
+
+O inciso VI prevê aumento quando o objeto subtraído é uma substância explosiva ou um acessório que possibilite sua fabricação, montagem ou emprego, nas condições legais.
+
+Exemplo
+
+Durante um roubo, os agentes subtraem materiais explosivos abrangidos pelo dispositivo.
+
+Deve-se examinar a incidência da majorante, desde que os requisitos legais estejam comprovados.
+
+O que não fazer na prova
+
+Não amplie o alcance do inciso para qualquer objeto perigoso.
+
+É necessário verificar a natureza do bem subtraído e sua correspondência com a descrição legal.
+
+Pegadinha
+
+“Todo roubo de produto químico perigoso configura automaticamente a majorante do inciso VI.”
+
+Errado. É necessário que o objeto corresponda à hipótese legal.
+
+⸻
+
+7. RESTRIÇÃO DA LIBERDADE E EXTORSÃO MEDIANTE SEQUESTRO
+
+A banca pode apresentar situações em que a vítima é mantida sob controle e exigir a distinção entre roubo majorado e extorsão mediante sequestro.
+
+A análise não pode ser feita apenas pela existência de privação da liberdade. É necessário observar a finalidade da conduta e os elementos do tipo penal.
+
+Roubo com restrição da liberdade
+
+A restrição pode funcionar como meio relacionado à execução do roubo, à manutenção da vítima sob controle ou à facilitação da subtração, conforme o caso.
+
+Extorsão mediante sequestro — art. 159 do Código Penal
+
+O tipo penal exige sequestrar pessoa com a finalidade de obter, para si ou para outrem, qualquer vantagem, como condição ou preço do resgate.
+
+Exemplo comparativo
+
+Caso A: o agente mantém a vítima dentro de um veículo durante a subtração de seus pertences.
+
+Deve-se examinar o roubo e a eventual majorante da restrição da liberdade.
+
+Caso B: o agente sequestra uma pessoa e exige dinheiro de seus familiares para libertá-la.
+
+Deve-se examinar a extorsão mediante sequestro, conforme o art. 159.
+
+Pegadinha: a mera presença de uma vítima privada de liberdade não basta para concluir que houve extorsão mediante sequestro. A finalidade específica exigida pelo art. 159 é essencial.
+
+⸻
+
+8. COMO AS MAJORANTES PODEM APARECER JUNTAS?
+
+Um mesmo roubo pode apresentar mais de uma circunstância relevante.
+
+Exemplo
+
+Três agentes, atuando em conjunto, abordam um funcionário que transporta valores. Um deles utiliza uma arma de fogo, enquanto a vítima é mantida sob controle para facilitar a execução.
+
+O caso exige análise separada de cada circunstância:
+
+* Concurso de pessoas;
+* Condição da vítima em serviço de transporte de valores, se conhecida pelos agentes;
+* Emprego de arma de fogo;
+* Restrição da liberdade, se presentes os requisitos legais.
+
+O reconhecimento de uma circunstância não significa que todas as outras estejam automaticamente comprovadas.
+
+Atenção à dosimetria
+
+A presença de múltiplas majorantes deve ser analisada de acordo com o art. 68 do Código Penal, com fundamentação adequada e sem bis in idem.
+
+A aplicação das frações depende do enquadramento legal e das regras pertinentes à dosimetria. Não se deve presumir que todas as circunstâncias serão cumuladas mecanicamente.
+
+⸻
+
+9. QUADRO-RESUMO DAS HIPÓTESES ESTUDADAS
+
+Hipótese	Dispositivo	Aumento previsto
+Concurso de duas ou mais pessoas	Art. 157, § 2º, II	1/3 até metade
+Vítima em serviço de transporte de valores, com conhecimento do agente	Art. 157, § 2º, III	1/3 até metade
+Veículo automotor transportado para outro Estado ou exterior	Art. 157, § 2º, IV	1/3 até metade
+Restrição da liberdade da vítima	Art. 157, § 2º, V	1/3 até metade
+Subtração de explosivos ou acessórios descritos em lei	Art. 157, § 2º, VI	1/3 até metade
+
+Atenção: este quadro não apresenta todas as causas de aumento do art. 157. As hipóteses de arma branca, dispositivos eletrônicos, armas de fogo e outras situações foram abordadas nos módulos anteriores.
+
+⸻
+
+10. PEGADINHAS DE CONCURSO
+
+Pegadinha 1
+
+“A majorante do concurso de pessoas exige a prisão de todos os participantes.”
+
+Errado. O que importa é a prova do concurso de pessoas, não a prisão de todos os envolvidos.
+
+Pegadinha 2
+
+“Se o veículo for levado para outro Estado, a majorante não incide, pois a lei exige transporte internacional.”
+
+Errado. O inciso IV também prevê transporte para outro Estado.
+
+Pegadinha 3
+
+“A majorante do transporte de valores dispensa o conhecimento do agente sobre a condição da vítima.”
+
+Errado. O conhecimento dessa circunstância é exigido pelo dispositivo.
+
+Pegadinha 4
+
+“A restrição da liberdade só configura a majorante se durar pelo menos 24 horas.”
+
+Errado. O inciso V não estabelece esse prazo fixo.
+
+Pegadinha 5
+
+“Toda privação de liberdade durante um roubo configura extorsão mediante sequestro.”
+
+Errado. O art. 159 exige finalidade específica relacionada à obtenção de vantagem como condição ou preço do resgate.
+
+Pegadinha 6
+
+“Se houver duas majorantes, o juiz deve sempre somar mecanicamente todas as frações.”
+
+Errado. A dosimetria deve observar o art. 68 do Código Penal e as regras aplicáveis, com fundamentação adequada.
+
+⸻
+
+11. QUESTÕES COMENTADAS — PADRÃO APROVUM
+
+Questão 1 — Concurso de pessoas
+
+Dois agentes atuam conjuntamente para praticar um roubo. Um deles ameaça a vítima, enquanto o outro auxilia a execução e a fuga. Qual hipótese deve ser examinada?
+
+A) Art. 157, § 2º, II.
+B) Art. 157, § 2º-B, obrigatoriamente.
+C) Art. 159, em qualquer caso.
+D) Nenhuma, porque somente um dos agentes subtraiu o bem.
+
+Gabarito: A.
+
+Comentário: o concurso de pessoas pode ser reconhecido quando há contribuição penalmente relevante dos envolvidos. Não é necessário que todos executem exatamente o mesmo ato.
+
+Questão 2 — Transporte de valores
+
+Um agente pratica roubo contra funcionário em serviço de transporte de valores, sabendo dessa condição. Qual dispositivo deve ser examinado?
+
+A) Art. 157, § 2º, III.
+B) Art. 157, § 2º-A, II.
+C) Art. 159, automaticamente.
+D) Art. 157, § 2º-B.
+
+Gabarito: A.
+
+Comentário: o inciso III exige a condição específica da vítima e o conhecimento do agente.
+
+Questão 3 — Veículo automotor
+
+Um veículo é roubado e transportado para outro Estado. Qual hipótese legal deve ser examinada?
+
+A) Art. 157, § 2º, IV.
+B) Art. 157, § 2º, II, exclusivamente.
+C) Art. 159, automaticamente.
+D) Nenhuma, pois somente o transporte internacional é previsto.
+
+Gabarito: A.
+
+Comentário: a lei prevê o transporte para outro Estado ou para o exterior, desde que presentes os demais requisitos.
+
+Questão 4 — Restrição da liberdade
+
+Durante um roubo, o agente mantém a vítima sob controle para facilitar a execução e a fuga. Qual alternativa está correta?
+
+A) A restrição nunca influencia a pena do roubo.
+B) Deve-se examinar a majorante do art. 157, § 2º, V, sem excluir automaticamente a análise de outros delitos.
+C) O fato configura sempre extorsão mediante sequestro.
+D) A majorante exige necessariamente restrição superior a 24 horas.
+
+Gabarito: B.
+
+Comentário: a restrição da liberdade pode configurar a majorante, mas a classificação depende do contexto e de eventual crime autônomo.
+
+Questão 5 — Extorsão mediante sequestro
+
+Um agente sequestra uma pessoa e exige dinheiro da família para libertá-la. Qual tipo penal deve ser examinado prioritariamente?
+
+A) Furto simples.
+B) Extorsão mediante sequestro, prevista no art. 159 do Código Penal.
+C) Apenas roubo simples, em qualquer hipótese.
+D) Apropriação indébita.
+
+Gabarito: B.
+
+Comentário: a exigência de vantagem como condição ou preço do resgate é elemento central da extorsão mediante sequestro.
+
+Questão 6 — Nível avançado
+
+Sobre as majorantes do roubo, assinale a alternativa correta:
+
+A) A mera presença de duas pessoas no local prova automaticamente o concurso de agentes.
+B) A majorante do transporte de valores dispensa o conhecimento do agente.
+C) A restrição da liberdade exige análise das circunstâncias e não possui prazo mínimo fixo expresso no inciso V.
+D) Todo roubo com privação de liberdade configura necessariamente o art. 159.
+
+Gabarito: C.
+
+Comentário: a alternativa C reflete o texto legal. As demais generalizam situações que dependem de requisitos específicos.
+
+⸻
+
+12. MAPA MENTAL — MAJORANTES DESTE MÓDULO
+
+ART. 157, § 2º — AUMENTO DE 1/3 ATÉ METADE
+
+→ Concurso de pessoas
+
+* Duas ou mais pessoas;
+* Contribuição penalmente relevante;
+* Não exige que todos executem a mesma tarefa.
+
+→ Transporte de valores
+
+* Vítima em serviço;
+* Conhecimento da condição pelo agente.
+
+→ Veículo automotor
+
+* Transporte para outro Estado ou exterior;
+* Requisitos legais e prova do fato.
+
+→ Restrição da liberdade
+
+* Vítima mantida em poder do agente;
+* Análise da intensidade, finalidade e contexto;
+* Possibilidade de discussão sobre delito autônomo.
+
+→ Explosivos e acessórios
+
+* Objeto abrangido pela descrição legal;
+* Não se estende automaticamente a qualquer produto perigoso.
+
+⸻
+
+13. REVISÃO FINAL
+
+1. Qual é a fração do § 2º? De 1/3 até metade.
+2. Quantas pessoas são necessárias para o concurso? Duas ou mais, em atuação conjunta juridicamente relevante.
+3. É necessário prender todos os participantes? Não.
+4. O transporte para outro Estado está previsto no inciso IV? Sim.
+5. A majorante do transporte de valores exige conhecimento do agente? Sim.
+6. Existe prazo mínimo fixo de 24 horas para a restrição da liberdade? Não.
+7. Toda restrição da liberdade durante um roubo configura extorsão mediante sequestro? Não.
+8. A presença de múltiplas majorantes dispensa fundamentação na dosimetria? Não.
+
+⸻
+
+FONTES OFICIAIS
+
+Código Penal — arts. 68, 157 e 159:
+
+https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm
+
+Orientação de atualização: conferir a redação consolidada do art. 157 e a jurisprudência aplicável antes da publicação definitiva do conteúdo.
+
+⸻
+
+INSTRUÇÃO DE CATALOGAÇÃO — CLAUDE CODE
+
+Catalogar este conteúdo como Módulo 6/16 da aula existente “Roubo — Art. 157 do Código Penal”.
+
+1. Inspecione a estrutura real utilizada nos Módulos 1 a 5 e na aula de Furto.
+2. Reutilize o identificador da aula principal; não crie uma aula separada.
+3. Preserve integralmente o conteúdo, incluindo tabelas, exemplos, questões e comentários.
+4. Registre o módulo na posição 6 de 16, conforme o mecanismo real de ordenação do sistema.
+5. Não duplique, exclua ou sobrescreva módulos anteriores.
+6. Utilize o esquema existente do Supabase e os componentes já disponíveis no projeto.
+7. Mantenha o padrão visual APROVUM, com fundo claro, preto e vermelho equilibrados e boa leitura em dispositivos móveis.
+8. Garanta que o aluno acesse este conteúdo dentro da mesma aula de Roubo.
+9. Ao concluir, informe se o módulo foi gravado integralmente, se aparece na posição correta e se o conteúdo anterior foi preservado.
