@@ -1,0 +1,476 @@
+APROVUM — DIREITO PENAL
+
+MÓDULO 5/16 — ARMAS NO CRIME DE ROUBO: ARMA DE FOGO, ARMA BRANCA, SIMULACRO E JURISPRUDÊNCIA
+
+Disciplina: Direito Penal
+Dispositivo central: Art. 157, §§ 2º, VII, 2º-A, I, e 2º-B, do Código Penal
+Nível: Concursos policiais — intermediário e avançado
+Objetivo: Distinguir a grave ameaça da majorante pelo emprego de arma, compreender as diferenças entre arma branca, arma de fogo e simulacro e dominar as controvérsias jurisprudenciais relevantes.
+
+⸻
+
+1. A PRIMEIRA DIFERENÇA QUE VOCÊ PRECISA DOMINAR
+
+Quando uma arma aparece em uma questão sobre roubo, faça três perguntas:
+
+1. O objeto foi utilizado para intimidar ou agredir a vítima?
+2. O objeto é uma arma branca, uma arma de fogo ou um simulacro?
+3. A questão pergunta sobre a configuração do roubo ou sobre o aumento da pena?
+
+Essas perguntas evitam um erro frequente: concluir que, se existe grave ameaça, necessariamente existe uma majorante relacionada ao emprego de arma.
+
+Grave ameaça e majorante são coisas diferentes.
+
+A grave ameaça pode ser suficiente para caracterizar o roubo, enquanto a aplicação de uma causa de aumento específica depende dos requisitos previstos em lei.
+
+Quadro comparativo
+
+Instrumento utilizado	Consequência jurídica em tese
+Faca utilizada para ameaçar a vítima	Roubo e possível majorante do art. 157, § 2º, VII
+Arma de fogo utilizada para ameaçar a vítima	Roubo e possível majorante do art. 157, § 2º-A, I
+Simulacro de arma de fogo utilizado para intimidar	Pode caracterizar grave ameaça e roubo, mas não gera automaticamente a majorante de arma de fogo
+Arma de fogo comprovadamente inapta para disparar	A aplicação da majorante exige análise da prova e da jurisprudência pertinente
+Arma de fogo de uso restrito ou proibido efetivamente empregada	Deve-se examinar o art. 157, § 2º-B
+
+⸻
+
+2. ARMA BRANCA — ART. 157, § 2º, VII
+
+O Código Penal prevê aumento de 1/3 até metade quando a violência ou a grave ameaça é exercida com emprego de arma branca.
+
+Essa hipótese foi reinserida expressamente no art. 157 pela Lei nº 13.964/2019.
+
+2.1. O que é arma branca?
+
+Em termos gerais, é um instrumento que não se enquadra como arma de fogo e que pode ser utilizado para ataque ou defesa, como uma faca, um punhal ou uma espada.
+
+O enquadramento depende das características do instrumento e de seu emprego no caso concreto.
+
+2.2. Exemplo prático
+
+Um agente aborda uma vítima, exibe uma faca, ameaça feri-la e subtrai seu aparelho celular.
+
+A conduta pode configurar roubo com a majorante do art. 157, § 2º, VII, desde que comprovados os requisitos legais.
+
+2.3. Qual é a fração de aumento?
+
+O aumento é de 1/3 até metade, e não de 2/3.
+
+Pegadinha de prova
+
+A banca afirma:
+
+“O emprego de faca no roubo determina aumento de pena de dois terços.”
+
+Gabarito: errado.
+
+A fração específica para o emprego de arma branca está no § 2º, que prevê aumento de 1/3 até metade.
+
+2.4. É necessário que a faca provoque ferimento?
+
+Não. A majorante não exige necessariamente que a vítima seja efetivamente lesionada. O que deve ser demonstrado é o emprego da arma branca na violência ou na grave ameaça, conforme as circunstâncias do caso.
+
+Memorização: arma branca empregada na violência ou grave ameaça → art. 157, § 2º, VII → aumento de 1/3 até metade.
+
+⸻
+
+3. ARMA DE FOGO — ART. 157, § 2º-A, I
+
+O art. 157, § 2º-A, I, prevê aumento de 2/3 quando a violência ou a ameaça é exercida com emprego de arma de fogo.
+
+3.1. Exemplo
+
+O agente aponta uma pistola para a vítima, ordena que ela entregue o veículo e foge com o automóvel.
+
+Em tese, estão presentes:
+
+* O roubo;
+* O emprego de arma de fogo na ameaça;
+* A hipótese de aumento do § 2º-A, I, se comprovados os requisitos legais.
+
+3.2. Qual é a diferença em relação à arma branca?
+
+Arma branca	Arma de fogo
+Art. 157, § 2º, VII	Art. 157, § 2º-A, I
+Aumento de 1/3 até metade	Aumento de 2/3
+Exemplo: faca	Exemplo: pistola ou revólver
+
+A diferença entre as frações é uma pegadinha recorrente em provas.
+
+3.3. A arma precisa ser disparada?
+
+Não. A lei exige seu emprego na violência ou na ameaça, e não necessariamente o disparo.
+
+Apontar uma arma de fogo e utilizá-la para intimidar a vítima pode ser suficiente, desde que o emprego do artefato esteja demonstrado e sejam preenchidos os demais requisitos legais.
+
+3.4. É necessário que a vítima veja a arma?
+
+A análise depende da dinâmica do crime e das provas. A arma pode ser empregada de modo que a vítima perceba sua presença ou seja submetida à ameaça relacionada a ela, mesmo sem observação visual direta.
+
+Não se deve transformar a percepção visual da vítima em requisito legal absoluto. O essencial é examinar se houve efetivo emprego da arma na violência ou grave ameaça e se isso foi comprovado.
+
+⸻
+
+4. SIMULACRO DE ARMA DE FOGO
+
+Simulacro é uma réplica ou objeto que imita a aparência de uma arma de fogo, mas não corresponde a uma arma de fogo funcional.
+
+4.1. O simulacro pode configurar roubo?
+
+Sim. O simulacro pode ser utilizado para produzir grave ameaça e, assim, contribuir para a configuração do roubo.
+
+Exemplo
+
+O agente aponta uma réplica de pistola para a vítima, ordena que entregue o celular e foge com o aparelho.
+
+A conduta pode configurar roubo, pois o simulacro pode ser suficiente para caracterizar a grave ameaça.
+
+4.2. O simulacro gera aumento de 2/3 por emprego de arma de fogo?
+
+Não automaticamente.
+
+A majorante do art. 157, § 2º-A, I, refere-se ao emprego de arma de fogo. Um simulacro, por si só, não corresponde a uma arma de fogo para essa finalidade.
+
+A grave ameaça pode estar presente mesmo quando a majorante específica não incide.
+
+Quadro de memorização
+
+Simulacro:
+
+* Pode configurar grave ameaça;
+* Pode caracterizar o roubo;
+* Não gera automaticamente a majorante do emprego de arma de fogo.
+
+Pegadinha
+
+“Como o simulacro intimida a vítima da mesma forma que uma arma verdadeira, deve incidir necessariamente o aumento de 2/3.”
+
+Gabarito: errado.
+
+A intimidação pode configurar a grave ameaça, mas isso não transforma o simulacro em arma de fogo para a majorante específica.
+
+⸻
+
+5. ARMA DE FOGO NÃO APREENDIDA: A MAJORANTE PODE SER APLICADA?
+
+Esse é um tema importante de jurisprudência.
+
+Historicamente, o Superior Tribunal de Justiça consolidou orientação no sentido de que a apreensão e a perícia da arma de fogo não são indispensáveis quando outros elementos probatórios idôneos demonstram sua utilização no roubo.
+
+Entre os meios de prova que podem ser considerados estão os depoimentos da vítima e de testemunhas, avaliados em conjunto com as demais circunstâncias.
+
+Entretanto, é necessário observar uma atualização importante: o STJ afetou o Tema Repetitivo 1.407 para definir essa controvérsia. Na consulta realizada em outubro de 2026, o tema ainda aparecia como afetado, sem tese repetitiva definitiva publicada na página oficial consultada.
+
+A controvérsia envolve:
+
+* Se é necessária a apreensão da arma;
+* Se é necessária a perícia;
+* Se ambas são necessárias;
+* Se outros meios de prova podem demonstrar o emprego do artefato.
+
+5.1. Como estudar para a prova?
+
+É necessário separar duas informações:
+
+Orientação jurisprudencial historicamente consolidada: a apreensão e a perícia podem ser dispensadas quando outros elementos probatórios idôneos demonstram o emprego da arma.
+
+Atualização jurisprudencial: o Tema 1.407 foi afetado para uniformizar a questão sob o rito dos recursos repetitivos. O aluno deve conferir se houve julgamento posterior e qual tese foi efetivamente fixada na data da prova.
+
+Fonte oficial do tema:
+https://processo.stj.jus.br/repetitivos/temas_repetitivos/pesquisa.jsp?cod_tema_final=1407&cod_tema_inicial=1407&novaConsulta=true&tipo_pesquisa=T
+
+5.2. Exemplo prático
+
+A vítima relata de forma detalhada que o agente apontou uma arma de fogo durante o roubo. A arma não foi localizada.
+
+A ausência de apreensão não elimina automaticamente a possibilidade de aplicação da majorante segundo a orientação tradicional do STJ. O juiz deverá avaliar a idoneidade e a suficiência das provas, observada a tese vinculante que eventualmente esteja vigente.
+
+Pegadinha: “Se a arma não foi apreendida, a majorante nunca pode ser aplicada.”
+
+Essa afirmação não corresponde à orientação jurisprudencial tradicional. Para responder corretamente, considere também o estado atualizado do Tema 1.407.
+
+⸻
+
+6. ARMA APREENDIDA, MAS SEM PERÍCIA
+
+A ausência de laudo pericial não significa, por si só, que a majorante deva ser afastada.
+
+A orientação tradicional do STJ admite a demonstração do emprego de arma de fogo por outros elementos de prova idôneos.
+
+Por outro lado, a demonstração concreta de que o instrumento era absolutamente incapaz de realizar disparos pode ser relevante para afastar a majorante específica, conforme as circunstâncias e o entendimento jurisprudencial aplicável.
+
+Exemplo A — Arma não apreendida
+
+A vítima e uma testemunha descrevem o emprego de arma de fogo de maneira coerente, mas o artefato não foi localizado.
+
+A ausência de apreensão não impede automaticamente a incidência da majorante segundo a orientação tradicional.
+
+Exemplo B — Arma apreendida e comprovadamente inapta
+
+A arma é apreendida e a perícia demonstra que ela não possuía capacidade de disparar.
+
+Essa informação pode afastar a majorante do emprego de arma de fogo, sem necessariamente eliminar a grave ameaça que caracterizou o roubo.
+
+Exemplo C — Arma aparentemente verdadeira, sem exame técnico
+
+A vítima relata o emprego de uma arma de fogo, mas o artefato não foi apreendido.
+
+Não se pode concluir automaticamente que era um simulacro nem presumir, sem avaliação probatória, todos os detalhes sobre o objeto.
+
+O enquadramento depende do conjunto de provas e da orientação jurisprudencial aplicável.
+
+Importante: não confunda a falta de apreensão com prova positiva de que a arma era falsa ou inapta.
+
+⸻
+
+7. ARMA DE FOGO DE USO RESTRITO OU PROIBIDO — ART. 157, § 2º-B
+
+O § 2º-B determina que, se a violência ou a grave ameaça é exercida com emprego de arma de fogo de uso restrito ou proibido, aplica-se em dobro a pena prevista no caput do art. 157.
+
+Essa regra é diferente do aumento de 2/3 previsto no § 2º-A, I.
+
+Comparação essencial
+
+Hipótese	Consequência prevista
+Emprego de arma de fogo, na hipótese geral	Aumento de 2/3 — § 2º-A, I
+Emprego de arma de fogo de uso restrito ou proibido	Pena do caput aplicada em dobro — § 2º-B
+Emprego de simulacro	Pode configurar grave ameaça, mas não gera automaticamente essas majorantes de arma de fogo
+
+A classificação da arma como de uso permitido, restrito ou proibido deve respeitar a legislação específica vigente e as características do artefato.
+
+Pegadinha
+
+A banca afirma que o § 2º-B determina aumento de 2/3.
+
+Gabarito: errado.
+
+A fração de 2/3 está no § 2º-A. O § 2º-B prevê a aplicação em dobro da pena do caput, quando preenchidos os requisitos legais.
+
+⸻
+
+8. EMPREGO DA ARMA E MERA POSSE DO OBJETO
+
+Para que incida uma majorante baseada no emprego de arma, é necessário examinar a função que o objeto desempenhou na execução do roubo.
+
+Não se deve confundir:
+
+* A arma utilizada para ameaçar ou agredir;
+* A arma que é o próprio objeto subtraído;
+* A arma encontrada com o agente, mas sem relação demonstrada com a execução do crime.
+
+Exemplo 1 — Arma empregada
+
+O agente utiliza um revólver para ameaçar a vítima e retirar sua carteira.
+
+A hipótese do art. 157, § 2º-A, I, deve ser examinada.
+
+Exemplo 2 — Arma subtraída
+
+O agente ameaça a vítima com palavras e subtrai um revólver que estava guardado, sem utilizar esse revólver como instrumento da ameaça.
+
+É necessário distinguir a hipótese de subtração de arma de fogo, prevista no art. 157, § 2º, X, da hipótese de emprego de arma de fogo, prevista no § 2º-A, I.
+
+Exemplo 3 — Arma encontrada posteriormente
+
+O agente é preso após o roubo e uma arma é encontrada em sua residência. A simples localização posterior do objeto não resolve, isoladamente, a questão de seu emprego no roubo. É necessário demonstrar o vínculo entre a arma e a execução do crime.
+
+Regra de prova: identifique a função do objeto no fato, e não apenas sua presença.
+
+⸻
+
+9. MAIS DE UMA CIRCUNSTÂNCIA: COMO EVITAR O BIS IN IDEM?
+
+Um roubo pode apresentar mais de uma circunstância relevante, como concurso de pessoas e emprego de arma de fogo.
+
+A existência de múltiplas circunstâncias não autoriza, por si só, qualquer aumento arbitrário da pena. É necessário aplicar as regras legais de dosimetria, respeitar as frações previstas e evitar que a mesma circunstância seja valorada duas vezes pelo mesmo fundamento.
+
+O art. 68, parágrafo único, do Código Penal prevê que, no concurso de causas de aumento ou de diminuição previstas na Parte Especial, o juiz pode limitar-se a um só aumento ou a uma só diminuição, prevalecendo a causa que mais aumente ou diminua, sem prejuízo da análise das particularidades legais e jurisprudenciais aplicáveis.
+
+Exemplo
+
+O agente pratica roubo com concurso de pessoas e emprego de arma de fogo.
+
+O juiz deve examinar as circunstâncias presentes, as regras de dosimetria e a fundamentação adequada. Não é correto presumir que a pena será automaticamente aumentada por todas as circunstâncias sem considerar o regime legal aplicável.
+
+Atenção: em questões de dosimetria, leia cuidadosamente o comando. A banca pode perguntar sobre o reconhecimento das majorantes, a fração aplicável ou a forma de cálculo da pena — são problemas diferentes.
+
+⸻
+
+10. QUESTÕES COMENTADAS — PADRÃO APROVUM
+
+Questão 1 — Arma branca
+
+Durante o roubo, o agente ameaça a vítima com uma faca e subtrai seu celular. Qual causa de aumento deve ser examinada?
+
+A) Art. 157, § 2º-A, I, com aumento de 2/3.
+B) Art. 157, § 2º, VII, com aumento de 1/3 até metade.
+C) Art. 157, § 2º-B, automaticamente.
+D) Nenhuma, pois a faca precisa causar lesão corporal.
+
+Gabarito: B.
+
+Comentário: o emprego de arma branca está previsto no § 2º, VII. Não é necessário que a vítima sofra uma lesão corporal para que a hipótese seja examinada.
+
+Questão 2 — Simulacro
+
+O agente utiliza uma réplica de pistola para intimidar a vítima e subtrair sua carteira. Assinale a alternativa correta.
+
+A) Não existe roubo, porque o instrumento não é uma arma verdadeira.
+B) O simulacro gera obrigatoriamente o aumento de 2/3.
+C) O simulacro pode caracterizar grave ameaça, mas não gera automaticamente a majorante específica de arma de fogo.
+D) O fato configura necessariamente furto simples.
+
+Gabarito: C.
+
+Comentário: o simulacro pode ser suficiente para caracterizar a grave ameaça do roubo. Isso não significa que corresponda automaticamente a uma arma de fogo para fins do § 2º-A, I.
+
+Questão 3 — Arma não apreendida
+
+A arma de fogo não foi apreendida, mas existem elementos probatórios que indicam seu emprego durante o roubo. Qual afirmação é mais adequada?
+
+A) A majorante é sempre impossível.
+B) A majorante é automática, independentemente da prova.
+C) A ausência de apreensão não afasta automaticamente a majorante segundo a orientação tradicional do STJ, mas a controvérsia é objeto do Tema 1.407.
+D) O crime deixa de ser roubo.
+
+Gabarito: C.
+
+Comentário: a jurisprudência tradicional admite outros meios de prova. Como o Tema 1.407 foi afetado para uniformizar a questão, é necessário conferir eventual tese posterior antes da prova.
+
+Questão 4 — Arma inapta
+
+Uma perícia demonstra que o artefato utilizado era absolutamente incapaz de realizar disparos. Qual conclusão deve ser considerada?
+
+A) A majorante do emprego de arma de fogo incide obrigatoriamente.
+B) A incapacidade comprovada pode afastar a majorante específica, sem necessariamente afastar a grave ameaça do roubo.
+C) O fato transforma-se automaticamente em furto.
+D) A prova pericial nunca tem relevância.
+
+Gabarito: B.
+
+Comentário: a inaptidão comprovada pode ser relevante para a majorante. A grave ameaça, porém, deve ser analisada separadamente.
+
+Questão 5 — Arma de uso restrito ou proibido
+
+Quando a violência ou grave ameaça é exercida com emprego de arma de fogo de uso restrito ou proibido, qual consequência está prevista no art. 157, § 2º-B?
+
+A) Aumento de 1/3 até metade.
+B) Aumento de 2/3, em qualquer hipótese.
+C) Aplicação em dobro da pena prevista no caput, nos termos legais.
+D) Exclusão da tipicidade do roubo.
+
+Gabarito: C.
+
+Comentário: o § 2º-B prevê a aplicação em dobro da pena do caput. Não deve ser confundido com o aumento de 2/3 do § 2º-A, I.
+
+Questão 6 — Subtração ou emprego da arma
+
+Durante um roubo, o agente subtrai uma arma de fogo, mas não a utiliza para ameaçar ou agredir a vítima. Qual afirmação está correta?
+
+A) A subtração equivale necessariamente ao emprego de arma de fogo do § 2º-A, I.
+B) É necessário distinguir a subtração da arma, prevista no § 2º, X, do emprego de arma de fogo na violência ou grave ameaça, previsto no § 2º-A, I.
+C) O roubo fica automaticamente descaracterizado.
+D) O § 2º-B sempre incide.
+
+Gabarito: B.
+
+Comentário: a lei trata de hipóteses distintas. A função do objeto na execução do crime deve ser identificada a partir dos fatos.
+
+Questão 7 — Nível avançado
+
+Assinale a alternativa correta:
+
+A) A ausência de perícia sempre impede o reconhecimento da majorante.
+B) O simulacro equivale juridicamente a arma de fogo para todos os efeitos.
+C) O emprego de arma branca possui previsão específica no § 2º, VII, enquanto o emprego de arma de fogo está no § 2º-A, I.
+D) A majorante do emprego de arma de fogo exige necessariamente que haja disparo.
+
+Gabarito: C.
+
+Comentário: a alternativa C distingue corretamente os dispositivos. A apreensão, a perícia e a necessidade de disparo devem ser analisadas segundo a lei e a jurisprudência aplicáveis.
+
+⸻
+
+11. MAPA MENTAL — ARMAS NO ROUBO
+
+ROUBO E EMPREGO DE ARMAS
+
+→ Arma branca
+
+* Art. 157, § 2º, VII;
+* Aumento de 1/3 até metade;
+* Não exige necessariamente lesão corporal.
+
+→ Arma de fogo
+
+* Art. 157, § 2º-A, I;
+* Aumento de 2/3;
+* Não exige necessariamente disparo;
+* A comprovação deve respeitar as regras probatórias e a jurisprudência atualizada.
+
+→ Simulacro
+
+* Pode caracterizar grave ameaça;
+* Pode configurar roubo;
+* Não gera automaticamente a majorante de arma de fogo.
+
+→ Arma de fogo de uso restrito ou proibido
+
+* Art. 157, § 2º-B;
+* Aplicação em dobro da pena do caput, nos termos legais.
+
+→ Arma não apreendida ou sem perícia
+
+* A ausência não afasta automaticamente a majorante segundo a orientação tradicional do STJ;
+* Tema Repetitivo 1.407: acompanhar a tese definitiva;
+* Avaliar o conjunto probatório.
+
+→ Arma subtraída
+
+* Distinguir o objeto do roubo do instrumento utilizado para executar a violência ou grave ameaça.
+
+⸻
+
+12. REVISÃO FINAL — RESPOSTAS RÁPIDAS
+
+1. Qual é a fração do emprego de arma branca? De 1/3 até metade.
+2. Qual é a fração do emprego de arma de fogo na hipótese geral? 2/3.
+3. O simulacro pode caracterizar grave ameaça? Sim.
+4. O simulacro gera automaticamente a majorante do § 2º-A, I? Não.
+5. O disparo é indispensável para a majorante de arma de fogo? Não.
+6. A ausência de apreensão impede automaticamente a majorante? Não, segundo a orientação tradicional do STJ; acompanhe o Tema 1.407.
+7. O § 2º-B prevê aumento de 2/3? Não. Prevê aplicação em dobro da pena do caput.
+8. Subtrair uma arma é a mesma coisa que empregá-la na ameaça? Não.
+9. A prova de que o artefato é absolutamente inapto pode ser relevante? Sim.
+10. A jurisprudência sobre a prova do emprego de arma de fogo deve ser atualizada antes da publicação da aula? Sim.
+
+⸻
+
+FONTES OFICIAIS
+
+1. Código Penal — art. 157, §§ 2º, VII, 2º-A e 2º-B:
+
+https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm
+
+2. STJ — Tema Repetitivo 1.407:
+
+https://processo.stj.jus.br/repetitivos/temas_repetitivos/pesquisa.jsp?cod_tema_final=1407&cod_tema_inicial=1407&novaConsulta=true&tipo_pesquisa=T
+
+Nota de atualização: a página oficial consultada indicava o Tema 1.407 como afetado, sem tese repetitiva definitiva publicada naquele registro. A equipe editorial do APROVUM deve conferir novamente o andamento antes de disponibilizar a aula aos alunos.
+
+⸻
+
+INSTRUÇÃO DE CATALOGAÇÃO — CLAUDE CODE
+
+Catalogar o conteúdo como Módulo 5/16 da aula existente “Roubo — Art. 157 do Código Penal”.
+
+1. Inspecione o padrão real usado nos Módulos 1 a 4 e na aula de Furto.
+2. Reutilize o identificador da aula principal, sem criar uma aula independente.
+3. Preserve integralmente o conteúdo, incluindo tabelas, exemplos, questões, gabaritos comentados e fontes.
+4. Registre este conteúdo na posição 5 de 16, respeitando o mecanismo de ordenação existente.
+5. Não duplique, apague ou sobrescreva módulos anteriores.
+6. Utilize o esquema real do Supabase e os componentes existentes no projeto; não invente tabelas ou colunas.
+7. Preserve a identidade visual APROVUM: fundo claro, preto e vermelho em equilíbrio, boa hierarquia tipográfica e tabelas legíveis no celular.
+8. Mantenha as fontes oficiais acessíveis por links clicáveis.
+9. Preserve o aviso de atualização jurisprudencial sobre o Tema 1.407, sem apresentar como definitiva uma tese que não tenha sido confirmada.
+10. Ao terminar, informe se o módulo foi catalogado integralmente, se aparece na ordem correta e se os links das fontes estão funcionais.
