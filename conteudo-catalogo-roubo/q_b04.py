@@ -43,7 +43,7 @@ ME(M, 2, "N0015", "Durante um roubo, o agente subtrai uma arma de fogo que estav
    "B", "A natureza do objeto subtraído não se confunde com o emprego de arma de fogo como instrumento de violência ou grave ameaça.",
    "CP, art. 157, § 2º, X, e § 2º-A, I.", "Confundir objeto e instrumento (A, D).", "Arma levada (X) ≠ arma usada (§ 2º-A, I).")
 
-ME(D, 3, "N0005", "Assinale a alternativa correta:",
+ME(D, 3, "N0005", "Sobre as causas de aumento do roubo, assinale a alternativa correta:",
    [("O § 2º prevê aumento fixo de 2/3 em todas as hipóteses.", "Errada: o § 2º prevê de 1/3 até metade."),
     ("O § 2º-A prevê aumento de 1/3 até metade.", "Errada: o § 2º-A prevê 2/3."),
     ("O § 2º-B prevê aplicação em dobro da pena do caput quando utilizada arma de fogo de uso restrito ou proibido, nos termos legais.", "Correta."),

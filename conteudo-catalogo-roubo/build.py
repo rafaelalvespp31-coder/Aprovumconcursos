@@ -12,7 +12,7 @@ import helpers
 FINAL = "--final" in sys.argv
 # Arquivos dos blocos recebidos, em qualquer ordem (a posição vem de ORD).
 BLOCOS = ["b01", "b01_lei", "b02", "b03", "b04", "b05", "b06", "b07"]
-QUESTOES = ["q_b01", "q_b02", "q_b03", "q_b04", "q_b05", "q_b06", "q_b07"]
+QUESTOES = ["q_b01", "q_b02", "q_b03", "q_b04", "q_b05", "q_b06", "q_b07", "q_extra"]
 
 for f in BLOCOS:
     before = len(helpers.S)

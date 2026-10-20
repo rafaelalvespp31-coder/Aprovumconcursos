@@ -51,7 +51,7 @@ ME(M, 2, "N0015", "Durante um roubo, o agente subtrai uma arma de fogo, mas não
    "B", "A lei trata de hipóteses distintas. A função do objeto na execução do crime deve ser identificada a partir dos fatos.",
    "CP, art. 157, § 2º, X, e § 2º-A, I.", "Confundir objeto subtraído e instrumento (A).", "Pergunte: qual a função da arma no fato?")
 
-ME(D, 3, "N0005", "Assinale a alternativa correta:",
+ME(D, 3, "N0005", "Sobre o emprego de armas no roubo, assinale a alternativa correta:",
    [("A ausência de perícia sempre impede o reconhecimento da majorante.", "Errada: a orientação tradicional admite outros meios de prova."),
     ("O simulacro equivale juridicamente a arma de fogo para todos os efeitos.", "Errada."),
     ("O emprego de arma branca possui previsão específica no § 2º, VII, enquanto o emprego de arma de fogo está no § 2º-A, I.", "Correta."),

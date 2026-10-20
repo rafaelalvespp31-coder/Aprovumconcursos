@@ -19,7 +19,7 @@ ME(M, 2, "N0003", "Um agente subtrai uma bolsa sem ser percebido. Logo depois, a
    "B", "A violência posterior pode caracterizar roubo impróprio quando ocorre logo depois da subtração e tem a finalidade de assegurar a impunidade ou a detenção da coisa.",
    "CP, art. 157, § 1º.", "Tratar o caso como furto em qualquer hipótese (A) ou como roubo próprio (C).", "Subtrai primeiro, agride logo depois para ficar com a coisa = impróprio.", essential=True)
 
-ME(F, 1, "N0001", "Assinale a alternativa correta:",
+ME(F, 1, "N0001", "Sobre o roubo próprio e o roubo impróprio, assinale a alternativa correta:",
    [("O roubo impróprio exige violência anterior à subtração.", "Errada: a violência do impróprio é posterior (logo depois)."),
     ("A grave ameaça é irrelevante para o roubo próprio.", "Errada: é um dos meios do caput."),
     ("O roubo próprio pode ocorrer mediante violência, grave ameaça ou meio que reduza a vítima à impossibilidade de resistência.", "Correta: reproduz as modalidades do caput."),
