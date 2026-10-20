@@ -1,0 +1,599 @@
+APROVUM — DIREITO PENAL
+
+MÓDULO 4/16 — CAUSAS DE AUMENTO DE PENA NO ROUBO
+
+Base legal: Art. 157, §§ 2º, 2º-A e 2º-B, do Código Penal.
+Nível: Concursos policiais — intermediário a avançado.
+Objetivo: Identificar as majorantes do roubo, memorizar suas frações e resolver questões com situações práticas e pegadinhas de banca.
+
+⸻
+
+1. O QUE É UMA CAUSA DE AUMENTO DE PENA?
+
+A causa de aumento, também chamada de majorante, é uma circunstância prevista em lei que permite elevar a pena dentro da fração legalmente estabelecida.
+
+No roubo, as principais causas de aumento estão nos §§ 2º e 2º-A do art. 157. O § 2º-B prevê uma consequência específica para o emprego de arma de fogo de uso restrito ou proibido.
+
+Como isso funciona na prática?
+
+Imagine que o juiz tenha fixado uma pena provisória de 6 anos para determinado roubo, antes da aplicação da majorante.
+
+Se for aplicável uma causa de aumento de 1/3, a pena poderá ser elevada nessa proporção, observados os critérios legais de dosimetria.
+
+Cálculo ilustrativo:
+
+* Pena antes do aumento: 6 anos.
+* Fração de aumento: 1/3.
+* Aumento: 2 anos.
+* Pena após o aumento: 8 anos.
+
+O exemplo é matemático e não representa uma pena obrigatória para todos os casos.
+
+Não confunda os conceitos
+
+Instituto	Significado
+Causa de aumento	Eleva a pena segundo uma fração prevista em lei
+Qualificadora	Estabelece uma modalidade penal com tratamento punitivo próprio
+Agravante genérica	Circunstância considerada na segunda fase da dosimetria
+Circunstância judicial	Elemento analisado na primeira fase da fixação da pena
+
+Pegadinha: uma circunstância não pode ser utilizada de forma duplicada para aumentar a pena pelo mesmo fundamento, sob pena de bis in idem.
+
+⸻
+
+2. ART. 157, § 2º — AUMENTO DE 1/3 ATÉ METADE
+
+A regra do § 2º estabelece aumento de 1/3 até 1/2 quando estiver presente uma das hipóteses previstas no dispositivo.
+
+Na redação vigente consultada, as hipóteses são:
+
+II — Concurso de duas ou mais pessoas.
+
+III — Vítima em serviço de transporte de valores, desde que o agente conheça essa circunstância.
+
+IV — Subtração de veículo automotor que venha a ser transportado para outro Estado ou para o exterior.
+
+V — Restrição da liberdade da vítima, mantida em poder do agente.
+
+VI — Subtração de substâncias explosivas ou de acessórios que possibilitem sua fabricação, montagem ou emprego.
+
+VII — Emprego de arma branca na violência ou grave ameaça.
+
+VIII — Subtração de fios, cabos ou equipamentos utilizados para fornecimento ou transmissão de energia elétrica, telefonia ou transferência de dados, bem como equipamentos ou materiais ferroviários ou metroviários.
+
+IX — Subtração de aparelho de telefonia celular, computador, inclusive portátil ou do tipo prancheta, ou dispositivo eletrônico ou informático semelhante.
+
+X — Subtração de arma de fogo.
+
+XI — Subtração de petróleo e derivados, gás natural e suas frações recuperáveis, álcool etílico hidratado carburante e demais combustíveis fluidos carburantes, inclusive biocombustíveis, e óleos lubrificantes, nas condições específicas previstas no dispositivo.
+
+O inciso I está revogado.
+
+Fonte oficial: Código Penal consolidado, art. 157, § 2º.
+
+⸻
+
+3. CONCURSO DE DUAS OU MAIS PESSOAS — INCISO II
+
+A pena aumenta de 1/3 até metade quando o roubo é praticado mediante concurso de duas ou mais pessoas.
+
+Exemplo
+
+Dois agentes combinam a prática de um roubo. Um deles ameaça a vítima e pega o celular, enquanto o outro atua para garantir a execução e a fuga.
+
+Em tese, pode incidir a majorante do concurso de pessoas, desde que demonstrada a participação penalmente relevante de ambos.
+
+Pontos importantes
+
+* Não é necessário que todos pratiquem pessoalmente a violência ou retirem o objeto.
+* A participação pode ocorrer por diferentes formas de contribuição para o crime.
+* A responsabilidade de cada envolvido depende de sua conduta e culpabilidade.
+* A mera presença no local não basta, por si só, para demonstrar concurso de pessoas.
+
+Pegadinha
+
+A banca afirma que todos os agentes precisam executar exatamente a mesma ação para que exista concurso de pessoas.
+
+Errado. Os envolvidos podem desempenhar funções diferentes, desde que estejam presentes os requisitos jurídicos do concurso de agentes.
+
+⸻
+
+4. VÍTIMA EM SERVIÇO DE TRANSPORTE DE VALORES — INCISO III
+
+A majorante incide quando a vítima está em serviço de transporte de valores e o agente conhece essa circunstância.
+
+Exemplo
+
+Um agente aborda um funcionário que está transportando valores no exercício de seu serviço e, sabendo dessa condição, pratica o roubo.
+
+A circunstância pode justificar o aumento previsto no inciso III.
+
+Atenção ao elemento subjetivo
+
+A lei exige conhecimento da condição específica da vítima.
+
+Não basta demonstrar que a vítima transportava valores se não estiverem presentes os demais requisitos da hipótese legal.
+
+Pegadinha
+
+“Todo roubo contra uma pessoa que possui dinheiro consigo recebe necessariamente essa majorante.”
+
+Errado. O dispositivo trata de vítima em serviço de transporte de valores, com conhecimento dessa circunstância pelo agente.
+
+⸻
+
+5. VEÍCULO AUTOMOTOR DESTINADO A OUTRO ESTADO OU AO EXTERIOR — INCISO IV
+
+A majorante exige que a subtração seja de veículo automotor que venha a ser transportado para outro Estado ou para o exterior.
+
+Exemplo
+
+Um veículo é roubado em Minas Gerais e, conforme o plano criminoso efetivamente executado, é levado para o Espírito Santo.
+
+Em tese, pode incidir a majorante, se comprovados os requisitos legais.
+
+O que memorizar?
+
+* Não basta o veículo ser roubado.
+* O transporte para outro Estado ou para o exterior é elemento específico da hipótese.
+* A análise deve considerar os fatos comprovados no processo.
+
+Pegadinha
+
+A banca diz que a majorante se aplica apenas quando o veículo é levado para outro país.
+
+Errado. O deslocamento para outro Estado também está previsto no dispositivo.
+
+⸻
+
+6. RESTRIÇÃO DA LIBERDADE DA VÍTIMA — INCISO V
+
+A pena aumenta quando o agente mantém a vítima em seu poder, restringindo sua liberdade.
+
+A restrição deve ser examinada no contexto do roubo e conforme as circunstâncias concretas.
+
+Exemplo
+
+O agente anuncia o roubo, mantém a vítima sob seu controle e a obriga a acompanhá-lo por determinado percurso para facilitar a subtração ou a fuga.
+
+Pode haver incidência da majorante se os requisitos legais estiverem presentes.
+
+Atenção: nem toda restrição produz automaticamente a mesma classificação
+
+É necessário analisar a duração, a finalidade e o contexto da privação da liberdade. Dependendo dos fatos, pode haver discussão sobre outros delitos, concurso de crimes e eventual absorção.
+
+Não se deve concluir automaticamente que qualquer ordem momentânea dada à vítima configura a majorante.
+
+Pegadinha
+
+A banca afirma que a restrição da liberdade precisa durar exatamente determinado número de horas para que a majorante seja aplicada.
+
+Errado. O inciso V não estabelece um número fixo de horas. A análise depende das circunstâncias concretas e da interpretação jurídica aplicável.
+
+⸻
+
+7. SUBSTÂNCIAS EXPLOSIVAS E ACESSÓRIOS — INCISO VI
+
+A majorante alcança a subtração de substâncias explosivas ou de acessórios que, conjunta ou isoladamente, possibilitem sua fabricação, montagem ou emprego.
+
+Exemplo
+
+O agente subtrai materiais explosivos ou acessórios destinados à sua fabricação ou utilização, durante a prática de roubo.
+
+O enquadramento depende de o objeto subtraído se enquadrar na descrição legal.
+
+Pegadinha
+
+A banca afirma que o inciso VI abrange qualquer objeto perigoso, independentemente de sua natureza.
+
+Errado. É necessário que o objeto corresponda à hipótese descrita no texto legal.
+
+⸻
+
+8. EMPREGO DE ARMA BRANCA — INCISO VII
+
+A pena aumenta de 1/3 até metade quando a violência ou a grave ameaça é exercida com emprego de arma branca.
+
+O que é importante compreender?
+
+A arma branca é, em termos gerais, instrumento que pode ser utilizado para ataque ou defesa e que não se enquadra como arma de fogo. O enquadramento depende da natureza do objeto e de seu emprego no caso concreto.
+
+Exemplo
+
+O agente utiliza uma faca para ameaçar a vítima e subtrair seu telefone.
+
+Em tese, pode incidir a majorante do inciso VII.
+
+Atenção à diferença entre arma branca e arma de fogo
+
+Situação	Previsão a examinar
+Violência ou grave ameaça com faca	Art. 157, § 2º, VII
+Violência ou grave ameaça com arma de fogo	Art. 157, § 2º-A, I
+Arma de fogo de uso restrito ou proibido	Art. 157, § 2º-B, observados seus requisitos
+
+Pegadinha: o emprego de arma branca não deve ser confundido com o emprego de arma de fogo. As hipóteses possuem tratamento legal diferente.
+
+⸻
+
+9. FIOS, CABOS E EQUIPAMENTOS DE INFRAESTRUTURA — INCISO VIII
+
+O inciso VIII contempla a subtração de:
+
+* Fios e cabos utilizados para fornecimento ou transmissão de energia elétrica;
+* Fios, cabos e equipamentos de telefonia;
+* Equipamentos utilizados para transferência de dados;
+* Equipamentos ou materiais ferroviários ou metroviários.
+
+A hipótese procura alcançar bens relevantes para a infraestrutura de serviços e comunicações.
+
+Exemplo
+
+Agentes praticam um roubo e subtraem cabos empregados na transmissão de energia elétrica, mediante violência ou grave ameaça.
+
+Se os requisitos do tipo estiverem presentes, deve-se examinar a majorante do inciso VIII.
+
+Pegadinha
+
+Não confunda a natureza do objeto subtraído com a simples localização do crime. O dispositivo exige que os bens pertençam às categorias especificadas na lei.
+
+⸻
+
+10. SUBTRAÇÃO DE CELULAR E COMPUTADORES — INCISO IX
+
+A legislação de 2026 incluiu no § 2º a hipótese específica de subtração de:
+
+* Aparelho de telefonia celular;
+* Computador, inclusive portátil ou do tipo prancheta;
+* Dispositivo eletrônico ou informático semelhante.
+
+A pena aumenta de 1/3 até metade, conforme a previsão do § 2º.
+
+Exemplo
+
+Um agente pratica roubo mediante grave ameaça e subtrai o celular da vítima.
+
+Além da configuração do roubo, deve-se examinar a incidência da hipótese específica do inciso IX, observada a legislação aplicável ao caso.
+
+Atenção à atualização legislativa
+
+O texto atual passou a prever expressamente essa hipótese no § 2º. Portanto, material antigo que não a mencione pode estar desatualizado.
+
+Pegadinha
+
+A banca afirma que a majorante do inciso IX depende de o celular ser de alto valor.
+
+Errado. O dispositivo não estabelece valor mínimo do aparelho como requisito expresso da hipótese.
+
+⸻
+
+11. SUBTRAÇÃO DE ARMA DE FOGO — INCISO X
+
+A redação vigente consultada inclui a subtração de arma de fogo entre as hipóteses do § 2º.
+
+Exemplo
+
+O agente, mediante grave ameaça, subtrai uma arma de fogo pertencente à vítima.
+
+É necessário examinar a majorante específica do inciso X, sem confundi-la automaticamente com o emprego de arma de fogo na execução do roubo.
+
+Diferença essencial
+
+Situação A — Subtração da arma: a arma de fogo é o objeto retirado da vítima. Examina-se o inciso X do § 2º.
+
+Situação B — Emprego da arma: a arma de fogo é utilizada para exercer violência ou grave ameaça. Examina-se o § 2º-A, inciso I.
+
+Uma situação descreve o objeto subtraído; a outra, o instrumento utilizado para cometer o crime. Em um mesmo fato, as circunstâncias precisam ser analisadas com cuidado, inclusive para evitar dupla valoração indevida.
+
+⸻
+
+12. COMBUSTÍVEIS E DERIVADOS — INCISO XI
+
+A legislação de 2026 também incluiu hipótese específica relativa à subtração de petróleo e derivados, gás natural e suas frações recuperáveis, álcool etílico hidratado carburante, outros combustíveis fluidos carburantes — inclusive biocombustíveis — e óleos lubrificantes, nas condições descritas no dispositivo.
+
+O texto relaciona a hipótese à remoção desses produtos de estabelecimentos de produção ou de instalações de armazenamento e transporte, incluindo dutos e unidades de transporte em qualquer modal.
+
+Exemplo
+
+Um grupo utiliza grave ameaça para subtrair combustível de uma instalação de armazenamento, removendo o produto nas condições descritas pela lei.
+
+Pode incidir a hipótese do inciso XI, se todos os elementos legais estiverem presentes.
+
+Atenção
+
+Não é correto afirmar que todo roubo de qualquer recipiente de combustível configura automaticamente essa majorante. A hipótese legal tem descrição específica e precisa ser aplicada de acordo com os fatos.
+
+⸻
+
+13. ART. 157, § 2º-A — AUMENTO DE 2/3
+
+O § 2º-A prevê aumento de 2/3 nas hipóteses legalmente descritas.
+
+Inciso I — Emprego de arma de fogo
+
+A pena aumenta em 2/3 quando a violência ou a ameaça é exercida com emprego de arma de fogo.
+
+Exemplo
+
+O agente aponta uma arma de fogo para a vítima, ameaça atirar e subtrai seu veículo.
+
+Em tese, incide a majorante, desde que comprovados os requisitos legais.
+
+Arma verdadeira e simulacro
+
+O simulacro pode ser suficiente para caracterizar a grave ameaça do roubo, mas não é, por si só, arma de fogo para a incidência automática da majorante específica do emprego de arma de fogo.
+
+A classificação deve observar a prova e a jurisprudência aplicável.
+
+Inciso II — Explosivo ou artefato análogo
+
+O aumento de 2/3 também pode ocorrer quando há destruição ou rompimento de obstáculo mediante emprego de explosivo ou artefato análogo que cause perigo comum.
+
+Exemplo
+
+Durante a prática do roubo, o agente utiliza explosivo para destruir ou romper um obstáculo, provocando perigo comum.
+
+É necessário verificar a correspondência exata entre os fatos e a hipótese legal.
+
+Pegadinha
+
+O simples fato de o agente portar um explosivo não significa, automaticamente, que esteja preenchido o inciso II. O dispositivo exige a destruição ou o rompimento de obstáculo mediante seu emprego, nas condições previstas.
+
+Inciso III — Resultados associados à subtração de combustíveis
+
+A redação vigente consultada também prevê, no § 2º-A, inciso III, uma hipótese vinculada ao crime do inciso XI do § 2º, quando dele resultam determinados efeitos, como:
+
+* Suspensão ou paralisação das atividades do estabelecimento;
+* Desabastecimento;
+* Incêndio;
+* Poluição efetiva ou potencial ao meio ambiente.
+
+O texto oficial apresenta uma alínea adicional como vetada. Para prova, deve-se estudar o texto efetivamente promulgado, e não uma redação de projeto legislativo.
+
+Atenção: essa previsão específica não deve ser generalizada para todo roubo de combustível. Ela está vinculada à hipótese legal expressamente indicada.
+
+⸻
+
+14. ART. 157, § 2º-B — ARMA DE FOGO DE USO RESTRITO OU PROIBIDO
+
+O § 2º-B estabelece tratamento mais severo quando a violência ou a grave ameaça é exercida com emprego de arma de fogo de uso restrito ou proibido.
+
+A consequência prevista é a aplicação em dobro da pena estabelecida no caput.
+
+Como diferenciar?
+
+Situação	Regra a examinar
+Emprego de arma de fogo, sem a hipótese específica de uso restrito ou proibido	§ 2º-A, I — aumento de 2/3
+Emprego de arma de fogo de uso restrito ou proibido	§ 2º-B — pena do caput aplicada em dobro
+Uso de simulacro para intimidar a vítima	Pode caracterizar grave ameaça, mas não corresponde automaticamente ao emprego de arma de fogo para essas majorantes
+
+A classificação da arma exige análise de suas características e do regime jurídico aplicável.
+
+Pegadinha
+
+A banca afirma que o § 2º-B estabelece aumento de 2/3.
+
+Errado. A regra do § 2º-B é a aplicação em dobro da pena prevista no caput.
+
+⸻
+
+15. COMO DIFERENCIAR AS FRAÇÕES?
+
+Este quadro é essencial para a memorização:
+
+Dispositivo	Consequência
+Art. 157, § 2º	Aumento de 1/3 até metade
+Art. 157, § 2º-A	Aumento de 2/3 nas hipóteses previstas
+Art. 157, § 2º-B	Pena do caput aplicada em dobro, na hipótese legal
+Art. 157, § 3º	Modalidades qualificadas pelo resultado, estudadas em módulo próprio
+
+Macete de revisão:
+
+* § 2º: de 1/3 até metade.
+* § 2º-A: 2/3.
+* § 2º-B: dobro.
+
+Não memorize apenas o número do parágrafo. Associe cada fração à circunstância que a autoriza.
+
+⸻
+
+16. PEGADINHAS DE CONCURSO
+
+Pegadinha 1
+
+“Todo roubo cometido com arma branca tem aumento de 2/3.”
+
+Errado. O emprego de arma branca está no § 2º, VII, que prevê aumento de 1/3 até metade.
+
+Pegadinha 2
+
+“O emprego de arma de fogo gera aumento de 1/3 até metade.”
+
+Errado. A hipótese do emprego de arma de fogo está no § 2º-A, I, com aumento de 2/3.
+
+Pegadinha 3
+
+“O emprego de arma de fogo de uso restrito ou proibido gera apenas aumento de 2/3.”
+
+Errado. O § 2º-B prevê a aplicação em dobro da pena do caput, observados os requisitos legais.
+
+Pegadinha 4
+
+“Para a majorante do transporte de valores, é irrelevante que o agente conheça essa circunstância.”
+
+Errado. O inciso III exige o conhecimento da condição da vítima.
+
+Pegadinha 5
+
+“Todo roubo de celular deve ser analisado apenas pelo caput, porque o aparelho é um bem comum.”
+
+Errado. A redação vigente consultada prevê expressamente a subtração de celular e determinados dispositivos eletrônicos no § 2º, IX.
+
+Pegadinha 6
+
+“Se o objeto roubado é uma arma de fogo, isso significa necessariamente que o agente empregou arma de fogo na execução.”
+
+Errado. Subtrair uma arma e empregá-la como instrumento de violência ou grave ameaça são circunstâncias diferentes.
+
+Pegadinha 7
+
+“Qualquer participação de duas pessoas no local do crime configura automaticamente a majorante.”
+
+Errado. É necessário demonstrar concurso de pessoas penalmente relevante.
+
+Pegadinha 8
+
+“Todas as majorantes do roubo possuem a mesma fração de aumento.”
+
+Errado. As frações variam conforme o dispositivo aplicável.
+
+⸻
+
+17. QUESTÕES COMENTADAS — PADRÃO APROVUM
+
+Questão 1 — Arma branca
+
+Durante um roubo, o agente ameaça a vítima com uma faca e subtrai sua carteira. Considerando o art. 157, qual hipótese deve ser examinada?
+
+A) § 2º-A, I, obrigatoriamente.
+B) § 2º, VII, relativo ao emprego de arma branca.
+C) § 2º-B, automaticamente.
+D) Nenhuma majorante pode ser aplicada ao roubo com faca.
+
+Gabarito: B.
+
+Comentário: o emprego de arma branca está previsto no § 2º, VII, com aumento de 1/3 até metade.
+
+Questão 2 — Emprego de arma de fogo
+
+O agente utiliza uma arma de fogo para ameaçar a vítima e subtrair seu veículo. Qual regra específica deve ser examinada?
+
+A) Art. 157, § 2º, VII.
+B) Art. 157, § 2º-A, I.
+C) Art. 157, § 2º-B em qualquer caso.
+D) Art. 157, § 1º-A obrigatoriamente.
+
+Gabarito: B.
+
+Comentário: o emprego de arma de fogo na violência ou grave ameaça está previsto no § 2º-A, I, com aumento de 2/3. O § 2º-B exige a hipótese específica de arma de fogo de uso restrito ou proibido.
+
+Questão 3 — Transporte de valores
+
+Um agente pratica roubo contra funcionário que está em serviço de transporte de valores, conhecendo essa circunstância. Qual hipótese deve ser analisada?
+
+A) Art. 157, § 2º, III.
+B) Art. 157, § 2º-A, II.
+C) Art. 157, § 2º-B, necessariamente.
+D) Art. 157, § 3º, II, automaticamente.
+
+Gabarito: A.
+
+Comentário: o inciso III trata da vítima em serviço de transporte de valores, desde que o agente conheça essa condição.
+
+Questão 4 — Concurso de pessoas
+
+Dois agentes combinam a prática do roubo e contribuem efetivamente para a execução do crime. Qual majorante deve ser examinada?
+
+A) Concurso de pessoas, art. 157, § 2º, II.
+B) Emprego de arma de fogo, automaticamente.
+C) Restrição da liberdade, obrigatoriamente.
+D) Nenhuma, pois somente o executor direto pode responder pelo roubo.
+
+Gabarito: A.
+
+Comentário: o concurso de duas ou mais pessoas é hipótese expressa do § 2º, II. A responsabilidade individual depende da contribuição de cada envolvido.
+
+Questão 5 — Arma subtraída versus arma empregada
+
+Durante um roubo, o agente subtrai uma arma de fogo que estava com a vítima, sem utilizá-la para exercer a violência ou a grave ameaça. Qual afirmação está correta?
+
+A) A subtração da arma equivale necessariamente ao emprego de arma de fogo previsto no § 2º-A, I.
+B) Deve-se distinguir a subtração de arma de fogo, prevista no § 2º, X, do emprego de arma de fogo para violência ou ameaça, previsto no § 2º-A, I.
+C) A subtração de arma de fogo descaracteriza o roubo.
+D) O § 2º-B sempre se aplica quando uma arma é retirada da vítima.
+
+Gabarito: B.
+
+Comentário: a natureza do objeto subtraído não se confunde com o emprego de arma de fogo como instrumento de violência ou grave ameaça.
+
+Questão 6 — Nível avançado
+
+Assinale a alternativa correta:
+
+A) O § 2º prevê aumento fixo de 2/3 em todas as hipóteses.
+B) O § 2º-A prevê aumento de 1/3 até metade.
+C) O § 2º-B prevê aplicação em dobro da pena do caput quando utilizada arma de fogo de uso restrito ou proibido, nos termos legais.
+D) A arma branca está prevista exclusivamente no § 2º-B.
+
+Gabarito: C.
+
+Comentário: a alternativa C reproduz a consequência específica do § 2º-B. As demais confundem as frações ou os dispositivos.
+
+⸻
+
+18. MAPA MENTAL — MAJORANTES DO ROUBO
+
+ART. 157 — CAUSAS DE AUMENTO
+
+→ § 2º: aumento de 1/3 até metade
+
+* Concurso de pessoas;
+* Transporte de valores, com conhecimento do agente;
+* Veículo levado para outro Estado ou exterior;
+* Restrição da liberdade da vítima;
+* Explosivos e acessórios previstos na lei;
+* Arma branca;
+* Fios, cabos e equipamentos de infraestrutura;
+* Celular e determinados dispositivos eletrônicos;
+* Arma de fogo como objeto subtraído;
+* Combustíveis e produtos especificados na lei.
+
+→ § 2º-A: aumento de 2/3
+
+* Emprego de arma de fogo;
+* Destruição ou rompimento de obstáculo com explosivo ou artefato análogo que cause perigo comum;
+* Hipótese específica de resultados ligados à subtração de combustíveis, conforme o texto vigente.
+
+→ § 2º-B: aplicação em dobro da pena do caput
+
+* Emprego de arma de fogo de uso restrito ou proibido, nas condições legais.
+
+⸻
+
+19. REVISÃO FINAL
+
+Responda sem consultar o material:
+
+1. Qual é a fração prevista no § 2º? De 1/3 até metade.
+2. Qual é a fração prevista no § 2º-A? 2/3.
+3. Qual é a consequência prevista no § 2º-B? Aplicação em dobro da pena do caput.
+4. A faca se enquadra na hipótese específica de arma branca? Sim, em tese, no § 2º, VII.
+5. A arma subtraída é necessariamente uma arma empregada na violência? Não.
+6. O conhecimento da condição da vítima é exigido na majorante do transporte de valores? Sim.
+7. O concurso de pessoas exige que todos executem a mesma tarefa? Não.
+8. A lei atual prevê hipótese específica para a subtração de celular? Sim, no § 2º, IX.
+
+⸻
+
+FONTES OFICIAIS
+
+Código Penal — art. 157, §§ 2º, 2º-A e 2º-B, redação consolidada:
+
+https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm
+
+Orientação para atualização: conferir sempre o texto legal vigente e as alterações legislativas posteriores. Para material destinado a concurso, a data de atualização deve ser registrada e as questões antigas precisam ser revisadas para evitar cobrança de redação revogada.
+
+⸻
+
+INSTRUÇÃO DE CATALOGAÇÃO — CLAUDE CODE
+
+Catalogar este conteúdo como Módulo 4/16 da aula existente “Roubo — Art. 157 do Código Penal”.
+
+1. Inspecione a estrutura real do projeto e siga o padrão já usado nos Módulos 1, 2 e 3 e na aula de Furto.
+2. Reutilize o identificador da aula principal; não crie uma aula separada.
+3. Preserve integralmente as explicações, tabelas, exemplos, pegadinhas, questões e gabaritos comentados.
+4. Registre a ordem como módulo 4 de 16, respeitando a estrutura real do sistema.
+5. Não duplique nem sobrescreva módulos já catalogados.
+6. Utilize os nomes reais de tabelas, colunas e componentes existentes no projeto e no Supabase.
+7. Mantenha a apresentação didática e visual do APROVUM, com fundo claro, tipografia legível, preto e vermelho usados com equilíbrio.
+8. Não transforme o módulo em um simples resumo: o aluno deve conseguir acessar o conteúdo completo dentro da mesma aula.
+9. Ao concluir, informe o que foi gravado, confirme a preservação integral do conteúdo e verifique se o módulo aparece na sequência correta.
