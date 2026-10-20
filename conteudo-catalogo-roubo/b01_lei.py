@@ -1,7 +1,7 @@
 from helpers import *
 
 # Seção de literalidade pedida no Bloco 1 (item 14.3): texto integral e vigente do art. 157.
-sec("texto_legal", "Lei seca — art. 157 do CP na redação vigente (Leis 15.181/2025, 15.397/2026 e 15.517/2026)", """
+sec("texto_legal", "Lei seca — art. 157 do CP na redação vigente (Leis 15.181/2025, 15.358/2026, 15.397/2026 e 15.517/2026)", """
 **Código Penal, Parte Especial · Título II — Dos Crimes contra o Patrimônio · Capítulo II — Do Roubo e da Extorsão**
 
 ### Roubo — caput e roubo impróprio
@@ -45,6 +45,12 @@ sec("texto_legal", "Lei seca — art. 157 do CP na redação vigente (Leis 15.18
 > I - (VETADO);
 > II - morte, a pena é de reclusão, de 24 (vinte e quatro) a 30 (trinta) anos, e multa.
 
+### Organização criminosa ultraviolenta, grupo paramilitar ou milícia privada
+> **§ 4º** Se a violência ou grave ameaça é cometida por integrante de organização criminosa ultraviolenta, grupo paramilitar ou milícia privada, no contexto da atuação ou para a consecução das condutas previstas no art. 2º da lei que institui o marco legal do combate ao crime organizado no Brasil, aplica-se em triplo a pena prevista no caput deste artigo, desprezadas as demais causas de aumento.
+
+> **§ 5º** Se o crime previsto no inciso II do § 3º deste artigo é cometido por integrante de organização criminosa ultraviolenta, grupo paramilitar ou milícia privada, no contexto da atuação ou para a consecução das condutas previstas no art. 2º da lei que institui o marco legal do combate ao crime organizado no Brasil, e da violência resulta morte:
+> Pena - reclusão, de 20 (vinte) a 40 (quarenta) anos, e multa.
+
 ---
 
 ### O que mudou recentemente
@@ -59,19 +65,22 @@ sec("texto_legal", "Lei seca — art. 157 do CP na redação vigente (Leis 15.18
 | § 2º, XI (petróleo, gás, combustíveis e lubrificantes) | — | Aumento de 1/3 até metade | 15.517/2026 |
 | § 2º-A, III (resultados do roubo de combustíveis) | — | Aumento de 2/3 | 15.517/2026 |
 | § 3º, II (latrocínio) | Reclusão de 20 a 30 anos e multa | **Reclusão de 24 a 30 anos e multa** | 15.397/2026 |
+| § 4º (violência ou grave ameaça por integrante de organização criminosa ultraviolenta, grupo paramilitar ou milícia privada) | — | **Pena do caput aplicada em triplo**, desprezadas as demais causas de aumento | 15.358/2026 |
+| § 5º (latrocínio cometido nessas mesmas condições) | — | **Reclusão de 20 a 40 anos e multa** | 15.358/2026 |
 | § 3º, I (lesão corporal grave) | Reclusão de 7 a 18 anos e multa | A nova redação aprovada pelo Congresso foi **vetada**; o texto compilado exibe "(VETADO)" | 15.397/2026 |
 
 ⚠️ **Ponto de atenção — § 3º, I:** a Lei 15.397/2026 dava nova redação ao inciso I (lesão corporal grave), mas esse dispositivo foi **vetado**. Comentários à lei indicam que, com o veto da alteração, **continua aplicável a pena anterior de 7 a 18 anos** para o roubo com lesão corporal grave; o tema será tratado no bloco sobre o roubo qualificado pelo resultado. Acompanhe a eventual apreciação do veto pelo Congresso.
 
-📌 **Lei mais grave não retroage:** as penas maiores (Leis 15.181/2025, 15.397/2026 e 15.517/2026) só alcançam fatos praticados **depois** de sua vigência (CF, art. 5º, XL; CP, art. 2º).
+📌 **Lei mais grave não retroage:** as penas maiores (Leis 15.181/2025, 15.358/2026, 15.397/2026 e 15.517/2026) só alcançam fatos praticados **depois** de sua vigência (CF, art. 5º, XL; CP, art. 2º).
 
 **Linha do tempo das principais alterações do art. 157:**
 - **Lei 9.426/1996** — incisos IV e V do § 2º (veículo levado a outro Estado ou ao exterior; vítima mantida em poder do agente).
 - **Lei 13.654/2018** — revogou o inciso I do § 2º (arma), criou o inciso VI e o § 2º-A (arma de fogo e explosivo) e deu nova redação ao § 3º.
 - **Lei 13.964/2019 (Pacote Anticrime)** — inciso VII (arma branca) e § 2º-B (arma de uso restrito ou proibido).
 - **Lei 15.181/2025** — § 1º-A e inciso VIII do § 2º.
+- **Lei 15.358/2026 (marco legal do combate ao crime organizado)** — §§ 4º e 5º.
 - **Lei 15.397/2026** — novas penas do caput e do latrocínio; incisos IX e X do § 2º.
 - **Lei 15.517/2026** — inciso XI do § 2º e inciso III do § 2º-A.
-""", N((1, 29)))
+""", N((1, 32)))
 ORD.append(15)
 m("Fundamentos e elementos do roubo")

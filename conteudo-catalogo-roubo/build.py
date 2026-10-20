@@ -11,8 +11,8 @@ import helpers
 
 FINAL = "--final" in sys.argv
 # Arquivos dos blocos recebidos, em qualquer ordem (a posição vem de ORD).
-BLOCOS = ["b01", "b01_lei", "b02", "b03", "b04", "b05", "b06"]
-QUESTOES = ["q_b01", "q_b02", "q_b03", "q_b04", "q_b05", "q_b06"]
+BLOCOS = ["b01", "b01_lei", "b02", "b03", "b04", "b05", "b06", "b07"]
+QUESTOES = ["q_b01", "q_b02", "q_b03", "q_b04", "q_b05", "q_b06", "q_b07"]
 
 for f in BLOCOS:
     before = len(helpers.S)
@@ -53,11 +53,12 @@ lesson = {
     "sections": S,
     "taughtNodeKeys": sorted(used),
     "references": [
-        {"kind": "lei", "citation": "Código Penal (Decreto-Lei 2.848/1940), art. 157, com as Leis 9.426/1996, 13.654/2018, 13.964/2019, 15.181/2025, 15.397/2026 e 15.517/2026 — planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm"},
+        {"kind": "lei", "citation": "Código Penal (Decreto-Lei 2.848/1940), art. 157, com as Leis 9.426/1996, 13.654/2018, 13.964/2019, 15.181/2025, 15.358/2026, 15.397/2026 e 15.517/2026 — planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm"},
         {"kind": "jurisprudencia", "citation": "STJ, Tema Repetitivo 916 (REsp 1.499.050/RJ, Terceira Seção, 2015) e Súmula 582 — consumação do roubo com a inversão da posse"},
     ],
     "unverifiedClaims": [
         "Redação vigente do art. 157 conferida em compilação secundária atualizada até 22/09/2026 (legjur.com) e no texto da Lei 15.397/2026; a página do Planalto não pôde ser acessada nesta preparação.",
+        "Art. 157, §§ 4º e 5º (Lei 15.358/2026, art. 33): texto conferido em compilação secundária (legjur.com) em 20/10/2026; o Planalto recusou a conexão.",
         "Art. 157, § 3º, I: a nova redação da Lei 15.397/2026 foi vetada; a continuidade da pena anterior (7 a 18 anos) segue comentários doutrinários à lei.",
     ],
     "verificationPending": True,
