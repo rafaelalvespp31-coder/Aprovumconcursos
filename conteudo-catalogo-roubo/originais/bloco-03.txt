@@ -1,0 +1,347 @@
+APROVUM — DIREITO PENAL
+
+MÓDULO 3/16 — CONSUMAÇÃO E TENTATIVA NO CRIME DE ROUBO
+
+Base legal: Art. 157 do Código Penal e art. 14, I e II, do Código Penal.
+Nível: Concursos policiais — intermediário a avançado.
+Objetivo: Dominar o momento consumativo do roubo, distinguir consumação de tentativa e resolver questões envolvendo perseguição, recuperação do bem e violência durante a fuga.
+
+⸻
+
+1. O QUE SIGNIFICA CONSUMAR UM CRIME?
+
+Um crime está consumado quando se reúnem todos os elementos de sua definição legal, conforme o art. 14, I, do Código Penal.
+
+No roubo, o núcleo do tipo é subtrair coisa móvel alheia, mediante violência, grave ameaça ou outro meio previsto no art. 157.
+
+A pergunta central é:
+
+Em que momento o roubo é considerado consumado?
+
+Para responder, é preciso compreender a teoria adotada pela jurisprudência brasileira para os crimes patrimoniais de subtração.
+
+⸻
+
+2. TEORIA DA AMOTIO — INVERSÃO DA POSSE
+
+A orientação consolidada do Supremo Tribunal Federal e do Superior Tribunal de Justiça é a de que o roubo se consuma com a inversão da posse do bem, mediante violência ou grave ameaça, ainda que por breve tempo e mesmo que o agente seja perseguido e o objeto seja recuperado logo depois.
+
+Não é necessário que o agente obtenha posse tranquila ou desvigiada do objeto.
+
+Essa compreensão é conhecida como teoria da amotio, também chamada de teoria da apreensão ou da inversão da posse.
+
+Exemplo prático
+
+Imagine a seguinte situação:
+
+1. O agente ameaça a vítima e toma seu celular.
+2. A vítima começa a gritar por socorro.
+3. Policiais iniciam uma perseguição imediata.
+4. O agente é alcançado poucos metros depois.
+5. O celular é recuperado.
+
+Conclusão: o roubo pode estar consumado, porque houve inversão da posse. A recuperação imediata do celular não transforma, por si só, o fato em tentativa.
+
+Regra de ouro para a prova
+
+Roubo consumado não exige posse tranquila, desvigiada ou prolongada.
+
+A duração da posse não é o critério decisivo. O ponto central é verificar se houve inversão da posse do bem mediante a conduta típica.
+
+⸻
+
+3. O QUE É POSSE TRANQUILA?
+
+Posse tranquila é a situação em que o agente consegue manter o bem sem perseguição ou reação imediata capaz de interromper sua disponibilidade sobre ele.
+
+Essa circunstância pode aparecer nos enunciados como uma tentativa de induzir o candidato ao erro.
+
+Exemplo de pegadinha
+
+A banca afirma:
+
+“O agente subtrai o telefone mediante grave ameaça, mas é perseguido imediatamente e preso antes de conseguir esconder o aparelho. Como não houve posse tranquila, o crime permaneceu tentado.”
+
+Gabarito: Errado.
+
+A ausência de posse tranquila não impede a consumação. Se houve inversão da posse, o roubo pode estar consumado, mesmo com perseguição imediata e recuperação do objeto.
+
+⸻
+
+4. ROUBO CONSUMADO × ROUBO TENTADO
+
+A diferença depende da realização dos elementos do tipo penal e das circunstâncias concretas da execução.
+
+Situação	Enquadramento em tese	Motivo
+O agente ameaça a vítima, toma o celular e foge, mas é preso logo depois	Roubo consumado	Houve inversão da posse
+O agente ameaça a vítima, toma o bem e é perseguido imediatamente, com recuperação do objeto	Roubo consumado, em regra	A recuperação posterior não desfaz a consumação
+O agente aponta uma arma, anuncia o assalto, mas é impedido antes de conseguir subtrair o bem	Pode configurar tentativa, conforme os atos executórios e as circunstâncias	A execução foi iniciada, mas a subtração não se completou
+O agente é detido antes de iniciar atos executórios	Em regra, não há tentativa de roubo	Pode haver preparação, mas não necessariamente início da execução
+O agente inicia a execução, mas circunstância alheia à sua vontade impede a subtração	Tentativa, se preenchidos os requisitos do art. 14, II	O crime não se consuma por circunstância alheia à vontade do agente
+
+Importante: a classificação depende do que efetivamente aconteceu. Não basta o enunciado dizer que o agente “tentou roubar”; é preciso identificar se houve início da execução e se a subtração chegou a se concretizar.
+
+⸻
+
+5. TENTATIVA — ART. 14, II, DO CÓDIGO PENAL
+
+O crime é tentado quando, iniciada a execução, não se consuma por circunstâncias alheias à vontade do agente.
+
+A tentativa exige, portanto, três elementos essenciais:
+
+1. Início da execução;
+2. Não consumação do crime;
+3. Circunstância alheia à vontade do agente impedindo a consumação.
+
+Exemplo 1 — Execução interrompida
+
+O agente aborda a vítima com grave ameaça e tenta retirar o celular de suas mãos, mas terceiros intervêm antes que ele consiga subtrair o aparelho.
+
+Se a execução do roubo já começou e a subtração não se consuma por causa da intervenção, pode haver tentativa.
+
+Exemplo 2 — Agente impedido antes da subtração
+
+O agente inicia a abordagem intimidatória, mas é imediatamente contido antes de conseguir realizar a subtração.
+
+A classificação exige examinar se já houve início de execução do roubo e se os atos praticados ultrapassaram a mera preparação.
+
+Exemplo 3 — Desistência voluntária
+
+O agente inicia a execução, mas voluntariamente interrompe a conduta antes de consumar o crime.
+
+Essa hipótese exige análise do art. 15 do Código Penal, que trata da desistência voluntária e do arrependimento eficaz. Não deve ser confundida automaticamente com tentativa.
+
+⸻
+
+6. A DIFERENÇA ENTRE TENTATIVA E DESISTÊNCIA VOLUNTÁRIA
+
+O art. 15 do Código Penal estabelece que, se o agente voluntariamente desiste de prosseguir na execução ou impede que o resultado se produza, responde somente pelos atos já praticados.
+
+A diferença essencial é a razão pela qual o crime não se consuma.
+
+Tentativa: o agente quer consumar o crime, mas uma circunstância alheia à sua vontade impede a consumação.
+
+Desistência voluntária: o agente poderia prosseguir, mas voluntariamente decide parar.
+
+Exemplo comparativo
+
+Caso A: o agente tenta tomar o celular, mas é impedido por um policial que chega ao local.
+→ Pode haver tentativa de roubo.
+
+Caso B: o agente começa a execução, ainda pode prosseguir, mas voluntariamente abandona a ação sem consumar a subtração.
+→ Pode haver desistência voluntária, conforme os fatos e os atos já praticados.
+
+Pegadinha: a desistência precisa ser voluntária, mas não necessariamente espontânea. O ponto central é que a interrupção decorra de uma decisão voluntária, e não de uma impossibilidade externa que obrigue o agente a parar.
+
+⸻
+
+7. ROUBO IMPRÓPRIO E CONSUMAÇÃO
+
+No roubo impróprio, previsto no art. 157, § 1º, a sequência é diferente: primeiro ocorre a subtração; logo depois, o agente emprega violência ou grave ameaça para assegurar a impunidade do crime ou a detenção da coisa.
+
+Para fins de prova, é fundamental identificar a sequência dos acontecimentos e a finalidade da violência posterior.
+
+Exemplo
+
+O agente subtrai uma mochila sem ser percebido. Logo depois, a vítima o alcança e tenta recuperar o objeto. O agente a agride para continuar com a mochila.
+
+O caso pode configurar roubo impróprio, desde que preenchidos os requisitos legais.
+
+Atenção: não se deve aplicar mecanicamente a regra do roubo próprio a qualquer agressão posterior. É preciso avaliar a subtração anterior, a proximidade temporal, a finalidade da violência e as demais circunstâncias do caso.
+
+⸻
+
+8. CONSUMAÇÃO NÃO É O MESMO QUE RECUPERAÇÃO DO BEM
+
+Uma das confusões mais comuns em concursos é misturar a consumação do crime com a recuperação do patrimônio.
+
+São questões diferentes:
+
+* Consumação: verifica se o agente realizou os elementos do tipo penal.
+* Recuperação do bem: descreve o que ocorreu depois da subtração.
+* Reparação do prejuízo: pode ter relevância jurídica própria, mas não desfaz automaticamente um crime já consumado.
+
+Exemplo
+
+O agente subtrai o relógio mediante grave ameaça, foge por alguns metros e é capturado. O relógio é devolvido à vítima.
+
+A devolução do relógio não significa que o roubo deixou de estar consumado.
+
+Também não se deve confundir a recuperação do bem com arrependimento posterior. O art. 16 do Código Penal possui requisitos próprios e não se aplica automaticamente a qualquer restituição, especialmente quando o crime é cometido com violência ou grave ameaça à pessoa.
+
+⸻
+
+9. PEGADINHAS CLÁSSICAS DAS BANCAS
+
+Pegadinha 1
+
+“O roubo somente se consuma quando o agente consegue manter a posse tranquila do bem.”
+
+Errado. A orientação consolidada exige a inversão da posse, sem necessidade de posse tranquila.
+
+Pegadinha 2
+
+“O agente toma o celular da vítima mediante grave ameaça, mas é preso imediatamente. O roubo é necessariamente tentado.”
+
+Errado. A prisão imediata não impede a consumação se houve inversão da posse.
+
+Pegadinha 3
+
+“A recuperação do bem pela polícia descaracteriza a consumação do roubo.”
+
+Errado. A recuperação posterior não desfaz automaticamente a consumação.
+
+Pegadinha 4
+
+“Para reconhecer a tentativa, basta que o agente tenha a intenção de roubar.”
+
+Errado. A tentativa exige início da execução e não consumação por circunstâncias alheias à vontade do agente.
+
+Pegadinha 5
+
+“Se o agente interrompe voluntariamente a execução, há sempre tentativa.”
+
+Errado. Dependendo das circunstâncias, pode ocorrer desistência voluntária, nos termos do art. 15 do Código Penal.
+
+Pegadinha 6
+
+“Posse tranquila e inversão da posse são expressões equivalentes para fins de consumação do roubo.”
+
+Errado. A inversão da posse não exige posse tranquila.
+
+⸻
+
+10. QUESTÕES COMENTADAS — PADRÃO APROVUM
+
+Questão 1 — Consumação
+
+Após ameaçar uma vítima, o agente toma seu celular. Policiais que estavam próximos iniciam perseguição e recuperam o aparelho segundos depois.
+
+Assinale a alternativa correta:
+
+A) Há necessariamente tentativa, porque o agente não manteve a posse tranquila.
+B) O roubo pode estar consumado, pois houve inversão da posse.
+C) A recuperação do celular transforma o fato em furto.
+D) O crime somente se consuma após o agente chegar ao local onde pretendia esconder o bem.
+
+Gabarito: B.
+
+Comentário: a orientação consolidada é a de que a consumação ocorre com a inversão da posse, ainda que por breve período, sem exigir posse tranquila. A perseguição e a recuperação imediata do bem não afastam, por si sós, a consumação.
+
+Questão 2 — Tentativa
+
+O agente inicia a execução de um roubo, mas é impedido por um terceiro antes de conseguir subtrair o bem. Considerando o art. 14, II, do Código Penal, a tentativa exige:
+
+A) Apenas intenção criminosa.
+B) Início da execução e não consumação por circunstância alheia à vontade do agente.
+C) Recuperação posterior do bem.
+D) Posse tranquila durante alguns minutos.
+
+Gabarito: B.
+
+Comentário: a tentativa pressupõe início da execução e não consumação por circunstâncias alheias à vontade do agente.
+
+Questão 3 — Desistência voluntária
+
+Durante a execução de um roubo, o agente ainda poderia prosseguir, mas decide voluntariamente abandonar a conduta antes da subtração. Em tese, a situação pode configurar:
+
+A) Desistência voluntária, conforme o art. 15 do Código Penal.
+B) Roubo consumado obrigatoriamente.
+C) Crime impossível em qualquer hipótese.
+D) Arrependimento posterior automaticamente.
+
+Gabarito: A.
+
+Comentário: se o agente voluntariamente interrompe a execução, pode incidir o art. 15. A responsabilidade pelos atos já praticados deve ser examinada conforme o caso.
+
+Questão 4 — Recuperação do patrimônio
+
+A vítima recupera seu celular imediatamente após o agente tê-lo subtraído mediante grave ameaça. Qual afirmação está correta?
+
+A) A recuperação elimina necessariamente a tipicidade do roubo.
+B) A recuperação impede a consumação em todos os casos.
+C) A recuperação posterior não desfaz automaticamente a consumação já ocorrida.
+D) A restituição transforma o roubo em furto simples.
+
+Gabarito: C.
+
+Comentário: a classificação do crime depende da realização dos elementos do tipo, e não apenas do destino posterior do bem.
+
+Questão 5 — Nível avançado
+
+Assinale a afirmação correta sobre a consumação do roubo:
+
+A) Exige posse mansa, pacífica e desvigiada.
+B) Depende de o agente conseguir usufruir do bem por período prolongado.
+C) Em regra, ocorre com a inversão da posse, ainda que breve, sendo dispensável a posse tranquila.
+D) Somente ocorre quando o objeto é retirado da cidade onde aconteceu o crime.
+
+Gabarito: C.
+
+Comentário: a inversão da posse é o critério adotado na orientação consolidada dos tribunais superiores. Não se exige que o agente mantenha o objeto por tempo prolongado.
+
+⸻
+
+11. MAPA MENTAL — CONSUMAÇÃO E TENTATIVA
+
+ROUBO — ART. 157
+
+→ Consumado
+
+* Inversão da posse;
+* Não exige posse tranquila;
+* Perseguição imediata não impede, por si só, a consumação;
+* Recuperação do objeto não desfaz automaticamente o crime consumado.
+
+→ Tentado
+
+* Início da execução;
+* Não consumação;
+* Circunstância alheia à vontade do agente.
+
+→ Desistência voluntária — art. 15
+
+* O agente poderia prosseguir;
+* Decide voluntariamente interromper;
+* Responde pelos atos já praticados, conforme o caso.
+
+→ Arrependimento posterior — art. 16
+
+* Instituto distinto;
+* Exige os requisitos legais;
+* Não se aplica automaticamente ao roubo praticado com violência ou grave ameaça à pessoa.
+
+⸻
+
+12. REVISÃO FINAL
+
+Antes de avançar, o aluno deve conseguir responder sem consultar o material:
+
+1. O roubo exige posse tranquila para se consumar? Não.
+2. A perseguição imediata impede necessariamente a consumação? Não.
+3. A recuperação do objeto desfaz automaticamente a consumação? Não.
+4. Quais são os requisitos essenciais da tentativa? Início da execução e não consumação por circunstância alheia à vontade do agente.
+5. A desistência voluntária é igual à tentativa? Não.
+6. Qual artigo trata da tentativa? Art. 14, II, do Código Penal.
+7. Qual artigo trata da desistência voluntária e do arrependimento eficaz? Art. 15 do Código Penal.
+
+FONTES PARA CONFERÊNCIA
+
+* Código Penal, arts. 14, 15, 16 e 157:
+    https://www.planalto.gov.br/ccivil_03/decreto-lei/del2848compilado.htm
+* Súmula 582 do Superior Tribunal de Justiça: o roubo se consuma com a inversão da posse do bem, mediante violência ou grave ameaça, ainda que por breve tempo e seguida de perseguição imediata e recuperação da coisa, sendo prescindível a posse mansa e pacífica.
+
+⸻
+
+INSTRUÇÃO DE CATALOGAÇÃO — CLAUDE CODE
+
+Catalogar este conteúdo como Módulo 3/16 da aula existente “Roubo — Art. 157 do Código Penal”.
+
+1. Inspecione o padrão de catalogação já utilizado nos Módulos 1 e 2 e na aula de Furto.
+2. Reutilize o identificador da aula principal; não crie uma aula independente.
+3. Preserve integralmente os conceitos, exemplos, tabelas, mapa mental, questões e comentários.
+4. Registre a ordem como módulo 3 de 16, usando a estrutura real já existente no projeto.
+5. Não duplique, apague ou sobrescreva os módulos anteriores.
+6. Utilize o esquema real do Supabase, respeitando as regras de acesso e os componentes já existentes.
+7. Se o sistema não possuir suporte adequado à ordenação dos módulos, informe a limitação antes de propor alterações estruturais.
+8. Ao concluir, confirme se o módulo está visível dentro da mesma aula e se todo o conteúdo foi preservado.
