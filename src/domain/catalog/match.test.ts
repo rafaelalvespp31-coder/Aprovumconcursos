@@ -40,6 +40,21 @@ describe("busca no catálogo", () => {
     expect(p).toMatchObject({ kind: "parcial", missing: ["130", "131"] });
     expect(matchCatalog("Art. 1º da Lei 8.112", catalog).kind).toBe("nenhum");
   });
+  it("artigo coberto por mais de uma aula traz todas, sem repetir e na ordem das partes", () => {
+    const cf = (id: string, title: string, articles: string[]): CatalogTopicIndex => ({ id, title, kind: "dispositivo", lawCode: "CF", articles, aliases: [] });
+    const partes = [
+      cf("p4", "Direitos e Garantias Fundamentais IV — Remédios Constitucionais", ["5"]),
+      cf("p3", "Direitos e Garantias Fundamentais III — Nacionalidade e Direitos Políticos", ["12", "13", "14", "15", "16", "17"]),
+      cf("p1", "Direitos e Garantias Fundamentais I — Teoria Geral e Art. 5º", ["5"]),
+      cf("p2", "Direitos e Garantias Fundamentais II — Direitos Sociais", ["6", "7", "8", "9", "10", "11"]),
+    ];
+    const so5 = matchCatalog("Art. 5º da Constituição Federal", partes);
+    expect(so5.kind === "completo" && so5.topics.map((t) => t.id)).toEqual(["p1", "p4"]);
+    const todos = matchCatalog("Arts. 5º a 17 da CF", partes);
+    expect(todos.kind === "completo" && todos.topics.map((t) => t.id)).toEqual(["p1", "p2", "p3", "p4"]);
+    const parcial = matchCatalog("Arts. 5º a 18 da CF", partes);
+    expect(parcial).toMatchObject({ kind: "parcial", missing: ["18"] });
+  });
   it("temas: título, sinônimo ou frase que contém o tema", () => {
     expect(matchCatalog("Prisão em flagrante", catalog)).toMatchObject({ kind: "completo", topics: [{ id: "flagrante" }] });
     expect(matchCatalog("quero estudar flagrante delito", catalog)).toMatchObject({ kind: "completo", topics: [{ id: "flagrante" }] });

@@ -128,18 +128,33 @@ export const THEME_THRESHOLD = 0.75;
 export function matchCatalog(query: string, topics: readonly CatalogTopicIndex[]): CatalogMatch {
   const ref = parseLawReference(query);
   if (ref.law && ref.articles.length) {
-    const byArticle = new Map<string, CatalogTopicIndex>();
+    // Um artigo pode ser coberto por mais de uma aula (ex.: CF, art. 5º — direitos
+    // individuais e remédios constitucionais). A primeira (pelo título) entra na ordem
+    // dos artigos pedidos; as demais vão para o fim, sem repetir.
+    const byArticle = new Map<string, CatalogTopicIndex[]>();
     for (const t of topics) {
       if (t.kind !== "dispositivo" || t.lawCode !== ref.law) continue;
-      for (const a of t.articles) if (!byArticle.has(articleId(a))) byArticle.set(articleId(a), t);
+      for (const a of t.articles) {
+        const list = byArticle.get(articleId(a)) ?? [];
+        if (!list.includes(t)) list.push(t);
+        byArticle.set(articleId(a), list);
+      }
     }
+    for (const list of byArticle.values()) list.sort((x, y) => x.title.localeCompare(y.title, "pt-BR"));
     const found: CatalogTopicIndex[] = [];
+    const extra: CatalogTopicIndex[] = [];
     const missing: string[] = [];
     for (const a of ref.articles) {
-      const t = byArticle.get(a);
-      if (!t) missing.push(a);
-      else if (!found.includes(t)) found.push(t);
+      const list = byArticle.get(a);
+      if (!list?.length) {
+        missing.push(a);
+        continue;
+      }
+      const [first, ...rest] = list;
+      if (!found.includes(first!)) found.push(first!);
+      for (const t of rest) if (!extra.includes(t)) extra.push(t);
     }
+    for (const t of extra) if (!found.includes(t)) found.push(t);
     const lawName = LAWS.find((l) => l.code === ref.law)?.name ?? ref.law;
     if (!missing.length) return { kind: "completo", topics: found, reason: `${lawName}: art(s). ${ref.articles.join(", ")}` };
     if (found.length) return { kind: "parcial", topics: found, missing, reason: `${lawName}: faltam art(s). ${missing.join(", ")} no catálogo` };

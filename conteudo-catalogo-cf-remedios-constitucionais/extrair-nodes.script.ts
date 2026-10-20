@@ -1,0 +1,10 @@
+import { readFileSync, writeFileSync } from "node:fs";
+import { normalizeContent } from "@/domain/content/normalize";
+import { extractStructure } from "@/domain/content/extract";
+const D = "conteudo-catalogo-cf-remedios-constitucionais";
+const raw = readFileSync(`${D}/source.txt`, "utf8");
+const n = normalizeContent(raw);
+const text = n.normalized ?? (n as unknown as { text: string }).text;
+const ex = extractStructure(text);
+writeFileSync(`${D}/nodes.json`, JSON.stringify({ source: text, nodes: ex.nodes }, null, 0));
+for (const x of ex.nodes) console.log(x.key, x.kind, x.marker, "|", x.title.slice(0, 60), "| parent", x.parentKey);
