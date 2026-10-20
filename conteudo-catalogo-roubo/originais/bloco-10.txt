@@ -1,0 +1,289 @@
+APROVUM — MÓDULO 10/16
+
+ROUBO CONTRA MÚLTIPLAS VÍTIMAS, CONCURSO DE CRIMES E CONTINUIDADE DELITIVA
+
+Disciplina: Direito Penal
+Tema: Art. 157 do Código Penal e arts. 69, 70 e 71 do Código Penal
+Nível: Concursos policiais — intermediário a avançado
+Objetivo: identificar quando uma ação de roubo pode gerar concurso formal, concurso material ou continuidade delitiva, diferenciando número de vítimas, número de patrimônios atingidos e unidade de desígnios.
+
+⸻
+
+1. POR QUE ESTE TEMA É IMPORTANTE?
+
+Em uma mesma ocorrência, o agente pode ameaçar várias pessoas, subtrair bens de vítimas diferentes ou praticar roubos sucessivos em locais distintos.
+
+A pergunta da prova costuma ser: quantos crimes foram praticados e qual regra de aplicação da pena deve ser utilizada?
+
+Não basta contar as vítimas. É necessário examinar a quantidade de ações, os patrimônios atingidos, o contexto da execução e os critérios legais e jurisprudenciais aplicáveis.
+
+Exemplo:
+
+Um assaltante entra em uma loja, ameaça três clientes e subtrai os celulares de todos.
+
+Para definir o concurso de crimes, será necessário analisar a estrutura concreta da conduta e os critérios jurídicos pertinentes. Não se deve presumir que haverá necessariamente um único roubo ou três roubos independentes.
+
+⸻
+
+2. CONCURSO MATERIAL — ART. 69 DO CÓDIGO PENAL
+
+2.1. Conceito
+
+O concurso material ocorre quando o agente, mediante mais de uma ação ou omissão, pratica dois ou mais crimes, idênticos ou não.
+
+Em regra, as penas privativas de liberdade são aplicadas cumulativamente.
+
+2.2. Exemplo aplicado ao roubo
+
+Em um primeiro momento, o agente aborda uma pessoa na rua e subtrai seu celular mediante grave ameaça.
+
+Horas depois, em outra situação, aborda outra vítima e pratica novo roubo.
+
+Se as condutas forem independentes e preencherem os requisitos legais, poderá haver concurso material.
+
+2.3. Regra de memorização
+
+Pluralidade de ações ou omissões + pluralidade de crimes = possível concurso material.
+
+A palavra “possível” é importante: o enquadramento final depende dos fatos e da ausência de regra específica aplicável, como a continuidade delitiva.
+
+Pegadinha
+
+A existência de dois crimes não significa automaticamente concurso material. Se estiverem presentes os requisitos de outra modalidade de concurso, será necessário avaliar sua incidência.
+
+⸻
+
+3. CONCURSO FORMAL — ART. 70 DO CÓDIGO PENAL
+
+3.1. Conceito
+
+O concurso formal ocorre quando o agente, mediante uma só ação ou omissão, pratica dois ou mais crimes, idênticos ou não.
+
+Na hipótese geral, aplica-se a pena de um dos crimes, se idênticas, ou a mais grave, se diversas, aumentada de um sexto até a metade.
+
+O próprio art. 70 prevê tratamento específico quando a ação ou omissão é dolosa e os crimes concorrentes resultam de desígnios autônomos.
+
+3.2. Exemplo aplicado ao roubo
+
+Imagine uma ação única que, conforme as circunstâncias, atinja patrimônios de vítimas diferentes e configure mais de um crime de roubo.
+
+A classificação pode exigir a análise do concurso formal, dos desígnios do agente e da orientação jurisprudencial aplicável.
+
+3.3. Concurso formal próprio e impróprio
+
+Concurso formal próprio: em termos gerais, não há desígnios autônomos em relação aos crimes concorrentes; aplica-se a regra de exasperação prevista no art. 70.
+
+Concurso formal impróprio: ocorre quando a ação ou omissão é dolosa e os crimes concorrentes resultam de desígnios autônomos; nessa hipótese, as penas são aplicadas cumulativamente, conforme a parte final do art. 70.
+
+Atenção para a prova
+
+Não basta que o agente tenha praticado uma única ação física. É preciso verificar a estrutura dos crimes, os elementos subjetivos e os requisitos legais do concurso.
+
+⸻
+
+4. CRIME CONTINUADO — ART. 71 DO CÓDIGO PENAL
+
+4.1. Conceito
+
+O crime continuado ocorre quando o agente, mediante mais de uma ação ou omissão, pratica dois ou mais crimes da mesma espécie e as condições de tempo, lugar, maneira de execução e outras semelhantes permitem considerar os delitos subsequentes como continuação do primeiro.
+
+O art. 71 prevê, em regra, a aplicação da pena de um só dos crimes, se idênticas, ou da mais grave, se diversas, com aumento legal.
+
+4.2. Exemplo aplicado
+
+Um agente pratica roubos sucessivos em circunstâncias semelhantes, com proximidade temporal, locais relacionados e modo de execução semelhante.
+
+Esses elementos podem ser relevantes para a análise da continuidade delitiva, mas não garantem seu reconhecimento automático.
+
+É necessário examinar todos os requisitos legais e a jurisprudência aplicável.
+
+4.3. Requisitos que merecem atenção
+
+* Pluralidade de ações ou omissões.
+* Pluralidade de crimes da mesma espécie.
+* Condições semelhantes de tempo.
+* Condições semelhantes de lugar.
+* Modo de execução semelhante.
+* Demais circunstâncias juridicamente relevantes para a continuidade.
+
+Pegadinha: a mera semelhança entre dois roubos não é suficiente, isoladamente, para reconhecer crime continuado.
+
+⸻
+
+5. QUADRO COMPARATIVO
+
+Critério	Concurso material	Concurso formal	Crime continuado
+Base legal	Art. 69	Art. 70	Art. 71
+Ações ou omissões	Mais de uma	Uma	Mais de uma
+Crimes	Dois ou mais	Dois ou mais	Dois ou mais da mesma espécie
+Regra geral de pena	Cumulativa	Exasperação, na hipótese própria	Exasperação, conforme o art. 71
+Atenção especial	Independência das condutas	Unidade de ação e desígnios	Requisitos legais de continuidade
+
+⸻
+
+6. ROUBO CONTRA VÁRIAS VÍTIMAS
+
+6.1. O número de vítimas resolve tudo?
+
+Não.
+
+O número de vítimas e de patrimônios atingidos é relevante, mas não resolve sozinho a classificação jurídica.
+
+A análise deve considerar:
+
+1. A quantidade de ações praticadas.
+2. A existência de uma ou mais condutas juridicamente relevantes.
+3. Os patrimônios atingidos.
+4. O dolo e os desígnios do agente.
+5. A jurisprudência aplicável à situação concreta.
+
+6.2. Exemplo prático
+
+Um agente entra em um ônibus, anuncia o assalto e recolhe celulares de passageiros diferentes.
+
+O fato de a ação ocorrer em um único local e em um único contexto não determina, por si só, a solução. Deve-se verificar a orientação jurisprudencial aplicável à pluralidade de patrimônios e vítimas, bem como a estrutura da conduta.
+
+Como a banca pode cobrar?
+
+A banca pode afirmar que um único contexto temporal sempre gera um único crime.
+
+Essa afirmação é inadequada. O contexto temporal é apenas um dos elementos da análise; a unidade ou pluralidade de crimes depende dos critérios jurídicos aplicáveis.
+
+⸻
+
+7. ROUBOS SUCESSIVOS: QUANDO HÁ CONTINUIDADE DELITIVA?
+
+Imagine que o agente pratique três roubos em dias próximos, utilizando o mesmo modo de execução.
+
+A proximidade temporal e a semelhança do modo de execução podem ser relevantes, mas não bastam automaticamente.
+
+É necessário verificar se os delitos são da mesma espécie e se as condições concretas permitem reconhecer que os subsequentes constituem continuação do primeiro.
+
+Para a prova: não confunda repetição criminosa com crime continuado. A continuidade delitiva depende dos requisitos legais, não apenas da quantidade de crimes.
+
+⸻
+
+8. CONTINUIDADE DELITIVA ESPECÍFICA — ART. 71, PARÁGRAFO ÚNICO
+
+O parágrafo único do art. 71 prevê regra especial para crimes dolosos praticados contra vítimas diferentes, com violência ou grave ameaça à pessoa, quando presentes os demais requisitos legais.
+
+Nessa hipótese, o juiz pode considerar, além das circunstâncias previstas no caput, a culpabilidade, os antecedentes, a conduta social, a personalidade do agente, os motivos e as circunstâncias dos crimes.
+
+A lei prevê aumento de pena mais elevado, nos limites ali estabelecidos, podendo chegar até o triplo.
+
+Atenção: essa regra não significa que qualquer sequência de roubos contra vítimas diferentes será automaticamente tratada como continuidade delitiva específica. Os requisitos legais precisam ser demonstrados.
+
+⸻
+
+9. CONCURSO DE CRIMES E MAJORANTES DO ROUBO
+
+É importante distinguir duas questões:
+
+Majorante do roubo: circunstância prevista na própria legislação do roubo que aumenta a pena de um crime, conforme os requisitos legais.
+
+Concurso de crimes: situação em que o agente pratica dois ou mais delitos e se aplicam as regras dos arts. 69, 70 ou 71, quando cabíveis.
+
+Não se deve confundir o aumento de pena decorrente de uma majorante com a forma de aplicação das penas em concurso de crimes.
+
+Exemplo
+
+Um roubo é praticado com emprego de arma de fogo, e o agente também responde por outro crime autônomo praticado na mesma ocorrência.
+
+Será necessário analisar separadamente a majorante do roubo e a eventual relação concursal entre os delitos.
+
+A solução depende dos fatos, da autonomia das condutas e das regras legais aplicáveis.
+
+⸻
+
+10. QUESTÕES DE FIXAÇÃO — ESTILO CONCURSO POLICIAL
+
+Questão 1
+
+No concurso material, o agente pratica dois ou mais crimes mediante mais de uma ação ou omissão.
+
+Gabarito: CERTO.
+
+Comentário: corresponde à estrutura do art. 69 do Código Penal.
+
+Questão 2
+
+No concurso formal, o agente pratica dois ou mais crimes mediante uma só ação ou omissão.
+
+Gabarito: CERTO.
+
+Comentário: é a regra geral do art. 70, observadas as hipóteses específicas previstas no dispositivo.
+
+Questão 3
+
+A prática de dois roubos pela mesma pessoa é suficiente, por si só, para reconhecer crime continuado.
+
+Gabarito: ERRADO.
+
+Comentário: o art. 71 exige crimes da mesma espécie e condições que permitam reconhecer a continuidade, conforme a lei e a jurisprudência.
+
+Questão 4
+
+A existência de várias vítimas durante um único assalto resolve automaticamente a classificação do concurso de crimes.
+
+Gabarito: ERRADO.
+
+Comentário: é necessário examinar a estrutura da conduta, os patrimônios atingidos, os elementos subjetivos e a jurisprudência aplicável.
+
+Questão 5
+
+O concurso formal impróprio pode ocorrer quando a ação ou omissão é dolosa e os crimes concorrentes resultam de desígnios autônomos.
+
+Gabarito: CERTO.
+
+Comentário: a parte final do art. 70 prevê a aplicação cumulativa das penas nessa hipótese.
+
+Questão 6
+
+A continuidade delitiva específica pode ser relevante para crimes dolosos praticados contra vítimas diferentes com violência ou grave ameaça, desde que presentes os requisitos do art. 71, parágrafo único.
+
+Gabarito: CERTO.
+
+Comentário: o dispositivo estabelece uma regra especial, cuja incidência depende dos requisitos legais.
+
+⸻
+
+11. QUESTÃO AVANÇADA — ESTILO CEBRASPE
+
+Um agente pratica dois roubos em dias diferentes, utilizando modo de execução semelhante. Por essa razão, deve ser reconhecida obrigatoriamente a continuidade delitiva, independentemente das demais circunstâncias.
+
+Gabarito: ERRADO.
+
+Comentário aprofundado: a semelhança do modo de execução é relevante, mas não basta isoladamente. A continuidade delitiva exige a presença dos requisitos do art. 71, incluindo crimes da mesma espécie e condições concretas que permitam considerar os delitos subsequentes como continuação do primeiro.
+
+⸻
+
+12. REVISÃO FINAL — MEMORIZE
+
+* Art. 69: concurso material — pluralidade de ações ou omissões e pluralidade de crimes; regra geral de aplicação cumulativa das penas.
+* Art. 70: concurso formal — uma ação ou omissão e pluralidade de crimes; atenção aos desígnios autônomos.
+* Art. 71: crime continuado — pluralidade de ações ou omissões, crimes da mesma espécie e requisitos legais de continuidade.
+* Art. 71, parágrafo único: continuidade delitiva específica em determinadas hipóteses de crimes dolosos contra vítimas diferentes com violência ou grave ameaça.
+* A quantidade de vítimas não resolve sozinha o concurso de crimes.
+* A semelhança entre roubos não gera automaticamente continuidade delitiva.
+* Majorante do roubo e concurso de crimes são institutos diferentes.
+
+⸻
+
+INSTRUÇÕES PARA CATALOGAÇÃO NO APROVUM — CLAUDE CODE
+
+Catalogar este conteúdo como Módulo 10/16 da mesma aula de Roubo — Art. 157 do Código Penal.
+
+Antes de alterar qualquer dado, inspecione o projeto, a estrutura real do banco Supabase, o registro existente da aula, os módulos anteriores e o mecanismo de navegação. Não presuma nomes de tabelas, colunas, identificadores, rotas ou formatos de conteúdo.
+
+1. Localize a aula de Roubo já existente e utilize seu identificador real.
+2. Insira integralmente este módulo na sequência correta, sem resumir, cortar ou duplicar conteúdo.
+3. Preserve os módulos 1 a 9 e os demais registros existentes.
+4. Mantenha os 16 módulos integrados em uma única aula, com navegação sequencial.
+5. Aplique o padrão visual Aprovum: fundo predominantemente branco, tipografia preta, vermelho para destaques, tabelas comparativas, exemplos e questões comentadas.
+6. Preserve a distinção entre legislação, explicação, exemplos, questões e gabaritos.
+7. Confira os arts. 69, 70 e 71 do Código Penal em fonte oficial e valide as referências jurisprudenciais antes de publicar.
+8. Não faça alterações destrutivas, não crie uma aula independente e não sobrescreva os módulos anteriores.
+9. Se identificar alguma divergência jurídica, informe o trecho específico e a correção proposta antes de alterar o conteúdo.
+10. Ao concluir, confirme o registro utilizado, a posição do módulo e o resultado efetivo da operação. Não declare sucesso sem confirmação.
+
+Resultado esperado: Módulo 10/16 catalogado integralmente na aula de Roubo existente, preservando a sequência, o conteúdo e os registros anteriores.
