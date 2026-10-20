@@ -105,6 +105,13 @@ describe("extração hierárquica", () => {
     expect(filhos.map((n) => n.marker)).toEqual(["I", "II", "III", "IV", "§ 1º", "§ 2º"]);
   });
 
+  it("lê a letra do parágrafo quando o texto começa com maiúscula (§ 2º-A A pena…)", () => {
+    const { nodes } = run("Art. 157 - Subtrair coisa.\n§ 2º A pena aumenta-se de 1/3 até metade:\nII - concurso;\n§ 2º-A A pena aumenta-se de 2/3:\nI - arma de fogo;\n§ 2º-B. Se a violência é exercida com arma.\n§ 3º - A pena é outra.\nParágrafo único. Texto.\nPARÁGRAFO ÚNICO - Texto.");
+    expect(nodes.filter((n) => n.kind === "paragrafo").map((n) => n.marker)).toEqual(["§ 2º", "§ 2º-A", "§ 2º-B", "§ 3º", "Parágrafo único", "PARÁGRAFO ÚNICO"]);
+    expect(nodes.find((n) => n.marker === "§ 2º-A")!.title).toMatch(/^A pena aumenta-se de 2\/3/);
+    expect(nodes.find((n) => n.marker === "§ 3º")!.title).toMatch(/^A pena é outra/);
+  });
+
   it("não lê a inicial acentuada do texto como letra do artigo (Art. 1º - Não…)", () => {
     const { nodes } = run("Art. 1º - Não há crime sem lei anterior que o defina.\nArt. 2º - Ninguém pode ser punido.\n§ 2º - É também aplicável.\nArt. 121-A - Texto.");
     expect(nodes.map((n) => n.marker)).toEqual(["Art. 1º", "Art. 2º", "§ 2º", "Art. 121-A"]);
