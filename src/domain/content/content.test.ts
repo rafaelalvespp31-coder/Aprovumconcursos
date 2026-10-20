@@ -105,6 +105,12 @@ describe("extração hierárquica", () => {
     expect(filhos.map((n) => n.marker)).toEqual(["I", "II", "III", "IV", "§ 1º", "§ 2º"]);
   });
 
+  it("não lê a inicial acentuada do texto como letra do artigo (Art. 1º - Não…)", () => {
+    const { nodes } = run("Art. 1º - Não há crime sem lei anterior que o defina.\nArt. 2º - Ninguém pode ser punido.\n§ 2º - É também aplicável.\nArt. 121-A - Texto.");
+    expect(nodes.map((n) => n.marker)).toEqual(["Art. 1º", "Art. 2º", "§ 2º", "Art. 121-A"]);
+    expect(nodes[0]!.title).toMatch(/^Não há crime/);
+  });
+
   it("reúne linhas quebradas de PDF no mesmo tópico", () => {
     const { nodes } = run(PDF_QUEBRADO);
     expect(nodes).toHaveLength(2);

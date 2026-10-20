@@ -41,3 +41,18 @@ def linha(titulo, unidade, marcos):
 MOD = {}
 def m(title, *idx):
     for i in idx: MOD[i] = title
+
+
+def fix_md(md, quote_breaks=False):
+    """Linha em branco após tabela (senão a linha seguinte vira linha da tabela) e,
+    opcionalmente, quebra de linha entre linhas consecutivas de citação ("> ...")."""
+    L = md.split("\n")
+    out = []
+    for i, a in enumerate(L):
+        b = L[i + 1] if i + 1 < len(L) else ""
+        if quote_breaks and a.startswith("> ") and b.startswith("> ") and not a.endswith("  "):
+            a += "  "
+        out.append(a)
+        if a.strip().startswith("|") and b.strip() and not b.strip().startswith("|"):
+            out.append("")
+    return "\n".join(out)

@@ -103,8 +103,8 @@ const RE = {
   secao: /^(Se[çc][ãa]o\s+[IVXLCDM]+)\b\.?\s*[-–—]?\s*/i,
   // Sufixo de letra ("121-A", "14-A Nos casos") só quando a letra não inicia uma palavra minúscula
   // ("Art. 10 - O inquérito" é artigo 10, não "10-O").
-  artigo: /^(Art(?:igo)?\.?\s*\d+(?:\.\d+)?\s*(?:[º°o]|ª)?(?:\s*-\s*[A-Z]\b(?!\s+[a-zà-ú]))?)\.?\s*[-–—]?\s*/,
-  paragrafo: /^(§\s*\d+\s*(?:[º°o])?(?:\s*-\s*[A-Z]\b(?!\s+[a-zà-ú]))?|Par[áa]grafo [úu]nico)\.?\s*[-–—]?\s*/i,
+  artigo: /^(Art(?:igo)?\.?\s*\d+(?:\.\d+)?\s*(?:[º°o]|ª)?(?:\s*-\s*[A-Z](?![A-Za-zÀ-ÿ])(?!\s+[a-zà-ú]))?)\.?\s*[-–—]?\s*/,
+  paragrafo: /^(§\s*\d+\s*(?:[º°o])?(?:\s*-\s*[A-Z](?![A-Za-zÀ-ÿ])(?!\s+[a-zà-ú]))?|Par[áa]grafo [úu]nico)\.?\s*[-–—]?\s*/i,
   romano: /^([IVXLCDM]+)\s*[-–—]\s+/,
   letra: /^([a-z])\)\s+/,
   numeroLegal: /^(\d{1,2})(?:\)|\s*[-–—])\s+/,

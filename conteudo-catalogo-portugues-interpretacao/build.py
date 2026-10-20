@@ -7,6 +7,8 @@ S, MOD = helpers.S, helpers.MOD
 assert sorted(MOD) == list(range(1, len(S) + 1)), (sorted(MOD), len(S))
 for i, s in enumerate(S, 1):
     s["module"] = MOD[i]
+for s in S:
+    s["bodyMarkdown"] = helpers.fix_md(s["bodyMarkdown"])
 nodes = json.load(open("nodes.json", encoding="utf8"))
 keys = {n["key"] for n in nodes["nodes"]}
 used = {k for s in S for k in s["nodeKeys"]}
