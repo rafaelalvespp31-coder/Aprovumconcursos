@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/server/auth";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
-import { answerNotebookQuestion, createNotebook, deleteNotebook, setFavorite, updateNotebook, type NotebookInput } from "@/server/services/notebooks";
+import { answerNotebookQuestion, createNotebook, deleteNotebook, reportQuestion, saveQuestionNote, setFavorite, updateNotebook, type NotebookInput } from "@/server/services/notebooks";
 import type { AnswerFeedback } from "@/server/services/study";
 import { ZodError } from "zod";
 
@@ -75,6 +75,22 @@ export async function fullStatementAction(id: string, on: boolean): Promise<Resu
   const user = await requireUser();
   return guard("notebook_full_statement", async () => {
     await updateNotebook(user.id, id, { showFullStatement: on });
+    return null;
+  });
+}
+
+export async function saveNoteAction(questionId: string, body: string): Promise<Result<null>> {
+  const user = await requireUser();
+  return guard("question_note", async () => {
+    await saveQuestionNote(user.id, questionId, body);
+    return null;
+  });
+}
+
+export async function reportQuestionAction(questionId: string, details: string): Promise<Result<null>> {
+  const user = await requireUser();
+  return guard("question_report", async () => {
+    await reportQuestion(user.id, questionId, details);
     return null;
   });
 }

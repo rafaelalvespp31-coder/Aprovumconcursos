@@ -215,15 +215,16 @@ test.describe("menu Questões: cadernos", () => {
     await confirmar.click();
     await expect(page.getByText("Resposta correta")).toBeVisible();
     await expect(page.getByTestId("gabarito-comentado")).toBeVisible();
-    await expect(page.getByText(/Nesta sessão: 1 respondida, 1 certa/)).toBeVisible();
+    await expect(page.getByTestId("tempo-card")).toContainText(/Corretas\s*1/);
+    await expect(page.getByTestId("tempo-card")).toContainText(/Erradas\s*0/);
     // depois de confirmar, a resposta fica travada
     await expect(page.getByRole("radio", { name: /revogar a licença/ })).toBeDisabled();
-    await page.getByRole("button", { name: "Próxima" }).click();
+    await page.getByRole("button", { name: "Próxima questão" }).click();
     await expect(page.getByText("Questão 2 de 3")).toBeVisible();
     await page.keyboard.press("e");
     await page.keyboard.press("Enter");
     await expect(page.getByText("Resposta incorreta")).toBeVisible();
-    await page.getByRole("list", { name: "Lista de questões do caderno" }).getByRole("button", { name: /^Questão 1, acertada/ }).click();
+    await page.getByRole("list", { name: "Lista de questões do caderno" }).getByRole("button", { name: /^Questão 1, respondida \(acertou\)/ }).click();
     await expect(page.getByText("Questão 1 de 3")).toBeVisible();
     await expect(page.getByText("Resposta correta")).toBeVisible();
   });
@@ -264,17 +265,44 @@ test.describe("menu Questões: cadernos", () => {
     await expect(page.getByTestId("gabarito-comentado")).toHaveCount(0);
   });
 
-  test("caderno: favoritar e enunciado resumido/completo", async ({ page }) => {
+  test("caderno: faixa da questão, favoritar, enunciado, anotação, relatar erro e tempo", async ({ page }) => {
     await page.goto(`${G}/questoes/cadernos/66666666-6666-4666-8666-666666666666`);
+    const faixa = page.getByTestId("faixa-questao");
+    await expect(faixa).toContainText("Matéria");
+    await expect(faixa).toContainText("Direito Administrativo");
+    await expect(faixa).toContainText("Anulação e revogação");
     const fav = page.getByRole("button", { name: /Favorit/ });
     await expect(fav).toHaveAttribute("aria-pressed", "true");
     await fav.click();
     await expect(fav).toHaveAttribute("aria-pressed", "false");
-    const sw = page.getByRole("switch");
-    await expect(sw).not.toBeChecked();
+    // enunciado resumido → completo pelo menu da questão
     await expect(page.getByTestId("enunciado")).toHaveClass(/line-clamp-3/);
-    await sw.check();
+    await page.getByRole("button", { name: "Mais opções da questão" }).click();
+    await page.getByRole("menuitemcheckbox", { name: "Mostrar enunciado completo" }).click();
     await expect(page.getByTestId("enunciado")).not.toHaveClass(/line-clamp-3/);
+    // explicação só depois de confirmar
+    await expect(page.getByRole("button", { name: "Explicação" })).toBeDisabled();
+    // anotação
+    await page.getByRole("button", { name: /^Anotação/ }).click();
+    await page.getByLabel("Sua anotação (só você vê)").fill("Vício de legalidade → anula.");
+    await page.getByRole("button", { name: "Salvar" }).click();
+    await expect(page.getByText("Anotação salva.")).toBeVisible();
+    // relatar erro
+    await page.getByRole("button", { name: "Mais opções da questão" }).click();
+    await page.getByRole("menuitem", { name: "Relatar erro na questão" }).click();
+    const enviar = page.getByRole("button", { name: "Enviar" });
+    await expect(enviar).toBeDisabled();
+    await page.getByLabel("O que está errado nesta questão?").fill("O gabarito parece diferente do oficial.");
+    await enviar.click();
+    await expect(page.getByText("Obrigado! A equipe vai revisar a questão.")).toBeVisible();
+    // tempo de estudo corre e pausa
+    const tempo = page.getByTestId("tempo");
+    await expect(tempo).not.toHaveText("00:00:00", { timeout: 4000 });
+    await page.getByRole("button", { name: "Pausar o tempo" }).click();
+    const parado = await tempo.textContent();
+    await page.waitForTimeout(1500);
+    await expect(tempo).toHaveText(parado!);
+    await expect(page.getByRole("button", { name: "Retomar o tempo" })).toBeVisible();
   });
 
   test("caderno sem questões publicadas mostra o estado vazio", async ({ page }) => {

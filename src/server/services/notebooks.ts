@@ -117,7 +117,7 @@ async function userContext(userId: string): Promise<{ answered: Set<string>; fav
   };
 }
 
-type Names = FilterNames & { topicParent: Map<string, string | null> };
+type Names = FilterNames & { topicParent: Map<string, string | null>; cargo: (examId: string) => string | undefined };
 
 function examLabel(e: { name: string; organ: string | null; role_name?: string | null; year: number | null }) {
   const organ = e.organ && !e.name.toLowerCase().includes(e.organ.toLowerCase()) ? e.organ : null;
@@ -141,6 +141,7 @@ async function loadNames(): Promise<{ names: Names; lookups: Omit<NotebookLookup
   const topicName = new Map(tops.map((t) => [t.id, t.name]));
   const boardName = new Map(bd.map((b) => [b.slug, b.name]));
   const examName = new Map(ex.map((e) => [e.id, examLabel(e)]));
+  const cargoName = new Map(ex.map((e) => [e.id, e.role_name ? `${e.role_name}${e.organ && !e.role_name.includes(e.organ) ? ` (${e.organ})` : ""}` : examLabel(e)]));
   const topicParent = new Map(tops.map((t) => [t.id, t.parent_id]));
   // Assuntos em árvore (pai antes dos filhos), por matéria.
   const tree = (subjectId: string): TopicOption[] => {
@@ -160,6 +161,7 @@ async function loadNames(): Promise<{ names: Names; lookups: Omit<NotebookLookup
       topic: (id) => topicName.get(id),
       board: (slug) => boardName.get(slug),
       exam: (id) => examName.get(id),
+      cargo: (id) => cargoName.get(id),
       topicParent,
     },
     lookups: {
@@ -336,6 +338,12 @@ export interface NotebookQuestion {
   year: number | null;
   examName: string | null;
   subjectName: string | null;
+  /** Assunto (do cadastro de assuntos do banco). */
+  topicName: string | null;
+  /** Cargo do concurso de origem, quando houver. */
+  cargo: string | null;
+  /** Anotação pessoal do aluno nesta questão. */
+  note: string;
   origin: string;
   options: Array<{ id: string; label: string; text: string }>;
   favorite: boolean;
@@ -363,14 +371,14 @@ export async function openNotebook(userId: string, id: string): Promise<{ notebo
 
   type Row = {
     id: string; public_code: string | null; question_type: NotebookQuestion["type"]; statement: string; case_context: string | null;
-    board_slug: string | null; year: number | null; origin: string; exam_id: string | null; subject_id: string | null; seq: number;
+    board_slug: string | null; year: number | null; origin: string; exam_id: string | null; subject_id: string | null; topic_id: string | null; seq: number;
     bank_question_options: Array<{ id: string; label: string; text: string; sort_order: number }> | null;
   };
   const rows: Row[] = [];
   for (let i = 0; i < ids.length; i += 100) {
     const part = await admin
       .from("bank_questions")
-      .select("id, seq, public_code, question_type, statement, case_context, board_slug, year, origin, exam_id, subject_id, bank_question_options(id, label, text, sort_order)")
+      .select("id, seq, public_code, question_type, statement, case_context, board_slug, year, origin, exam_id, subject_id, topic_id, bank_question_options(id, label, text, sort_order)")
       .eq("status", "publicada")
       .in("id", ids.slice(i, i + 100));
     if (part.error) throw new Error(part.error.message);
@@ -380,6 +388,11 @@ export async function openNotebook(userId: string, id: string): Promise<{ notebo
   const hist = ids.length
     ? await admin.from("bank_attempts").select("question_id, is_correct, created_at").eq("user_id", userId).in("question_id", ids).order("created_at", { ascending: false }).limit(5000)
     : { data: [] };
+  const notes = new Map<string, string>();
+  if (ids.length) {
+    const nr = await db.from("bank_question_notes").select("question_id, body").eq("user_id", userId).in("question_id", ids);
+    for (const n of (nr.data ?? []) as Array<{ question_id: string; body: string }>) notes.set(n.question_id, n.body);
+  }
   const last = new Map<string, { correct: boolean; at: string }>();
   for (const h of (hist.data ?? []) as Array<{ question_id: string; is_correct: boolean; created_at: string }>) {
     if (!last.has(h.question_id)) last.set(h.question_id, { correct: h.is_correct, at: h.created_at });
@@ -399,6 +412,9 @@ export async function openNotebook(userId: string, id: string): Promise<{ notebo
       year: r.year,
       examName: r.exam_id ? (names.exam(r.exam_id) ?? null) : null,
       subjectName: r.subject_id ? (names.subject(r.subject_id) ?? null) : null,
+      topicName: r.topic_id ? (names.topic(r.topic_id) ?? null) : null,
+      cargo: r.exam_id ? (names.cargo(r.exam_id) ?? null) : null,
+      note: notes.get(r.id) ?? "",
       origin: r.origin,
       options: (r.bank_question_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(({ id, label, text }) => ({ id, label, text })),
       favorite: ctx.favorites.has(r.id),
@@ -447,6 +463,35 @@ export async function answerNotebookQuestion(userId: string, raw: unknown): Prom
     options: d.options,
     duplicate: d.duplicate,
   };
+}
+
+/** Salva (ou apaga, se vazia) a anotação pessoal do aluno numa questão publicada. */
+export async function saveQuestionNote(userId: string, questionId: string, body: string) {
+  const qid = z.uuid().parse(questionId);
+  const text = z.string().max(2000, "A anotação pode ter até 2.000 caracteres.").parse(body).trim();
+  await enforceRateLimit(userId, "question_note", 30);
+  const db = await createUserClient();
+  if (!text) {
+    const { error } = await db.from("bank_question_notes").delete().eq("user_id", userId).eq("question_id", qid);
+    if (error) throw new Error(error.message);
+    return;
+  }
+  const { data } = await createAdminClient().from("bank_questions").select("status").eq("id", qid).maybeSingle();
+  if (!data || data.status !== "publicada") throw new UserFacingError("Esta questão não está mais disponível.", "not_found");
+  const { error } = await db.from("bank_question_notes").upsert({ user_id: userId, question_id: qid, body: text, updated_at: new Date().toISOString() }, { onConflict: "user_id,question_id" });
+  if (error) throw new Error(error.message);
+}
+
+/** Aluno relata erro numa questão: vira um alerta para a equipe revisar no /banco. */
+export async function reportQuestion(userId: string, questionId: string, details: string) {
+  const qid = z.uuid().parse(questionId);
+  const text = z.string().trim().min(10, "Descreva o problema em pelo menos 10 caracteres.").max(1000).parse(details);
+  await enforceRateLimit(userId, "question_report", 5, 600);
+  const admin = createAdminClient();
+  const { data } = await admin.from("bank_questions").select("status").eq("id", qid).maybeSingle();
+  if (!data || data.status !== "publicada") throw new UserFacingError("Esta questão não está mais disponível.", "not_found");
+  const { error } = await admin.from("bank_question_flags").insert({ question_id: qid, kind: "erro_relatado", details: text, reported_by: userId });
+  if (error) throw new Error(error.message);
 }
 
 /** Marca/desmarca uma questão publicada como favorita. */

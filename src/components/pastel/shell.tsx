@@ -125,7 +125,9 @@ export function PastelShell({
 
   const shortcutsOn = !!active && SHORTCUT_ROUTES.includes(active.id) && !path.startsWith(`${basePath}/aula`);
   // Modo Jogo: cabeçalho escuro, contínuo com o palco preto da página.
-  const dark = active?.id === "quiz";
+  // Resolver um caderno (/questoes/cadernos/<id>, exceto "novo"): mesmo cabeçalho escuro.
+  const isNotebookRun = new RegExp(`^${basePath}/questoes/cadernos/(?!novo$)[^/]+$`).test(path);
+  const dark = active?.id === "quiz" || isNotebookRun;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -151,7 +153,9 @@ export function PastelShell({
   // Aula: no celular, cabeçalho com menu (árvore de aulas no menu); no desktop, árvore na barra lateral.
   const isAula = path.startsWith(`${basePath}/aula`);
   // Páginas internas com cabeçalho próprio (título e linha de apoio).
-  const heading = PAGE_HEADINGS.find((h) => path === `${basePath}${h.path}`) ?? null;
+  const heading =
+    PAGE_HEADINGS.find((h) => path === `${basePath}${h.path}`) ??
+    (isNotebookRun ? { path: "", title: "Questões", subtitle: "Selecione a alternativa correta e avance no seu objetivo." } : null);
   const title = heading ? heading.title : isPainel ? (
     <>
       {summary.name ? `Olá, ${summary.name} ` : "Olá! "}
