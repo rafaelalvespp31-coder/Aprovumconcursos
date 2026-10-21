@@ -795,8 +795,11 @@ test("menu Estudos: submenu com as matérias abre os assuntos estudados", async 
   await noHorizontalScroll(page);
 });
 
-test("escolha seu novo estudo: matéria, tema, filtros e progresso real", async ({ page }) => {
+test("escolha seu novo estudo (menu Novo): matéria, tema, filtros e progresso real", async ({ page }) => {
+  // Fica na página do novo estudo, não na de Estudos.
   await page.goto(`${G}/trilhas`);
+  await expect(page.getByTestId("escolha-estudo")).toHaveCount(0);
+  await page.goto(`${G}/novo-estudo`);
   const sec = page.getByTestId("escolha-estudo");
   await expect(sec.getByRole("heading", { name: "Novo estudo" })).toBeVisible();
   // Abre na matéria do tema mais estudado, com o destaque e o link para continuar.
@@ -804,6 +807,7 @@ test("escolha seu novo estudo: matéria, tema, filtros e progresso real", async 
   const top = sec.getByTestId("tema-catalogo").first();
   await expect(top).toContainText("Mais estudado");
   await expect(top.getByRole("link", { name: /^Continuar estudando: Ato administrativo/ })).toHaveAttribute("href", /\/dev\/galeria\/trilhas\//);
+  await expect(sec.getByRole("link", { name: /Montar meu estudo/ })).toHaveAttribute("href", "#formulario");
   // Outra matéria: tema não iniciado abre o novo estudo já com o tema escolhido.
   await sec.getByRole("tab", { name: /Direito Penal/ }).click();
   await expect(sec.getByRole("link", { name: /^Começar estudo: Roubo/ })).toHaveAttribute("href", /nova-trilha\?materia=Direito%20Penal&conteudo=Roubo/);
@@ -818,8 +822,6 @@ test("escolha seu novo estudo: matéria, tema, filtros e progresso real", async 
 test("pastas e estudos: falha ao excluir aparece na tela (nunca um clique mudo)", async ({ page }) => {
   // Na galeria não há sessão: a ação do servidor falha de propósito.
   await page.goto(`${G}/trilhas`);
-  // A organização em pastas fica recolhida abaixo de "Escolha seu novo estudo".
-  await page.getByTestId("organizar-pastas").locator("summary").click();
   await page.getByRole("button", { name: /^Excluir estudo Ato/ }).click();
   await page.getByRole("button", { name: "Excluir estudo", exact: true }).click();
   await expect(page.getByTestId("erro-pastas")).toBeVisible();

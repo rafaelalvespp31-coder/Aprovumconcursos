@@ -333,13 +333,13 @@ export function StudyPicker({
               Monte um estudo com o tema, a banca e a pasta que você quiser.
             </p>
           </div>
-          <Link
-            href={`${base}/nova-trilha`}
+          <a
+            href="#formulario"
             className="flex items-center gap-2 rounded-full bg-[#F01820] px-5 py-3 text-[14px] font-bold text-white shadow-[0_8px_20px_rgba(240,24,32,0.35)] max-sm:w-full max-sm:justify-center"
           >
-            <Sparkles className="h-4 w-4" aria-hidden /> Novo estudo{" "}
+            <Sparkles className="h-4 w-4" aria-hidden /> Montar meu estudo{" "}
             <ChevronRight className="h-4 w-4" aria-hidden />
-          </Link>
+          </a>
         </div>
       </div>
     </section>
@@ -382,7 +382,7 @@ function ThemeRow({
   const s = t.study;
   const href = s
     ? `${base}/trilhas/${s.trailId}`
-    : `${base}/nova-trilha?materia=${encodeURIComponent(t.discipline)}&conteudo=${encodeURIComponent(t.title)}`;
+    : `${base}/nova-trilha?materia=${encodeURIComponent(t.discipline)}&conteudo=${encodeURIComponent(t.title)}#formulario`;
   const status = !s ? "Não iniciado" : s.done ? "Concluído" : "Em andamento";
   const action = !s
     ? "Começar estudo"
