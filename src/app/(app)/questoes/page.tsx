@@ -17,9 +17,9 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="sr-only">Questões</h1>
-          <p className="mt-1 text-tinta-suave">
+          {bank.total > 0 && <p className="mt-1 text-tinta-suave">
             {bank.questions.length} de {bank.total} questão(ões). Aqui ficam as questões comentadas que estão no conteúdo das suas aulas; as frases da lei ficam no Modo Jogo.
-          </p>
+          </p>}
         </div>
         {bank.questions.length > 0 && (
           <ButtonLink href={`/questoes/simulado${qs ? `?${qs}` : ""}`} variant="secundario">
@@ -27,10 +27,18 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
           </ButtonLink>
         )}
       </div>
-      <BankFiltersForm action="/questoes" filters={filters} trails={bank.trails} boards={bank.boards} modules={bank.modules} />
+      {bank.total > 0 && <BankFiltersForm action="/questoes" filters={filters} trails={bank.trails} boards={bank.boards} modules={bank.modules} />}
       {bank.total === 0 ? (
-        <EmptyState title="Ainda não há questões" action={<ButtonLink href="/trilhas">Ir para os estudos</ButtonLink>}>
-          As questões comentadas das suas aulas aparecem aqui depois que você começa um estudo.
+        <EmptyState
+          title="As questões agora ficam nas aulas e no Modo Jogo"
+          action={
+            <div className="flex flex-wrap justify-center gap-2">
+              <ButtonLink href="/trilhas">Ir para os estudos</ButtonLink>
+              <ButtonLink href="/quiz" variant="secundario">Abrir o Modo Jogo</ButtonLink>
+            </div>
+          }
+        >
+          Resolva as questões comentadas dentro de cada aula e complete a lei no Modo Jogo.
         </EmptyState>
       ) : bank.questions.length === 0 ? (
         <EmptyState title="Nenhuma questão com esses filtros" action={<ButtonLink href="/questoes" variant="secundario">Limpar filtros</ButtonLink>}>

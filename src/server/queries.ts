@@ -5,8 +5,6 @@ import { buildSubjectsMenu, studyStatus, type StudyStatus, type SubjectMenuItem 
 import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import { getSessionUser } from "./auth";
 import { normalizeText } from "@/domain/catalog/match";
-import { appearsInLesson, normalizeForMatch } from "@/domain/questions/in-lesson";
-import { cache } from "react";
 import type { PracticeCase } from "@/domain/content/practice";
 import type { AuditReport } from "@/domain/content/audit";
 import type { UnitState } from "@/domain/progress/state-machine";
@@ -374,30 +372,10 @@ export interface BankQuestion {
 }
 
 /**
- * Menu Questões: só as questões que aparecem no texto da própria aula. As demais
- * continuam no estudo (níveis de avaliação, histórico), apenas fora do menu.
+ * Menu Questões: vazio por decisão do produto — as questões ficam dentro das aulas
+ * (questões comentadas e níveis) e no Modo Jogo. Nada é apagado do banco.
  */
-const lessonTexts = cache(async (lessonIds: string[]): Promise<Map<string, string>> => {
-  const out = new Map<string, string>();
-  if (!lessonIds.length) return out;
-  const db = await createUserClient();
-  const { data, error } = await db.from("lesson_sections").select("lesson_id, body_markdown").in("lesson_id", lessonIds).limit(20000);
-  if (error) throw new Error(error.message);
-  const parts = new Map<string, string[]>();
-  for (const r of (data ?? []) as Array<{ lesson_id: string; body_markdown: string }>) parts.set(r.lesson_id, [...(parts.get(r.lesson_id) ?? []), r.body_markdown]);
-  for (const [id, ps] of parts) out.set(id, normalizeForMatch(ps.join(" ")));
-  return out;
-});
-
-/** Quantas questões ativas do aluno entram no menu Questões (as que estão no texto das aulas). */
-const menuQuestionCount = cache(async (): Promise<number> => {
-  const db = await createUserClient();
-  const { data, error } = await db.from("questions").select("id, lesson_id, statement, question_options(text)").eq("active", true).limit(5000);
-  if (error) throw new Error(error.message);
-  const rows = (data ?? []) as Array<{ id: string; lesson_id: string; statement: string; question_options: Array<{ text: string }> | null }>;
-  const texts = await lessonTexts([...new Set(rows.map((r) => r.lesson_id))].sort());
-  return rows.filter((r) => appearsInLesson({ statement: r.statement, options: (r.question_options ?? []).map((o) => o.text) }, texts.get(r.lesson_id) ?? "")).length;
-});
+const MENU_SHOWS_QUESTIONS = false;
 
 export async function getQuestionBank(f: BankFilters) {
   const db = await createUserClient();
@@ -451,9 +429,7 @@ export async function getQuestionBank(f: BankFilters) {
       history: hist.get(q.id) ?? [],
     };
   });
-  // Só as questões que estão no conteúdo das aulas.
-  const texts = await lessonTexts([...new Set(mapped.map((q) => q.lessonId))].sort());
-  const all = mapped.filter((q) => appearsInLesson({ statement: q.statement, options: q.options.map((o) => o.text) }, texts.get(q.lessonId) ?? ""));
+  const all = MENU_SHOWS_QUESTIONS ? mapped : [];
 
   const norm = (s: string) => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
   const filtered = all.filter((q) => {
@@ -670,7 +646,7 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
     db.from("profiles").select("display_name").eq("id", me).maybeSingle(),
     getStudyStats(),
     db.from("study_trails").select("id", { count: "exact", head: true }).eq("user_id", me).is("archived_at", null),
-    menuQuestionCount().catch(() => 0),
+    Promise.resolve(0),
     db.from("review_schedules").select("lesson_id", { count: "exact", head: true }).eq("user_id", me).lte("due_at", new Date().toISOString()),
     db.from("study_trails").select("id, title, folder_id, last_studied_at, updated_at, scope_summary").eq("user_id", me).is("archived_at", null).limit(300),
     db.from("study_folders").select("id, name").eq("user_id", me),

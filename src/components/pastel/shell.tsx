@@ -60,7 +60,7 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
     { id: "painel", href: `${base}/painel`, label: "Painel", icon: House, num: "1", desc: "Visão geral", title: "" },
     { id: "trilhas", href: `${base}/trilhas`, label: "Estudos", icon: MapIcon, num: "2", desc: plural(s.counts.trails, "conteúdo", "conteúdos"), also: [`${base}/trilha`, `${base}/aula`, `${base}/nova-trilha`], title: "Seus estudos" },
     { id: "quiz", href: `${base}/quiz`, label: "Modo Jogo", short: "Jogo", icon: Gamepad2, num: "3", desc: "Complete a lei", title: "Modo Jogo" },
-    { id: "questoes", href: `${base}/questoes`, label: "Questões", icon: CircleHelp, num: "4", desc: `Banco ${s.counts.questions}`, also: [`${base}/simulado`], title: "Banco de questões" },
+    { id: "questoes", href: `${base}/questoes`, label: "Questões", icon: CircleHelp, num: "4", desc: "Nas aulas e no jogo", also: [`${base}/simulado`], title: "Banco de questões" },
     { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "5", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
     { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "6", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
     { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "7", desc: `Nível ${s.level}`, title: "Perfil & conquistas" },
