@@ -58,7 +58,7 @@ export async function deleteNotebookAction(id: string): Promise<Result<null>> {
   return r;
 }
 
-export async function answerNotebookAction(input: { notebookId: string; questionId: string; optionId?: string; answerTrue?: boolean; seconds?: number }): Promise<Result<AnswerFeedback>> {
+export async function answerNotebookAction(input: { notebookId: string; questionId: string; optionId?: string; answerTrue?: boolean; attemptKey: string; seconds?: number }): Promise<Result<AnswerFeedback>> {
   const user = await requireUser();
   return guard("notebook_answer", () => answerNotebookQuestion(user.id, input));
 }

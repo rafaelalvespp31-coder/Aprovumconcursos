@@ -2,16 +2,18 @@
 
 import Link from "next/link";
 import { createElement, useEffect, useRef, useState, useTransition } from "react";
-import { ArrowLeft, ArrowRight, CirclePlus, FolderOpen, Star } from "lucide-react";
+import { ArrowLeft, ArrowRight, CirclePlus, FolderOpen, RotateCcw, Star, Strikethrough } from "lucide-react";
 import type { Notebook, NotebookQuestion } from "@/server/services/notebooks";
 import type { AnswerFeedback } from "@/server/services/study";
 import { AnswerExplanation } from "@/components/answer-explanation";
 import { callAction } from "@/components/safe-action";
 import { subjectIcon } from "@/app/(app)/painel/widgets";
 import { brDate } from "@/domain/notebooks/model";
+import { canConfirm, classifyTap, DOUBLE_TAP_MS, initialChoice, selectOption, toggleStrike, type ChoiceState } from "@/domain/notebooks/elimination";
 import { answerNotebookAction, favoriteQuestionAction, fullStatementAction, type Result } from "../../actions";
 
-type Answer = (input: { notebookId: string; questionId: string; optionId?: string; answerTrue?: boolean; seconds?: number }) => Promise<Result<AnswerFeedback>>;
+type AnswerInput = { optionId?: string; answerTrue?: boolean; attemptKey: string; seconds?: number };
+type Answer = (input: { notebookId: string; questionId: string } & AnswerInput) => Promise<Result<AnswerFeedback>>;
 type Done = Record<string, { choice: string; fb: AnswerFeedback }>;
 
 const TYPE_LABEL = { multipla_escolha: "Múltipla escolha", certo_errado: "Certo ou errado" } as const;
@@ -198,14 +200,42 @@ function QuestionPanel({
   full: boolean;
   favorite: boolean;
   onFavorite: (on: boolean) => void;
-  onAnswer: (questionId: string, input: { optionId?: string; answerTrue?: boolean; seconds?: number }) => Promise<Result<AnswerFeedback>>;
+  onAnswer: (questionId: string, input: AnswerInput) => Promise<Result<AnswerFeedback>>;
   onDone: (choice: string, fb: AnswerFeedback) => void;
   onPrev: (() => void) | null;
   onNext: (() => void) | null;
 }) {
   const ce = q.type === "certo_errado";
   const options = ce ? [{ id: "true", label: "C", text: "Certo" }, { id: "false", label: "E", text: "Errado" }] : q.options;
-  const [choice, setChoice] = useState<string | null>(saved?.choice ?? null);
+  // Escolha e alternativas riscadas: só na tela (nada é gravado até confirmar).
+  const [cs, setCs] = useState<ChoiceState>(() => initialChoice(saved?.choice ?? null));
+  const choice = cs.selected;
+  const setChoice = (id: string) => setCs((x) => selectOption(x, id));
+  const strike = (id: string) => setCs((x) => toggleStrike(x, id));
+  const lastTap = useRef<{ id: string; at: number } | null>(null);
+  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => () => void (tapTimer.current && clearTimeout(tapTimer.current)), []);
+  // Clique simples escolhe (depois da janela do duplo); clique/toque duplo risca ou restaura.
+  const onTap = (id: string, keyboard: boolean, now: number) => {
+    const kind = classifyTap(lastTap.current, id, now, keyboard);
+    if (tapTimer.current) clearTimeout(tapTimer.current);
+    tapTimer.current = null;
+    if (kind === "select-now") {
+      lastTap.current = null;
+      return setChoice(id);
+    }
+    if (kind === "strike") {
+      lastTap.current = null;
+      return strike(id);
+    }
+    lastTap.current = { id, at: now };
+    tapTimer.current = setTimeout(() => {
+      tapTimer.current = null;
+      setChoice(id);
+    }, DOUBLE_TAP_MS);
+  };
+  // Chave desta confirmação: reenviar (clique repetido, rede instável) não conta duas vezes.
+  const attemptKey = useRef<string>("");
   const [fb, setFb] = useState<AnswerFeedback | null>(saved?.fb ?? null);
   const [expanded, setExpanded] = useState(false);
   const clamp = !full && !expanded;
@@ -226,13 +256,16 @@ function QuestionPanel({
   const startedAt = useRef(0);
   useEffect(() => {
     startedAt.current = Date.now();
+    attemptKey.current = crypto.randomUUID();
   }, []);
 
   const submit = () => {
-    if (!choice || fb) return;
+    if (fb || pending) return;
+    if (!canConfirm(cs) || !choice) return setError("Escolha uma alternativa (não riscada) para confirmar a resposta.");
     start(async () => {
       const seconds = Math.min(3600, Math.round((Date.now() - startedAt.current) / 1000));
-      const r = await callAction(() => onAnswer(q.id, { seconds, ...(ce ? { answerTrue: choice === "true" } : { optionId: choice }) }), setError);
+      const key = attemptKey.current || (attemptKey.current = crypto.randomUUID());
+      const r = await callAction(() => onAnswer(q.id, { seconds, attemptKey: key, ...(ce ? { answerTrue: choice === "true" } : { optionId: choice }) }), setError);
       if (!r) return;
       if (!r.ok) return setError(r.error);
       setError(null);
@@ -249,7 +282,7 @@ function QuestionPanel({
       if (e.key === "ArrowRight" && onNext) return onNext();
       if (e.key === "ArrowLeft" && onPrev) return onPrev();
       if (fb) return;
-      if (k === "enter" && choice) {
+      if (k === "enter" && choice && !(e.target as HTMLElement).closest("button")) {
         e.preventDefault();
         return submit();
       }
@@ -302,33 +335,60 @@ function QuestionPanel({
           </button>
         )}
 
-        <fieldset className="mt-4" disabled={!!fb || pending}>
-          <legend className="sr-only">Alternativas</legend>
-          <div className={ce ? "grid grid-cols-2 gap-2" : "flex flex-col gap-2"}>
-            {options.map((o) => {
-              const isCorrect = !!fb && correctId === o.id;
-              const isWrong = !!fb && choice === o.id && !isCorrect;
-              return (
-                <label
-                  key={o.id}
-                  className={`flex min-h-12 cursor-pointer gap-3 rounded-[12px] border px-3 py-2.5 text-[14.5px] transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-[#E50914] ${
+        <div
+          className={`mt-4 ${ce ? "grid grid-cols-2 gap-2" : "flex flex-col gap-2"}`}
+          role="radiogroup"
+          aria-label="Alternativas"
+          aria-describedby={`dica-${q.id}`}
+          data-testid="alternativas"
+        >
+          {options.map((o) => {
+            const isCorrect = !!fb && correctId === o.id;
+            const isWrong = !!fb && choice === o.id && !isCorrect;
+            const struck = !fb && cs.struck.has(o.id);
+            const selected = choice === o.id;
+            return (
+              <div key={o.id} className="relative">
+                <button
+                  type="button"
+                  role="radio"
+                  aria-checked={selected}
+                  aria-disabled={!!fb || pending || struck}
+                  disabled={!!fb || pending}
+                  onClick={(e) => onTap(o.id, e.detail === 0, e.timeStamp)}
+                  data-riscada={struck ? "1" : "0"}
+                  className={`nq-alt flex min-h-12 w-full gap-3 rounded-[12px] border py-2.5 pl-3 pr-11 text-left text-[14.5px] transition-colors ${
                     isCorrect
                       ? "border-[#1E9E5A] bg-[#E9F7EF] font-semibold text-[#137A43]"
                       : isWrong
                         ? "border-[#E50914] bg-[#FDECED]"
-                        : "border-[#DADBE0] hover:border-[#E50914]/60 has-[:checked]:border-[#08090B] has-[:checked]:bg-[#F7F8FA]"
-                  }`}
+                        : selected
+                          ? "border-[#08090B] bg-[#F7F8FA]"
+                          : "border-[#DADBE0] hover:border-[#E50914]/60"
+                  } ${struck ? "nq-alt-riscada" : ""}`}
                 >
-                  <input type="radio" name={`q-${q.id}`} value={o.id} checked={choice === o.id} onChange={() => setChoice(o.id)} className="sr-only" />
-                  <span className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-[12.5px] font-bold ${choice === o.id ? "border-[#08090B] bg-[#08090B] text-white" : "border-[#C9CACF]"}`}>
+                  <span className={`flex size-7 shrink-0 items-center justify-center rounded-full border text-[12.5px] font-bold ${selected ? "border-[#08090B] bg-[#08090B] text-white" : "border-[#C9CACF]"}`}>
                     {o.label}
                   </span>
-                  <span className="pt-0.5">{o.text}</span>
-                </label>
-              );
-            })}
-          </div>
-        </fieldset>
+                  <span className="nq-alt-texto pt-0.5">{o.text}</span>
+                </button>
+                {!fb && (
+                  <button
+                    type="button"
+                    onClick={() => strike(o.id)}
+                    disabled={pending}
+                    aria-pressed={struck}
+                    aria-label={struck ? `Restaurar a alternativa ${o.label}` : `Riscar a alternativa ${o.label}`}
+                    title={struck ? "Restaurar" : "Riscar (ou toque duas vezes na alternativa)"}
+                    className="absolute right-1.5 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-md text-[#8A8C93] hover:bg-[#F2F3F5] hover:text-[#3A3C42] focus-visible:outline-2 focus-visible:outline-[#E50914]"
+                  >
+                    {struck ? <RotateCcw className="h-4 w-4" aria-hidden /> : <Strikethrough className="h-4 w-4" aria-hidden />}
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
 
         {error && (
           <p role="alert" className="mt-3 rounded-[10px] border border-[#F2C4C7] bg-[#FDECED] px-3 py-2 text-[13px] font-medium text-[#B9000B]">
@@ -338,10 +398,13 @@ function QuestionPanel({
 
         {!fb ? (
           <div className="mt-4 flex flex-wrap items-center gap-3">
-            <button type="button" onClick={submit} disabled={!choice || pending} className="pc-botao disabled:cursor-not-allowed disabled:opacity-50">
-              {pending ? "Corrigindo…" : "Responder"}
+            <button type="button" onClick={submit} disabled={!canConfirm(cs) || pending} aria-busy={pending} className="pc-botao disabled:cursor-not-allowed disabled:opacity-50">
+              {pending ? "Corrigindo…" : "Confirmar resposta"}
             </button>
-            <span className="hidden text-[12px] text-[#8A8C93] sm:inline">Atalhos: {ce ? "C/E" : "A–E"} para escolher, Enter para responder</span>
+            <span id={`dica-${q.id}`} className="text-[12px] text-[#8A8C93]">
+              {canConfirm(cs) ? "Toque duas vezes numa alternativa para riscá-la." : "Escolha uma alternativa para confirmar. Toque duas vezes para riscar."}
+              <span className="hidden sm:inline"> Atalhos: {ce ? "C/E" : "A–E"} e Enter.</span>
+            </span>
           </div>
         ) : (
           <p className={`mt-4 text-[14px] font-extrabold ${fb.correct ? "text-[#137A43]" : "text-[#B9000B]"}`} role="status">

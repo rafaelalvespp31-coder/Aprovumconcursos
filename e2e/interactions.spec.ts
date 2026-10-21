@@ -203,15 +203,21 @@ test.describe("menu Questões: cadernos", () => {
     await expect(page).toHaveURL(/\/questoes\/cadernos\/11111111-/);
   });
 
-  test("resolver caderno: responde, mostra gabarito comentado e navega", async ({ page }) => {
+  test("resolver caderno: escolhe, confirma, mostra gabarito comentado e navega", async ({ page }) => {
     await page.goto(`${G}/questoes/cadernos/11111111-1111-4111-8111-111111111111`);
-    const responder = page.getByRole("button", { name: "Responder", exact: true });
-    await expect(responder).toBeDisabled();
-    await page.getByText("anular a licença, por ilegalidade", { exact: false }).click();
-    await responder.click();
+    const confirmar = page.getByRole("button", { name: "Confirmar resposta", exact: true });
+    await expect(confirmar).toBeDisabled();
+    // antes de confirmar: sem gabarito, sem cores de acerto/erro
+    await expect(page.getByTestId("gabarito-comentado")).toHaveCount(0);
+    await page.getByRole("radio", { name: /anular a licença, por ilegalidade/ }).click();
+    await expect(page.getByRole("radio", { name: /anular a licença/ })).toHaveAttribute("aria-checked", "true");
+    await expect(page.getByText("Resposta correta")).toHaveCount(0);
+    await confirmar.click();
     await expect(page.getByText("Resposta correta")).toBeVisible();
     await expect(page.getByTestId("gabarito-comentado")).toBeVisible();
     await expect(page.getByText(/Nesta sessão: 1 respondida, 1 certa/)).toBeVisible();
+    // depois de confirmar, a resposta fica travada
+    await expect(page.getByRole("radio", { name: /revogar a licença/ })).toBeDisabled();
     await page.getByRole("button", { name: "Próxima" }).click();
     await expect(page.getByText("Questão 2 de 3")).toBeVisible();
     await page.keyboard.press("e");
@@ -220,6 +226,42 @@ test.describe("menu Questões: cadernos", () => {
     await page.getByRole("list", { name: "Lista de questões do caderno" }).getByRole("button", { name: /^Questão 1, acertada/ }).click();
     await expect(page.getByText("Questão 1 de 3")).toBeVisible();
     await expect(page.getByText("Resposta correta")).toBeVisible();
+  });
+
+  test("riscar alternativas: clique duplo risca e restaura; riscada não confirma", async ({ page, isMobile }) => {
+    await page.goto(`${G}/questoes/cadernos/11111111-1111-4111-8111-111111111111`);
+    const alt = page.getByRole("radio", { name: /revogar a licença/ });
+    const confirmar = page.getByRole("button", { name: "Confirmar resposta", exact: true });
+    // escolhe e depois risca a própria escolhida: a escolha é limpa e não dá para confirmar
+    await alt.click();
+    await expect(alt).toHaveAttribute("aria-checked", "true");
+    if (isMobile) {
+      await alt.tap();
+      await alt.tap();
+    } else {
+      await alt.dblclick();
+    }
+    await expect(alt).toHaveAttribute("data-riscada", "1");
+    await expect(alt).toHaveAttribute("aria-checked", "false");
+    await expect(confirmar).toBeDisabled();
+    // riscada não é escolhida com clique simples
+    await alt.click({ force: true });
+    await page.waitForTimeout(400);
+    await expect(alt).toHaveAttribute("aria-checked", "false");
+    // o duplo clique não seleciona por engano
+    await expect(page.getByTestId("alternativas").getByRole("radio", { checked: true })).toHaveCount(0);
+    // restaura com o botão (alternativa acessível ao toque duplo)
+    await page.getByRole("button", { name: "Restaurar a alternativa A" }).click();
+    await expect(alt).toHaveAttribute("data-riscada", "0");
+    await alt.click();
+    await expect(alt).toHaveAttribute("aria-checked", "true");
+    await expect(confirmar).toBeEnabled();
+    // riscar outra alternativa mantém a escolha
+    await page.getByRole("button", { name: "Riscar a alternativa C" }).click();
+    await expect(page.getByRole("radio", { name: /convalidar/ })).toHaveAttribute("data-riscada", "1");
+    await expect(alt).toHaveAttribute("aria-checked", "true");
+    // o risco é só visual e não revela gabarito
+    await expect(page.getByTestId("gabarito-comentado")).toHaveCount(0);
   });
 
   test("caderno: favoritar e enunciado resumido/completo", async ({ page }) => {

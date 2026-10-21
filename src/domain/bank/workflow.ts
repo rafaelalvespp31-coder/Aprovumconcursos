@@ -88,7 +88,8 @@ export function availableActions(
     if ((a.reviewer || locked) && !reviewer) blocked = "Somente revisores.";
     else if (!anyRole) blocked = "Sem permissão.";
     else if (a.to === "aprovada") {
-      if (ctx.isCreator) blocked = "Quem criou não pode aprovar: é preciso outro revisor.";
+      // O administrador pode validar o gabarito de questões que ele mesmo cadastrou.
+      if (ctx.isCreator && !roles.admin) blocked = "Quem criou não pode aprovar: é preciso outro revisor.";
       else if (!(ctx.checklist.content && ctx.checklist.answer && ctx.checklist.source && ctx.checklist.rights)) blocked = "Marque os 4 itens do checklist.";
       else if (!ctx.rightsOk) blocked = "Direito de uso precisa ser “autorizado” ou “próprio”.";
     }

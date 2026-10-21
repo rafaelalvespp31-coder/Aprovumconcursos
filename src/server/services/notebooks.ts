@@ -230,6 +230,19 @@ function toNotebook(r: NotebookRow, names: Names, index: IndexedQuestion[], ctx:
   };
 }
 
+type AttemptRow = { notebook_id: string; question_id: string; is_correct: boolean; created_at: string };
+function groupBy<T>(xs: T[], key: (x: T) => string): Map<string, T[]> {
+  const m = new Map<string, T[]>();
+  for (const x of xs) m.set(key(x), [...(m.get(key(x)) ?? []), x]);
+  return m;
+}
+/** Desempenho do caderno: cada questão conta uma vez, pela última resposta (refazer não infla a nota). */
+function lastAnswerStats(list: AttemptRow[]): { answered: number; correct: number } {
+  const last = new Map<string, boolean>();
+  for (const a of [...list].sort((x, y) => y.created_at.localeCompare(x.created_at))) if (!last.has(a.question_id)) last.set(a.question_id, a.is_correct);
+  return { answered: last.size, correct: [...last.values()].filter(Boolean).length };
+}
+
 const NOTEBOOK_COLUMNS = "id, title, filters, show_full_statement, pinned, last_opened_at, created_at, subject_id, exam_id, board_slug, question_type";
 
 export async function listNotebooks(userId: string): Promise<Notebook[]> {
@@ -242,15 +255,10 @@ export async function listNotebooks(userId: string): Promise<Notebook[]> {
     loadNames(),
     publishedIndex(),
     userContext(userId),
-    createAdminClient().from("bank_attempts").select("notebook_id, is_correct").eq("user_id", userId).in("notebook_id", rows.map((r) => r.id)).limit(20000),
+    createAdminClient().from("bank_attempts").select("notebook_id, question_id, is_correct, created_at").eq("user_id", userId).in("notebook_id", rows.map((r) => r.id)).order("created_at", { ascending: false }).limit(20000),
   ]);
   const stats = new Map<string, { answered: number; correct: number }>();
-  for (const a of (attempts.data ?? []) as Array<{ notebook_id: string; is_correct: boolean }>) {
-    const s = stats.get(a.notebook_id) ?? { answered: 0, correct: 0 };
-    s.answered++;
-    if (a.is_correct) s.correct++;
-    stats.set(a.notebook_id, s);
-  }
+  for (const [nid, list] of groupBy((attempts.data ?? []) as AttemptRow[], (a) => a.notebook_id)) stats.set(nid, lastAnswerStats(list));
   const mctx: MatchContext = { ...ctx, topicParent: names.topicParent };
   return rows.map((r) => toNotebook(r, names, index, mctx, stats.get(r.id)));
 }
@@ -347,11 +355,10 @@ export async function openNotebook(userId: string, id: string): Promise<{ notebo
     loadNames(),
     publishedIndex(),
     userContext(userId),
-    admin.from("bank_attempts").select("is_correct").eq("user_id", userId).eq("notebook_id", nid.data).limit(20000),
+    admin.from("bank_attempts").select("notebook_id, question_id, is_correct, created_at").eq("user_id", userId).eq("notebook_id", nid.data).order("created_at", { ascending: false }).limit(20000),
   ]);
   const mctx: MatchContext = { ...ctx, topicParent: names.topicParent };
-  const st = (stats.data ?? []) as Array<{ is_correct: boolean }>;
-  const notebook = toNotebook(row as NotebookRow, names, index, mctx, { answered: st.length, correct: st.filter((s) => s.is_correct).length });
+  const notebook = toNotebook(row as NotebookRow, names, index, mctx, lastAnswerStats((stats.data ?? []) as AttemptRow[]));
   const ids = index.filter((q) => matchQuestion(q, notebook.filters, mctx)).map((q) => q.id).slice(0, 500);
 
   type Row = {
@@ -405,55 +412,40 @@ const answerSchema = z.object({
   questionId: z.uuid(),
   optionId: z.uuid().optional(),
   answerTrue: z.boolean().optional(),
+  /** Chave da confirmação, gerada no navegador: reenviar a mesma confirmação não conta de novo. */
+  attemptKey: z.uuid(),
   seconds: z.number().int().min(0).max(3600).optional(),
 });
 
-/** Corrige no servidor e grava em bank_attempts (contexto "treino", ligado ao caderno). */
-export async function answerNotebookQuestion(userId: string, raw: unknown): Promise<AnswerFeedback> {
+/**
+ * Corrige no banco (função bank_answer_question, só service_role) e grava a tentativa em
+ * bank_attempts. O gabarito e o comentário só voltam depois de uma resposta válida.
+ */
+export async function answerNotebookQuestion(userId: string, raw: unknown): Promise<AnswerFeedback & { duplicate?: boolean }> {
   const a = answerSchema.parse(raw);
-  if (!a.optionId && a.answerTrue === undefined) throw new UserFacingError("Selecione uma resposta.", "invalid_input");
+  if (!a.optionId && a.answerTrue === undefined) throw new UserFacingError("Escolha uma alternativa para confirmar.", "invalid_input");
   await enforceRateLimit(userId, "answer", 120);
-  const db = await createUserClient();
-  const own = await db.from("question_notebooks").select("id").eq("id", a.notebookId).eq("user_id", userId).maybeSingle();
-  if (!own.data) throw new UserFacingError("Caderno não encontrado.", "not_found");
-  const admin = createAdminClient();
-  const { data: q, error } = await admin
-    .from("bank_questions")
-    .select("id, question_type, correct_answer_true, justification, legal_basis, current_version, status, bank_question_options(id, label, is_correct, explanation)")
-    .eq("id", a.questionId)
-    .maybeSingle();
-  if (error) throw new Error(error.message);
-  if (!q || q.status !== "publicada") throw new UserFacingError("Esta questão não está mais disponível.", "not_found");
-  const opts = (q.bank_question_options ?? []) as Array<{ id: string; label: string; is_correct: boolean; explanation: string | null }>;
-  let correct: boolean;
-  let selected: string | null = null;
-  if (q.question_type === "certo_errado") {
-    if (a.answerTrue === undefined) throw new UserFacingError("Resposta inválida para esta questão.", "invalid_answer");
-    correct = a.answerTrue === q.correct_answer_true;
-  } else {
-    const o = opts.find((x) => x.id === a.optionId);
-    if (!o) throw new UserFacingError("Resposta inválida para esta questão.", "invalid_answer");
-    correct = o.is_correct;
-    selected = o.label;
-  }
-  const ins = await admin.from("bank_attempts").insert({
-    question_id: q.id,
-    version: q.current_version,
-    user_id: userId,
-    context: "treino",
-    notebook_id: a.notebookId,
-    selected_label: selected,
-    answer_bool: q.question_type === "certo_errado" ? a.answerTrue : null,
-    is_correct: correct,
-    duration_ms: a.seconds !== undefined ? a.seconds * 1000 : null,
+  const r = await createAdminClient().rpc("bank_answer_question", {
+    p_user: userId,
+    p_question: a.questionId,
+    p_notebook: a.notebookId,
+    p_option: a.optionId ?? null,
+    p_bool: a.answerTrue ?? null,
+    p_attempt: a.attemptKey,
+    p_ms: a.seconds !== undefined ? a.seconds * 1000 : null,
   });
-  if (ins.error) throw new Error(ins.error.message);
-  const justification = [q.justification, q.legal_basis ? `Fundamentação: ${q.legal_basis}` : null].filter(Boolean).join("\n\n");
+  if (r.error) {
+    if (r.error.code === "P0002") throw new UserFacingError("Esta questão ou caderno não está mais disponível.", "not_found");
+    if (r.error.code === "22023") throw new UserFacingError("Resposta inválida para esta questão.", "invalid_answer");
+    throw new Error(r.error.message);
+  }
+  const d = r.data as { correct: boolean; justification: string | null; correctAnswerTrue: boolean | null; options: AnswerFeedback["options"]; duplicate: boolean };
   return {
-    correct,
-    justification: justification || "Sem comentário cadastrado para esta questão.",
-    correctAnswerTrue: q.question_type === "certo_errado" ? (q.correct_answer_true as boolean) : null,
-    options: opts.map((o) => ({ id: o.id, label: o.label, isCorrect: o.is_correct, explanation: o.explanation ?? "" })),
+    correct: d.correct,
+    justification: d.justification ?? "Esta questão ainda não tem comentário validado.",
+    correctAnswerTrue: d.correctAnswerTrue,
+    options: d.options,
+    duplicate: d.duplicate,
   };
 }
 

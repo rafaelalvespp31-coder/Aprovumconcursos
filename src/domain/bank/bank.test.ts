@@ -70,6 +70,8 @@ describe("fluxo de revisão (ações disponíveis)", () => {
     const autor = availableActions("em_revisao", { autor: true, revisor: false, admin: false }, { isCreator: false, checklist: checks, rightsOk: true });
     expect(autor.find((a) => a.to === "aprovada")?.blocked).toMatch(/revisores/);
     const criador = availableActions("em_revisao", { autor: true, revisor: true, admin: false }, { isCreator: true, checklist: checks, rightsOk: true });
+    const adminCriador = availableActions("em_revisao", { autor: true, revisor: true, admin: true }, { isCreator: true, checklist: checks, rightsOk: true });
+    expect(adminCriador.find((a) => a.to === "aprovada")?.blocked).toBeNull();
     expect(criador.find((a) => a.to === "aprovada")?.blocked).toMatch(/outro revisor/);
   });
 
