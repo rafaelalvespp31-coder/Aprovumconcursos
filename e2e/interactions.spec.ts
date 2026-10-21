@@ -588,7 +588,7 @@ test.describe("casco pastel", () => {
     test.skip(isMobile, "barra lateral só no desktop");
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(`${G}/painel`);
-    const nav = page.getByRole("navigation", { name: "Principal" });
+    const nav = page.getByRole("navigation", { name: "Principal", exact: true });
     await expect(nav.getByRole("link", { name: /Painel/ })).toHaveAttribute("aria-current", "page");
     await expect(page.getByTestId("nav-desc-revisoes")).toHaveText("2 pendentes");
     await expect(nav.getByRole("link", { name: /Modo Jogo/ })).toHaveAttribute("href", `${G}/quiz`);
@@ -612,13 +612,48 @@ test.describe("casco pastel", () => {
     await expect(page).toHaveURL(/\/questoes\/cadernos\/11111111-/);
   });
 
-  test("barra flutuante no celular leva às rotas reais", async ({ page }) => {
+  test("menu inferior: sete opções na ordem, rota ativa e navegação real (celular)", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
     await page.goto(`${G}/painel`);
-    const bar = page.getByRole("navigation", { name: "Principal (celular)" });
-    await bar.getByRole("link", { name: "Desempenho" }).click();
+    const bar = page.getByTestId("menu-inferior");
+    const links = bar.getByRole("link");
+    await expect(links).toHaveCount(7);
+    await expect(links).toHaveText(["Painel", "Estudos", "Jogo", "Questões", "Revisões", "Evolução", "Novo"]);
+    await expect(bar.getByRole("link", { name: "Painel" })).toHaveAttribute("aria-current", "page");
+    await bar.getByRole("link", { name: "Evolução (desempenho)" }).click();
     await expect(page).toHaveURL(new RegExp(`${G}/desempenho`));
-    await expect(bar.getByRole("link", { name: "Desempenho" })).toHaveAttribute("aria-current", "page");
+    await expect(bar.getByRole("link", { name: "Evolução (desempenho)" })).toHaveAttribute("aria-current", "page");
+    await bar.getByRole("link", { name: "Questões" }).click();
+    await expect(page).toHaveURL(new RegExp(`${G}/questoes$`));
+    await expect(bar.getByRole("link", { name: "Questões" })).toHaveAttribute("aria-current", "page");
+    // subpáginas mantêm a seção ativa
+    await page.goto(`${G}/questoes/cadernos/novo`);
+    await expect(bar.getByRole("link", { name: "Questões" })).toHaveAttribute("aria-current", "page");
+    await expect(bar.getByRole("link", { name: "Novo estudo" })).toHaveAttribute("href", `${G}/nova-trilha`);
+    // fixo no rodapé, sem rolagem lateral e acima da área segura
+    const box = await bar.boundingBox();
+    expect(box!.y + box!.height).toBeLessThanOrEqual(800);
+    expect(box!.y + box!.height).toBeGreaterThan(740);
+    await noHorizontalScroll(page);
+  });
+
+  test("menu inferior no computador: centralizado no conteúdo e navegável pelo teclado", async ({ page, isMobile }) => {
+    test.skip(isMobile, "teclado físico");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`${G}/painel`);
+    const bar = page.getByTestId("menu-inferior");
+    await expect(bar).toBeVisible();
+    await bar.getByRole("link", { name: "Painel" }).focus();
+    await page.keyboard.press("ArrowRight");
+    await expect(bar.getByRole("link", { name: "Estudos" })).toBeFocused();
+    await page.keyboard.press("ArrowLeft");
+    await page.keyboard.press("ArrowLeft");
+    await expect(bar.getByRole("link", { name: "Novo estudo" })).toBeFocused();
+    await page.keyboard.press("Home");
+    await page.keyboard.press("Enter");
+    await expect(page).toHaveURL(new RegExp(`${G}/painel`));
+    await page.keyboard.press("End");
+    await expect(bar.getByRole("link", { name: "Novo estudo" })).toBeFocused();
   });
 
   test("perfil mostra conquistas com regras e progresso", async ({ page }) => {

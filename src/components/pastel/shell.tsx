@@ -33,6 +33,7 @@ import type { ShellSummary } from "@/server/queries";
 import { useStored } from "@/components/use-stored";
 import { PastelCard } from "./card";
 import { SubjectsSubmenu } from "./subjects-submenu";
+import { BottomNavigation, type BottomNavId } from "./bottom-navigation";
 
 // ---------------------------------------------------------------------------
 // Toast (mensagens curtas de confirmação, como no design original)
@@ -148,6 +149,11 @@ export function PastelShell({
   }, [items, router, shortcutsOn]);
 
   const isPainel = active?.id === "painel";
+  const bottomActive: BottomNavId | null = path.startsWith(`${basePath}/nova-trilha`)
+    ? "novo"
+    : active && ["painel", "trilhas", "quiz", "questoes", "revisoes", "desempenho"].includes(active.id)
+      ? (active.id as BottomNavId)
+      : null;
   // Página de Estudos: cabeçalho com saudação (desktop) e logo + menu (celular).
   const isEstudos = path === `${basePath}/trilhas`;
   // Aula: no celular, cabeçalho com menu (árvore de aulas no menu); no desktop, árvore na barra lateral.
@@ -403,38 +409,12 @@ export function PastelShell({
               <div key={active?.id ?? path} className="animate-[enter_0.5s_cubic-bezier(0.34,1.56,0.64,1)]">{children}</div>
             </main>
 
-            {/* Barra flutuante (celular) */}
-            <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 p-3 pb-[calc(12px+env(safe-area-inset-bottom))] lg:hidden">
-              <nav aria-label="Principal (celular)" className="glass pointer-events-auto mx-auto flex max-w-[520px] items-stretch justify-between gap-0.5 rounded-[22px] border border-[#262626] bg-[#0E0E0E]/90 p-1.5 shadow-[0_16px_40px_rgba(0,0,0,0.14)]">
-                {items.slice(0, 6).map((s) => {
-                  const on = active?.id === s.id;
-                  return (
-                    <Link
-                      key={s.id}
-                      href={s.href}
-                      aria-label={s.short ? s.label : undefined}
-                      aria-current={on ? "page" : undefined}
-                      className={`flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[14px] px-0.5 py-1.5 transition-all ${on ? "bg-[#E10600] text-white shadow" : "text-[#A3A3A3]"}`}
-                    >
-                      <s.icon className="h-5 w-5 shrink-0" aria-hidden />
-                      <span className="whitespace-nowrap text-[9.5px] font-semibold leading-tight tracking-[-0.02em]">{s.short ?? s.label}</span>
-                    </Link>
-                  );
-                })}
-                <Link
-                  href={`${basePath}/nova-trilha`}
-                  aria-label="Novo estudo"
-                  className="flex min-w-0 flex-1 flex-col items-center justify-center gap-0.5 rounded-[14px] bg-gradient-to-br from-[#FF1E1E] to-[#B30000] px-0.5 py-1.5 text-white shadow-[0_6px_16px_rgba(225,6,0,0.35)]"
-                >
-                  <Plus className="h-5 w-5 shrink-0" aria-hidden />
-                  <span className="whitespace-nowrap text-[9.5px] font-semibold leading-tight">Novo</span>
-                </Link>
-              </nav>
-            </div>
+            {/* Menu inferior (celular: fixo no rodapé; computador: centralizado no rodapé do conteúdo) */}
+            <BottomNavigation activeId={bottomActive} basePath={basePath} />
           </div>
         </div>
 
-        <div className="pointer-events-none fixed bottom-24 left-1/2 z-[80] flex -translate-x-1/2 flex-col items-center gap-2 lg:bottom-6" aria-live="polite">
+        <div className="pointer-events-none fixed bottom-28 left-1/2 z-[80] flex -translate-x-1/2 flex-col items-center gap-2 lg:bottom-32" aria-live="polite">
           {toast && (
             <div className="pointer-events-auto flex animate-[enter_0.45s_cubic-bezier(0.34,1.56,0.64,1)] items-center gap-2.5 rounded-[16px] border border-[#E10600]/50 bg-[#141414] px-5 py-3 text-[13px] font-medium text-white shadow-[0_16px_40px_rgba(0,0,0,0.28)]" role="status">
               <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white/15" aria-hidden>✨</span>
