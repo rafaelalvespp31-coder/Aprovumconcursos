@@ -3,25 +3,11 @@
  */
 
 export const NOTEBOOK_TITLE_MAX = 80;
-export const DEFAULT_NOTEBOOK_TITLE = "Caderno de Questões";
 
 /** "dd/mm/aaaa" no fuso de Brasília. */
 export function brDate(iso: string | Date): string {
   const d = typeof iso === "string" ? new Date(iso) : iso;
   return d.toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", year: "numeric" });
-}
-
-/** Título sugerido quando o aluno não escreve um: nome do concurso, senão o padrão. */
-export function suggestTitle(input: { title?: string | null; examName?: string | null }): string {
-  const t = (input.title ?? "").replace(/\s+/g, " ").trim();
-  if (t) return t.slice(0, NOTEBOOK_TITLE_MAX);
-  const e = (input.examName ?? "").replace(/\s+/g, " ").trim();
-  return (e ? e.toUpperCase() : DEFAULT_NOTEBOOK_TITLE).slice(0, NOTEBOOK_TITLE_MAX);
-}
-
-/** Linha de apoio do caderno: matéria, senão concurso/banca, senão "Todas as matérias". */
-export function notebookScope(n: { subjectName: string | null; examName: string | null; boardName: string | null }): string {
-  return n.subjectName ?? n.examName ?? (n.boardName ? `Banca ${n.boardName}` : "Todas as matérias");
 }
 
 /** Ordem de "Recentes": último uso (ou criação), mais novo primeiro. */

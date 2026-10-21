@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { createElement, useEffect, useRef, useState, useTransition } from "react";
-import { ArrowLeft, ArrowRight, CirclePlus, FolderOpen } from "lucide-react";
+import { ArrowLeft, ArrowRight, CirclePlus, FolderOpen, Star } from "lucide-react";
 import type { Notebook, NotebookQuestion } from "@/server/services/notebooks";
 import type { AnswerFeedback } from "@/server/services/study";
 import { AnswerExplanation } from "@/components/answer-explanation";
 import { callAction } from "@/components/safe-action";
 import { subjectIcon } from "@/app/(app)/painel/widgets";
 import { brDate } from "@/domain/notebooks/model";
-import { answerNotebookAction, type Result } from "../../actions";
+import { answerNotebookAction, favoriteQuestionAction, fullStatementAction, type Result } from "../../actions";
 
 type Answer = (input: { notebookId: string; questionId: string; optionId?: string; answerTrue?: boolean; seconds?: number }) => Promise<Result<AnswerFeedback>>;
 type Done = Record<string, { choice: string; fb: AnswerFeedback }>;
@@ -17,8 +17,52 @@ type Done = Record<string, { choice: string; fb: AnswerFeedback }>;
 const TYPE_LABEL = { multipla_escolha: "Múltipla escolha", certo_errado: "Certo ou errado" } as const;
 const ORIGIN_LABEL: Record<string, string> = { prova_anterior: "Questão de prova", autoral_humana: "Questão autoral (APROVUM)", ia_assistida: "Questão autoral (APROVUM)" };
 
-export function NotebookView({ notebook: n, questions, base, answer = answerNotebookAction }: { notebook: Notebook; questions: NotebookQuestion[]; base: string; answer?: Answer }) {
-  const icon = createElement(subjectIcon(n.subjectName ?? n.examName ?? ""), { className: "h-[22px] w-[22px]" });
+export function NotebookView({
+  notebook: n,
+  questions,
+  base,
+  answer = answerNotebookAction,
+  favorite = favoriteQuestionAction,
+  saveFull = fullStatementAction,
+}: {
+  notebook: Notebook;
+  questions: NotebookQuestion[];
+  base: string;
+  /** A galeria troca as ações do servidor por versões em memória. */
+  answer?: Answer;
+  favorite?: (questionId: string, on: boolean) => Promise<Result<boolean>>;
+  saveFull?: (id: string, on: boolean) => Promise<Result<null>>;
+}) {
+  const icon = createElement(subjectIcon(n.iconHint), { className: "h-[22px] w-[22px]" });
+  const [full, setFull] = useState(n.showFullStatement);
+  const [favs, setFavs] = useState(() => new Set(questions.filter((q) => q.favorite).map((q) => q.id)));
+  const [notice, setNotice] = useState<string | null>(null);
+  const toggleFull = async (on: boolean) => {
+    setFull(on);
+    const r = await callAction(() => saveFull(n.id, on), setNotice);
+    if (r && !r.ok) {
+      setFull(!on);
+      setNotice(r.error);
+    }
+  };
+  const toggleFav = async (qid: string, on: boolean) => {
+    setFavs((x) => {
+      const y = new Set(x);
+      if (on) y.add(qid);
+      else y.delete(qid);
+      return y;
+    });
+    const r = await callAction(() => favorite(qid, on), setNotice);
+    if (!r || !r.ok) {
+      setFavs((x) => {
+        const y = new Set(x);
+        if (on) y.delete(qid);
+        else y.add(qid);
+        return y;
+      });
+      if (r && !r.ok) setNotice(r.error);
+    }
+  };
   const [i, setI] = useState(0);
   const [done, setDone] = useState<Done>({});
   const total = questions.length;
@@ -26,12 +70,7 @@ export function NotebookView({ notebook: n, questions, base, answer = answerNote
   const correctNow = Object.values(done).filter((d) => d.fb.correct).length;
   const answered = n.answered + answeredNow;
   const correct = n.correct + correctNow;
-  const chips = [
-    n.subjectName ?? "Todas as matérias",
-    n.examName,
-    n.boardName ? `Banca ${n.boardName}` : null,
-    n.questionType ? TYPE_LABEL[n.questionType] : null,
-  ].filter(Boolean) as string[];
+  const chips = n.labels.length ? n.labels : ["Todas as questões publicadas"];
 
   return (
     <div className="flex flex-col gap-5" data-testid="caderno-view">
@@ -53,11 +92,22 @@ export function NotebookView({ notebook: n, questions, base, answer = answerNote
             </ul>
           </div>
         </div>
-        <dl className="mt-5 grid grid-cols-3 gap-2 sm:max-w-[520px]">
+        <div className="mt-5 flex flex-wrap items-end justify-between gap-4">
+        <dl className="grid w-full grid-cols-3 gap-2 sm:max-w-[520px]">
           <Stat label="Questões" value={String(total)} />
           <Stat label="Respondidas" value={String(answered)} />
           <Stat label="Acertos" value={answered ? `${Math.round((correct / answered) * 100)}%` : "—"} />
         </dl>
+          <label className="flex cursor-pointer items-center gap-3 text-[13px] font-semibold text-[#08090B]">
+            Enunciado completo
+            <input type="checkbox" role="switch" checked={full} onChange={(e) => void toggleFull(e.target.checked)} className="nq-switch" />
+          </label>
+        </div>
+        {notice && (
+          <p role="alert" className="mt-3 rounded-[10px] border border-[#F2C4C7] bg-[#FDECED] px-3 py-2 text-[13px] font-medium text-[#B9000B]">
+            {notice}
+          </p>
+        )}
       </header>
 
       {total === 0 ? (
@@ -79,6 +129,9 @@ export function NotebookView({ notebook: n, questions, base, answer = answerNote
             number={i + 1}
             total={total}
             saved={done[questions[i]!.id]}
+            full={full}
+            favorite={favs.has(questions[i]!.id)}
+            onFavorite={(on) => void toggleFav(questions[i]!.id, on)}
             onAnswer={(questionId, input) => answer({ notebookId: n.id, questionId, ...input })}
             onDone={(choice, fb) => setDone((d) => ({ ...d, [questions[i]!.id]: { choice, fb } }))}
             onPrev={i > 0 ? () => setI(i - 1) : null}
@@ -130,6 +183,9 @@ function QuestionPanel({
   number,
   total,
   saved,
+  full,
+  favorite,
+  onFavorite,
   onAnswer,
   onDone,
   onPrev,
@@ -139,6 +195,9 @@ function QuestionPanel({
   number: number;
   total: number;
   saved?: { choice: string; fb: AnswerFeedback };
+  full: boolean;
+  favorite: boolean;
+  onFavorite: (on: boolean) => void;
   onAnswer: (questionId: string, input: { optionId?: string; answerTrue?: boolean; seconds?: number }) => Promise<Result<AnswerFeedback>>;
   onDone: (choice: string, fb: AnswerFeedback) => void;
   onPrev: (() => void) | null;
@@ -148,6 +207,20 @@ function QuestionPanel({
   const options = ce ? [{ id: "true", label: "C", text: "Certo" }, { id: "false", label: "E", text: "Errado" }] : q.options;
   const [choice, setChoice] = useState<string | null>(saved?.choice ?? null);
   const [fb, setFb] = useState<AnswerFeedback | null>(saved?.fb ?? null);
+  const [expanded, setExpanded] = useState(false);
+  const clamp = !full && !expanded;
+  // "Ver enunciado completo" só quando o resumo realmente cortou o texto.
+  const textRef = useRef<HTMLDivElement>(null);
+  const [cut, setCut] = useState(false);
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el || !clamp) return setCut(false);
+    const check = () => setCut([...el.querySelectorAll<HTMLElement>("[data-resumo]")].some((p) => p.scrollHeight > p.clientHeight + 1));
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [clamp, q.id]);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const startedAt = useRef(0);
@@ -202,13 +275,32 @@ function QuestionPanel({
           {q.code && <span className="rounded-md bg-[#F2F3F5] px-1.5 py-0.5 font-mono text-[11px]">{q.code}</span>}
           <span className="rounded-md border border-[#E6E7EB] px-1.5 py-0.5 font-semibold">{TYPE_LABEL[q.type]}</span>
           {q.subjectName && <span className="truncate">{q.subjectName}</span>}
+          <button
+            type="button"
+            onClick={() => onFavorite(!favorite)}
+            aria-pressed={favorite}
+            className="ml-auto inline-flex min-h-9 items-center gap-1.5 rounded-md px-2 text-[12.5px] font-semibold text-[#3A3C42] hover:bg-[#F2F3F5] aria-pressed:text-[#C8000C]"
+          >
+            <Star className={`h-4 w-4 ${favorite ? "fill-[#E50914] text-[#E50914]" : ""}`} aria-hidden /> {favorite ? "Favorita" : "Favoritar"}
+          </button>
         </header>
         <p className="mt-1 text-[11.5px] text-[#8A8C93]">
           {ORIGIN_LABEL[q.origin] ?? "Questão do banco APROVUM"}
           {source ? ` — ${source}` : ""}
         </p>
-        {q.caseContext && <p className="mt-4 whitespace-pre-line rounded-[10px] bg-[#F7F8FA] p-3 text-[14px] leading-relaxed text-[#3A3C42]">{q.caseContext}</p>}
-        <p className="mt-4 whitespace-pre-line font-serif text-[1.06rem] leading-relaxed text-[#08090B]">{q.statement}</p>
+        <div ref={textRef}>
+        {q.caseContext && (
+          <p data-resumo className={`mt-4 whitespace-pre-line rounded-[10px] bg-[#F7F8FA] p-3 text-[14px] leading-relaxed text-[#3A3C42] ${clamp ? "line-clamp-3" : ""}`}>{q.caseContext}</p>
+        )}
+        <p data-resumo className={`mt-4 whitespace-pre-line font-serif text-[1.06rem] leading-relaxed text-[#08090B] ${clamp ? "line-clamp-3" : ""}`} data-testid="enunciado">
+          {q.statement}
+        </p>
+        </div>
+        {clamp && cut && (
+          <button type="button" onClick={() => setExpanded(true)} className="mt-1 text-[13px] font-bold text-[#C8000C] underline underline-offset-2">
+            Ver enunciado completo
+          </button>
+        )}
 
         <fieldset className="mt-4" disabled={!!fb || pending}>
           <legend className="sr-only">Alternativas</legend>

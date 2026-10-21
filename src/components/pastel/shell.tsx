@@ -69,6 +69,10 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
   ];
 }
 
+const PAGE_HEADINGS: Array<{ path: string; title: string; subtitle: string }> = [
+  { path: "/questoes/cadernos/novo", title: "Questões", subtitle: "Selecione os filtros abaixo para encontrar as questões que você deseja resolver." },
+];
+
 /** Rotas sem questões na tela: só nelas os atalhos 1–7 navegam (nas outras, 1–5 escolhem alternativas). */
 const SHORTCUT_ROUTES = ["painel", "trilhas", "desempenho", "perfil"];
 
@@ -146,7 +150,9 @@ export function PastelShell({
   const isEstudos = path === `${basePath}/trilhas`;
   // Aula: no celular, cabeçalho com menu (árvore de aulas no menu); no desktop, árvore na barra lateral.
   const isAula = path.startsWith(`${basePath}/aula`);
-  const title = isPainel ? (
+  // Páginas internas com cabeçalho próprio (título e linha de apoio).
+  const heading = PAGE_HEADINGS.find((h) => path === `${basePath}${h.path}`) ?? null;
+  const title = heading ? heading.title : isPainel ? (
     <>
       {summary.name ? `Olá, ${summary.name} ` : "Olá! "}
       <span className="inline-block animate-[float_3s_ease-in-out_infinite]" aria-hidden>👋</span>
@@ -353,7 +359,7 @@ export function PastelShell({
                         <Target className="h-3.5 w-3.5 text-[#FF1E1E]" />
                       </span>
                       <span className="truncate">
-                        {isPainel ? (notice ?? "Um conteúdo por vez: aula completa e três níveis — fácil, médio e difícil.") : `${active?.subtitle ?? active?.desc ?? ""}${shortcutsOn ? " • atalhos 1-7" : ""}`}
+                        {isPainel ? (notice ?? "Um conteúdo por vez: aula completa e três níveis — fácil, médio e difícil.") : `${heading?.subtitle ?? active?.subtitle ?? active?.desc ?? ""}${shortcutsOn ? " • atalhos 1-7" : ""}`}
                       </span>
                     </div>
                   </div>

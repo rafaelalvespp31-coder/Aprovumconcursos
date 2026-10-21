@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createElement, useEffect, useRef, useState, useTransition } from "react";
 import { ChevronRight, CirclePlus, EllipsisVertical, FolderOpen, NotebookTabs, Pencil, Pin, PinOff, Trash2 } from "lucide-react";
 import type { Notebook } from "@/server/services/notebooks";
-import { brDate, byRecent, NOTEBOOK_TITLE_MAX, notebookScope } from "@/domain/notebooks/model";
+import { brDate, byRecent, NOTEBOOK_TITLE_MAX } from "@/domain/notebooks/model";
 import { subjectIcon } from "@/app/(app)/painel/widgets";
 import { callAction } from "@/components/safe-action";
 import { deleteNotebookAction, pinNotebookAction, renameNotebookAction, type Result } from "./actions";
@@ -142,14 +142,13 @@ function NotebookRow({
   onPin: () => Promise<boolean>;
   onDelete: () => Promise<boolean>;
 }) {
-  const icon = createElement(subjectIcon(n.subjectName ?? n.examName ?? ""), { className: "h-[22px] w-[22px]" });
+  const icon = createElement(subjectIcon(n.iconHint), { className: "h-[22px] w-[22px]" });
   const href = `${base}/questoes/cadernos/${n.id}`;
   const [mode, setMode] = useState<"view" | "rename" | "delete">("view");
   const [draft, setDraft] = useState(n.title);
   const [pending, start] = useTransition();
-  const scope = notebookScope(n);
   const meta = [
-    scope,
+    n.scope,
     n.available ? `${n.available} ${n.available === 1 ? "questão" : "questões"}` : "sem questões publicadas ainda",
     brDate(n.lastOpenedAt ?? n.createdAt),
   ];

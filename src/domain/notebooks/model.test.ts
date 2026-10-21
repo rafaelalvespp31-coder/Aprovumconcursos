@@ -1,17 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { activityLevel, byRecent, notebookScope, suggestTitle, todayBr, yearGrid, yearSummary } from "./model";
+import { activityLevel, byRecent, todayBr, yearGrid, yearSummary } from "./model";
 
 describe("cadernos", () => {
-  it("título: o do aluno, senão o concurso em maiúsculas, senão o padrão", () => {
-    expect(suggestTitle({ title: "  Revisão   PPMG " })).toBe("Revisão PPMG");
-    expect(suggestTitle({ title: "", examName: "Agente de Apoio MP ES" })).toBe("AGENTE DE APOIO MP ES");
-    expect(suggestTitle({})).toBe("Caderno de Questões");
-    expect(suggestTitle({ title: "x".repeat(120) })).toHaveLength(80);
-  });
-  it("linha de apoio e ordem de recentes", () => {
-    expect(notebookScope({ subjectName: "Direito Penal", examName: "X", boardName: "FGV" })).toBe("Direito Penal");
-    expect(notebookScope({ subjectName: null, examName: null, boardName: "FGV" })).toBe("Banca FGV");
-    expect(notebookScope({ subjectName: null, examName: null, boardName: null })).toBe("Todas as matérias");
+  it("ordem de recentes: último uso, senão criação", () => {
     const xs = [
       { id: "a", lastOpenedAt: null, createdAt: "2026-01-01T00:00:00Z" },
       { id: "b", lastOpenedAt: "2026-10-01T00:00:00Z", createdAt: "2025-01-01T00:00:00Z" },

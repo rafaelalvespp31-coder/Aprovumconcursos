@@ -2,25 +2,40 @@ import "server-only";
 import { z } from "zod";
 import { createAdminClient, createUserClient } from "../supabase";
 import { UserFacingError, enforceRateLimit } from "./trails";
-import { NOTEBOOK_TITLE_MAX, suggestTitle } from "@/domain/notebooks/model";
+import { NOTEBOOK_TITLE_MAX } from "@/domain/notebooks/model";
+import {
+  autoTitle,
+  countMatches,
+  filterLabels,
+  filtersSchema,
+  matchQuestion,
+  parseFilters,
+  type Difficulty,
+  type FilterNames,
+  type IndexedQuestion,
+  type MatchContext,
+  type NotebookFilters,
+} from "@/domain/notebooks/filters";
 import type { AnswerFeedback } from "./study";
 
 /**
- * Cadernos de questões: filtros salvos (matéria, concurso, banca, tipo) sobre o banco de
- * questões de concurso revisadas (bank_questions publicadas). Os cadernos são do aluno
- * (RLS do próprio dono); o banco só é lido pelo servidor, e o gabarito só sai depois da resposta.
+ * Cadernos de questões: filtros salvos (matérias, assuntos, bancas, concursos, anos,
+ * dificuldade, favoritas) sobre o banco de questões de concurso revisadas (bank_questions
+ * publicadas). Cadernos e favoritas são do aluno (RLS do dono); o banco só é lido pelo
+ * servidor, e o gabarito só sai depois da resposta.
  */
 
 export interface Notebook {
   id: string;
   title: string;
-  subjectId: string | null;
-  subjectName: string | null;
-  examId: string | null;
-  examName: string | null;
-  boardSlug: string | null;
-  boardName: string | null;
-  questionType: "multipla_escolha" | "certo_errado" | null;
+  filters: NotebookFilters;
+  /** Rótulos dos filtros (chips). */
+  labels: string[];
+  /** Linha de apoio na lista: primeira matéria/concurso/banca, ou "Todas as matérias". */
+  scope: string;
+  /** Nome usado para escolher o ícone (matéria principal). */
+  iconHint: string;
+  showFullStatement: boolean;
   pinned: boolean;
   lastOpenedAt: string | null;
   createdAt: string;
@@ -31,12 +46,21 @@ export interface Notebook {
   correct: number;
 }
 
+export interface TopicOption {
+  id: string;
+  name: string;
+  depth: number;
+}
 export interface NotebookLookups {
-  subjects: Array<{ id: string; name: string; available: number }>;
-  exams: Array<{ id: string; name: string; available: number }>;
-  boards: Array<{ slug: string; name: string; available: number }>;
-  /** Questões publicadas (só os filtros), para contar a combinação escolhida no formulário. */
-  published: Array<{ s: string | null; e: string | null; b: string | null; t: string }>;
+  subjects: Array<{ id: string; name: string; topics: TopicOption[] }>;
+  boards: Array<{ slug: string; name: string }>;
+  exams: Array<{ id: string; name: string; organ: string | null; role: string | null; year: number | null }>;
+  years: number[];
+  /** Questões publicadas (só os campos dos filtros), para contar no navegador. */
+  index: IndexedQuestion[];
+  answered: string[];
+  favorites: string[];
+  topicParent: Array<[string, string | null]>;
 }
 
 export interface Notice {
@@ -50,86 +74,176 @@ export interface Notice {
   image: string | null;
 }
 
-type PublishedRow = { id: string; subject_id: string | null; exam_id: string | null; board_slug: string | null; question_type: string };
+// ---------------------------------------------------------------------------
+// Índice do banco publicado e contexto do aluno
+// ---------------------------------------------------------------------------
 
-async function publishedIndex(): Promise<PublishedRow[]> {
+type PublishedRow = {
+  id: string; subject_id: string | null; topic_id: string | null; exam_id: string | null; board_slug: string | null; year: number | null;
+  question_type: IndexedQuestion["type"]; initial_difficulty: Difficulty; calibrated_difficulty: Difficulty | null;
+};
+
+async function publishedIndex(): Promise<IndexedQuestion[]> {
   const { data, error } = await createAdminClient()
     .from("bank_questions")
-    .select("id, subject_id, exam_id, board_slug, question_type")
+    .select("id, subject_id, topic_id, exam_id, board_slug, year, question_type, initial_difficulty, calibrated_difficulty")
     .eq("status", "publicada")
+    .order("seq")
     .limit(20000);
   if (error) throw new Error(error.message);
-  return (data ?? []) as PublishedRow[];
+  return ((data ?? []) as PublishedRow[]).map((q) => ({
+    id: q.id,
+    subject: q.subject_id,
+    topic: q.topic_id,
+    board: q.board_slug,
+    exam: q.exam_id,
+    year: q.year,
+    difficulty: q.calibrated_difficulty ?? q.initial_difficulty,
+    type: q.question_type,
+  }));
 }
 
-const matches = (q: PublishedRow, n: { subjectId: string | null; examId: string | null; boardSlug: string | null; questionType: string | null }) =>
-  (!n.subjectId || q.subject_id === n.subjectId) &&
-  (!n.examId || q.exam_id === n.examId) &&
-  (!n.boardSlug || q.board_slug === n.boardSlug) &&
-  (!n.questionType || q.question_type === n.questionType);
-
-function examLabel(e: { name: string; organ: string | null; year: number | null }) {
-  return [e.name, e.organ && !e.name.toLowerCase().includes(e.organ.toLowerCase()) ? e.organ : null, e.year].filter(Boolean).join(" · ");
-}
-
-export async function notebookLookups(): Promise<NotebookLookups> {
+async function userContext(userId: string): Promise<{ answered: Set<string>; favorites: Set<string> }> {
   const admin = createAdminClient();
-  const [subjects, exams, boards, pub] = await Promise.all([
-    admin.from("subjects").select("id, name, status, sort_order").order("sort_order"),
-    admin.from("exams").select("id, name, organ, year").order("year", { ascending: false }).limit(500),
-    admin.from("exam_boards").select("slug, name, sort_order").order("sort_order"),
-    publishedIndex(),
+  const [att, fav] = await Promise.all([
+    admin.from("bank_attempts").select("question_id").eq("user_id", userId).limit(20000),
+    (await createUserClient()).from("bank_question_favorites").select("question_id").eq("user_id", userId).limit(20000),
   ]);
-  const count = (pick: (q: PublishedRow) => string | null) => {
-    const m = new Map<string, number>();
-    for (const q of pub) {
-      const k = pick(q);
-      if (k) m.set(k, (m.get(k) ?? 0) + 1);
-    }
-    return m;
-  };
-  const bySubject = count((q) => q.subject_id);
-  const byExam = count((q) => q.exam_id);
-  const byBoard = count((q) => q.board_slug);
+  if (att.error) throw new Error(att.error.message);
+  if (fav.error) throw new Error(fav.error.message);
   return {
-    subjects: ((subjects.data ?? []) as Array<{ id: string; name: string; status: string | null }>)
-      .filter((s) => s.status !== "inativa" && s.status !== "arquivada")
-      .map((s) => ({ id: s.id, name: s.name, available: bySubject.get(s.id) ?? 0 })),
-    exams: ((exams.data ?? []) as Array<{ id: string; name: string; organ: string | null; year: number | null }>).map((e) => ({ id: e.id, name: examLabel(e), available: byExam.get(e.id) ?? 0 })),
-    boards: ((boards.data ?? []) as Array<{ slug: string; name: string }>).map((b) => ({ slug: b.slug, name: b.name, available: byBoard.get(b.slug) ?? 0 })),
-    published: pub.map((q) => ({ s: q.subject_id, e: q.exam_id, b: q.board_slug, t: q.question_type })),
+    answered: new Set(((att.data ?? []) as Array<{ question_id: string }>).map((r) => r.question_id)),
+    favorites: new Set(((fav.data ?? []) as Array<{ question_id: string }>).map((r) => r.question_id)),
   };
 }
+
+type Names = FilterNames & { topicParent: Map<string, string | null> };
+
+function examLabel(e: { name: string; organ: string | null; role_name?: string | null; year: number | null }) {
+  const organ = e.organ && !e.name.toLowerCase().includes(e.organ.toLowerCase()) ? e.organ : null;
+  return [e.name, organ, e.year].filter(Boolean).join(" · ");
+}
+
+async function loadNames(): Promise<{ names: Names; lookups: Omit<NotebookLookups, "index" | "answered" | "favorites" | "years" | "topicParent"> }> {
+  const admin = createAdminClient();
+  const [subjects, topics, boards, exams] = await Promise.all([
+    admin.from("subjects").select("id, name, status, sort_order").order("sort_order"),
+    admin.from("subject_topics").select("id, subject_id, parent_id, name, status, sort_order").order("sort_order").limit(5000),
+    admin.from("exam_boards").select("slug, name, sort_order").order("sort_order"),
+    admin.from("exams").select("id, name, organ, role_name, year").order("year", { ascending: false }).limit(1000),
+  ]);
+  for (const r of [subjects, topics, boards, exams]) if (r.error) throw new Error(r.error.message);
+  const subj = ((subjects.data ?? []) as Array<{ id: string; name: string; status: string | null }>).filter((s) => !["inativa", "arquivada", "inativo"].includes(s.status ?? ""));
+  const tops = ((topics.data ?? []) as Array<{ id: string; subject_id: string; parent_id: string | null; name: string; status: string | null }>).filter((t) => !["inativo", "inativa", "arquivado"].includes(t.status ?? ""));
+  const ex = (exams.data ?? []) as Array<{ id: string; name: string; organ: string | null; role_name: string | null; year: number | null }>;
+  const bd = (boards.data ?? []) as Array<{ slug: string; name: string }>;
+  const subjectName = new Map(subj.map((s) => [s.id, s.name]));
+  const topicName = new Map(tops.map((t) => [t.id, t.name]));
+  const boardName = new Map(bd.map((b) => [b.slug, b.name]));
+  const examName = new Map(ex.map((e) => [e.id, examLabel(e)]));
+  const topicParent = new Map(tops.map((t) => [t.id, t.parent_id]));
+  // Assuntos em árvore (pai antes dos filhos), por matéria.
+  const tree = (subjectId: string): TopicOption[] => {
+    const out: TopicOption[] = [];
+    const walk = (parent: string | null, depth: number) => {
+      for (const t of tops.filter((x) => x.subject_id === subjectId && x.parent_id === parent)) {
+        out.push({ id: t.id, name: t.name, depth });
+        if (depth < 6) walk(t.id, depth + 1);
+      }
+    };
+    walk(null, 0);
+    return out;
+  };
+  return {
+    names: {
+      subject: (id) => subjectName.get(id),
+      topic: (id) => topicName.get(id),
+      board: (slug) => boardName.get(slug),
+      exam: (id) => examName.get(id),
+      topicParent,
+    },
+    lookups: {
+      subjects: subj.map((s) => ({ id: s.id, name: s.name, topics: tree(s.id) })),
+      boards: bd,
+      exams: ex.map((e) => ({ id: e.id, name: e.name, organ: e.organ, role: e.role_name, year: e.year })),
+    },
+  };
+}
+
+export async function notebookLookups(userId: string): Promise<NotebookLookups> {
+  const [{ names, lookups }, index, ctx] = await Promise.all([loadNames(), publishedIndex(), userContext(userId)]);
+  return {
+    ...lookups,
+    years: [...new Set(index.map((q) => q.year).filter((y): y is number => y !== null))].sort((a, b) => b - a),
+    index,
+    answered: [...ctx.answered].filter((id) => index.some((q) => q.id === id)),
+    favorites: [...ctx.favorites],
+    topicParent: [...names.topicParent],
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Cadernos
+// ---------------------------------------------------------------------------
 
 type NotebookRow = {
-  id: string; title: string; subject_id: string | null; exam_id: string | null; board_slug: string | null;
-  question_type: Notebook["questionType"]; pinned: boolean; last_opened_at: string | null; created_at: string;
+  id: string; title: string; filters: unknown; show_full_statement: boolean | null; pinned: boolean; last_opened_at: string | null; created_at: string;
+  subject_id: string | null; exam_id: string | null; board_slug: string | null; question_type: string | null;
 };
+
+/** Filtros do caderno; os criados antes do JSON usam as colunas de valor único. */
+function rowFilters(r: NotebookRow): NotebookFilters {
+  const f = parseFilters(r.filters);
+  const empty = !r.filters || (typeof r.filters === "object" && Object.keys(r.filters as object).length === 0);
+  if (!empty) return f;
+  return parseFilters({
+    subjects: r.subject_id ? [r.subject_id] : [],
+    exams: r.exam_id ? [r.exam_id] : [],
+    boards: r.board_slug ? [r.board_slug] : [],
+    types: r.question_type ? [r.question_type] : [],
+  });
+}
+
+function toNotebook(r: NotebookRow, names: Names, index: IndexedQuestion[], ctx: MatchContext, stats?: { answered: number; correct: number }): Notebook {
+  const filters = rowFilters(r);
+  const labels = filterLabels(filters, names);
+  const firstSubject = filters.subjects.map(names.subject).find(Boolean) ?? filters.topics.map(names.topic).find(Boolean);
+  const firstExam = filters.exams.map(names.exam).find(Boolean);
+  return {
+    id: r.id,
+    title: r.title,
+    filters,
+    labels,
+    scope: firstSubject
+      ? filters.subjects.length + filters.topics.length > 1
+        ? `${firstSubject} +${filters.subjects.length + filters.topics.length - 1}`
+        : firstSubject
+      : (firstExam ?? (filters.boards.length ? `Banca ${names.board(filters.boards[0]!) ?? filters.boards[0]}` : "Todas as matérias")),
+    iconHint: firstSubject ?? firstExam ?? "",
+    showFullStatement: r.show_full_statement ?? true,
+    pinned: r.pinned,
+    lastOpenedAt: r.last_opened_at,
+    createdAt: r.created_at,
+    available: countMatches(index, filters, ctx),
+    answered: stats?.answered ?? 0,
+    correct: stats?.correct ?? 0,
+  };
+}
+
+const NOTEBOOK_COLUMNS = "id, title, filters, show_full_statement, pinned, last_opened_at, created_at, subject_id, exam_id, board_slug, question_type";
 
 export async function listNotebooks(userId: string): Promise<Notebook[]> {
   const db = await createUserClient();
-  const { data, error } = await db
-    .from("question_notebooks")
-    .select("id, title, subject_id, exam_id, board_slug, question_type, pinned, last_opened_at, created_at")
-    .eq("user_id", userId)
-    .order("created_at", { ascending: false })
-    .limit(100);
+  const { data, error } = await db.from("question_notebooks").select(NOTEBOOK_COLUMNS).eq("user_id", userId).order("created_at", { ascending: false }).limit(100);
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as NotebookRow[];
   if (!rows.length) return [];
-  const admin = createAdminClient();
-  const subjectIds = [...new Set(rows.map((r) => r.subject_id).filter(Boolean))] as string[];
-  const examIds = [...new Set(rows.map((r) => r.exam_id).filter(Boolean))] as string[];
-  const [subjects, exams, boards, pub, attempts] = await Promise.all([
-    subjectIds.length ? admin.from("subjects").select("id, name").in("id", subjectIds) : Promise.resolve({ data: [] }),
-    examIds.length ? admin.from("exams").select("id, name, organ, year").in("id", examIds) : Promise.resolve({ data: [] }),
-    admin.from("exam_boards").select("slug, name"),
+  const [{ names }, index, ctx, attempts] = await Promise.all([
+    loadNames(),
     publishedIndex(),
-    admin.from("bank_attempts").select("notebook_id, is_correct").eq("user_id", userId).in("notebook_id", rows.map((r) => r.id)).limit(20000),
+    userContext(userId),
+    createAdminClient().from("bank_attempts").select("notebook_id, is_correct").eq("user_id", userId).in("notebook_id", rows.map((r) => r.id)).limit(20000),
   ]);
-  const subjectName = new Map(((subjects.data ?? []) as Array<{ id: string; name: string }>).map((s) => [s.id, s.name]));
-  const examName = new Map(((exams.data ?? []) as Array<{ id: string; name: string; organ: string | null; year: number | null }>).map((e) => [e.id, examLabel(e)]));
-  const boardName = new Map(((boards.data ?? []) as Array<{ slug: string; name: string }>).map((b) => [b.slug, b.name]));
   const stats = new Map<string, { answered: number; correct: number }>();
   for (const a of (attempts.data ?? []) as Array<{ notebook_id: string; is_correct: boolean }>) {
     const s = stats.get(a.notebook_id) ?? { answered: 0, correct: 0 };
@@ -137,62 +251,34 @@ export async function listNotebooks(userId: string): Promise<Notebook[]> {
     if (a.is_correct) s.correct++;
     stats.set(a.notebook_id, s);
   }
-  return rows.map((r) => {
-    const filter = { subjectId: r.subject_id, examId: r.exam_id, boardSlug: r.board_slug, questionType: r.question_type };
-    return {
-      id: r.id,
-      title: r.title,
-      subjectId: r.subject_id,
-      subjectName: r.subject_id ? (subjectName.get(r.subject_id) ?? null) : null,
-      examId: r.exam_id,
-      examName: r.exam_id ? (examName.get(r.exam_id) ?? null) : null,
-      boardSlug: r.board_slug,
-      boardName: r.board_slug ? (boardName.get(r.board_slug) ?? r.board_slug) : null,
-      questionType: r.question_type,
-      pinned: r.pinned,
-      lastOpenedAt: r.last_opened_at,
-      createdAt: r.created_at,
-      available: pub.filter((q) => matches(q, filter)).length,
-      answered: stats.get(r.id)?.answered ?? 0,
-      correct: stats.get(r.id)?.correct ?? 0,
-    };
-  });
+  const mctx: MatchContext = { ...ctx, topicParent: names.topicParent };
+  return rows.map((r) => toNotebook(r, names, index, mctx, stats.get(r.id)));
 }
 
 const createSchema = z.object({
   title: z.string().max(NOTEBOOK_TITLE_MAX).optional().default(""),
-  subjectId: z.uuid().nullable().optional(),
-  examId: z.uuid().nullable().optional(),
-  boardSlug: z.string().regex(/^[a-z0-9_]{2,32}$/).nullable().optional(),
-  questionType: z.enum(["multipla_escolha", "certo_errado"]).nullable().optional(),
+  filters: filtersSchema,
+  showFullStatement: z.boolean().default(true),
 });
 export type NotebookInput = z.input<typeof createSchema>;
 
 export async function createNotebook(userId: string, raw: unknown): Promise<string> {
   const input = createSchema.parse(raw);
   await enforceRateLimit(userId, "notebook_write", 20);
-  let examName: string | null = null;
-  if (input.examId) {
-    const { data } = await createAdminClient().from("exams").select("name").eq("id", input.examId).maybeSingle();
-    if (!data) throw new UserFacingError("Concurso não encontrado.", "invalid_input");
-    examName = data.name as string;
-  }
+  const { names } = await loadNames();
+  const f = input.filters;
+  // Só ids que existem (evita guardar lixo vindo do navegador).
+  const unknown = [...f.subjects.filter((x) => !names.subject(x)), ...f.topics.filter((x) => !names.topic(x)), ...f.boards.filter((x) => !names.board(x)), ...f.exams.filter((x) => !names.exam(x))];
+  if (unknown.length) throw new UserFacingError("Algum filtro não existe mais. Atualize a página e tente de novo.", "invalid_input");
+  const title = input.title.replace(/\s+/g, " ").trim() || autoTitle(f, names);
   const db = await createUserClient();
   const { data, error } = await db
     .from("question_notebooks")
-    .insert({
-      user_id: userId,
-      title: suggestTitle({ title: input.title, examName }),
-      subject_id: input.subjectId ?? null,
-      exam_id: input.examId ?? null,
-      board_slug: input.boardSlug ?? null,
-      question_type: input.questionType ?? null,
-    })
+    .insert({ user_id: userId, title: title.slice(0, NOTEBOOK_TITLE_MAX), filters: f, show_full_statement: input.showFullStatement })
     .select("id")
     .single();
   if (error) {
     if (error.message.includes("Limite de 100")) throw new UserFacingError("Você chegou ao limite de 100 cadernos. Exclua algum para criar outro.", "limit");
-    if (error.code === "23503") throw new UserFacingError("Filtro inválido. Atualize a página e tente de novo.", "invalid_input");
     throw new Error(error.message);
   }
   return data.id as string;
@@ -201,12 +287,20 @@ export async function createNotebook(userId: string, raw: unknown): Promise<stri
 export async function updateNotebook(userId: string, id: string, raw: unknown) {
   const nid = z.uuid().parse(id);
   const patch = z
-    .object({ title: z.string().trim().min(1, "Dê um nome ao caderno.").max(NOTEBOOK_TITLE_MAX).optional(), pinned: z.boolean().optional() })
-    .refine((p) => p.title !== undefined || p.pinned !== undefined)
+    .object({
+      title: z.string().trim().min(1, "Dê um nome ao caderno.").max(NOTEBOOK_TITLE_MAX).optional(),
+      pinned: z.boolean().optional(),
+      showFullStatement: z.boolean().optional(),
+    })
+    .refine((p) => p.title !== undefined || p.pinned !== undefined || p.showFullStatement !== undefined)
     .parse(raw);
   await enforceRateLimit(userId, "notebook_write", 30);
   const db = await createUserClient();
-  const { data, error } = await db.from("question_notebooks").update(patch).eq("id", nid).eq("user_id", userId).select("id");
+  const row: Record<string, unknown> = {};
+  if (patch.title !== undefined) row.title = patch.title;
+  if (patch.pinned !== undefined) row.pinned = patch.pinned;
+  if (patch.showFullStatement !== undefined) row.show_full_statement = patch.showFullStatement;
+  const { data, error } = await db.from("question_notebooks").update(row).eq("id", nid).eq("user_id", userId).select("id");
   if (error) throw new Error(error.message);
   if (!data?.length) throw new UserFacingError("Caderno não encontrado.", "not_found");
 }
@@ -236,6 +330,7 @@ export interface NotebookQuestion {
   subjectName: string | null;
   origin: string;
   options: Array<{ id: string; label: string; text: string }>;
+  favorite: boolean;
   /** Última resposta do aluno a esta questão (em qualquer caderno). */
   last: { correct: boolean; at: string } | null;
 }
@@ -243,59 +338,63 @@ export interface NotebookQuestion {
 export async function openNotebook(userId: string, id: string): Promise<{ notebook: Notebook; questions: NotebookQuestion[] } | null> {
   const nid = z.uuid().safeParse(id);
   if (!nid.success) return null;
-  const notebook = (await listNotebooks(userId)).find((n) => n.id === nid.data);
-  if (!notebook) return null;
+  const db = await createUserClient();
+  const { data: row, error } = await db.from("question_notebooks").select(NOTEBOOK_COLUMNS).eq("id", nid.data).eq("user_id", userId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!row) return null;
   const admin = createAdminClient();
-  let q = admin
-    .from("bank_questions")
-    .select("id, public_code, question_type, statement, case_context, board_slug, year, origin, exam_id, subject_id, bank_question_options(id, label, text, sort_order)")
-    .eq("status", "publicada")
-    .order("seq", { ascending: true })
-    .limit(500);
-  if (notebook.subjectId) q = q.eq("subject_id", notebook.subjectId);
-  if (notebook.examId) q = q.eq("exam_id", notebook.examId);
-  if (notebook.boardSlug) q = q.eq("board_slug", notebook.boardSlug);
-  if (notebook.questionType) q = q.eq("question_type", notebook.questionType);
-  const [rows, boards] = await Promise.all([q, admin.from("exam_boards").select("slug, name")]);
-  if (rows.error) throw new Error(rows.error.message);
+  const [{ names }, index, ctx, stats] = await Promise.all([
+    loadNames(),
+    publishedIndex(),
+    userContext(userId),
+    admin.from("bank_attempts").select("is_correct").eq("user_id", userId).eq("notebook_id", nid.data).limit(20000),
+  ]);
+  const mctx: MatchContext = { ...ctx, topicParent: names.topicParent };
+  const st = (stats.data ?? []) as Array<{ is_correct: boolean }>;
+  const notebook = toNotebook(row as NotebookRow, names, index, mctx, { answered: st.length, correct: st.filter((s) => s.is_correct).length });
+  const ids = index.filter((q) => matchQuestion(q, notebook.filters, mctx)).map((q) => q.id).slice(0, 500);
+
   type Row = {
     id: string; public_code: string | null; question_type: NotebookQuestion["type"]; statement: string; case_context: string | null;
-    board_slug: string | null; year: number | null; origin: string; exam_id: string | null; subject_id: string | null;
+    board_slug: string | null; year: number | null; origin: string; exam_id: string | null; subject_id: string | null; seq: number;
     bank_question_options: Array<{ id: string; label: string; text: string; sort_order: number }> | null;
   };
-  const list = (rows.data ?? []) as Row[];
-  const ids = list.map((r) => r.id);
-  const examIds = [...new Set(list.map((r) => r.exam_id).filter(Boolean))] as string[];
-  const subjectIds = [...new Set(list.map((r) => r.subject_id).filter(Boolean))] as string[];
-  const [hist, exams, subjects] = await Promise.all([
-    ids.length ? admin.from("bank_attempts").select("question_id, is_correct, created_at").eq("user_id", userId).in("question_id", ids).order("created_at", { ascending: false }).limit(5000) : Promise.resolve({ data: [] }),
-    examIds.length ? admin.from("exams").select("id, name, organ, year").in("id", examIds) : Promise.resolve({ data: [] }),
-    subjectIds.length ? admin.from("subjects").select("id, name").in("id", subjectIds) : Promise.resolve({ data: [] }),
-  ]);
+  const rows: Row[] = [];
+  for (let i = 0; i < ids.length; i += 100) {
+    const part = await admin
+      .from("bank_questions")
+      .select("id, seq, public_code, question_type, statement, case_context, board_slug, year, origin, exam_id, subject_id, bank_question_options(id, label, text, sort_order)")
+      .eq("status", "publicada")
+      .in("id", ids.slice(i, i + 100));
+    if (part.error) throw new Error(part.error.message);
+    rows.push(...((part.data ?? []) as Row[]));
+  }
+  rows.sort((a, b) => a.seq - b.seq);
+  const hist = ids.length
+    ? await admin.from("bank_attempts").select("question_id, is_correct, created_at").eq("user_id", userId).in("question_id", ids).order("created_at", { ascending: false }).limit(5000)
+    : { data: [] };
   const last = new Map<string, { correct: boolean; at: string }>();
   for (const h of (hist.data ?? []) as Array<{ question_id: string; is_correct: boolean; created_at: string }>) {
     if (!last.has(h.question_id)) last.set(h.question_id, { correct: h.is_correct, at: h.created_at });
   }
-  const boardName = new Map(((boards.data ?? []) as Array<{ slug: string; name: string }>).map((b) => [b.slug, b.name]));
-  const examName = new Map(((exams.data ?? []) as Array<{ id: string; name: string; organ: string | null; year: number | null }>).map((e) => [e.id, examLabel(e)]));
-  const subjectName = new Map(((subjects.data ?? []) as Array<{ id: string; name: string }>).map((s) => [s.id, s.name]));
 
-  await (await createUserClient()).from("question_notebooks").update({ last_opened_at: new Date().toISOString() }).eq("id", notebook.id).eq("user_id", userId);
+  await db.from("question_notebooks").update({ last_opened_at: new Date().toISOString() }).eq("id", notebook.id).eq("user_id", userId);
 
   return {
     notebook,
-    questions: list.map((r) => ({
+    questions: rows.map((r) => ({
       id: r.id,
       code: r.public_code,
       type: r.question_type,
       statement: r.statement,
       caseContext: r.case_context,
-      board: r.board_slug ? (boardName.get(r.board_slug) ?? r.board_slug) : null,
+      board: r.board_slug ? (names.board(r.board_slug) ?? r.board_slug) : null,
       year: r.year,
-      examName: r.exam_id ? (examName.get(r.exam_id) ?? null) : null,
-      subjectName: r.subject_id ? (subjectName.get(r.subject_id) ?? null) : null,
+      examName: r.exam_id ? (names.exam(r.exam_id) ?? null) : null,
+      subjectName: r.subject_id ? (names.subject(r.subject_id) ?? null) : null,
       origin: r.origin,
       options: (r.bank_question_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(({ id, label, text }) => ({ id, label, text })),
+      favorite: ctx.favorites.has(r.id),
       last: last.get(r.id) ?? null,
     })),
   };
@@ -356,6 +455,22 @@ export async function answerNotebookQuestion(userId: string, raw: unknown): Prom
     correctAnswerTrue: q.question_type === "certo_errado" ? (q.correct_answer_true as boolean) : null,
     options: opts.map((o) => ({ id: o.id, label: o.label, isCorrect: o.is_correct, explanation: o.explanation ?? "" })),
   };
+}
+
+/** Marca/desmarca uma questão publicada como favorita. */
+export async function setFavorite(userId: string, questionId: string, on: boolean) {
+  const qid = z.uuid().parse(questionId);
+  await enforceRateLimit(userId, "favorite", 60);
+  const db = await createUserClient();
+  if (on) {
+    const { data } = await createAdminClient().from("bank_questions").select("status").eq("id", qid).maybeSingle();
+    if (!data || data.status !== "publicada") throw new UserFacingError("Esta questão não está mais disponível.", "not_found");
+    const { error } = await db.from("bank_question_favorites").upsert({ user_id: userId, question_id: qid }, { onConflict: "user_id,question_id", ignoreDuplicates: true });
+    if (error) throw new Error(error.message);
+  } else {
+    const { error } = await db.from("bank_question_favorites").delete().eq("user_id", userId).eq("question_id", qid);
+    if (error) throw new Error(error.message);
+  }
 }
 
 // ---------------------------------------------------------------------------

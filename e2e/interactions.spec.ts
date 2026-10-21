@@ -165,17 +165,41 @@ test.describe("menu Questões: cadernos", () => {
     await expect(page).toHaveURL(/exibir=mensal/);
   });
 
-  test("novo caderno: contagem pelos filtros e criação", async ({ page }) => {
+  test("novo caderno: matéria, assunto, banca, dificuldade, abas e criação", async ({ page }) => {
     await page.goto(`${G}/questoes/cadernos/novo`);
     const n = page.getByTestId("contagem-filtro");
-    await expect(n).toContainText("6 questões");
-    await page.getByLabel("Matéria", { exact: true }).selectOption({ label: "Direito Penal (2)" });
+    await expect(n).toContainText("6 questões encontradas");
+    await expect(page.getByText(/para visualizar as questões/)).toBeVisible();
+    // matéria inteira + assunto de outra matéria (OU)
+    await page.getByRole("button", { name: "Direito Penal", exact: true }).click();
     await expect(n).toContainText("2 questões");
-    await page.getByText("Certo ou errado", { exact: true }).click();
-    await expect(n).toContainText("1 questão publicada");
-    await page.getByLabel("Matéria", { exact: true }).selectOption({ label: "Direito Constitucional (1)" });
-    await expect(n).toContainText("Ainda não há questões publicadas");
-    await page.getByRole("button", { name: "Criar caderno" }).click();
+    await page.getByRole("button", { name: "Ver assuntos de Direito Administrativo" }).click();
+    await page.getByText("Anulação e revogação").click();
+    await expect(n).toContainText("3 questões");
+    await expect(page.getByText("2 selecionadas")).toBeVisible();
+    // banca (E com a matéria)
+    await page.getByRole("button", { name: /^Banca:/ }).click();
+    await page.getByRole("group", { name: "Banca" }).getByText("FGV", { exact: true }).click();
+    await expect(n).toContainText("1 questão encontrada");
+    await page.getByRole("button", { name: "Banca", exact: true }).click(); // voltar
+    // chips: remover a banca devolve a contagem
+    await page.getByRole("button", { name: "Remover filtro FGV" }).click();
+    await expect(n).toContainText("3 questões");
+    // dificuldade
+    await page.getByRole("button", { name: /Dificuldade/ }).click();
+    await page.getByRole("group", { name: "Dificuldade" }).getByText("Extrema").click();
+    await expect(n).toContainText("1 questão encontrada");
+    await page.getByRole("button", { name: /Dificuldade/ }).click();
+    // filtros ainda sem cadastro aparecem desativados
+    await expect(page.getByRole("button", { name: "Região: Em breve" })).toBeDisabled();
+    // abas: minhas (já respondidas) e favoritas
+    await page.getByRole("button", { name: "Limpar" }).first().click();
+    await page.getByRole("tab", { name: "Minhas questões" }).click();
+    await expect(n).toContainText("2 questões");
+    await page.getByRole("tab", { name: "Questões favoritas" }).click();
+    await expect(n).toContainText("1 questão encontrada");
+    await page.getByRole("switch", { name: "Mostrar o enunciado completo" }).uncheck();
+    await page.getByRole("button", { name: "Buscar questões" }).click();
     await expect(page).toHaveURL(/\/questoes\/cadernos\/11111111-/);
   });
 
@@ -196,6 +220,19 @@ test.describe("menu Questões: cadernos", () => {
     await page.getByRole("list", { name: "Lista de questões do caderno" }).getByRole("button", { name: /^Questão 1, acertada/ }).click();
     await expect(page.getByText("Questão 1 de 3")).toBeVisible();
     await expect(page.getByText("Resposta correta")).toBeVisible();
+  });
+
+  test("caderno: favoritar e enunciado resumido/completo", async ({ page }) => {
+    await page.goto(`${G}/questoes/cadernos/66666666-6666-4666-8666-666666666666`);
+    const fav = page.getByRole("button", { name: /Favorit/ });
+    await expect(fav).toHaveAttribute("aria-pressed", "true");
+    await fav.click();
+    await expect(fav).toHaveAttribute("aria-pressed", "false");
+    const sw = page.getByRole("switch");
+    await expect(sw).not.toBeChecked();
+    await expect(page.getByTestId("enunciado")).toHaveClass(/line-clamp-3/);
+    await sw.check();
+    await expect(page.getByTestId("enunciado")).not.toHaveClass(/line-clamp-3/);
   });
 
   test("caderno sem questões publicadas mostra o estado vazio", async ({ page }) => {

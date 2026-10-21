@@ -13,6 +13,8 @@ export default function Page() {
       notebook={n}
       questions={vazio ? [] : demoQuestions}
       base="/dev/galeria"
+      favorite={async (_id, on) => ({ ok: true, data: on })}
+      saveFull={async () => ({ ok: true, data: null })}
       answer={async (input) => {
         await new Promise((r) => setTimeout(r, 150));
         return { ok: true, data: demoFeedback(input.questionId, input) };
