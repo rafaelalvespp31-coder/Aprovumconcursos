@@ -12,7 +12,6 @@ import {
   BookOpen,
   Calculator,
   ChartColumn,
-  ChevronRight,
   CircleHelp,
   ClipboardCheck,
   Clock3,
@@ -25,14 +24,13 @@ import {
   Map as MapIcon,
   Monitor,
   NotebookPen,
-  PlayCircle,
   Scale,
   Shield,
   Target,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
-import type { Activity, RecentLesson, SubjectProgress } from "./model";
+import type { RecentLesson } from "./model";
 
 /* ------------------------------------------------------------------ */
 /* Peças comuns                                                        */
@@ -418,200 +416,6 @@ export function NextLessonCard({
           </>
         )}
       </div>
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Minhas matérias                                                     */
-/* ------------------------------------------------------------------ */
-
-type Tab = "andamento" | "concluido" | "todas";
-
-export function SubjectsCard({
-  subjects,
-  base,
-}: {
-  subjects: SubjectProgress[];
-  base: string;
-}) {
-  const counts = {
-    andamento: subjects.filter((s) => s.status !== "concluido").length,
-    concluido: subjects.filter((s) => s.status === "concluido").length,
-    todas: subjects.length,
-  };
-  const [tab, setTab] = useState<Tab>(counts.andamento ? "andamento" : "todas");
-  const list = subjects.filter((s) =>
-    tab === "todas"
-      ? true
-      : tab === "concluido"
-        ? s.status === "concluido"
-        : s.status !== "concluido",
-  );
-  const tabs: Array<{ id: Tab; label: string }> = [
-    { id: "andamento", label: `Em andamento (${counts.andamento})` },
-    { id: "concluido", label: `Concluídas (${counts.concluido})` },
-    { id: "todas", label: `Todas (${counts.todas})` },
-  ];
-  return (
-    <section
-      className="pc flex-1 p-5"
-      aria-labelledby="pc-materias"
-      data-testid="minhas-materias"
-    >
-      <div id="pc-materias">
-        <CardTitle icon={BookOpen} action={<SeeAll href={`${base}/trilhas`} />}>
-          Minhas matérias
-        </CardTitle>
-      </div>
-      <div
-        className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:none]"
-        role="tablist"
-        aria-label="Filtrar matérias"
-      >
-        {tabs.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            role="tab"
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className="pc-aba shrink-0 whitespace-nowrap"
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-      {list.length ? (
-        <ul className="mt-3 divide-y divide-[#EEEFF2]" role="tabpanel">
-          {list.map((s) => {
-            const Icon = subjectIcon(s.name);
-            return (
-              <li key={s.name}>
-                <Link
-                  href={`${base}/trilhas/${s.studyId}`}
-                  className="pc-materia group"
-                  aria-label={`${s.name}: ${s.done} de ${s.total} aulas, ${s.pct}%`}
-                >
-                  <span className="pc-materia-ico" aria-hidden>
-                    <Icon className="h-[18px] w-[18px]" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[14px] font-bold text-[#08090B]">
-                      {s.name}
-                    </span>
-                    <span className="block truncate text-[11px] text-[#64666D]">
-                      {s.detail}
-                    </span>
-                    <span className="mt-1.5 block max-w-[220px]">
-                      <Bar pct={s.pct} label={`${s.pct}%`} />
-                    </span>
-                  </span>
-                  <span className="hidden w-[92px] shrink-0 text-[11.5px] text-[#64666D] sm:block">
-                    {s.done} de {s.total} aulas
-                  </span>
-                  <span className="w-10 shrink-0 text-right text-[12.5px] font-bold text-[#08090B]">
-                    {s.pct}%
-                  </span>
-                  <ChevronRight
-                    className="h-4 w-4 shrink-0 text-[#08090B] transition-transform group-hover:translate-x-0.5"
-                    aria-hidden
-                  />
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <div
-          className="mt-6 rounded-[12px] border border-dashed border-[#D9DBE0] p-6 text-center"
-          role="tabpanel"
-        >
-          <p className="text-[14px] font-semibold text-[#08090B]">
-            {subjects.length
-              ? tab === "concluido"
-                ? "Nenhuma matéria concluída ainda"
-                : "Nenhuma matéria em andamento"
-              : "Você ainda não tem matérias"}
-          </p>
-          <p className="mt-1 text-[12.5px] text-[#64666D]">
-            {subjects.length
-              ? "Conclua os três níveis de todas as aulas de uma matéria para vê-la aqui."
-              : "Crie um estudo: o tema entra na matéria correspondente."}
-          </p>
-          {!subjects.length && (
-            <Link href={`${base}/nova-trilha`} className="pc-botao mt-4">
-              Novo estudo <ArrowRight className="h-4 w-4" aria-hidden />
-            </Link>
-          )}
-        </div>
-      )}
-    </section>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/* Atividades recentes                                                 */
-/* ------------------------------------------------------------------ */
-
-const ACTIVITY_ICON: Record<Activity["kind"], LucideIcon> = {
-  questoes: ClipboardCheck,
-  aula: PlayCircle,
-  leitura: NotebookPen,
-};
-
-export function ActivitiesCard({
-  items,
-  base,
-}: {
-  items: Activity[];
-  base: string;
-}) {
-  return (
-    <section
-      className="pc p-5"
-      aria-labelledby="pc-atividades"
-      data-testid="atividades-recentes"
-    >
-      <div id="pc-atividades">
-        <CardTitle
-          icon={Clock3}
-          action={<SeeAll href={`${base}/desempenho`} />}
-        >
-          Atividades recentes
-        </CardTitle>
-      </div>
-      {items.length ? (
-        <ul className="mt-3 divide-y divide-[#EEEFF2]">
-          {items.map((a) => {
-            const Icon = ACTIVITY_ICON[a.kind];
-            return (
-              <li key={`${a.kind}-${a.at}-${a.href}`}>
-                <Link
-                  href={a.href}
-                  className="flex items-center gap-3 rounded-[10px] py-2.5 transition-colors hover:bg-[#F7F8FA]"
-                >
-                  <span className="pc-ativ-ico" aria-hidden>
-                    <Icon className="h-4 w-4" />
-                  </span>
-                  <span className="min-w-0">
-                    <span className="line-clamp-2 text-[12.5px] leading-snug text-[#08090B]">
-                      {a.title}
-                    </span>
-                    <span className="block text-[11px] text-[#64666D]">
-                      {a.detail}
-                    </span>
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      ) : (
-        <p className="mt-4 text-[12.5px] leading-relaxed text-[#64666D]">
-          Suas aulas acessadas e as questões que você responder aparecem aqui.
-        </p>
-      )}
     </section>
   );
 }

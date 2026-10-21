@@ -5,7 +5,6 @@ import type { UnitState } from "@/domain/progress/state-machine";
 import type { PainelOverview } from "@/server/queries";
 import type { Stage } from "./model";
 import {
-  ActivitiesCard,
   ContinueBand,
   GamePromo,
   NextLessonCard,
@@ -13,7 +12,6 @@ import {
   PerformanceCard,
   ProgressCard,
   QuickAccess,
-  SubjectsCard,
   type QuickItem,
 } from "./widgets";
 
@@ -107,11 +105,9 @@ export function DashboardView(d: DashboardData) {
         <NextLessonCard lesson={next} base={base} hasStudies={o.subjects.length > 0} />
 
         <div className="flex min-w-0 flex-col gap-4 md:col-span-2 lg:gap-5 xl:col-span-1">
-          <SubjectsCard subjects={o.subjects} base={base} />
           <ContinueBand lessons={o.recent.filter((r) => r.lessonId !== c?.id)} base={base} />
         </div>
         <div className="grid min-w-0 grid-cols-1 content-start gap-4 md:col-span-2 md:grid-cols-2 lg:gap-5 xl:col-span-1 xl:grid-cols-1">
-          <ActivitiesCard items={o.activities} base={base} />
           <GamePromo base={base} />
           <PerformanceCard
             accuracy={pctOf(o.totals.correct, o.totals.answered)}

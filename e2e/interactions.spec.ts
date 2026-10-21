@@ -346,7 +346,9 @@ test.describe("painel e trilha", () => {
     const prog = page.getByTestId("progresso-geral");
     await expect(prog.getByRole("img", { name: "35% das aulas concluídas" })).toBeVisible();
     await expect(prog.getByText("156").first()).toBeAttached();
-    await expect(page.getByTestId("atividades-recentes").getByRole("link", { name: /respondeu 12 questões/ })).toHaveAttribute("href", /\/aula\//);
+    // Os cards "Minhas matérias" e "Atividades recentes" foram removidos do painel.
+    await expect(page.getByTestId("atividades-recentes")).toHaveCount(0);
+    await expect(page.getByTestId("minhas-materias")).toHaveCount(0);
     await expect(page.getByTestId("promo-jogo")).toHaveAttribute("href", `${G}/quiz`);
     await expect(page.getByTestId("seu-desempenho").getByRole("img", { name: "Aproveitamento: 72%" })).toBeVisible();
     await expect(page.getByTestId("sequencia")).toHaveText("4 dias");
@@ -360,18 +362,6 @@ test.describe("painel e trilha", () => {
     await expect(page.getByTestId("atalho-revisoes")).toContainText("2 pendentes");
     await expect(page.getByTestId("painel-rodape").getByRole("link", { name: "Como funciona" })).toHaveAttribute("href", "/#como-funciona");
     await noHorizontalScroll(page);
-  });
-
-  test("minhas matérias: abas filtram e cada matéria abre o estudo", async ({ page }) => {
-    await page.goto(`${G}/painel`);
-    const card = page.getByTestId("minhas-materias");
-    await expect(card.getByRole("tab", { name: "Em andamento (3)" })).toHaveAttribute("aria-selected", "true");
-    await expect(card.getByRole("link", { name: /Língua Portuguesa/ })).toHaveCount(0);
-    await card.getByRole("tab", { name: "Concluídas (1)" }).click();
-    await expect(card.getByRole("link", { name: /Língua Portuguesa: 4 de 4 aulas, 100%/ })).toBeVisible();
-    await card.getByRole("tab", { name: "Todas (4)" }).click();
-    const penal = card.getByRole("link", { name: /Direito Penal: 3 de 8 aulas, 38%/ });
-    await expect(penal).toHaveAttribute("href", /\/dev\/galeria\/trilhas\//);
   });
 
   test("módulos expansíveis e pré-requisitos visíveis", async ({ page }) => {
