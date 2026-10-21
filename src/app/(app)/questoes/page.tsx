@@ -30,7 +30,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
       {bank.total > 0 && <BankFiltersForm action="/questoes" filters={filters} trails={bank.trails} boards={bank.boards} modules={bank.modules} />}
       {bank.total === 0 ? (
         <EmptyState
-          title="As questões agora ficam nas aulas e no Modo Jogo"
+          title="Questões de concursos: em breve"
           action={
             <div className="flex flex-wrap justify-center gap-2">
               <ButtonLink href="/trilhas">Ir para os estudos</ButtonLink>
@@ -38,7 +38,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
             </div>
           }
         >
-          Resolva as questões comentadas dentro de cada aula e complete a lei no Modo Jogo.
+          Aqui vão ficar as questões de provas de concursos catalogadas pela equipe APROVUM. Enquanto isso, pratique com as questões comentadas dentro das aulas e no Modo Jogo.
         </EmptyState>
       ) : bank.questions.length === 0 ? (
         <EmptyState title="Nenhuma questão com esses filtros" action={<ButtonLink href="/questoes" variant="secundario">Limpar filtros</ButtonLink>}>

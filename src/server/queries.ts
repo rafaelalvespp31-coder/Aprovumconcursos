@@ -372,8 +372,8 @@ export interface BankQuestion {
 }
 
 /**
- * Menu Questões: vazio por decisão do produto — as questões ficam dentro das aulas
- * (questões comentadas e níveis) e no Modo Jogo. Nada é apagado do banco.
+ * Menu Questões: reservado às questões de concursos catalogadas pela equipe (banco).
+ * As questões das aulas ficam só dentro das aulas e no Modo Jogo; nada é apagado.
  */
 const MENU_SHOWS_QUESTIONS = false;
 
