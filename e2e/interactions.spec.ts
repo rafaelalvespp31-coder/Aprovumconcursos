@@ -625,21 +625,6 @@ test.describe("modo jogo", () => {
   });
 });
 
-test("novo estudo: aula escolhida em listas de seleção (matéria e aula), sem cards", async ({ page }) => {
-  await page.goto(`${G}/novo-estudo`);
-  const picker = page.getByTestId("seletor-catalogo");
-  await expect(picker.getByRole("radio")).toHaveCount(0);
-  await expect(page.getByLabel("Conteúdo a estudar")).toHaveCount(0);
-  await picker.getByLabel("Matéria").selectOption("Direito Processual Penal");
-  const aula = picker.getByLabel("Aula");
-  await expect(aula.locator("option", { hasText: "Homicídio (CP, art. 121)" })).toHaveCount(0);
-  await aula.selectOption({ label: "Inquérito Policial (CPP, arts. 4º a 23)" });
-  await expect(aula).toHaveValue("00000000-0000-4000-8000-0000000000a3");
-  await expect(picker.getByTestId("aula-escolhida")).toContainText("prazos e arquivamento");
-  await picker.getByLabel("Matéria").selectOption("");
-  await expect(aula.locator("optgroup")).toHaveCount(3);
-});
-
 test("banners: arte e animações aparecem juntas, mesmo com a imagem demorando", async ({ page }) => {
   for (const [path, id, img] of [["painel", "painel-banner", /aprovum-login-hero-mobile\.webp/], ["quiz", "jogo-banner-marca", /jogo-hero-arte(-sm)?\.webp/]] as const) {
     let release: () => void = () => {};
@@ -807,10 +792,18 @@ test("escolha seu novo estudo (menu Novo): matéria, tema, filtros e progresso r
   const top = sec.getByTestId("tema-catalogo").first();
   await expect(top).toContainText("Mais estudado");
   await expect(top.getByRole("link", { name: /^Continuar estudando: Ato administrativo/ })).toHaveAttribute("href", /\/dev\/galeria\/trilhas\//);
-  await expect(sec.getByRole("link", { name: /Montar meu estudo/ })).toHaveAttribute("href", "#formulario");
-  // Outra matéria: tema não iniciado abre o novo estudo já com o tema escolhido.
+  // Sem o formulário "Montar meu estudo": começar pede só a banca, numa janela.
+  await expect(page.getByText("Montar meu estudo")).toHaveCount(0);
   await sec.getByRole("tab", { name: /Direito Penal/ }).click();
-  await expect(sec.getByRole("link", { name: /^Começar estudo: Roubo/ })).toHaveAttribute("href", /nova-trilha\?materia=Direito%20Penal&conteudo=Roubo/);
+  await sec.getByRole("button", { name: /^Começar estudo: Roubo/ }).click();
+  const dlg = page.getByTestId("comecar-estudo");
+  await expect(dlg.getByRole("heading", { name: "Roubo (CP, art. 157)" })).toBeVisible();
+  await dlg.getByRole("button", { name: "Criar estudo" }).click();
+  await expect(dlg.getByRole("alert")).toContainText("Selecione a banca");
+  await dlg.getByLabel("Banca de referência").selectOption("outra");
+  await expect(dlg.getByLabel("Nome da banca")).toBeVisible();
+  await dlg.getByRole("button", { name: "Cancelar" }).click();
+  await expect(dlg).toBeHidden();
   await sec.getByRole("button", { name: /Não iniciados/ }).click();
   await expect(sec.getByText("Teoria do crime: fato típico")).toBeHidden();
   await sec.getByRole("button", { name: /^Todos/ }).click();

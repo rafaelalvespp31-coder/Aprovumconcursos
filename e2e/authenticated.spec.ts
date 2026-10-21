@@ -18,14 +18,13 @@ test.describe("fluxo do aluno", () => {
     await page.getByRole("button", { name: "Entrar" }).click();
     await page.goto("/nova-trilha");
 
-    const build = page.getByRole("button", { name: "Começar este estudo" });
-    await expect(build).toBeDisabled(); // banca obrigatória
-    await page.getByText("CEBRASPE").click();
-    await page.getByLabel("Conteúdo a estudar").fill("Prisão em flagrante");
-    await build.click();
+    // Escolhe o primeiro tema ainda não iniciado e informa a banca (obrigatória).
+    await page.getByRole("button", { name: /^Começar estudo:/ }).first().click();
+    const dlg = page.getByTestId("comecar-estudo");
+    await dlg.getByLabel("Banca de referência").selectOption("cebraspe");
+    await dlg.getByRole("button", { name: "Criar estudo" }).click();
 
-    await expect(page).toHaveURL(/\/trilhas\/.+\/processando/);
-    await expect(page.getByRole("progressbar")).toBeVisible();
+    await expect(page).toHaveURL(/\/trilhas\/.+/);
     // Pronto o estudo, vai direto para a primeira aula (sem página intermediária).
     await page.waitForURL(/\/aula\/[0-9a-f-]+/, { timeout: 9 * 60_000 });
     await expect(page.locator("nav.al-passos, form").first()).toBeVisible();

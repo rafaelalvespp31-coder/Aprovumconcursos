@@ -13,7 +13,6 @@ import {
   ListChecks,
   PlayCircle,
   Search,
-  Sparkles,
   Target,
   Zap,
   BrainCircuit,
@@ -53,9 +52,12 @@ const matches = (t: ThemeCard, f: Filter) =>
 export function StudyPicker({
   themes,
   base = "",
+  onStart,
 }: {
   themes: ThemeCard[];
   base?: string;
+  /** Começar um tema ainda não estudado (abre a confirmação na própria página). */
+  onStart?: (t: ThemeCard) => void;
 }) {
   const subjects = useMemo(() => {
     const m = new Map<string, number>();
@@ -314,33 +316,11 @@ export function StudyPicker({
           )}
           {ordered.map((t) => (
             <li key={t.id}>
-              <ThemeRow theme={t} highlight={t === top} base={base} />
+              <ThemeRow theme={t} highlight={t === top} base={base} onStart={onStart} />
             </li>
           ))}
         </ul>
 
-        {/* Atalho para o novo estudo completo */}
-        <div className="mt-5 flex flex-wrap items-center gap-4 rounded-[18px] bg-[#080808] px-4 py-4 text-white sm:px-5">
-          <span
-            className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] bg-[#F01820]"
-            aria-hidden
-          >
-            <Target className="h-6 w-6" />
-          </span>
-          <div className="min-w-0 flex-1 basis-[200px]">
-            <p className="text-[15px] font-bold">Não sabe por onde começar?</p>
-            <p className="text-[13px] text-white/75">
-              Monte um estudo com o tema, a banca e a pasta que você quiser.
-            </p>
-          </div>
-          <a
-            href="#formulario"
-            className="flex items-center gap-2 rounded-full bg-[#F01820] px-5 py-3 text-[14px] font-bold text-white shadow-[0_8px_20px_rgba(240,24,32,0.35)] max-sm:w-full max-sm:justify-center"
-          >
-            <Sparkles className="h-4 w-4" aria-hidden /> Montar meu estudo{" "}
-            <ChevronRight className="h-4 w-4" aria-hidden />
-          </a>
-        </div>
       </div>
     </section>
   );
@@ -374,15 +354,17 @@ function ThemeRow({
   theme: t,
   highlight,
   base,
+  onStart,
 }: {
   theme: ThemeCard;
   highlight: boolean;
   base: string;
+  onStart?: (t: ThemeCard) => void;
 }) {
   const s = t.study;
   const href = s
     ? `${base}/trilhas/${s.trailId}`
-    : `${base}/nova-trilha?materia=${encodeURIComponent(t.discipline)}&conteudo=${encodeURIComponent(t.title)}#formulario`;
+    : `${base}/nova-trilha?materia=${encodeURIComponent(t.discipline)}&conteudo=${encodeURIComponent(t.title)}`;
   const status = !s ? "Não iniciado" : s.done ? "Concluído" : "Em andamento";
   const action = !s
     ? "Começar estudo"
@@ -391,6 +373,15 @@ function ThemeRow({
       : "Continuar estudando";
   const short = !s ? "Começar" : s.done ? "Revisar" : "Continuar";
   const value = s?.pct ?? 0;
+  const cls = highlight
+    ? "bg-[#F01820] text-white shadow-[0_8px_18px_rgba(240,24,32,0.35)]"
+    : "border border-[#E5E8ED] bg-white text-[#080808] hover:border-[#080808]/40";
+  const label = (
+    <>
+      <span className="sm:hidden">{short}</span>
+      <span className="hidden sm:inline">{action}</span> <ArrowRight className="h-4 w-4" aria-hidden />
+    </>
+  );
   return (
     <div
       className={`relative flex flex-wrap items-center gap-3 rounded-[18px] px-3 py-3 sm:flex-nowrap sm:gap-4 sm:px-4 ${
@@ -458,19 +449,20 @@ function ThemeRow({
             {status}
           </span>
         </span>
-        <Link
-          href={href}
-          aria-label={`${action}: ${t.title}`}
-          className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-[13.5px] font-bold ${
-            highlight
-              ? "bg-[#F01820] text-white shadow-[0_8px_18px_rgba(240,24,32,0.35)]"
-              : "border border-[#E5E8ED] bg-white text-[#080808] hover:border-[#080808]/40"
-          }`}
-        >
-          <span className="sm:hidden">{short}</span>
-          <span className="hidden sm:inline">{action}</span>{" "}
-          <ArrowRight className="h-4 w-4" aria-hidden />
-        </Link>
+        {!s && onStart ? (
+          <button
+            type="button"
+            onClick={() => onStart(t)}
+            aria-label={`${action}: ${t.title}`}
+            className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-[13.5px] font-bold ${cls}`}
+          >
+            {label}
+          </button>
+        ) : (
+          <Link href={href} aria-label={`${action}: ${t.title}`} className={`flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-[13.5px] font-bold ${cls}`}>
+            {label}
+          </Link>
+        )}
       </div>
     </div>
   );
