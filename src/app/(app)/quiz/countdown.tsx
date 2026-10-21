@@ -1,16 +1,16 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Pause, Play, TimerReset } from "lucide-react";
 
 /** Tempo de cada questão do Modo Jogo. */
-export const QUESTION_SECONDS = 20;
+export const QUESTION_SECONDS = 35;
 
-const R = 23;
-const C = 2 * Math.PI * R;
+const mmss = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 
 /**
- * Cronômetro regressivo da questão: anel que esvazia, número que "salta" a cada segundo,
- * barra que drena sob o cabeçalho e alerta pulsante nos últimos 3 segundos.
+ * Cronômetro regressivo da questão, no painel "Tempo restante": relógio mm:ss, anel que
+ * esvazia em volta do ícone, alerta pulsante nos últimos 5 segundos e botão de pausa.
  * Monte com uma `key` por questão para reiniciar. Só corre enquanto `running`;
  * ao zerar chama `onExpire` uma única vez.
  */
@@ -18,12 +18,16 @@ export function Countdown({
   seconds = QUESTION_SECONDS,
   running,
   result,
+  paused,
+  onTogglePause,
   onExpire,
 }: {
   seconds?: number;
   running: boolean;
   /** Depois de responder, o cronômetro congela e assume a cor do resultado. */
   result: "ok" | "erro" | null;
+  paused: boolean;
+  onTogglePause: () => void;
   onExpire: () => void;
 }) {
   const total = seconds * 1000;
@@ -53,54 +57,56 @@ export function Countdown({
 
   const sec = Math.ceil(left / 1000);
   const frac = left / total;
-  const urgent = !result && left > 0 && sec <= 3;
-  const warn = !result && sec <= 5;
-  const color = result === "ok" ? "#4ADE80" : result === "erro" ? "rgba(255,255,255,0.45)" : warn ? "#FFD60A" : "#FFFFFF";
+  const urgent = !result && left > 0 && sec <= 5;
+  const color = result === "ok" ? "#4ADE80" : result === "erro" ? "rgba(255,255,255,0.45)" : urgent ? "#FFD60A" : "#FF1E12";
+  const canPause = !result && left > 0;
 
   return (
-    <>
+    <div
+      className={`flex shrink-0 items-center gap-3 rounded-[22px] border bg-black/60 py-2 pl-3 pr-2 max-sm:w-full sm:gap-4 sm:pl-4 ${urgent ? "cd-urgente border-[#FFD60A]/70" : "border-[#E10600]/70"} shadow-[0_0_24px_rgba(225,6,0,0.18)]`}
+    >
+      <span className="relative flex h-11 w-11 shrink-0 items-center justify-center" aria-hidden>
+        <svg viewBox="0 0 44 44" className="absolute inset-0 h-full w-full -rotate-90">
+          <circle cx="22" cy="22" r="19" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="3.5" />
+          <circle
+            cx="22"
+            cy="22"
+            r="19"
+            fill="none"
+            stroke={color}
+            strokeWidth="3.5"
+            strokeLinecap="round"
+            strokeDasharray={2 * Math.PI * 19}
+            strokeDashoffset={2 * Math.PI * 19 * (1 - frac)}
+            style={{ transition: "stroke-dashoffset 100ms linear, stroke 300ms" }}
+          />
+        </svg>
+        <TimerReset className="relative h-5 w-5" style={{ color }} />
+      </span>
       <span
         role="timer"
         aria-label={`${sec} segundo${sec === 1 ? "" : "s"} restantes`}
         data-testid="cronometro"
         data-urgente={urgent || undefined}
-        className={`relative flex h-[58px] w-[58px] shrink-0 items-center justify-center rounded-full ${urgent ? "cd-urgente bg-black" : "bg-black/35"} ${!running && !result && left > 0 ? "opacity-80" : ""}`}
+        className="flex flex-col leading-none"
       >
-        <svg viewBox="0 0 58 58" className="absolute inset-0 h-full w-full -rotate-90" aria-hidden>
-          <circle cx="29" cy="29" r={R} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="4.5" />
-          <circle
-            cx="29"
-            cy="29"
-            r={R}
-            fill="none"
-            stroke={color}
-            strokeWidth="4.5"
-            strokeLinecap="round"
-            strokeDasharray={C}
-            strokeDashoffset={C * (1 - frac)}
-            style={{ transition: "stroke-dashoffset 100ms linear, stroke 300ms" }}
-          />
-        </svg>
-        {/* Ponteiro que gira com o tempo restante */}
-        {!result && left > 0 && (
-          <span className="absolute inset-0" style={{ transform: `rotate(${360 * frac}deg)`, transition: "transform 100ms linear" }} aria-hidden>
-            <span className="absolute left-1/2 top-[3px] h-[7px] w-[7px] -translate-x-1/2 rounded-full shadow-[0_0_8px_currentColor]" style={{ background: color, color }} />
-          </span>
-        )}
-        <span key={sec} className={`relative text-[22px] font-black tabular-nums leading-none ${result ? "" : "cd-pop"}`} style={{ color }}>
-          {sec}
+        <span key={sec} className={`text-[26px] font-black tabular-nums tracking-tight sm:text-[30px] ${result || paused ? "" : "cd-pop"}`} style={{ color: result ? color : urgent ? "#FFD60A" : "#FFFFFF" }}>
+          {mmss(sec)}
         </span>
-        <span className="absolute -bottom-1.5 rounded-full bg-black px-1.5 text-[8.5px] font-black uppercase tracking-[0.12em] text-white/80" aria-hidden>
-          {left <= 0 && !result ? "fim" : "seg"}
+        <span className="mt-1 text-[10.5px] font-bold uppercase tracking-[0.12em] text-white/70">
+          {left <= 0 && !result ? "Tempo esgotado" : paused ? "Pausado" : "Tempo restante"}
         </span>
       </span>
-      {/* Barra que drena sob o cabeçalho */}
-      <span className="pointer-events-none absolute inset-x-0 bottom-0 h-1 bg-black/25" aria-hidden>
-        <span
-          className={`block h-full ${urgent ? "cd-barra" : ""}`}
-          style={{ width: `${frac * 100}%`, background: color, transition: "width 100ms linear, background-color 300ms" }}
-        />
-      </span>
-    </>
+      <button
+        type="button"
+        onClick={onTogglePause}
+        disabled={!canPause}
+        aria-label={paused ? "Retomar o cronômetro" : "Pausar o cronômetro"}
+        aria-pressed={paused}
+        className="ml-auto flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/20 bg-white/5 text-white transition-colors hover:border-white/50 disabled:opacity-35"
+      >
+        {paused ? <Play className="h-5 w-5" aria-hidden /> : <Pause className="h-5 w-5" aria-hidden />}
+      </button>
+    </div>
   );
 }

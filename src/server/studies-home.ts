@@ -23,7 +23,7 @@ export async function getStudiesHome(): Promise<StudiesHome> {
     db.from("learning_progress").select("lesson_id, trail_id, state, levels_passed, updated_at").eq("user_id", me),
     db.from("questions").select("id, lesson_id").eq("user_id", me).eq("active", true).limit(10000),
     db.from("answer_attempts").select("question_id, created_at, time_spent_seconds").eq("user_id", me).limit(20000),
-    admin.from("catalog_topics").select("id, discipline_mode").eq("status", "publicado").limit(5000),
+    admin.from("catalog_topics").select("id, title, discipline_mode, estimated_minutes").eq("status", "publicado").limit(5000),
     admin.from("catalog_questions").select("topic_id").eq("active", true).limit(50000),
   ]);
   for (const r of [trails, lessons, progress, questions, attempts]) if (r.error) throw new Error(r.error.message);
@@ -41,8 +41,10 @@ export async function getStudiesHome(): Promise<StudiesHome> {
     progress: ((progress.data ?? []) as Array<{ lesson_id: string; trail_id: string; state: string; levels_passed: number | null; updated_at: string }>).map((p) => ({ ...p, levels_passed: p.levels_passed ?? 0 })),
     questions: (questions.data ?? []) as Array<{ id: string; lesson_id: string }>,
     attempts: (attempts.data ?? []) as Array<{ question_id: string; created_at: string; time_spent_seconds: number | null }>,
-    catalog: ((topics.data ?? []) as Array<{ id: string; discipline_mode: string }>).map((t) => ({
+    catalog: ((topics.data ?? []) as Array<{ id: string; title: string; discipline_mode: string; estimated_minutes: number | null }>).map((t) => ({
       id: t.id,
+      title: t.title,
+      minutes: t.estimated_minutes ?? 0,
       discipline: DISCIPLINE_LABELS[t.discipline_mode as DisciplineMode] ?? "Outras matérias",
       questions: perTopic.get(t.id) ?? 0,
     })),

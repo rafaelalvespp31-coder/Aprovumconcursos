@@ -52,6 +52,20 @@ describe("página de Estudos: dados reais agregados", () => {
     expect(h.studies[1]).toMatchObject({ id: "t2", discipline: "Processo Penal", lessonsDone: 1, lessonsTotal: 1 });
   });
 
+  it("temas do catálogo para 'Escolha seu novo estudo': só os com título, com o andamento real do aluno", () => {
+    const h = buildStudiesHome({
+      ...base,
+      catalog: [
+        { id: "c1", discipline: "Direito Administrativo", questions: 30, title: "Atos administrativos", minutes: 60 },
+        { id: "c2", discipline: "Direito Administrativo", questions: 10, title: "Agentes públicos" },
+        { id: "c3", discipline: "Direito Penal", questions: 12 },
+      ],
+    });
+    expect(h.themes.map((t) => t.id)).toEqual(["c2", "c1"]); // c3 sem título fica de fora; ordem por matéria e título
+    expect(h.themes[1]).toMatchObject({ title: "Atos administrativos", minutes: 60, study: { trailId: "t1", answered: 1, totalQuestions: 2, pct: 50, done: false } });
+    expect(h.themes[0]).toMatchObject({ minutes: 0, study: null });
+  });
+
   it("catálogo por matéria com aulas, questões e o que o aluno concluiu", () => {
     const done = buildStudiesHome({ ...base, progress: base.progress.map((p) => ({ ...p, levels_passed: 3 })) });
     expect(done.subjects).toEqual([

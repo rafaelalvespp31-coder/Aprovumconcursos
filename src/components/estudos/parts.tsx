@@ -8,6 +8,7 @@ export function Ring({ value, size = 96, stroke = 10, dark = false, label }: { v
     <span className="relative inline-flex shrink-0 items-center justify-center" style={{ width: size, height: size }} role="img" aria-label={label ?? `${v}%`}>
       <svg viewBox="0 0 120 120" className="h-full w-full -rotate-90" aria-hidden>
         <circle cx="60" cy="60" r={60 - stroke / 2 - 2} fill="none" strokeWidth={stroke} className={dark ? "stroke-white/15" : "stroke-[#E5E8ED]"} />
+        {v > 0 && (
         <circle
           cx="60"
           cy="60"
@@ -20,6 +21,7 @@ export function Ring({ value, size = 96, stroke = 10, dark = false, label }: { v
           className="stroke-[#F01820] transition-[stroke-dasharray] duration-700"
           style={{ filter: dark ? "drop-shadow(0 0 4px rgba(240,24,32,.7))" : undefined }}
         />
+        )}
       </svg>
       <span className={`absolute font-bold tabular-nums ${dark ? "text-white" : "text-[#080808]"}`} style={{ fontSize: size * 0.24 }}>
         {v}%

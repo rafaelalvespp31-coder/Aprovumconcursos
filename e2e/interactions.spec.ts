@@ -553,8 +553,8 @@ test.describe("modo jogo", () => {
   test("encaixa palavras do banco nos espaços e libera a verificação", async ({ page }) => {
     await page.goto(`${G}/quiz`);
     const card = page.getByRole("region", { name: "Questão do jogo" });
-    await expect(card.getByText("Instrutor Caveira")).toBeVisible();
-    const verify = card.getByRole("button", { name: /Verificar resposta/ });
+    await expect(card.getByText("Frase da lei")).toBeVisible();
+    const verify = card.page().getByRole("button", { name: /^Confirmar$/ });
     await expect(verify).toBeDisabled();
     const slots = card.getByRole("button", { name: /^Espaço \d/ });
     const n = await slots.count();
@@ -565,23 +565,44 @@ test.describe("modo jogo", () => {
     // Tocar num espaço preenchido devolve a palavra ao banco.
     await card.getByRole("button", { name: /Espaço 1: .* Toque para tirar/ }).click();
     await expect(verify).toBeDisabled();
+    // Limpar esvazia todos os espaços.
+    await words.nth(0).click();
+    await card.page().getByRole("button", { name: /Limpar/ }).click();
+    await expect(card.getByText(`0/${n} preenchidos`)).toBeVisible();
   });
-  test("cronômetro de 20 s por questão: corre com a questão na tela e esgota o tempo", async ({ page }) => {
+
+  test("pausa: o cronômetro para, a frase fica coberta e as palavras travam", async ({ page }) => {
     await page.clock.install();
     await page.goto(`${G}/quiz`);
     const card = page.getByRole("region", { name: "Questão do jogo" });
     await card.scrollIntoViewIfNeeded();
-    const timer = card.getByTestId("cronometro");
-    await expect(timer).toHaveAttribute("aria-label", "20 segundos restantes");
+    const timer = page.getByTestId("cronometro");
+    await page.getByRole("button", { name: "Pausar o cronômetro" }).click();
+    const before = await timer.getAttribute("aria-label");
+    await page.clock.runFor(5_000);
+    await expect(timer).toHaveAttribute("aria-label", before!);
+    await expect(card.getByText(/Pausado/)).toBeVisible();
+    await expect(card.locator("button.min-h-12").first()).toBeDisabled();
+    await page.getByRole("button", { name: "Retomar o cronômetro" }).click();
+    await expect(card.locator("button.min-h-12").first()).toBeEnabled();
+  });
+  test("cronômetro de 35 s por questão: corre com a questão na tela e esgota o tempo", async ({ page }) => {
+    await page.clock.install();
+    await page.goto(`${G}/quiz`);
+    const card = page.getByRole("region", { name: "Questão do jogo" });
+    await card.scrollIntoViewIfNeeded();
+    const timer = page.getByTestId("cronometro");
+    await expect(timer).toHaveAttribute("aria-label", "35 segundos restantes");
+    await expect(timer).toContainText("00:35");
     // Avança o relógio segundo a segundo até chegar aos 3 segundos finais.
     const secs = async () => Number((await timer.getAttribute("aria-label"))?.match(/^\d+/)?.[0] ?? 0);
     await page.clock.runFor(2_000);
-    await expect.poll(secs).toBeLessThan(20);
+    await expect.poll(secs).toBeLessThan(35);
     await expect(timer).not.toHaveAttribute("data-urgente", "true");
     for (let i = 0; i < 40 && (await secs()) > 3; i++) await page.clock.runFor(1_000);
     await expect(timer).toHaveAttribute("data-urgente", "true");
     for (let i = 0; i < 10 && (await secs()) > 0; i++) await page.clock.runFor(1_000);
-    await expect(card.getByRole("button", { name: /Tempo esgotado/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Tempo esgotado/ })).toBeVisible();
     await expect(card.locator("button.min-h-12").first()).toBeDisabled();
   });
 
@@ -774,9 +795,31 @@ test("menu Estudos: submenu com as matérias abre os assuntos estudados", async 
   await noHorizontalScroll(page);
 });
 
+test("escolha seu novo estudo: matéria, tema, filtros e progresso real", async ({ page }) => {
+  await page.goto(`${G}/trilhas`);
+  const sec = page.getByTestId("escolha-estudo");
+  await expect(sec.getByRole("heading", { name: "Novo estudo" })).toBeVisible();
+  // Abre na matéria do tema mais estudado, com o destaque e o link para continuar.
+  await expect(sec.getByRole("tab", { name: /Direito Administrativo/ })).toHaveAttribute("aria-selected", "true");
+  const top = sec.getByTestId("tema-catalogo").first();
+  await expect(top).toContainText("Mais estudado");
+  await expect(top.getByRole("link", { name: /^Continuar estudando: Ato administrativo/ })).toHaveAttribute("href", /\/dev\/galeria\/trilhas\//);
+  // Outra matéria: tema não iniciado abre o novo estudo já com o tema escolhido.
+  await sec.getByRole("tab", { name: /Direito Penal/ }).click();
+  await expect(sec.getByRole("link", { name: /^Começar estudo: Roubo/ })).toHaveAttribute("href", /nova-trilha\?materia=Direito%20Penal&conteudo=Roubo/);
+  await sec.getByRole("button", { name: /Não iniciados/ }).click();
+  await expect(sec.getByText("Teoria do crime: fato típico")).toBeHidden();
+  await sec.getByRole("button", { name: /^Todos/ }).click();
+  await page.getByLabel("Buscar tema").fill("homic");
+  await expect(sec.getByTestId("tema-catalogo")).toHaveCount(1);
+  await noHorizontalScroll(page);
+});
+
 test("pastas e estudos: falha ao excluir aparece na tela (nunca um clique mudo)", async ({ page }) => {
   // Na galeria não há sessão: a ação do servidor falha de propósito.
   await page.goto(`${G}/trilhas`);
+  // A organização em pastas fica recolhida abaixo de "Escolha seu novo estudo".
+  await page.getByTestId("organizar-pastas").locator("summary").click();
   await page.getByRole("button", { name: /^Excluir estudo Ato/ }).click();
   await page.getByRole("button", { name: "Excluir estudo", exact: true }).click();
   await expect(page.getByTestId("erro-pastas")).toBeVisible();

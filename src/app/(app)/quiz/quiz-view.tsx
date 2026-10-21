@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { ArrowRight, BarChart3, BookOpen, Check, Clock, Crown, Crosshair, FileText, Flame, Lightbulb, MessageSquare, Plus, RotateCcw, ShieldCheck, Timer, X, Zap } from "lucide-react";
+import { ArrowRight, BarChart3, BookOpen, Brain, Check, ChevronRight, Clock, Crown, FileText, Flame, GripVertical, Lightbulb, MessageSquare, Move, RotateCcw, RotateCw, ShieldCheck, Star, Target, Timer, Volume2, X, Zap } from "lucide-react";
 import { Markdown } from "@/components/markdown";
 import type { QuizCheck, QuizHome, QuizLevel, QuizRound, RankingRow } from "@/server/services/quiz";
 import { checkAnswerAction, startRoundAction } from "./actions";
@@ -12,6 +12,33 @@ import { JogoHero } from "./jogo-hero";
 import { LevelUpDialog } from "./level-up";
 
 const MASCOT = "/icons/instrutor-caveira.png";
+
+const LAW_NAMES: Record<string, string> = {
+  CP: "o Código Penal",
+  CPP: "o Código de Processo Penal",
+  CF: "a Constituição Federal",
+  CTB: "o Código de Trânsito Brasileiro",
+  LEP: "a Lei de Execução Penal",
+  CPM: "o Código Penal Militar",
+};
+const lawName = (code: string | null) => (code && LAW_NAMES[code.toUpperCase()]) || "o texto da lei";
+
+const FRASES = [
+  "O que hoje é esforço, amanhã é conquista.",
+  "Literalidade é ponto garantido na prova.",
+  "Cada lacuna acertada é um passo rumo à posse.",
+  "Disciplina hoje, resultado amanhã.",
+];
+
+/** Lê a frase em voz alta (lacunas vazias são lidas como "lacuna"). */
+function speak(parts: QuizRound["items"][number]["parts"], slots: (string | null)[]) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const text = parts.map((p) => ("text" in p ? p.text : (slots[p.blank] ?? "lacuna"))).join("");
+  window.speechSynthesis.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "pt-BR";
+  window.speechSynthesis.speak(u);
+}
 
 type Tab = "explicacao" | "banca" | "dica";
 
@@ -51,6 +78,8 @@ export function QuizView({
   const [roundNo, setRoundNo] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
   const [inView, setInView] = useState(false);
+  const [paused, setPaused] = useState(false);
+  const [hint, setHint] = useState(false);
   const [pageVisible, setPageVisible] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
   const questionRef = useRef<HTMLElement>(null);
@@ -85,15 +114,20 @@ export function QuizView({
     document.addEventListener("visibilitychange", on);
     return () => document.removeEventListener("visibilitychange", on);
   }, []);
-  const timerRunning = hasQuestion && inView && pageVisible && !check && !pending && !timedOut && dialog === null;
+  const timerRunning = hasQuestion && inView && pageVisible && !paused && !check && !pending && !timedOut && dialog === null;
 
   const place = (w: string) => {
-    if (check || timedOut || used.has(w)) return;
+    if (check || timedOut || paused || used.has(w)) return;
     const i = slots.findIndex((s) => !s);
     if (i < 0) return;
     setSlots(slots.map((s, j) => (j === i ? w : s)));
   };
-  const clear = (i: number) => !check && !timedOut && setSlots(slots.map((s, j) => (j === i ? null : s)));
+  // Arrastar para uma lacuna: a palavra sai de onde estava e substitui a que estiver ali.
+  const placeAt = (i: number, w: string) => {
+    if (check || timedOut || paused || !item?.bank.includes(w)) return;
+    setSlots(slots.map((s, j) => (j === i ? w : s === w ? null : s)));
+  };
+  const clear = (i: number) => !check && !timedOut && !paused && setSlots(slots.map((s, j) => (j === i ? null : s)));
 
   const submit = (given: string[]) => {
     if (!item || check) return;
@@ -135,6 +169,8 @@ export function QuizView({
     setIdx(n);
     setCheck(null);
     setTimedOut(false);
+    setPaused(false);
+    setHint(false);
     setSlots(Array(round.items[n]?.blanks ?? 0).fill(null));
     cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
@@ -149,6 +185,8 @@ export function QuizView({
       setIdx(0);
       setCheck(null);
       setTimedOut(false);
+      setPaused(false);
+      setHint(false);
       setRoundNo((x) => x + 1);
       setSlots(Array(r.round.items[0]?.blanks ?? 0).fill(null));
       setHearts(lives);
@@ -207,178 +245,260 @@ export function QuizView({
       <div className="relative mx-auto mt-6 grid max-w-[1180px] gap-6 lg:grid-cols-[minmax(0,1fr)_330px] xl:gap-8">
         <div className="min-w-0">
 
-          {/* Trilha */}
-          <div ref={cardRef} className="mt-5 flex scroll-mt-24 flex-wrap items-center gap-2 text-[13px]">
-            <span className="rounded-full border border-white/15 bg-white/5 px-3 py-1 font-medium text-white/80">{topic.discipline}</span>
-            <span className="text-white/30">/</span>
-            {item && <span className="rounded-full bg-[#E10600] px-3 py-1 font-bold text-white">{item.ref}</span>}
-            <span className="flex items-center gap-1 rounded-full border border-white/15 px-2.5 py-1 text-[12px] text-white/60">
-              <Timer className="h-3.5 w-3.5" aria-hidden /> {QUESTION_SECONDS} s por questão
-            </span>
+          {/* Matéria, tema e cronômetro */}
+          <div ref={cardRef} className="mt-5 flex scroll-mt-24 flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+              <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[14px] bg-gradient-to-br from-[#FF1E12] to-[#A30000] shadow-[0_8px_22px_rgba(225,6,0,0.35)]" aria-hidden>
+                <BookOpen className="h-6 w-6" />
+              </span>
+              <div className="min-w-0">
+                <p className="truncate text-[13px] font-black uppercase tracking-[0.06em] text-[#FF3B30]">{topic.discipline}</p>
+                <p className="truncate text-[14px] text-white/85">Tema: {topic.title}</p>
+              </div>
+            </div>
+            {!finished && item && (
+              <Countdown
+                key={`${roundNo}-${idx}`}
+                running={timerRunning}
+                paused={paused}
+                onTogglePause={() => setPaused((v) => !v)}
+                result={check ? (check.correct ? "ok" : "erro") : null}
+                onExpire={expire}
+              />
+            )}
           </div>
+
+          {/* Progresso da rodada em segmentos */}
+          {!finished && item && (
+            <div className="mt-4 flex items-center gap-3" aria-label={`Questão ${idx + 1} de ${total}`}>
+              <div className="flex flex-1 gap-1.5">
+                {Array.from({ length: total }, (_, i) => {
+                  const done = i < idx + (check ? 1 : 0);
+                  return <span key={i} className={`h-2 flex-1 rounded-full ${done ? "bg-[#FF1E12] shadow-[0_0_10px_rgba(255,30,18,0.6)]" : i === idx ? "bg-white/35" : "border border-white/15 bg-white/5"}`} />;
+                })}
+              </div>
+              <span className="text-[15px] font-bold tabular-nums text-white/85">
+                {idx + 1}/{total}
+              </span>
+            </div>
+          )}
 
           {error && <p className="mt-3 rounded-[12px] border border-[#FF3B30]/50 bg-[#2A0606] px-3 py-2 text-[14px] font-semibold text-white" role="alert">{error}</p>}
 
           {finished ? (
             <RoundEnd hearts={hearts} hits={hits} total={total} answered={Math.min(idx + (check ? 1 : 0), total)} roundXp={roundXp} pending={pending} level={level} onAgain={() => newRound()} onRanking={() => setDialog("ranking")} />
           ) : item ? (
-            <section ref={questionRef} className="relative mt-4 overflow-hidden rounded-[28px] bg-gradient-to-br from-[#D90A00] via-[#B10400] to-[#6E0000] shadow-[0_24px_60px_rgba(225,6,0,0.28)] ring-1 ring-white/10" aria-label="Questão do jogo">
-              <div className="absolute inset-x-0 top-0 h-1 bg-black/25">
-                <div className="h-full bg-white transition-[width] duration-500" style={{ width: `${((idx + (check ? 1 : 0)) / total) * 100}%` }} />
-              </div>
-              <span className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-white/10 blur-2xl" aria-hidden />
+            <>
+              <section
+                ref={questionRef}
+                className="jogo-card relative mt-5 overflow-hidden rounded-[26px] border border-[#E10600]/70 bg-[#0B0B0C] shadow-[0_0_0_1px_rgba(225,6,0,0.15),0_24px_60px_rgba(225,6,0,0.22)]"
+                aria-label="Questão do jogo"
+              >
+                <div className="relative px-4 pb-5 pt-5 sm:px-7 sm:pt-6">
+                  {/* Cabeçalho do card */}
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <span className="flex items-center overflow-hidden rounded-full border border-[#E10600] bg-black/40 text-[13px] font-black uppercase tracking-[0.04em] text-[#FF3B30]">
+                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E10600] text-white" aria-hidden>
+                        <FileText className="h-4 w-4" />
+                      </span>
+                      <span className="px-3">Frase da lei</span>
+                    </span>
+                    <span className="rounded-full border border-white/10 bg-white/[0.06] px-3.5 py-2 text-[13px] text-white/90">
+                      Questão <strong className="font-black">{idx + 1}</strong> de {total}
+                    </span>
+                    <span className="ml-auto flex items-center gap-1.5 rounded-full bg-[#E10600] px-3.5 py-2 text-[13px] font-black text-white shadow-[0_6px_18px_rgba(225,6,0,0.45)]">
+                      <Star className="h-4 w-4" aria-hidden />
+                      <span data-testid="quiz-dificuldade">{round.level.tier.label}</span>
+                    </span>
+                  </div>
 
-              <header className="relative flex items-center gap-3 border-b border-white/15 px-4 py-4 sm:px-7">
-                <img src={MASCOT} alt="" className="h-12 w-12 shrink-0 rounded-full bg-black object-contain p-0.5 ring-2 ring-white/30" />
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-center gap-2 whitespace-nowrap text-[15px] font-black">
-                    Instrutor Caveira <span className="hidden rounded-[4px] bg-black px-1.5 py-0.5 text-[9px] font-black tracking-wide text-white min-[400px]:inline">APROVUM</span>
-                  </p>
-                  <p className="flex items-center gap-1 truncate text-[12.5px] text-white/75">
-                    <BookOpen className="h-3.5 w-3.5 shrink-0" aria-hidden /> Complete a lei<span className="hidden sm:inline"> — texto literal</span>
-                  </p>
-                </div>
-                <Countdown
-                  key={`${roundNo}-${idx}`}
-                  running={timerRunning}
-                  result={check ? (check.correct ? "ok" : "erro") : null}
-                  onExpire={expire}
-                />
-                <span className="flex shrink-0 flex-col items-end gap-1">
-                  <span className="rounded-full bg-black/30 px-3 py-1 text-[12px] font-bold tabular-nums">
-                    {idx + 1}/{total}
-                  </span>
-                  <span className="rounded-full bg-white px-2 py-0.5 text-[10.5px] font-black uppercase tracking-wide text-[#B10400]" data-testid="quiz-dificuldade">
-                    {round.level.tier.label}
-                  </span>
-                </span>
-              </header>
-
-              <div className="relative px-4 pb-6 pt-5 sm:px-7">
-                {/* Dispositivo */}
-                <div className="relative rounded-[20px] bg-black/45 px-4 py-4 ring-1 ring-white/10 sm:px-6 sm:py-5">
-                  {item.context && <p className="mb-2 text-[13.5px] leading-snug text-white/60">{item.context}</p>}
-                  <p className="text-[16px] leading-[1.95] sm:text-[18px]">
-                    {item.parts.map((p, i) =>
-                      "text" in p ? (
-                        <span key={i}>{p.text}</span>
-                      ) : (
-                        <Blank key={i} n={p.blank} word={slots[p.blank] ?? null} state={check ? (check.results[p.blank] ? "ok" : "erro") : null} answer={check?.answers[p.blank]} />
-                      ),
-                    )}
-                  </p>
-                  <p className="mt-4 flex flex-wrap items-center gap-2 text-[12px] text-white/60">
-                    <span className="rounded-full bg-white px-2.5 py-1 font-black text-[#B10400]">{topic.lawCode ? `${topic.lawCode} • ` : ""}{item.ref}</span>
-                    Texto literal do dispositivo
-                  </p>
-                </div>
-
-                {/* Resposta */}
-                <div className="mt-6 flex items-center justify-between gap-2">
-                  <p className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-white/75">
-                    <Crosshair className="h-3.5 w-3.5" aria-hidden /> Sua resposta
-                  </p>
-                  <span className="rounded-full bg-black/30 px-2.5 py-1 text-[12px] font-bold">
-                    {filled}/{item.blanks} preenchidos
-                  </span>
-                </div>
-                <div className={`mt-3 grid gap-3 ${item.blanks > 1 ? "grid-cols-2" : "grid-cols-1"}`}>
-                  {slots.map((w, i) => {
-                    const st = check ? (check.results[i] ? "ok" : "erro") : null;
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => clear(i)}
-                        disabled={!w || !!check || timedOut}
-                        aria-label={w ? `Espaço ${i + 1}: ${w}. Toque para tirar` : `Espaço ${i + 1} vazio`}
-                        className={`flex min-h-[76px] flex-col items-center justify-center gap-1 rounded-[16px] border-2 px-3 text-center transition-all ${
-                          st === "ok" ? "border-[#22C55E] bg-[#0F2A18]" : st === "erro" ? "border-black/40 bg-black/50" : w ? "border-white bg-white text-[#8A0000]" : "border-dashed border-white/45 bg-black/15"
-                        }`}
-                      >
-                        {w ? (
-                          <span className={`text-[16px] font-black ${st === "erro" ? "text-white/60 line-through" : st === "ok" ? "text-[#4ADE80]" : ""}`}>{w}</span>
-                        ) : (
-                          <>
-                            <span className="flex h-6 w-6 items-center justify-center rounded-full border border-dashed border-white/50"><Plus className="h-3 w-3" aria-hidden /></span>
-                            <span className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/70">Espaço {i + 1}</span>
-                          </>
-                        )}
-                        {st === "erro" && check && <span className="text-[13px] font-black text-[#4ADE80]">{check.answers[i]}</span>}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Banco de palavras */}
-                <div className="mt-6 flex items-center justify-between">
-                  <p className="text-[11px] font-bold uppercase tracking-[0.16em] text-white/75">Banco de palavras</p>
-                  {!check && <p className="text-[12px] text-white/55">Toque para encaixar →</p>}
-                </div>
-                <div className="mt-3 flex flex-wrap gap-2.5">
-                  {item.bank.map((w) => (
+                  {/* Enunciado */}
+                  <div className="mt-5 flex items-start gap-3">
+                    <h2 className="flex-1 text-[19px] font-bold leading-snug text-[#8EC5FF] sm:text-[22px]">
+                      Complete a frase de acordo com {lawName(topic.lawCode)}, utilizando as palavras corretas.
+                    </h2>
                     <button
-                      key={w}
                       type="button"
-                      onClick={() => place(w)}
-                      disabled={!!check || timedOut || used.has(w) || filled >= item.blanks}
-                      className={`min-h-12 rounded-full px-5 text-[16px] font-bold transition-all active:scale-95 ${
-                        used.has(w) ? "border border-dashed border-white/25 bg-transparent text-white/35" : "bg-[#0B0B0B] text-white shadow-[0_6px_16px_rgba(0,0,0,0.35)] ring-1 ring-white/10 hover:ring-white/40"
-                      } disabled:cursor-default`}
+                      onClick={() => speak(item.parts, slots)}
+                      className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-white/15 bg-white/5 text-white/85 hover:border-white/40"
+                      aria-label="Ouvir a frase"
                     >
-                      {w}
+                      <Volume2 className="h-5 w-5" aria-hidden />
                     </button>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              {/* Ação */}
-              <div className="relative border-t border-white/15 bg-black/20 px-4 py-5 sm:px-7">
-                {check && (
-                  <div className={`entrar mb-4 flex items-start gap-3 rounded-[16px] px-4 py-3 ring-1 ${check.correct ? "bg-[#0F2A18] ring-[#22C55E]/50" : "bg-black/55 ring-white/15"}`} role="status">
-                    <img src={MASCOT} alt="" className="h-10 w-10 shrink-0 rounded-full bg-black object-contain p-0.5" />
-                    <div>
-                      <p className={`text-[15px] font-black ${check.correct ? "text-[#4ADE80]" : "text-white"}`}>
-                        {check.correct ? `Na mosca! +${check.xp} XP` : `${timedOut ? "Tempo esgotado!" : "Errou."} ${hearts > 0 ? "Menos uma vida." : "Acabaram as vidas."}`}
-                      </p>
-                      <p className="text-[13.5px] text-white/75">
-                        {check.correct ? "Literalidade em dia. É assim que se vence a banca." : `Texto certo: ${check.answers.join(" · ")}. Leia a explicação abaixo.`}
+                  {/* Frase da lei com as lacunas */}
+                  <div
+                    className={`relative mt-4 rounded-[20px] border border-white/10 bg-black/40 px-4 pb-4 pt-5 sm:px-6 ${paused ? "select-none" : ""}`}
+                  >
+                    <span className="absolute left-3 top-1 font-serif text-[46px] font-black leading-none text-[#FF1E12]" aria-hidden>
+                      “
+                    </span>
+                    <div className={`transition-[filter] ${paused ? "blur-md" : ""}`} aria-hidden={paused || undefined}>
+                      {item.context && <p className="mb-2 pl-7 text-[13.5px] leading-snug text-white/60">{item.context}</p>}
+                      <p className="pl-7 text-[17px] leading-[2.3] text-white sm:text-[20px]">
+                        {item.parts.map((p, i) =>
+                          "text" in p ? (
+                            <span key={i}>{p.text}</span>
+                          ) : (
+                            <Blank
+                              key={i}
+                              n={p.blank}
+                              word={slots[p.blank] ?? null}
+                              state={check ? (check.results[p.blank] ? "ok" : "erro") : null}
+                              answer={check?.answers[p.blank]}
+                              locked={!!check || timedOut}
+                              onClear={() => clear(p.blank)}
+                              onDropWord={(w) => placeAt(p.blank, w)}
+                            />
+                          ),
+                        )}
+                        <span className="ml-1 align-top font-serif text-[40px] font-black leading-none text-[#FF1E12]" aria-hidden>
+                          ”
+                        </span>
                       </p>
                     </div>
+                    {paused && (
+                      <p className="absolute inset-0 flex items-center justify-center text-[15px] font-bold text-white" role="status">
+                        Pausado — toque em ▶ para continuar
+                      </p>
+                    )}
+                    <p className="mt-2 pl-7 text-[13px] text-white/55">
+                      {item.ref}
+                      {topic.lawCode ? `, ${topic.lawCode}` : ""}
+                    </p>
                   </div>
-                )}
+
+                  {/* Banco de palavras */}
+                  <div className="mt-6 flex items-center justify-between gap-2">
+                    <div className="flex min-w-0 items-center gap-2.5">
+                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[8px] border border-[#E10600] text-[#FF3B30]" aria-hidden>
+                        <Move className="h-4 w-4" />
+                      </span>
+                      <p className="min-w-0 leading-tight">
+                        <span className="block text-[13px] font-bold uppercase tracking-[0.08em] text-white">Arraste as palavras</span>
+                        <span className="block text-[12px] text-white/60">
+                          {filled}/{item.blanks} preenchidos
+                        </span>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setHint((v) => !v)}
+                      aria-expanded={hint}
+                      className="flex items-center gap-2 rounded-full border border-[#E10600] px-4 py-2 text-[14px] font-bold text-white hover:bg-[#E10600]/15"
+                    >
+                      <Lightbulb className="h-4 w-4 text-[#FF3B30]" aria-hidden /> Dica <ChevronRight className="h-4 w-4" aria-hidden />
+                    </button>
+                  </div>
+                  {hint && (
+                    <p className="entrar mt-3 rounded-[14px] border border-[#E10600]/40 bg-[#1A0505] px-4 py-3 text-[13.5px] leading-snug text-white/85" role="note">
+                      Leia a frase inteira antes de escolher: a palavra certa precisa encaixar no sentido e na concordância do trecho.
+                      {item.blanks > 1 ? ` São ${item.blanks} espaços, e cada palavra só pode ser usada uma vez.` : " Há só um espaço: as outras palavras são distratores."}
+                    </p>
+                  )}
+                  <div className="mt-3 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                    {item.bank.map((w) => {
+                      const on = used.has(w);
+                      return (
+                        <button
+                          key={w}
+                          type="button"
+                          draggable={!check && !timedOut && !on}
+                          onDragStart={(e) => e.dataTransfer.setData("text/plain", w)}
+                          onClick={() => place(w)}
+                          disabled={!!check || timedOut || paused || on || filled >= item.blanks}
+                          aria-pressed={on}
+                          className={`flex min-h-12 items-center gap-2.5 rounded-[14px] border px-3 py-3 text-left text-[15.5px] font-semibold leading-tight transition-all active:scale-[0.98] disabled:cursor-default ${
+                            on
+                              ? "border-[#FF1E12] bg-[#1A0505] text-white/70 shadow-[0_0_18px_rgba(255,30,18,0.35)]"
+                              : "border-white/12 bg-[#141416] text-white hover:border-white/35 disabled:opacity-60"
+                          }`}
+                        >
+                          <GripVertical className="h-4 w-4 shrink-0 text-white/40" aria-hidden />
+                          <span className="min-w-0">{w}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              </section>
+
+              {/* Foco no objetivo */}
+              <div className="mt-4 flex flex-wrap items-center gap-3 rounded-[20px] border border-white/10 bg-[#0B0B0C] px-4 py-3.5 sm:flex-nowrap sm:px-5">
+                <Brain className="h-9 w-9 shrink-0 text-[#FF1E12]" aria-hidden />
+                <div className="min-w-0 flex-1 basis-[180px]">
+                  <p className="text-[13px] font-black uppercase tracking-[0.06em] text-[#FF3B30]">Foco no objetivo</p>
+                  <p className="text-[13.5px] text-white/80">{FRASES[(roundNo + idx) % FRASES.length]}</p>
+                </div>
+                <div className="flex shrink-0 items-center gap-2 rounded-[14px] border border-[#E10600]/60 bg-black/50 px-3 py-2 max-sm:w-full">
+                  <Target className="h-6 w-6 text-[#FF1E12]" aria-hidden />
+                  <p className="leading-tight">
+                    <span className="block text-[14px] font-bold text-[#FF3B30]">{hearts >= lives ? "Continue" : "Atenção"}</span>
+                    <span className="block text-[11.5px] text-white/75">
+                      {hearts >= lives ? "você está indo bem!" : `${Math.max(0, hearts)} ${hearts === 1 ? "vida restante" : "vidas restantes"}`}
+                    </span>
+                  </p>
+                </div>
+              </div>
+
+              {/* Resultado e ações */}
+              {check && (
+                <div className={`entrar mt-4 flex items-start gap-3 rounded-[16px] px-4 py-3 ring-1 ${check.correct ? "bg-[#0F2A18] ring-[#22C55E]/50" : "bg-[#1A0505] ring-[#E10600]/40"}`} role="status">
+                  <img src={MASCOT} alt="" className="h-10 w-10 shrink-0 rounded-full bg-black object-contain p-0.5" />
+                  <div>
+                    <p className={`text-[15px] font-black ${check.correct ? "text-[#4ADE80]" : "text-white"}`}>
+                      {check.correct ? `Na mosca! +${check.xp} XP` : `${timedOut ? "Tempo esgotado!" : "Errou."} ${hearts > 0 ? "Menos uma vida." : "Acabaram as vidas."}`}
+                    </p>
+                    <p className="text-[13.5px] text-white/75">
+                      {check.correct ? "Literalidade em dia. É assim que se vence a banca." : `Texto certo: ${check.answers.join(" · ")}. Leia a explicação abaixo.`}
+                    </p>
+                  </div>
+                </div>
+              )}
+              <div className="mt-4">
                 {!check && timedOut ? (
                   <button
                     type="button"
                     onClick={expire}
                     disabled={pending}
-                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-black text-[15px] font-black uppercase tracking-[0.1em] text-[#FFD60A] ring-1 ring-[#FFD60A]/40 transition-all active:scale-[0.99] disabled:opacity-70"
+                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[16px] bg-black text-[15px] font-black uppercase tracking-[0.1em] text-[#FFD60A] ring-1 ring-[#FFD60A]/40 transition-all active:scale-[0.99] disabled:opacity-70"
                   >
                     <Timer className="h-5 w-5" aria-hidden /> {pending ? "Conferindo…" : "Tempo esgotado!"}
                   </button>
                 ) : !check ? (
-                  <button
-                    type="button"
-                    onClick={verify}
-                    disabled={pending || filled < item.blanks}
-                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-white text-[15px] font-black uppercase tracking-[0.1em] text-[#B10400] shadow-[0_10px_28px_rgba(0,0,0,0.35)] transition-all active:scale-[0.99] disabled:bg-black/30 disabled:text-white/40 disabled:shadow-none"
-                  >
-                    <Crosshair className="h-5 w-5" aria-hidden /> {pending ? "Conferindo…" : "Verificar resposta"}
-                  </button>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={() => setSlots(slots.map(() => null))}
+                      disabled={pending || filled === 0 || paused}
+                      className="flex min-h-14 items-center justify-center gap-2.5 rounded-[16px] border border-white/25 bg-[#0B0B0C] text-[15px] font-black uppercase tracking-[0.08em] text-white transition-all active:scale-[0.99] disabled:opacity-45"
+                    >
+                      <RotateCw className="h-5 w-5" aria-hidden /> Limpar
+                    </button>
+                    <button
+                      type="button"
+                      onClick={verify}
+                      disabled={pending || paused || filled < item.blanks}
+                      className="flex min-h-14 items-center justify-center gap-2.5 rounded-[16px] bg-gradient-to-b from-[#FF1E12] to-[#C20800] text-[15px] font-black uppercase tracking-[0.08em] text-white shadow-[0_10px_28px_rgba(225,6,0,0.4)] transition-all active:scale-[0.99] disabled:from-[#3A0B0B] disabled:to-[#2A0606] disabled:text-white/45 disabled:shadow-none"
+                    >
+                      <Check className="h-5 w-5" aria-hidden /> {pending ? "Conferindo…" : "Confirmar"}
+                    </button>
+                  </div>
                 ) : (
                   <button
                     type="button"
                     onClick={next}
-                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-black text-[15px] font-black uppercase tracking-[0.1em] text-white ring-1 ring-white/20 transition-all active:scale-[0.99]"
+                    className="flex min-h-14 w-full items-center justify-center gap-2 rounded-[16px] bg-gradient-to-b from-[#FF1E12] to-[#C20800] text-[15px] font-black uppercase tracking-[0.1em] text-white shadow-[0_10px_28px_rgba(225,6,0,0.4)] transition-all active:scale-[0.99]"
                   >
                     {hearts <= 0 || idx + 1 >= total ? "Ver resultado" : "Próxima questão"} <ArrowRight className="h-5 w-5" aria-hidden />
                   </button>
                 )}
-                <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[12px] text-white/60">
-                  <ShieldCheck className="h-3.5 w-3.5" aria-hidden /> Resposta conferida no servidor • texto do catálogo APROVUM
+                <p className="mt-3 flex items-center justify-center gap-1.5 text-center text-[12px] text-white/55">
+                  <ShieldCheck className="h-3.5 w-3.5" aria-hidden /> Resposta conferida no servidor • texto do catálogo APROVUM • {QUESTION_SECONDS} s por questão
                 </p>
               </div>
-            </section>
+            </>
           ) : null}
 
           {/* Abas: explicação, banca, dica */}
@@ -512,14 +632,49 @@ export function QuizView({
   );
 }
 
-function Blank({ n, word, state, answer }: { n: number; word: string | null; state: "ok" | "erro" | null; answer?: string }) {
-  const base = "mx-1 inline-flex min-w-[64px] items-center justify-center rounded-[10px] border-2 px-2 align-middle text-[15px] font-black leading-8";
+function Blank({
+  n,
+  word,
+  state,
+  answer,
+  locked,
+  onClear,
+  onDropWord,
+}: {
+  n: number;
+  word: string | null;
+  state: "ok" | "erro" | null;
+  answer?: string;
+  locked: boolean;
+  onClear: () => void;
+  onDropWord: (w: string) => void;
+}) {
+  const [over, setOver] = useState(false);
+  const base = "mx-1 inline-flex min-h-10 min-w-[120px] items-center justify-center rounded-[10px] border-2 px-3 align-middle text-[15px] font-black leading-tight sm:min-w-[150px]";
   if (state === "ok") return <span className={`${base} border-[#22C55E] bg-[#0F2A18] text-[#4ADE80]`}>{word}</span>;
-  if (state === "erro") return <span className={`${base} border-[#22C55E] bg-[#0F2A18] text-[#4ADE80]`} title={`Você marcou: ${word ?? "—"}`}>{answer}</span>;
-  return word ? (
-    <span className={`${base} border-white bg-white text-[#8A0000]`}>{word}</span>
-  ) : (
-    <span className={`${base} border-dashed border-[#FF6B6B] text-[#FF6B6B]`} aria-label={`Lacuna ${n + 1}`}>__</span>
+  if (state === "erro") return <span className={`${base} border-[#22C55E] bg-[#0F2A18] text-[#4ADE80]`} title={`Você marcou: ${word || "—"}`}>{answer}</span>;
+  return (
+    <button
+      type="button"
+      onClick={onClear}
+      disabled={!word || locked}
+      onDragOver={(e) => {
+        if (locked) return;
+        e.preventDefault();
+        setOver(true);
+      }}
+      onDragLeave={() => setOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setOver(false);
+        const w = e.dataTransfer.getData("text/plain");
+        if (w) onDropWord(w);
+      }}
+      aria-label={word ? `Espaço ${n + 1}: ${word}. Toque para tirar` : `Espaço ${n + 1} vazio`}
+      className={`${base} ${word ? "border-[#FF1E12] bg-[#1A0505] text-white shadow-[0_0_14px_rgba(255,30,18,0.35)]" : `border-dashed ${over ? "border-white bg-white/10" : "border-[#FF1E12]"} text-transparent`} disabled:cursor-default`}
+    >
+      {word ?? "\u00a0"}
+    </button>
   );
 }
 

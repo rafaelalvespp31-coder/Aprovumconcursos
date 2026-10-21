@@ -1,5 +1,6 @@
 import { StudiesPage } from "@/components/estudos/studies-page";
 import { FolderBoard } from "@/app/(app)/trilhas/folder-board";
+import { StudyPicker } from "@/components/estudos/study-picker";
 import { buildStudiesHome, type StudiesRaw } from "@/domain/studies/home";
 
 /**
@@ -29,6 +30,16 @@ const catalogDisc: Record<string, [string, number]> = {
   info: ["Informática", 22],
 };
 const lastHours = [0.1, 2, 4, 26, 50, 75];
+// Títulos de exemplo dos primeiros temas de cada matéria (o 1º é o tema do estudo de exemplo).
+const sampleTitles: Record<string, string[]> = {
+  adm: ["Agentes públicos", "Licitações (Lei 14.133/2021)"],
+  const: ["Direitos e garantias fundamentais (CF, arts. 5º a 17)", "Remédios constitucionais"],
+  penal: ["Homicídio (CP, art. 121)", "Furto (CP, art. 155)", "Roubo (CP, art. 157)", "Aplicação da lei penal (CP, arts. 1º a 12)"],
+  pp: ["Prisão e medidas cautelares"],
+  leg: ["Lei de Drogas (Lei 11.343/2006)"],
+  info: [],
+};
+const titleOf = (k: string, j: number) => (j === 0 ? studies.find(([, d]) => d === k)?.[0] : sampleTitles[k]?.[j - 1]);
 
 const raw: StudiesRaw = {
   name: "Rafael",
@@ -49,7 +60,7 @@ const raw: StudiesRaw = {
   ),
   questions: studies.flatMap(([, , n, , q], i) => Array.from({ length: q }, (_, k) => ({ id: `q-${i}-${k}`, lesson_id: L((i + 1) * 100 + (k % n)) }))),
   attempts: studies.flatMap(([, , , , , a], i) => Array.from({ length: a }, (_, k) => ({ question_id: `q-${i}-${k}`, created_at: ago(i * 3 + 0.05 + k * 0.001), time_spent_seconds: 55 }))),
-  catalog: Object.entries(catalogDisc).flatMap(([k, [d, n]]) => Array.from({ length: n }, (_, j) => ({ id: `cat-${k}-${j}`, discipline: d, questions: 4 }))),
+  catalog: Object.entries(catalogDisc).flatMap(([k, [d, n]]) => Array.from({ length: n }, (_, j) => ({ id: `cat-${k}-${j}`, discipline: d, questions: 4 * (j + 8), title: titleOf(k, j), minutes: 40 + j * 15 }))),
 };
 
 export default function Page() {
@@ -57,7 +68,10 @@ export default function Page() {
   return (
     <StudiesPage data={data} base="/dev/galeria">
       <div id="pastas" className="scroll-mt-24">
-        <h2 className="t-h2">Todos os seus estudos, por pasta</h2>
+        <StudyPicker themes={data.themes} base="/dev/galeria" />
+        <details className="mt-6 rounded-[18px] border border-linha bg-superficie px-4 py-3" data-testid="organizar-pastas">
+          <summary className="cursor-pointer font-semibold">Organizar meus estudos em pastas</summary>
+        <h2 className="mt-4 t-h2">Todos os seus estudos, por pasta</h2>
         <FolderBoard
           folders={[{ id: "00000000-0000-4000-8300-000000000001", name: "Direito Administrativo", color: "vermelho" }]}
           trails={data.studies.map((s, i) => ({
@@ -69,6 +83,7 @@ export default function Page() {
             progress: { done: 0, total: 1 },
           }))}
         />
+        </details>
       </div>
     </StudiesPage>
   );

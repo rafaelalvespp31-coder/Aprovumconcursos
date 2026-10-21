@@ -5,6 +5,7 @@ import { boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
 import { FolderBoard, type BoardTrail } from "./folder-board";
 import { getStudiesHome } from "@/server/studies-home";
 import { StudiesPage } from "@/components/estudos/studies-page";
+import { StudyPicker } from "@/components/estudos/study-picker";
 
 export const metadata = { title: "Seus estudos" };
 
@@ -27,7 +28,7 @@ export default async function TrailsPage({ searchParams }: { searchParams: Promi
     `${boardDisplayName(t.board_slug as ExamBoardSlug, t.other_board_name)}${t.last_studied_at ? ` · estudado em ${new Date(t.last_studied_at).toLocaleDateString("pt-BR")}` : ""}`;
 
   const board = (
-    <div id="pastas" className="scroll-mt-24">
+    <div id={showArchived ? "pastas" : undefined} className="scroll-mt-24">
       <div className="flex flex-wrap items-center justify-between gap-3">
         {showArchived ? <h1 className="t-h1">Estudos arquivados</h1> : <h2 className="t-h2">Todos os seus estudos, por pasta</h2>}
         <ButtonLink href="/nova-trilha">Novo estudo</ButtonLink>
@@ -78,5 +79,24 @@ export default async function TrailsPage({ searchParams }: { searchParams: Promi
     </div>
   );
   if (showArchived) return board;
-  return <StudiesPage data={home}>{board}</StudiesPage>;
+  // "Escolha seu novo estudo" substitui o quadro de pastas; a organização em pastas continua disponível, recolhida.
+  return (
+    <StudiesPage data={home}>
+      <div id="pastas" className="scroll-mt-24">
+        <StudyPicker themes={home.themes} />
+        {home.themes.length ? (
+          <details className="group mt-6 rounded-[18px] border border-linha bg-superficie px-4 py-3" data-testid="organizar-pastas">
+            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 font-semibold">
+              Organizar meus estudos em pastas
+              <span className="t-small text-tinta-suave group-open:hidden">Abrir</span>
+              <span className="hidden t-small text-tinta-suave group-open:inline">Fechar</span>
+            </summary>
+            <div className="mt-4">{board}</div>
+          </details>
+        ) : (
+          board
+        )}
+      </div>
+    </StudiesPage>
+  );
 }

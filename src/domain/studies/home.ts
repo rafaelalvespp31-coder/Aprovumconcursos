@@ -41,6 +41,17 @@ export interface SubjectSummary {
   done: number;
 }
 
+/** Tema do catálogo para o seletor "Escolha seu novo estudo", com o andamento do aluno (se já estuda). */
+export interface ThemeCard {
+  id: string;
+  title: string;
+  discipline: string;
+  questions: number;
+  minutes: number;
+  /** Estudo do aluno que usa este tema (o mais recente); null quando ainda não começou. */
+  study: { trailId: string; answered: number; totalQuestions: number; lessonsDone: number; lessonsTotal: number; lastStudiedAt: string | null; pct: number; done: boolean } | null;
+}
+
 export interface StudiesHome {
   name: string | null;
   overall: { answered: number; total: number };
@@ -52,6 +63,8 @@ export interface StudiesHome {
   current: CurrentLesson | null;
   studies: StudyCard[];
   subjects: SubjectSummary[];
+  /** Temas publicados do catálogo (com título), por matéria e título. */
+  themes: ThemeCard[];
 }
 
 export interface StudiesRaw {
@@ -63,7 +76,7 @@ export interface StudiesRaw {
   progress: Array<{ lesson_id: string; trail_id: string; state: string; levels_passed: number; updated_at: string }>;
   questions: Array<{ id: string; lesson_id: string }>;
   attempts: Array<{ question_id: string; created_at: string; time_spent_seconds: number | null }>;
-  catalog: Array<{ id: string; discipline: string; questions: number }>;
+  catalog: Array<{ id: string; discipline: string; questions: number; title?: string; minutes?: number }>;
 }
 
 const ACTIVE_STATES = new Set(["em_andamento", "aula_concluida", "em_revisao", "disponivel", "aguardando_dominio"]);
@@ -125,6 +138,35 @@ export function buildStudiesHome(r: StudiesRaw): StudiesHome {
   }
   const subjects = [...bySubject.values()].sort((a, b) => b.topics - a.topics || a.discipline.localeCompare(b.discipline, "pt-BR"));
 
+  // Temas do catálogo com o andamento do estudo correspondente (o estudado mais recentemente).
+  const studyByTopic = new Map<string, StudiesRaw["trails"][number]>();
+  for (const t of [...r.trails].sort((a, b) => (a.last_studied_at ?? a.updated_at).localeCompare(b.last_studied_at ?? b.updated_at)))
+    for (const id of t.catalogTopicIds) studyByTopic.set(id, t);
+  const themes: ThemeCard[] = r.catalog
+    .filter((c): c is typeof c & { title: string } => !!c.title)
+    .map((c) => {
+      const t = studyByTopic.get(c.id);
+      const p = t ? perTrail(t.id) : null;
+      return {
+        id: c.id,
+        title: c.title,
+        discipline: c.discipline,
+        questions: c.questions,
+        minutes: c.minutes ?? 0,
+        study:
+          t && p
+            ? {
+                trailId: t.id,
+                ...p,
+                lastStudiedAt: t.last_studied_at,
+                pct: p.totalQuestions ? pct(p.answered, p.totalQuestions) : pct(p.lessonsDone, p.lessonsTotal),
+                done: p.lessonsTotal > 0 && p.lessonsDone === p.lessonsTotal,
+              }
+            : null,
+      };
+    })
+    .sort((a, b) => a.discipline.localeCompare(b.discipline, "pt-BR") || a.title.localeCompare(b.title, "pt-BR"));
+
   const times = [...r.attempts.map((a) => a.created_at), ...r.trails.map((t) => t.last_studied_at).filter((x): x is string => !!x)];
   const cur = curTrail ? perTrail(curTrail.id) : null;
   return {
@@ -150,6 +192,7 @@ export function buildStudiesHome(r: StudiesRaw): StudiesHome {
         : null,
     studies,
     subjects,
+    themes,
   };
 }
 
