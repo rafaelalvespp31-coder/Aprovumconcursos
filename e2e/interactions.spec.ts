@@ -625,19 +625,19 @@ test.describe("modo jogo", () => {
   });
 });
 
-test("novo estudo: seletor de aulas do catálogo, separado por matéria", async ({ page }) => {
+test("novo estudo: aula escolhida em listas de seleção (matéria e aula), sem cards", async ({ page }) => {
   await page.goto(`${G}/novo-estudo`);
   const picker = page.getByTestId("seletor-catalogo");
-  await expect(picker.getByRole("region", { name: "Direito Penal" })).toBeVisible();
+  await expect(picker.getByRole("radio")).toHaveCount(0);
   await expect(page.getByLabel("Conteúdo a estudar")).toHaveCount(0);
-  await picker.getByRole("tab", { name: /Direito Processual Penal/ }).click();
-  await expect(picker.getByText("Homicídio (CP, art. 121)")).toBeHidden();
-  await picker.getByText("Inquérito Policial (CPP, arts. 4º a 23)").click();
-  await expect(picker.getByRole("radio", { name: /Inquérito Policial/ })).toBeChecked();
-  await picker.getByRole("tab", { name: /Todas/ }).click();
-  await page.getByLabel("Buscar aula").fill("limpe");
-  await expect(picker.getByText(/Administração Pública/)).toBeVisible();
-  await expect(picker.getByText("Homicídio (CP, art. 121)")).toBeHidden();
+  await picker.getByLabel("Matéria").selectOption("Direito Processual Penal");
+  const aula = picker.getByLabel("Aula");
+  await expect(aula.locator("option", { hasText: "Homicídio (CP, art. 121)" })).toHaveCount(0);
+  await aula.selectOption({ label: "Inquérito Policial (CPP, arts. 4º a 23)" });
+  await expect(aula).toHaveValue("00000000-0000-4000-8000-0000000000a3");
+  await expect(picker.getByTestId("aula-escolhida")).toContainText("prazos e arquivamento");
+  await picker.getByLabel("Matéria").selectOption("");
+  await expect(aula.locator("optgroup")).toHaveCount(3);
 });
 
 test("banners: arte e animações aparecem juntas, mesmo com a imagem demorando", async ({ page }) => {

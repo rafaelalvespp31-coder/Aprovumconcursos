@@ -18,7 +18,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
         <div>
           <h1 className="sr-only">Questões</h1>
           <p className="mt-1 text-tinta-suave">
-            {bank.questions.length} de {bank.total} questão(ões). Todas são originais, elaboradas para treino a partir das suas aulas.
+            {bank.questions.length} de {bank.total} questão(ões). Aqui ficam as questões comentadas que estão no conteúdo das suas aulas; as frases da lei ficam no Modo Jogo.
           </p>
         </div>
         {bank.questions.length > 0 && (
@@ -30,7 +30,7 @@ export default async function QuestionsPage({ searchParams }: { searchParams: Pr
       <BankFiltersForm action="/questoes" filters={filters} trails={bank.trails} boards={bank.boards} modules={bank.modules} />
       {bank.total === 0 ? (
         <EmptyState title="Ainda não há questões" action={<ButtonLink href="/trilhas">Ir para os estudos</ButtonLink>}>
-          As questões aparecem aqui depois que você prepara as aulas de um estudo.
+          As questões comentadas das suas aulas aparecem aqui depois que você começa um estudo.
         </EmptyState>
       ) : bank.questions.length === 0 ? (
         <EmptyState title="Nenhuma questão com esses filtros" action={<ButtonLink href="/questoes" variant="secundario">Limpar filtros</ButtonLink>}>
