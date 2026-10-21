@@ -747,7 +747,7 @@ function SectionActions({
 // Conclusão da leitura e resultado da unidade
 // ---------------------------------------------------------------------------
 
-function UnitResult({ lessonId, context, readingDone, nextId, total }: { lessonId: string; context: "fixacao" | "revisao"; readingDone: boolean; nextId: string | null; total: number }) {
+function UnitResult({ lessonId, context, nextId, total }: { lessonId: string; context: "fixacao" | "revisao"; readingDone: boolean; nextId: string | null; total: number }) {
   const hasQuestions = total > 0;
   const api = useStudyApi();
   const [result, setResult] = useState<QuizResult | null>(null);
@@ -756,9 +756,7 @@ function UnitResult({ lessonId, context, readingDone, nextId, total }: { lessonI
   return (
     <div className="mt-6 flex flex-col gap-3 rounded-lg border border-linha bg-superficie p-4">
       <p className="font-semibold">Resultado da unidade</p>
-      {!readingDone && context === "fixacao" ? (
-        <p className="t-small text-tinta-suave">Conclua a leitura para calcular o resultado. Você já pode responder às questões.</p>
-      ) : (
+      {(
         <p className="t-small text-tinta-suave">
           {context === "fixacao"
             ? `Para liberar o próximo tema: responda as ${total} questões, com pelo menos 75% de acerto e todas as essenciais corretas. Vale sua última resposta em cada questão.`
@@ -769,7 +767,7 @@ function UnitResult({ lessonId, context, readingDone, nextId, total }: { lessonI
         <Button
           variant="secundario"
           className="self-start"
-          disabled={pending || (!readingDone && context === "fixacao")}
+          disabled={pending}
           onClick={() => start(async () => setResult(await api.evaluateQuiz(lessonId, context)))}
         >
           {pending ? "Calculando…" : "Calcular resultado"}

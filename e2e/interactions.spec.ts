@@ -389,12 +389,12 @@ test.describe("tela de aula: o conteúdo completo fica exposto em cada card", ()
     await expect(page.getByTestId("secoes-vistas")).toHaveText(/^1 de \d+/);
   });
 
-  test("questões antes da leitura não calculam; concluir os cards libera os níveis", async ({ page }) => {
+  test("o resultado do nível pode ser calculado direto nas questões (sem depender da leitura no aparelho)", async ({ page }) => {
     await page.goto(`${G}/aula`);
     const q8 = page.getByTestId("card-questao");
     const fac = q8.getByTestId("nivel-facil");
     await goCard(page, 8);
-    await expect(fac.getByRole("button", { name: "Calcular resultado do nível fácil" })).toBeDisabled();
+    await expect(fac.getByRole("button", { name: "Calcular resultado do nível fácil" })).toBeEnabled();
     await goCard(page, 1);
     await walkCards(page, async (card) => {
       await answerIfVisible(page, "anular a licença, por ilegalidade", card);

@@ -144,7 +144,6 @@ function LevelBlock({
   status,
   questions,
   interleavedIds,
-  readingDone,
   renderQuestion,
   onPassed,
   onAdvance,
@@ -286,12 +285,11 @@ function LevelBlock({
       )}
 
       <div className="mt-5 flex flex-col gap-3 rounded-md bg-nevoa p-4">
-        {!readingDone && <p className="t-small text-tinta-suave">Conclua a leitura para calcular o resultado. Você já pode responder às questões.</p>}
-        {!passedNow && (
+                {!passedNow && (
           <Button
             variant="secundario"
             className="self-start"
-            disabled={pending || !readingDone || official.length === 0}
+            disabled={pending || official.length === 0}
             onClick={() =>
               start(async () => {
                 const r = await api.evaluateQuiz(lessonId, "fixacao", level.key);

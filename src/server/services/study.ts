@@ -173,7 +173,14 @@ export async function submitAnswer(userId: string, input: unknown): Promise<Answ
  */
 export async function evaluateLessonQuiz(userId: string, lessonId: string, context: "fixacao" | "revisao", levelKey?: LevelKey) {
   const db = createAdminClient();
-  const { progress } = await loadProgress(userId, lessonId);
+  let { progress } = await loadProgress(userId, lessonId);
+  // Chegar às questões de fixação e pedir o resultado conclui a leitura: antes, a leitura só
+  // era marcada ao concluir todos os cards no MESMO aparelho (lista guardada no navegador),
+  // e quem pulava um card ou trocava de aparelho ficava sem conseguir concluir a matéria.
+  if (context === "fixacao" && !progress.readingCompletedAt && progress.state !== "nao_iniciada") {
+    await apply(userId, lessonId, { type: "COMPLETE_READING" });
+    ({ progress } = await loadProgress(userId, lessonId));
+  }
   const level = levelKey ? levelByKey(levelKey) : levelByNumber(Math.min(3, (progress.levelsPassed ?? 0) + 1))!;
   const o =
     context === "revisao"
