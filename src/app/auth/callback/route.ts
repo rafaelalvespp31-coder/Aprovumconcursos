@@ -20,6 +20,9 @@ export async function GET(request: NextRequest) {
     ok = !(await supabase.auth.verifyOtp({ token_hash: tokenHash, type })).error;
   }
 
+  // Sessão única por conta: o acesso pelo link também encerra a sessão dos outros aparelhos.
+  if (ok) await supabase.auth.signOut({ scope: "others" }).catch(() => undefined);
+
   const to = url.clone();
   to.search = "";
   if (ok) {

@@ -76,6 +76,8 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
     // Mensagem única para não revelar se o e-mail existe.
     return { error: "E-mail ou senha incorretos." };
   }
+  // Sessão única por conta: entrar aqui encerra a sessão dos outros aparelhos.
+  await endOtherSessions(supabase);
   redirect(safeNext(form.get("next")));
 }
 
@@ -145,4 +147,10 @@ export async function signOut() {
   await supabase.auth.signOut();
   (await cookies()).delete(SESSION_ONLY_COOKIE);
   redirect("/entrar?saiu=1");
+}
+
+/** Encerra as outras sessões da conta (o aparelho atual continua conectado). */
+async function endOtherSessions(supabase: Awaited<ReturnType<typeof createUserClient>>) {
+  const { error } = await supabase.auth.signOut({ scope: "others" });
+  if (error) console.error("auth.end_other_sessions", error.message);
 }

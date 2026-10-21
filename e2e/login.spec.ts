@@ -6,6 +6,11 @@ import { expect, test } from "@playwright/test";
  * homologação — ver authenticated.spec.ts).
  */
 test.describe("tela de login", () => {
+  test("sessão única: aviso quando a conta entrou em outro aparelho", async ({ page }) => {
+    await page.goto("/entrar?motivo=outro-aparelho");
+    await expect(page.getByText(/acessada em outro aparelho/)).toBeVisible();
+  });
+
   test("identidade visual: logo, título, arte e quatro pilares", async ({ page }, info) => {
     await page.goto("/entrar");
     await expect(page.getByRole("img", { name: /APROVUM/ })).toBeVisible();

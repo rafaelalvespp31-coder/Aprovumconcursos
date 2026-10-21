@@ -1,4 +1,5 @@
 import { publicEnv } from "@/lib/env";
+import { ENDED_ELSEWHERE } from "@/lib/session";
 import { LoginHeader } from "@/components/login/login-header";
 import { LoginForm } from "@/components/login/login-form";
 import { FeatureHighlights } from "@/components/login/feature-highlights";
@@ -9,6 +10,7 @@ export const metadata = { title: "Entrar" };
 const NOTICES: Record<string, string> = {
   saiu: "Você saiu da sua conta.",
   link: "O link é inválido ou expirou. Entre novamente ou solicite um novo link.",
+  [ENDED_ELSEWHERE]: "Sua conta foi acessada em outro aparelho e esta sessão foi encerrada. Cada conta fica conectada em um aparelho por vez.",
 };
 
 /**
@@ -18,7 +20,7 @@ const NOTICES: Record<string, string> = {
  */
 export default async function SignInPage({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
   const sp = await searchParams;
-  const notice = sp.saiu ? NOTICES.saiu : sp.erro === "link" ? NOTICES.link : null;
+  const notice = sp.saiu ? NOTICES.saiu : sp.erro === "link" ? NOTICES.link : sp.motivo === ENDED_ELSEWHERE ? NOTICES[ENDED_ELSEWHERE] : null;
   const configured = publicEnv().configured;
   return (
     <div className="login-tela">

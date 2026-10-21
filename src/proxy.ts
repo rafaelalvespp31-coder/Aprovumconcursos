@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { ENDED_ELSEWHERE, isEndedElsewhere } from "@/lib/session";
 
 /**
  * Renova a sessão do Supabase a cada requisição e protege as rotas privadas.
@@ -29,8 +30,19 @@ export async function proxy(request: NextRequest) {
     },
   });
 
-  const { data } = await supabase.auth.getUser();
+  const { data, error } = await supabase.auth.getUser();
   const path = request.nextUrl.pathname;
+  // Sessão única: a conta entrou em outro aparelho, então esta sessão foi encerrada.
+  // Limpa os cookies daqui e leva ao login com o aviso.
+  if (!data.user && isEndedElsewhere(error)) {
+    await supabase.auth.signOut({ scope: "local" }).catch(() => undefined);
+    const to = request.nextUrl.clone();
+    to.pathname = "/entrar";
+    to.search = `?motivo=${ENDED_ELSEWHERE}`;
+    const redirect = NextResponse.redirect(to);
+    for (const c of response.cookies.getAll()) redirect.cookies.set(c);
+    return redirect;
+  }
   if (!data.user && PRIVATE_PREFIXES.some((p) => path === p || path.startsWith(`${p}/`))) {
     const to = request.nextUrl.clone();
     to.pathname = "/entrar";
