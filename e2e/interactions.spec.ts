@@ -13,7 +13,7 @@ async function noHorizontalScroll(page: Page) {
 }
 
 test.describe("galeria: todas as telas carregam sem erro e sem rolagem horizontal", () => {
-  for (const path of ["painel", "perfil", "trilhas", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo", "banco", "quiz", "na-pratica"]) {
+  for (const path of ["painel", "perfil", "trilhas", "trilha", "aula", "questoes", "questoes/cadernos", "questoes/cadernos/novo", "questoes/cadernos/11111111-1111-4111-8111-111111111111", "pratica-aulas", "desempenho", "catalogo", "banco", "quiz", "na-pratica"]) {
     test(path, async ({ page }) => {
       const errors: string[] = [];
       page.on("pageerror", (e) => errors.push(e.message));
@@ -27,7 +27,7 @@ test.describe("galeria: todas as telas carregam sem erro e sem rolagem horizonta
 
 test.describe("celulares pequenos (320px): nenhuma tela rola para o lado", () => {
   test.use({ viewport: { width: 320, height: 640 } });
-  for (const path of ["painel", "perfil", "trilhas", "trilha", "aula", "questoes", "simulado", "desempenho", "catalogo", "banco", "quiz", "na-pratica"]) {
+  for (const path of ["painel", "perfil", "trilhas", "trilha", "aula", "questoes", "questoes/cadernos", "questoes/cadernos/novo", "questoes/cadernos/11111111-1111-4111-8111-111111111111", "pratica-aulas", "desempenho", "catalogo", "banco", "quiz", "na-pratica"]) {
     test(path, async ({ page }) => {
       await page.goto(`${G}/${path}`);
       await noHorizontalScroll(page);
@@ -37,7 +37,7 @@ test.describe("celulares pequenos (320px): nenhuma tela rola para o lado", () =>
 
 test.describe("modo de questões", () => {
   test("seleciona, responde e explica cada alternativa", async ({ page }) => {
-    await page.goto(`${G}/questoes`);
+    await page.goto(`${G}/pratica-aulas`);
     const responder = page.getByRole("button", { name: "Responder", exact: true });
     await expect(responder).toBeDisabled();
     await page.getByText("anular a licença, por ilegalidade", { exact: false }).click();
@@ -53,7 +53,7 @@ test.describe("modo de questões", () => {
   });
 
   test("comentários dos alunos: aparecem após responder; publicar, apagar e denunciar", async ({ page }) => {
-    await page.goto(`${G}/questoes`);
+    await page.goto(`${G}/pratica-aulas`);
     await expect(page.getByTestId("comentarios-questao")).toHaveCount(0);
     await page.getByText("anular a licença, por ilegalidade", { exact: false }).click();
     await page.getByRole("button", { name: "Responder", exact: true }).click();
@@ -84,7 +84,7 @@ test.describe("modo de questões", () => {
   });
 
   test("atalhos de teclado: letra escolhe, Enter responde, J avança", async ({ page }) => {
-    await page.goto(`${G}/questoes`);
+    await page.goto(`${G}/pratica-aulas`);
     await page.locator("body").click({ position: { x: 5, y: 5 } });
     await page.keyboard.press("a");
     await page.keyboard.press("Enter");
@@ -94,34 +94,113 @@ test.describe("modo de questões", () => {
   });
 
   test("marcar para resolver depois alterna o estado", async ({ page }) => {
-    await page.goto(`${G}/questoes`);
+    await page.goto(`${G}/pratica-aulas`);
     const mark = page.getByRole("button", { name: /Resolver depois/ }).first();
     await mark.click();
     await expect(page.getByRole("button", { name: /Para resolver depois/ }).first()).toBeVisible();
   });
 
   test("navegação pela lista de questões", async ({ page }) => {
-    await page.goto(`${G}/questoes`);
+    await page.goto(`${G}/pratica-aulas`);
     await page.getByRole("list", { name: "Lista de questões" }).getByRole("button", { name: /^Questão 3,/ }).click();
     await expect(page.getByText(/^3 de 12/)).toBeVisible();
   });
 });
 
-test.describe("simulado", () => {
-  test("gabarito só no final, com análise", async ({ page }) => {
-    await page.goto(`${G}/simulado`);
-    await page.getByRole("button", { name: /Iniciar/ }).click();
-    // A ordem é sorteada: responde a primeira alternativa da questão atual.
-    await page.getByRole("article").locator("label").first().click();
-    await page.getByRole("button", { name: "Confirmar resposta" }).click();
-    await expect(page.getByText(/Resposta registrada. O gabarito aparece ao final./)).toBeVisible({ timeout: 3000 }).catch(() => undefined);
-    // No simulado não há correção imediata.
-    await expect(page.getByText("Resposta correta")).toHaveCount(0);
-    await page.getByRole("button", { name: /Finalizar/ }).first().click();
-    const confirm = page.getByRole("button", { name: "Finalizar mesmo assim" });
-    if (await confirm.isVisible()) await confirm.click();
-    await expect(page.getByRole("heading", { name: "Resultado" })).toBeVisible();
-    await expect(page.getByText(/Acertos:/)).toBeVisible();
+test.describe("menu Questões: cadernos", () => {
+  test("abas, menu do caderno (fixar, renomear, excluir) e criar", async ({ page }) => {
+    await page.goto(`${G}/questoes`);
+    const card = page.getByTestId("cadernos-card");
+    await expect(card.getByTestId("caderno")).toHaveCount(5);
+    await card.getByRole("tab", { name: /Atalhos/ }).click();
+    await expect(card.getByTestId("caderno")).toHaveCount(2);
+    await card.getByRole("tab", { name: "Recentes" }).click();
+    const first = card.getByTestId("caderno").first();
+    await expect(first).toContainText("AGENTE DE APOIO MP ES");
+    // Renomear
+    await first.getByRole("button", { name: /Mais opções/ }).click();
+    await page.getByRole("menuitem", { name: "Renomear" }).click();
+    await first.getByLabel("Novo nome do caderno").fill("Meu caderno MPES");
+    await first.getByRole("button", { name: "Salvar" }).click();
+    await expect(card.getByText("Meu caderno MPES")).toBeVisible();
+    // Fixar/tirar dos atalhos
+    const crm = card.getByTestId("caderno").filter({ hasText: "Crm" });
+    await crm.getByRole("button", { name: /Mais opções/ }).click();
+    await page.getByRole("menuitem", { name: "Fixar nos atalhos" }).click();
+    await expect(card.getByRole("tab", { name: "Atalhos (3)" })).toBeVisible();
+    // Excluir (com confirmação dentro da linha, sem diálogo do navegador)
+    await crm.getByRole("button", { name: /Mais opções/ }).click();
+    await page.getByRole("menuitem", { name: "Excluir" }).click();
+    await crm.getByRole("button", { name: "Excluir" }).click();
+    await expect(card.getByTestId("caderno").filter({ hasText: "Crm" })).toHaveCount(0);
+    // Escape fecha o menu
+    await first.getByRole("button", { name: /Mais opções/ }).click();
+    await page.keyboard.press("Escape");
+    await expect(page.getByRole("menu")).toHaveCount(0);
+    await card.getByRole("link", { name: /Criar novo caderno/ }).click();
+    await expect(page).toHaveURL(/\/questoes\/cadernos\/novo$/);
+  });
+
+  test("avisos: setas e pontos trocam o aviso", async ({ page }) => {
+    await page.goto(`${G}/questoes`);
+    const av = page.getByTestId("avisos-card");
+    await expect(av.getByText("1 de 3")).toBeVisible();
+    await av.getByRole("button", { name: "Próximo aviso" }).last().click();
+    await expect(av.getByText("2 de 3")).toBeVisible();
+    await av.getByRole("button", { name: /^Aviso 3:/ }).click();
+    await expect(av.getByText("3 de 3")).toBeVisible();
+    await av.getByRole("button", { name: "Aviso anterior" }).click();
+    await expect(av.getByText("2 de 3")).toBeVisible();
+  });
+
+  test("investida: troca de ano e modo mensal", async ({ page }) => {
+    await page.goto(`${G}/questoes`);
+    const inv = page.getByTestId("investida-card");
+    const year = new Date().getFullYear();
+    await expect(inv.getByText(String(year), { exact: true })).toBeVisible();
+    await inv.getByRole("link", { name: `Ano ${year - 1}` }).click();
+    await expect(inv.getByText(String(year - 1), { exact: true })).toBeVisible();
+    await inv.getByRole("combobox").selectOption("mensal");
+    await expect(inv.getByRole("grid")).toBeVisible();
+    await expect(page).toHaveURL(/exibir=mensal/);
+  });
+
+  test("novo caderno: contagem pelos filtros e criação", async ({ page }) => {
+    await page.goto(`${G}/questoes/cadernos/novo`);
+    const n = page.getByTestId("contagem-filtro");
+    await expect(n).toContainText("6 questões");
+    await page.getByLabel("Matéria", { exact: true }).selectOption({ label: "Direito Penal (2)" });
+    await expect(n).toContainText("2 questões");
+    await page.getByText("Certo ou errado", { exact: true }).click();
+    await expect(n).toContainText("1 questão publicada");
+    await page.getByLabel("Matéria", { exact: true }).selectOption({ label: "Direito Constitucional (1)" });
+    await expect(n).toContainText("Ainda não há questões publicadas");
+    await page.getByRole("button", { name: "Criar caderno" }).click();
+    await expect(page).toHaveURL(/\/questoes\/cadernos\/11111111-/);
+  });
+
+  test("resolver caderno: responde, mostra gabarito comentado e navega", async ({ page }) => {
+    await page.goto(`${G}/questoes/cadernos/11111111-1111-4111-8111-111111111111`);
+    const responder = page.getByRole("button", { name: "Responder", exact: true });
+    await expect(responder).toBeDisabled();
+    await page.getByText("anular a licença, por ilegalidade", { exact: false }).click();
+    await responder.click();
+    await expect(page.getByText("Resposta correta")).toBeVisible();
+    await expect(page.getByTestId("gabarito-comentado")).toBeVisible();
+    await expect(page.getByText(/Nesta sessão: 1 respondida, 1 certa/)).toBeVisible();
+    await page.getByRole("button", { name: "Próxima" }).click();
+    await expect(page.getByText("Questão 2 de 3")).toBeVisible();
+    await page.keyboard.press("e");
+    await page.keyboard.press("Enter");
+    await expect(page.getByText("Resposta incorreta")).toBeVisible();
+    await page.getByRole("list", { name: "Lista de questões do caderno" }).getByRole("button", { name: /^Questão 1, acertada/ }).click();
+    await expect(page.getByText("Questão 1 de 3")).toBeVisible();
+    await expect(page.getByText("Resposta correta")).toBeVisible();
+  });
+
+  test("caderno sem questões publicadas mostra o estado vazio", async ({ page }) => {
+    await page.goto(`${G}/questoes/cadernos/44444444-4444-4444-8444-444444444444`);
+    await expect(page.getByText("Ainda não há questões publicadas para este caderno")).toBeVisible();
   });
 });
 
@@ -418,9 +497,12 @@ test.describe("casco pastel", () => {
 
   test("atalhos numéricos não navegam nas telas com questões", async ({ page, isMobile }) => {
     test.skip(isMobile, "teclado físico");
-    await page.goto(`${G}/questoes`);
+    await page.goto(`${G}/pratica-aulas`);
     await page.keyboard.press("6");
-    await expect(page).toHaveURL(new RegExp(`${G}/questoes`));
+    await expect(page).toHaveURL(new RegExp(`${G}/pratica-aulas`));
+    await page.goto(`${G}/questoes/cadernos/11111111-1111-4111-8111-111111111111`);
+    await page.keyboard.press("2");
+    await expect(page).toHaveURL(/\/questoes\/cadernos\/11111111-/);
   });
 
   test("barra flutuante no celular leva às rotas reais", async ({ page }) => {

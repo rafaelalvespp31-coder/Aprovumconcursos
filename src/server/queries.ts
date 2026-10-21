@@ -633,7 +633,7 @@ export interface ShellSummary {
   email: string | null;
   streak: { current: number; last7: boolean[]; message: string };
   level: number;
-  counts: { trails: number; questions: number; dueReviews: number; answered: number };
+  counts: { trails: number; questions: number; notebooks: number; dueReviews: number; answered: number };
   /** Submenu "Estudos": matérias e os assuntos (estudos) de cada uma. */
   subjects: SubjectMenuItem[];
 }
@@ -642,7 +642,7 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
   const db = await createUserClient();
   // Sempre filtra pelo próprio aluno: contas de equipe também leem dados de outros (RLS "admin le").
   const me = (await getSessionUser())?.id ?? "00000000-0000-0000-0000-000000000000";
-  const [profile, stats, trails, questions, reviews, mine, folders, myLessons, myProgress] = await Promise.all([
+  const [profile, stats, trails, questions, reviews, mine, folders, myLessons, myProgress, notebooks] = await Promise.all([
     db.from("profiles").select("display_name").eq("id", me).maybeSingle(),
     getStudyStats(),
     db.from("study_trails").select("id", { count: "exact", head: true }).eq("user_id", me).is("archived_at", null),
@@ -652,6 +652,7 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
     db.from("study_folders").select("id, name").eq("user_id", me),
     db.from("lessons").select("trail_id").eq("user_id", me).limit(5000),
     db.from("learning_progress").select("trail_id, state, levels_passed, reading_completed_at").eq("user_id", me).limit(5000),
+    db.from("question_notebooks").select("id", { count: "exact", head: true }).eq("user_id", me),
   ]);
   const g = computeGamification(stats);
   const lessonCount = new Map<string, number>();
@@ -676,7 +677,7 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
     email,
     streak: { current: g.streak.current, last7: g.streak.last7, message: streakMessage(g.streak) },
     level: g.level.level,
-    counts: { trails: trails.count ?? 0, questions, dueReviews: reviews.count ?? 0, answered: stats.answered },
+    counts: { trails: trails.count ?? 0, questions, notebooks: notebooks.count ?? 0, dueReviews: reviews.count ?? 0, answered: stats.answered },
     subjects: buildSubjectsMenu({
       trails: mineRows,
       folders: (folders.data ?? []) as Array<{ id: string; name: string }>,

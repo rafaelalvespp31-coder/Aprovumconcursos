@@ -68,7 +68,7 @@ export function DashboardView(d: DashboardData) {
   const quick: QuickItem[] = [
     { id: "estudos", href: `${base}/trilhas`, label: "Estudos", desc: "Suas matérias e assuntos", state: o.subjects.length ? `${o.subjects.length} ${o.subjects.length === 1 ? "matéria" : "matérias"}` : null },
     { id: "jogo", href: `${base}/quiz`, label: "Modo Jogo", desc: "Complete a lei", state: null },
-    { id: "questoes", href: `${base}/questoes`, label: "Questões", desc: "Banco das suas aulas", state: d.questions.unanswered ? `${d.questions.unanswered} a resolver` : null },
+    { id: "questoes", href: `${base}/questoes`, label: "Questões", desc: "Cadernos de questões", state: null },
     {
       id: "revisoes",
       href: d.reviews.top ? `${base}/aula/${d.reviews.top.lessonId}?revisao=1#questoes` : `${base}/revisoes`,

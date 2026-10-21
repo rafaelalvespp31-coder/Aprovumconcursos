@@ -237,7 +237,7 @@ export const shellSummary: ShellSummary = {
   email: "exemplo@nivelaprovado.dev",
   streak: { current: g.streak.current, last7: g.streak.last7, message: streakMessage(g.streak) },
   level: g.level.level,
-  counts: { trails: 2, questions: 84, dueReviews: 2, answered: 136 },
+  counts: { trails: 2, questions: 84, notebooks: 5, dueReviews: 2, answered: 136 },
   subjects: [
     { name: "Direito Administrativo", studies: [{ id: id(10), title: "Polícia Penal MG — Direito Administrativo", status: "andamento" }] },
     { name: "Direito Penal", studies: [{ id: id(12), title: "Teoria do crime: fato típico", status: "concluido" }, { id: id(13), title: "Homicídio (CP, art. 121)", status: "nao_iniciado" }] },

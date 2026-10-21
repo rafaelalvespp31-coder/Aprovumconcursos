@@ -149,7 +149,7 @@ const FEATURES = [
   { icon: BrainCircuit, title: "Aulas inteligentes", text: "Conteúdo direto ao ponto, com fontes verificadas.", href: "/trilhas" },
   { icon: Gamepad2, title: "Gamificação", text: "Estude, evolua, conquiste.", href: null },
   { icon: Crosshair, title: "Todos os concursos", text: "Das carreiras policiais aos demais órgãos.", href: "/nova-trilha" },
-  { icon: FileText, title: "Questões de prova", text: "Fácil, médio e difícil, com gabarito comentado.", href: "/questoes" },
+  { icon: FileText, title: "Questões de prova", text: "Cadernos por matéria, concurso e banca, com gabarito comentado.", href: "/questoes" },
   { icon: ChartNoAxesCombined, title: "Seu progresso", text: "Acompanhe sua evolução em tempo real.", href: "/desempenho" },
 ] as const;
 

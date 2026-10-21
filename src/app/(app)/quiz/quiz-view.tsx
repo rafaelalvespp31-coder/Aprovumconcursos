@@ -598,7 +598,7 @@ export function QuizView({
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black text-white"><FileText className="h-4 w-4" aria-hidden /></span>
             <span className="min-w-0 flex-1">
               <span className="block text-[14px] font-black">Questões de prova</span>
-              <span className="block text-[12.5px] text-white/70">Fácil, médio e difícil dos seus estudos</span>
+              <span className="block text-[12.5px] text-white/70">Cadernos por matéria, concurso e banca</span>
             </span>
             <span className="rounded-full bg-[#E10600] px-3 py-1 text-[12px] font-bold text-white">Abrir</span>
           </Link>

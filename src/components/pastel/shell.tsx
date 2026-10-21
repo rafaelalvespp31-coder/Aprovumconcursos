@@ -51,6 +51,8 @@ interface NavItem {
   desc: string;
   also?: string[];
   title: string;
+  /** Linha de apoio do cabeçalho (quando difere do `desc` da barra lateral). */
+  subtitle?: string;
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -60,7 +62,7 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
     { id: "painel", href: `${base}/painel`, label: "Painel", icon: House, num: "1", desc: "Visão geral", title: "" },
     { id: "trilhas", href: `${base}/trilhas`, label: "Estudos", icon: MapIcon, num: "2", desc: plural(s.counts.trails, "conteúdo", "conteúdos"), also: [`${base}/trilha`, `${base}/aula`, `${base}/nova-trilha`], title: "Seus estudos" },
     { id: "quiz", href: `${base}/quiz`, label: "Modo Jogo", short: "Jogo", icon: Gamepad2, num: "3", desc: "Complete a lei", title: "Modo Jogo" },
-    { id: "questoes", href: `${base}/questoes`, label: "Questões", icon: CircleHelp, num: "4", desc: "Concursos · em breve", also: [`${base}/simulado`], title: "Banco de questões" },
+    { id: "questoes", href: `${base}/questoes`, label: "Questões", icon: CircleHelp, num: "4", desc: plural(s.counts.notebooks, "caderno", "cadernos"), title: "Cadernos de Questões", subtitle: "Organize, acesse e continue sua jornada rumo à aprovação." },
     { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "5", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
     { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "6", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
     { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "7", desc: `Nível ${s.level}`, title: "Perfil & conquistas" },
@@ -351,7 +353,7 @@ export function PastelShell({
                         <Target className="h-3.5 w-3.5 text-[#FF1E1E]" />
                       </span>
                       <span className="truncate">
-                        {isPainel ? (notice ?? "Um conteúdo por vez: aula completa e três níveis — fácil, médio e difícil.") : `${active?.desc ?? ""}${shortcutsOn ? " • atalhos 1-7" : ""}`}
+                        {isPainel ? (notice ?? "Um conteúdo por vez: aula completa e três níveis — fácil, médio e difícil.") : `${active?.subtitle ?? active?.desc ?? ""}${shortcutsOn ? " • atalhos 1-7" : ""}`}
                       </span>
                     </div>
                   </div>
