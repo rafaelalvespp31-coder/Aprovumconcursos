@@ -27,6 +27,11 @@ export const APPROVAL_BANNERS: ApprovalBanner[] = [
     srcSm: "/images/aprovados/rafael-alves-sm.webp",
     alt: "Nosso aluno aprovado Rafael Alves. Aprovado em: GCM São Gonçalo (RJ), Polícia Militar RJ e Polícia Penal MG. Disciplina + foco + resultado.",
   },
+  {
+    src: "/images/aprovados/sd-lacerda.webp",
+    srcSm: "/images/aprovados/sd-lacerda-sm.webp",
+    alt: "Nosso aluno aprovado Sd Lacerda, PM DF. Aprovado em: Polícia Militar do Distrito Federal. Sonhe, planeje, conquiste.",
+  },
 ];
 
 const INTERVAL_MS = 3000;

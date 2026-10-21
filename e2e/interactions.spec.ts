@@ -733,7 +733,9 @@ test("painel: banner de saudação reveza com os banners de aprovação a cada 3
   await expect(rot).toHaveAttribute("data-slide", "1", { timeout: 5000 });
   await expect(rot.getByRole("img", { name: /William Abreu/ })).toBeVisible();
   // Pontos levam direto a um banner; pausa interrompe a troca.
-  await rot.getByRole("button", { name: "Mostrar banner 3 de 4" }).click();
+  await rot.getByRole("button", { name: "Mostrar banner 5 de 5" }).click();
+  await expect(rot.getByRole("img", { name: /Sd Lacerda/ })).toBeVisible();
+  await rot.getByRole("button", { name: "Mostrar banner 3 de 5" }).click();
   await expect(rot.getByRole("img", { name: /Fábio Bezerra/ })).toBeVisible();
   await rot.getByRole("button", { name: /Pausar troca automática/ }).click();
   await page.waitForTimeout(3600);
