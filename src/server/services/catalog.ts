@@ -597,6 +597,42 @@ export async function setTopicStatus(user: SessionUser, id: string, status: "ras
   await auditLog(db, { actorId: user.id, userId: user.id, action: `catalog.topic_${status}`, entity: "catalog_topics", entityId: id, meta: {} });
 }
 
+export interface TopicDeleteImpact {
+  title: string;
+  status: string;
+  questions: number;
+  studies: number;
+  quizAttempts: number;
+}
+
+/** O que a exclusão de um tema afeta (para a confirmação). */
+export async function topicDeleteImpact(id: string): Promise<TopicDeleteImpact> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new UserFacingError("Tema inválido.", "invalid_input");
+  const db = createAdminClient();
+  const [t, q, l, a] = await Promise.all([
+    db.from("catalog_topics").select("title, status").eq("id", id).maybeSingle(),
+    db.from("catalog_questions").select("id", { count: "exact", head: true }).eq("topic_id", id),
+    db.from("lessons").select("id", { count: "exact", head: true }).eq("catalog_topic_id", id),
+    db.from("quiz_attempts").select("id", { count: "exact", head: true }).eq("topic_id", id),
+  ]);
+  if (!t.data) throw new UserFacingError("Tema não encontrado.", "not_found");
+  return { title: t.data.title as string, status: t.data.status as string, questions: q.count ?? 0, studies: l.count ?? 0, quizAttempts: a.count ?? 0 };
+}
+
+/**
+ * Exclui o tema do catálogo de vez, com o banco de questões dele. Os estudos que os alunos já
+ * criaram a partir dele continuam (cada estudo tem a própria cópia da aula e das questões); só
+ * perdem o vínculo com o catálogo. Tentativas do Modo Jogo deste tema são apagadas junto.
+ */
+export async function deleteTopic(user: SessionUser, id: string) {
+  const impact = await topicDeleteImpact(id);
+  const db = createAdminClient();
+  const r = await db.from("catalog_topics").delete().eq("id", id);
+  if (r.error) throw new UserFacingError(`Não foi possível excluir: ${r.error.message}`, "db_rule");
+  await auditLog(db, { actorId: user.id, userId: user.id, action: "catalog.topic_deleted", entity: "catalog_topics", entityId: id, meta: { ...impact } });
+  return impact;
+}
+
 export async function listTopics() {
   const db = createAdminClient();
   const [topics, qs] = await Promise.all([

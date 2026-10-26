@@ -5,7 +5,8 @@ import { useState, useTransition } from "react";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
 import { LEVELS, type LevelKey } from "@/domain/progress/levels";
 import type { CatalogQuestion } from "@/domain/catalog/compose";
-import { publishAction, removeQuestionAction, saveQuestionAction, saveSectionAction, setStatusAction, type AdminResult } from "../actions";
+import { deleteImpactAction, deleteTopicAction, publishAction, removeQuestionAction, saveQuestionAction, saveSectionAction, setStatusAction, type AdminResult } from "../actions";
+import { DeleteTopic } from "../delete-topic";
 
 interface Section { kind: string; title: string; bodyMarkdown: string; module?: string }
 
@@ -122,7 +123,7 @@ function QuestionEditor({ topicId, q, n, nodeTitle }: { topicId: string; q: Cata
   );
 }
 
-export function PublishPanel({ id, status, version, blockers }: { id: string; status: string; version: number; blockers: string[] }) {
+export function PublishPanel({ id, status, version, blockers, title = "este tema" }: { id: string; status: string; version: number; blockers: string[]; title?: string }) {
   const router = useRouter();
   const [res, setRes] = useState<AdminResult | null>(null);
   const [pending, start] = useTransition();
@@ -144,6 +145,7 @@ export function PublishPanel({ id, status, version, blockers }: { id: string; st
         {status === "publicado" && <Button variant="secundario" disabled={pending} onClick={() => act(() => setStatusAction(id, "rascunho"))}>Despublicar</Button>}
         {status !== "arquivado" && <Button variant="perigo" disabled={pending} onClick={() => act(() => setStatusAction(id, "arquivado"))}>Arquivar</Button>}
         {status === "arquivado" && <Button variant="secundario" disabled={pending} onClick={() => act(() => setStatusAction(id, "rascunho"))}>Restaurar como rascunho</Button>}
+        <DeleteTopic id={id} title={title} actions={{ impact: deleteImpactAction, remove: deleteTopicAction }} redirectTo="/admin/catalogo" />
       </div>
       {res && <Notice tone={res.ok ? "sucesso" : "erro"}>{res.ok ? res.message ?? "Feito." : res.error}</Notice>}
     </div>

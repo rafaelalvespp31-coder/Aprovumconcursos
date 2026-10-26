@@ -7,6 +7,9 @@ import { AIError } from "@/ai/provider";
 import { logEvent } from "@/server/observability";
 import { UserFacingError } from "@/server/services/trails";
 import {
+  deleteTopic,
+  topicDeleteImpact,
+  type TopicDeleteImpact,
   promoteLesson,
   publishTopic,
   removeTopicQuestion,
@@ -137,4 +140,29 @@ export async function removeBannerAction(mode: string): Promise<BannerResult> {
   revalidatePath("/admin/catalogo/banners");
   revalidatePath("/aula/[id]", "page");
   return { ok: true, url: null };
+}
+
+export type ImpactResult = { ok: true; impact: TopicDeleteImpact } | { ok: false; error: string };
+
+export async function deleteImpactAction(id: string): Promise<ImpactResult> {
+  await requireAdmin();
+  let impact = null as TopicDeleteImpact | null;
+  const r = await guard("catalog.delete_impact", async () => {
+    impact = await topicDeleteImpact(id);
+  });
+  return r.ok && impact ? { ok: true, impact } : { ok: false, error: r.error ?? "Não foi possível consultar." };
+}
+
+/** Exclui o tema (matéria/assunto) do catálogo de vez. */
+export async function deleteTopicAction(id: string): Promise<AdminResult> {
+  const user = await requireAdmin();
+  const r = await guard("catalog.delete", async () => {
+    const i = await deleteTopic(user, z.uuid().parse(id));
+    return `“${i.title}” foi excluída do catálogo.`;
+  });
+  if (r.ok) {
+    revalidatePath("/admin/catalogo");
+    revalidatePath("/nova-trilha");
+  }
+  return r;
 }

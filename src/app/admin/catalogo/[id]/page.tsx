@@ -25,7 +25,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
 
       <section aria-labelledby="pub" className="rounded-lg border border-linha p-5">
         <h2 id="pub" className="t-h2">Publicação</h2>
-        <div className="mt-3"><PublishPanel id={id} status={topic.status} version={topic.version} blockers={blockers} /></div>
+        <div className="mt-3"><PublishPanel id={id} status={topic.status} version={topic.version} blockers={blockers} title={topic.title} /></div>
       </section>
 
       <section aria-labelledby="dados" className="rounded-lg border border-linha p-5">

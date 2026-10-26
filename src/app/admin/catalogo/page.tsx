@@ -4,6 +4,8 @@ import { LEVELS } from "@/domain/progress/levels";
 import { LAWS } from "@/domain/catalog/match";
 import { DISCIPLINE_LABELS, DISCIPLINE_MODES, type DisciplineMode } from "@/ai/pedagogy";
 import { listTopics, MIN_BANK_PER_LEVEL, requireAdmin } from "@/server/services/catalog";
+import { deleteImpactAction, deleteTopicAction } from "./actions";
+import { DeleteTopic } from "./delete-topic";
 
 export const metadata = { title: "Catálogo" };
 
@@ -64,6 +66,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
                     <th className="px-3 py-2">Questões no banco</th>
                     <th className="px-3 py-2">Situação</th>
                     <th className="px-3 py-2">Atualizado</th>
+                    <th className="px-3 py-2"><span className="sr-only">Ações</span></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-linha">
@@ -91,6 +94,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
                         <Tag tone={STATUS[t.status]!.tone}>{STATUS[t.status]!.label}{t.version ? ` v${t.version}` : ""}</Tag>
                       </td>
                       <td className="px-3 py-2 text-tinta-fraca">{new Date(t.updatedAt).toLocaleDateString("pt-BR")}</td>
+                      <td className="px-3 py-2"><DeleteTopic compact id={t.id} title={t.title} actions={{ impact: deleteImpactAction, remove: deleteTopicAction }} /></td>
                     </tr>
                   ))}
                 </tbody>
