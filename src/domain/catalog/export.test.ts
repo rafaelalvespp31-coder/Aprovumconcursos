@@ -123,3 +123,18 @@ describe("comando compacto", () => {
     expect(ex.endsWith("(…)")).toBe(true);
   });
 });
+
+describe("exemplos visuais e flashcards nos comandos", () => {
+  it("os três comandos pedem o bloco :::exemplo e a seção de flashcards, com o exemplo do modelo", async () => {
+    const { buildCompactPrompt, buildModelPrompt, buildModelPromptParts } = await import("./export");
+    const block = ':::exemplo\nSituação: A atira em B.\nPergunta: Qual crime?\nResposta: **Homicídio**.\nCarimbo: Homicídio | erro\n:::';
+    const withEx = { ...topic, lesson: { ...topic.lesson, sections: topic.lesson.sections.map((s, i) => (i === 3 ? { ...s, bodyMarkdown: `${s.bodyMarkdown}\n\n${block}` } : s)) } };
+    for (const p of [buildCompactPrompt(withEx), buildModelPrompt(withEx), buildModelPromptParts(withEx).part1]) {
+      expect(p).toContain("EXEMPLOS VISUAIS");
+      expect(p).toContain("Tirinha:");
+      expect(p).toContain("Situação: A atira em B.");
+      expect(p).toContain("--- SEÇÃO: flashcards | Flashcards de revisão ---");
+    }
+    expect(buildCompactPrompt(topic)).toContain('Esquema: {"tipo": "fluxo"');
+  });
+});

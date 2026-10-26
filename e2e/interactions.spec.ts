@@ -905,7 +905,8 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
     await page.goto(`${G}/aula`);
     await page.getByTestId("comecar-aula").click();
     await expect(page.getByRole("heading", { name: "Introdução", level: 3 })).toBeVisible();
-    await expect(page.locator(".ap-callout").filter({ hasText: "Na prática:" })).toBeVisible();
+    // Exemplo "Na prática" volta como card visual interativo, no fim do tema.
+    await expect(page.getByTestId("na-pratica").first()).toBeVisible();
     await expect(page.locator(".ap-lei")).toContainText("Art. 53");
     await expect(page.locator(".ap-md strong").first()).toHaveCSS("color", "rgb(138, 3, 3)");
     // Só o módulo aberto aparece (nada de rolagem infinita).
@@ -917,6 +918,8 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
     await page.getByTestId("concluir-modulo-2").click();
     await expect(page.getByRole("heading", { name: /Entendimento dos tribunais/, level: 3 })).toContainText("[não verificado]");
     await expect(page.locator(".ap-pendente")).toContainText("Súmula 473");
+    // Seção de flashcards vira os cartões interativos.
+    await expect(page.getByTestId("flashcards")).toBeVisible();
     await noHorizontalScroll(page);
   });
 

@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Markdown } from "@/components/markdown";
-import { practiceToMarkdown, type PracticeCase } from "@/domain/content/practice";
+import { extractPractice, type PracticeCase } from "@/domain/content/practice";
+import { PracticeCard } from "@/components/practice-card";
+import { Flashcards, parseFlashcards } from "@/components/flashcards";
 import { Icon, type IconName } from "@/components/icons";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
 import { SaveIndicator, type SaveState } from "@/components/interactive";
@@ -610,11 +612,10 @@ function ApostilaSection({
   onAnnotation: (a: Annotation, removed?: boolean) => void;
 }) {
   const unverified = s.verification_status === "pendente";
-  // Exemplos ":::exemplo" viram caixas "Na prática", exatamente como no PDF.
-  let md = practiceToMarkdown(s.body_markdown);
-  if (!s.body_markdown.includes(":::exemplo") && s.practice?.length) {
-    md += s.practice.map((c) => `\n\n> **Na prática:** ${c.situation}${c.question ? `\n>\n> **Pergunta:** ${c.question}` : ""}\n>\n> **Resposta:** ${c.answer}`).join("");
-  }
+  // Exemplos ":::exemplo" viram o card visual "Na prática" (tirinha, esquema e carimbo) no fim da seção.
+  const { body: md, cases: ownCases } = extractPractice(s.body_markdown);
+  const cases = ownCases.length ? ownCases : (s.practice ?? []);
+  const flash = s.kind === "flashcards" && parseFlashcards(md).length > 0;
   const legal = s.kind === "texto_legal";
   return (
     <section id={sectionDomId(s.id)} className="ap-secao" aria-labelledby={`h-${s.id}`}>
@@ -622,8 +623,13 @@ function ApostilaSection({
         {s.title}
         {unverified && <i className="ap-nao-verificado"> [não verificado]</i>}
       </h3>
-      <ApostilaMarkdown legal={legal}>{md}</ApostilaMarkdown>
+      {flash ? <Flashcards markdown={md} /> : md.trim() ? <ApostilaMarkdown legal={legal}>{md}</ApostilaMarkdown> : null}
       {legal && <p className="ap-nota">Confira sempre a redação vigente no Portal da Legislação do Planalto.</p>}
+      {cases.length > 0 && (
+        <div className="ap-pratica">
+          <PracticeCard cases={cases} onReread={() => document.getElementById(sectionDomId(s.id))?.scrollIntoView({ behavior: "smooth", block: "start" })} />
+        </div>
+      )}
       <SectionActions section={s} lessonId={lessonId} annotations={annotations} clarifications={clarifications} onAnnotation={onAnnotation} />
     </section>
   );

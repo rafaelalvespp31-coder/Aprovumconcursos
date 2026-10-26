@@ -4,6 +4,8 @@
  * resposta no campo de texto do painel.
  */
 
+import { visualRules } from "./export";
+
 export const LESSON_PROMPT = `Você vai escrever uma aula completa para concursos públicos (carreiras policiais e jurídicas) no PADRÃO APROVUM.
 
 TEMA: [ESCREVA AQUI O TEMA, A LEI E OS ARTIGOS — ex.: Furto, Código Penal, art. 155]
@@ -14,6 +16,8 @@ FORMATO OBRIGATÓRIO
 - Conteúdo das seções em Markdown: parágrafos curtos, **negrito** nos termos-chave, listas com "-", listas numeradas, tabelas com "|". Caixas de destaque com ">" no começo da linha, ex.: "> **Pegadinha:** …", "> **Por que isso importa na prova:** …", "> **A campeã de prova:** …".
 - Não use os marcadores === ou --- dentro do conteúdo. Cada seção com no máximo 10.000 caracteres.
 - Se a resposta for cortada por tamanho, eu vou pedir "continue": continue exatamente de onde parou, sem repetir nada e sem abrir explicações.
+
+${visualRules()}
 
 === AULA ===
 Título: (nome do tema + dispositivo, ex.: Furto (CP, art. 155))
@@ -93,6 +97,8 @@ Itens: (todos os dispositivos do texto legal)
 (Tabela | Pergunta | Resposta | com 10 a 14 linhas: penas, frações, competência, hediondez, diferenças-chave.)
 --- SEÇÃO: checklist | Checklist: você consegue… ---
 (Lista "- [ ] …?" com 10 a 15 itens. Última linha: "Marcou tudo? Passe para as questões de fixação: são três níveis (fácil, médio e difícil), e cada um exige 90% de acertos.")
+--- SEÇÃO: flashcards | Flashcards de revisão ---
+(12 a 15 cartões no formato "**Pergunta?**" e, na linha seguinte, "→ resposta", separados por linha em branco.)
 
 === REFERÊNCIAS ===
 Lei: (lei principal e artigos usados)

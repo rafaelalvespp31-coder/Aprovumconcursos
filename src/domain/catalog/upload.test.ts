@@ -251,3 +251,52 @@ describe("completar questões de uma aula catalogada", () => {
     expect(parseQuestionsForTopic("texto qualquer", nodes, ["155"]).errors[0]).toMatch(/Não encontrei questões/);
   });
 });
+
+describe("exemplos visuais e flashcards no texto colado", () => {
+  it("mantém o bloco :::exemplo (tirinha, carimbo, esquema) e a seção de flashcards", async () => {
+    const { extractPractice } = await import("@/domain/content/practice");
+    const { parseFlashcards } = await import("@/components/flashcards");
+    const { LESSON_PROMPT } = await import("./chatgpt-prompts");
+    expect(LESSON_PROMPT).toContain("EXEMPLOS VISUAIS");
+    expect(LESSON_PROMPT).toContain("--- SEÇÃO: flashcards | Flashcards de revisão ---");
+    const txt = [
+      "```",
+      "=== AULA ===",
+      "Título: Coesão textual",
+      "Matéria: Língua Portuguesa",
+      "Tipo: tema",
+      "Objetivo: Reconhecer a referenciação.",
+      "=== TEXTO-BASE ===",
+      "1 Referenciação",
+      "=== MÓDULO: Base ===",
+      "--- SEÇÃO: explicação | O que é ---",
+      "A referenciação retoma termos.",
+      "",
+      ":::exemplo",
+      "Situação: Ana escreve \"ele\" para retomar \"o réu\".",
+      "Pergunta: Que mecanismo é esse?",
+      "**Resposta:** Referenciação **pronominal**.",
+      'Tirinha: [{"cenario": "escola", "legenda": "Ana revisa o texto", "personagens": [{"p": "professor", "lado": "esq", "pose": "aponta", "humor": "serio"}], "fala": {"quem": 0, "texto": "Quem é ele?"}}]',
+      "Carimbo: Coesão ok | ok",
+      'Esquema: {"tipo": "fluxo", "passos": [{"rotulo": "Termo citado", "estado": "ok"}, {"rotulo": "Pronome retoma", "estado": "ok"}]}',
+      ":::",
+      "=== MÓDULO: Revisão final ===",
+      "--- SEÇÃO: flashcards | Flashcards de revisão ---",
+      "**O que é referenciação?**",
+      "→ Retomar termos já citados.",
+      "",
+      "**Conectivo liga o quê?**",
+      "→ **Ideias** e orações.",
+      "```",
+    ].join("\n");
+    const p = parseLessonUpload(txt);
+    expect(p.errors).toEqual([]);
+    const { cases } = extractPractice(p.sections[0]!.bodyMarkdown);
+    expect(cases).toHaveLength(1);
+    expect(cases[0]!.strip?.length).toBe(1);
+    expect(cases[0]!.stamp).toMatchObject({ tone: "ok" });
+    expect(cases[0]!.scheme).toBeTruthy();
+    const flash = p.sections.find((s) => s.kind === "flashcards")!;
+    expect(parseFlashcards(flash.bodyMarkdown)).toHaveLength(2);
+  });
+});

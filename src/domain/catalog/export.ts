@@ -113,6 +113,42 @@ export function exportTopicText(t: ExportableTopic, part: "tudo" | "aula" | "que
   return out.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
 }
 
+const DEFAULT_VISUAL_EXAMPLE = `:::exemplo
+Situação: (caso concreto curto, com personagens)
+Pergunta: (o que o aluno deve decidir)
+Resposta: (resposta com o enquadramento e o artigo, com **negrito** no essencial)
+Tirinha: [{"cenario": "rua", "legenda": "(o que acontece no quadro 1)", "personagens": [{"p": "investigado", "lado": "esq", "pose": "ataca", "humor": "bravo", "objeto": "faca"}, {"p": "cidadao", "lado": "dir", "pose": "neutro", "humor": "surpreso"}], "efeito": "PÁ!"}, {"cenario": "delegacia", "legenda": "(quadro 2)", "personagens": [{"p": "delegado", "lado": "centro", "pose": "fala", "humor": "serio"}], "fala": {"quem": 0, "texto": "(fala curta)"}}]
+Carimbo: (resultado em poucas palavras) | erro
+Esquema: {"tipo": "fluxo", "titulo": "(título)", "passos": [{"rotulo": "(pergunta 1)", "estado": "ok", "detalhe": "(resposta)"}, {"rotulo": "(pergunta 2)", "estado": "ok"}, {"rotulo": "(conclusão)", "estado": "neutro"}]}
+:::`;
+
+/** Primeiro bloco ":::exemplo" do modelo (mostra o card visual completo, com tirinha e esquema). */
+function modelVisualExample(t?: ExportableTopic): string {
+  for (const s of t?.lesson.sections ?? []) {
+    const m = s.bodyMarkdown.match(/(^|\n)[ \t]*:::exemplo[ \t]*\n[\s\S]*?\n[ \t]*:::[ \t]*(?=\n|$)/);
+    if (m) return m[0].trim();
+  }
+  return DEFAULT_VISUAL_EXAMPLE;
+}
+
+/** Regras dos exemplos visuais ("Na prática") e dos flashcards, iguais às da aula-modelo. */
+export function visualRules(t?: ExportableTopic): string {
+  const withExample = t?.lesson.sections.filter((s) => s.bodyMarkdown.includes(":::exemplo")).length ?? 0;
+  return `EXEMPLOS VISUAIS ("Na prática") — obrigatórios
+- Termine CADA seção de introdução, conceitos fundamentais, explicação, aprofundamento, comparação, quadro comparativo, aplicação, exceções, doutrina e jurisprudência com UM bloco :::exemplo${withExample ? ` (o modelo tem ${withExample})` : ""}. O bloco vira um card visual com tirinha, carimbo e esquema.
+- Campos: Situação, Pergunta, Resposta (texto) e Tirinha, Carimbo, Esquema (visuais). Tirinha e Esquema em JSON numa linha só, válido.
+- Tirinha: 1 a 3 quadros. "cenario": delegacia, local_crime, cela, forum, rua, casa, bar, hospital, piscina, reparticao, escola, obra, transito ou rodovia. Até 3 "personagens" com "p": delegado, pm, policial_penal, perito, promotor, juiz, advogado, vitima, investigado, preso, cidadao, servidor, gestor ou professor; "lado": esq, centro ou dir; "pose": neutro, fala, aponta, pega, ataca ou bracos_cruzados; "humor": neutro, serio, bravo, surpreso, feliz ou triste; "objeto" (opcional): arma, documento, celular, maleta, faca, copo ou carimbo. "legenda" até 90 caracteres; "fala" {"quem": índice do personagem, "texto": até 80 caracteres}; "efeito" até 12 caracteres (ex.: "PÁ!"), sem violência explícita.
+- Carimbo: até 40 caracteres e o tom depois de "|": erro, ok ou alerta.
+- Esquema: {"tipo": "fluxo", "passos": 2 a 6 {"rotulo", "detalhe", "estado"}} ou {"tipo": "comparacao", "lados": exatamente 2 {"titulo", "resultado", "estado", "itens"}} ou {"tipo": "linha_tempo", "unidade", "marcos": 2 a 6 {"em", "rotulo", "estado"}}; "estado": ok, erro, neutro ou alerta.
+- ${t ? "Exemplo do modelo (mesmo formato)" : "Formato do bloco"}:
+${modelVisualExample(t)}
+
+FLASHCARDS — obrigatórios
+- No último módulo, logo depois do Resumo, inclua a seção "--- SEÇÃO: flashcards | Flashcards de revisão ---" com 12 a 15 cartões, separados por linha em branco, no formato:
+**Pergunta curta?**
+→ Resposta curta, com **negrito** no essencial.`;
+}
+
 /** Raio-x do modelo, para o comando dizer exatamente o que reproduzir. */
 export function modelOutline(t: ExportableTopic) {
   const modules: Array<{ name: string; sections: Array<{ kind: string; title: string }> }> = [];
@@ -159,6 +195,8 @@ ${lv("dificil", "Difícil")}
 ESQUELETO OBRIGATÓRIO (do modelo)
 ${skeleton}
 
+${visualRules(t)}
+
 REGRAS DE CONTEÚDO
 - Não copie o conteúdo do modelo: escreva tudo sobre o NOVO tema. Copie só a forma.
 - Questões autorais: não atribua a banca nem a concurso real. Gabarito sempre coerente com a justificativa; distribua as letras corretas entre A e E; cada "Item:" deve existir no TEXTO-BASE da nova aula.
@@ -203,6 +241,8 @@ Abaixo está a aula "${t.title}" (sem as questões), que é o MODELO OFICIAL da 
 
 ESQUELETO OBRIGATÓRIO (do modelo)
 ${skeleton}
+
+${visualRules(t)}
 
 REGRAS DE CONTEÚDO
 - Não copie o conteúdo do modelo: escreva tudo sobre o NOVO tema. Copie só a forma.
@@ -339,6 +379,8 @@ Siga EXATAMENTE a forma da aula-modelo "${t.title}" (resumida no fim): os mesmos
 
 ESQUELETO
 ${skeleton}
+
+${visualRules(t)}
 
 TEXTO-BASE: texto LITERAL e VIGENTE dos artigos, um dispositivo por linha, e depois o sumário numerado dos subtemas.
 QUESTÕES (12 por nível): ${lv("facil", "Fácil")}; ${lv("medio", "Médio")}; ${lv("dificil", "Difícil")}. Múltipla escolha com A a E, cada alternativa com "Comentário:". Todas com Item (existente no TEXTO-BASE), Essencial, Dificuldade, Gabarito e Justificativa. Questões autorais, sem banca ou concurso real; gabaritos coerentes e distribuídos entre A e E.

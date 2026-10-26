@@ -2225,3 +2225,5 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .ap-q-rodape { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-top: 6px; font-size: 11.5px; color: var(--ap-faint); }
 .ap-q-acoes { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; margin-top: 14px; }
 .ap-q-erro { margin: 10px 0 0; color: var(--ap-red); font-size: 13px; font-weight: 700; }
+
+.ap-pratica { margin: 16px 0 6px; font-family: inherit; }
