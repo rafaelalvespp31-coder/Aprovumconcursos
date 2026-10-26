@@ -19,7 +19,7 @@ export default async function BankDashboardPage() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="font-[Space_Grotesk] text-[26px] font-bold">Painel do banco</h1>
-          <p className="text-[14px] text-white/60">Nada é publicado sem revisão humana. Questões só entram no Ranked depois de aprovadas por outro revisor e publicadas.</p>
+          <p className="text-[14px] text-white/60">Questões catalogadas pelo administrador (com justificativa) já são publicadas ao cadastrar. As de outros autores passam por revisão antes de ir ao site.</p>
         </div>
         {staff.roles.autor && <DLink href="/banco/importar">Cadastrar questões</DLink>}
       </div>

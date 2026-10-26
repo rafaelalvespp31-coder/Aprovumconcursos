@@ -112,15 +112,15 @@ export async function previewBankUploadAction(text: string): Promise<BankResult<
   });
 }
 
-export async function importBankUploadAction(text: string): Promise<BankResult<{ created: number; skipped: number; codes: string[] }>> {
+export async function importBankUploadAction(text: string): Promise<BankResult<{ created: number; skipped: number; published: number; codes: string[] }>> {
   return run(
     "upload",
     async () => {
       const staff = await requireBankStaff();
       const t = pastedQuestions(text);
       const r = await importBankUpload(staff, t, { name: "texto colado", size: new TextEncoder().encode(t).length });
-      return { created: r.created, skipped: r.skipped, codes: r.codes };
+      return { created: r.created, skipped: r.skipped, published: r.published, codes: r.codes };
     },
-    ["/banco", "/banco/questoes"],
+    ["/banco", "/banco/questoes", "/questoes"],
   );
 }

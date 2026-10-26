@@ -56,7 +56,7 @@ export async function previewLessonUploadAction(text: string): Promise<UploadPre
   return r.ok && preview ? { ok: true, preview } : { ok: false, error: r.error ?? "Não foi possível ler o texto." };
 }
 
-/** Grava a aula colada como rascunho e abre a página de revisão. */
+/** Cataloga a aula colada (publica na hora quando tem ≥ 10 questões por nível) e abre a página dela. */
 export async function importLessonUploadAction(text: string): Promise<AdminResult> {
   const user = await requireAdmin();
   let id = "";
@@ -65,6 +65,7 @@ export async function importLessonUploadAction(text: string): Promise<AdminResul
   });
   if (!r.ok) return r;
   revalidatePath("/admin/catalogo");
+  revalidatePath("/nova-trilha");
   redirect(`/admin/catalogo/${id}`);
 }
 

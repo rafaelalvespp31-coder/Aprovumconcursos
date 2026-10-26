@@ -149,10 +149,25 @@ async function ensureExamAndSource(staff: BankStaff, l: Lookups, q: ParsedBankQu
   return out;
 }
 
+/** Registra na prova de origem que o administrador autorizou o uso ao catalogar (sem link nem endereço). */
+async function authorizeSource(staff: BankStaff, sourceId: string) {
+  const db = createAdminClient();
+  const { data: cur } = await db.from("question_sources").select("legal_notes, reuse_verified").eq("id", sourceId).maybeSingle();
+  if (!cur || cur.reuse_verified) return;
+  const stamp = `[${new Date().toISOString().slice(0, 10)}] Uso autorizado pelo administrador ao catalogar as questões por texto.`;
+  const { error } = await db
+    .from("question_sources")
+    .update({ reuse_verified: true, reuse_verified_by: staff.id, reuse_verified_at: new Date().toISOString(), legal_notes: [cur.legal_notes, stamp].filter(Boolean).join("\n").slice(-4000), updated_at: new Date().toISOString() })
+    .eq("id", sourceId);
+  if (error) throw new UserFacingError(`Não foi possível registrar a autorização da prova: ${error.message}`, "db_rule");
+}
+
 export interface BankUploadResult {
   importId: string;
   created: number;
   skipped: number;
+  /** Publicadas direto (administrador, com justificativa). */
+  published: number;
   codes: string[];
 }
 
@@ -177,6 +192,10 @@ export async function importBankUpload(staff: BankStaff, text: string, file: { n
   const codes: string[] = [];
   let created = 0;
   let skipped = 0;
+  let published = 0;
+  // Administrador publica direto: sem conferência, revisão ou aprovação separadas.
+  const quick = staff.roles.admin;
+  const verifiedSources = new Set<string>();
   const items: Array<Record<string, unknown>> = [];
   try {
     for (let i = 0; i < a.parsed.questions.length; i++) {
@@ -191,6 +210,10 @@ export async function importBankUpload(staff: BankStaff, text: string, file: { n
       const topicId = q.topicPath.length ? await ensureTopic(subject.id, q.topicPath, topicCache) : null;
       const real = Boolean(q.exam);
       const ex = real ? await ensureExamAndSource(staff, a.l, q, examCache) : null;
+      if (ex && quick && !verifiedSources.has(ex.source)) {
+        await authorizeSource(staff, ex.source);
+        verifiedSources.add(ex.source);
+      }
       const payload = {
         subject_id: subject.id,
         topic_id: topicId ?? "",
@@ -208,7 +231,8 @@ export async function importBankUpload(staff: BankStaff, text: string, file: { n
         correct_answer_true: q.type === "certo_errado" ? q.answer === "certo" : null,
         justification: q.justification ?? "",
         legal_basis: q.legalBasis ?? "",
-        usage_rights: real ? "nao_verificado" : "proprio",
+        // Administrador: catalogar já é a decisão de uso (registrada na fonte); demais autores seguem para conferência.
+        usage_rights: real ? (quick ? "autorizado" : "nao_verificado") : "proprio",
         verified_at: "",
         status: "aguardando_conferencia",
         generation_batch_id: "",
@@ -219,6 +243,11 @@ export async function importBankUpload(staff: BankStaff, text: string, file: { n
       if (error) throw new UserFacingError(`Questão ${q.number}: ${error.message.replace(/^.*?ERROR:\s*/, "")}`, "db_rule");
       const qid = data as string;
       created++;
+      if (quick) {
+        const pub = await db.rpc("bank_quick_publish", { p_actor: staff.id, p_id: qid });
+        if (pub.error) throw new UserFacingError(`Questão ${q.number}: cadastrada, mas não publicada (${pub.error.message.replace(/^.*?ERROR:\s*/, "")}).`, "db_rule");
+        if (pub.data === "publicada") published++;
+      }
       items.push({ import_id: importId, item_number: i + 1, parsed, issues: [], question_id: qid, decision: "aceito", decided_by: staff.id, decided_at: new Date().toISOString() });
     }
   } catch (e) {
@@ -232,7 +261,10 @@ export async function importBankUpload(staff: BankStaff, text: string, file: { n
     const { data } = await db.from("bank_questions").select("public_code").in("id", ids).order("public_code");
     codes.push(...(data ?? []).map((r) => r.public_code as string));
   }
-  await db.from("question_imports").update({ status: "aguardando_conferencia", stats: { created, skipped, total: a.parsed.questions.length }, updated_at: new Date().toISOString() }).eq("id", importId);
+  await db
+    .from("question_imports")
+    .update({ status: published === created ? "concluido" : "aguardando_conferencia", stats: { created, skipped, published, total: a.parsed.questions.length }, updated_at: new Date().toISOString() })
+    .eq("id", importId);
   await auditLog(db, { actorId: staff.id, userId: null, action: "bank.questions_uploaded", entity: "question_imports", entityId: importId, meta: { created, skipped, fileName: file.name.slice(0, 200) } });
-  return { importId, created, skipped, codes };
+  return { importId, created, skipped, published, codes };
 }

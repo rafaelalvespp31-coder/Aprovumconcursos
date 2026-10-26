@@ -57,6 +57,7 @@ export function LessonUploadForm({ actions }: { actions: Actions }) {
     }
   };
   const stale = preview && text !== checked;
+  const full = !!preview && preview.questions.facil >= 10 && preview.questions.medio >= 10 && preview.questions.dificil >= 10;
 
   return (
     <div className="flex flex-col gap-5" data-testid="upload-aula">
@@ -104,11 +105,11 @@ export function LessonUploadForm({ actions }: { actions: Actions }) {
               </p>
               {preview.existing && (
                 <p className="mt-1 t-small">
-                  Já existe <strong>{preview.existing.title}</strong> ({preview.existing.status}) com o mesmo endereço: {preview.existing.status === "rascunho" ? "o rascunho será atualizado e as questões antigas ficarão inativas." : "não será alterada."}
+                  Já existe <strong>{preview.existing.title}</strong> ({preview.existing.status}) com o mesmo endereço: ela será atualizada com este texto.
                 </p>
               )}
             </div>
-            <Tag tone={preview.ok ? "verde" : "vermelho"}>{preview.ok ? "Pronto para salvar" : `${preview.errors.length} erro(s)`}</Tag>
+            <Tag tone={preview.ok ? "verde" : "vermelho"}>{preview.ok ? (full ? "Pronto para publicar" : "Pronto para salvar") : `${preview.errors.length} erro(s)`}</Tag>
           </div>
 
           {preview.errors.length > 0 && (
@@ -153,9 +154,13 @@ export function LessonUploadForm({ actions }: { actions: Actions }) {
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Button disabled={!preview.ok || pending || !!stale} onClick={save}>{saving ? "Salvando…" : "4. Salvar como rascunho"}</Button>
+            <Button disabled={!preview.ok || pending || !!stale} onClick={save}>{saving ? "Salvando…" : full ? "4. Catalogar e publicar" : "4. Salvar como rascunho"}</Button>
           </div>
-          <p className="t-tiny text-tinta-fraca">Nada vai para os alunos agora: a aula entra como rascunho para você revisar e publicar.</p>
+          <p className="t-tiny text-tinta-fraca">
+            {full
+              ? "Ao catalogar, a aula já é publicada e aparece no site para os alunos, sem etapa de aprovação."
+              : "Com menos de 10 questões em algum nível a aula fica como rascunho; complete as questões e cole de novo para publicar."}
+          </p>
         </section>
       )}
     </div>

@@ -18,7 +18,7 @@ export function DemoBankUpload() {
     <BankUploadForm
       actions={{
         preview: async (text) => ({ ok: true, data: summarizeBankUpload(parseBankUpload(text), { subjects: SUBJECTS, boards: BOARDS, duplicate: [] }) }),
-        save: async () => ({ ok: true, data: { created: 2, skipped: 0, codes: ["APV-000101", "APV-000102"] } }),
+        save: async () => ({ ok: true, data: { created: 2, skipped: 0, published: 2, codes: ["APV-000101", "APV-000102"] } }),
       }}
     />
   );

@@ -593,7 +593,7 @@ export function buildLesson(p: ParsedLesson, nodes: readonly ExtractedNode[]): B
   // Nenhuma seção pode ficar com mais de 40 itens.
   sectionKeys.forEach((ks, i) => {
     if (ks.length > 40) {
-      errors.push(`Seção “${p.sections[i]!.title}” cobre ${ks.length} itens (máximo 40). Divida a seção ou use “Itens:”.`);
+      warnings.push(`Seção “${p.sections[i]!.title}” cobre ${ks.length} itens; foram ligados os 40 primeiros (os demais continuam no texto-base).`);
     }
   });
 

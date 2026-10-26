@@ -530,8 +530,8 @@ test.describe("banco de questões (painel escuro)", () => {
     await expect(up.getByText("Pronto para cadastrar")).toBeVisible();
     await expect(up.getByRole("cell", { name: /Crimes contra a vida › Homicídio/ })).toBeVisible();
     await expect(up.getByRole("cell", { name: "Errado", exact: true })).toBeVisible();
-    await up.getByRole("button", { name: "Cadastrar 2 questão(ões)" }).click();
-    await expect(up.getByText(/2 questão\(ões\) cadastrada\(s\)/)).toBeVisible();
+    await up.getByRole("button", { name: "Cadastrar e publicar 2 questão(ões)" }).click();
+    await expect(up.getByText(/já aparecem para os alunos/)).toBeVisible();
   });
 
   test("cadastrar questões: texto fora do formato mostra os erros e não deixa cadastrar", async ({ page }) => {

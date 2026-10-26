@@ -154,3 +154,70 @@ describe("texto colado do ChatGPT", () => {
     expect(p.questions[0]!.answer).toBe("A");
   });
 });
+
+describe("comando padrão APROVUM (modelo Homicídio)", () => {
+  it("uma resposta no formato do comando vira os 9 módulos do padrão e 12 questões por nível", async () => {
+    const { LESSON_PROMPT } = await import("./chatgpt-prompts");
+    expect(LESSON_PROMPT).toContain("=== MÓDULO: Visão geral e lei seca ===");
+    const mods: Array<[string, Array<[string, string]>]> = [
+      ["Visão geral e lei seca", [["introdução", "Visão geral: o que o art. 155 protege"], ["esquema", "Mapa do art. 155 (bloco por bloco)"], ["texto legal", "Texto legal do art. 155"]]],
+      ["O crime de furto", [["conceitos fundamentais", "Tipo penal"], ["explicação", "Dolo"], ["explicação", "Iter criminis"]]],
+      ["Formas privilegiadas, qualificadas e majorantes", [["explicação", "Furto privilegiado"], ["explicação", "Qualificadoras"], ["aprofundamento", "Majorantes"]]],
+      ["Forma culposa e particularidades", [["explicação", "Não há forma culposa"]]],
+      ["Temas da Parte Geral que caem junto", [["aprofundamento", "Concurso de pessoas"], ["aprofundamento", "Erro"]]],
+      ["Combinações, crimes próximos e julgamento", [["aprofundamento", "Privilegiado-qualificado"], ["comparação", "Furto × roubo"], ["quadro comparativo", "Furto × crimes próximos"], ["aplicação", "Ação penal e benefícios"]]],
+      ["Casos práticos e pegadinhas", [["exemplos", "Casos práticos resolvidos"], ["pegadinhas", "Pegadinhas de prova"], ["exceções", "Exceções e particularidades"]]],
+      ["Doutrina, jurisprudência e bancas", [["doutrina", "Como a doutrina explica"], ["jurisprudência", "O que os tribunais têm decidido"], ["interpretação da banca", "Como as bancas cobram o art. 155"]]],
+      ["Revisão final", [["resumo", "Resumo para revisão"], ["checklist", "Checklist: você consegue…"]]],
+    ];
+    const q = (lv: string) =>
+      Array.from({ length: 12 }, (_, i) =>
+        i % 2
+          ? `--- QUESTÃO ---\nTipo: certo ou errado\nItem: § 4º\nEssencial: não\nDificuldade: 2\nEnunciado: Afirmação ${lv} ${i} sobre o furto qualificado.\nGabarito: Certo\nJustificativa: Certo. Explicação da questão ${i}.`
+          : `--- QUESTÃO ---\nTipo: múltipla escolha\nItem: 1\nEssencial: sim\nDificuldade: 1\nEnunciado: Questão ${lv} ${i}: o furto consiste em:\nA) subtrair coisa alheia móvel\nComentário: Correta, é o caput.\nB) com violência\nComentário: Errada, é roubo.\nC) apropriar-se\nComentário: Errada, apropriação.\nD) fraude\nComentário: Errada, estelionato.\nE) dano\nComentário: Errada, dano.\nGabarito: A\nJustificativa: O caput define o furto.`,
+      ).join("\n\n");
+    const txt = [
+      "```",
+      "=== AULA ===",
+      "Título: Furto (CP, art. 155)",
+      "Matéria: Direito Penal",
+      "Tipo: dispositivo",
+      "Lei: CP",
+      "Artigos: 155",
+      "Sinônimos: furto simples; furto qualificado",
+      "Tempo estimado: 90",
+      "Objetivo: Dominar o art. 155 do Código Penal.",
+      "Resumo: Furto é subtrair coisa alheia móvel.",
+      "=== TEXTO-BASE ===",
+      "Art. 155 - Subtrair, para si ou para outrem, coisa alheia móvel:",
+      "Pena - reclusão, de um a quatro anos, e multa.",
+      "§ 1º A pena aumenta-se de um terço, se o crime é praticado durante o repouso noturno.",
+      "§ 4º A pena é de reclusão de dois a oito anos, e multa, se o crime é cometido:",
+      "I - com destruição ou rompimento de obstáculo à subtração da coisa;",
+      "1 Tipo penal: bem jurídico, sujeitos, consumação e classificação",
+      "2 Furto qualificado",
+      ...mods.flatMap(([m, secs]) => [`=== MÓDULO: ${m} ===`, ...secs.flatMap(([k, t], i) => [`--- SEÇÃO: ${k} | ${t} ---`, i === 0 ? "Itens: Art. 155; 1" : "", `Conteúdo de **${t}**.\n\n> **Pegadinha:** cuidado.\n\n| A | B |\n|---|---|\n| x | y |`])]),
+      "=== REFERÊNCIAS ===",
+      "Lei: Código Penal, art. 155",
+      "Jurisprudência: STJ, Súmula 442",
+      "=== A CONFERIR ===",
+      "Conferir a redação vigente do § 4º.",
+      "=== QUESTÕES: FÁCIL ===",
+      q("fácil"),
+      "=== QUESTÕES: MÉDIO ===",
+      q("médio"),
+      "=== QUESTÕES: DIFÍCIL ===",
+      q("difícil"),
+      "```",
+    ].join("\n");
+    const p = parseLessonUpload(txt);
+    expect(p.errors).toEqual([]);
+    expect(new Set(p.sections.map((s) => s.module)).size).toBe(9);
+    expect(p.sections).toHaveLength(24);
+    const b = buildLesson(p, nodesOf(p.sourceText));
+    expect(b.errors).toEqual([]);
+    expect(lessonSchema.safeParse(b.lesson).success).toBe(true);
+    for (const lv of ["facil", "medio", "dificil"]) expect(b.questions.filter((x) => x.level === lv)).toHaveLength(12);
+    expect(b.warnings.some((w) => /pelo menos 10/.test(w))).toBe(false);
+  });
+});

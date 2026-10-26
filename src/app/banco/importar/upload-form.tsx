@@ -9,7 +9,7 @@ import { DBadge, DNotice, dButton, dTextarea } from "../ui";
 
 export interface BankUploadActions {
   preview: (text: string) => Promise<BankResult<BankUploadPreview>>;
-  save: (text: string) => Promise<BankResult<{ created: number; skipped: number; codes: string[] }>>;
+  save: (text: string) => Promise<BankResult<{ created: number; skipped: number; published: number; codes: string[] }>>;
 }
 
 /** Questões por texto colado: copiar o comando → colar a resposta → conferir → cadastrar (aguardando conferência). */
@@ -17,7 +17,7 @@ export function BankUploadForm({ actions }: { actions: BankUploadActions }) {
   const [text, setText] = useState("");
   const [checked, setChecked] = useState("");
   const [preview, setPreview] = useState<BankUploadPreview | null>(null);
-  const [done, setDone] = useState<{ created: number; skipped: number; codes: string[] } | null>(null);
+  const [done, setDone] = useState<{ created: number; skipped: number; published: number; codes: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [pending, start] = useTransition();
@@ -92,10 +92,16 @@ export function BankUploadForm({ actions }: { actions: BankUploadActions }) {
       {error && <DNotice tone="erro">{error}</DNotice>}
       {done && (
         <DNotice tone="ok">
-          {done.created} questão(ões) cadastrada(s) como <strong>aguardando conferência</strong>
-          {done.skipped ? ` · ${done.skipped} já existia(m) e foi(ram) ignorada(s)` : ""}.
+          {done.published === done.created ? (
+            <>{done.created} questão(ões) <strong>publicada(s)</strong>: já aparecem para os alunos no site.</>
+          ) : (
+            <>
+              {done.published} publicada(s) no site; {done.created - done.published} cadastrada(s) aguardando a justificativa para publicar.
+            </>
+          )}
+          {done.skipped ? ` ${done.skipped} já existia(m) e foi(ram) ignorada(s).` : ""}
           {done.codes.length > 0 && <span className="block text-[12px] text-white/70">{done.codes.slice(0, 30).join(", ")}{done.codes.length > 30 ? "…" : ""}</span>}
-          <Link href="/banco/questoes?status=aguardando_conferencia" className="mt-1 inline-block font-semibold underline">Conferir agora</Link>
+          <Link href="/banco/questoes" className="mt-1 inline-block font-semibold underline">Ver no banco</Link>
         </DNotice>
       )}
 
@@ -148,10 +154,10 @@ export function BankUploadForm({ actions }: { actions: BankUploadActions }) {
           )}
           <div className="flex flex-wrap gap-2">
             <button type="button" className={dButton()} disabled={!preview.ok || pending || !!stale} onClick={save}>
-              {saving ? "Cadastrando…" : `Cadastrar ${preview.fresh} questão(ões)`}
+              {saving ? "Cadastrando…" : `Cadastrar e publicar ${preview.fresh} questão(ões)`}
             </button>
           </div>
-          <p className="text-[12px] text-white/50">Entram como “Aguardando conferência”: só chegam aos alunos depois que você conferir o gabarito e publicar.</p>
+          <p className="text-[12px] text-white/50">Ao cadastrar, as questões com justificativa já são publicadas e aparecem para os alunos.</p>
         </section>
       )}
     </div>

@@ -306,6 +306,8 @@ export function summarizeBankUpload(
     duplicate: Boolean(ctx.duplicate[i]),
     snippet: q.statement.replace(/\s+/g, " ").slice(0, 140),
   }));
+  const noJust = parsed.questions.filter((q, i) => !ctx.duplicate[i] && (q.justification ?? "").trim().length < 10).length;
+  if (noJust) warnings.push(`${noJust} questão(ões) sem “Justificativa:” (mínimo 10 caracteres): serão cadastradas, mas só vão para o site depois que você completar a justificativa no banco.`);
   const duplicates = rows.filter((r) => r.duplicate).length;
   if (rows.length && duplicates === rows.length) warnings.push("Todas as questões deste texto já estão no banco; nada novo será cadastrado.");
   return { ok: errors.length === 0 && rows.length > 0 && duplicates < rows.length, errors, warnings, total: rows.length, duplicates, fresh: rows.length - duplicates, rows };
