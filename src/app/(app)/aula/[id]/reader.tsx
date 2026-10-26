@@ -211,12 +211,23 @@ export function LessonReader(props: ReaderProps) {
   const inicio = (
     <>
       <section className="ap-banner" aria-label="Capa">
-        <div className="ap-banner-arte" data-padrao={props.meta?.banner ? undefined : "1"} style={props.meta?.banner ? { backgroundImage: `url("${props.meta.banner}")` } : undefined}>
-          <div className="ap-banner-texto">
-            <p className="ap-kicker ap-kicker-claro">Material de estudo{props.meta?.subject ? ` · ${props.meta.subject}` : ""}</p>
-            <h1 className="ap-banner-titulo">{lesson.title}</h1>
+        {props.meta?.banner ? (
+          <>
+            {/* Arte da matéria inteira, na proporção dela (4:1), sem cortes nem texto por cima. */}
+            <div className="ap-banner-img" role="img" aria-label={`Banner de ${props.meta.subject ?? "matéria"}`} style={{ ["--bn" as string]: `url("${props.meta.banner}")` }} />
+            <div className="ap-banner-texto ap-banner-texto-faixa">
+              <p className="ap-kicker ap-kicker-claro">Material de estudo{props.meta?.subject ? ` · ${props.meta.subject}` : ""}</p>
+              <h1 className="ap-banner-titulo">{lesson.title}</h1>
+            </div>
+          </>
+        ) : (
+          <div className="ap-banner-arte" data-padrao="1">
+            <div className="ap-banner-texto">
+              <p className="ap-kicker ap-kicker-claro">Material de estudo{props.meta?.subject ? ` · ${props.meta.subject}` : ""}</p>
+              <h1 className="ap-banner-titulo">{lesson.title}</h1>
+            </div>
           </div>
-        </div>
+        )}
         <dl className="ap-banner-info">
           <div>
             <dt>Estudo</dt>

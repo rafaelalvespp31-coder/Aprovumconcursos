@@ -387,11 +387,11 @@ test.describe("casco pastel", () => {
     await page.keyboard.press("7");
     await expect(page).toHaveURL(new RegExp(`${G}/perfil`));
     await expect(page.getByTestId("nivel")).toHaveText("Nível 5");
-    await page.getByRole("button", { name: "Recolher" }).click();
+    await page.getByRole("button", { name: "Recolher", exact: true }).click();
     await page.reload();
     await expect(page.getByRole("button", { name: "Expandir barra lateral" })).toBeVisible();
     await page.getByRole("button", { name: "Expandir barra lateral" }).click();
-    await expect(page.getByRole("button", { name: "Recolher" })).toBeVisible();
+    await expect(page.getByRole("button", { name: "Recolher", exact: true })).toBeVisible();
   });
 
   test("atalhos numéricos não navegam nas telas com questões", async ({ page, isMobile }) => {
@@ -448,6 +448,21 @@ test.describe("casco pastel", () => {
     await expect(page).toHaveURL(new RegExp(`${G}/painel`));
     await page.keyboard.press("End");
     await expect(bar.getByRole("link", { name: "Novo estudo" })).toBeFocused();
+  });
+
+  test("menu inferior no computador: compacto e recolhível como o menu lateral", async ({ page, isMobile }) => {
+    test.skip(isMobile, "só no computador");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`${G}/painel`);
+    const bar = page.getByTestId("menu-inferior");
+    const h = await bar.evaluate((el) => el.getBoundingClientRect().height);
+    expect(h).toBeLessThanOrEqual(90);
+    await page.getByTestId("recolher-menu-inferior").click();
+    await expect(bar).toBeHidden();
+    await page.reload();
+    await expect(page.getByTestId("menu-inferior")).toBeHidden();
+    await page.getByTestId("abrir-menu-inferior").click();
+    await expect(page.getByTestId("menu-inferior")).toBeVisible();
   });
 
   test("perfil mostra conquistas com regras e progresso", async ({ page }) => {

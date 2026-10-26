@@ -1955,9 +1955,9 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 
 /* Menu inferior APROVUM (BottomNavigation): moldura e blocos chanfrados, item ativo vermelho iluminado */
 .bn-wrap { --c: 9px; pointer-events: none; position: fixed; inset: auto 0 0 0; z-index: 30; padding: 14px 6px calc(12px + env(safe-area-inset-bottom)); }
-@media (min-width: 1024px) { .bn-wrap { --c: 16px; position: sticky; inset: auto; bottom: 0; padding: 30px 32px 26px; } }
+@media (min-width: 1024px) { .bn-wrap { --c: 10px; position: sticky; inset: auto; bottom: 0; padding: 14px 32px 14px; } }
 .bn-moldura { pointer-events: auto; position: relative; margin: 0 auto; max-width: 560px; filter: drop-shadow(0 14px 26px rgba(0,0,0,0.75)); }
-@media (min-width: 1024px) { .bn-moldura { max-width: 1120px; } }
+@media (min-width: 1024px) { .bn-moldura { max-width: 760px; } }
 /* brilho vermelho nas pontas da moldura, como na referência */
 .bn-moldura::before, .bn-moldura::after { content: ""; position: absolute; bottom: -1px; height: 2px; width: 22%; pointer-events: none; z-index: 2; border-radius: 2px; }
 .bn-moldura::before { left: 14px; background: linear-gradient(90deg, #FF2A2A, rgba(242,13,24,0)); box-shadow: 0 0 10px rgba(242,13,24,0.8); }
@@ -1968,7 +1968,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 }
 .bn-fundo { position: absolute; inset: 0; z-index: -1; clip-path: var(--oct); background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.05) 40%, rgba(242,13,24,0.45)); }
 .bn-fundo::before { content: ""; position: absolute; inset: 1px; clip-path: var(--oct); background: radial-gradient(60% 120% at 50% 0%, rgba(242,13,24,0.10), transparent 70%), linear-gradient(180deg, #121316, #08090B); }
-@media (min-width: 1024px) { .bn { gap: 10px; padding: 14px 16px; } }
+@media (min-width: 1024px) { .bn { gap: 6px; padding: 7px 9px; } }
 .bn-cel { position: relative; min-width: 0; }
 .bn-item {
   --k: calc(var(--c) * 0.75);
@@ -1978,15 +1978,15 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   -webkit-tap-highlight-color: transparent; transition: color 220ms ease, transform 160ms ease, background 220ms ease;
 }
 .bn-item::before { content: ""; position: absolute; inset: 1px; z-index: -1; clip-path: var(--okt); background: linear-gradient(180deg, #17181B, #0E0F11); transition: background 220ms ease; }
-@media (min-width: 1024px) { .bn-item { min-height: 118px; gap: 6px; padding: 14px 6px; } }
+@media (min-width: 1024px) { .bn-item { min-height: 62px; gap: 4px; padding: 8px 4px; } }
 .bn-ico { width: 21px; height: 21px; flex-shrink: 0; color: #C9CACE; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.6)); }
-@media (min-width: 1024px) { .bn-ico { width: 34px; height: 34px; } }
+@media (min-width: 1024px) { .bn-ico { width: 22px; height: 22px; } }
 .bn-txt { max-width: 100%; overflow: hidden; white-space: nowrap; font-size: 8.75px; font-weight: 700; letter-spacing: -0.03em; line-height: 1.1; color: #E6E7EA; }
 @media (min-width: 360px) { .bn-txt { font-size: 9.5px; } }
 @media (min-width: 420px) { .bn-txt { font-size: 10.5px; letter-spacing: -0.01em; } }
-@media (min-width: 1024px) { .bn-txt { font-size: 19px; letter-spacing: -0.01em; } }
+@media (min-width: 1024px) { .bn-txt { font-size: 13px; letter-spacing: -0.01em; } }
 .bn-sub { display: none; }
-@media (min-width: 1024px) { .bn-sub { display: block; max-width: 13ch; font-size: 12px; line-height: 1.3; color: #8E8F95; } }
+
 .bn-item:hover { color: #fff; }
 .bn-item:not(.bn-ativo):hover::before { background: radial-gradient(80% 70% at 50% 100%, rgba(242,13,24,0.28), transparent 70%), linear-gradient(180deg, #1A1B1F, #0F1012); }
 .bn-item:active { transform: scale(0.96); }
@@ -2004,17 +2004,27 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .bn-luz-cima { top: -11px; }
 .bn-luz-baixo { bottom: -11px; }
 @media (min-width: 1024px) {
-  .bn-cel-ativa .bn-item { margin: -12px 0; height: calc(100% + 24px); }
-  .bn-luz-cima { top: -24px; left: 18%; right: 18%; }
-  .bn-luz-baixo { bottom: -24px; left: 18%; right: 18%; }
+  .bn-cel-ativa .bn-item { margin: -6px 0; height: calc(100% + 12px); }
+  .bn-luz-cima { top: -13px; left: 20%; right: 20%; }
+  .bn-luz-baixo { bottom: -13px; left: 20%; right: 20%; }
 }
 /* Novo: ícone num octógono vermelho */
 .bn-novo-ico { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); background: linear-gradient(180deg, #FF2A2A, #B8000A); }
 .bn-novo-ico .bn-ico { width: 17px; height: 17px; color: #fff; }
-@media (min-width: 1024px) { .bn-novo-ico { width: 52px; height: 52px; } .bn-novo-ico .bn-ico { width: 30px; height: 30px; } }
+@media (min-width: 1024px) { .bn-novo-ico { width: 30px; height: 30px; } .bn-novo-ico .bn-ico { width: 18px; height: 18px; } }
 .bn-cel-ativa .bn-novo-ico { background: #fff; }
 .bn-cel-ativa .bn-novo-ico .bn-ico { color: #E50914; }
 @media (prefers-reduced-motion: reduce) { .bn-item, .bn-item::before { transition: none; } }
+/* Recolher o menu inferior (só no computador, igual ao menu lateral) */
+.bn-recolher, .bn-abrir { display: none; }
+@media (min-width: 1024px) {
+  .bn-recolher { pointer-events: auto; position: absolute; top: -12px; right: -12px; z-index: 3; display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.18); background: #121316; color: #C9CACE; box-shadow: 0 4px 12px rgba(0,0,0,.5); transition: color .15s, background .15s; }
+  .bn-recolher:hover { color: #fff; background: #E10600; }
+  .bn-wrap[data-recolhido] { padding: 8px 32px 12px; }
+  .bn-wrap[data-recolhido] .bn-moldura { display: none; }
+  .bn-wrap[data-recolhido] .bn-abrir { pointer-events: auto; margin: 0 auto; display: flex; align-items: center; gap: 6px; height: 34px; padding: 0 16px; border-radius: 999px; border: 1px solid rgba(255,255,255,0.14); background: linear-gradient(180deg, #17181B, #0B0C0E); color: #E6E7EA; font-size: 12.5px; font-weight: 700; box-shadow: 0 10px 24px rgba(0,0,0,.45), inset 0 -2px 0 #E10600; transition: transform .15s; }
+  .bn-wrap[data-recolhido] .bn-abrir:hover { transform: translateY(-2px); }
+}
 
 /* =====================================================================
    Aula em formato APOSTILA — mesmo visual do PDF do APROVUM
@@ -2109,6 +2119,14 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .ap-banner-info > div { padding: 9px 14px; border-right: 1px solid rgba(255,255,255,.08); border-bottom: 1px solid rgba(255,255,255,.08); }
 .ap-banner-info dt { font-size: 9px; font-weight: 700; letter-spacing: .2em; text-transform: uppercase; color: #ff4d4d; }
 .ap-banner-info dd { margin: 3px 0 0; font-size: 12.5px; font-weight: 700; line-height: 1.3; }
+.ap-banner-img { position: relative; overflow: hidden; aspect-ratio: 4 / 1; max-height: 200px; width: 100%; background: #0a0a0a; }
+/* Fundo: a própria arte desfocada (preenche as laterais quando a tela é mais larga que a arte). */
+.ap-banner-img::before { content: ""; position: absolute; inset: -24px; background: var(--bn) center / cover no-repeat; filter: blur(22px) brightness(.45) saturate(1.2); }
+/* Frente: a arte inteira, sem cortes, centralizada. */
+.ap-banner-img::after { content: ""; position: absolute; inset: 0; background: var(--bn) center / contain no-repeat; }
+.ap-banner-texto-faixa { max-width: none; padding: 12px 18px 12px; border-top: 3px solid var(--ap-red); background: #0a0a0a; }
+@media (min-width: 640px) { .ap-banner-texto-faixa { padding: 14px 28px; } }
+.ap-banner-texto-faixa .ap-banner-titulo { font-size: clamp(19px, 2.6vw, 26px); }
 .ap-banner-previa { display: flex; align-items: center; justify-content: center; aspect-ratio: 4 / 1; border-radius: 6px; background: #0a0a0a center / cover no-repeat; color: rgba(255,255,255,.7); font-size: 12px; text-align: center; padding: 8px; }
 .ap-banner-previa[data-padrao] { background: repeating-linear-gradient(45deg, #1a1a1a 0 10px, #141414 10px 20px); }
 .ap-folha > .ap-banner + .ap-faixa { margin-top: 22px; }

@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRef, type KeyboardEvent } from "react";
-import { BookOpen, ChartNoAxesColumnIncreasing, Clock3, Gamepad2, House, Plus, Target, type LucideIcon } from "lucide-react";
+import { BookOpen, ChartNoAxesColumnIncreasing, ChevronDown, ChevronUp, Clock3, Gamepad2, House, Plus, Target, type LucideIcon } from "lucide-react";
+import { useStored } from "@/components/use-stored";
 
 export type BottomNavId = "painel" | "trilhas" | "quiz" | "questoes" | "revisoes" | "desempenho" | "novo";
 
@@ -35,6 +36,8 @@ export const BOTTOM_NAV_ITEMS: readonly Item[] = [
  */
 export function BottomNavigation({ activeId, basePath = "" }: { activeId: BottomNavId | null; basePath?: string }) {
   const refs = useRef<Array<HTMLAnchorElement | null>>([]);
+  // No computador o menu pode ser recolhido (fica só um botão para abrir), como o menu lateral.
+  const [collapsed, setCollapsed] = useStored("na:menu-inferior-recolhido", false);
 
   // Setas ←/→, Home e End movem o foco entre as opções (o Tab continua funcionando).
   const onKeyDown = (e: KeyboardEvent<HTMLAnchorElement>, i: number) => {
@@ -46,8 +49,14 @@ export function BottomNavigation({ activeId, basePath = "" }: { activeId: Bottom
   };
 
   return (
-    <div className="bn-wrap">
+    <div className="bn-wrap" data-recolhido={collapsed ? "1" : undefined}>
+      <button type="button" className="bn-abrir" onClick={() => setCollapsed(false)} aria-label="Mostrar o menu inferior" aria-expanded={false} data-testid="abrir-menu-inferior">
+        <ChevronUp className="h-4 w-4" aria-hidden /> Menu
+      </button>
       <div className="bn-moldura">
+        <button type="button" className="bn-recolher" onClick={() => setCollapsed(true)} aria-label="Recolher o menu inferior" aria-expanded title="Recolher menu" data-testid="recolher-menu-inferior">
+          <ChevronDown className="h-4 w-4" aria-hidden />
+        </button>
         <nav aria-label="Menu principal" className="bn" data-testid="menu-inferior">
           <span className="bn-fundo" aria-hidden />
           {BOTTOM_NAV_ITEMS.map((it, i) => {
