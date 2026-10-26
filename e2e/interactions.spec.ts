@@ -618,7 +618,9 @@ test.describe("casco pastel", () => {
     const bar = page.getByTestId("menu-inferior");
     const links = bar.getByRole("link");
     await expect(links).toHaveCount(7);
-    await expect(links).toHaveText(["Painel", "Estudos", "Jogo", "Questões", "Revisões", "Evolução", "Novo"]);
+    const names = ["Painel", "Estudos", "Modo Jogo", "Questões", "Revisões", "Evolução (desempenho)", "Novo estudo"];
+    for (const [k, n] of names.entries()) await expect(links.nth(k)).toHaveAccessibleName(n);
+    await expect(bar.locator(".bn-txt")).toHaveText(["Painel", "Estudos", "Jogo", "Questões", "Revisões", "Evolução", "Novo"]);
     await expect(bar.getByRole("link", { name: "Painel" })).toHaveAttribute("aria-current", "page");
     await bar.getByRole("link", { name: "Evolução (desempenho)" }).click();
     await expect(page).toHaveURL(new RegExp(`${G}/desempenho`));
