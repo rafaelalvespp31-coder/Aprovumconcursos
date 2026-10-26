@@ -47,8 +47,8 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
           )}
         </dl>
         <p className="mt-3 t-small text-tinta-suave">
-          Para mudar dados, texto-base ou a estrutura dos módulos, corrija o arquivo e{" "}
-          <Link href="/admin/catalogo/enviar" className="font-semibold text-destaque underline underline-offset-2">envie de novo</Link>
+          Para mudar dados, texto-base ou a estrutura dos módulos, corrija o texto e{" "}
+          <Link href="/admin/catalogo/enviar" className="font-semibold text-destaque underline underline-offset-2">cole de novo</Link>
           {topic.status === "publicado" ? " (aula publicada: envie como nova parte ou arquive esta antes)." : " — o rascunho é atualizado."} Os textos das seções e as questões podem ser corrigidos aqui mesmo.
         </p>
       </section>
@@ -64,7 +64,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
             ))}
           </ol>
         ) : (
-          <p className="mt-2 t-small text-tinta-suave">Ainda sem estrutura. Envie o arquivo da aula com o bloco === TEXTO-BASE ===.</p>
+          <p className="mt-2 t-small text-tinta-suave">Ainda sem estrutura. Cole a aula com o bloco === TEXTO-BASE === em “Catalogar aula”.</p>
         )}
       </section>
 
@@ -96,7 +96,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
             </details>
           </>
         ) : (
-          <p className="mt-2 t-small text-tinta-suave">Ainda sem aula. <Link href="/admin/catalogo/enviar" className="font-semibold text-destaque underline underline-offset-2">Envie o arquivo da aula</Link>.</p>
+          <p className="mt-2 t-small text-tinta-suave">Ainda sem aula. <Link href="/admin/catalogo/enviar" className="font-semibold text-destaque underline underline-offset-2">Catalogue a aula colando o texto</Link>.</p>
         )}
       </section>
 

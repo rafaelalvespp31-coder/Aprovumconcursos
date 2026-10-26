@@ -12,17 +12,12 @@ const BOARDS = [
   { slug: "cebraspe", name: "CEBRASPE" },
 ];
 
-/** Upload de questões na galeria: mesmo leitor do servidor, com matérias de exemplo; nada é gravado. */
+/** Cadastro de questões por texto na galeria: mesmo leitor do servidor, com matérias de exemplo; nada é gravado. */
 export function DemoBankUpload() {
   return (
     <BankUploadForm
       actions={{
-        preview: async (form) => {
-          const f = form.get("file") as File;
-          if (f.name.toLowerCase().endsWith(".pdf")) return { ok: false, error: "Na galeria a prévia lê só .txt (o PDF é lido no servidor)." };
-          const parsed = parseBankUpload(await f.text());
-          return { ok: true, data: summarizeBankUpload(parsed, { subjects: SUBJECTS, boards: BOARDS, duplicate: [] }) };
-        },
+        preview: async (text) => ({ ok: true, data: summarizeBankUpload(parseBankUpload(text), { subjects: SUBJECTS, boards: BOARDS, duplicate: [] }) }),
         save: async () => ({ ok: true, data: { created: 2, skipped: 0, codes: ["APV-000101", "APV-000102"] } }),
       }}
     />

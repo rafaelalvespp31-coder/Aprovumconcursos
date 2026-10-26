@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { lessonSchema } from "@/ai/schemas";
 import { extractStructure } from "@/domain/content/extract";
 import { normalizeContent } from "@/domain/content/normalize";
-import { buildLesson, disciplineFrom, itemKey, matchItem, parseLessonUpload, sectionKind, unwrapPdfLines } from "./upload";
+import { buildLesson, disciplineFrom, itemKey, matchItem, parseLessonUpload, sectionKind } from "./upload";
 
 const nodesOf = (t: string) => extractStructure(normalizeContent(t).normalized).nodes;
 const template = readFileSync("public/modelos/modelo-aula.txt", "utf8");
@@ -119,20 +119,38 @@ describe("modelo de aula (upload)", () => {
   });
 });
 
-describe("upload em PDF", () => {
-  it("o modelo exportado em PDF (linhas quebradas) lê igual ao .txt", () => {
-    const lines = readFileSync("src/domain/catalog/__fixtures__/modelo-aula.pdf-lines.txt", "utf8").split("\n");
-    const fromPdf = parseLessonUpload(unwrapPdfLines(lines));
-    const fromTxt = parseLessonUpload(template);
-    expect(fromPdf.errors).toEqual([]);
-    expect(fromPdf.meta).toEqual(fromTxt.meta);
-    expect(fromPdf.sections.map((s) => [s.kind, s.title, s.module, s.items])).toEqual(fromTxt.sections.map((s) => [s.kind, s.title, s.module, s.items]));
-    expect(fromPdf.questions.map((q) => [q.statement, q.answer, q.justification])).toEqual(fromTxt.questions.map((q) => [q.statement, q.answer, q.justification]));
-    expect(fromPdf.sourceText.replace(/\s+/g, " ")).toBe(fromTxt.sourceText.replace(/\s+/g, " "));
-  });
-
-  it("não junta linhas que começam com marcador", () => {
-    const long = "x".repeat(80);
-    expect(unwrapPdfLines([long, "continua aqui", long, "A) alternativa", long, "Gabarito: A", "curta", "outra", long])).toBe(`${long} continua aqui\n${long}\nA) alternativa\n${long}\nGabarito: A\ncurta\noutra\n${long}`);
+describe("texto colado do ChatGPT", () => {
+  it("aceita cercas de código, títulos em negrito e marcadores com #", () => {
+    const txt = [
+      "Claro! Aqui está a aula:",
+      "```text",
+      "### === AULA ===",
+      "**Título:** Coesão textual",
+      "**Matéria:** Língua Portuguesa",
+      "- **Tipo:** tema",
+      "**Objetivo:** Reconhecer mecanismos de coesão.",
+      "**=== TEXTO-BASE ===**",
+      "1 Referenciação",
+      "2 Conectivos",
+      "## === MÓDULO: Base ===",
+      "**--- SEÇÃO: explicação | O que é ---**",
+      "**Atenção:** a referenciação retoma termos.",
+      "--- SEÇÃO: resumo | Revisão ---",
+      "Conectivos ligam ideias.",
+      "=== QUESTÕES: FÁCIL ===",
+      "--- QUESTÃO ---",
+      "**Enunciado:** A referenciação retoma termos do texto?",
+      "**A)** Sim",
+      "**B)** Não",
+      "**Gabarito:** A",
+      "**Justificativa:** Ela retoma termos já citados.",
+      "```",
+    ].join("\n");
+    const p = parseLessonUpload(txt);
+    expect(p.errors).toEqual([]);
+    expect(p.meta).toMatchObject({ title: "Coesão textual", disciplineMode: "lingua_portuguesa", kind: "tema" });
+    expect(p.sections[0]!.bodyMarkdown).toBe("**Atenção:** a referenciação retoma termos.");
+    expect(p.questions[0]!.options.map((o) => o.label)).toEqual(["A", "B"]);
+    expect(p.questions[0]!.answer).toBe("A");
   });
 });

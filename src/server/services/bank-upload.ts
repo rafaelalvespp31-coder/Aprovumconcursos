@@ -157,16 +157,16 @@ export interface BankUploadResult {
 }
 
 /** Cadastra as questões novas do arquivo (as já existentes são ignoradas). */
-export async function importBankUpload(staff: BankStaff, text: string, file: { name: string; size: number; pdf: boolean }): Promise<BankUploadResult> {
+export async function importBankUpload(staff: BankStaff, text: string, file: { name: string; size: number }): Promise<BankUploadResult> {
   if (!staff.roles.autor) throw new UserFacingError("Somente autores cadastram questões.", "forbidden");
   const a = await analyze(text);
   if (a.summary.errors.length) throw new UserFacingError(a.summary.errors[0]!, "invalid_input");
-  if (!a.parsed.questions.length) throw new UserFacingError("Nenhuma questão encontrada no arquivo.", "invalid_input");
+  if (!a.parsed.questions.length) throw new UserFacingError("Nenhuma questão encontrada no texto.", "invalid_input");
   const db = createAdminClient();
   const sha = createHash("sha256").update(text).digest("hex");
   const imp = await db
     .from("question_imports")
-    .insert({ created_by: staff.id, kind: file.pdf ? "pdf_prova" : "txt", file_name: file.name.slice(0, 300), file_sha256: sha, file_size: Math.max(1, Math.min(20_000_000, file.size)), status: "processando" })
+    .insert({ created_by: staff.id, kind: "txt", file_name: file.name.slice(0, 300), file_sha256: sha, file_size: Math.max(1, Math.min(20_000_000, file.size)), status: "processando" })
     .select("id")
     .single();
   if (imp.error) throw new UserFacingError(`Não foi possível registrar o upload: ${imp.error.message}`, "db_rule");

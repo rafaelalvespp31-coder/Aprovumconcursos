@@ -1,76 +1,94 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import type { BankUploadPreview } from "@/domain/bank/upload";
+import { QUESTIONS_PROMPT } from "@/domain/catalog/chatgpt-prompts";
 import type { BankResult } from "../actions";
-import { DBadge, DNotice, dButton } from "../ui";
+import { DBadge, DNotice, dButton, dTextarea } from "../ui";
 
 export interface BankUploadActions {
-  preview: (form: FormData) => Promise<BankResult<BankUploadPreview>>;
-  save: (form: FormData) => Promise<BankResult<{ created: number; skipped: number; codes: string[] }>>;
+  preview: (text: string) => Promise<BankResult<BankUploadPreview>>;
+  save: (text: string) => Promise<BankResult<{ created: number; skipped: number; codes: string[] }>>;
 }
 
-/** Upload de questões: escolher o arquivo → conferir a lista → cadastrar (aguardando conferência). */
+/** Questões por texto colado: copiar o comando → colar a resposta → conferir → cadastrar (aguardando conferência). */
 export function BankUploadForm({ actions }: { actions: BankUploadActions }) {
-  const input = useRef<HTMLInputElement>(null);
-  const [file, setFile] = useState<File | null>(null);
+  const [text, setText] = useState("");
+  const [checked, setChecked] = useState("");
   const [preview, setPreview] = useState<BankUploadPreview | null>(null);
   const [done, setDone] = useState<{ created: number; skipped: number; codes: string[] } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [pending, start] = useTransition();
   const [saving, setSaving] = useState(false);
 
-  const fd = (f: File) => {
-    const x = new FormData();
-    x.set("file", f);
-    return x;
-  };
-  const check = (f: File) => {
-    setFile(f);
+  const check = () => {
     setPreview(null);
     setDone(null);
     setError(null);
+    const t = text;
     start(async () => {
-      const r = await actions.preview(fd(f));
-      if (r.ok && r.data) setPreview(r.data);
-      else setError(r.error ?? "Não foi possível ler o arquivo.");
+      const r = await actions.preview(t);
+      if (r.ok && r.data) {
+        setPreview(r.data);
+        setChecked(t);
+      } else setError(r.error ?? "Não foi possível ler o texto.");
     });
   };
   const save = () => {
-    if (!file) return;
     setSaving(true);
     start(async () => {
-      const r = await actions.save(fd(file));
+      const r = await actions.save(checked);
       if (r.ok && r.data) {
         setDone(r.data);
         setPreview(null);
+        setText("");
       } else setError(r.error ?? "Não foi possível cadastrar.");
       setSaving(false);
     });
   };
+  const copyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(QUESTIONS_PROMPT);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      setError("Não consegui copiar automaticamente. Abra “Ver o comando” e copie o texto.");
+    }
+  };
+  const stale = preview && text !== checked;
 
   return (
     <div className="flex flex-col gap-4" data-testid="upload-questoes">
-      <div className="rounded-xl border-2 border-dashed border-white/20 bg-white/[0.03] p-6 text-center">
-        <label htmlFor="arquivo-questoes" className="cursor-pointer font-[Space_Grotesk] text-[18px] font-bold">Escolha o arquivo de questões</label>
-        <p className="mt-1 text-[13px] text-white/60">PDF (com texto selecionável) ou .txt do bloco de notas, até 4 MB, no modelo de questões.</p>
-        <input
-          ref={input}
-          id="arquivo-questoes"
-          type="file"
-          accept=".txt,.pdf,text/plain,application/pdf"
-          className="mx-auto mt-4 block text-[13px] text-white/80"
-          disabled={pending}
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) check(f);
-          }}
-        />
-        {file && <p className="mt-2 text-[12px] text-white/45">{file.name} · {(file.size / 1024).toFixed(0)} KB</p>}
+      <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
+        <p className="font-semibold">1. Peça ao ChatGPT para organizar as questões</p>
+        <p className="mt-1 text-[13px] text-white/60">Copie o comando, cole as questões (ou a prova) no lugar indicado e envie no ChatGPT.</p>
+        <button type="button" className={`${dButton("secundario")} mt-3`} onClick={copyPrompt}>{copied ? "Comando copiado ✓" : "Copiar comando para o ChatGPT"}</button>
+        <details className="mt-2 text-[13px]">
+          <summary className="cursor-pointer text-[#ff6b6b]">Ver o comando</summary>
+          <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-black/40 p-3 text-[12px] text-white/80">{QUESTIONS_PROMPT}</pre>
+        </details>
       </div>
 
-      {pending && !saving && <p className="text-[13px] text-white/60" role="status">Lendo o arquivo…</p>}
+      <div className="flex flex-col gap-2">
+        <label htmlFor="texto-questoes" className="font-semibold">2. Cole aqui as questões</label>
+        <textarea
+          id="texto-questoes"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={"=== PADRÃO ===\nMatéria: …\n=== QUESTÕES ===\n--- QUESTÃO ---\nEnunciado: …"}
+          spellCheck={false}
+          className={`${dTextarea} min-h-72 font-mono text-[13px]`}
+        />
+        <div className="flex flex-wrap items-center gap-2">
+          <button type="button" className={dButton()} disabled={!text.trim() || pending} onClick={check}>{pending && !saving ? "Conferindo…" : "3. Conferir questões"}</button>
+          {text && <button type="button" className={dButton("discreto")} disabled={pending} onClick={() => { setText(""); setPreview(null); setError(null); }}>Limpar</button>}
+          <span className="text-[12px] text-white/45">{text.length.toLocaleString("pt-BR")} caracteres</span>
+        </div>
+      </div>
+
+      {stale && <DNotice tone="alerta">O texto mudou depois da conferência. Clique em “Conferir questões” de novo antes de cadastrar.</DNotice>}
       {error && <DNotice tone="erro">{error}</DNotice>}
       {done && (
         <DNotice tone="ok">
@@ -85,13 +103,13 @@ export function BankUploadForm({ actions }: { actions: BankUploadActions }) {
         <section aria-labelledby="previa-q" className="flex flex-col gap-3 rounded-xl border border-white/10 bg-white/[0.03] p-4 sm:p-5">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <h2 id="previa-q" className="font-[Space_Grotesk] text-[18px] font-bold">
-              {preview.total} questão(ões) no arquivo · {preview.fresh} nova(s){preview.duplicates ? ` · ${preview.duplicates} já cadastrada(s)` : ""}
+              {preview.total} questão(ões) no texto · {preview.fresh} nova(s){preview.duplicates ? ` · ${preview.duplicates} já cadastrada(s)` : ""}
             </h2>
             <DBadge tone={preview.ok ? "verde" : "vermelho"}>{preview.ok ? "Pronto para cadastrar" : `${preview.errors.length} erro(s)`}</DBadge>
           </div>
           {preview.errors.length > 0 && (
             <DNotice tone="erro">
-              <p className="font-semibold">Corrija no arquivo e envie de novo:</p>
+              <p className="font-semibold">Corrija o texto e confira de novo:</p>
               <ul className="list-disc pl-5">{preview.errors.slice(0, 40).map((e) => <li key={e}>{e}</li>)}</ul>
             </DNotice>
           )}
@@ -129,10 +147,9 @@ export function BankUploadForm({ actions }: { actions: BankUploadActions }) {
             </div>
           )}
           <div className="flex flex-wrap gap-2">
-            <button type="button" className={dButton()} disabled={!preview.ok || pending} onClick={save}>
+            <button type="button" className={dButton()} disabled={!preview.ok || pending || !!stale} onClick={save}>
               {saving ? "Cadastrando…" : `Cadastrar ${preview.fresh} questão(ões)`}
             </button>
-            <button type="button" className={dButton("secundario")} disabled={pending} onClick={() => input.current?.click()}>Escolher outro arquivo</button>
           </div>
           <p className="text-[12px] text-white/50">Entram como “Aguardando conferência”: só chegam aos alunos depois que você conferir o gabarito e publicar.</p>
         </section>

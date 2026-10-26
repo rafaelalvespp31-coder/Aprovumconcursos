@@ -1,5 +1,5 @@
 MODELO DE QUESTÕES DE CONCURSO — APROVUM (upload)
-Salve como .txt (bloco de notas, UTF-8) ou exporte para PDF. Linhas antes do primeiro bloco "===" são ignoradas.
+Cole este texto (ou a resposta do ChatGPT no mesmo formato) em Banco › Cadastrar questões. Linhas antes do primeiro bloco "===" são ignoradas.
 Linhas começando com // são comentários e são ignoradas.
 
 Como funciona:

@@ -22,7 +22,6 @@ import {
 } from "@/server/services/bank";
 import type { BankStatus } from "@/domain/bank/labels";
 import { importBankUpload, previewBankUpload, type BankUploadPreview } from "@/server/services/bank-upload";
-import { uploadedText } from "@/server/upload-file";
 
 export interface BankResult<T = undefined> {
   ok: boolean;
@@ -98,22 +97,28 @@ export async function staffRoleAction(email: string, role: "autor" | "revisor", 
 // Upload de questões de concurso (PDF ou .txt)
 // ---------------------------------------------------------------------------
 
-export async function previewBankUploadAction(form: FormData): Promise<BankResult<BankUploadPreview>> {
+const pastedQuestions = (text: unknown) => {
+  const t = typeof text === "string" ? text : "";
+  if (!t.trim()) throw new UserFacingError("Cole as questões no campo.", "invalid_input");
+  if (t.length > 400_000) throw new UserFacingError("Texto grande demais (máximo de 400 mil caracteres). Envie em partes.", "invalid_input");
+  return t;
+};
+
+export async function previewBankUploadAction(text: string): Promise<BankResult<BankUploadPreview>> {
   return run("upload_preview", async () => {
     const staff = await requireBankStaff();
     if (!staff.roles.autor) throw new UserFacingError("Somente autores cadastram questões.", "forbidden");
-    const f = await uploadedText(form.get("file") as File);
-    return previewBankUpload(f.text);
+    return previewBankUpload(pastedQuestions(text));
   });
 }
 
-export async function importBankUploadAction(form: FormData): Promise<BankResult<{ created: number; skipped: number; codes: string[] }>> {
+export async function importBankUploadAction(text: string): Promise<BankResult<{ created: number; skipped: number; codes: string[] }>> {
   return run(
     "upload",
     async () => {
       const staff = await requireBankStaff();
-      const f = await uploadedText(form.get("file") as File);
-      const r = await importBankUpload(staff, f.text, { name: f.name, size: f.size, pdf: f.pdf });
+      const t = pastedQuestions(text);
+      const r = await importBankUpload(staff, t, { name: "texto colado", size: new TextEncoder().encode(t).length });
       return { created: r.created, skipped: r.skipped, codes: r.codes };
     },
     ["/banco", "/banco/questoes"],

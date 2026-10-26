@@ -1,6 +1,5 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { unwrapPdfLines } from "@/domain/catalog/upload";
 import { parseBankUpload } from "./upload";
 
 describe("upload de questões de concurso", () => {
@@ -59,12 +58,5 @@ describe("upload de questões de concurso", () => {
     const q = ["--- QUESTÃO ---", "Enunciado: Texto igual nas duas questões aqui.", "Tipo: certo ou errado", "Gabarito: C"];
     const r = parseBankUpload(["=== PADRÃO ===", "Matéria: Direito Penal", "=== QUESTÕES ===", ...q, ...q].join("\n"));
     expect(r.warnings.join()).toMatch(/igual ao da questão 1/);
-  });
-
-  it("PDF: linhas quebradas são juntadas", () => {
-    const long = "Considere a seguinte situação hipotética descrita em detalhes para a questão de prova";
-    const lines = ["=== PADRÃO ===", "Matéria: Direito Penal", "=== QUESTÕES ===", "--- QUESTÃO ---", `Enunciado: ${long}`, "que continua aqui.", "Tipo: certo ou errado", "Gabarito: Certo", long, long, long];
-    const r = parseBankUpload(unwrapPdfLines(lines));
-    expect(r.questions[0]!.statement).toContain("detalhes para a questão de prova que continua aqui.");
   });
 });

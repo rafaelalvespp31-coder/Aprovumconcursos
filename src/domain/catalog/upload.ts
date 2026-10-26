@@ -202,9 +202,41 @@ const yes = (v: string) => /^(sim|s|yes|true|x)$/i.test(v.trim());
 // Leitura
 // ---------------------------------------------------------------------------
 
-/** Lê o texto do arquivo (já extraído do PDF, se for o caso) no modelo de aula. */
+/**
+ * Texto colado do ChatGPT (ou outro assistente): tira cercas de código (```), marcação de
+ * título/negrito em volta dos marcadores (### === AULA ===, **Título:**) e espaços especiais.
+ * O conteúdo das seções (Markdown) fica como está.
+ */
+const TEMPLATE_LABELS =
+  /^(titulo|materia|disciplina|tipo|lei|artigos?|sinonimos|tempo estimado|tempo|objetivo|resumo|itens?|essencial|dificuldade|enunciado|gabarito|resposta|justificativa|comentario( geral| [a-e])?|fundamento( legal)?|assunto|tema|banca|ano|concurso|prova|orgao|instituicao|cargo|numero|texto de apoio|texto base)$/;
+
+export function cleanPasted(raw: string): string {
+  return raw
+    .replace(/\r\n?/g, "\n")
+    .replace(/[\u00a0\u2007\u202f]/g, " ")
+    .replace(/[\u200b\ufeff]/g, "")
+    .split("\n")
+    .filter((l) => !/^\s*```[\w-]*\s*$/.test(l))
+    .map((l) => {
+      // "### === AULA ===", "**=== MÓDULO: X ===**", "> --- QUESTÃO ---"
+      const m = l.match(/^\s*(?:#{1,6}\s+|>\s*)?(?:\*\*|__)?\s*((?:={3,}|-{3,})\s*[^*_]+?\s*(?:={3,}|-{3,})?)\s*(?:\*\*|__)?\s*$/);
+      if (m && /[A-Za-zÀ-ú]/.test(m[1]!)) return m[1]!;
+      // "**Título:** Furto", "- **Gabarito:** B", "**A)** texto" — só nos rótulos do modelo
+      const f = l.match(/^(\s*)(?:[-*]\s+)?(?:\*\*|__)([^*_\n]{1,40}?)(?:\*\*|__)\s*(:?)\s*(?:\*\*|__)?\s*(.*)$/);
+      if (f) {
+        const label = f[2]!.replace(/:\s*$/, "").trim();
+        const colon = f[3] || /:\s*$/.test(f[2]!);
+        if (colon && TEMPLATE_LABELS.test(fold(label))) return `${f[1]}${label}: ${f[4]}`;
+        if (/^\(?[A-Ea-e][).]$/.test(label)) return `${f[1]}${label} ${f[4]}`;
+      }
+      return l;
+    })
+    .join("\n");
+}
+
+/** Lê o texto colado no modelo de aula. */
 export function parseLessonUpload(raw: string): ParsedLesson {
-  const text = raw.replace(/\r\n?/g, "\n").replace(/ /g, " ");
+  const text = cleanPasted(raw);
   const lines = text.split("\n");
   const errors: string[] = [];
   const warnings: string[] = [];
@@ -365,7 +397,7 @@ export function parseLessonUpload(raw: string): ParsedLesson {
     summary: get("resumo") || null,
   };
 
-  if (!Object.keys(metaLines).length) errors.push("Não encontrei o bloco === AULA ===. Use o modelo de aula.");
+  if (!Object.keys(metaLines).length) errors.push("Não encontrei o bloco === AULA ===. Use o comando do ChatGPT desta página para gerar a aula no formato certo.");
   if (meta.title.length < 2) errors.push("Informe o “Título:” no bloco === AULA ===.");
   if (meta.objective.length < 5) errors.push("Informe o “Objetivo:” no bloco === AULA ===.");
   if (!meta.disciplineMode) errors.push(`Não reconheci a matéria “${subject || "(vazia)"}”. Use uma destas: ${DISCIPLINE_MODES.filter((m) => m !== "outra").map((m) => DISCIPLINE_LABELS[m]).join(", ")}.`);
@@ -624,31 +656,4 @@ export function buildLesson(p: ParsedLesson, nodes: readonly ExtractedNode[]): B
     warnings,
     errors,
   };
-}
-
-// ---------------------------------------------------------------------------
-// PDF: desfaz as quebras de linha automáticas do PDF
-// ---------------------------------------------------------------------------
-
-/** Início de linha que nunca é continuação da anterior (blocos, campos, dispositivos, listas). */
-const STRUCTURAL = /^\s*(={3,}|-{3,}|\/\/|[-•*|>#]\s|\d+(\.\d+)*[.)]?\s|\(?[A-Ea-e][).]\s|art\.?\s*\d|§|par[aá]grafo [uú]nico|[IVXLC]+\s*[-–—)]|[a-z]\)\s|[A-ZÀ-Úa-zà-ú][\wÀ-ú ()/-]{1,30}:\s)/i;
-
-/**
- * O texto extraído de um PDF vem com uma linha por linha visual: frases longas quebram no
- * fim da página. Junta cada linha à anterior quando a anterior encheu a largura do texto e a
- * linha não começa com um marcador do modelo. Linhas curtas (fim de parágrafo) são mantidas.
- */
-export function unwrapPdfLines(lines: readonly string[]): string {
-  const lens = lines.map((l) => l.trimEnd().length).filter((n) => n > 0).sort((a, b) => a - b);
-  if (lens.length < 5) return lines.join("\n");
-  const wide = lens[Math.floor(lens.length * 0.95)]!;
-  const out: string[] = [];
-  let prevFull = false;
-  for (const raw of lines) {
-    const l = raw.trimEnd();
-    if (prevFull && l.trim() && !STRUCTURAL.test(l) && out.length) out[out.length - 1] = `${out[out.length - 1]} ${l.trim()}`;
-    else out.push(l);
-    prevFull = l.length >= wide * 0.8;
-  }
-  return out.join("\n");
 }

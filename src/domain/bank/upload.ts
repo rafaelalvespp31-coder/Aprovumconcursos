@@ -10,6 +10,7 @@
  * Nada aqui grava no banco: o servidor resolve matéria/assunto/banca/concurso e salva como
  * "aguardando conferência".
  */
+import { cleanPasted } from "@/domain/catalog/upload";
 import { DIFFICULTIES, type Difficulty } from "./labels";
 
 export interface ParsedBankQuestion {
@@ -98,9 +99,9 @@ function difficultyOf(v: string | undefined): Difficulty | null {
   return null;
 }
 
-/** Lê o arquivo de questões. */
+/** Lê o texto de questões. */
 export function parseBankUpload(raw: string): ParsedBankUpload {
-  const lines = raw.replace(/\r\n?/g, "\n").replace(/ /g, " ").split("\n");
+  const lines = cleanPasted(raw).split("\n");
   const errors: string[] = [];
   const warnings: string[] = [];
   const defaults: Fields = {};
@@ -148,7 +149,7 @@ export function parseBankUpload(raw: string): ParsedBankUpload {
       else if (line.trim()) warnings.push(`Linha ${n}: texto antes da primeira questão foi ignorado (comece com --- QUESTÃO ---).`);
     }
   });
-  if (!seenBlock) errors.push("Não encontrei os blocos do modelo (=== PADRÃO === e === QUESTÕES ===). Use o modelo de questões.");
+  if (!seenBlock) errors.push("Não encontrei os blocos do modelo (=== PADRÃO === e === QUESTÕES ===). Use o comando do ChatGPT desta página para organizar as questões.");
   if (seenBlock && !blocks.length) errors.push("Nenhuma questão encontrada: separe cada uma com --- QUESTÃO ---.");
 
   const questions: ParsedBankQuestion[] = [];
@@ -159,7 +160,7 @@ export function parseBankUpload(raw: string): ParsedBankUpload {
   const seen = new Map<string, number>();
   for (const q of questions) {
     const k = fold(q.statement);
-    if (seen.has(k)) warnings.push(`Questão ${q.number}: enunciado igual ao da questão ${seen.get(k)} do mesmo arquivo; só a primeira será cadastrada.`);
+    if (seen.has(k)) warnings.push(`Questão ${q.number}: enunciado igual ao da questão ${seen.get(k)} do mesmo texto; só a primeira será cadastrada.`);
     else seen.set(k, Number(q.number) || 0);
   }
   return { questions, errors, warnings };
@@ -306,6 +307,6 @@ export function summarizeBankUpload(
     snippet: q.statement.replace(/\s+/g, " ").slice(0, 140),
   }));
   const duplicates = rows.filter((r) => r.duplicate).length;
-  if (rows.length && duplicates === rows.length) warnings.push("Todas as questões deste arquivo já estão no banco; nada novo será cadastrado.");
+  if (rows.length && duplicates === rows.length) warnings.push("Todas as questões deste texto já estão no banco; nada novo será cadastrado.");
   return { ok: errors.length === 0 && rows.length > 0 && duplicates < rows.length, errors, warnings, total: rows.length, duplicates, fresh: rows.length - duplicates, rows };
 }

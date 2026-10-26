@@ -16,7 +16,6 @@ import {
   updateTopicSection,
 } from "@/server/services/catalog";
 import { importLessonUpload, previewLessonUpload, type LessonUploadPreview } from "@/server/services/catalog-upload";
-import { uploadedText } from "@/server/upload-file";
 
 export interface AdminResult {
   ok: boolean;
@@ -39,24 +38,30 @@ async function guard(name: string, fn: () => Promise<string | void>): Promise<Ad
 
 export type UploadPreviewResult = { ok: true; preview: LessonUploadPreview } | { ok: false; error: string };
 
-/** Lê o arquivo (PDF ou .txt) e mostra como a aula ficará, sem gravar. */
-export async function previewLessonUploadAction(form: FormData): Promise<UploadPreviewResult> {
+const MAX_TEXT = 400_000;
+const pasted = (text: unknown) => {
+  const t = typeof text === "string" ? text : "";
+  if (!t.trim()) throw new UserFacingError("Cole o texto da aula no campo.", "invalid_input");
+  if (t.length > MAX_TEXT) throw new UserFacingError("Texto grande demais (máximo de 400 mil caracteres). Divida a aula em partes.", "invalid_input");
+  return t;
+};
+
+/** Lê o texto colado e mostra como a aula ficará, sem gravar. */
+export async function previewLessonUploadAction(text: string): Promise<UploadPreviewResult> {
   await requireAdmin();
   let preview = null as LessonUploadPreview | null;
   const r = await guard("catalog.upload_preview", async () => {
-    const f = await uploadedText(form.get("file") as File);
-    preview = await previewLessonUpload(f.text);
+    preview = await previewLessonUpload(pasted(text));
   });
-  return r.ok && preview ? { ok: true, preview } : { ok: false, error: r.error ?? "Não foi possível ler o arquivo." };
+  return r.ok && preview ? { ok: true, preview } : { ok: false, error: r.error ?? "Não foi possível ler o texto." };
 }
 
-/** Grava a aula do arquivo como rascunho e abre a página de revisão. */
-export async function importLessonUploadAction(form: FormData): Promise<AdminResult> {
+/** Grava a aula colada como rascunho e abre a página de revisão. */
+export async function importLessonUploadAction(text: string): Promise<AdminResult> {
   const user = await requireAdmin();
   let id = "";
   const r = await guard("catalog.upload", async () => {
-    const f = await uploadedText(form.get("file") as File);
-    id = (await importLessonUpload(user, f.text, f.name)).id;
+    id = (await importLessonUpload(user, pasted(text), "texto colado")).id;
   });
   if (!r.ok) return r;
   revalidatePath("/admin/catalogo");

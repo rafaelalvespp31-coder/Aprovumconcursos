@@ -31,7 +31,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
             {counts.publicado} publicado(s) · {counts.rascunho} rascunho(s). Pedidos cobertos por temas publicados viram estudos na hora, sem IA.
           </p>
         </div>
-        <ButtonLink href="/admin/catalogo/enviar">Enviar aula (PDF ou .txt)</ButtonLink>
+        <ButtonLink href="/admin/catalogo/enviar">Catalogar aula</ButtonLink>
       </div>
       <form className="mt-5 flex flex-wrap gap-2 t-small" role="search">
         <input name="q" defaultValue={sp.q} placeholder="Buscar pelo título" className="min-h-10 rounded-md border border-linha-forte px-3" aria-label="Buscar pelo título" />
@@ -45,7 +45,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
       </form>
       {topics.length === 0 ? (
         <div className="mt-6">
-          <EmptyState title="Nenhum tema aqui ainda" action={<ButtonLink href="/admin/catalogo/enviar">Enviar a primeira aula</ButtonLink>}>
+          <EmptyState title="Nenhum tema aqui ainda" action={<ButtonLink href="/admin/catalogo/enviar">Catalogar a primeira aula</ButtonLink>}>
             Comece pelos temas mais pedidos — a Fila da IA mostra o que os alunos estão estudando.
           </EmptyState>
         </div>

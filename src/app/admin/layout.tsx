@@ -17,7 +17,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           </div>
           <nav aria-label="Administração" className="flex gap-4 t-small font-semibold">
             <Link href="/admin/catalogo" className="text-destaque underline-offset-2 hover:underline">Catálogo</Link>
-            <Link href="/admin/catalogo/enviar" className="text-destaque underline-offset-2 hover:underline">Enviar aula</Link>
+            <Link href="/admin/catalogo/enviar" className="text-destaque underline-offset-2 hover:underline">Catalogar aula</Link>
             <Link href="/admin/fila" className="text-destaque underline-offset-2 hover:underline">Fila da IA</Link>
             <Link href="/banco" className="text-destaque underline-offset-2 hover:underline">Banco de questões</Link>
             <Link href="/painel" className="text-tinta-suave underline-offset-2 hover:underline">Voltar ao app</Link>

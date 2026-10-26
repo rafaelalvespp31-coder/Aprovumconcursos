@@ -1,5 +1,5 @@
 MODELO DE AULA — APROVUM (catalogação por upload)
-Salve como .txt (bloco de notas, UTF-8) ou exporte para PDF. Linhas antes do primeiro bloco "===" são ignoradas.
+Cole este texto (ou a resposta do ChatGPT no mesmo formato) em Admin › Catalogar aula. Linhas antes do primeiro bloco "===" são ignoradas.
 Os blocos são marcados por === NOME === e os itens por --- NOME ---. Apague estas instruções se quiser.
 
 Tipos de seção aceitos: objetivo, conhecimentos prévios, introdução, explicação, conceitos fundamentais,
