@@ -64,11 +64,11 @@ const REF_LABEL: Record<string, string> = { lei: "Lei", doutrina: "Doutrina", ju
 const LEVEL_TITLE = { facil: "FÁCIL", medio: "MÉDIO", dificil: "DIFÍCIL" } as const;
 
 /** Texto da aula no formato do painel (o mesmo que o ChatGPT deve devolver). */
-export function exportTopicText(t: ExportableTopic): string {
+export function exportTopicText(t: ExportableTopic, part: "tudo" | "aula" | "questoes" = "tudo"): string {
   const byKey = new Map(t.nodes.map((n) => [n.key, n]));
   const item = (k: string) => byKey.get(k)?.path ?? k;
   const out: string[] = [];
-  out.push(
+  if (part !== "questoes") out.push(
     "=== AULA ===",
     `Título: ${t.title}`,
     `Matéria: ${DISCIPLINE_LABELS[t.disciplineMode as DisciplineMode] ?? t.disciplineMode}`,
@@ -85,7 +85,7 @@ export function exportTopicText(t: ExportableTopic): string {
     "",
   );
   let currentModule: string | null = null;
-  for (const s of t.lesson.sections) {
+  for (const s of part === "questoes" ? [] : t.lesson.sections) {
     const m = s.module?.trim() || "Aula";
     if (m !== currentModule) {
       out.push(`=== MÓDULO: ${m} ===`, "");
@@ -95,11 +95,11 @@ export function exportTopicText(t: ExportableTopic): string {
     if (s.nodeKeys.length) out.push(`Itens: ${s.nodeKeys.map(item).join("; ")}`);
     out.push(s.bodyMarkdown.trim(), "");
   }
-  if (t.lesson.references.length) {
+  if (part !== "questoes" && t.lesson.references.length) {
     out.push("=== REFERÊNCIAS ===", ...t.lesson.references.map((r) => `${REF_LABEL[r.kind] ?? "Outro"}: ${r.citation}`), "");
   }
-  if (t.lesson.unverifiedClaims.length) out.push("=== A CONFERIR ===", ...t.lesson.unverifiedClaims, "");
-  for (const lv of ["facil", "medio", "dificil"] as const) {
+  if (part !== "questoes" && t.lesson.unverifiedClaims.length) out.push("=== A CONFERIR ===", ...t.lesson.unverifiedClaims, "");
+  for (const lv of part === "aula" ? [] : (["facil", "medio", "dificil"] as const)) {
     const qs = t.questions.filter((q) => q.level === lv);
     if (!qs.length) continue;
     out.push(`=== QUESTÕES: ${LEVEL_TITLE[lv]} ===`, "");
@@ -172,4 +172,69 @@ FORMATO DA RESPOSTA
 
 <<<INÍCIO DO MODELO OFICIAL: ${t.title}>>>
 ${exportTopicText(t)}<<<FIM DO MODELO OFICIAL>>>`;
+}
+
+/**
+ * Comando em 2 partes (para quando o comando inteiro fica grande demais para o ChatGPT):
+ * parte 1 = a aula (teoria) com o modelo sem questões; parte 2, na MESMA conversa = as questões,
+ * com as questões do modelo. No painel, as duas respostas são coladas e publicadas juntas.
+ */
+export function buildModelPromptParts(t: ExportableTopic): { part1: string; part2: string } {
+  const o = modelOutline(t);
+  const skeleton = o.modules
+    .map((m, i) => `${i + 1}. MÓDULO "${m.name}"\n${m.sections.map((s) => `   - SEÇÃO ${s.kind} | ${s.title}`).join("\n")}`)
+    .join("\n");
+  const lv = (k: "facil" | "medio" | "dificil", name: string) =>
+    `- ${name}: ${o.levels[k].total} questões (${o.levels[k].me} de múltipla escolha e ${o.levels[k].ce} de certo ou errado; ${o.levels[k].essential} marcadas como essenciais)`;
+  const part1 = `Você vai escrever uma aula completa para concursos públicos (carreiras policiais e jurídicas) no PADRÃO APROVUM. Vamos fazer em DUAS PARTES nesta mesma conversa: agora a PARTE 1 (a aula, sem questões); depois eu peço a PARTE 2 (as questões).
+
+TEMA DA NOVA AULA: [ESCREVA AQUI O TEMA, A LEI E OS ARTIGOS — ex.: Furto, Código Penal, art. 155]
+
+REGRA PRINCIPAL
+Abaixo está a aula "${t.title}" (sem as questões), que é o MODELO OFICIAL da plataforma. A nova aula deve ser EXATAMENTE IGUAL a ela na forma:
+- os mesmos ${o.modules.length} módulos, na mesma ordem, com os mesmos nomes (troque só o nome do crime/artigo quando aparecer);
+- as mesmas ${o.sections} seções, na mesma ordem, do mesmo tipo e com títulos equivalentes;
+- o mesmo jeito de escrever: tabelas onde o modelo tem tabelas (com as mesmas colunas), caixas ">" com os mesmos rótulos, listas, listas numeradas, **negrito** nos termos-chave, checklist com "- [ ]";
+- tamanho parecido em cada seção;
+- o mesmo bloco TEXTO-BASE: o texto LITERAL e VIGENTE dos artigos (um dispositivo por linha) e, em seguida, um sumário numerado de subtemas;
+- REFERÊNCIAS e A CONFERIR no mesmo formato;
+- Se o novo tema não tiver alguma parte do modelo, mantenha a seção e explique por que, com o que for equivalente.
+- NÃO escreva questões agora (elas vêm na parte 2).
+
+ESQUELETO OBRIGATÓRIO (do modelo)
+${skeleton}
+
+REGRAS DE CONTEÚDO
+- Não copie o conteúdo do modelo: escreva tudo sobre o NOVO tema. Copie só a forma.
+- Só cite súmulas, teses e julgados que você tem certeza que existem, com tribunal e número. Nunca invente. O que precisar de conferência vai em "=== A CONFERIR ===".
+
+FORMATO DA RESPOSTA
+- Responda SOMENTE com a parte 1 da nova aula, dentro de UM único bloco de código, sem nada antes ou depois.
+- Use exatamente os mesmos marcadores do modelo (=== … === e --- … ---) e os mesmos nomes de campos.
+- Não use === nem --- dentro do conteúdo. Cada seção com no máximo 10.000 caracteres.
+- Se a resposta for cortada por tamanho, eu vou pedir "continue": continue exatamente de onde parou, sem repetir nada.
+
+<<<INÍCIO DO MODELO OFICIAL (PARTE 1): ${t.title}>>>
+${exportTopicText(t, "aula")}<<<FIM DO MODELO OFICIAL (PARTE 1)>>>`;
+  const part2 = `PARTE 2: agora escreva as QUESTÕES DE FIXAÇÃO da aula que você acabou de fazer na parte 1 (o mesmo tema), no PADRÃO APROVUM.
+
+REGRA PRINCIPAL
+Abaixo estão as questões da aula-modelo "${t.title}". As novas questões devem seguir EXATAMENTE a mesma forma e as mesmas quantidades:
+${lv("facil", "Fácil")}
+${lv("medio", "Médio")}
+${lv("dificil", "Difícil")}
+com os mesmos campos (Tipo, Item, Essencial, Dificuldade, Enunciado, alternativas A a E com "Comentário:", Gabarito, Justificativa) e o mesmo estilo e dificuldade de cada nível.
+
+REGRAS
+- Cada "Item:" deve existir no TEXTO-BASE da aula que você escreveu na parte 1 (um dispositivo, ex.: § 1º, ou um número do sumário, ex.: 3).
+- Questões autorais: não atribua a banca nem a concurso real. Gabarito sempre coerente com a justificativa; distribua as letras corretas entre A e E; não repita questões.
+- Não copie as questões do modelo: escreva questões novas sobre o novo tema.
+
+FORMATO DA RESPOSTA
+- Responda SOMENTE com as questões, dentro de UM único bloco de código, começando por "=== QUESTÕES: FÁCIL ===", depois "=== QUESTÕES: MÉDIO ===" e "=== QUESTÕES: DIFÍCIL ===", cada questão começando com "--- QUESTÃO ---".
+- Se a resposta for cortada por tamanho, eu vou pedir "continue": continue exatamente de onde parou, sem repetir nada.
+
+<<<INÍCIO DAS QUESTÕES DO MODELO: ${t.title}>>>
+${exportTopicText(t, "questoes")}<<<FIM DAS QUESTÕES DO MODELO>>>`;
+  return { part1, part2 };
 }

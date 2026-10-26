@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import type { DisciplineMode } from "@/ai/pedagogy";
 import { prepareLessonUpload, summarizeLessonUpload, type LessonUploadPreview } from "@/domain/catalog/upload-preview";
-import { buildModelPrompt, exportTopicText, type ExportableTopic } from "@/domain/catalog/export";
+import { buildModelPrompt, buildModelPromptParts, exportTopicText, type ExportableTopic } from "@/domain/catalog/export";
 import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
 import { auditLog } from "../observability";
@@ -147,6 +147,8 @@ export interface ModelPrompt {
   slug: string;
   title: string;
   prompt: string;
+  /** O mesmo comando dividido em 2 (aula; depois questões, na mesma conversa). */
+  parts: { part1: string; part2: string };
   /** Problemas ao reler o próprio modelo no formato do painel (vazio = o formato bate). */
   selfCheck: string[];
   stats: { modules: number; sections: number; questions: Record<"facil" | "medio" | "dificil", number> };
@@ -199,6 +201,7 @@ export async function modelPrompt(slug: string = DEFAULT_MODEL_SLUG): Promise<Mo
     slug: t.slug as string,
     title: topic.title,
     prompt: buildModelPrompt(topic),
+    parts: buildModelPromptParts(topic),
     selfCheck: check.errors,
     stats: { modules: new Set(topic.lesson.sections.map((s) => s.module ?? "")).size, sections: topic.lesson.sections.length, questions: { facil: count("facil"), medio: count("medio"), dificil: count("dificil") } },
   };

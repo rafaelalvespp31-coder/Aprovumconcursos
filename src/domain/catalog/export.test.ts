@@ -86,3 +86,20 @@ describe("aula-modelo exportada no formato do painel", () => {
     expect(parseLessonUpload(inner).errors).toEqual([]);
   });
 });
+
+describe("comando em 2 partes", () => {
+  it("parte 1 traz a aula sem questões; parte 2 só as questões; juntas formam a aula inteira", async () => {
+    const { buildModelPromptParts } = await import("./export");
+    const { part1, part2 } = buildModelPromptParts(topic);
+    expect(part1).toContain("PARTE 1");
+    expect(part1).not.toContain("=== QUESTÕES:");
+    expect(part2).toContain("=== QUESTÕES: FÁCIL ===");
+    expect(part2).not.toContain("=== AULA ===");
+    const inner = (s: string) => s.slice(s.indexOf(">>>\n") + 4, s.lastIndexOf("<<<FIM"));
+    const joined = `${inner(part1)}\n\n${inner(part2)}`;
+    const p = parseLessonUpload(joined);
+    expect(p.errors).toEqual([]);
+    expect(p.questions).toHaveLength(topic.questions.length);
+    expect(p.sections).toHaveLength(topic.lesson.sections.length);
+  });
+});

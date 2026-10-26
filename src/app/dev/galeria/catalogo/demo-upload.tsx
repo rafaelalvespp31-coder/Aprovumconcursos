@@ -7,6 +7,7 @@ import { prepareLessonUpload, summarizeLessonUpload } from "@/domain/catalog/upl
 export function DemoLessonUpload() {
   return (
     <LessonUploadForm
+      parts={{ part1: "Comando de exemplo · parte 1 (a aula).", part2: "Comando de exemplo · parte 2 (as questões)." }}
       actions={{
         preview: async (text) => ({ ok: true, preview: summarizeLessonUpload(prepareLessonUpload(text)) }),
         save: async () => ({ ok: false, error: "Galeria de exemplo: nada é gravado." }),

@@ -496,6 +496,23 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await expect(up.getByRole("button", { name: "4. Salvar como rascunho" })).toBeDisabled();
   });
 
+  test("comando dividido em 2 partes: cola a aula e as questões separadas e confere como uma aula só", async ({ page }) => {
+    await page.goto(`${G}/catalogo`);
+    const up = page.getByTestId("upload-aula");
+    await up.getByRole("radio", { name: "Dividir em 2 partes" }).click();
+    await expect(up.getByRole("button", { name: "Copiar parte 1" })).toBeVisible();
+    await expect(up.getByRole("button", { name: "Copiar parte 2" })).toBeVisible();
+    const full = readFileSync("public/modelos/modelo-aula.txt", "utf8");
+    const cut = full.indexOf("=== QUESTÕES: FÁCIL ===");
+    await up.getByLabel("2. Cole aqui a resposta da parte 1 (a aula)").fill(full.slice(0, cut));
+    await expect(up.getByRole("button", { name: "3. Conferir aula" })).toBeDisabled();
+    await up.getByLabel("Cole aqui a resposta da parte 2 (as questões)").fill("```\n" + full.slice(cut) + "\n```");
+    await up.getByRole("button", { name: "3. Conferir aula" }).click();
+    const pv = up.locator("section[aria-labelledby=previa]");
+    await expect(pv.getByText("Fácil: 2", { exact: true })).toBeVisible();
+    await expect(pv.getByText("2. Aprofundamento", { exact: true })).toBeVisible();
+  });
+
   test("texto fora do formato aponta os erros e não deixa salvar", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");
