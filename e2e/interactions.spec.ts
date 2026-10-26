@@ -847,16 +847,14 @@ test("escolha seu novo estudo (menu Novo): matéria, tema, filtros e progresso r
   const top = sec.getByTestId("tema-catalogo").first();
   await expect(top).toContainText("Mais estudado");
   await expect(top.getByRole("link", { name: /^Continuar estudando: Ato administrativo/ })).toHaveAttribute("href", /\/dev\/galeria\/trilhas\//);
-  // Sem o formulário "Montar meu estudo": começar pede só a banca, numa janela.
+  // Sem o formulário "Montar meu estudo" e sem escolher banca: começar só confirma, numa janela.
   await expect(page.getByText("Montar meu estudo")).toHaveCount(0);
   await sec.getByRole("tab", { name: /Direito Penal/ }).click();
   await sec.getByRole("button", { name: /^Começar estudo: Roubo/ }).click();
   const dlg = page.getByTestId("comecar-estudo");
   await expect(dlg.getByRole("heading", { name: "Roubo (CP, art. 157)" })).toBeVisible();
-  await dlg.getByRole("button", { name: "Criar estudo" }).click();
-  await expect(dlg.getByRole("alert")).toContainText("Selecione a banca");
-  await dlg.getByLabel("Banca de referência").selectOption("outra");
-  await expect(dlg.getByLabel("Nome da banca")).toBeVisible();
+  await expect(dlg.getByLabel("Banca de referência")).toHaveCount(0);
+  await expect(dlg.getByRole("button", { name: "Criar estudo" })).toBeEnabled();
   await dlg.getByRole("button", { name: "Cancelar" }).click();
   await expect(dlg).toBeHidden();
   await sec.getByRole("button", { name: /Não iniciados/ }).click();

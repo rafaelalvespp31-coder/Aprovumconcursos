@@ -18,10 +18,9 @@ test.describe("fluxo do aluno", () => {
     await page.getByRole("button", { name: "Entrar" }).click();
     await page.goto("/nova-trilha");
 
-    // Escolhe o primeiro tema ainda não iniciado e informa a banca (obrigatória).
+    // Escolhe o primeiro tema ainda não iniciado e confirma (sem escolher banca).
     await page.getByRole("button", { name: /^Começar estudo:/ }).first().click();
     const dlg = page.getByTestId("comecar-estudo");
-    await dlg.getByLabel("Banca de referência").selectOption("cebraspe");
     await dlg.getByRole("button", { name: "Criar estudo" }).click();
 
     await expect(page).toHaveURL(/\/trilhas\/.+/);
