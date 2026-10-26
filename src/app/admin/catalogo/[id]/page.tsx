@@ -4,8 +4,10 @@ import { getTopic, getTopicQuestions, publishBlockers, requireAdmin } from "@/se
 import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import { PublishPanel, QuestionsEditor, SectionsEditor } from "./editor";
 import { AddQuestionsPanel } from "./add-questions";
-import { addTopicQuestionsAction, previewTopicQuestionsAction } from "../actions";
+import { AddVisualsPanel } from "./add-visuals";
+import { addTopicQuestionsAction, applyTopicEnrichAction, previewTopicEnrichAction, previewTopicQuestionsAction } from "../actions";
 import { buildQuestionsPrompt } from "@/domain/catalog/export";
+import { buildEnrichPrompt, enrichStatus, type EnrichLesson } from "@/domain/catalog/enrich";
 
 export const metadata = { title: "Tema do catálogo" };
 
@@ -103,6 +105,21 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
           <p className="mt-2 t-small text-tinta-suave">Ainda sem aula. <Link href="/admin/catalogo/enviar" className="font-semibold text-destaque underline underline-offset-2">Catalogue a aula colando o texto</Link>.</p>
         )}
       </section>
+
+      {topic.lesson && (
+        <section aria-labelledby="addv" className="rounded-lg border border-linha p-5">
+          <h2 id="addv" className="t-h2">Exemplos visuais e flashcards</h2>
+          <p className="mt-1 t-small text-tinta-suave">Os cards “Na prática” (tirinha, carimbo e esquema) no fim das seções e os flashcards da revisão final, como na aula de Homicídio.</p>
+          <div className="mt-3">
+            <AddVisualsPanel
+              topicId={id}
+              status={enrichStatus(topic.lesson as unknown as EnrichLesson)}
+              prompt={buildEnrichPrompt(topic.title, topic.lesson as unknown as EnrichLesson)}
+              actions={{ preview: previewTopicEnrichAction, apply: applyTopicEnrichAction }}
+            />
+          </div>
+        </section>
+      )}
 
       <section aria-labelledby="addq" className="rounded-lg border border-linha p-5">
         <h2 id="addq" className="t-h2">Adicionar questões</h2>

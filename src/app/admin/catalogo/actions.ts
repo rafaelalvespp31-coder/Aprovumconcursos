@@ -18,7 +18,7 @@ import {
   updateTopicQuestion,
   updateTopicSection,
 } from "@/server/services/catalog";
-import { addTopicQuestions, importLessonUpload, previewLessonUpload, previewTopicQuestions, type LessonUploadPreview, type TopicQuestionsPreview } from "@/server/services/catalog-upload";
+import { addTopicQuestions, applyTopicEnrichment, importLessonUpload, previewLessonUpload, previewTopicEnrichment, previewTopicQuestions, type LessonUploadPreview, type TopicEnrichPreview, type TopicQuestionsPreview } from "@/server/services/catalog-upload";
 import { bannerUrlFor, removeBanner, saveBanner } from "@/server/services/banners";
 
 export interface AdminResult {
@@ -189,6 +189,31 @@ export async function addTopicQuestionsAction(topicId: string, text: string): Pr
     revalidatePath(`/admin/catalogo/${topicId}`);
     revalidatePath("/admin/catalogo");
     revalidatePath("/nova-trilha");
+  }
+  return r;
+}
+
+export type EnrichPreviewResult = { ok: true; preview: TopicEnrichPreview } | { ok: false; error: string };
+
+export async function previewTopicEnrichAction(topicId: string, text: string): Promise<EnrichPreviewResult> {
+  await requireAdmin();
+  let preview = null as TopicEnrichPreview | null;
+  const r = await guard("catalog.enrich_preview", async () => {
+    preview = await previewTopicEnrichment(topicId, text);
+  });
+  return r.ok && preview ? { ok: true, preview } : { ok: false, error: r.error ?? "Não foi possível ler o texto." };
+}
+
+/** Acrescenta exemplos visuais e flashcards a uma aula catalogada. */
+export async function applyTopicEnrichAction(topicId: string, text: string): Promise<AdminResult> {
+  const user = await requireAdmin();
+  const r = await guard("catalog.enrich_apply", async () => {
+    const x = await applyTopicEnrichment(user, topicId, text);
+    return `${x.examples} exemplo(s) visual(is)${x.flashcards ? ` e ${x.flashcards} flashcards` : ""} acrescentado(s).${x.version ? ` Aula atualizada no site (versão ${x.version}).` : ""}`;
+  });
+  if (r.ok) {
+    revalidatePath(`/admin/catalogo/${topicId}`);
+    revalidatePath("/admin/catalogo");
   }
   return r;
 }

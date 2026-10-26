@@ -4,6 +4,8 @@ import type { DisciplineMode } from "@/ai/pedagogy";
 import { prepareLessonUpload, summarizeLessonUpload, type LessonUploadPreview } from "@/domain/catalog/upload-preview";
 import { buildCompactPrompt, buildModelPrompt, buildModelPromptParts, exportTopicText, type ExportableTopic } from "@/domain/catalog/export";
 import { parseQuestionsForTopic } from "@/domain/catalog/upload";
+import { applyEnrichment, enrichStatus, parseEnrichment, type EnrichLesson } from "@/domain/catalog/enrich";
+import { lessonSchema } from "@/ai/schemas";
 import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
 import { auditLog } from "../observability";
@@ -26,6 +28,10 @@ export async function previewLessonUpload(text: string): Promise<LessonUploadPre
     const { data: same } = await db.from("catalog_topics").select("title").eq("status", "publicado").eq("discipline_mode", m.disciplineMode).ilike("title", m.title.replace(/[%_\\]/g, ""));
     for (const t of same ?? []) warnings.push(`Atenção: já existe a aula publicada “${t.title}” na mesma matéria.`);
   }
+  const vis = enrichStatus(p.built.lesson as unknown as EnrichLesson);
+  if (vis.teaching && vis.withExample === 0) warnings.push(`A aula veio sem nenhum exemplo visual (bloco :::exemplo com tirinha, carimbo e esquema). Use o comando atual do painel ou, depois de catalogar, “Exemplos visuais e flashcards” na página da aula.`);
+  else if (vis.withExample < vis.teaching) warnings.push(`${vis.teaching - vis.withExample} de ${vis.teaching} seções vieram sem exemplo visual; dá para completar depois em “Exemplos visuais e flashcards”, na página da aula.`);
+  if (vis.flashcards < 4) warnings.push("A aula veio sem a seção de flashcards; dá para completar depois em “Exemplos visuais e flashcards”, na página da aula.");
   const summary = summarizeLessonUpload(p, { errors, warnings, existing: existing ? { id: existing.id as string, status: existing.status as string, title: existing.title as string } : null });
   return { ...summary, banner: await bannerUrlFor(m.disciplineMode) };
 }
@@ -283,4 +289,71 @@ export async function addTopicQuestions(user: SessionUser, topicId: string, text
   }
   await auditLog(db, { actorId: user.id, userId: user.id, action: "catalog.questions_added", entity: "catalog_topics", entityId: topicId, meta: { added: rows.length, ...a.adding, published } });
   return { added: rows.length, published };
+}
+
+// ---------------------------------------------------------------------------
+// Completar aula catalogada com exemplos visuais e flashcards
+// ---------------------------------------------------------------------------
+
+export interface TopicEnrichPreview {
+  ok: boolean;
+  errors: string[];
+  warnings: string[];
+  examples: string[];
+  flashcards: number;
+  after: { withExample: number; teaching: number; flashcards: number };
+}
+
+async function loadTopicForEnrich(topicId: string) {
+  const { data: t, error } = await createAdminClient().from("catalog_topics").select("id, title, status, lesson").eq("id", topicId).maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!t) throw new UserFacingError("Aula não encontrada.", "not_found");
+  if (!t.lesson) throw new UserFacingError("Esta aula ainda não tem conteúdo: catalogue a aula completa primeiro.", "invalid_input");
+  return t as { id: string; title: string; status: string; lesson: EnrichLesson };
+}
+
+function analyzeEnrich(text: string, lesson: EnrichLesson) {
+  if (text.length > 200_000) throw new UserFacingError("Texto grande demais.", "invalid_input");
+  const p = parseEnrichment(text, lesson);
+  const next = applyEnrichment(lesson, p);
+  if (next.sections.length > 30) p.errors.push("A aula já tem 30 seções (o máximo): não cabe a seção de flashcards.");
+  const st = enrichStatus(next);
+  return { p, next, st };
+}
+
+export async function previewTopicEnrichment(topicId: string, text: string): Promise<TopicEnrichPreview> {
+  const t = await loadTopicForEnrich(topicId);
+  const { p, st } = analyzeEnrich(text, t.lesson);
+  return {
+    ok: p.errors.length === 0 && (p.examples.length > 0 || !!p.flashcards),
+    errors: p.errors,
+    warnings: p.warnings,
+    examples: p.examples.map((e) => e.title),
+    flashcards: p.flashcards ? p.flashCount : 0,
+    after: { withExample: st.withExample, teaching: st.teaching, flashcards: st.flashcards },
+  };
+}
+
+/**
+ * Acrescenta os blocos às seções (o resto da aula fica igual). Se a aula está publicada, a versão
+ * sobe: novos estudos já saem com os cards e quem estudava recebe o aviso de conteúdo atualizado.
+ */
+export async function applyTopicEnrichment(user: SessionUser, topicId: string, text: string): Promise<{ examples: number; flashcards: number; version: number | null }> {
+  const t = await loadTopicForEnrich(topicId);
+  const { p, next } = analyzeEnrich(text, t.lesson);
+  if (p.errors.length) throw new UserFacingError(p.errors[0]!, "invalid_input");
+  if (!p.examples.length && !p.flashcards) throw new UserFacingError("Nada para acrescentar.", "invalid_input");
+  const chk = lessonSchema.safeParse({ ...next, verificationPending: undefined });
+  if (!chk.success) throw new UserFacingError(`A aula ficaria fora do formato: ${chk.error.issues[0]?.path.join(".")} — ${chk.error.issues[0]?.message}`, "invalid_input");
+  const db = createAdminClient();
+  const up = await db.from("catalog_topics").update({ lesson: next, updated_at: new Date().toISOString() }).eq("id", topicId);
+  if (up.error) throw new UserFacingError(`Não foi possível salvar: ${up.error.message}`, "invalid_input");
+  let version: number | null = null;
+  if (t.status === "publicado") {
+    const r = await db.rpc("publish_catalog_topic", { p_topic: topicId });
+    if (r.error) throw new UserFacingError(`Salvo, mas a versão não subiu: ${r.error.message}`, "db_rule");
+    version = r.data as number;
+  }
+  await auditLog(db, { actorId: user.id, userId: user.id, action: "catalog.topic_enriched", entity: "catalog_topics", entityId: topicId, meta: { examples: p.examples.length, flashcards: p.flashcards ? p.flashCount : 0, version } });
+  return { examples: p.examples.length, flashcards: p.flashcards ? p.flashCount : 0, version };
 }

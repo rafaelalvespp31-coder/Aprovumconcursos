@@ -529,6 +529,34 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await expect(box.getByText(/nada é gravado/)).toBeVisible();
   });
 
+  test("aula sem exemplos visuais: comando, conferência e flashcards", async ({ page }) => {
+    await page.goto(`${G}/catalogo`);
+    const box = page.getByTestId("adicionar-visuais");
+    await expect(box.getByText("Faltam exemplos visuais ou flashcards")).toBeVisible();
+    await expect(box.getByRole("button", { name: "Copiar comando dos exemplos e flashcards" })).toBeVisible();
+    await box.getByLabel("Cole aqui a resposta do ChatGPT").fill(
+      [
+        "=== EXEMPLOS VISUAIS ===",
+        "--- SEÇÃO: Equações do 2º grau: discriminante ---",
+        ":::exemplo",
+        "Situação: Área de 49 m².",
+        "Pergunta: Qual o lado?",
+        "Resposta: 7 m.",
+        'Tirinha: [{"cenario": "obra", "legenda": "Medindo", "personagens": [{"p": "cidadao", "lado": "esq", "pose": "aponta", "humor": "serio"}]}]',
+        "Carimbo: Só a positiva | alerta",
+        'Esquema: {"tipo": "fluxo", "passos": [{"rotulo": "x² = 49", "estado": "neutro"}, {"rotulo": "x = 7", "estado": "ok"}]}',
+        ":::",
+        "=== FLASHCARDS ===",
+        ["**Δ < 0?**\n→ Sem raiz.", "**Δ = 0?**\n→ Raiz dupla.", "**Δ > 0?**\n→ Duas raízes.", "**Δ?**\n→ b² − 4ac."].join("\n\n"),
+      ].join("\n"),
+    );
+    await box.getByRole("button", { name: "Conferir" }).click();
+    await expect(box.getByText("Pronto para acrescentar")).toBeVisible();
+    await expect(box.getByText(/Vai acrescentar 1 exemplo\(s\) e 4 flashcards/)).toBeVisible();
+    await box.getByRole("button", { name: "Acrescentar à aula" }).click();
+    await expect(box.getByText(/nada é gravado/)).toBeVisible();
+  });
+
   test("texto fora do formato aponta os erros e não deixa salvar", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");
