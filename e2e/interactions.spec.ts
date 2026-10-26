@@ -497,17 +497,23 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await expect(up.getByRole("button", { name: "4. Salvar como rascunho" })).toBeDisabled();
   });
 
-  test("compacto é o padrão e a resposta inteira (aula e questões) vai num campo só", async ({ page }) => {
+  test("um campo por padrão; resposta grande pode ser colada em 2 partes e vira uma aula só", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");
     await expect(up.getByRole("radio", { name: "Compacto (recomendado)" })).toHaveAttribute("aria-checked", "true");
     await expect(up.getByRole("textbox")).toHaveCount(1);
-    await up.getByRole("radio", { name: "Completo em 2 partes" }).click();
-    await expect(up.getByRole("button", { name: "Copiar parte 2" })).toBeVisible();
-    await expect(up.getByRole("textbox")).toHaveCount(1);
-    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").fill(readFileSync("public/modelos/modelo-aula.txt", "utf8"));
+    await up.getByTestId("colar-em-2-partes").click();
+    await expect(up.getByRole("textbox")).toHaveCount(2);
+    const full = readFileSync("public/modelos/modelo-aula.txt", "utf8");
+    const cut = full.indexOf("=== QUESTÕES: FÁCIL ===");
+    await up.getByLabel("2. Cole aqui a parte 1 da resposta").fill(full.slice(0, cut));
+    await up.getByLabel("Cole aqui a parte 2 da resposta (continuação ou questões)").fill("```\n" + full.slice(cut) + "\n```");
     await up.getByRole("button", { name: "3. Conferir aula" }).click();
     await expect(up.locator("section[aria-labelledby=previa]").getByText("Fácil: 2", { exact: true })).toBeVisible();
+    // Comando completo em 2 partes já abre com os dois campos.
+    await up.getByRole("radio", { name: "Completo em 2 partes" }).click();
+    await expect(up.getByRole("button", { name: "Copiar parte 2" })).toBeVisible();
+    await expect(up.getByRole("textbox")).toHaveCount(2);
   });
 
   test("texto fora do formato aponta os erros e não deixa salvar", async ({ page }) => {

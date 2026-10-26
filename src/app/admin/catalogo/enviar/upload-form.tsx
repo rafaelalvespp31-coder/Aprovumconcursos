@@ -47,13 +47,17 @@ export function LessonUploadForm({
   type Mode = "compacto" | "partes" | "inteiro";
   const [mode, setMode] = useState<Mode>(compact ? "compacto" : parts && prompt.length > 60_000 ? "partes" : "inteiro");
   const [text, setText] = useState("");
+  // Resposta grande: dá para colar em 2 partes (a segunda é juntada no fim da primeira).
+  const [split, setSplit] = useState(false);
+  const [text2, setText2] = useState("");
   const [checked, setChecked] = useState("");
   const [preview, setPreview] = useState<LessonUploadPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
   const [pending, start] = useTransition();
   const [saving, setSaving] = useState(false);
-  const combined = text;
+  const usingTwo = split || mode === "partes";
+  const combined = usingTwo && text2.trim() ? `${text.trimEnd()}\n\n${text2.trim()}\n` : text;
   const commands =
     mode === "compacto" && compact
       ? [{ label: "Comando compacto", text: compact }]
@@ -164,7 +168,7 @@ export function LessonUploadForm({
         )}
         {mode === "partes" && parts && (
           <p className="mt-2 t-small text-tinta-suave">
-            Envie a <strong>parte 1</strong> (a aula) no ChatGPT e, quando ele terminar, envie a <strong>parte 2</strong> (as questões) <strong>na mesma conversa</strong>. Cole as duas respostas, uma embaixo da outra, no mesmo campo.
+            Envie a <strong>parte 1</strong> (a aula) no ChatGPT e, quando ele terminar, envie a <strong>parte 2</strong> (as questões) <strong>na mesma conversa</strong>. Cole a resposta da parte 1 no primeiro campo e a da parte 2 no segundo: são publicadas juntas, como uma aula só.
           </p>
         )}
         <div className="mt-3 flex flex-col gap-3">
@@ -187,12 +191,28 @@ export function LessonUploadForm({
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="texto-aula" className="font-semibold">2. Cole aqui a resposta completa do ChatGPT (aula e questões)</label>
+        <label htmlFor="texto-aula" className="font-semibold">{usingTwo ? "2. Cole aqui a parte 1 da resposta" : "2. Cole aqui a resposta completa do ChatGPT (aula e questões)"}</label>
         <textarea id="texto-aula" value={text} onChange={(e) => setText(e.target.value)} placeholder={"=== AULA ===\nTítulo: …\nMatéria: …\n…\n=== QUESTÕES: FÁCIL ===\n…"} spellCheck={false} className={textareaCls} />
+        {usingTwo ? (
+          <>
+            <label htmlFor="texto-parte-2" className="mt-2 font-semibold">Cole aqui a parte 2 da resposta (continuação ou questões)</label>
+            <textarea id="texto-parte-2" value={text2} onChange={(e) => setText2(e.target.value)} placeholder={"Continuação da resposta (ex.: depois de “continue”) ou as questões"} spellCheck={false} className={textareaCls} />
+            <p className="t-tiny text-tinta-fraca">As duas partes são juntadas na ordem (parte 1 e depois parte 2) e conferidas e publicadas como uma aula só.</p>
+            {mode !== "partes" && (
+              <button type="button" className="self-start t-small font-semibold text-destaque underline underline-offset-2" onClick={() => { setSplit(false); setText((t) => (text2.trim() ? `${t.trimEnd()}\n\n${text2.trim()}\n` : t)); setText2(""); setPreview(null); }}>
+                Voltar para um campo só
+              </button>
+            )}
+          </>
+        ) : (
+          <button type="button" className="self-start t-small font-semibold text-destaque underline underline-offset-2" onClick={() => { setSplit(true); setPreview(null); }} data-testid="colar-em-2-partes">
+            Resposta muito grande? Colar em 2 partes
+          </button>
+        )}
         <div className="flex flex-wrap items-center gap-2">
           <Button disabled={!text.trim() || pending} onClick={check}>{pending && !saving ? "Conferindo…" : "3. Conferir aula"}</Button>
           {text && (
-            <Button variant="discreto" disabled={pending} onClick={() => { setText(""); setPreview(null); setError(null); }}>Limpar</Button>
+            <Button variant="discreto" disabled={pending} onClick={() => { setText(""); setText2(""); setPreview(null); setError(null); }}>Limpar</Button>
           )}
           <span className="t-tiny text-tinta-fraca">{combined.trim().length.toLocaleString("pt-BR")} caracteres</span>
         </div>
