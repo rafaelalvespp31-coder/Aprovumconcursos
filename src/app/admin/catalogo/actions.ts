@@ -19,7 +19,7 @@ import {
   updateTopicSection,
 } from "@/server/services/catalog";
 import { addTopicQuestions, applyTopicEnrichment, importLessonUpload, previewLessonUpload, previewTopicEnrichment, previewTopicQuestions, type LessonUploadPreview, type TopicEnrichPreview, type TopicQuestionsPreview } from "@/server/services/catalog-upload";
-import { bannerUrlFor, removeBanner, saveBanner } from "@/server/services/banners";
+import { bannerUrlFor, removeBanner, removeTopicBanner, saveBanner, saveTopicBanner, topicBannerUrl } from "@/server/services/banners";
 
 export interface AdminResult {
   ok: boolean;
@@ -138,6 +138,26 @@ export async function removeBannerAction(mode: string): Promise<BannerResult> {
   const r = await guard("catalog.banner_remove", async () => removeBanner(user, mode));
   if (!r.ok) return { ok: false, error: r.error ?? "Não foi possível remover." };
   revalidatePath("/admin/catalogo/banners");
+  revalidatePath("/aula/[id]", "page");
+  return { ok: true, url: null };
+}
+
+/** Banner próprio de uma aula (vale só para ela; "mode" carrega o id da aula). */
+export async function saveTopicBannerAction(form: FormData): Promise<BannerResult> {
+  const user = await requireAdmin();
+  const id = String(form.get("mode") ?? "");
+  const r = await guard("catalog.topic_banner", async () => saveTopicBanner(user, id, form.get("file") as File));
+  if (!r.ok) return { ok: false, error: r.error ?? "Não foi possível salvar o banner." };
+  revalidatePath(`/admin/catalogo/${id}`);
+  revalidatePath("/aula/[id]", "page");
+  return { ok: true, url: await topicBannerUrl(id) };
+}
+
+export async function removeTopicBannerAction(id: string): Promise<BannerResult> {
+  const user = await requireAdmin();
+  const r = await guard("catalog.topic_banner_remove", async () => removeTopicBanner(user, id));
+  if (!r.ok) return { ok: false, error: r.error ?? "Não foi possível remover." };
+  revalidatePath(`/admin/catalogo/${id}`);
   revalidatePath("/aula/[id]", "page");
   return { ok: true, url: null };
 }

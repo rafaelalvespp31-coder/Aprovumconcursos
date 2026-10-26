@@ -6,6 +6,7 @@ import { PublishPanel, QuestionsEditor, SectionsEditor } from "@/app/admin/catal
 import { DemoLessonUpload } from "./demo-upload";
 import { DemoAddQuestions } from "./demo-add-questions";
 import { DemoAddVisuals } from "./demo-add-visuals";
+import { DemoTopicBanner } from "./demo-topic-banner";
 
 /** Prévia do editor do catálogo (área da equipe) com dados de EXEMPLO. Os botões não gravam aqui. */
 export default function Page() {
@@ -27,6 +28,7 @@ export default function Page() {
       <DemoLessonUpload />
       <DemoAddQuestions />
       <DemoAddVisuals />
+      <DemoTopicBanner />
       <SectionsEditor id="exemplo" sections={topic.lesson!.sections} />
       <QuestionsEditor id="exemplo" questions={questions} nodeTitles={{ [keys[0]!]: "Art. 121" }} />
     </div>

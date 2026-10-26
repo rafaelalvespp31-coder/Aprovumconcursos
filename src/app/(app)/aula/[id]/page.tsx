@@ -6,7 +6,7 @@ import { JobRunner, type PublicJob } from "@/components/job-runner";
 import { STATE_LABELS } from "@/domain/progress/state-machine";
 import { LessonReader } from "./reader";
 import { CONTENT_TYPE_OPTIONS, boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
-import { bannerUrlFor } from "@/server/services/banners";
+import { lessonBannerUrl } from "@/server/services/banners";
 import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import { generateLessonAction } from "./actions";
 
@@ -94,7 +94,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
     getNextInSubject(lesson.trail_id, next ? { id: next.id, title: next.title } : null).catch(() => null),
     getTrailPlan(lesson.trail_id).catch(() => []),
     listStudyPdfs(lesson.trail_id).catch(() => []),
-    bannerUrlFor(discipline).catch(() => null),
+    lessonBannerUrl(lesson.catalog_topic_id as string | null, discipline).catch(() => null),
   ]);
   const units = plan.flatMap((m) => m.lessons);
   const unitsDone = units.filter((l) => l.levelsPassed >= 3).length;

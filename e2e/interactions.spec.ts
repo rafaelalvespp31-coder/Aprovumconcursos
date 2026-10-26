@@ -557,6 +557,17 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await expect(box.getByText(/nada é gravado/)).toBeVisible();
   });
 
+  test("banner próprio da aula: mostra o da matéria e deixa anexar e remover", async ({ page }) => {
+    await page.goto(`${G}/catalogo`);
+    const slot = page.getByTestId("banner-exemplo-aula");
+    await expect(slot.getByText("Usando o banner da matéria")).toBeVisible();
+    await slot.getByLabel("Imagem do banner de Homicídio").setInputFiles({ name: "capa.png", mimeType: "image/png", buffer: Buffer.from("89504e470d0a1a0a", "hex") });
+    await expect(slot.getByRole("button", { name: "Trocar banner" })).toBeVisible();
+    await expect(slot.getByText("Usando o banner da matéria")).toHaveCount(0);
+    await slot.getByRole("button", { name: "Remover" }).click();
+    await expect(slot.getByRole("button", { name: "Anexar banner" })).toBeVisible();
+  });
+
   test("texto fora do formato aponta os erros e não deixa salvar", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");

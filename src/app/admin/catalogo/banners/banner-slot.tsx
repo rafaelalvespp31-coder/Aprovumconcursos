@@ -10,7 +10,7 @@ export interface BannerActions {
 }
 
 /** Banner de uma matéria: prévia na proporção real (4:1), anexar, trocar e remover. */
-export function BannerSlot({ mode, label, url, actions, compact = false }: { mode: string; label: string; url: string | null; actions: BannerActions; compact?: boolean }) {
+export function BannerSlot({ mode, label, url, actions, compact = false, emptyText = "Sem banner: as aulas usam a arte padrão", fallbackUrl = null }: { mode: string; label: string; url: string | null; actions: BannerActions; compact?: boolean; emptyText?: string; fallbackUrl?: string | null }) {
   const input = useRef<HTMLInputElement>(null);
   const [current, setCurrent] = useState(url);
   const [error, setError] = useState<string | null>(null);
@@ -29,8 +29,8 @@ export function BannerSlot({ mode, label, url, actions, compact = false }: { mod
   return (
     <div className={compact ? "" : "rounded-lg border border-linha bg-superficie p-3"} data-testid={`banner-${mode}`}>
       {!compact && <p className="mb-2 font-semibold">{label}</p>}
-      <div className="ap-banner-previa" style={current ? { backgroundImage: `url("${current}")` } : undefined} data-padrao={current ? undefined : "1"}>
-        {!current && <span>Sem banner: as aulas usam a arte padrão</span>}
+      <div className="ap-banner-previa" style={current || fallbackUrl ? { backgroundImage: `url("${current ?? fallbackUrl}")`, opacity: current ? undefined : 0.55 } : undefined} data-padrao={current ? undefined : "1"}>
+        {!current && <span>{emptyText}</span>}
       </div>
       <input
         ref={input}

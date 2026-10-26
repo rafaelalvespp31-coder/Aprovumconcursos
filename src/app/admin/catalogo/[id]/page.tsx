@@ -5,7 +5,9 @@ import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import { PublishPanel, QuestionsEditor, SectionsEditor } from "./editor";
 import { AddQuestionsPanel } from "./add-questions";
 import { AddVisualsPanel } from "./add-visuals";
-import { addTopicQuestionsAction, applyTopicEnrichAction, previewTopicEnrichAction, previewTopicQuestionsAction } from "../actions";
+import { BannerSlot } from "../banners/banner-slot";
+import { bannerUrlFor, topicBannerUrl } from "@/server/services/banners";
+import { removeTopicBannerAction, saveTopicBannerAction, addTopicQuestionsAction, applyTopicEnrichAction, previewTopicEnrichAction, previewTopicQuestionsAction } from "../actions";
 import { buildQuestionsPrompt } from "@/domain/catalog/export";
 import { buildEnrichPrompt, enrichStatus, type EnrichLesson } from "@/domain/catalog/enrich";
 
@@ -15,7 +17,8 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
   // A verificação fica também na página: layout e página renderizam em paralelo.
   await requireAdmin();
   const { id } = await params;
-  const [topic, questions] = await Promise.all([getTopic(id), getTopicQuestions(id)]);
+  const [topic, questions, ownBanner] = await Promise.all([getTopic(id), getTopicQuestions(id), topicBannerUrl(id).catch(() => null)]);
+  const subjectBanner = await bannerUrlFor(topic.discipline_mode).catch(() => null);
   const items = topic.nodes.filter((n) => n.requiresDirectCoverage);
   const nodeTitles = Object.fromEntries(topic.nodes.map((n) => [n.key, `${n.marker ? `${n.marker} ` : ""}${n.title}`.slice(0, 80)]));
   const blockers = publishBlockers(topic, questions);
@@ -32,6 +35,22 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
       <section aria-labelledby="pub" className="rounded-lg border border-linha p-5">
         <h2 id="pub" className="t-h2">Publicação</h2>
         <div className="mt-3"><PublishPanel id={id} status={topic.status} version={topic.version} blockers={blockers} title={topic.title} /></div>
+      </section>
+
+      <section aria-labelledby="banner-aula" className="rounded-lg border border-linha p-5">
+        <h2 id="banner-aula" className="t-h2">Banner desta aula</h2>
+        <p className="mt-1 t-small text-tinta-suave">Imagem do topo só desta aula. Sem ela, a aula usa o banner da matéria{subjectBanner ? "" : " (ainda sem banner)"}. Pode trocar quando quiser: vale na hora para todos os alunos.</p>
+        <div className="mt-3">
+          <BannerSlot
+            mode={id}
+            label={topic.title}
+            url={ownBanner}
+            fallbackUrl={subjectBanner}
+            emptyText={subjectBanner ? "Usando o banner da matéria" : "Sem banner: a aula usa a arte padrão"}
+            actions={{ save: saveTopicBannerAction, remove: removeTopicBannerAction }}
+            compact
+          />
+        </div>
       </section>
 
       <section aria-labelledby="dados" className="rounded-lg border border-linha p-5">
