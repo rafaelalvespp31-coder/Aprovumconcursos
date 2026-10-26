@@ -17,6 +17,7 @@ export function DemoAddVisuals() {
       topicId="exemplo"
       status={enrichStatus(LESSON)}
       prompt={buildEnrichPrompt("Equações do 1º e 2º graus", LESSON)}
+      lesson={LESSON}
       actions={{
         preview: async (_id, text) => {
           const p = parseEnrichment(text, LESSON);

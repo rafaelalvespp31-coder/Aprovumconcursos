@@ -1,7 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { checkQuestionsText } from "@/domain/catalog/upload";
+import { applyFix, autoFixText, describeIssues, type TextIssue } from "@/domain/catalog/upload-fixes";
+import { IssueList, MarkedTextarea, type LineMark, type MarkedTextareaHandle } from "../enviar/paste-checker";
 import { Button, Notice, Tag } from "@/components/ui";
 import type { AdminResult, QuestionsPreviewResult } from "../actions";
 import type { TopicQuestionsPreview } from "@/server/services/catalog-upload";
@@ -30,6 +33,39 @@ export function AddQuestionsPanel({
   const [pending, start] = useTransition();
   const missing = (Object.keys(LEVEL) as L[]).filter((k) => counts[k] < 10);
   const stale = preview && text !== checked;
+
+  // Conferência ao vivo e correção automática (no navegador).
+  const [live, setLive] = useState<{ text: string; issues: TextIssue[] } | null>(null);
+  const [autoMsg, setAutoMsg] = useState<{ applied: string[]; remaining: number } | null>(null);
+  const ta = useRef<MarkedTextareaHandle>(null);
+  useEffect(() => {
+    if (!text.trim()) return;
+    const h = setTimeout(() => {
+      const r = checkQuestionsText(text);
+      setLive({ text, issues: describeIssues(text, r.errors, r.warnings) });
+    }, 350);
+    return () => clearTimeout(h);
+  }, [text]);
+  const liveNow = text.trim() && live ? live : null;
+  const fresh = !!liveNow && liveNow.text === text;
+  const errorsNow = liveNow?.issues.filter((i) => i.severity === "erro") ?? [];
+  const defaultLevel = (["facil", "medio", "dificil"] as const).findIndex((k) => counts[k] < 10);
+  const marks = useMemo(() => {
+    const m = new Map<number, LineMark>();
+    for (const i of fresh ? liveNow!.issues : []) {
+      if (!i.line) continue;
+      for (let l = i.line; l < Math.max(i.line + 1, i.endLine ?? 0) && l < i.line + 400; l++) if (m.get(l) !== "erro") m.set(l, l === i.line ? i.severity : "foco");
+    }
+    return m;
+  }, [fresh, liveNow]);
+  const autoFix = () => {
+    const r = autoFixText(text, checkQuestionsText, defaultLevel >= 0 ? { level: defaultLevel as 0 | 1 | 2 } : {});
+    setAutoMsg({ applied: r.applied, remaining: r.remaining.length });
+    if (r.text !== text) {
+      setText(r.text);
+      setPreview(null);
+    }
+  };
 
   return (
     <div className="flex flex-col gap-3" data-testid="adicionar-questoes">
@@ -66,14 +102,25 @@ export function AddQuestionsPanel({
         <pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap rounded-md bg-nevoa p-3 t-tiny">{prompt}</pre>
       </details>
       <label htmlFor="questoes-aula" className="font-semibold">Cole aqui as questões</label>
-      <textarea
-        id="questoes-aula"
-        value={text}
-        onChange={(e) => setText(e.target.value)}
-        spellCheck={false}
-        placeholder={"=== QUESTÕES: MÉDIO ===\n--- QUESTÃO ---\nTipo: múltipla escolha\n…"}
-        className="min-h-48 w-full rounded-md border border-linha-forte bg-superficie p-3 font-mono text-[13px] leading-relaxed focus:border-azul focus:outline-none focus:ring-2 focus:ring-azul/20"
-      />
+      <MarkedTextarea ref={ta} id="questoes-aula" value={text} onChange={setText} marks={marks} placeholder={"=== QUESTÕES: MÉDIO ===\n--- QUESTÃO ---\nTipo: múltipla escolha\n…"} />
+      {errorsNow.length > 0 && (
+        <div className={`flex flex-col gap-2 ${fresh ? "" : "opacity-60"}`} data-testid="conferencia-questoes">
+          <p className="t-small font-semibold text-erro">{errorsNow.length} erro(s) no texto — destacados em vermelho no campo.</p>
+          <Button className="self-start" disabled={pending} onClick={autoFix} data-testid="autocorrigir-questoes">✓ Corrigir tudo automaticamente</Button>
+          <IssueList issues={errorsNow} disabled={!fresh || pending} onGo={(i) => i.line && ta.current?.goTo(i.line, i.endLine)} onFix={(f) => { setText((t) => applyFix(t, f)); setPreview(null); }} lineLabel={(l) => `linha ${l}`} />
+        </div>
+      )}
+      {autoMsg && (
+        <Notice tone={autoMsg.remaining ? "alerta" : "sucesso"} title={autoMsg.applied.length ? `${autoMsg.applied.length} correção(ões) feita(s) no texto` : "Nada que dê para corrigir sozinho"}>
+          {autoMsg.applied.length > 0 && (
+            <details className="mt-1">
+              <summary className="cursor-pointer">Ver o que mudou</summary>
+              <ul className="mt-1 list-disc pl-5">{autoMsg.applied.map((a, k) => <li key={k}>{a}</li>)}</ul>
+            </details>
+          )}
+          <p className="mt-1">{autoMsg.remaining ? `Falta(m) ${autoMsg.remaining} erro(s) que precisam da sua escolha.` : "Sem erros de formato. Clique em “Conferir questões”."}</p>
+        </Notice>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <Button
           disabled={!text.trim() || pending}

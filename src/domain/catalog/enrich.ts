@@ -123,7 +123,7 @@ export function parseEnrichment(raw: string, lesson: EnrichLesson): EnrichParse 
   const byTitle = new Map(lesson.sections.map((s, i) => [keyOf(s.title), i]));
   const used = new Set<number>();
 
-  const flashAt = text.search(/^\s*={3,}\s*FLASHCARDS?\s*={0,}\s*$/im);
+  const flashAt = text.search(/^[ \t]*={3,}[ \t]*FLASHCARDS?[ \t]*=*[ \t]*$/im);
   const examplesPart = flashAt >= 0 ? text.slice(0, flashAt) : text;
   const flashPart = flashAt >= 0 ? text.slice(flashAt).replace(/^.*\n?/, "") : "";
 

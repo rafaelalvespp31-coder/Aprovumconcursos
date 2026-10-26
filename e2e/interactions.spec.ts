@@ -600,6 +600,41 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await expect(up.locator("section[aria-labelledby=previa]").getByText(/Pronto para (salvar|publicar)/)).toBeVisible();
   });
 
+  test("adicionar questões: corrigir tudo automaticamente", async ({ page }) => {
+    await page.goto(`${G}/catalogo`);
+    const box = page.getByTestId("adicionar-questoes");
+    await box.getByLabel("Cole aqui as questões").fill("Tipo: certo ou errado\nItem: § 1º\nDificuldade: 5\nEnunciado: O repouso noturno aumenta a pena do furto.\nGabarito: Certo\nJustificativa: Certo. É o § 1º do art. 155.");
+    await expect(box.getByTestId("conferencia-questoes").getByText(/1 erro\(s\) no texto/)).toBeVisible();
+    await box.getByTestId("autocorrigir-questoes").click();
+    await expect(box.getByText(/correção\(ões\) feita\(s\) no texto/)).toBeVisible();
+    await box.getByRole("button", { name: "Conferir questões" }).click();
+    await expect(box.getByText("Pronto para adicionar")).toBeVisible();
+    await expect(box.getByText(/Difícil: 1/).first()).toBeVisible();
+  });
+
+  test("exemplos visuais: corrigir tudo automaticamente", async ({ page }) => {
+    await page.goto(`${G}/catalogo`);
+    const box = page.getByTestId("adicionar-visuais");
+    await box.getByLabel("Cole aqui a resposta do ChatGPT").fill(
+      [
+        "**SEÇÃO: Equacoes do 2 grau discriminante**",
+        "Situação: Área de 49 m².",
+        "Pergunta: Qual o lado?",
+        "Resposta: 7 m.",
+        "Tirinha: [{“cenario”: “obra”, “personagens”: [{“p”: “cidadão”, “lado”: “esq”}],}]",
+        "## Flashcards",
+        "1. Δ < 0? — Sem raiz real.",
+        "2. Δ = 0? — Raiz dupla.",
+        "3. Δ > 0? — Duas raízes.",
+        "4. Fórmula de Δ? — b² − 4ac.",
+      ].join("\n"),
+    );
+    await box.getByTestId("autocorrigir-visuais").click();
+    await expect(box.getByText(/correção\(ões\) feita\(s\) no texto/)).toBeVisible();
+    await expect(box.getByText("Pronto para acrescentar")).toBeVisible();
+    await expect(box.getByText(/Vai acrescentar 1 exemplo\(s\) e 4 flashcards/)).toBeVisible();
+  });
+
   test("texto fora do formato aponta os erros e não deixa salvar", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");

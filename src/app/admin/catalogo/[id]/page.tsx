@@ -134,6 +134,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
               topicId={id}
               status={enrichStatus(topic.lesson as unknown as EnrichLesson)}
               prompt={buildEnrichPrompt(topic.title, topic.lesson as unknown as EnrichLesson)}
+              lesson={{ sections: (topic.lesson as unknown as EnrichLesson).sections.map((s) => ({ kind: s.kind, title: s.title, bodyMarkdown: s.bodyMarkdown, nodeKeys: [] })) }}
               actions={{ preview: previewTopicEnrichAction, apply: applyTopicEnrichAction }}
             />
           </div>

@@ -5,6 +5,9 @@ import { useState, useTransition } from "react";
 import { Button, Notice, Tag } from "@/components/ui";
 import type { AdminResult, EnrichPreviewResult } from "../actions";
 import type { TopicEnrichPreview } from "@/server/services/catalog-upload";
+import type { EnrichLesson } from "@/domain/catalog/enrich";
+import { parseEnrichment } from "@/domain/catalog/enrich";
+import { autoFixEnrichment } from "@/domain/catalog/enrich-fix";
 
 /** Completar uma aula catalogada com os exemplos visuais (tirinha, carimbo, esquema) e os flashcards. */
 export function AddVisualsPanel({
@@ -12,8 +15,11 @@ export function AddVisualsPanel({
   status,
   prompt,
   actions,
+  lesson,
 }: {
   topicId: string;
+  /** Seções da aula: a correção automática liga cada exemplo ao título certo. */
+  lesson: EnrichLesson;
   status: { teaching: number; withExample: number; flashcards: number };
   prompt: string;
   actions: { preview: (id: string, text: string) => Promise<EnrichPreviewResult>; apply: (id: string, text: string) => Promise<AdminResult> };
@@ -28,6 +34,24 @@ export function AddVisualsPanel({
   const missing = status.teaching - status.withExample;
   const complete = missing === 0 && status.flashcards >= 4;
   const stale = preview && text !== checked;
+  const [autoMsg, setAutoMsg] = useState<{ applied: string[]; remaining: number } | null>(null);
+  const localErrors = text.trim() ? parseEnrichment(text, lesson).errors : [];
+  const runPreview = (t: string) =>
+    start(async () => {
+      setMsg(null);
+      setPreview(null);
+      const r = await actions.preview(topicId, t);
+      if (r.ok) {
+        setPreview(r.preview);
+        setChecked(t);
+      } else setMsg({ ok: false, error: r.error });
+    });
+  const autoFix = () => {
+    const r = autoFixEnrichment(text, lesson);
+    setAutoMsg({ applied: r.applied, remaining: r.errors.length });
+    if (r.text !== text) setText(r.text);
+    if (r.text.trim()) runPreview(r.text);
+  };
 
   return (
     <div className="flex flex-col gap-3" data-testid="adicionar-visuais">
@@ -76,6 +100,27 @@ export function AddVisualsPanel({
         placeholder={"=== EXEMPLOS VISUAIS ===\n--- SEÇÃO: (título) ---\n:::exemplo\n…\n:::\n=== FLASHCARDS ===\n**Pergunta?**\n→ resposta"}
         className="min-h-48 w-full rounded-md border border-linha-forte bg-superficie p-3 font-mono text-[13px] leading-relaxed focus:border-azul focus:outline-none focus:ring-2 focus:ring-azul/20"
       />
+      {(localErrors.length > 0 || (preview && !preview.ok)) && (
+        <div className="flex flex-col gap-2" data-testid="conferencia-visuais">
+          {localErrors.length > 0 && (
+            <ul className="list-disc pl-5 t-small text-erro">
+              {localErrors.slice(0, 8).map((e) => <li key={e}>{e}</li>)}
+            </ul>
+          )}
+          <Button className="self-start" disabled={pending} onClick={autoFix} data-testid="autocorrigir-visuais">✓ Corrigir tudo automaticamente</Button>
+        </div>
+      )}
+      {autoMsg && (
+        <Notice tone={autoMsg.remaining ? "alerta" : "sucesso"} title={autoMsg.applied.length ? `${autoMsg.applied.length} correção(ões) feita(s) no texto` : "Nada que dê para corrigir sozinho"}>
+          {autoMsg.applied.length > 0 && (
+            <details className="mt-1">
+              <summary className="cursor-pointer">Ver o que mudou</summary>
+              <ul className="mt-1 list-disc pl-5">{autoMsg.applied.map((a, k) => <li key={k}>{a}</li>)}</ul>
+            </details>
+          )}
+          <p className="mt-1">{autoMsg.remaining ? `Falta(m) ${autoMsg.remaining} erro(s): peça esses blocos de novo ao ChatGPT.` : "Pronto: confira o resultado e clique em “Acrescentar à aula”."}</p>
+        </Notice>
+      )}
       <div className="flex flex-wrap items-center gap-2">
         <Button
           disabled={!text.trim() || pending}

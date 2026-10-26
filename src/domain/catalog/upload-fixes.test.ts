@@ -124,3 +124,25 @@ describe("autocorrigir tudo com um clique", () => {
     expect(r.remaining).toEqual([]);
   });
 });
+
+describe("autocorrigir questões coladas na aula", () => {
+  it("questões sem os marcadores ganham bloco e --- QUESTÃO --- pelo nível da Dificuldade", async () => {
+    const { autoFixText } = await import("./upload-fixes");
+    const { checkQuestionsText, parseLessonUpload } = await import("./upload");
+    const t = ["Tipo: certo ou errado", "Dificuldade: 4", "Enunciado: O inquérito é dispensável.", "Gabarito: Certo", "Justificativa: Certo. Pode ser dispensado.", "", "Tipo: certo ou errado", "Dificuldade: 5", "Enunciado: O inquérito admite contraditório pleno.", "Gabarito: Errado", "Justificativa: Errado. É inquisitivo."].join("\n");
+    expect(checkQuestionsText(t).errors[0]).toMatch(/Não encontrei questões/);
+    const r = autoFixText(t, checkQuestionsText);
+    expect(r.remaining).toEqual([]);
+    const p = parseLessonUpload(r.text);
+    expect(p.questions.map((q) => q.level)).toEqual(["dificil", "dificil"]);
+  });
+  it("sem pista de nível só corrige com o nível padrão", async () => {
+    const { autoFixText } = await import("./upload-fixes");
+    const { checkQuestionsText, parseLessonUpload } = await import("./upload");
+    const t = "--- QUESTÃO ---\nTipo: certo ou errado\nEnunciado: O inquérito é dispensável.\nGabarito: Certo\nJustificativa: Certo. Pode ser dispensado.";
+    expect(autoFixText(t, checkQuestionsText).remaining.length).toBe(1);
+    const r = autoFixText(t, checkQuestionsText, { level: 1 });
+    expect(r.remaining).toEqual([]);
+    expect(parseLessonUpload(r.text).questions[0]!.level).toBe("medio");
+  });
+});

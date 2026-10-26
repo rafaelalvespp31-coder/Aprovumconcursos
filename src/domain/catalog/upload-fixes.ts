@@ -56,7 +56,7 @@ const LEVELS = [
   ["DIFÍCIL", "Difícil"],
 ] as const;
 
-function similarity(a: string, b: string): number {
+export function similarity(a: string, b: string): number {
   const grams = (s: string) => {
     const g = new Set<string>();
     const t = ` ${s} `;
@@ -97,6 +97,17 @@ export function describeIssues(raw: string, errors: readonly string[], warnings:
     return { start: after + 1, deleteCount: 0, insert: [value] };
   };
 
+  /** Nível sugerido pelas linhas "Dificuldade: N" do trecho (0 fácil, 1 médio, 2 difícil). */
+  const levelHint = (from: number, to: number): number | null => {
+    const ds: number[] = [];
+    for (let k = from; k < to; k++) {
+      const d = L(k).match(/^\s*dificuldade\s*:\s*(\d)/i);
+      if (d) ds.push(Number(d[1]));
+    }
+    if (!ds.length) return null;
+    const avg = ds.reduce((a, b) => a + b, 0) / ds.length;
+    return avg < 2.5 ? 0 : avg < 3.5 ? 1 : 2;
+  };
   const out: TextIssue[] = [];
   const add = (severity: TextIssue["severity"], message: string, line: number | null, endLine: number | null, fixes: FixAction[] = []) => out.push({ message, severity, line, endLine, fixes });
 
@@ -110,7 +121,31 @@ export function describeIssues(raw: string, errors: readonly string[], warnings:
     // --- Nível do bloco de questões
     if ((m = msg.match(/^Linha (\d+): informe o nível do bloco de questões/))) {
       const n = Number(m[1]);
-      return add(severity, msg, n, n + 1, LEVELS.map(([up, label]) => ({ label: `Nível ${label}`, edit: { start: n, deleteCount: 1, insert: [`=== QUESTÕES: ${up} ===`] } })));
+      let to = n + 1;
+      while (to <= clean.length && !BLOCK.test(L(to))) to++;
+      const hint = levelHint(n + 1, to);
+      return add(severity, msg, n, n + 1, LEVELS.map(([up, label], k) => ({ label: `Nível ${label}`, recommended: hint === k, edit: { start: n, deleteCount: 1, insert: [`=== QUESTÕES: ${up} ===`] } })));
+    }
+    // --- Questões sem os marcadores
+    if (/^Não encontrei questões/.test(msg)) {
+      const starts: number[] = [];
+      for (let k = 1; k <= clean.length; k++) {
+        if (!/^\s*enunciado\s*:/i.test(L(k))) continue;
+        // Começa a questão nas linhas de "Tipo:/Item:/Essencial:/Dificuldade:" logo acima.
+        let s0 = k;
+        while (s0 > 1 && /^\s*(tipo|ite(m|ns)|essencial|dificuldade)\s*:/i.test(L(s0 - 1))) s0--;
+        if (!isMarker(L(s0 - 1)) || !/quest/i.test(L(s0 - 1))) starts.push(s0);
+      }
+      const hasBlock = clean.some((l) => BLOCK.test(l) && /quest/i.test(fold(l)));
+      if (!starts.length && hasBlock) return add(severity, msg, null, null);
+      const hint = levelHint(1, clean.length + 1);
+      const edits = starts.map((s0): LineEdit => ({ start: s0, deleteCount: 0, insert: ["--- QUESTÃO ---"] }));
+      const fixes: FixAction[] = LEVELS.map(([up, label], k) => {
+        const header: LineEdit = { start: 1, deleteCount: 0, insert: [`=== QUESTÕES: ${up} ===`] };
+        const all = hasBlock ? edits : [...edits, header];
+        return { label: starts.length ? `Marcar ${starts.length} questão(ões) como nível ${label}` : `Pôr no nível ${label}`, recommended: hint === k, edit: all[0] ?? header, more: all.slice(1) };
+      });
+      return add(severity, msg, starts[0] ?? null, null, fixes.filter((f) => f.edit));
     }
     // --- Tipo de seção inexistente
     if ((m = msg.match(/^Linha (\d+): tipo de seção “(.*?)” não existe/))) {
@@ -303,15 +338,23 @@ export function describeIssues(raw: string, errors: readonly string[], warnings:
 }
 
 /** Correção escolhida automaticamente para um erro (null = precisa de decisão humana). */
-function autoChoice(i: TextIssue): FixAction | null {
+function autoChoice(i: TextIssue, opts: AutoFixOptions = {}): FixAction | null {
   if (!i.fixes.length) return null;
   const rec = i.fixes.find((f) => f.recommended);
   if (rec) return rec;
+  // Nível sem pista no texto: usa o nível padrão informado (ex.: o que falta na aula); senão não chuta.
+  const levelFixes = i.fixes.filter((f) => /^(Nível |Marcar .*nível|Pôr no nível)/.test(f.label));
+  if (levelFixes.length) return opts.level !== undefined ? levelFixes[opts.level] ?? null : null;
   const safe = i.fixes.find((f) => !/^Remover/.test(f.label));
   // Gabarito sem pista no texto e matéria sem palpite: não chuta.
   if (safe && !/^Gabarito /.test(safe.label) && i.fixes.length <= 4) return safe;
   // Questão quebrada ou seção vazia sem outra saída: remove (fica registrado no que foi feito).
   return i.fixes.find((f) => /^Remover/.test(f.label)) ?? null;
+}
+
+export interface AutoFixOptions {
+  /** Nível para questões sem bloco/nível e sem "Dificuldade:" (0 fácil, 1 médio, 2 difícil). */
+  level?: 0 | 1 | 2;
 }
 
 export interface AutoFixResult {
@@ -324,16 +367,16 @@ export interface AutoFixResult {
  * Corrige tudo o que dá com um clique: aplica a correção sugerida de cada erro, confere de novo e
  * repete. O que precisa de decisão (sem sugestão no texto) fica na lista para corrigir à mão.
  */
-export function autoFixText(raw: string, check: (t: string) => { errors: string[]; warnings: string[] }): AutoFixResult {
+export function autoFixText(raw: string, check: (t: string) => { errors: string[]; warnings: string[] }, opts: AutoFixOptions = {}): AutoFixResult {
   let text = raw.replace(/\r\n?/g, "\n");
   const applied: string[] = [];
   const skip = new Set<string>();
   for (let round = 0; round < 80; round++) {
     const r = check(text);
     const issues = describeIssues(text, r.errors, r.warnings).filter((i) => i.severity === "erro");
-    const target = issues.find((i) => !skip.has(i.message) && autoChoice(i));
+    const target = issues.find((i) => !skip.has(i.message) && autoChoice(i, opts));
     if (!target) return { text, applied, remaining: issues };
-    const f = autoChoice(target)!;
+    const f = autoChoice(target, opts)!;
     const next = applyFix(text, f);
     const after = check(next).errors.length;
     if (next === text || after > r.errors.length) {
