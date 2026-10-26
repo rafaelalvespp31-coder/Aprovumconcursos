@@ -89,6 +89,9 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
                             </span>
                           );
                         })}
+                    {LEVELS.some((l) => (t.questions[l.key] ?? 0) < MIN_BANK_PER_LEVEL) && (
+                      <Link href={`/admin/catalogo/${t.id}#addq`} className="ml-1 t-tiny font-semibold text-destaque underline underline-offset-2">Adicionar questões</Link>
+                    )}
                       </td>
                       <td className="px-3 py-2">
                         <Tag tone={STATUS[t.status]!.tone}>{STATUS[t.status]!.label}{t.version ? ` v${t.version}` : ""}</Tag>

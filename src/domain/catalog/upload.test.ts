@@ -221,3 +221,33 @@ describe("comando padrão APROVUM (modelo Homicídio)", () => {
     expect(b.warnings.some((w) => /pelo menos 10/.test(w))).toBe(false);
   });
 });
+
+describe("completar questões de uma aula catalogada", () => {
+  it("lê só os blocos de questões e liga aos itens do texto-base da aula", async () => {
+    const { parseQuestionsForTopic } = await import("./upload");
+    const nodes = nodesOf("Art. 155 - Subtrair coisa alheia móvel:\n§ 1º A pena aumenta-se de um terço, se durante o repouso noturno.\n1 Tipo penal\n2 Furto noturno");
+    const txt = [
+      "```",
+      "=== QUESTÕES: MÉDIO ===",
+      "--- QUESTÃO ---",
+      "Tipo: certo ou errado",
+      "Item: § 1º",
+      "Enunciado: O repouso noturno aumenta a pena do furto em um terço.",
+      "Gabarito: Certo",
+      "Justificativa: Certo. É o § 1º do art. 155.",
+      "=== QUESTÕES: DIFÍCIL ===",
+      "--- QUESTÃO ---",
+      "Enunciado: Sobre o furto, assinale a correta:",
+      "A) admite violência",
+      "B) é subtrair coisa alheia móvel",
+      "Gabarito: B",
+      "Justificativa: Definição do caput.",
+      "```",
+    ].join("\n");
+    const r = parseQuestionsForTopic(txt, nodes, ["155"]);
+    expect(r.errors).toEqual([]);
+    expect(r.questions.map((q) => q.level)).toEqual(["medio", "dificil"]);
+    expect(nodes.find((n) => n.key === r.questions[0]!.nodeKey)!.path).toBe("Art. 155 › § 1º");
+    expect(parseQuestionsForTopic("texto qualquer", nodes, ["155"]).errors[0]).toMatch(/Não encontrei questões/);
+  });
+});

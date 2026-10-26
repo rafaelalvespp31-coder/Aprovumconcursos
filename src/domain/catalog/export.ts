@@ -353,3 +353,61 @@ ${sample.join("\n").replace(/\n{3,}/g, "\n\n").trim()}
 ${qSample.join("\n").replace(/\n{3,}/g, "\n\n").trim()}
 <<<FIM DO MODELO>>>`;
 }
+
+/** Comando para o ChatGPT completar só as questões de uma aula já catalogada. */
+export function buildQuestionsPrompt(input: { title: string; sourceText: string; need: Record<"facil" | "medio" | "dificil", number> }): string {
+  const lines: string[] = [];
+  for (const [k, name, dif, mix] of [
+    ["facil", "FÁCIL", "1", "metade múltipla escolha e metade certo ou errado; letra da lei, penas e conceitos básicos"],
+    ["medio", "MÉDIO", "3", "a maioria de múltipla escolha; casos curtos que exigem aplicar o conceito"],
+    ["dificil", "DIFÍCIL", "4 ou 5", "múltipla escolha e certo ou errado; casos longos no estilo FGV, combinação de institutos e crimes próximos"],
+  ] as const) {
+    if (input.need[k] > 0) lines.push(`- ${name}: ${input.need[k]} questões (Dificuldade: ${dif}; ${mix})`);
+  }
+  if (!lines.length) lines.push("- FÁCIL: 5 questões (Dificuldade: 1)", "- MÉDIO: 5 questões (Dificuldade: 3)", "- DIFÍCIL: 5 questões (Dificuldade: 4 ou 5)");
+  return `Escreva QUESTÕES DE FIXAÇÃO para concursos públicos no PADRÃO APROVUM, sobre a aula "${input.title}".
+
+QUANTIDADES
+${lines.join("\n")}
+
+REGRAS
+- Questões autorais: não atribua a banca nem a concurso real. 5 alternativas (A a E) nas de múltipla escolha, todas plausíveis, cada uma com "Comentário:". Gabarito sempre coerente com a justificativa; distribua as letras corretas entre A e E; não repita questões.
+- Cada questão ligada a um "Item:" que exista no TEXTO-BASE abaixo (um dispositivo, ex.: § 1º, ou um número do sumário, ex.: 3).
+- Nunca invente súmula, tese ou julgado.
+
+FORMATO (responda SOMENTE com as questões, num único bloco de código; se cortar, eu escrevo "continue" e você segue sem repetir)
+=== QUESTÕES: FÁCIL ===
+
+--- QUESTÃO ---
+Tipo: múltipla escolha
+Item: (dispositivo ou número do TEXTO-BASE)
+Essencial: sim
+Dificuldade: 1
+Enunciado: (texto)
+A) (alternativa)
+Comentário: (por que está certa ou errada)
+B) (alternativa)
+Comentário: (…)
+C) (alternativa)
+Comentário: (…)
+D) (alternativa)
+Comentário: (…)
+E) (alternativa)
+Comentário: (…)
+Gabarito: (letra)
+Justificativa: (explicação)
+
+--- QUESTÃO ---
+Tipo: certo ou errado
+Item: (…)
+Essencial: não
+Dificuldade: 1
+Enunciado: (afirmação)
+Gabarito: (Certo ou Errado)
+Justificativa: (começa com "Certo." ou "Errado." e explica)
+
+(Use também "=== QUESTÕES: MÉDIO ===" e "=== QUESTÕES: DIFÍCIL ===" para os outros níveis, só os que estão nas QUANTIDADES.)
+
+TEXTO-BASE DA AULA
+${input.sourceText.trim()}`;
+}

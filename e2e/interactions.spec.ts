@@ -516,6 +516,19 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await expect(up.getByRole("textbox")).toHaveCount(2);
   });
 
+  test("aula sem questões completas: campo para adicionar questões, com comando e conferência", async ({ page }) => {
+    await page.goto(`${G}/catalogo`);
+    const box = page.getByTestId("adicionar-questoes");
+    await expect(box.getByText("Faltam questões nesta aula")).toBeVisible();
+    await expect(box.getByRole("button", { name: "Copiar comando das questões para o ChatGPT" })).toBeVisible();
+    await box.getByLabel("Cole aqui as questões").fill("=== QUESTÕES: DIFÍCIL ===\n--- QUESTÃO ---\nTipo: certo ou errado\nItem: § 1º\nEnunciado: O repouso noturno aumenta a pena do furto.\nGabarito: Certo\nJustificativa: Certo. É o § 1º do art. 155.");
+    await box.getByRole("button", { name: "Conferir questões" }).click();
+    await expect(box.getByText("Pronto para adicionar")).toBeVisible();
+    await expect(box.getByText(/Difícil: 1/).first()).toBeVisible();
+    await box.getByRole("button", { name: "Adicionar questões" }).click();
+    await expect(box.getByText(/nada é gravado/)).toBeVisible();
+  });
+
   test("texto fora do formato aponta os erros e não deixa salvar", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");

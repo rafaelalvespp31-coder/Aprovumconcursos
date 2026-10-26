@@ -3,6 +3,7 @@ import { createHash } from "node:crypto";
 import type { DisciplineMode } from "@/ai/pedagogy";
 import { prepareLessonUpload, summarizeLessonUpload, type LessonUploadPreview } from "@/domain/catalog/upload-preview";
 import { buildCompactPrompt, buildModelPrompt, buildModelPromptParts, exportTopicText, type ExportableTopic } from "@/domain/catalog/export";
+import { parseQuestionsForTopic } from "@/domain/catalog/upload";
 import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
 import { auditLog } from "../observability";
@@ -208,4 +209,78 @@ export async function modelPrompt(slug: string = DEFAULT_MODEL_SLUG): Promise<Mo
     selfCheck: check.errors,
     stats: { modules: new Set(topic.lesson.sections.map((s) => s.module ?? "")).size, sections: topic.lesson.sections.length, questions: { facil: count("facil"), medio: count("medio"), dificil: count("dificil") } },
   };
+}
+
+// ---------------------------------------------------------------------------
+// Completar as questões de uma aula já catalogada
+// ---------------------------------------------------------------------------
+
+export interface TopicQuestionsPreview {
+  ok: boolean;
+  errors: string[];
+  warnings: string[];
+  adding: Record<"facil" | "medio" | "dificil", number>;
+  after: Record<"facil" | "medio" | "dificil", number>;
+  willPublish: boolean;
+}
+
+async function loadTopicForQuestions(topicId: string) {
+  if (!/^[0-9a-f-]{36}$/i.test(topicId)) throw new UserFacingError("Aula inválida.", "invalid_input");
+  const db = createAdminClient();
+  const { data: t } = await db.from("catalog_topics").select("id, title, status, nodes, articles, lesson, source_text").eq("id", topicId).maybeSingle();
+  if (!t) throw new UserFacingError("Aula não encontrada.", "not_found");
+  const { data: qs } = await db.from("catalog_questions").select("level").eq("topic_id", topicId).eq("active", true);
+  const current = { facil: 0, medio: 0, dificil: 0 };
+  for (const q of qs ?? []) current[q.level as keyof typeof current]++;
+  return { t, current };
+}
+
+function analyzeTopicQuestions(text: string, t: { nodes: unknown; articles: unknown; lesson: unknown; status: unknown }, current: Record<"facil" | "medio" | "dificil", number>) {
+  if (!text.trim()) throw new UserFacingError("Cole as questões no campo.", "invalid_input");
+  if (text.length > 400_000) throw new UserFacingError("Texto grande demais. Cole em partes.", "invalid_input");
+  const nodes = (t.nodes as ExportableTopic["nodes"]) ?? [];
+  if (!nodes.length) throw new UserFacingError("Esta aula não tem texto-base: catalogue a aula completa primeiro.", "invalid_input");
+  const r = parseQuestionsForTopic(text, nodes, (t.articles as string[]) ?? []);
+  const adding = { facil: 0, medio: 0, dificil: 0 };
+  for (const q of r.questions) adding[q.level]++;
+  const after = { facil: current.facil + adding.facil, medio: current.medio + adding.medio, dificil: current.dificil + adding.dificil };
+  const willPublish = r.errors.length === 0 && t.status !== "publicado" && !!t.lesson && after.facil >= 10 && after.medio >= 10 && after.dificil >= 10;
+  return { ...r, adding, after, willPublish };
+}
+
+export async function previewTopicQuestions(topicId: string, text: string): Promise<TopicQuestionsPreview> {
+  const { t, current } = await loadTopicForQuestions(topicId);
+  const a = analyzeTopicQuestions(text, t, current);
+  return { ok: a.errors.length === 0 && a.questions.length > 0, errors: a.errors, warnings: a.warnings, adding: a.adding, after: a.after, willPublish: a.willPublish };
+}
+
+/** Acrescenta as questões coladas ao banco da aula (as atuais continuam) e publica se ficou completa. */
+export async function addTopicQuestions(user: SessionUser, topicId: string, text: string): Promise<{ added: number; published: boolean }> {
+  const { t, current } = await loadTopicForQuestions(topicId);
+  const a = analyzeTopicQuestions(text, t, current);
+  if (a.errors.length) throw new UserFacingError(a.errors[0]!, "invalid_input");
+  if (!a.questions.length) throw new UserFacingError("Nenhuma questão para adicionar.", "invalid_input");
+  const db = createAdminClient();
+  const rows = a.questions.map((q) => ({
+    topic_id: topicId,
+    level: q.level,
+    type: q.type,
+    statement: q.statement,
+    options: q.options,
+    correct_answer_true: q.correctAnswerTrue,
+    justification: q.justification,
+    node_key: q.nodeKey,
+    difficulty: q.difficulty,
+    essential: q.essential,
+    depends_on_external_source: false,
+  }));
+  const ins = await db.from("catalog_questions").insert(rows);
+  if (ins.error) throw new UserFacingError(`Não foi possível salvar as questões: ${ins.error.message}`, "invalid_input");
+  let published = false;
+  if (a.willPublish) {
+    const r = await db.rpc("publish_catalog_topic", { p_topic: topicId });
+    if (!r.error) published = true;
+  }
+  await auditLog(db, { actorId: user.id, userId: user.id, action: "catalog.questions_added", entity: "catalog_topics", entityId: topicId, meta: { added: rows.length, ...a.adding, published } });
+  return { added: rows.length, published };
 }

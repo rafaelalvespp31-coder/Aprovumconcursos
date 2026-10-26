@@ -657,3 +657,22 @@ export function buildLesson(p: ParsedLesson, nodes: readonly ExtractedNode[]): B
     errors,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Só questões (para completar o banco de uma aula já catalogada)
+// ---------------------------------------------------------------------------
+
+/**
+ * Lê só os blocos "=== QUESTÕES: … ===" de um texto colado e liga cada questão aos itens do
+ * texto-base da aula existente. Ignora o restante (dados da aula, seções), se vier junto.
+ */
+export function parseQuestionsForTopic(raw: string, nodes: readonly ExtractedNode[], articles: readonly string[]): { questions: BuiltLesson["questions"]; errors: string[]; warnings: string[] } {
+  const p = parseLessonUpload(raw);
+  // Erros de questão ("Questão da linha …") e de nível ficam; os da aula (título, matéria…) não importam aqui.
+  const errors = p.errors.filter((e) => /^Questão da linha|informe o nível do bloco de questões/.test(e));
+  if (!p.questions.length && !errors.length) errors.push("Não encontrei questões. Use os blocos === QUESTÕES: FÁCIL === / MÉDIO / DIFÍCIL e cada questão começando com --- QUESTÃO ---.");
+  const fake: ParsedLesson = { ...p, meta: { ...p.meta, articles: [...articles] }, sections: [], errors: [], warnings: [] };
+  const b = buildLesson(fake, nodes);
+  const warnings = b.warnings.filter((w) => /^Questão da linha|Comentário:/.test(w));
+  return { questions: b.questions, errors, warnings };
+}

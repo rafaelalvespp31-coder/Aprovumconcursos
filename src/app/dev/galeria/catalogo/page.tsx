@@ -4,6 +4,7 @@ import type { CatalogQuestion } from "@/domain/catalog/compose";
 import { publishBlockers, type TopicRow } from "@/server/services/catalog";
 import { PublishPanel, QuestionsEditor, SectionsEditor } from "@/app/admin/catalogo/[id]/editor";
 import { DemoLessonUpload } from "./demo-upload";
+import { DemoAddQuestions } from "./demo-add-questions";
 
 /** Prévia do editor do catálogo (área da equipe) com dados de EXEMPLO. Os botões não gravam aqui. */
 export default function Page() {
@@ -23,6 +24,7 @@ export default function Page() {
       <h1 className="t-h1">Editor do catálogo (prévia)</h1>
       <PublishPanel id="exemplo" status="rascunho" version={0} blockers={publishBlockers(topic, questions)} />
       <DemoLessonUpload />
+      <DemoAddQuestions />
       <SectionsEditor id="exemplo" sections={topic.lesson!.sections} />
       <QuestionsEditor id="exemplo" questions={questions} nodeTitles={{ [keys[0]!]: "Art. 121" }} />
     </div>

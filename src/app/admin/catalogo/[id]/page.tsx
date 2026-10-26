@@ -3,6 +3,9 @@ import { Markdown } from "@/components/markdown";
 import { getTopic, getTopicQuestions, publishBlockers, requireAdmin } from "@/server/services/catalog";
 import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import { PublishPanel, QuestionsEditor, SectionsEditor } from "./editor";
+import { AddQuestionsPanel } from "./add-questions";
+import { addTopicQuestionsAction, previewTopicQuestionsAction } from "../actions";
+import { buildQuestionsPrompt } from "@/domain/catalog/export";
 
 export const metadata = { title: "Tema do catálogo" };
 
@@ -14,6 +17,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
   const items = topic.nodes.filter((n) => n.requiresDirectCoverage);
   const nodeTitles = Object.fromEntries(topic.nodes.map((n) => [n.key, `${n.marker ? `${n.marker} ` : ""}${n.title}`.slice(0, 80)]));
   const blockers = publishBlockers(topic, questions);
+  const counts = { facil: questions.filter((q) => q.level === "facil").length, medio: questions.filter((q) => q.level === "medio").length, dificil: questions.filter((q) => q.level === "dificil").length };
 
   return (
     <div className="flex flex-col gap-8">
@@ -98,6 +102,19 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
         ) : (
           <p className="mt-2 t-small text-tinta-suave">Ainda sem aula. <Link href="/admin/catalogo/enviar" className="font-semibold text-destaque underline underline-offset-2">Catalogue a aula colando o texto</Link>.</p>
         )}
+      </section>
+
+      <section aria-labelledby="addq" className="rounded-lg border border-linha p-5">
+        <h2 id="addq" className="t-h2">Adicionar questões</h2>
+        <p className="mt-1 t-small text-tinta-suave">Cole questões no formato do painel para completar o banco desta aula. As que já existem continuam.</p>
+        <div className="mt-3">
+          <AddQuestionsPanel
+            topicId={id}
+            counts={counts}
+            prompt={buildQuestionsPrompt({ title: topic.title, sourceText: topic.source_text, need: { facil: Math.max(12 - counts.facil, counts.facil < 10 ? 10 - counts.facil : 0), medio: Math.max(12 - counts.medio, counts.medio < 10 ? 10 - counts.medio : 0), dificil: Math.max(12 - counts.dificil, counts.dificil < 10 ? 10 - counts.dificil : 0) } })}
+            actions={{ preview: previewTopicQuestionsAction, add: addTopicQuestionsAction }}
+          />
+        </div>
       </section>
 
       <section aria-labelledby="quest" className="rounded-lg border border-linha p-5">

@@ -18,7 +18,7 @@ import {
   updateTopicQuestion,
   updateTopicSection,
 } from "@/server/services/catalog";
-import { importLessonUpload, previewLessonUpload, type LessonUploadPreview } from "@/server/services/catalog-upload";
+import { addTopicQuestions, importLessonUpload, previewLessonUpload, previewTopicQuestions, type LessonUploadPreview, type TopicQuestionsPreview } from "@/server/services/catalog-upload";
 import { bannerUrlFor, removeBanner, saveBanner } from "@/server/services/banners";
 
 export interface AdminResult {
@@ -161,6 +161,32 @@ export async function deleteTopicAction(id: string): Promise<AdminResult> {
     return `“${i.title}” foi excluída do catálogo.`;
   });
   if (r.ok) {
+    revalidatePath("/admin/catalogo");
+    revalidatePath("/nova-trilha");
+  }
+  return r;
+}
+
+export type QuestionsPreviewResult = { ok: true; preview: TopicQuestionsPreview } | { ok: false; error: string };
+
+export async function previewTopicQuestionsAction(topicId: string, text: string): Promise<QuestionsPreviewResult> {
+  await requireAdmin();
+  let preview = null as TopicQuestionsPreview | null;
+  const r = await guard("catalog.questions_preview", async () => {
+    preview = await previewTopicQuestions(topicId, text);
+  });
+  return r.ok && preview ? { ok: true, preview } : { ok: false, error: r.error ?? "Não foi possível ler as questões." };
+}
+
+/** Acrescenta questões coladas a uma aula catalogada (publica se ela ficar completa). */
+export async function addTopicQuestionsAction(topicId: string, text: string): Promise<AdminResult> {
+  const user = await requireAdmin();
+  const r = await guard("catalog.questions_add", async () => {
+    const x = await addTopicQuestions(user, topicId, text);
+    return `${x.added} questão(ões) adicionada(s).${x.published ? " A aula ficou completa e foi publicada." : ""}`;
+  });
+  if (r.ok) {
+    revalidatePath(`/admin/catalogo/${topicId}`);
     revalidatePath("/admin/catalogo");
     revalidatePath("/nova-trilha");
   }
