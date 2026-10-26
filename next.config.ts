@@ -37,6 +37,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // Upload de aulas e questões (PDF/.txt) no painel da equipe; a Vercel aceita até ~4,5 MB por requisição.
+  experimental: { serverActions: { bodySizeLimit: "4mb" } },
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },

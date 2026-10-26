@@ -21,7 +21,7 @@ export default async function BankDashboardPage() {
           <h1 className="font-[Space_Grotesk] text-[26px] font-bold">Painel do banco</h1>
           <p className="text-[14px] text-white/60">Nada é publicado sem revisão humana. Questões só entram no Ranked depois de aprovadas por outro revisor e publicadas.</p>
         </div>
-        {staff.roles.autor && <DLink href="/banco/questoes/nova">+ Nova questão</DLink>}
+        {staff.roles.autor && <DLink href="/banco/importar">Enviar questões (PDF ou .txt)</DLink>}
       </div>
 
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">

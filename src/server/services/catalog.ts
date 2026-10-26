@@ -600,7 +600,7 @@ export async function setTopicStatus(user: SessionUser, id: string, status: "ras
 export async function listTopics() {
   const db = createAdminClient();
   const [topics, qs] = await Promise.all([
-    db.from("catalog_topics").select("id, title, kind, law_code, articles, status, version, updated_at, origin, lesson").order("updated_at", { ascending: false }).limit(1000),
+    db.from("catalog_topics").select("id, title, kind, law_code, articles, status, version, updated_at, origin, lesson, discipline_mode").order("updated_at", { ascending: false }).limit(1000),
     db.from("catalog_questions").select("topic_id, level").eq("active", true).limit(50000),
   ]);
   if (topics.error) throw new Error(topics.error.message);
@@ -620,6 +620,8 @@ export async function listTopics() {
     version: t.version as number,
     updatedAt: t.updated_at as string,
     origin: t.origin as string,
+    disciplineMode: (t.discipline_mode as string) ?? "outra",
+    modules: new Set(((t.lesson as { sections?: Array<{ module?: string }> } | null)?.sections ?? []).map((s) => s.module).filter(Boolean)).size,
     hasLesson: !!t.lesson,
     questions: count.get(t.id as string) ?? {},
   }));

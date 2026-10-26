@@ -1,0 +1,51 @@
+MODELO DE QUESTÕES DE CONCURSO — APROVUM (upload)
+Salve como .txt (bloco de notas, UTF-8) ou exporte para PDF. Linhas antes do primeiro bloco "===" são ignoradas.
+Linhas começando com // são comentários e são ignoradas.
+
+Como funciona:
+- O bloco PADRÃO vale para todas as questões. Qualquer campo dele pode ser repetido dentro de uma questão
+  para valer só para ela (ex.: outro Assunto ou outro Ano).
+- Matéria: precisa ser uma matéria já cadastrada no banco (ex.: Direito Penal, Língua Portuguesa).
+- Assunto: use ">" para subassuntos (ex.: Crimes contra a vida > Homicídio). Assuntos que não existem são criados
+  dentro da matéria.
+- Questão de prova: informe Banca, Ano e Concurso (Órgão e Cargo são opcionais). Sem esses três, a questão
+  entra como autoral da equipe.
+- Dificuldade: difícil, muito difícil ou extrema.
+- Gabarito: letra (A–E) ou Certo/Errado. Se o gabarito vier no fim da prova, use o bloco === GABARITO ===.
+- Justificativa é opcional no upload, mas obrigatória para aprovar a questão depois.
+- Todas entram como "Aguardando conferência": nenhuma chega aos alunos antes de você conferir e publicar.
+- Questões com enunciado já cadastrado são ignoradas (não duplica).
+
+=== PADRÃO ===
+Matéria: Direito Penal
+Assunto: Crimes contra a vida > Homicídio
+Banca: FGV
+Ano: 2026
+Concurso: Analista Judiciário — Área Fim
+Órgão: TJ MS
+Cargo: Analista Judiciário
+Dificuldade: difícil
+
+=== QUESTÕES ===
+
+--- QUESTÃO ---
+Número: 41
+Enunciado: José foi condenado definitivamente pela prática do crime de homicídio simples, com a incidência
+de uma causa de aumento de pena. Nesse cenário, é correto afirmar que o homicídio foi cometido:
+A) mediante recurso que tornou impossível a defesa do ofendido.
+B) com emprego de arma de fogo de uso restrito.
+C) contra menor de quatorze anos.
+D) com emprego de veneno.
+E) por grupo de extermínio.
+Gabarito: E
+Justificativa: (opcional) explique por que a alternativa E é a correta e por que as outras estão erradas.
+Fundamento legal: (opcional) Código Penal, art. 121, § 6º.
+
+--- QUESTÃO ---
+Tipo: certo ou errado
+Assunto: Crimes contra a vida > Infanticídio
+Enunciado: O infanticídio admite a forma culposa.
+Gabarito: Errado
+
+=== GABARITO ===
+// opcional: use quando as questões acima não tiverem "Gabarito:". Ex.: 41-E; 42-C

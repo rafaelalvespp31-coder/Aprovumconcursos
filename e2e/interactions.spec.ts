@@ -667,6 +667,30 @@ test.describe("casco pastel", () => {
   });
 });
 
+test.describe("catálogo: enviar aula por arquivo", () => {
+  test("o modelo de aula vira módulos, seções e questões na prévia", async ({ page }) => {
+    await page.goto(`${G}/catalogo`);
+    const up = page.getByTestId("upload-aula");
+    await up.getByLabel("Escolha o arquivo da aula").setInputFiles("public/modelos/modelo-aula.txt");
+    await expect(up.getByRole("heading", { name: "Furto (art. 155 do CP)" })).toBeVisible();
+    await expect(up.getByText("Direito Penal · CP, art. 155", { exact: false })).toBeVisible();
+    await expect(up.getByText("Pronto para salvar")).toBeVisible();
+    await expect(up.getByText("1. Base do tema", { exact: true })).toBeVisible();
+    await expect(up.getByText("2. Aprofundamento", { exact: true })).toBeVisible();
+    await expect(up.getByText("Onde a banca tenta te pegar")).toBeVisible();
+    await expect(up.getByText("Fácil: 2", { exact: true })).toBeVisible();
+    await expect(up.getByRole("button", { name: "Salvar como rascunho" })).toBeEnabled();
+  });
+
+  test("arquivo fora do modelo aponta os erros e não deixa salvar", async ({ page }) => {
+    await page.goto(`${G}/catalogo`);
+    const up = page.getByTestId("upload-aula");
+    await up.getByLabel("Escolha o arquivo da aula").setInputFiles({ name: "aula.txt", mimeType: "text/plain", buffer: Buffer.from("=== AULA ===\nTítulo: Teste\nMatéria: Astronomia\n") });
+    await expect(up.getByText(/Não reconheci a matéria “Astronomia”/)).toBeVisible();
+    await expect(up.getByRole("button", { name: "Salvar como rascunho" })).toBeDisabled();
+  });
+});
+
 test.describe("banco de questões (painel escuro)", () => {
   test("aprovar só libera com o checklist completo", async ({ page }) => {
     await page.goto(`${G}/banco`);
@@ -697,13 +721,24 @@ test.describe("banco de questões (painel escuro)", () => {
     await expect(form.getByLabel("Norma", { exact: true })).toBeVisible();
   });
 
-  test("gerar com IA: só matéria + assunto/artigo; opções extras escondidas", async ({ page }) => {
+  test("enviar questões: lê o modelo, mostra a lista e cadastra", async ({ page }) => {
     await page.goto(`${G}/banco`);
-    await expect(page.getByLabel("Assunto ou artigo")).toBeVisible();
-    await expect(page.getByLabel("Quantidade")).toBeHidden();
-    await page.getByText("Mais opções (opcional)").click();
-    await expect(page.getByLabel("Quantidade")).toHaveValue("5");
-    await expect(page.getByRole("button", { name: "Gerar questões" })).toBeEnabled();
+    const up = page.getByTestId("upload-questoes");
+    await up.getByLabel("Escolha o arquivo de questões").setInputFiles("public/modelos/modelo-questoes.txt");
+    await expect(up.getByText("2 questão(ões) no arquivo · 2 nova(s)")).toBeVisible();
+    await expect(up.getByText("Pronto para cadastrar")).toBeVisible();
+    await expect(up.getByRole("cell", { name: /Crimes contra a vida › Homicídio/ })).toBeVisible();
+    await expect(up.getByRole("cell", { name: "Errado", exact: true })).toBeVisible();
+    await up.getByRole("button", { name: "Cadastrar 2 questão(ões)" }).click();
+    await expect(up.getByText(/2 questão\(ões\) cadastrada\(s\)/)).toBeVisible();
+  });
+
+  test("enviar questões: arquivo fora do modelo mostra os erros e não deixa cadastrar", async ({ page }) => {
+    await page.goto(`${G}/banco`);
+    const up = page.getByTestId("upload-questoes");
+    await up.getByLabel("Escolha o arquivo de questões").setInputFiles({ name: "x.txt", mimeType: "text/plain", buffer: Buffer.from("=== PADRÃO ===\nMatéria: Astronomia\n=== QUESTÕES ===\n--- QUESTÃO ---\nEnunciado: Uma questão qualquer de teste.\nGabarito: Certo\nTipo: certo ou errado\n") });
+    await expect(up.getByText(/a matéria “Astronomia” não existe/)).toBeVisible();
+    await expect(up.getByRole("button", { name: /Cadastrar/ })).toBeDisabled();
   });
 });
 

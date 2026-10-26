@@ -4,24 +4,19 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { AIError } from "@/ai/provider";
-import { LEVEL_KEYS } from "@/domain/progress/levels";
 import { logEvent } from "@/server/observability";
 import { UserFacingError } from "@/server/services/trails";
 import {
-  createTopic,
-  generateTopicLesson,
-  generateTopicQuestions,
-  generateTopicStructure,
   promoteLesson,
   publishTopic,
   removeTopicQuestion,
   requireAdmin,
   setTopicStatus,
-  topicInputSchema,
-  updateTopic,
   updateTopicQuestion,
   updateTopicSection,
 } from "@/server/services/catalog";
+import { importLessonUpload, previewLessonUpload, type LessonUploadPreview } from "@/server/services/catalog-upload";
+import { uploadedText } from "@/server/upload-file";
 
 export interface AdminResult {
   ok: boolean;
@@ -42,65 +37,30 @@ async function guard(name: string, fn: () => Promise<string | void>): Promise<Ad
   }
 }
 
-function topicForm(form: FormData) {
-  return topicInputSchema.safeParse({
-    title: form.get("title"),
-    kind: form.get("kind"),
-    lawCode: form.get("lawCode") || undefined,
-    articles: form.get("articles") || undefined,
-    aliases: form.get("aliases") || undefined,
-    disciplineMode: form.get("disciplineMode"),
-    summary: form.get("summary") || undefined,
-    sourceText: form.get("sourceText") || undefined,
-    estimatedMinutes: form.get("estimatedMinutes") || undefined,
+export type UploadPreviewResult = { ok: true; preview: LessonUploadPreview } | { ok: false; error: string };
+
+/** Lê o arquivo (PDF ou .txt) e mostra como a aula ficará, sem gravar. */
+export async function previewLessonUploadAction(form: FormData): Promise<UploadPreviewResult> {
+  await requireAdmin();
+  let preview = null as LessonUploadPreview | null;
+  const r = await guard("catalog.upload_preview", async () => {
+    const f = await uploadedText(form.get("file") as File);
+    preview = await previewLessonUpload(f.text);
   });
+  return r.ok && preview ? { ok: true, preview } : { ok: false, error: r.error ?? "Não foi possível ler o arquivo." };
 }
 
-export async function createTopicAction(_: AdminResult, form: FormData): Promise<AdminResult> {
+/** Grava a aula do arquivo como rascunho e abre a página de revisão. */
+export async function importLessonUploadAction(form: FormData): Promise<AdminResult> {
   const user = await requireAdmin();
-  const parsed = topicForm(form);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
   let id = "";
-  const r = await guard("catalog.create", async () => {
-    id = await createTopic(user, parsed.data);
+  const r = await guard("catalog.upload", async () => {
+    const f = await uploadedText(form.get("file") as File);
+    id = (await importLessonUpload(user, f.text, f.name)).id;
   });
   if (!r.ok) return r;
+  revalidatePath("/admin/catalogo");
   redirect(`/admin/catalogo/${id}`);
-}
-
-export async function updateTopicAction(id: string, _: AdminResult, form: FormData): Promise<AdminResult> {
-  const user = await requireAdmin();
-  const parsed = topicForm(form);
-  if (!parsed.success) return { ok: false, error: parsed.error.issues[0]?.message ?? "Dados inválidos." };
-  const r = await guard("catalog.update", async () => {
-    const { sourceChanged } = await updateTopic(user, id, parsed.data);
-    return sourceChanged ? "Dados salvos. O texto-fonte mudou: gere a estrutura, a aula e as questões de novo." : "Dados salvos.";
-  });
-  revalidatePath(`/admin/catalogo/${id}`);
-  return r;
-}
-
-const steps = ["estrutura", "aula", ...LEVEL_KEYS] as const;
-export type GenerationStep = (typeof steps)[number];
-
-/** Um passo de geração por chamada (cada um cabe no tempo de uma requisição). */
-export async function runStepAction(id: string, step: GenerationStep): Promise<AdminResult> {
-  await requireAdmin();
-  const s = z.enum(steps).parse(step);
-  const r = await guard(`catalog.step_${s}`, async () => {
-    if (s === "estrutura") {
-      const x = await generateTopicStructure(id);
-      return `${x.items} item(ns) a ensinar.`;
-    }
-    if (s === "aula") {
-      const x = await generateTopicLesson(id);
-      return x.missingKinds.length ? `Aula com ${x.sections} seções; faltaram: ${x.missingKinds.join(", ")}.` : `Aula com ${x.sections} seções.`;
-    }
-    const x = await generateTopicQuestions(id, s);
-    return `${x.added} questão(ões) acrescentada(s).`;
-  });
-  revalidatePath(`/admin/catalogo/${id}`);
-  return r;
 }
 
 export async function saveSectionAction(id: string, index: number, data: { title: string; bodyMarkdown: string }): Promise<AdminResult> {

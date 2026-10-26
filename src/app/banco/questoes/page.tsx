@@ -27,7 +27,7 @@ export default async function BankQuestionsPage({ searchParams }: { searchParams
           <h1 className="font-[Space_Grotesk] text-[26px] font-bold">Questões</h1>
           <p className="text-[14px] text-white/60">{list.total} encontrada(s)</p>
         </div>
-        {staff.roles.autor && <DLink href="/banco/questoes/nova">+ Nova questão</DLink>}
+        {staff.roles.autor && <DLink href="/banco/importar">Enviar questões (PDF ou .txt)</DLink>}
       </div>
 
       <DCard>

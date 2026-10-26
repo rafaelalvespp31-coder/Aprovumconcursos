@@ -5,59 +5,9 @@ import { useState, useTransition } from "react";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
 import { LEVELS, type LevelKey } from "@/domain/progress/levels";
 import type { CatalogQuestion } from "@/domain/catalog/compose";
-import { publishAction, removeQuestionAction, runStepAction, saveQuestionAction, saveSectionAction, setStatusAction, type AdminResult, type GenerationStep } from "../actions";
+import { publishAction, removeQuestionAction, saveQuestionAction, saveSectionAction, setStatusAction, type AdminResult } from "../actions";
 
-interface Section { kind: string; title: string; bodyMarkdown: string }
-
-const STEP_LABEL: Record<GenerationStep, string> = {
-  estrutura: "1. Estrutura (itens a ensinar)",
-  aula: "2. Aula completa",
-  facil: "3. Questões — fácil",
-  medio: "4. Questões — médio",
-  dificil: "5. Questões — difícil",
-};
-
-/** Geração passo a passo: cada passo é uma chamada curta, com resultado visível. */
-export function GenerationPanel({ id, hasStructure, hasLesson }: { id: string; hasStructure: boolean; hasLesson: boolean }) {
-  const router = useRouter();
-  const [log, setLog] = useState<Array<{ step: GenerationStep; r: AdminResult }>>([]);
-  const [running, setRunning] = useState<GenerationStep | null>(null);
-  const run = async (steps: GenerationStep[]) => {
-    for (const s of steps) {
-      setRunning(s);
-      const r = await runStepAction(id, s);
-      setLog((l) => [...l, { step: s, r }]);
-      if (!r.ok) break;
-    }
-    setRunning(null);
-    router.refresh();
-  };
-  const all: GenerationStep[] = ["estrutura", "aula", "facil", "medio", "dificil"];
-  return (
-    <div className="flex flex-col gap-3">
-      <p className="t-small text-tinta-suave">
-        A IA prepara o rascunho; você revisa abaixo antes de publicar. Refazer a estrutura apaga a aula e as questões. As questões são acrescentadas ao banco (rode o mesmo nível de novo para ter mais).
-      </p>
-      <div className="flex flex-wrap gap-2">
-        <Button disabled={!!running} onClick={() => run(all)}>{running ? `Gerando: ${STEP_LABEL[running]}…` : "Gerar tudo"}</Button>
-        {all.map((s) => (
-          <Button key={s} variant="secundario" disabled={!!running || (s === "aula" && !hasStructure) || (s !== "estrutura" && s !== "aula" && !hasLesson)} onClick={() => run([s])}>
-            {STEP_LABEL[s]}
-          </Button>
-        ))}
-      </div>
-      {log.length > 0 && (
-        <ul className="flex flex-col gap-1 t-small" aria-live="polite">
-          {log.map((x, i) => (
-            <li key={i} className={x.r.ok ? "text-tinta-suave" : "text-erro"}>
-              {x.r.ok ? "✓" : "✗"} {STEP_LABEL[x.step]} — {x.r.ok ? x.r.message : x.r.error}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
-  );
-}
+interface Section { kind: string; title: string; bodyMarkdown: string; module?: string }
 
 export function SectionsEditor({ id, sections }: { id: string; sections: Section[] }) {
   return (
@@ -76,6 +26,7 @@ function SectionEditor({ id, index, section }: { id: string; index: number; sect
   return (
     <details className="rounded-md border border-linha bg-superficie p-3">
       <summary className="cursor-pointer font-semibold">
+        {section.module && <span className="mr-2 t-tiny font-bold uppercase text-destaque">{section.module}</span>}
         {section.title} <span className="t-tiny font-normal text-tinta-fraca">({section.kind})</span>
       </summary>
       <div className="mt-3 flex flex-col gap-2">

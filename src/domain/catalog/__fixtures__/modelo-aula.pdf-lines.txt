@@ -1,0 +1,99 @@
+MODELO DE AULA — APROVUM (catalogação por upload)
+Salve como .txt (bloco de notas, UTF-8) ou exporte para PDF. Linhas antes do
+primeiro bloco "===" são ignoradas.
+Os blocos são marcados por === NOME === e os itens por --- NOME ---. Apague
+estas instruções se quiser.
+Tipos de seção aceitos: objetivo, conhecimentos prévios, introdução, explicação,
+conceitos fundamentais,
+aprofundamento, exemplos, comparação, aplicação, pegadinhas, exceções, quadro
+comparativo, esquema,
+resumo, checklist, referências, próxima etapa, texto legal, doutrina,
+jurisprudência,
+interpretação da banca, flashcards.
+"Itens:" (opcional, 1ª linha da seção) liga a seção aos dispositivos/tópicos do
+TEXTO-BASE, separados por ";".
+Sem "Itens:", o sistema liga a seção aos dispositivos citados no texto dela.
+Linhas começando com // são comentários e são ignoradas.
+Observações:
+- Para publicar, cada nível precisa de pelo menos 10 questões. Você pode enviar
+menos e completar depois.
+- Para temas que não são lei (Português, Informática…), use "Tipo: tema", deixe
+Lei/Artigos vazios
+e escreva no TEXTO-BASE um sumário numerado (1 Coesão; 1.1 Referenciação; 1.2
+Conectivos; 2 Coerência).
+Em "Itens:" use os números (1.1; 1.2) ou os nomes dos tópicos.
+- Reenviar uma aula com o mesmo título atualiza o rascunho dela; as questões
+antigas ficam inativas (não são apagadas).
+=== AULA ===
+Título: Furto (art. 155 do CP)
+Matéria: Direito Penal
+Tipo: dispositivo
+Lei: CP
+Artigos: 155
+Sinônimos: furto simples; furto qualificado; subtração de coisa alheia
+Tempo estimado: 60
+Objetivo: Entender o furto simples, o repouso noturno e as qualificadoras do §
+4º, como as bancas cobram.
+Resumo: Furto é subtrair coisa alheia móvel, para si ou para outrem, sem
+violência ou grave ameaça.
+=== TEXTO-BASE ===
+Art. 155. Subtrair, para si ou para outrem, coisa alheia móvel:
+Pena - reclusão, de um a quatro anos, e multa.
+§ 1º A pena aumenta-se de um terço, se o crime é praticado durante o repouso
+noturno.
+§ 4º A pena é de reclusão de dois a oito anos, e multa, se o crime é cometido:
+I - com destruição ou rompimento de obstáculo à subtração da coisa;
+II - com abuso de confiança, ou mediante fraude, escalada ou destreza;
+=== MÓDULO: 1. Base do tema ===
+--- SEÇÃO: introdução | Por que o furto cai tanto ---
+Itens: Art. 155
+O furto é um dos crimes mais cobrados em provas policiais...
+--- SEÇÃO: texto legal | Lei seca comentada ---
+Itens: Art. 155; § 1º; § 4º; § 4º, I; § 4º, II
+**Art. 155.** Subtrair, para si ou para outrem, coisa alheia móvel...
+=== MÓDULO: 2. Aprofundamento ===
+--- SEÇÃO: pegadinhas | Onde a banca tenta te pegar ---
+Itens: § 1º
+- Repouso noturno não é o mesmo que "noite"...
+--- SEÇÃO: quadro comparativo | Furto x Roubo ---
+| | Furto | Roubo |
+|---|---|---|
+| Violência ou grave ameaça | Não | Sim |
+--- SEÇÃO: resumo | Revisão final ---
+- Furto = subtrair coisa alheia móvel, sem violência.
+=== REFERÊNCIAS ===
+Lei: Código Penal, art. 155.
+// Doutrina: autor, obra, edição
+=== A CONFERIR ===
+// (opcional) afirmações que você ainda quer confirmar antes de publicar, uma
+por linha
+=== QUESTÕES: FÁCIL ===
+--- QUESTÃO ---
+Tipo: múltipla escolha
+Item: Art. 155
+Essencial: sim
+Enunciado: Segundo o art. 155 do Código Penal, o furto consiste em:
+A) subtrair coisa alheia móvel, para si ou para outrem.
+Comentário: Correta, é a redação literal do caput.
+B) subtrair coisa alheia mediante grave ameaça.
+Comentário: Errada; com grave ameaça o crime é roubo (art. 157).
+C) apropriar-se de coisa alheia de que tem a posse.
+Comentário: Errada; isso é apropriação indébita (art. 168).
+D) obter vantagem ilícita mediante fraude.
+Comentário: Errada; isso é estelionato (art. 171).
+Gabarito: A
+Justificativa: O caput do art. 155 define o furto como subtrair, para si ou para
+outrem, coisa alheia móvel.
+--- QUESTÃO ---
+Tipo: certo ou errado
+Item: § 1º
+Enunciado: A pena do furto aumenta-se de um terço se o crime é praticado durante
+o repouso noturno.
+Gabarito: Certo
+Justificativa: É a previsão literal do § 1º do art. 155.
+=== QUESTÕES: MÉDIO ===
+--- QUESTÃO ---
+// (mesmo formato das questões acima)
+=== QUESTÕES: DIFÍCIL ===
+--- QUESTÃO ---
+// (mesmo formato das questões acima)

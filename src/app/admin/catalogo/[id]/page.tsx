@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { Markdown } from "@/components/markdown";
 import { getTopic, getTopicQuestions, publishBlockers, requireAdmin } from "@/server/services/catalog";
-import { TopicForm } from "../topic-form";
-import { GenerationPanel, PublishPanel, QuestionsEditor, SectionsEditor } from "./editor";
+import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
+import { PublishPanel, QuestionsEditor, SectionsEditor } from "./editor";
 
 export const metadata = { title: "Tema do catálogo" };
-// Os passos de geração chamam a IA a partir desta página.
-export const maxDuration = 300;
 
 export default async function TopicPage({ params }: { params: Promise<{ id: string }> }) {
   // A verificação fica também na página: layout e página renderizam em paralelo.
@@ -32,27 +30,27 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
 
       <section aria-labelledby="dados" className="rounded-lg border border-linha p-5">
         <h2 id="dados" className="t-h2">Dados e reconhecimento</h2>
-        <div className="mt-4">
-          <TopicForm
-            id={id}
-            initial={{
-              title: topic.title,
-              kind: topic.kind,
-              lawCode: topic.law_code,
-              articles: topic.articles,
-              aliases: topic.aliases,
-              disciplineMode: topic.discipline_mode,
-              summary: topic.summary,
-              sourceText: topic.source_text,
-              estimatedMinutes: topic.estimated_minutes,
-            }}
-          />
-        </div>
-      </section>
-
-      <section aria-labelledby="ger" className="rounded-lg border border-linha p-5">
-        <h2 id="ger" className="t-h2">Rascunho com IA</h2>
-        <div className="mt-3"><GenerationPanel id={id} hasStructure={items.length > 0} hasLesson={!!topic.lesson} /></div>
+        <dl className="mt-3 grid gap-x-6 gap-y-2 t-small sm:grid-cols-[max-content_1fr]">
+          <dt className="font-semibold">Matéria</dt>
+          <dd>{DISCIPLINE_LABELS[topic.discipline_mode as DisciplineMode] ?? topic.discipline_mode}</dd>
+          <dt className="font-semibold">Tipo</dt>
+          <dd>{topic.kind === "dispositivo" ? `${topic.law_code}, art. ${topic.articles.join(", ")}` : "Tema"}</dd>
+          <dt className="font-semibold">Sinônimos</dt>
+          <dd>{topic.aliases.length ? topic.aliases.join("; ") : "—"}</dd>
+          <dt className="font-semibold">Tempo estimado</dt>
+          <dd>{topic.estimated_minutes} min</dd>
+          {topic.summary && (
+            <>
+              <dt className="font-semibold">Resumo</dt>
+              <dd>{topic.summary}</dd>
+            </>
+          )}
+        </dl>
+        <p className="mt-3 t-small text-tinta-suave">
+          Para mudar dados, texto-base ou a estrutura dos módulos, corrija o arquivo e{" "}
+          <Link href="/admin/catalogo/enviar" className="font-semibold text-destaque underline underline-offset-2">envie de novo</Link>
+          {topic.status === "publicado" ? " (aula publicada: envie como nova parte ou arquive esta antes)." : " — o rascunho é atualizado."} Os textos das seções e as questões podem ser corrigidos aqui mesmo.
+        </p>
       </section>
 
       <section aria-labelledby="estr" className="rounded-lg border border-linha p-5">
@@ -66,7 +64,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
             ))}
           </ol>
         ) : (
-          <p className="mt-2 t-small text-tinta-suave">Ainda sem estrutura. Use “1. Estrutura”.</p>
+          <p className="mt-2 t-small text-tinta-suave">Ainda sem estrutura. Envie o arquivo da aula com o bloco === TEXTO-BASE ===.</p>
         )}
       </section>
 
@@ -85,8 +83,11 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
             <details className="mt-4 rounded-md border border-linha p-3">
               <summary className="cursor-pointer font-semibold">Pré-visualizar a aula como o aluno vê</summary>
               <div className="mt-3 flex flex-col gap-6">
-                {topic.lesson.sections.map((s, i) => (
+                {topic.lesson.sections.map((s, i, all) => (
                   <div key={i}>
+                    {(s as { module?: string }).module && (s as { module?: string }).module !== (all[i - 1] as { module?: string } | undefined)?.module && (
+                      <p className="mb-2 t-tiny font-bold uppercase tracking-wide text-destaque">{(s as { module?: string }).module}</p>
+                    )}
                     <h3 className="t-h3">{s.title}</h3>
                     <Markdown>{s.bodyMarkdown}</Markdown>
                   </div>
@@ -95,7 +96,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
             </details>
           </>
         ) : (
-          <p className="mt-2 t-small text-tinta-suave">Ainda sem aula. Use “2. Aula completa”.</p>
+          <p className="mt-2 t-small text-tinta-suave">Ainda sem aula. <Link href="/admin/catalogo/enviar" className="font-semibold text-destaque underline underline-offset-2">Envie o arquivo da aula</Link>.</p>
         )}
       </section>
 

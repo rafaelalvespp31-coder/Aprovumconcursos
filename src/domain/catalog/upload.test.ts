@@ -1,0 +1,138 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+import { lessonSchema } from "@/ai/schemas";
+import { extractStructure } from "@/domain/content/extract";
+import { normalizeContent } from "@/domain/content/normalize";
+import { buildLesson, disciplineFrom, itemKey, matchItem, parseLessonUpload, sectionKind, unwrapPdfLines } from "./upload";
+
+const nodesOf = (t: string) => extractStructure(normalizeContent(t).normalized).nodes;
+const template = readFileSync("public/modelos/modelo-aula.txt", "utf8");
+
+describe("modelo de aula (upload)", () => {
+  it("lê o modelo oficial sem erros e monta a aula no formato do catálogo", () => {
+    const p = parseLessonUpload(template);
+    expect(p.errors).toEqual([]);
+    expect(p.meta).toMatchObject({ title: "Furto (art. 155 do CP)", disciplineMode: "direito_penal", kind: "dispositivo", lawCode: "CP", articles: ["155"], estimatedMinutes: 60 });
+    expect(p.meta.aliases).toContain("furto qualificado");
+    expect(p.sections.map((s) => s.kind)).toEqual(["introducao", "texto_legal", "pegadinhas", "quadro_comparativo", "resumo"]);
+    expect(p.sections[0]!.module).toBe("1. Base do tema");
+    expect(p.sections[2]!.module).toBe("2. Aprofundamento");
+    expect(p.sections[1]!.bodyMarkdown.startsWith("**Art. 155.**")).toBe(true);
+    expect(p.sections[1]!.items).toEqual(["Art. 155", "§ 1º", "§ 4º", "§ 4º, I", "§ 4º, II"]);
+    expect(p.questions).toHaveLength(2);
+    expect(p.references.map((r) => r.kind)).toEqual(["lei"]);
+    expect(p.pending).toEqual([]);
+
+    const nodes = nodesOf(p.sourceText);
+    const b = buildLesson(p, nodes);
+    expect(b.errors).toEqual([]);
+    expect(lessonSchema.safeParse(b.lesson).success).toBe(true);
+    // Todos os itens do texto-base ficam cobertos por alguma seção.
+    const covered = new Set(b.lesson.sections.flatMap((s) => s.nodeKeys));
+    for (const k of b.lesson.taughtNodeKeys) expect(covered.has(k)).toBe(true);
+    const [q1, q2] = b.questions;
+    expect(q1!.options.find((o) => o.correct)!.label).toBe("A");
+    expect(q1!.essential).toBe(true);
+    expect(q2!.type).toBe("certo_errado");
+    expect(q2!.correctAnswerTrue).toBe(true);
+    expect(nodes.find((n) => n.key === q2!.nodeKey)!.path).toBe("Art. 155 › § 1º");
+    expect(b.warnings.some((w) => /pelo menos 10/.test(w))).toBe(true);
+  });
+
+  it("casa itens por caminho, marcador ou título", () => {
+    const law = nodesOf("Art. 155. Subtrair coisa alheia móvel:\n§ 4º Se o crime é cometido:\nI - com destruição de obstáculo;\nII - com abuso de confiança;");
+    expect(matchItem("Art. 155, § 4º, II", law, ["155"])!.path).toBe("Art. 155 › § 4º › II");
+    expect(matchItem("§ 4º, I", law, ["155"])!.path).toBe("Art. 155 › § 4º › I");
+    expect(matchItem("art 155", law, ["155"])!.path).toBe("Art. 155");
+    const tema = nodesOf("1 Coesão textual\n1.1 Referenciação\n1.2 Conectivos\n2 Coerência");
+    expect(matchItem("1.2", tema, [])!.title).toBe("Conectivos");
+    expect(matchItem("coerencia", tema, [])!.marker).toBe("2");
+    expect(matchItem("Inexistente", tema, [])).toBeNull();
+    expect(itemKey("Art. 155 › § 4º › I")).toBe(itemKey("art. 155, §4º, I"));
+  });
+
+  it("reconhece tipos de seção e matérias por nomes amigáveis", () => {
+    expect(sectionKind("Quadro comparativo")).toBe("quadro_comparativo");
+    expect(sectionKind("interpretação da banca")).toBe("interpretacao_banca");
+    expect(sectionKind("texto_legal")).toBe("texto_legal");
+    expect(sectionKind("mapa mental")).toBe("esquema");
+    expect(sectionKind("qualquer")).toBeNull();
+    expect(disciplineFrom("Português", null)).toBe("lingua_portuguesa");
+    expect(disciplineFrom("Direito Processual Penal", null)).toBe("direito_processual_penal");
+    expect(disciplineFrom("", "CPP")).toBe("direito_processual_penal");
+    expect(disciplineFrom("Astronomia", null)).toBeNull();
+  });
+
+  it("tema com sumário numerado e seções sem 'Itens:' ligadas por menção", () => {
+    const txt = [
+      "=== AULA ===",
+      "Título: Coesão e coerência",
+      "Matéria: Língua Portuguesa",
+      "Tipo: tema",
+      "Objetivo: Reconhecer mecanismos de coesão e coerência textual.",
+      "=== TEXTO-BASE ===",
+      "1 Coesão textual",
+      "1.1 Referenciação",
+      "1.2 Conectivos",
+      "2 Coerência",
+      "=== MÓDULO: Coesão ===",
+      "--- SEÇÃO: explicação | O que é coesão ---",
+      "A referenciação retoma termos; os conectivos ligam ideias.",
+      "--- SEÇÃO: resumo | Revisão ---",
+      "Coerência é o sentido global do texto.",
+    ].join("\n");
+    const p = parseLessonUpload(txt);
+    expect(p.errors).toEqual([]);
+    expect(p.meta.kind).toBe("tema");
+    const nodes = nodesOf(p.sourceText);
+    const b = buildLesson(p, nodes);
+    const titles = (keys: string[]) => keys.map((k) => nodes.find((n) => n.key === k)!.title);
+    expect(titles(b.lesson.sections[0]!.nodeKeys)).toEqual(expect.arrayContaining(["Referenciação", "Conectivos"]));
+    expect(titles(b.lesson.sections[1]!.nodeKeys)).toContain("Coerência");
+    expect(lessonSchema.safeParse(b.lesson).success).toBe(true);
+  });
+
+  it("aponta erros com a linha e não aceita gabarito inválido", () => {
+    const txt = [
+      "=== AULA ===",
+      "Título: X",
+      "Matéria: Astronomia",
+      "=== MÓDULO: M ===",
+      "--- SEÇÃO: inventada | Seção ---",
+      "texto",
+      "=== QUESTÕES: FÁCIL ===",
+      "--- QUESTÃO ---",
+      "Enunciado: Qual é a alternativa correta aqui?",
+      "A) um",
+      "B) dois",
+      "Gabarito: F",
+      "Justificativa: Porque sim, conforme o texto.",
+    ].join("\n");
+    const p = parseLessonUpload(txt);
+    const all = p.errors.join("\n");
+    expect(all).toMatch(/Objetivo/);
+    expect(all).toMatch(/matéria “Astronomia”/);
+    expect(all).toMatch(/TEXTO-BASE/);
+    expect(all).toMatch(/Linha 5: tipo de seção “inventada”/);
+    expect(all).toMatch(/Questão da linha 8: “Gabarito:”/);
+    expect(p.questions).toHaveLength(0);
+  });
+});
+
+describe("upload em PDF", () => {
+  it("o modelo exportado em PDF (linhas quebradas) lê igual ao .txt", () => {
+    const lines = readFileSync("src/domain/catalog/__fixtures__/modelo-aula.pdf-lines.txt", "utf8").split("\n");
+    const fromPdf = parseLessonUpload(unwrapPdfLines(lines));
+    const fromTxt = parseLessonUpload(template);
+    expect(fromPdf.errors).toEqual([]);
+    expect(fromPdf.meta).toEqual(fromTxt.meta);
+    expect(fromPdf.sections.map((s) => [s.kind, s.title, s.module, s.items])).toEqual(fromTxt.sections.map((s) => [s.kind, s.title, s.module, s.items]));
+    expect(fromPdf.questions.map((q) => [q.statement, q.answer, q.justification])).toEqual(fromTxt.questions.map((q) => [q.statement, q.answer, q.justification]));
+    expect(fromPdf.sourceText.replace(/\s+/g, " ")).toBe(fromTxt.sourceText.replace(/\s+/g, " "));
+  });
+
+  it("não junta linhas que começam com marcador", () => {
+    const long = "x".repeat(80);
+    expect(unwrapPdfLines([long, "continua aqui", long, "A) alternativa", long, "Gabarito: A", "curta", "outra", long])).toBe(`${long} continua aqui\n${long}\nA) alternativa\n${long}\nGabarito: A\ncurta\noutra\n${long}`);
+  });
+});

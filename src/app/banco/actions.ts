@@ -21,7 +21,8 @@ import {
   type SimilarHit,
 } from "@/server/services/bank";
 import type { BankStatus } from "@/domain/bank/labels";
-import { cancelGeneration, runGenerationStep, startGeneration, type StepResult } from "@/server/services/bank-generation";
+import { importBankUpload, previewBankUpload, type BankUploadPreview } from "@/server/services/bank-upload";
+import { uploadedText } from "@/server/upload-file";
 
 export interface BankResult<T = undefined> {
   ok: boolean;
@@ -94,17 +95,27 @@ export async function staffRoleAction(email: string, role: "autor" | "revisor", 
 }
 
 // ---------------------------------------------------------------------------
-// Geração por IA (Fase 5)
+// Upload de questões de concurso (PDF ou .txt)
 // ---------------------------------------------------------------------------
 
-export async function startGenerationAction(payload: unknown): Promise<BankResult<{ batchId: string; total: number; base: string; notice?: string }>> {
-  return run("ai_start", async () => startGeneration(await requireBankStaff(), payload), ["/banco/gerar"]);
+export async function previewBankUploadAction(form: FormData): Promise<BankResult<BankUploadPreview>> {
+  return run("upload_preview", async () => {
+    const staff = await requireBankStaff();
+    if (!staff.roles.autor) throw new UserFacingError("Somente autores cadastram questões.", "forbidden");
+    const f = await uploadedText(form.get("file") as File);
+    return previewBankUpload(f.text);
+  });
 }
 
-export async function generationStepAction(batchId: string): Promise<BankResult<StepResult>> {
-  return run("ai_step", async () => runGenerationStep(await requireBankStaff(), batchId), ["/banco", "/banco/questoes"]);
-}
-
-export async function cancelGenerationAction(batchId: string) {
-  return run("ai_cancel", async () => cancelGeneration(await requireBankStaff(), batchId), ["/banco/gerar"]);
+export async function importBankUploadAction(form: FormData): Promise<BankResult<{ created: number; skipped: number; codes: string[] }>> {
+  return run(
+    "upload",
+    async () => {
+      const staff = await requireBankStaff();
+      const f = await uploadedText(form.get("file") as File);
+      const r = await importBankUpload(staff, f.text, { name: f.name, size: f.size, pdf: f.pdf });
+      return { created: r.created, skipped: r.skipped, codes: r.codes };
+    },
+    ["/banco", "/banco/questoes"],
+  );
 }

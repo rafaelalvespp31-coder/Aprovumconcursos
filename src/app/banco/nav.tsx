@@ -8,7 +8,7 @@ export function BankNav({ admin }: { admin: boolean }) {
   const items = [
     { href: "/banco", label: "Painel" },
     { href: "/banco/questoes", label: "Questões" },
-    { href: "/banco/gerar", label: "Gerar com IA" },
+    { href: "/banco/importar", label: "Enviar questões" },
     { href: "/banco/fontes", label: "Fontes" },
     { href: "/banco/assuntos", label: "Matérias e assuntos" },
     ...(admin ? [{ href: "/banco/equipe", label: "Equipe" }] : []),
