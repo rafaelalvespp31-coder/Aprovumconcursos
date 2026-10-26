@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import type { DisciplineMode } from "@/ai/pedagogy";
 import { prepareLessonUpload, summarizeLessonUpload, type LessonUploadPreview } from "@/domain/catalog/upload-preview";
+import { buildModelPrompt, exportTopicText, type ExportableTopic } from "@/domain/catalog/export";
 import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
 import { auditLog } from "../observability";
@@ -135,3 +136,70 @@ export async function importLessonUpload(user: SessionUser, text: string, fileNa
 }
 
 export type { LessonUploadPreview };
+
+// ---------------------------------------------------------------------------
+// Comando do ChatGPT a partir de uma aula-modelo publicada (padrão: Homicídio)
+// ---------------------------------------------------------------------------
+
+export const DEFAULT_MODEL_SLUG = "cp-art-121-homicidio";
+
+export interface ModelPrompt {
+  slug: string;
+  title: string;
+  prompt: string;
+  /** Problemas ao reler o próprio modelo no formato do painel (vazio = o formato bate). */
+  selfCheck: string[];
+  stats: { modules: number; sections: number; questions: Record<"facil" | "medio" | "dificil", number> };
+}
+
+export async function listModelTopics(): Promise<Array<{ slug: string; title: string }>> {
+  const { data } = await createAdminClient().from("catalog_topics").select("slug, title").eq("status", "publicado").not("lesson", "is", null).order("title");
+  return (data ?? []) as Array<{ slug: string; title: string }>;
+}
+
+/** Monta o comando com a aula-modelo inteira (exportada no mesmo formato que o painel lê). */
+export async function modelPrompt(slug: string = DEFAULT_MODEL_SLUG): Promise<ModelPrompt | null> {
+  const db = createAdminClient();
+  const { data: t } = await db
+    .from("catalog_topics")
+    .select("id, slug, title, kind, law_code, articles, aliases, discipline_mode, summary, source_text, nodes, lesson, estimated_minutes")
+    .eq("slug", slug)
+    .eq("status", "publicado")
+    .maybeSingle();
+  if (!t || !t.lesson) return null;
+  const { data: qs } = await db.from("catalog_questions").select("*").eq("topic_id", t.id).eq("active", true).order("level").order("created_at");
+  const lesson = t.lesson as ExportableTopic["lesson"] & { references?: ExportableTopic["lesson"]["references"]; unverifiedClaims?: string[] };
+  const topic: ExportableTopic = {
+    title: t.title as string,
+    disciplineMode: t.discipline_mode as string,
+    kind: t.kind as "tema" | "dispositivo",
+    lawCode: (t.law_code as string | null) ?? null,
+    articles: (t.articles as string[]) ?? [],
+    aliases: (t.aliases as string[]) ?? [],
+    estimatedMinutes: (t.estimated_minutes as number) ?? 60,
+    summary: (t.summary as string | null) ?? null,
+    sourceText: (t.source_text as string) ?? "",
+    nodes: (t.nodes as ExportableTopic["nodes"]) ?? [],
+    lesson: { objective: lesson.objective, sections: lesson.sections ?? [], references: lesson.references ?? [], unverifiedClaims: lesson.unverifiedClaims ?? [] },
+    questions: (qs ?? []).map((q) => ({
+      level: q.level as "facil" | "medio" | "dificil",
+      type: q.type as string,
+      statement: q.statement as string,
+      options: ((q.options as ExportableTopic["questions"][number]["options"]) ?? []).map((o) => ({ ...o, explanation: o.explanation ?? "" })),
+      correctAnswerTrue: q.correct_answer_true as boolean | null,
+      justification: q.justification as string,
+      nodeKey: q.node_key as string,
+      difficulty: q.difficulty as number,
+      essential: q.essential as boolean,
+    })),
+  };
+  const check = prepareLessonUpload(exportTopicText(topic));
+  const count = (lv: "facil" | "medio" | "dificil") => topic.questions.filter((q) => q.level === lv).length;
+  return {
+    slug: t.slug as string,
+    title: topic.title,
+    prompt: buildModelPrompt(topic),
+    selfCheck: check.errors,
+    stats: { modules: new Set(topic.lesson.sections.map((s) => s.module ?? "")).size, sections: topic.lesson.sections.length, questions: { facil: count("facil"), medio: count("medio"), dificil: count("dificil") } },
+  };
+}

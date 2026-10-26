@@ -18,7 +18,15 @@ const LEVEL = { facil: "Fácil", medio: "Médio", dificil: "Difícil" } as const
  * Catalogação por texto colado: 1) copiar o comando para o ChatGPT, 2) colar a resposta,
  * 3) conferir como a aula vai ficar (módulos, seções, questões, erros e avisos), 4) salvar.
  */
-export function LessonUploadForm({ actions, bannerActions }: { actions: Actions; bannerActions?: BannerActions }) {
+export interface PromptModel {
+  title: string;
+  slug: string;
+  stats: { modules: number; sections: number; questions: { facil: number; medio: number; dificil: number } };
+  options: Array<{ slug: string; title: string }>;
+  selfCheck: string[];
+}
+
+export function LessonUploadForm({ actions, bannerActions, prompt = LESSON_PROMPT, model }: { actions: Actions; bannerActions?: BannerActions; prompt?: string; model?: PromptModel | null }) {
   const [text, setText] = useState("");
   const [checked, setChecked] = useState("");
   const [preview, setPreview] = useState<LessonUploadPreview | null>(null);
@@ -50,7 +58,7 @@ export function LessonUploadForm({ actions, bannerActions }: { actions: Actions;
   };
   const copyPrompt = async () => {
     try {
-      await navigator.clipboard.writeText(LESSON_PROMPT);
+      await navigator.clipboard.writeText(prompt);
       setCopied(true);
       setTimeout(() => setCopied(false), 2500);
     } catch {
@@ -64,13 +72,50 @@ export function LessonUploadForm({ actions, bannerActions }: { actions: Actions;
     <div className="flex flex-col gap-5" data-testid="upload-aula">
       <div className="rounded-lg border border-linha bg-superficie p-4">
         <p className="font-semibold">1. Peça a aula ao ChatGPT</p>
-        <p className="mt-1 t-small text-tinta-suave">Copie o comando, troque o tema na primeira linha e envie no ChatGPT. Ele responde já no formato do painel.</p>
+        {model ? (
+          <p className="mt-1 t-small text-tinta-suave">
+            O comando leva a aula <strong>{model.title}</strong> inteira como modelo oficial ({model.stats.modules} módulos, {model.stats.sections} seções, {model.stats.questions.facil}/{model.stats.questions.medio}/{model.stats.questions.dificil} questões por nível) e manda o ChatGPT fazer a nova aula exatamente na mesma forma. Troque só a linha <strong>TEMA DA NOVA AULA</strong>.
+          </p>
+        ) : (
+          <p className="mt-1 t-small text-tinta-suave">Copie o comando, troque o tema na primeira linha e envie no ChatGPT. Ele responde já no formato do painel.</p>
+        )}
+        {model && model.options.length > 1 && (
+          <form method="get" className="mt-2 flex flex-wrap items-center gap-2 t-small">
+            <label htmlFor="modelo" className="font-semibold">Aula-modelo:</label>
+            <select id="modelo" name="modelo" defaultValue={model.slug} className="min-h-10 rounded-md border border-linha-forte bg-superficie px-2" onChange={(e) => e.currentTarget.form?.requestSubmit()}>
+              {model.options.map((o) => (
+                <option key={o.slug} value={o.slug}>{o.title}</option>
+              ))}
+            </select>
+            <noscript><button className="underline">Usar</button></noscript>
+          </form>
+        )}
+        {model && model.selfCheck.length > 0 && (
+          <Notice tone="alerta" title="A aula-modelo tem pontos que o painel não lê bem">
+            <ul className="list-disc pl-5">{model.selfCheck.slice(0, 5).map((e) => <li key={e}>{e}</li>)}</ul>
+          </Notice>
+        )}
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <Button variant="secundario" onClick={copyPrompt}>{copied ? "Comando copiado ✓" : "Copiar comando para o ChatGPT"}</Button>
+          <Button
+            variant="discreto"
+            onClick={() => {
+              const url = URL.createObjectURL(new Blob([prompt], { type: "text/plain;charset=utf-8" }));
+              const a = document.createElement("a");
+              a.href = url;
+              a.download = `comando-aprovum${model ? `-modelo-${model.slug}` : ""}.txt`;
+              a.click();
+              setTimeout(() => URL.revokeObjectURL(url), 2000);
+            }}
+          >
+            Baixar comando (.txt)
+          </Button>
+          <span className="t-tiny text-tinta-fraca">{prompt.length.toLocaleString("pt-BR")} caracteres</span>
         </div>
+        <p className="mt-1 t-tiny text-tinta-fraca">Comando longo: se o ChatGPT recusar colar, anexe o arquivo .txt baixado e escreva o tema na mensagem.</p>
         <details className="mt-2 t-small">
           <summary className="cursor-pointer text-destaque">Ver o comando</summary>
-          <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-nevoa p-3 t-tiny">{LESSON_PROMPT}</pre>
+          <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-nevoa p-3 t-tiny">{prompt}</pre>
         </details>
       </div>
 
