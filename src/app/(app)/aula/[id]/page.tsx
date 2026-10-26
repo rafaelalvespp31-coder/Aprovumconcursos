@@ -5,6 +5,7 @@ import { Button, ButtonLink, Notice, Tag } from "@/components/ui";
 import { JobRunner, type PublicJob } from "@/components/job-runner";
 import { STATE_LABELS } from "@/domain/progress/state-machine";
 import { LessonReader } from "./reader";
+import { CONTENT_TYPE_OPTIONS, boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
 import { generateLessonAction } from "./actions";
 
 export const metadata = { title: "Aula" };
@@ -110,19 +111,6 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       {lesson.supplementary.length > 0 && (
         <p className="t-small text-tinta-suave">Inclui apoio pedagógico fora do seu conteúdo: {lesson.supplementary.map((s) => s.title).join("; ")}.</p>
       )}
-      {references.length > 0 && (
-        <details className="rounded-md border border-linha bg-superficie px-4 py-3 t-small">
-          <summary className="cursor-pointer font-semibold">Referências usadas ({references.length})</summary>
-          <ul className="mt-2 flex flex-col gap-1">
-            {references.map((r) => (
-              <li key={r.citation} className="flex items-start justify-between gap-3">
-                <span>{r.citation}</span>
-                <Tag tone={r.verified ? "verde" : "ambar"}>{r.verified ? "Do seu conteúdo" : "Não verificado"}</Tag>
-              </li>
-            ))}
-          </ul>
-        </details>
-      )}
     </>
   );
 
@@ -137,6 +125,13 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
         estimatedMinutes: lesson.estimated_minutes,
         stateLabel: progress ? STATE_LABELS[progress.state] : null,
       }}
+      meta={{
+        subject: lesson.study_trails.scope_summary?.subject ?? null,
+        board: lesson.study_trails.board_slug ? boardDisplayName(lesson.study_trails.board_slug as ExamBoardSlug, lesson.study_trails.other_board_name) : null,
+        contentType: CONTENT_TYPE_OPTIONS.find((o) => o.value === lesson.study_trails.content_type)?.label ?? null,
+      }}
+      references={references}
+      unverifiedClaims={lesson.unverified_claims ?? []}
       sections={sections}
       nodes={nodes}
       questions={questions}

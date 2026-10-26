@@ -3,24 +3,21 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Markdown } from "@/components/markdown";
-import { ExampleCards, parseExamples } from "@/components/examples";
-import { Flashcards } from "@/components/flashcards";
-import { PracticeCard } from "@/components/practice-card";
-import { PRACTICE_KINDS, extractPractice, type PracticeCase } from "@/domain/content/practice";
-import { TrueFalseCards, parseTrueFalse } from "@/components/true-false-cards";
+import { practiceToMarkdown, type PracticeCase } from "@/domain/content/practice";
 import { Icon, type IconName } from "@/components/icons";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
 import { SaveIndicator, type SaveState } from "@/components/interactive";
-import { QuestionCard, type AnswerOutcome, type QuestionData, type SavedAnswer } from "@/components/question-card";
-import { SECTION_LABELS, type LessonSectionKind } from "@/ai/pedagogy";
+import type { AnswerOutcome, QuestionData, SavedAnswer } from "@/components/question-card";
 import type { Annotation } from "../../study-actions";
 import type { QuizResult } from "./actions";
 import { useStored } from "@/components/use-stored";
 import { useStudyApi } from "@/components/study-api";
 import { LEVELS, levelStatus, type LevelKey } from "@/domain/progress/levels";
 import { SingleLevel } from "./levels-panel";
-import { BOARD_CARDS, assignSectionsToCards, buildLessonBoard, cardTitle, isLegalBoard } from "@/domain/content/board";
-import { LessonBoardView, LessonTreePortal, type BoardOutlineItem } from "@/components/aula/lesson-board";
+import { LessonTreePortal, type BoardOutlineItem } from "@/components/aula/lesson-board";
+import { ApostilaMarkdown } from "@/components/aula/apostila-markdown";
+import { ApostilaQuestion } from "@/components/aula/apostila-question";
+import { apostilaPages, groupIntoModules, pageKey, type ApostilaPage } from "@/domain/content/apostila";
 
 export interface ReaderSection {
   id: string;
@@ -45,9 +42,15 @@ export interface ReaderClarification {
 
 export interface ReaderProps {
   lesson: { id: string; title: string; objective: string; trailId: string; trailTitle: string; estimatedMinutes: number; stateLabel: string | null };
+  /** Dados da capa (como no PDF): matéria, banca e tipo de conteúdo. */
+  meta?: { subject: string | null; board: string | null; contentType: string | null };
   sections: ReaderSection[];
   nodes: Array<{ key: string; marker: string | null; title: string; taught: boolean }>;
   questions: Array<ReaderQuestion>;
+  /** Referências da aula (tabela "Referências e fontes"). */
+  references?: Array<{ kind?: string; citation: string; verified: boolean }>;
+  /** Pontos que dependem de conferência na fonte oficial (caixa "Pendente de verificação"). */
+  unverifiedClaims?: string[];
   /** Níveis aprovados nesta unidade (0–3): fácil → médio → difícil. */
   levelsPassed: number;
   markedQuestionIds: string[];
@@ -76,15 +79,22 @@ export interface ReaderProps {
 export type ReaderQuestion = QuestionData & { nodeKey: string | null; level?: LevelKey; recovery_of?: string | null };
 
 const sectionDomId = (id: string) => `secao-${id}`;
+const LEVEL_TITLE: Record<LevelKey, string> = { facil: "Nível Fácil", medio: "Nível Médio", dificil: "Nível Difícil" };
+const REF_KIND: Record<string, string> = { lei: "Lei", doutrina: "Doutrina", jurisprudencia: "Jurisprudência", texto_informado: "Conteúdo informado", outro: "Outra" };
 
-const LEVEL_TITLE: Record<LevelKey, string> = { facil: "Questões · Fácil", medio: "Questões · Médio", dificil: "Questões · Difícil" };
+/** Faixa preta com "///" e barra vermelha (título de parte, como no PDF). */
+function Band({ children, id }: { children: ReactNode; id?: string }) {
+  return (
+    <h2 className="ap-faixa" id={id}>
+      <span className="ap-faixa-barras" aria-hidden>{"///"}</span> {children}
+    </h2>
+  );
+}
 
 /**
- * Aula numa tela só: a visão em nove cards, com o conteúdo completo exposto em cada card
- * (temas com anotações, esclarecimentos e a questão de cada tema). No fim de cada card,
- * o botão de avançar é liberado quando as questões do card estão respondidas e leva ao
- * card seguinte. O card 8 reúne as questões por nível (fácil → médio → difícil) com
- * recuperação. Concluir todos os cards de conteúdo registra a leitura.
+ * Aula no formato apostila — o mesmo visual do PDF do APROVUM — dividida em páginas:
+ * início (capa, resumo do estudo e sumário), um módulo por página, questões por nível e,
+ * por fim, pontos de revisão e referências. Concluir todos os módulos registra a leitura.
  */
 export function LessonReader(props: ReaderProps) {
   const api = useStudyApi();
@@ -92,8 +102,6 @@ export function LessonReader(props: ReaderProps) {
   const [annotations, setAnnotations] = useState(props.annotations);
   const [readingDone, setReadingDone] = useState(props.readingDone);
   const [levelsPassed, setLevelsPassed] = useState(props.levelsPassed);
-  const [activeQuestion, setActiveQuestion] = useState<string | null>(null);
-  // Respostas dadas nesta visita (o card fechado desmonta as questões; a resposta fica aqui).
   const [sessionAnswers, setSessionAnswers] = useState<Record<string, SavedAnswer>>({});
   const savedFor = (id: string) => sessionAnswers[id] ?? props.answers?.[id];
   const remember = (o: AnswerOutcome) => setSessionAnswers((m) => ({ ...m, [o.questionId]: { choice: o.choice, feedback: o.feedback } }));
@@ -105,35 +113,42 @@ export function LessonReader(props: ReaderProps) {
     void api.startLesson(lesson.id);
   }, [lesson.id, api]);
 
-  const board = useMemo(() => buildLessonBoard({ title: lesson.title, sections, nodes }), [lesson.title, sections, nodes]);
-  const legal = isLegalBoard(board);
-  const byCard = useMemo(() => assignSectionsToCards(sections, { legal }), [sections, legal]);
-  /** Cards com conteúdo próprio (abrem os temas), na ordem dos números. */
-  const contentCards = useMemo(() => BOARD_CARDS.filter((c) => c.n !== 8 && byCard.get(c.n)!.length > 0).map((c) => c.n), [byCard]);
+  const legal = useMemo(() => sections.some((s) => s.kind === "texto_legal"), [sections]);
+  const modules = useMemo(() => groupIntoModules(sections, { legal }), [sections, legal]);
+  const pages = useMemo(() => apostilaPages(modules.length), [modules.length]);
+  const [storedPage, setStoredPage] = useStored<string>(`na:apostila:${lesson.id}`, "inicio");
+  const current: ApostilaPage = pages.find((p) => pageKey(p) === storedPage) ?? pages[0]!;
+  const currentIdx = pages.findIndex((p) => pageKey(p) === pageKey(current));
 
-  // Temas lidos: contam quando o aluno conclui o card que os contém.
+  // Seções lidas: contam quando o aluno conclui o módulo que as contém.
   const [seenList, setSeenList] = useStored<string[]>(`na:secoes-vistas:${lesson.id}`, []);
   const seen = useMemo(() => new Set(seenList), [seenList]);
   const isSeen = (id: string) => readingDone || seen.has(id);
   const seenCount = sections.filter((s) => isSeen(s.id)).length;
-  const cardDone = (n: number) => byCard.get(n)!.every((s) => isSeen(s.id));
+  const moduleDone = (i: number) => modules[i]!.sections.every((s) => isSeen(s.id));
+  const modulesDone = modules.filter((_, i) => moduleDone(i)).length;
 
-  // Questão rápida de cada tema (nível fácil), logo depois do tema que ensina o item.
-  const interleaved = useMemo(() => {
-    const placed = new Set<string>();
-    const inter = new Map<string, ReaderQuestion[]>();
-    const quick = questions.filter((q) => !q.recovery_of && (q.level ?? "facil") === "facil");
-    for (const s of sections) {
-      const q = quick.find((q) => !placed.has(q.id) && q.nodeKey && s.node_keys.includes(q.nodeKey));
-      if (q && s.kind !== "texto_legal" && s.kind !== "objetivo") {
-        placed.add(q.id);
-        inter.set(s.id, [q]);
-      }
+  const go = (p: ApostilaPage) => {
+    setStoredPage(pageKey(p));
+    requestAnimationFrame(() => document.getElementById("apostila")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
+  const goIdx = (i: number) => pages[i] && go(pages[i]!);
+
+  /** Conclui o módulo: marca as seções como lidas e abre a próxima página. */
+  const concludeModule = (i: number) => {
+    const nextSeen = new Set([...seen, ...modules[i]!.sections.map((s) => s.id)]);
+    setSeenList([...nextSeen]);
+    const next = () => goIdx(currentIdx + 1);
+    if (!readingDone && sections.every((s) => nextSeen.has(s.id))) {
+      startCompleting(async () => {
+        await api.completeReading(lesson.id);
+        setReadingDone(true);
+        next();
+      });
+      return;
     }
-    return inter;
-  }, [sections, questions]);
-  const interleavedIds = useMemo(() => new Set([...interleaved.values()].flat().map((q) => q.id)), [interleaved]);
-  const numberOf = useMemo(() => new Map(questions.map((q, i) => [q.id, i + 1])), [questions]);
+    next();
+  };
 
   const annotationsBySection = useMemo(() => {
     const m = new Map<string, Annotation[]>();
@@ -144,169 +159,171 @@ export function LessonReader(props: ReaderProps) {
     return m;
   }, [annotations]);
 
-  // Aviso da trava (questão sem resposta no card).
-  const [blocked, setBlocked] = useState<string | null>(null);
-  useEffect(() => {
-    if (!blocked) return;
-    const t = setTimeout(() => setBlocked(null), 4000);
-    return () => clearTimeout(t);
-  }, [blocked]);
+  const official = questions.filter((q) => !q.recovery_of);
+  const answered = questions.filter((q) => savedFor(q.id));
+  const correct = answered.filter((q) => savedFor(q.id)!.feedback.correct);
+  const wrong = answered.filter((q) => !savedFor(q.id)!.feedback.correct);
+  const numberOf = useMemo(() => new Map(questions.map((q, i) => [q.id, i + 1])), [questions]);
 
   const firstOpenLevel = LEVELS.find((l) => levelStatus(levelsPassed, l.n) !== "aprovado")?.key ?? "dificil";
   const [levelTab, setLevelTab] = useState<LevelKey>(firstOpenLevel);
-  const cardEl = (n: number) => document.querySelector<HTMLElement>(`[data-card="${n}"]`);
-  // Um card por vez. Ordem de estudo: conteúdo (1–7), mapa mental com o resumo (9) e, por fim, as questões (8).
-  const FLOW = [1, 2, 3, 4, 5, 6, 7, 9, 8];
-  const [storedCard, setActiveCard] = useStored<number>(`na:card:${lesson.id}`, 1);
-  const activeCard = FLOW.includes(storedCard) ? storedCard : 1;
-  const flowNext = (n: number) => FLOW[FLOW.indexOf(n) + 1] ?? null;
-  const flowPrev = (n: number) => FLOW[FLOW.indexOf(n) - 1] ?? null;
-  const scrollToCards = () => requestAnimationFrame(() => document.getElementById("al-cards")?.scrollIntoView({ behavior: "smooth", block: "start" }));
-  // Cards já abertos e cards concluídos pelo botão (contam no % de cada card da barra).
-  const [visitedList, setVisitedList] = useStored<number[]>(`na:cards-vistos:${lesson.id}`, []);
-  const [passedList, setPassedList] = useStored<number[]>(`na:cards-concluidos:${lesson.id}`, []);
-  const scrollToCard = (n: number) => {
-    setBlocked(null);
-    setActiveCard(n);
-    if (!visitedList.includes(n)) setVisitedList([...visitedList, n]);
-    scrollToCards();
-  };
-  const cardOfSection = (id: string) => BOARD_CARDS.find((c) => byCard.get(c.n)!.some((s) => s.id === id))?.n ?? 1;
-
-  // Trava: com questão sem resposta no card, não avança e leva até ela.
-  const guard = (n: number): boolean => {
-    const pending = [...(cardEl(n)?.querySelectorAll<HTMLElement>('article[data-questao][data-respondida="0"]') ?? [])].filter((el) => !el.closest("details:not([open])"));
-    const first = pending[0];
-    if (!first) return true;
-    setBlocked(pending.length === 1 ? `Responda a ${first.getAttribute("aria-label")?.toLowerCase() ?? "questão"} para avançar.` : `Faltam ${pending.length} questões neste card. Responda para avançar.`);
-    first.scrollIntoView({ behavior: "smooth", block: "center" });
-    first.classList.remove("questao-pendente");
-    void first.offsetWidth;
-    first.classList.add("questao-pendente");
-    first.focus({ preventScroll: true });
-    return false;
-  };
-
-  /** Questões do card que ainda faltam responder (a questão de cada tema). */
-  const pendingOf = (n: number) => byCard.get(n)!.flatMap((s) => interleaved.get(s.id) ?? []).filter((q) => !savedFor(q.id)).length;
-
-  /** Conclui o card: marca os temas como lidos e leva ao próximo card. */
-  const concludeCard = (n: number) => {
-    if (!guard(n)) return;
-    setBlocked(null);
-    if (!passedList.includes(n)) setPassedList([...passedList, n]);
-    const nextSeen = new Set([...seen, ...byCard.get(n)!.map((s) => s.id)]);
-    setSeenList([...nextSeen]);
-    const goNext = () => {
-      const nxt = flowNext(n);
-      if (nxt) scrollToCard(nxt);
-    };
-    if (!readingDone && sections.every((s) => nextSeen.has(s.id))) {
-      startCompleting(async () => {
-        await api.completeReading(lesson.id);
-        setReadingDone(true);
-        goNext();
-      });
-      return;
-    }
-    goNext();
-  };
-
   const levelIndex = LEVELS.findIndex((l) => l.key === levelTab);
-  const levelPending = questions.filter((q) => !q.recovery_of && (q.level ?? "facil") === levelTab && !savedFor(q.id)).length;
-  const goLevel = (k: LevelKey) => {
-    setLevelTab(k);
-    scrollToCards();
-  };
-  const nextLevel = () => {
-    if (!guard(8)) return;
-    setBlocked(null);
-    const nxt = LEVELS[levelIndex + 1];
-    if (nxt) goLevel(nxt.key);
-    else requestAnimationFrame(() => document.querySelector('[data-testid="conclusao-aula"]')?.scrollIntoView({ behavior: "smooth", block: "center" }));
-  };
+  const levelPending = official.filter((q) => (q.level ?? "facil") === levelTab && !savedFor(q.id)).length;
+  const finished = levelsPassed >= 3;
 
   const renderQuestion = (q: ReaderQuestion, n: number, label?: string) => (
-    <div key={q.id} onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
-      {label && <p className="mb-2 t-tiny font-semibold text-destaque">{label}</p>}
-      <QuestionCard q={q} number={n} context={context} active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} saved={savedFor(q.id)} onAnswered={remember} />
+    <div key={q.id}>
+      {label && <p className="ap-kicker mb-2">{label}</p>}
+      <ApostilaQuestion q={q} number={n} level={q.level} context={context} initialMarked={props.markedQuestionIds.includes(q.id)} saved={savedFor(q.id)} onAnswered={remember} />
     </div>
   );
 
-  const sectionsBody = (n: number) =>
-    byCard.get(n)!.map((s) => (
-      <div key={s.id} className="al-tema">
-        <SectionBlock
-          section={s}
-          lessonId={lesson.id}
-          nodes={nodes}
-          annotations={annotationsBySection.get(s.id) ?? []}
-          clarifications={props.clarifications.filter((c) => c.section_id === s.id)}
-          onAnnotation={(a, removed) => setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : [a, ...list.filter((x) => x.id !== a.id)]))}
-        />
-        {(interleaved.get(s.id) ?? []).map((q) => (
-          <div key={q.id} className="mt-5" onFocusCapture={() => setActiveQuestion(q.id)} onClickCapture={() => setActiveQuestion(q.id)}>
-            <p className="mb-2 inline-flex items-center gap-1.5 t-small font-semibold text-destaque">
-              <Icon name="raio" className="size-4" /> Questão sobre este tema
-            </p>
-            <QuestionCard q={q} number={numberOf.get(q.id)!} context={context} compact active={activeQuestion === q.id} initialMarked={props.markedQuestionIds.includes(q.id)} saved={savedFor(q.id)} onAnswered={remember} />
-          </div>
-        ))}
-      </div>
-    ));
+  const pageLabel = (p: ApostilaPage) => (p.kind === "inicio" ? "Início" : p.kind === "modulo" ? `Módulo ${p.index + 1}` : p.kind === "questoes" ? "Questões" : "Revisão e fontes");
+  const pageDone = (p: ApostilaPage) => (p.kind === "modulo" ? moduleDone(p.index) : p.kind === "questoes" ? finished : false);
 
-  /** Rodapé do card: voltar e avançar. O avanço é liberado quando as questões do card estão respondidas. */
-  const cardFooter = (n: number) => {
-    const pend = pendingOf(n);
-    const ready = pend === 0;
-    const nxt = flowNext(n);
-    const prev = flowPrev(n);
-    const nxtTitle = nxt ? cardTitle(nxt, legal) : null;
-    const hasThemes = byCard.get(n)!.length > 0;
-    const label = completing ? "Salvando…" : nxt === 8 ? "Concluir e ir para as questões" : hasThemes ? "Concluir e ir ao próximo card" : "Ir ao próximo card";
-    return (
-      <div className="al-card-fim">
-        <p className="al-card-fim-info">
-          {hasThemes && cardDone(n) ? (
-            <>
-              <CircleCheckIcon /> Card concluído.
-            </>
-          ) : ready ? (
-            nxtTitle ? `Próximo: ${nxtTitle}.` : "Fim dos cards."
-          ) : (
-            `Responda ${pend === 1 ? "a questão" : `as ${pend} questões`} deste card para liberar o avanço.`
-          )}
-        </p>
-        <div className="al-card-fim-botoes">
-          {prev && (
-            <button type="button" className="al-btn al-btn-contorno" onClick={() => scrollToCard(prev)} data-testid={`voltar-card-${n}`}>
-              <Icon name="setaEsquerda" className="size-4" /> <span className="sr-only sm:not-sr-only">Card anterior</span>
-            </button>
-          )}
-          {nxt && (
-            <button type="button" className="al-btn al-btn-vermelho" aria-disabled={!ready || completing} data-liberado={ready ? "1" : "0"} onClick={() => !completing && concludeCard(n)} data-testid={`concluir-card-${n}`}>
-              {label} <Icon name="setaDireita" className="size-4" />
-            </button>
-          )}
+  // ---------------------------------------------------------------- páginas
+  const startTarget = modules.findIndex((_, i) => !moduleDone(i));
+  const inicio = (
+    <>
+      <section className="ap-capa" aria-label="Capa">
+        <div className="ap-capa-arte" aria-hidden />
+        <div className="ap-capa-texto">
+          <p className="ap-kicker ap-kicker-claro">Material de estudo</p>
+          <h1 className="ap-capa-titulo">{lesson.title}</h1>
+          {props.meta?.subject && <p className="ap-capa-sub">{props.meta.subject}</p>}
         </div>
+        <dl className="ap-capa-faixa">
+          <div>
+            <dt>Estudo</dt>
+            <dd>{lesson.trailTitle}</dd>
+          </div>
+          {props.meta?.board && (
+            <div>
+              <dt>Banca</dt>
+              <dd>{props.meta.board}</dd>
+            </div>
+          )}
+          <div>
+            <dt>Tipo de conteúdo</dt>
+            <dd>{props.meta?.contentType ?? (legal ? "Artigo ou trecho de lei" : "Tema")}</dd>
+          </div>
+          <div>
+            <dt>Níveis concluídos</dt>
+            <dd>{levelsPassed === 0 ? "Nenhum ainda" : LEVELS.slice(0, levelsPassed).map((l) => l.label).join(", ")}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <Band>Resumo do estudo</Band>
+      <div className="ap-stats">
+        <div className="ap-stat"><b>{answered.length}</b><span>questões respondidas</span></div>
+        <div className="ap-stat"><b>{answered.length ? `${Math.round((correct.length / answered.length) * 100)}%` : "—"}</b><span>acerto na última resposta</span></div>
+        <div className="ap-stat"><b>{modulesDone}/{modules.length}</b><span>módulos concluídos</span></div>
+        <div className="ap-stat"><b>{wrong.length}</b><span>pontos de revisão</span></div>
       </div>
+      {props.notices && <div className="mt-4 flex flex-col gap-3">{props.notices}</div>}
+
+      <Band>Sumário</Band>
+      <nav aria-label="Sumário da aula" className="ap-sumario">
+        <p className="ap-sum-grupo">Teoria</p>
+        <ol>
+          {modules.map((m, i) => (
+            <li key={i}>
+              <button type="button" onClick={() => go({ kind: "modulo", index: i })} data-testid={`sumario-modulo-${i + 1}`}>
+                <span className="ap-sum-num">{String(i + 1).padStart(2, "0")}</span>
+                <span className="ap-sum-titulo">{m.title}</span>
+                <span className="ap-sum-pontos" aria-hidden />
+                <span className="ap-sum-info">{moduleDone(i) ? <><Icon name="check" className="size-4" /> lido</> : `${m.sections.length} seç${m.sections.length === 1 ? "ão" : "ões"}`}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+        <p className="ap-sum-grupo">Questões</p>
+        <ol>
+          {LEVELS.map((l) => {
+            const st = levelStatus(levelsPassed, l.n);
+            return (
+              <li key={l.key}>
+                <button type="button" onClick={() => { setLevelTab(l.key); go({ kind: "questoes" }); }}>
+                  <span className="ap-sum-num" aria-hidden>·</span>
+                  <span className="ap-sum-titulo">{LEVEL_TITLE[l.key]}</span>
+                  <span className="ap-sum-pontos" aria-hidden />
+                  <span className="ap-sum-info">{st === "aprovado" ? "aprovado" : st === "bloqueado" ? "bloqueado" : "liberado"}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ol>
+        <p className="ap-sum-grupo">
+          <button type="button" onClick={() => go({ kind: "revisao" })}>Pontos de revisão e referências</button>
+        </p>
+      </nav>
+      <div className="ap-fim">
+        <span />
+        <button type="button" className="ap-btn ap-btn-vermelho" onClick={() => (startTarget >= 0 ? go({ kind: "modulo", index: startTarget }) : go({ kind: "questoes" }))} data-testid="comecar-aula">
+          {seenCount === 0 ? "Começar a aula" : startTarget >= 0 ? `Continuar: Módulo ${startTarget + 1}` : "Ir para as questões"} <Icon name="setaDireita" className="size-4" />
+        </button>
+      </div>
+    </>
+  );
+
+  const moduloPage = (i: number) => {
+    const m = modules[i]!;
+    const last = i === modules.length - 1;
+    return (
+      <>
+        <Band>Teoria</Band>
+        <p className="ap-kicker">Módulo {i + 1} de {modules.length}</p>
+        <h2 className="ap-unidade">{m.title}</h2>
+        {i === 0 && lesson.objective && (
+          <div className="ap-objetivo">
+            <p className="ap-kicker">Objetivo</p>
+            <p>{lesson.objective}</p>
+          </div>
+        )}
+        <div className="ap-secoes">
+          {m.sections.map((s) => (
+            <ApostilaSection
+              key={s.id}
+              section={s}
+              lessonId={lesson.id}
+              annotations={annotationsBySection.get(s.id) ?? []}
+              clarifications={props.clarifications.filter((c) => c.section_id === s.id)}
+              onAnnotation={(a, removed) => setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : [a, ...list.filter((x) => x.id !== a.id)]))}
+            />
+          ))}
+        </div>
+        {last && (props.unverifiedClaims?.length ?? 0) > 0 && (
+          <div className="ap-pendente">
+            <p className="ap-kicker">Pendente de verificação na fonte oficial</p>
+            <ul>{props.unverifiedClaims!.map((c) => <li key={c}>{c}</li>)}</ul>
+          </div>
+        )}
+        <div className="ap-fim">
+          <button type="button" className="ap-btn ap-btn-contorno" onClick={() => goIdx(currentIdx - 1)}>
+            <Icon name="setaEsquerda" className="size-4" /> <span className="sr-only sm:not-sr-only">Anterior</span>
+          </button>
+          <button type="button" className="ap-btn ap-btn-vermelho" disabled={completing} onClick={() => concludeModule(i)} data-testid={`concluir-modulo-${i + 1}`}>
+            {completing ? "Salvando…" : last ? "Concluir a teoria e ir às questões" : `Concluir e ir ao Módulo ${i + 2}`} <Icon name="setaDireita" className="size-4" />
+          </button>
+        </div>
+      </>
     );
   };
 
-  const finished = levelsPassed >= 3;
   const conclusion = (
     <section className="flex flex-col gap-3" aria-label="Concluir e avançar" data-testid="conclusao-aula">
       {finished || context === "revisao" ? (
-        <Notice tone="sucesso" title="Tema concluído">Você passou por todos os temas e aprovou os três níveis desta aula.</Notice>
+        <Notice tone="sucesso" title="Tema concluído">Você passou por todos os módulos e aprovou os três níveis desta aula.</Notice>
       ) : (
         <Notice tone="info" title="Ainda falta aprovar os níveis">
           {LEVELS.filter((l) => levelStatus(levelsPassed, l.n) !== "aprovado").map((l) => l.label).join(", ")} ainda não aprovado(s). Você pode avançar e voltar depois.
         </Notice>
       )}
       {props.nextHref ? (
-        <Link href={props.nextHref} className="flex items-center justify-between gap-3 rounded-lg bg-[#E50914] px-5 py-4 text-white transition-transform active:scale-[0.98]">
+        <Link href={props.nextHref} className="ap-proximo">
           <span>
-            <span className="block t-tiny font-semibold uppercase tracking-wide text-white/80">Próximo tema</span>
+            <span className="ap-kicker ap-kicker-claro">Próximo tema</span>
             <span className="block text-lg font-bold">{props.nextLabel}</span>
           </span>
           <Icon name="setaDireita" className="size-6 shrink-0" />
@@ -314,26 +331,24 @@ export function LessonReader(props: ReaderProps) {
       ) : (
         <p className="t-small text-tinta-suave">Este é o último tema desta matéria. Para continuar, crie um estudo novo ou coloque outros temas nesta pasta.</p>
       )}
-      <div className="flex flex-wrap gap-4 t-small">
-        <a href="#pdf" className="font-semibold text-destaque">PDF do conteúdo</a>
-        <Link href="/trilhas" className="font-semibold text-destaque">Minhas pastas e estudos</Link>
-      </div>
     </section>
   );
 
-  const questionsBody =
+  const questoesPage =
     context === "revisao" ? (
-      <section aria-label="Questões de revisão">
-        <div className="flex flex-col gap-4">{questions.filter((q) => !interleavedIds.has(q.id)).map((q) => renderQuestion(q, numberOf.get(q.id)!))}</div>
+      <>
+        <Band>Questões de revisão</Band>
+        <div className="flex flex-col gap-4">{questions.map((q) => renderQuestion(q, numberOf.get(q.id)!))}</div>
         <UnitResult lessonId={lesson.id} context={context} readingDone={readingDone} nextId={props.nextId} total={questions.length} />
-      </section>
+      </>
     ) : (
       <>
-        {byCard.get(8)!.length > 0 && <div className="mb-6 flex flex-col gap-6">{sectionsBody(8)}</div>}
-        <p className="mb-3 t-small text-tinta-suave">
+        <Band>Questões</Band>
+        <p className="ap-intro">
           Três níveis, nesta ordem: fácil, médio e difícil. Cada um exige pelo menos 90% de acerto para liberar o seguinte. Errou? A recuperação refaz só os pontos errados.
+          São questões de treino elaboradas pela plataforma, não questões oficiais.
         </p>
-        <div className="al-niveis" role="tablist" aria-label="Níveis de questões">
+        <div className="ap-niveis" role="tablist" aria-label="Níveis de questões">
           {LEVELS.map((l) => {
             const st = levelStatus(levelsPassed, l.n);
             return (
@@ -344,129 +359,158 @@ export function LessonReader(props: ReaderProps) {
             );
           })}
         </div>
-        <section aria-label={LEVEL_TITLE[levelTab]} className="mt-4">
+        <p className="ap-kicker">{official.filter((q) => (q.level ?? "facil") === levelTab).length} questões · {official.filter((q) => (q.level ?? "facil") === levelTab && savedFor(q.id)?.feedback.correct).length} acerto(s)</p>
+        <h2 className="ap-unidade">{LEVEL_TITLE[levelTab]}</h2>
+        <section aria-label={LEVEL_TITLE[levelTab]}>
           <SingleLevel
             key={levelTab}
             lessonId={lesson.id}
             levelKey={levelTab}
             questions={questions}
-            interleavedIds={interleavedIds}
+            interleavedIds={new Set()}
             levelsPassed={levelsPassed}
             readingDone={readingDone}
             renderQuestion={renderQuestion}
             onPassed={(n) => setLevelsPassed((p) => Math.max(p, n))}
             onAdvance={() => {
               const nxt = LEVELS[levelIndex + 1];
-              if (nxt) goLevel(nxt.key);
+              if (nxt) setLevelTab(nxt.key);
             }}
             isAnswered={(id) => !!savedFor(id)}
           />
         </section>
-        <div className="al-card-fim">
-          <p className="al-card-fim-info">
-            {levelPending === 0 ? "Terminou este nível? Avance." : `Responda ${levelPending === 1 ? "a questão" : `as ${levelPending} questões`} do nível ${LEVELS[levelIndex]!.label.toLowerCase()} para liberar o avanço.`}
-          </p>
-          <div className="al-card-fim-botoes">
-          <button type="button" className="al-btn al-btn-contorno" onClick={() => scrollToCard(flowPrev(8)!)} data-testid="voltar-card-8">
-            <Icon name="setaEsquerda" className="size-4" /> <span className="sr-only sm:not-sr-only">Card anterior</span>
+        <div className="ap-fim">
+          <button type="button" className="ap-btn ap-btn-contorno" onClick={() => goIdx(currentIdx - 1)}>
+            <Icon name="setaEsquerda" className="size-4" /> <span className="sr-only sm:not-sr-only">Anterior</span>
           </button>
-          <button type="button" className="al-btn al-btn-vermelho" aria-disabled={levelPending > 0} data-liberado={levelPending === 0 ? "1" : "0"} onClick={nextLevel} data-testid="proximo-nivel">
-            {LEVELS[levelIndex + 1] ? `Próximo nível: ${LEVELS[levelIndex + 1]!.label}` : "Concluir a aula"} <Icon name="setaDireita" className="size-4" />
+          <button
+            type="button"
+            className="ap-btn ap-btn-vermelho"
+            onClick={() => {
+              const nxt = LEVELS[levelIndex + 1];
+              if (nxt) setLevelTab(nxt.key);
+              else go({ kind: "revisao" });
+              requestAnimationFrame(() => document.getElementById("apostila")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+            }}
+            data-testid="proximo-nivel"
+          >
+            {LEVELS[levelIndex + 1] ? `Próximo nível: ${LEVELS[levelIndex + 1]!.label}` : "Pontos de revisão"} <Icon name="setaDireita" className="size-4" />
           </button>
-          </div>
         </div>
+        {levelPending > 0 && <p className="ap-nota">Faltam {levelPending} questão(ões) neste nível.</p>}
         {levelTab === "dificil" && <div className="mt-6">{conclusion}</div>}
       </>
     );
 
-  const themes: Record<number, ReactNode> = {};
-  const footers: Record<number, ReactNode> = {};
-  for (const c of BOARD_CARDS) {
-    if (c.n === 8) themes[8] = questionsBody;
-    else {
-      if (byCard.get(c.n)!.length) themes[c.n] = <div className="flex flex-col gap-6">{sectionsBody(c.n)}</div>;
-      footers[c.n] = cardFooter(c.n);
-    }
-  }
-  /**
-   * % estudado de cada card (gráfico na barra): passos reais do card.
-   * - Card com temas: abrir + responder a questão de cada tema + concluir.
-   * - Card só de visão (sem temas próprios): abrir + avançar.
-   * - Card 8: níveis aprovados + parte respondida do nível em curso.
-   */
-  const visited = new Set([...visitedList, activeCard]);
-  const cardPct = (n: number): number => {
-    if (n === 8) {
-      if (finished) return 100;
-      const lv = LEVELS[Math.min(levelsPassed, 2)]!.key;
-      const official = questions.filter((q) => !q.recovery_of && (q.level ?? "facil") === lv);
-      const part = official.length ? official.filter((q) => savedFor(q.id)).length / official.length : 0;
-      return Math.min(99, Math.round(((levelsPassed + part) / 3) * 100));
-    }
-    const secs = byCard.get(n)!;
-    if (!secs.length) return passedList.includes(n) ? 100 : visited.has(n) ? 50 : 0;
-    if (cardDone(n)) return 100;
-    const qs = secs.flatMap((s) => interleaved.get(s.id) ?? []);
-    const answered = qs.filter((q) => savedFor(q.id)).length;
-    return Math.min(99, Math.round((((visited.has(n) ? 1 : 0) + answered) / (qs.length + 2)) * 100));
-  };
-  const cardMeta = Object.fromEntries(
-    BOARD_CARDS.map((c) => {
-      const pct = cardPct(c.n);
-      return [c.n, { count: byCard.get(c.n)!.length, done: pct === 100, pct }];
-    }),
-  ) as Record<number, { count: number; done: boolean; pct: number }>;
-  const nextToStudy = contentCards.find((n) => !cardDone(n)) ?? 8;
-  const readingFrac = sections.length ? seenCount / sections.length : 0;
-
-  return (
-    <div>
-      {blocked && (
-        <p role="alert" className="pointer-events-none fixed inset-x-4 bottom-28 z-[60] mx-auto flex max-w-md items-center justify-center gap-2 rounded-2xl bg-tinta px-4 py-3 text-center t-small font-semibold text-white shadow-[0_16px_40px_rgba(0,0,0,0.3)] md:bottom-8" data-testid="trava-proximo">
-          <Icon name="cadeado" className="size-4 shrink-0" /> {blocked}
-        </p>
+  const revisaoPage = (
+    <>
+      <Band>Pontos de revisão</Band>
+      {wrong.length === 0 ? (
+        <div className="ap-callout ap-callout-preto">
+          <p>{answered.length ? "Você não errou nenhuma questão deste conteúdo. Mesmo assim, faça as revisões espaçadas para manter o domínio." : "Responda as questões para ver aqui os pontos que precisam de revisão."}</p>
+        </div>
+      ) : (
+        <ul className="ap-revisao">
+          {wrong.map((q) => (
+            <li key={q.id}>
+              <span className="ap-chip">{LEVEL_TITLE[q.level ?? "facil"].replace("Nível ", "").toUpperCase()}</span>
+              <span>
+                <b>Questão {String(numberOf.get(q.id)).padStart(2, "0")}</b>
+                {q.topic ? ` — ${q.topic}` : ""}
+                <span className="block t-small text-tinta-suave">{q.statement.slice(0, 160)}{q.statement.length > 160 ? "…" : ""}</span>
+              </span>
+              <button type="button" className="ap-link" onClick={() => { setLevelTab(q.level ?? "facil"); go({ kind: "questoes" }); }}>Refazer</button>
+            </li>
+          ))}
+        </ul>
       )}
 
+      <Band>Referências e fontes</Band>
+      {(props.references?.length ?? 0) > 0 ? (
+        <div className="ap-tabela">
+          <table>
+            <thead>
+              <tr>
+                <th className="w-10">Nº</th>
+                <th>Referência</th>
+                <th className="w-32">Situação</th>
+              </tr>
+            </thead>
+            <tbody>
+              {props.references!.map((r, i) => (
+                <tr key={`${i}-${r.citation}`}>
+                  <td><b>{i + 1}</b></td>
+                  <td>{r.kind && REF_KIND[r.kind] ? <span className="text-tinta-fraca">{REF_KIND[r.kind]}: </span> : null}{r.citation}</td>
+                  <td className={r.verified ? "ap-ok" : "ap-nao-verificada"}>{r.verified ? "Do seu conteúdo" : "Não verificada"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <p className="ap-intro">Esta aula não tem referências cadastradas.</p>
+      )}
+      <aside className="ap-callout"><p><i>Dispositivos legais, doutrina e jurisprudência citados devem ser conferidos na fonte oficial.</i></p></aside>
+
+      <h3 className="ap-sub">Conteúdo desta aula</h3>
+      <ul className="ap-itens">
+        {nodes.map((n) => (
+          <li key={n.key}>
+            <span className={/\brevogad[oa]s?\b/i.test(n.title) ? "item-revogado" : undefined}>{n.marker && <b className="mr-1">{n.marker}</b>}{n.title}</span>
+            <Tag tone={n.taught ? "azul" : "ambar"}>{n.taught ? "Ensinado" : "Pendente"}</Tag>
+          </li>
+        ))}
+      </ul>
+      {props.pdf && <div className="mt-6">{props.pdf}</div>}
+      {finished && <div className="mt-6">{conclusion}</div>}
+      <div className="ap-fim">
+        <button type="button" className="ap-btn ap-btn-contorno" onClick={() => goIdx(currentIdx - 1)}>
+          <Icon name="setaEsquerda" className="size-4" /> <span className="sr-only sm:not-sr-only">Anterior</span>
+        </button>
+        <button type="button" className="ap-btn ap-btn-contorno" onClick={() => go({ kind: "inicio" })}>Voltar ao início</button>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="ap" id="apostila">
       {props.outline && <LessonTreePortal trailId={lesson.trailId} trailTitle={lesson.trailTitle} outline={props.outline} currentId={lesson.id} />}
 
-      <LessonBoardView
-        board={board}
-        lesson={lesson}
-        position={props.position ?? null}
-        moduleTitle={props.moduleTitle ?? null}
-        progressPct={Math.round((((readingDone ? 1 : readingFrac) + levelsPassed) / 4) * 100)}
-        reading={{ seen: seenCount, total: sections.length }}
-        levelsPassed={levelsPassed}
-        prevId={props.prevId}
-        nextId={props.nextId}
-        cards={cardMeta}
-        themes={themes}
-        footers={footers}
-        active={activeCard}
-        onSelect={scrollToCard}
-        startLabel={seenCount === 0 ? "Começar a aula" : finished ? "Rever a aula" : "Continuar a aula"}
-        onStart={() => scrollToCard(nextToStudy)}
-        notesCount={annotations.length}
-        onNotes={() => notesRef.current?.showModal()}
-        notices={props.notices}
-        after={
-          <>
-            {finished && conclusion}
-            {props.pdf}
-            <details className="rounded-[12px] border border-[#E6E8EC] bg-white px-4 py-3 t-small">
-              <summary className="cursor-pointer font-semibold">Itens do seu conteúdo nesta aula ({nodes.length})</summary>
-              <ul className="mt-2 flex flex-col gap-1">
-                {nodes.map((n) => (
-                  <li key={n.key} className="flex items-start justify-between gap-3">
-                    <span className={/\brevogad[oa]s?\b/i.test(n.title) ? "item-revogado" : undefined}>{n.marker && <span className="mr-1 font-semibold text-destaque">{n.marker}</span>}{n.title}</span>
-                    <Tag tone={n.taught ? "azul" : "ambar"}>{n.taught ? "Ensinado" : "Pendente"}</Tag>
-                  </li>
-                ))}
-              </ul>
-            </details>
-          </>
-        }
-      />
+      <div className="ap-topo">
+        <div className="ap-topo-linha">
+          <Link href={`/trilhas/${lesson.trailId}`} className="ap-topo-estudo">{lesson.trailTitle}</Link>
+          <div className="ap-topo-acoes">
+            {props.position && <span className="ap-topo-pos">Aula {String(props.position.index + 1).padStart(2, "0")} de {props.position.total}</span>}
+            <button type="button" className="ap-link" onClick={() => notesRef.current?.showModal()}>
+              <Icon name="nota" className="size-4" /> Minhas anotações{annotations.length ? ` (${annotations.length})` : ""}
+            </button>
+          </div>
+        </div>
+        <nav className="ap-paginas" aria-label="Páginas da aula">
+          {pages.map((p, i) => (
+            <button key={pageKey(p)} type="button" onClick={() => go(p)} aria-current={i === currentIdx ? "page" : undefined} data-concluida={pageDone(p) ? "1" : undefined} title={p.kind === "modulo" ? modules[p.index]!.title : undefined}>
+              {pageDone(p) && <Icon name="check" className="size-3.5" />}
+              {pageLabel(p)}
+            </button>
+          ))}
+        </nav>
+        <div className="ap-progresso" aria-hidden>
+          <span style={{ width: `${Math.round((((readingDone ? 1 : sections.length ? seenCount / sections.length : 0) + levelsPassed) / 4) * 100)}%` }} />
+        </div>
+      </div>
+
+      <div className="ap-folha" data-pagina={pageKey(current)}>
+        {current.kind === "inicio" ? inicio : current.kind === "modulo" ? moduloPage(current.index) : current.kind === "questoes" ? questoesPage : revisaoPage}
+        <footer className="ap-rodape">
+          <span><b className="text-[#E10600]">{"///"}</b> <b>APROVUM</b> · Preparação de alto desempenho</span>
+          <span className="ap-rodape-pag">{currentIdx + 1} / {pages.length}</span>
+        </footer>
+      </div>
+
+      <div className="ap-aulas">
+        {props.prevId ? <Link href={`/aula/${props.prevId}`} className="ap-link"><Icon name="setaEsquerda" className="size-4" /> Aula anterior</Link> : <span />}
+        {props.nextId ? <Link href={`/aula/${props.nextId}`} className="ap-link">Próxima aula <Icon name="setaDireita" className="size-4" /></Link> : <span />}
+      </div>
 
       <AnnotationsDialog
         refEl={notesRef}
@@ -474,8 +518,9 @@ export function LessonReader(props: ReaderProps) {
         onGo={(id) => {
           notesRef.current?.close();
           if (id) {
-            setActiveCard(cardOfSection(id));
-            setTimeout(() => document.getElementById(sectionDomId(id))?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+            const mi = modules.findIndex((m) => m.sections.some((s) => s.id === id));
+            if (mi >= 0) setStoredPage(pageKey({ kind: "modulo", index: mi }));
+            setTimeout(() => document.getElementById(sectionDomId(id))?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
           }
         }}
         onChange={(a, removed) => setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : list.map((x) => (x.id === a.id ? a : x))))}
@@ -484,93 +529,39 @@ export function LessonReader(props: ReaderProps) {
   );
 }
 
-const CircleCheckIcon = () => <Icon name="check" className="size-4 text-acerto" />;
-
-
 // ---------------------------------------------------------------------------
-// Seção com forma adequada ao tipo de conteúdo + ações
+// Seção no visual do PDF + ações (esclarecer, revisar depois, anotar, dúvida)
 // ---------------------------------------------------------------------------
 
-function SectionBlock({
+
+function ApostilaSection({
   section: s,
   lessonId,
-  nodes,
   annotations,
   clarifications,
   onAnnotation,
 }: {
   section: ReaderSection;
   lessonId: string;
-  nodes: ReaderProps["nodes"];
   annotations: Annotation[];
   clarifications: ReaderClarification[];
   onAnnotation: (a: Annotation, removed?: boolean) => void;
 }) {
-  const kind = s.kind as LessonSectionKind;
-  const label = s.title || SECTION_LABELS[kind] || "Seção";
   const unverified = s.verification_status === "pendente";
-  // Blocos ":::exemplo" saem do texto e viram o card "Na prática" no fim do tema.
-  const { body: md, cases: ownCases } = extractPractice(s.body_markdown);
-  const body = <Markdown legal={kind === "texto_legal"}>{md}</Markdown>;
-  let content: React.ReactNode;
-
-  if (kind === "texto_legal") {
-    const src = nodes.filter((n) => s.node_keys.includes(n.key));
-    content = (
-      <div className="my-2 rounded-md border border-linha-forte bg-superficie p-4">
-        <p className="m-0 inline-flex items-center gap-1.5 font-sans t-tiny font-semibold text-tinta-suave">
-          <Icon name="lei" className="size-4" /> Texto legal
-        </p>
-        <div className="mt-2">{body}</div>
-        <p className="m-0 border-t border-linha pt-2 font-sans t-tiny text-tinta-fraca">
-          Fonte: texto legal{src.length ? ` (${src.map((n) => n.marker ?? n.title).join(", ")})` : ""}. Confira a redação vigente na fonte oficial.
-        </p>
-      </div>
-    );
-  } else if (kind === "exemplos" || (kind === "aplicacao" && parseExamples(md).some((c) => c.answer))) {
-    // Exemplos sempre como casos interativos: situação → pensar → conferir o enquadramento.
-    content = <ExampleCards markdown={md} kind={kind} />;
-  } else if (kind === "aplicacao") {
-    content = (
-      <div className="my-2 rounded-md border-2 border-linha-forte bg-superficie px-4 py-3">
-        <p className="m-0 inline-flex items-center gap-1.5 font-sans t-small font-semibold text-destaque">
-          <Icon name="alvo" className="size-4" /> Aplicação prática
-        </p>
-        <div className="mt-1">{body}</div>
-      </div>
-    );
-  } else if (kind === "flashcards") {
-    content = <Flashcards markdown={md} />;
-  } else if (kind === "pegadinhas" && parseTrueFalse(md).length) {
-    // Pegadinhas no formato "afirmação → CERTO/ERRADO" viram itens para julgar.
-    content = <TrueFalseCards markdown={md} />;
-  } else if (kind === "excecoes" || kind === "pegadinhas") {
-    content = (
-      <aside className="my-2 rounded-md border-l-4 border-alerta bg-alerta-fundo px-4 py-3" aria-label={label}>
-        <p className="m-0 inline-flex items-center gap-1.5 font-sans t-small font-semibold">
-          <Icon name="alerta" className="size-4 text-alerta" /> {kind === "pegadinhas" ? "Atenção na prova" : "Exceção"}
-        </p>
-        <div className="mt-1">{body}</div>
-      </aside>
-    );
-  } else if (kind === "resumo" || kind === "checklist") {
-    content = <div className="my-2 rounded-md bg-nevoa px-4 py-3">{body}</div>;
-  } else {
-    content = body;
+  // Exemplos ":::exemplo" viram caixas "Na prática", exatamente como no PDF.
+  let md = practiceToMarkdown(s.body_markdown);
+  if (!s.body_markdown.includes(":::exemplo") && s.practice?.length) {
+    md += s.practice.map((c) => `\n\n> **Na prática:** ${c.situation}${c.question ? `\n>\n> **Pergunta:** ${c.question}` : ""}\n>\n> **Resposta:** ${c.answer}`).join("");
   }
-  const asCases = kind === "aplicacao" && parseExamples(md).some((c) => c.answer);
-  const practice = PRACTICE_KINDS.has(kind) && !asCases ? (s.practice?.length ? s.practice : ownCases) : [];
-
+  const legal = s.kind === "texto_legal";
   return (
-    <section id={sectionDomId(s.id)} className="scroll-mt-16 border-b border-linha/70 pb-4 pt-2" aria-labelledby={`h-${s.id}`}>
-      <div className="flex flex-wrap items-center gap-2">
-        <h2 id={`h-${s.id}`} className="font-sans text-[1.2rem] font-[650] tracking-[-0.01em]">{label}</h2>
-        {unverified && <Tag tone="ambar">Não verificado</Tag>}
-      </div>
-      <div className="leitura mt-2">{content}</div>
-      {practice.length > 0 && (
-        <PracticeCard cases={practice} onReread={() => document.getElementById(sectionDomId(s.id))?.scrollIntoView({ behavior: "smooth", block: "start" })} />
-      )}
+    <section id={sectionDomId(s.id)} className="ap-secao" aria-labelledby={`h-${s.id}`}>
+      <h3 id={`h-${s.id}`} className="ap-sub">
+        {s.title}
+        {unverified && <i className="ap-nao-verificado"> [não verificado]</i>}
+      </h3>
+      <ApostilaMarkdown legal={legal}>{md}</ApostilaMarkdown>
+      {legal && <p className="ap-nota">Confira sempre a redação vigente no Portal da Legislação do Planalto.</p>}
       <SectionActions section={s} lessonId={lessonId} annotations={annotations} clarifications={clarifications} onAnnotation={onAnnotation} />
     </section>
   );

@@ -222,7 +222,7 @@ export async function getLessonForStudy(lessonId: string) {
   const db = await createUserClient();
   const { data: lesson } = await db
     .from("lessons")
-    .select("id, trail_id, key, title, objective, sort_order, estimated_minutes, status, supplementary, verification_pending, unverified_claims, generation_error, generated_at, catalog_topic_id, catalog_version, study_trails(title, board_slug, other_board_name), learning_modules(title, sort_order)")
+    .select("id, trail_id, key, title, objective, sort_order, estimated_minutes, status, supplementary, verification_pending, unverified_claims, generation_error, generated_at, catalog_topic_id, catalog_version, study_trails(title, board_slug, other_board_name, content_type, scope_summary), learning_modules(title, sort_order)")
     .eq("id", lessonId)
     .maybeSingle();
   if (!lesson) notFound();
@@ -275,7 +275,7 @@ export async function getLessonForStudy(lessonId: string) {
       status: LessonListItem["status"]; supplementary: Array<{ title: string; justification: string }>; verification_pending: boolean;
       unverified_claims: string[]; generation_error: string | null; generated_at: string | null;
       catalog_topic_id: string | null; catalog_version: number | null;
-      study_trails: { title: string; board_slug: string; other_board_name: string | null };
+      study_trails: { title: string; board_slug: string; other_board_name: string | null; content_type: string | null; scope_summary: { subject?: string | null } | null };
       learning_modules: { title: string; sort_order: number } | null;
     },
     catalog: lesson.catalog_topic_id

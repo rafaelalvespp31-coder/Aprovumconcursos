@@ -1,5 +1,5 @@
 import { readFileSync } from "node:fs";
-import { expect, test, type Locator, type Page } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 
 /**
  * Interações reais dos componentes de estudo, na galeria de desenvolvimento
@@ -313,215 +313,6 @@ test.describe("menu Questões: cadernos", () => {
 });
 
 /** Abre um card pela barra dos nove cards (a aula mostra um card por vez). */
-async function goCard(page: Page, n: number) {
-  await page.getByRole("navigation", { name: "Cards da aula" }).getByRole("button", { name: new RegExp(`^Card ${n}:`) }).click();
-  await expect(page.locator(`article[data-card="${n}"]`)).toBeVisible();
-  return page.locator(`article[data-card="${n}"]`);
-}
-
-/** Percorre os cards pela ordem, concluindo cada um, até chegar às questões (card 8). */
-async function walkCards(page: Page, onCard?: (card: Locator) => Promise<void>) {
-  for (let i = 0; i < 12; i++) {
-    if (await page.getByTestId("card-questao").count()) return;
-    const card = page.locator("article[data-card]");
-    if (onCard) await onCard(card);
-    const btn = card.locator('[data-testid^="concluir-card-"]');
-    await expect(btn).toHaveAttribute("data-liberado", "1");
-    const n = await card.getAttribute("data-card");
-    await btn.click();
-    await expect(page.locator(`article[data-card="${n}"]`)).toHaveCount(0);
-  }
-  throw new Error("não chegou às questões");
-}
-
-async function answerErradoIfVisible(page: Page, within?: Locator) {
-  const root = within ?? page.locator("body");
-  const radio = root.getByRole("radio", { name: /Errado/ }).first();
-  if ((await radio.count()) && (await radio.isEnabled()) && !(await radio.isChecked())) {
-    // O rádio é visualmente oculto (o rótulo é o alvo de toque); clica direto no elemento.
-    await radio.evaluate((el) => (el as HTMLInputElement).click());
-    await expect(radio).toBeChecked();
-    await root.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
-    await expect(root.getByText(/Resposta (correta|incorreta)/).first()).toBeVisible();
-  }
-}
-
-async function answerIfVisible(page: Page, optionText: string, within?: Locator) {
-  const root = within ?? page.locator("body");
-  const opt = root.getByText(optionText, { exact: false }).first();
-  // Questão já respondida (resposta gravada) não tem botão "Responder" ativo: segue em frente.
-  const radio = root.getByRole("radio", { name: new RegExp(optionText) }).first();
-  if ((await opt.isVisible()) && (await radio.isEnabled())) {
-    await opt.click();
-    await root.getByRole("button", { name: "Responder", exact: true, disabled: false }).first().click();
-    await expect(root.getByText(/Resposta (correta|incorreta)/).first()).toBeVisible();
-  }
-}
-
-test.describe("tela de aula: o conteúdo completo fica exposto em cada card", () => {
-  test("temas aparecem direto nos cards, sem clicar", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    // Um card por vez: abre no card 1, com os temas já expostos.
-    await expect(page.locator("article[data-card]")).toHaveCount(1);
-    await expect(page.getByTestId("card-conceito").getByRole("heading", { name: "Introdução", level: 2 })).toBeVisible();
-    await expect((await goCard(page, 5)).getByRole("heading", { name: "Anulação × revogação", level: 2 })).toBeVisible();
-    await expect(page.getByTestId("card-conceito")).toHaveCount(0);
-    await expect((await goCard(page, 4)).getByRole("heading", { name: "Convalidação", level: 2 })).toBeVisible();
-    await expect((await goCard(page, 9)).getByRole("heading", { name: "Resumo", level: 2 })).toBeVisible();
-    await expect((await goCard(page, 8)).getByRole("tab", { name: /Fácil/ })).toBeVisible();
-    await noHorizontalScroll(page);
-  });
-
-  test("exemplos são casos interativos: situação, tocar e conferir o enquadramento; negrito em vermelho-sangue", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    await expect(page.getByTestId("card-conceito").locator(".leitura strong").first()).toHaveCSS("color", "rgb(138, 3, 3)");
-    const box = (await goCard(page, 6)).getByTestId("exemplos-interativos");
-    await expect(box.getByText("0 de 2 conferidos")).toBeVisible();
-    await expect(box.getByText("Documento falso", { exact: true })).toBeVisible();
-    await expect(box.getByText("Enquadramento", { exact: true })).toHaveCount(0);
-    await box.getByRole("button", { name: /Ver resposta/ }).first().click();
-    await expect(box.getByText("Enquadramento", { exact: true })).toBeVisible();
-    await expect(box.getByText("1 de 2 conferidos")).toBeVisible();
-  });
-
-  test("marcar trecho para revisar e criar anotação", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    const actions = page.getByRole("toolbar", { name: "Ações da seção Introdução" });
-    await actions.getByRole("button", { name: "Revisar depois" }).click();
-    await expect(actions.getByRole("button", { name: "Marcado para revisar" })).toBeVisible();
-    await actions.getByRole("button", { name: "Anotar" }).click();
-    await page.getByTestId("card-conceito").getByRole("textbox").last().fill("Lembrar: anulação retroage.");
-    await page.getByTestId("card-conceito").getByRole("button", { name: /Salvar/ }).last().click();
-    await page.getByRole("button", { name: /^Minhas anotações/ }).first().click();
-    await expect(page.getByText("Lembrar: anulação retroage.")).toBeVisible();
-  });
-
-  test("anotação leva de volta ao tema dentro do card", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    await page.getByRole("button", { name: /^Minhas anotações/ }).first().click();
-    await page.getByRole("dialog", { name: /anotações/i }).getByRole("button", { name: /Convalidação/ }).first().click();
-    await expect(page.getByTestId("card-destrinche").getByRole("heading", { name: "Convalidação", level: 2 })).toBeInViewport();
-  });
-
-  test("esclarecer um conceito sem sair da aula", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    const card = page.getByTestId("card-conceito");
-    await card.getByRole("toolbar", { name: "Ações da seção Introdução" }).getByRole("button", { name: "Esclarecer" }).click();
-    await card.getByRole("textbox", { name: "O que não ficou claro?" }).first().fill("O que é efeito ex tunc?");
-    await card.getByRole("button", { name: "Pedir explicação" }).first().click();
-    await expect(card.getByText(/Resposta de demonstração da galeria/)).toBeVisible();
-    await expect(page).toHaveURL(/\/dev\/galeria\/aula/);
-  });
-
-  test("questão do tema corrige na hora e o card fica verde no acerto", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    const card = page.getByTestId("card-conceito");
-    await card.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
-    await card.getByRole("button", { name: "Responder", exact: true }).first().click();
-    await expect(card.getByText("Resposta correta").first()).toBeVisible();
-    await expect(card.locator('[data-resultado="acerto"]').first()).toBeVisible();
-  });
-
-  test("respostas ficam gravadas: a questão já respondida abre com a resposta e o gabarito", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    const card = await goCard(page, 5);
-    const saved = card.getByRole("article", { name: /Questão/ }).filter({ hasText: "A revogação de ato administrativo pode ser feita" });
-    await expect(saved.getByText("Resposta gravada anteriormente")).toBeVisible();
-    await expect(saved.getByText("Resposta correta")).toBeVisible();
-    await expect(card.getByTestId("gabarito-comentado").first()).toBeVisible();
-    // Card com a questão já respondida: o avanço já vem liberado.
-    await expect(card.getByTestId("concluir-card-5")).toHaveAttribute("data-liberado", "1");
-  });
-
-  test("botão de avançar só libera quando o card termina e leva ao próximo card", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    const card = page.getByTestId("card-conceito");
-    const btn = card.getByTestId("concluir-card-1");
-    await expect(btn).toHaveAttribute("aria-disabled", "true");
-    await expect(card.getByText(/Responda a questão deste card para liberar o avanço/)).toBeVisible();
-    // Tocar no botão travado leva até a questão que falta.
-    await btn.dispatchEvent("click"); // aria-disabled: o toque continua possível e explica o que falta
-    await expect(page.getByTestId("trava-proximo")).toContainText(/para avançar/);
-    const pending = card.locator('article[data-questao][data-respondida="0"]');
-    await expect(pending.first()).toBeInViewport();
-    const label = await pending.first().getAttribute("aria-label");
-    const q = card.locator(`article[aria-label="${label}"]`);
-    await q.getByRole("radio").first().evaluate((el) => (el as HTMLInputElement).click());
-    await q.getByRole("button", { name: "Responder", exact: true }).click();
-    await expect(q).toHaveAttribute("data-respondida", "1");
-    await expect(btn).toHaveAttribute("data-liberado", "1");
-    await btn.click();
-    // Troca para o card seguinte (Visualize) e marca o card 1 como concluído na barra.
-    await expect(page.getByTestId("card-visualize")).toBeVisible();
-    await expect(card).toHaveCount(0);
-    await expect(page.getByRole("button", { name: /^Card 1: Entenda o conceito — 100% estudado \(concluído\)/ })).toBeVisible();
-    await page.getByTestId("voltar-card-2").click();
-    await expect(page.getByTestId("card-conceito")).toHaveAttribute("data-concluido", "1");
-    await expect(page.getByTestId("secoes-vistas")).toHaveText(/^1 de \d+/);
-  });
-
-  test("o resultado do nível pode ser calculado direto nas questões (sem depender da leitura no aparelho)", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    const q8 = page.getByTestId("card-questao");
-    const fac = q8.getByTestId("nivel-facil");
-    await goCard(page, 8);
-    await expect(fac.getByRole("button", { name: "Calcular resultado do nível fácil" })).toBeEnabled();
-    await goCard(page, 1);
-    await walkCards(page, async (card) => {
-      await answerIfVisible(page, "anular a licença, por ilegalidade", card);
-      await answerErradoIfVisible(page, card);
-    });
-    await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
-    await expect(fac.getByText(/Nível fácil aprovado com 100%/)).toBeVisible();
-    await q8.getByTestId("proximo-nivel").click();
-    await expect(q8.getByTestId("nivel-medio")).toContainText("Liberado");
-    // Nível médio com questão sem resposta: o botão fica travado e leva até a questão.
-    await expect(q8.getByTestId("proximo-nivel")).toHaveAttribute("aria-disabled", "true");
-    await q8.getByTestId("proximo-nivel").dispatchEvent("click");
-    await expect(page.getByTestId("trava-proximo")).toBeVisible();
-    await q8.getByRole("tab", { name: /Difícil/ }).click();
-    await expect(q8.getByTestId("nivel-dificil")).toContainText("Bloqueado");
-    await expect(q8.getByRole("link", { name: /Próximo tema/ })).toBeVisible();
-    await expect(page.getByTestId("secoes-vistas")).toHaveText(/^(\d+) de \1/);
-  });
-
-  test("questões do nível que ficaram sem resposta ao longo da aula aparecem no próprio nível", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    await goCard(page, 8);
-    const box = page.getByTestId("card-questao").getByTestId("nivel-facil").getByTestId("faltam-facil");
-    await expect(box).toBeVisible();
-    await expect(box.getByRole("heading", { level: 4 })).toContainText(/Falta(m)? responder/);
-    const first = box.getByRole("article").first();
-    await first.getByRole("radio").first().evaluate((el) => (el as HTMLInputElement).click());
-    await first.getByRole("button", { name: "Responder", exact: true }).click();
-    await expect(first.getByText(/Resposta (correta|incorreta)/)).toBeVisible();
-  });
-
-  test("nível reprovado oferece recuperação em vez de reiniciar", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    await walkCards(page, async (card) => {
-      await answerIfVisible(page, "revogar a licença, por conveniência", card);
-      await answerErradoIfVisible(page, card);
-    });
-    const q8 = page.getByTestId("card-questao");
-    const fac = q8.getByTestId("nivel-facil");
-    await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
-    await expect(fac.getByText(/mínimo para avançar é 90%/)).toBeVisible();
-    await fac.getByRole("button", { name: "Gerar exercícios de recuperação" }).click();
-    const rec = page.getByTestId("recuperacao-facil");
-    await expect(rec).toBeVisible();
-    await expect(rec).toBeInViewport();
-    await expect(rec.getByText(/exercício(s)? pronto/)).toBeVisible();
-    await rec.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
-    await rec.getByRole("button", { name: "Responder", exact: true }).click();
-    await expect(rec.getByText("Resposta correta")).toBeVisible();
-    await fac.getByRole("button", { name: "Calcular resultado do nível fácil de novo" }).click();
-    await expect(fac.getByText(/Nível fácil aprovado/)).toBeVisible();
-    await fac.getByTestId("avancar-nivel").click();
-    await expect(q8.getByTestId("nivel-medio")).toContainText("Liberado");
-  });
-});
-
 test.describe("painel e trilha", () => {
   test("cada card do painel leva à funcionalidade correspondente", async ({ page }) => {
     await page.goto(`${G}/painel`);
@@ -949,55 +740,6 @@ test.describe("página de estudos", () => {
   });
 });
 
-test.describe("visão da aula (nove cards)", () => {
-  test("cabeçalho, nove cards, pontos-chave e navegação com dados da aula", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    const v = page.getByTestId("visao-aula");
-    await expect(v.getByRole("heading", { level: 1 })).toContainText("convalidação");
-    await expect(v.getByText("Aula 03")).toBeVisible();
-    const ids = ["conceito", "visualize", "lei", "destrinche", "diferencie", "pratica", "banca", "questao", "mapa"];
-    for (let i = 0; i < ids.length; i++) {
-      await goCard(page, i + 1);
-      await expect(page.getByTestId(`card-${ids[i]}`)).toBeVisible();
-    }
-    await expect((await goCard(page, 3))).toContainText("Art. 53");
-    await expect((await goCard(page, 5))).toContainText("Ilegalidade");
-    await expect(page.getByRole("heading", { name: /Pontos-chave/ })).toBeVisible();
-    await expect(v.getByText("3 de 6 aulas")).toBeVisible();
-    await expect(v.getByRole("link", { name: /Próxima aula/ })).toHaveAttribute("href", /\/aula\//);
-    await noHorizontalScroll(page);
-  });
-
-  test("o PDF do conteúdo fica dentro da própria aula", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    const pdf = page.locator("section#pdf");
-    await expect(pdf.getByRole("heading", { name: "PDF deste conteúdo" })).toBeVisible();
-    await expect(pdf.getByRole("button", { name: /Gerar PDF/ })).toBeDisabled();
-    await expect(pdf.getByText("2 de 6 concluída(s)", { exact: false })).toBeVisible();
-    await noHorizontalScroll(page);
-  });
-
-  test("questão de fixação usa o motor real de questões", async ({ page }) => {
-    await page.goto(`${G}/aula`);
-    const card = await goCard(page, 8);
-    const radio = card.getByRole("radio").first();
-    if (await radio.isEnabled()) {
-      await radio.evaluate((el) => (el as HTMLInputElement).click());
-      await card.getByRole("button", { name: "Responder", exact: true }).click();
-    }
-    await expect(card.getByText(/Resposta (correta|incorreta)/).first()).toBeVisible();
-  });
-
-  test("árvore de aulas: barra lateral no desktop, menu no celular", async ({ page, isMobile }) => {
-    await page.goto(`${G}/aula`);
-    if (isMobile) await page.getByRole("button", { name: "Abrir menu" }).click();
-    const tree = page.getByRole("navigation", { name: "Aulas deste estudo" }).filter({ visible: true });
-    await expect(tree).toHaveCount(1);
-    await expect(tree.locator('[aria-current="page"]')).toBeVisible();
-    await expect(tree.getByRole("link", { name: /Ver cobertura do estudo/ })).toHaveAttribute("href", /\/cobertura$/);
-  });
-});
-
 test("painel: banner de saudação reveza com os banners de aprovação a cada 3 s", async ({ page }) => {
   await page.goto(`${G}/painel`);
   const rot = page.getByTestId("banner-rotator");
@@ -1084,18 +826,129 @@ test("pastas e estudos: falha ao excluir aparece na tela (nunca um clique mudo)"
   await expect(page.getByTestId("erro-pastas")).toBeVisible();
 });
 
-test("barra dos cards: % estudado em gráfico, laranja em andamento e verde ao concluir", async ({ page }) => {
-  await page.goto(`${G}/aula`);
-  const bar = page.getByRole("navigation", { name: "Cards da aula" });
-  const c1 = bar.getByRole("button", { name: /^Card 1:/ });
-  await expect(c1).toHaveAttribute("data-situacao", "andamento");
-  await expect(c1).toContainText("33%");
-  await expect(bar.getByRole("button", { name: /^Card 3:/ })).toHaveAttribute("data-situacao", "nao_iniciado");
-  const card = page.getByTestId("card-conceito");
-  await card.getByText("anular a licença, por ilegalidade", { exact: false }).first().click();
-  await card.getByRole("button", { name: "Responder", exact: true }).first().click();
-  await expect(c1).toContainText("67%");
-  await card.getByTestId("concluir-card-1").click();
-  await expect(c1).toHaveAttribute("data-situacao", "concluido");
-  await expect(c1).toHaveAccessibleName(/100% estudado/);
+test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", () => {
+  const pages = (page: Page) => page.getByRole("navigation", { name: "Páginas da aula" });
+
+  test("início: capa, resumo do estudo e sumário; começar abre o Módulo 1", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    const capa = page.getByRole("region", { name: "Capa" });
+    await expect(capa.getByRole("heading", { level: 1 })).toHaveText("Anulação, revogação e convalidação");
+    await expect(capa.getByText("FGV")).toBeVisible();
+    await expect(page.getByText("módulos concluídos")).toBeVisible();
+    const sum = page.getByRole("navigation", { name: "Sumário da aula" });
+    await expect(sum.getByRole("button", { name: /Conceito e texto legal/ })).toBeVisible();
+    await expect(sum.getByRole("button", { name: /Convalidação e tribunais/ })).toBeVisible();
+    await expect(pages(page).getByRole("button")).toHaveCount(6);
+    await noHorizontalScroll(page);
+    await page.getByTestId("comecar-aula").click();
+    await expect(page.getByText("Módulo 1 de 3")).toBeVisible();
+    await expect(page.getByText("Distinguir as formas de extinção")).toBeVisible();
+    await noHorizontalScroll(page);
+  });
+
+  test("um módulo por página: caixas, tabelas, texto legal e marca de não verificado como no PDF", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    await pages(page).getByRole("button", { name: "Módulo 1" }).click();
+    await expect(page.getByRole("heading", { name: "Introdução", level: 3 })).toBeVisible();
+    await expect(page.locator(".ap-callout").filter({ hasText: "Na prática:" })).toBeVisible();
+    await expect(page.locator(".ap-lei")).toContainText("Art. 53");
+    // Só o módulo aberto aparece (nada de rolagem infinita).
+    await expect(page.getByRole("heading", { name: "Convalidação", level: 3 })).toHaveCount(0);
+    await pages(page).getByRole("button", { name: "Módulo 2" }).click();
+    await expect(page.getByRole("heading", { name: "Introdução", level: 3 })).toHaveCount(0);
+    const th = page.locator(".ap-tabela thead th").first();
+    await expect(th).toHaveCSS("background-color", "rgb(10, 10, 10)");
+    await pages(page).getByRole("button", { name: "Módulo 3" }).click();
+    await expect(page.getByRole("heading", { name: /Entendimento dos tribunais/, level: 3 })).toContainText("[não verificado]");
+    await expect(page.locator(".ap-pendente")).toContainText("Súmula 473");
+    await noHorizontalScroll(page);
+  });
+
+  test("concluir os módulos em sequência registra a leitura e leva às questões", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    await page.getByTestId("comecar-aula").click();
+    await page.getByTestId("concluir-modulo-1").click();
+    await expect(page.getByText("Módulo 2 de 3")).toBeVisible();
+    await expect(pages(page).getByRole("button", { name: "Módulo 1" })).toHaveAttribute("data-concluida", "1");
+    await page.getByTestId("concluir-modulo-2").click();
+    await page.getByTestId("concluir-modulo-3").click();
+    await expect(page.getByRole("heading", { name: "Nível Fácil", level: 2 })).toBeVisible();
+    await pages(page).getByRole("button", { name: "Início" }).click();
+    await expect(page.getByText("3/3")).toBeVisible();
+  });
+
+  test("questão no cartão do PDF: responde, mostra ACERTOU, comentário por alternativa e o comentário geral", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    await pages(page).getByRole("button", { name: "Questões" }).click();
+    const q1 = page.getByRole("article", { name: "Questão 1" });
+    await q1.getByText("anular a licença, por ilegalidade", { exact: false }).click();
+    await q1.getByRole("button", { name: "Responder", exact: true }).click();
+    await expect(q1.getByText("ACERTOU")).toBeVisible();
+    await expect(q1.getByText(/CORRETA · SUA RESPOSTA/)).toBeVisible();
+    await expect(q1.getByTestId("gabarito-comentado")).toBeVisible();
+    // Resposta gravada em outra visita: abre com o quadro Gabarito × Sua resposta.
+    const q2 = page.getByRole("article", { name: "Questão 2" });
+    await expect(q2.getByRole("cell", { name: "ERRADO" }).first()).toBeVisible();
+    await expect(q2.getByText("ACERTOU")).toBeVisible();
+  });
+
+  test("nível fácil aprovado e o médio liberado", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    await pages(page).getByRole("button", { name: "Questões" }).click();
+    const q1 = page.getByRole("article", { name: "Questão 1" });
+    await q1.getByText("anular a licença, por ilegalidade", { exact: false }).click();
+    await q1.getByRole("button", { name: "Responder", exact: true }).click();
+    const fac = page.getByTestId("nivel-facil");
+    await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
+    await expect(fac.getByText(/Nível fácil aprovado com 100%/)).toBeVisible();
+    await page.getByTestId("proximo-nivel").click();
+    await expect(page.getByTestId("nivel-medio")).toContainText("Liberado");
+  });
+
+  test("nível reprovado oferece recuperação em vez de reiniciar", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    await pages(page).getByRole("button", { name: "Questões" }).click();
+    const q1 = page.getByRole("article", { name: "Questão 1" });
+    await q1.getByText("revogar a licença, por conveniência", { exact: false }).click();
+    await q1.getByRole("button", { name: "Responder", exact: true }).click();
+    await expect(q1.getByText("ERROU")).toBeVisible();
+    const fac = page.getByTestId("nivel-facil");
+    await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
+    await expect(fac.getByText(/mínimo para avançar é 90%/)).toBeVisible();
+    await fac.getByRole("button", { name: "Gerar exercícios de recuperação" }).click();
+    await expect(page.getByTestId("recuperacao-facil")).toBeVisible();
+  });
+
+  test("anotar, marcar para revisar, esclarecer e voltar ao tema pela anotação", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    await pages(page).getByRole("button", { name: "Módulo 1" }).click();
+    const actions = page.getByRole("toolbar", { name: "Ações da seção Introdução" });
+    await actions.getByRole("button", { name: "Revisar depois" }).click();
+    await expect(actions.getByRole("button", { name: "Marcado para revisar" })).toBeVisible();
+    await actions.getByRole("button", { name: "Esclarecer" }).click();
+    await page.getByRole("textbox", { name: "O que não ficou claro?" }).fill("O que é efeito ex tunc?");
+    await page.getByRole("button", { name: "Pedir explicação" }).click();
+    await expect(page.getByText(/Resposta de demonstração da galeria/)).toBeVisible();
+    await page.getByRole("button", { name: /Minhas anotações/ }).click();
+    await page.getByRole("dialog", { name: /anotações/i }).getByRole("button", { name: /Convalidação/ }).first().click();
+    await expect(page.getByText("Módulo 3 de 3")).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Convalidação", level: 3 })).toBeInViewport();
+  });
+
+  test("revisão e fontes: pontos de revisão, referências, conteúdo e o PDF", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    await pages(page).getByRole("button", { name: /Revisão e fontes/ }).click();
+    await expect(page.getByRole("cell", { name: "STF, Súmula 473", exact: false })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "Não verificada" })).toBeVisible();
+    await expect(page.locator("section#pdf").getByRole("heading", { name: "PDF deste conteúdo" })).toBeVisible();
+    await noHorizontalScroll(page);
+  });
+
+  test("árvore de aulas: barra lateral no desktop, menu no celular", async ({ page, isMobile }) => {
+    await page.goto(`${G}/aula`);
+    if (isMobile) await page.getByRole("button", { name: "Abrir menu" }).click();
+    const tree = page.getByRole("navigation", { name: "Aulas deste estudo" }).filter({ visible: true });
+    await expect(tree).toHaveCount(1);
+    await expect(tree.locator('[aria-current="page"]')).toBeVisible();
+  });
 });
