@@ -587,6 +587,19 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await expect(up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)")).toHaveValue(/Gabarito: A/);
   });
 
+  test("corrigir tudo automaticamente com um clique", async ({ page }) => {
+    await page.goto(`${G}/catalogo`);
+    const up = page.getByTestId("upload-aula");
+    await up.getByRole("radio", { name: "Completo", exact: true }).click();
+    const full = readFileSync("public/modelos/modelo-aula.txt", "utf8");
+    const broken = full.replace(/--- SEÇÃO: ([^|\n]+)\|/, "--- SEÇÃO: explicaçao detalhada |").replace(/Gabarito:\s*Certo/, "Gabarito: talvez");
+    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").fill(broken);
+    await expect(page.getByTestId("conferencia-ao-vivo").getByText(/2 erro\(s\) no texto/)).toBeVisible();
+    await page.getByTestId("autocorrigir").first().click();
+    await expect(page.getByText(/correção\(ões\) feita\(s\) no texto/)).toBeVisible();
+    await expect(up.locator("section[aria-labelledby=previa]").getByText(/Pronto para (salvar|publicar)/)).toBeVisible();
+  });
+
   test("texto fora do formato aponta os erros e não deixa salvar", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");

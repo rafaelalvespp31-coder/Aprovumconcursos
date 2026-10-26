@@ -7,7 +7,7 @@ import { LESSON_PROMPT } from "@/domain/catalog/chatgpt-prompts";
 import type { AdminResult, UploadPreviewResult } from "../actions";
 import { BannerSlot, type BannerActions } from "../banners/banner-slot";
 import { prepareLessonUpload } from "@/domain/catalog/upload-preview";
-import { applyLineEdit, describeIssues, type LineEdit, type TextIssue } from "@/domain/catalog/upload-fixes";
+import { applyLineEdit, autoFixText, describeIssues, fixEdits, type FixAction, type LineEdit, type TextIssue } from "@/domain/catalog/upload-fixes";
 import { IssueList, MarkedTextarea, type LineMark, type MarkedTextareaHandle } from "./paste-checker";
 
 interface Actions {
@@ -69,10 +69,10 @@ export function LessonUploadForm({
         : [{ label: "Comando", text: prompt }];
   const multi = commands.length > 1;
 
-  const check = () => {
+  const check = (override?: string) => {
     setPreview(null);
     setError(null);
-    const t = combined;
+    const t = override ?? combined;
     start(async () => {
       const r = await actions.preview(t);
       if (r.ok) {
@@ -139,7 +139,7 @@ export function LessonUploadForm({
     const b = i.endLine ? locate(i.endLine) : null;
     (a.field === 2 ? ta2 : ta1).current?.goTo(a.line, b && b.field === a.field ? b.line : null);
   };
-  const fix = (e: LineEdit) => {
+  const applyOne = (e: LineEdit) => {
     const a = locate(e.start);
     if (a.field === 2) {
       setText2((t) => applyLineEdit(t, { ...e, start: a.line }));
@@ -147,10 +147,44 @@ export function LessonUploadForm({
       const max = Math.max(0, field1Lines - e.start + 1);
       setText((t) => applyLineEdit(t, { ...e, deleteCount: Math.min(e.deleteCount, max) }));
     }
+  };
+  const fix = (f: FixAction) => {
+    for (const e of fixEdits(f)) applyOne(e);
     setPreview(null);
   };
+  const [autoMsg, setAutoMsg] = useState<{ applied: string[]; remaining: number } | null>(null);
+  const autoFixAll = () => {
+    const r = autoFixText(combined, (t) => prepareLessonUpload(t));
+    setAutoMsg({ applied: r.applied, remaining: r.remaining.length });
+    if (r.text !== combined) {
+      setText(r.text);
+      setText2("");
+      if (mode !== "partes") setSplit(false);
+      setLive(null);
+      check(r.text);
+    }
+  };
+  const autoButton = (
+    <div className="flex flex-col gap-2">
+      <Button onClick={autoFixAll} disabled={pending} className="self-start" data-testid="autocorrigir">
+        ✓ Corrigir tudo automaticamente
+      </Button>
+    </div>
+  );
+  const autoNotice = autoMsg && (
+    <Notice tone={autoMsg.remaining ? "alerta" : "sucesso"} title={autoMsg.applied.length ? `${autoMsg.applied.length} correção(ões) feita(s) no texto` : "Nada que dê para corrigir sozinho"}>
+      {autoMsg.applied.length > 0 && (
+        <details className="mt-1">
+          <summary className="cursor-pointer">Ver o que mudou</summary>
+          <ul className="mt-1 list-disc pl-5">{autoMsg.applied.map((a, k) => <li key={k}>{a}</li>)}</ul>
+        </details>
+      )}
+      <p className="mt-1">{autoMsg.remaining ? `Falta(m) ${autoMsg.remaining} erro(s) que precisam da sua escolha: use os botões de cada um abaixo.` : "Sem erros de formato. Confira a prévia e catalogue."}</p>
+    </Notice>
+  );
   const shownIssues = preview && !stale ? null : liveNow?.issues ?? null;
-  const markIssues = (preview && !stale ? describeIssues(checked, preview.errors, preview.warnings.filter((w) => !/^Nível /.test(w))) : liveFresh ? liveNow!.issues : []) ?? [];
+  const previewIssues = useMemo(() => (preview ? describeIssues(checked, preview.errors, preview.warnings.filter((w) => !/^Nível /.test(w))) : []), [preview, checked]);
+  const markIssues = (preview && !stale ? previewIssues : liveFresh ? liveNow!.issues : []) ?? [];
   const markKey = `${markIssues.map((i) => `${i.line}-${i.endLine}-${i.severity}`).join(",")}|${field1Lines}|${lead2}|${joined}`;
   const marks = useMemo(() => {
     const m: [Map<number, LineMark>, Map<number, LineMark>] = [new Map(), new Map()];
@@ -276,7 +310,7 @@ export function LessonUploadForm({
           </button>
         )}
         <div className="flex flex-wrap items-center gap-2">
-          <Button disabled={!text.trim() || pending} onClick={check}>{pending && !saving ? "Conferindo…" : "3. Conferir aula"}</Button>
+          <Button disabled={!text.trim() || pending} onClick={() => check()}>{pending && !saving ? "Conferindo…" : "3. Conferir aula"}</Button>
           {text && (
             <Button variant="discreto" disabled={pending} onClick={() => { setText(""); setText2(""); setPreview(null); setError(null); }}>Limpar</Button>
           )}
@@ -291,11 +325,13 @@ export function LessonUploadForm({
             ) : (
               <p className="t-small font-semibold text-acerto">Nenhum erro de formato no texto. Clique em “Conferir aula”.</p>
             )}
-            <IssueList issues={shownIssues} disabled={!liveFresh || pending} onGo={goTo} onFix={(e) => fix(e)} lineLabel={lineLabel} />
+            {shownIssues.some((i) => i.severity === "erro") && autoButton}
+            <IssueList issues={shownIssues} disabled={!liveFresh || pending} onGo={goTo} onFix={(f) => fix(f)} lineLabel={lineLabel} />
           </div>
         )}
       </div>
 
+      {autoNotice}
       {stale && <Notice tone="alerta">O texto mudou depois da conferência. Clique em “Conferir aula” de novo antes de salvar.</Notice>}
       {error && <Notice tone="erro" title="Não deu para usar este texto">{error}</Notice>}
 
@@ -318,14 +354,16 @@ export function LessonUploadForm({
 
           {preview.errors.length > 0 && (
             <Notice tone="erro" title="Corrija o texto (com os botões abaixo, editando no campo ou pedindo ao ChatGPT) e confira de novo">
-              <div className="mt-2">
-                <IssueList issues={describeIssues(checked, preview.errors, []).filter((i) => i.severity === "erro")} disabled={!!stale || pending} onGo={goTo} onFix={(e) => fix(e)} lineLabel={lineLabel} />
+              <div className="mt-2 flex flex-col gap-2">
+                {!stale && autoButton}
+                <IssueList issues={previewIssues.filter((i) => i.severity === "erro")} disabled={!!stale || pending} onGo={goTo} onFix={(f) => fix(f)} lineLabel={lineLabel} />
               </div>
             </Notice>
           )}
           {preview.warnings.length > 0 && (
             <Notice tone="alerta" title="Avisos (não impedem salvar)">
-              <ul className="list-disc pl-5">{preview.warnings.map((w) => <li key={w}>{w}</li>)}</ul>
+              {preview.warnings.filter((w) => /^Nível /.test(w)).length > 0 && <ul className="mb-2 list-disc pl-5">{preview.warnings.filter((w) => /^Nível /.test(w)).map((w) => <li key={w}>{w}</li>)}</ul>}
+              <IssueList issues={previewIssues.filter((i) => i.severity === "aviso")} disabled={!!stale || pending} onGo={goTo} onFix={(f) => fix(f)} lineLabel={lineLabel} />
             </Notice>
           )}
 

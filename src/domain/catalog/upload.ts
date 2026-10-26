@@ -219,6 +219,12 @@ export function cleanPasted(raw: string): string {
     .map((l) => {
       // Cerca de código vira linha vazia (não some): os números de linha dos erros batem com o texto colado.
       if (/^\s*```[\w-]*\s*$/.test(l)) return "";
+      // Travessões no lugar de "---" (o ChatGPT às vezes troca "---" por "—" ou "–") e
+      // cabeçalhos sem os traços: "— SEÇÃO: tipo | Título —", "### SEÇÃO: …", "**QUESTÃO 3**".
+      const dash = l.match(/^\s*(?:#{1,6}\s*|>\s*)?(?:\*\*|__)?\s*(?:[-—–‒―]{1,}\s*)?(SE[ÇC][ÃA]O\s*[:\-–—]\s*[^|]{1,60}\|.+?|QUEST[ÃA]O(?:\s*\d{1,3})?)\s*(?:[-—–‒―]{1,})?\s*(?:\*\*|__)?\s*$/i);
+      if (dash && !/^\s*-{3,}/.test(l)) return `--- ${dash[1]!.replace(/\s*[-—–‒―]+\s*$/, "").trim()} ---`;
+      const eq = l.match(/^\s*(?:#{1,6}\s*)?(?:\*\*|__)?\s*[=═]{2,}\s*(.+?)\s*[=═]{2,}\s*(?:\*\*|__)?\s*$/);
+      if (eq && !/^\s*={3,}/.test(l)) return `=== ${eq[1]} ===`;
       // "### === AULA ===", "**=== MÓDULO: X ===**", "> --- QUESTÃO ---"
       const m = l.match(/^\s*(?:#{1,6}\s+|>\s*)?(?:\*\*|__)?\s*((?:={3,}|-{3,})\s*[^*_]+?\s*(?:={3,}|-{3,})?)\s*(?:\*\*|__)?\s*$/);
       if (m && /[A-Za-zÀ-ú]/.test(m[1]!)) return m[1]!;

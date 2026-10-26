@@ -1,7 +1,7 @@
 "use client";
 
 import { forwardRef, useImperativeHandle, useRef } from "react";
-import type { FixAction, LineEdit, TextIssue } from "@/domain/catalog/upload-fixes";
+import type { FixAction, TextIssue } from "@/domain/catalog/upload-fixes";
 
 export type LineMark = "erro" | "aviso" | "foco";
 
@@ -81,7 +81,7 @@ export function IssueList({
   issues: TextIssue[];
   disabled?: boolean;
   onGo: (i: TextIssue) => void;
-  onFix: (edit: LineEdit, i: TextIssue) => void;
+  onFix: (fix: FixAction, i: TextIssue) => void;
   lineLabel: (line: number) => string;
 }) {
   if (!issues.length) return null;
@@ -110,7 +110,7 @@ export function IssueList({
                   defaultValue=""
                   onChange={(e) => {
                     const f = i.fixes[Number(e.target.value)];
-                    if (f) onFix(f.edit, i);
+                    if (f) onFix(f, i);
                   }}
                 >
                   <option value="" disabled>
@@ -126,7 +126,7 @@ export function IssueList({
                     key={f.label}
                     type="button"
                     disabled={disabled}
-                    onClick={() => onFix(f.edit, i)}
+                    onClick={() => onFix(f, i)}
                     className={`min-h-8 rounded px-2.5 font-semibold disabled:opacity-50 ${f.recommended ? "bg-tinta text-white" : /^Remover/.test(f.label) ? "border border-erro/50 bg-superficie text-erro" : "border border-linha-forte bg-superficie"}`}
                   >
                     {f.recommended ? `✓ ${f.label}` : f.label}

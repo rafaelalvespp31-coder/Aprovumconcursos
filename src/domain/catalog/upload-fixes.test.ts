@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { prepareLessonUpload } from "./upload-preview";
-import { applyLineEdit, describeIssues } from "./upload-fixes";
+import { applyFix, applyLineEdit, describeIssues } from "./upload-fixes";
 
 const base = [
   "```",
@@ -85,5 +85,42 @@ describe("conferência ao vivo com correção de um clique", () => {
   it("sem bloco AULA: insere o cabeçalho no começo", () => {
     const i = issuesOf("qualquer coisa").find((x) => /AULA/.test(x.message))!;
     expect(applyLineEdit("qualquer coisa", i.fixes[0]!.edit).startsWith("=== AULA ===\n")).toBe(true);
+  });
+});
+
+describe("seções que o ChatGPT escreveu fora do formato", () => {
+  const head = ["=== AULA ===", "Título: TCO", "Matéria: Legislação especial", "Tipo: tema", "Objetivo: Dominar o termo circunstanciado.", "=== TEXTO-BASE ===", "1 Conceito", "2 Rito", "=== MÓDULO: Base ==="];
+  it("aceita travessão no lugar de --- e “### SEÇÃO:”", () => {
+    const t = [...head, "— SEÇÃO: introdução | O que é o TCO —", "Texto um.", "### SEÇÃO: resumo | Revisão", "Texto dois."].join("\n");
+    expect(prepareLessonUpload(t).parsed.errors).toEqual([]);
+  });
+  it("títulos soltos viram seções com um clique; texto solto vira um trecho só", () => {
+    const t = [...head, "## O que é o TCO", "Texto um.", "", "Mais texto.", "## Rito sumaríssimo", "Texto dois.", "=== QUESTÕES: FÁCIL ===", "solto aqui", "e aqui"].join("\n");
+    const issues = issuesOf(t);
+    const two = issues.find((i) => /pelo menos 2 seções/.test(i.message))!;
+    expect(two.fixes[0]!.label).toBe("Transformar os 2 títulos soltos em seções");
+    const fixed = applyFix(t, two.fixes[0]!);
+    expect(prepareLessonUpload(fixed).parsed.errors).toEqual([]);
+    expect(prepareLessonUpload(fixed).parsed.sections.map((s) => s.title)).toEqual(["O que é o TCO", "Rito sumaríssimo"]);
+    const looseQ = issues.find((i) => /fora de uma questão/.test(i.message))!;
+    expect(looseQ.message).toMatch(/^Linhas 17–18/);
+    expect(applyFix(t, looseQ.fixes[1]!)).not.toContain("solto aqui");
+  });
+});
+
+describe("autocorrigir tudo com um clique", () => {
+  it("aplica as correções sugeridas em sequência e diz o que fez", async () => {
+    const { autoFixText } = await import("./upload-fixes");
+    const r = autoFixText(base, (t) => prepareLessonUpload(t));
+    expect(r.remaining).toEqual([]);
+    expect(prepareLessonUpload(r.text).parsed.errors).toEqual([]);
+    expect(r.applied.length).toBeGreaterThanOrEqual(5);
+    expect(r.text).toContain("Gabarito: A");
+  });
+  it("títulos soltos viram seções sem precisar escolher", async () => {
+    const { autoFixText } = await import("./upload-fixes");
+    const t = ["=== AULA ===", "Título: TCO", "Matéria: Legislação especial", "Tipo: tema", "Objetivo: Dominar o TCO.", "=== TEXTO-BASE ===", "1 Conceito", "=== MÓDULO: Base ===", "**O que é o TCO**", "Texto um.", "**Rito**", "Texto dois."].join("\n");
+    const r = autoFixText(t, (x) => prepareLessonUpload(x));
+    expect(r.remaining).toEqual([]);
   });
 });
