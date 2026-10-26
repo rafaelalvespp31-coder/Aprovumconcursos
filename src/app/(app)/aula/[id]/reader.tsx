@@ -43,7 +43,7 @@ export interface ReaderClarification {
 export interface ReaderProps {
   lesson: { id: string; title: string; objective: string; trailId: string; trailTitle: string; estimatedMinutes: number; stateLabel: string | null };
   /** Dados da capa (como no PDF): matéria, banca e tipo de conteúdo. */
-  meta?: { subject: string | null; board: string | null; contentType: string | null };
+  meta?: { subject: string | null; board: string | null; contentType: string | null; banner?: string | null };
   sections: ReaderSection[];
   nodes: Array<{ key: string; marker: string | null; title: string; taught: boolean }>;
   questions: Array<ReaderQuestion>;
@@ -117,8 +117,7 @@ export function LessonReader(props: ReaderProps) {
   const modules = useMemo(() => groupIntoModules(sections, { legal }), [sections, legal]);
   const pages = useMemo(() => apostilaPages(modules.length), [modules.length]);
   const [storedPage, setStoredPage] = useStored<string>(`na:apostila:${lesson.id}`, "inicio");
-  const current: ApostilaPage = pages.find((p) => pageKey(p) === storedPage) ?? pages[0]!;
-  const currentIdx = pages.findIndex((p) => pageKey(p) === pageKey(current));
+  const storedP: ApostilaPage = pages.find((p) => pageKey(p) === storedPage) ?? pages[0]!;
 
   // Seções lidas: contam quando o aluno conclui o módulo que as contém.
   const [seenList, setSeenList] = useStored<string[]>(`na:secoes-vistas:${lesson.id}`, []);
@@ -128,7 +127,26 @@ export function LessonReader(props: ReaderProps) {
   const moduleDone = (i: number) => modules[i]!.sections.every((s) => isSeen(s.id));
   const modulesDone = modules.filter((_, i) => moduleDone(i)).length;
 
+  /** Cada módulo só abre depois de concluir o anterior; as questões, depois de toda a teoria. */
+  const theoryDone = readingDone || modulesDone === modules.length;
+  const isUnlocked = (p: ApostilaPage) =>
+    p.kind === "modulo" ? readingDone || p.index === 0 || moduleDone(p.index - 1) : p.kind === "questoes" ? theoryDone || context === "revisao" : true;
+  const firstPending = modules.findIndex((_, i) => !moduleDone(i));
+  // Página guardada que ainda está trancada (ex.: veio de outro aparelho): abre o módulo pendente.
+  const current: ApostilaPage = isUnlocked(storedP) ? storedP : firstPending >= 0 ? { kind: "modulo", index: firstPending } : pages[0]!;
+  const currentIdx = pages.findIndex((p) => pageKey(p) === pageKey(current));
+  const [lockMsg, setLockMsg] = useState<string | null>(null);
+  useEffect(() => {
+    if (!lockMsg) return;
+    const t = setTimeout(() => setLockMsg(null), 3500);
+    return () => clearTimeout(t);
+  }, [lockMsg]);
   const go = (p: ApostilaPage) => {
+    if (!isUnlocked(p)) {
+      setLockMsg(firstPending >= 0 ? `Conclua o Módulo ${firstPending + 1} para avançar.` : "Conclua o módulo pendente para avançar.");
+      return;
+    }
+    setLockMsg(null);
     setStoredPage(pageKey(p));
     requestAnimationFrame(() => document.getElementById("apostila")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
@@ -138,7 +156,14 @@ export function LessonReader(props: ReaderProps) {
   const concludeModule = (i: number) => {
     const nextSeen = new Set([...seen, ...modules[i]!.sections.map((s) => s.id)]);
     setSeenList([...nextSeen]);
-    const next = () => goIdx(currentIdx + 1);
+    // Navega direto (o módulo acabou de ser concluído; o estado ainda não foi atualizado).
+    const next = () => {
+      const target = pages[currentIdx + 1];
+      if (!target) return;
+      setLockMsg(null);
+      setStoredPage(pageKey(target));
+      requestAnimationFrame(() => document.getElementById("apostila")?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    };
     if (!readingDone && sections.every((s) => nextSeen.has(s.id))) {
       startCompleting(async () => {
         await api.completeReading(lesson.id);
@@ -185,14 +210,14 @@ export function LessonReader(props: ReaderProps) {
   const startTarget = modules.findIndex((_, i) => !moduleDone(i));
   const inicio = (
     <>
-      <section className="ap-capa" aria-label="Capa">
-        <div className="ap-capa-arte" aria-hidden />
-        <div className="ap-capa-texto">
-          <p className="ap-kicker ap-kicker-claro">Material de estudo</p>
-          <h1 className="ap-capa-titulo">{lesson.title}</h1>
-          {props.meta?.subject && <p className="ap-capa-sub">{props.meta.subject}</p>}
+      <section className="ap-banner" aria-label="Capa">
+        <div className="ap-banner-arte" data-padrao={props.meta?.banner ? undefined : "1"} style={props.meta?.banner ? { backgroundImage: `url("${props.meta.banner}")` } : undefined}>
+          <div className="ap-banner-texto">
+            <p className="ap-kicker ap-kicker-claro">Material de estudo{props.meta?.subject ? ` · ${props.meta.subject}` : ""}</p>
+            <h1 className="ap-banner-titulo">{lesson.title}</h1>
+          </div>
         </div>
-        <dl className="ap-capa-faixa">
+        <dl className="ap-banner-info">
           <div>
             <dt>Estudo</dt>
             <dd>{lesson.trailTitle}</dd>
@@ -204,12 +229,12 @@ export function LessonReader(props: ReaderProps) {
             </div>
           )}
           <div>
-            <dt>Tipo de conteúdo</dt>
+            <dt>Tipo</dt>
             <dd>{props.meta?.contentType ?? (legal ? "Artigo ou trecho de lei" : "Tema")}</dd>
           </div>
           <div>
-            <dt>Níveis concluídos</dt>
-            <dd>{levelsPassed === 0 ? "Nenhum ainda" : LEVELS.slice(0, levelsPassed).map((l) => l.label).join(", ")}</dd>
+            <dt>Níveis</dt>
+            <dd>{levelsPassed === 0 ? "Nenhum concluído" : LEVELS.slice(0, levelsPassed).map((l) => l.label).join(", ")}</dd>
           </div>
         </dl>
       </section>
@@ -229,11 +254,19 @@ export function LessonReader(props: ReaderProps) {
         <ol>
           {modules.map((m, i) => (
             <li key={i}>
-              <button type="button" onClick={() => go({ kind: "modulo", index: i })} data-testid={`sumario-modulo-${i + 1}`}>
+              <button type="button" onClick={() => go({ kind: "modulo", index: i })} data-testid={`sumario-modulo-${i + 1}`} aria-disabled={!isUnlocked({ kind: "modulo", index: i }) || undefined}>
                 <span className="ap-sum-num">{String(i + 1).padStart(2, "0")}</span>
                 <span className="ap-sum-titulo">{m.title}</span>
                 <span className="ap-sum-pontos" aria-hidden />
-                <span className="ap-sum-info">{moduleDone(i) ? <><Icon name="check" className="size-4" /> lido</> : `${m.sections.length} seç${m.sections.length === 1 ? "ão" : "ões"}`}</span>
+                <span className="ap-sum-info">
+                  {moduleDone(i) ? (
+                    <><Icon name="check" className="size-4" /> concluído</>
+                  ) : !isUnlocked({ kind: "modulo", index: i }) ? (
+                    <><Icon name="cadeado" className="size-3.5" /> bloqueado</>
+                  ) : (
+                    `${m.sections.length} seç${m.sections.length === 1 ? "ão" : "ões"}`
+                  )}
+                </span>
               </button>
             </li>
           ))}
@@ -474,6 +507,11 @@ export function LessonReader(props: ReaderProps) {
 
   return (
     <div className="ap" id="apostila">
+      {lockMsg && (
+        <p role="alert" className="ap-aviso" data-testid="trava-modulo">
+          <Icon name="cadeado" className="size-4 shrink-0" /> {lockMsg}
+        </p>
+      )}
       {props.outline && <LessonTreePortal trailId={lesson.trailId} trailTitle={lesson.trailTitle} outline={props.outline} currentId={lesson.id} />}
 
       <div className="ap-topo">
@@ -488,8 +526,17 @@ export function LessonReader(props: ReaderProps) {
         </div>
         <nav className="ap-paginas" aria-label="Páginas da aula">
           {pages.map((p, i) => (
-            <button key={pageKey(p)} type="button" onClick={() => go(p)} aria-current={i === currentIdx ? "page" : undefined} data-concluida={pageDone(p) ? "1" : undefined} title={p.kind === "modulo" ? modules[p.index]!.title : undefined}>
-              {pageDone(p) && <Icon name="check" className="size-3.5" />}
+            <button
+              key={pageKey(p)}
+              type="button"
+              onClick={() => go(p)}
+              aria-current={i === currentIdx ? "page" : undefined}
+              aria-disabled={!isUnlocked(p) || undefined}
+              data-concluida={pageDone(p) ? "1" : undefined}
+              data-trancada={!isUnlocked(p) ? "1" : undefined}
+              title={!isUnlocked(p) ? "Conclua o módulo anterior para liberar" : p.kind === "modulo" ? modules[p.index]!.title : undefined}
+            >
+              {pageDone(p) ? <Icon name="check" className="size-3.5" /> : !isUnlocked(p) ? <Icon name="cadeado" className="size-3.5" /> : null}
               {pageLabel(p)}
             </button>
           ))}
@@ -519,6 +566,10 @@ export function LessonReader(props: ReaderProps) {
           notesRef.current?.close();
           if (id) {
             const mi = modules.findIndex((m) => m.sections.some((s) => s.id === id));
+            if (mi >= 0 && !isUnlocked({ kind: "modulo", index: mi })) {
+              setLockMsg(`Esta anotação está no Módulo ${mi + 1}: conclua os módulos anteriores para abri-lo.`);
+              return;
+            }
             if (mi >= 0) setStoredPage(pageKey({ kind: "modulo", index: mi }));
             setTimeout(() => document.getElementById(sectionDomId(id))?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
           }

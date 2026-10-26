@@ -6,6 +6,7 @@ import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
 import { auditLog } from "../observability";
 import { UserFacingError } from "./trails";
+import { bannerUrlFor } from "./banners";
 
 /** Confere o arquivo e mostra como a aula vai ficar, sem gravar nada. */
 export async function previewLessonUpload(text: string): Promise<LessonUploadPreview> {
@@ -23,7 +24,8 @@ export async function previewLessonUpload(text: string): Promise<LessonUploadPre
     const { data: same } = await db.from("catalog_topics").select("title").eq("status", "publicado").eq("discipline_mode", m.disciplineMode).ilike("title", m.title.replace(/[%_\\]/g, ""));
     for (const t of same ?? []) warnings.push(`Atenção: já existe a aula publicada “${t.title}” na mesma matéria.`);
   }
-  return summarizeLessonUpload(p, { errors, warnings, existing: existing ? { id: existing.id as string, status: existing.status as string, title: existing.title as string } : null });
+  const summary = summarizeLessonUpload(p, { errors, warnings, existing: existing ? { id: existing.id as string, status: existing.status as string, title: existing.title as string } : null });
+  return { ...summary, banner: await bannerUrlFor(m.disciplineMode) };
 }
 
 const MIN_PER_LEVEL = 10;

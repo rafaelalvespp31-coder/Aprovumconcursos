@@ -16,6 +16,7 @@ import {
   updateTopicSection,
 } from "@/server/services/catalog";
 import { importLessonUpload, previewLessonUpload, type LessonUploadPreview } from "@/server/services/catalog-upload";
+import { bannerUrlFor, removeBanner, saveBanner } from "@/server/services/banners";
 
 export interface AdminResult {
   ok: boolean;
@@ -114,4 +115,26 @@ export async function promoteAction(lessonId: string): Promise<AdminResult> {
   });
   if (!r.ok) return r;
   redirect(`/admin/catalogo/${id}`);
+}
+
+export type BannerResult = { ok: true; url: string | null } | { ok: false; error: string };
+
+/** Anexa (ou troca) o banner de uma matéria: vale para todas as aulas dela. */
+export async function saveBannerAction(form: FormData): Promise<BannerResult> {
+  const user = await requireAdmin();
+  const mode = String(form.get("mode") ?? "");
+  const r = await guard("catalog.banner", async () => saveBanner(user, mode, form.get("file") as File));
+  if (!r.ok) return { ok: false, error: r.error ?? "Não foi possível salvar o banner." };
+  revalidatePath("/admin/catalogo/banners");
+  revalidatePath("/aula/[id]", "page");
+  return { ok: true, url: await bannerUrlFor(mode) };
+}
+
+export async function removeBannerAction(mode: string): Promise<BannerResult> {
+  const user = await requireAdmin();
+  const r = await guard("catalog.banner_remove", async () => removeBanner(user, mode));
+  if (!r.ok) return { ok: false, error: r.error ?? "Não foi possível remover." };
+  revalidatePath("/admin/catalogo/banners");
+  revalidatePath("/aula/[id]", "page");
+  return { ok: true, url: null };
 }

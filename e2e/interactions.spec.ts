@@ -828,11 +828,19 @@ test("pastas e estudos: falha ao excluir aparece na tela (nunca um clique mudo)"
 
 test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", () => {
   const pages = (page: Page) => page.getByRole("navigation", { name: "Páginas da aula" });
+  /** Conclui os três módulos da aula de exemplo (as questões só abrem depois da teoria). */
+  const finishTheory = async (page: Page) => {
+    await page.getByTestId("comecar-aula").click();
+    for (const n of [1, 2, 3]) await page.getByTestId(`concluir-modulo-${n}`).click();
+    await expect(page.getByRole("heading", { name: /Nível (Fácil|Médio|Difícil)/, level: 2 })).toBeVisible();
+  };
 
-  test("início: capa, resumo do estudo e sumário; começar abre o Módulo 1", async ({ page }) => {
+  test("início: banner compacto da matéria, resumo do estudo e sumário; começar abre o Módulo 1", async ({ page }) => {
     await page.goto(`${G}/aula`);
     const capa = page.getByRole("region", { name: "Capa" });
     await expect(capa.getByRole("heading", { level: 1 })).toHaveText("Anulação, revogação e convalidação");
+    const h = await capa.locator(".ap-banner-arte").evaluate((el) => el.getBoundingClientRect().height);
+    expect(h).toBeLessThanOrEqual(230);
     await expect(capa.getByText("FGV")).toBeVisible();
     await expect(page.getByText("módulos concluídos")).toBeVisible();
     const sum = page.getByRole("navigation", { name: "Sumário da aula" });
@@ -846,22 +854,38 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
     await noHorizontalScroll(page);
   });
 
-  test("um módulo por página: caixas, tabelas, texto legal e marca de não verificado como no PDF", async ({ page }) => {
+  test("um módulo por página: caixas, tabelas, texto legal, negrito vermelho e marca de não verificado", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    await pages(page).getByRole("button", { name: "Módulo 1" }).click();
+    await page.getByTestId("comecar-aula").click();
     await expect(page.getByRole("heading", { name: "Introdução", level: 3 })).toBeVisible();
     await expect(page.locator(".ap-callout").filter({ hasText: "Na prática:" })).toBeVisible();
     await expect(page.locator(".ap-lei")).toContainText("Art. 53");
+    await expect(page.locator(".ap-md strong").first()).toHaveCSS("color", "rgb(138, 3, 3)");
     // Só o módulo aberto aparece (nada de rolagem infinita).
     await expect(page.getByRole("heading", { name: "Convalidação", level: 3 })).toHaveCount(0);
-    await pages(page).getByRole("button", { name: "Módulo 2" }).click();
+    await page.getByTestId("concluir-modulo-1").click();
     await expect(page.getByRole("heading", { name: "Introdução", level: 3 })).toHaveCount(0);
     const th = page.locator(".ap-tabela thead th").first();
     await expect(th).toHaveCSS("background-color", "rgb(10, 10, 10)");
-    await pages(page).getByRole("button", { name: "Módulo 3" }).click();
+    await page.getByTestId("concluir-modulo-2").click();
     await expect(page.getByRole("heading", { name: /Entendimento dos tribunais/, level: 3 })).toContainText("[não verificado]");
     await expect(page.locator(".ap-pendente")).toContainText("Súmula 473");
     await noHorizontalScroll(page);
+  });
+
+  test("só avança de módulo depois de concluir o módulo pendente", async ({ page }) => {
+    await page.goto(`${G}/aula`);
+    const m3 = pages(page).getByRole("button", { name: "Módulo 3" });
+    await expect(m3).toHaveAttribute("aria-disabled", "true");
+    await m3.dispatchEvent("click");
+    await expect(page.getByTestId("trava-modulo")).toContainText("Conclua o Módulo 1");
+    await expect(page.getByText("Módulo 3 de 3")).toHaveCount(0);
+    await pages(page).getByRole("button", { name: "Questões" }).dispatchEvent("click");
+    await expect(page.getByRole("heading", { name: "Nível Fácil", level: 2 })).toHaveCount(0);
+    await page.getByTestId("comecar-aula").click();
+    await page.getByTestId("concluir-modulo-1").click();
+    await expect(pages(page).getByRole("button", { name: "Módulo 2" })).not.toHaveAttribute("aria-disabled", "true");
+    await expect(m3).toHaveAttribute("aria-disabled", "true");
   });
 
   test("concluir os módulos em sequência registra a leitura e leva às questões", async ({ page }) => {
@@ -877,9 +901,9 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
     await expect(page.getByText("3/3")).toBeVisible();
   });
 
-  test("questão no cartão do PDF: responde, mostra ACERTOU, comentário por alternativa e o comentário geral", async ({ page }) => {
+  test("questão em card interativo: escolhe, responde, mostra ACERTOU, comentário por alternativa e o comentário geral", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    await pages(page).getByRole("button", { name: "Questões" }).click();
+    await finishTheory(page);
     const q1 = page.getByRole("article", { name: "Questão 1" });
     await q1.getByText("anular a licença, por ilegalidade", { exact: false }).click();
     await q1.getByRole("button", { name: "Responder", exact: true }).click();
@@ -894,7 +918,7 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
 
   test("nível fácil aprovado e o médio liberado", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    await pages(page).getByRole("button", { name: "Questões" }).click();
+    await finishTheory(page);
     const q1 = page.getByRole("article", { name: "Questão 1" });
     await q1.getByText("anular a licença, por ilegalidade", { exact: false }).click();
     await q1.getByRole("button", { name: "Responder", exact: true }).click();
@@ -907,7 +931,7 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
 
   test("nível reprovado oferece recuperação em vez de reiniciar", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    await pages(page).getByRole("button", { name: "Questões" }).click();
+    await finishTheory(page);
     const q1 = page.getByRole("article", { name: "Questão 1" });
     await q1.getByText("revogar a licença, por conveniência", { exact: false }).click();
     await q1.getByRole("button", { name: "Responder", exact: true }).click();
@@ -921,7 +945,7 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
 
   test("anotar, marcar para revisar, esclarecer e voltar ao tema pela anotação", async ({ page }) => {
     await page.goto(`${G}/aula`);
-    await pages(page).getByRole("button", { name: "Módulo 1" }).click();
+    await page.getByTestId("comecar-aula").click();
     const actions = page.getByRole("toolbar", { name: "Ações da seção Introdução" });
     await actions.getByRole("button", { name: "Revisar depois" }).click();
     await expect(actions.getByRole("button", { name: "Marcado para revisar" })).toBeVisible();
@@ -929,6 +953,8 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
     await page.getByRole("textbox", { name: "O que não ficou claro?" }).fill("O que é efeito ex tunc?");
     await page.getByRole("button", { name: "Pedir explicação" }).click();
     await expect(page.getByText(/Resposta de demonstração da galeria/)).toBeVisible();
+    for (const n of [1, 2]) await page.getByTestId(`concluir-modulo-${n}`).click();
+    await pages(page).getByRole("button", { name: "Início" }).click();
     await page.getByRole("button", { name: /Minhas anotações/ }).click();
     await page.getByRole("dialog", { name: /anotações/i }).getByRole("button", { name: /Convalidação/ }).first().click();
     await expect(page.getByText("Módulo 3 de 3")).toBeVisible();

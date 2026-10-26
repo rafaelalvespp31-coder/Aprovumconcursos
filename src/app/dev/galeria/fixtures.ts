@@ -68,7 +68,7 @@ const LEI = "Art. 53. A Administração deve anular seus próprios atos, quando 
 
 export const reader: ReaderProps = {
   lesson: { id: id(103), title: "Anulação, revogação e convalidação", objective: "Distinguir as formas de extinção do ato administrativo, seus fundamentos e efeitos.", trailId: id(10), trailTitle: "Polícia Penal MG — Direito Administrativo", estimatedMinutes: 35, stateLabel: "Em andamento" },
-  meta: { subject: "Direito Administrativo", board: "FGV", contentType: "Tema" },
+  meta: { subject: "Direito Administrativo", board: "FGV", contentType: "Tema", banner: null },
   references: [
     { kind: "lei", citation: "Lei nº 9.784/1999, art. 53", verified: true },
     { kind: "jurisprudencia", citation: "STF, Súmula 473", verified: false },

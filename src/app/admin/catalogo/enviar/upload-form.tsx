@@ -5,6 +5,7 @@ import { Button, Notice, Tag } from "@/components/ui";
 import type { LessonUploadPreview } from "@/domain/catalog/upload-preview";
 import { LESSON_PROMPT } from "@/domain/catalog/chatgpt-prompts";
 import type { AdminResult, UploadPreviewResult } from "../actions";
+import { BannerSlot, type BannerActions } from "../banners/banner-slot";
 
 interface Actions {
   preview: (text: string) => Promise<UploadPreviewResult>;
@@ -17,7 +18,7 @@ const LEVEL = { facil: "Fácil", medio: "Médio", dificil: "Difícil" } as const
  * Catalogação por texto colado: 1) copiar o comando para o ChatGPT, 2) colar a resposta,
  * 3) conferir como a aula vai ficar (módulos, seções, questões, erros e avisos), 4) salvar.
  */
-export function LessonUploadForm({ actions }: { actions: Actions }) {
+export function LessonUploadForm({ actions, bannerActions }: { actions: Actions; bannerActions?: BannerActions }) {
   const [text, setText] = useState("");
   const [checked, setChecked] = useState("");
   const [preview, setPreview] = useState<LessonUploadPreview | null>(null);
@@ -141,6 +142,14 @@ export function LessonUploadForm({ actions }: { actions: Actions }) {
                   </li>
                 ))}
               </ol>
+            </div>
+          )}
+
+          {bannerActions && preview.disciplineMode && (
+            <div>
+              <h3 className="t-h3">Banner da matéria ({preview.subject})</h3>
+              <p className="mt-1 mb-2 t-small text-tinta-suave">Vale para todas as aulas de {preview.subject}. Anexe uma vez; troque quando quiser.</p>
+              <BannerSlot compact mode={preview.disciplineMode} label={preview.subject ?? preview.disciplineMode} url={preview.banner ?? null} actions={bannerActions} />
             </div>
           )}
 

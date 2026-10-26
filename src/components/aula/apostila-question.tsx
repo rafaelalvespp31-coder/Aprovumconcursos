@@ -156,7 +156,7 @@ export function ApostilaQuestion({
           </>
         ) : (
           <div className="ap-q-acoes">
-            <button type="button" className="ap-btn ap-btn-preto" onClick={submit} disabled={!choice || pending}>
+            <button type="button" className="ap-btn ap-btn-vermelho" onClick={submit} disabled={!choice || pending}>
               {pending ? "Registrando…" : "Responder"}
             </button>
             <button type="button" className="ap-link" aria-pressed={marked} onClick={toggleMark}>

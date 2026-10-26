@@ -6,6 +6,8 @@ import { JobRunner, type PublicJob } from "@/components/job-runner";
 import { STATE_LABELS } from "@/domain/progress/state-machine";
 import { LessonReader } from "./reader";
 import { CONTENT_TYPE_OPTIONS, boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
+import { bannerUrlFor } from "@/server/services/banners";
+import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import { generateLessonAction } from "./actions";
 
 export const metadata = { title: "Aula" };
@@ -87,10 +89,12 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
   }
 
   const notTaught = nodes.filter((n) => !n.taught);
-  const [nextInSubject, plan, pdfs] = await Promise.all([
+  const discipline = lesson.study_trails.discipline_mode;
+  const [nextInSubject, plan, pdfs, banner] = await Promise.all([
     getNextInSubject(lesson.trail_id, next ? { id: next.id, title: next.title } : null).catch(() => null),
     getTrailPlan(lesson.trail_id).catch(() => []),
     listStudyPdfs(lesson.trail_id).catch(() => []),
+    bannerUrlFor(discipline).catch(() => null),
   ]);
   const units = plan.flatMap((m) => m.lessons);
   const unitsDone = units.filter((l) => l.levelsPassed >= 3).length;
@@ -126,7 +130,8 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
         stateLabel: progress ? STATE_LABELS[progress.state] : null,
       }}
       meta={{
-        subject: lesson.study_trails.scope_summary?.subject ?? null,
+        subject: lesson.study_trails.scope_summary?.subject ?? (discipline && discipline !== "outra" ? DISCIPLINE_LABELS[discipline as DisciplineMode] ?? null : null),
+        banner,
         board: lesson.study_trails.board_slug ? boardDisplayName(lesson.study_trails.board_slug as ExamBoardSlug, lesson.study_trails.other_board_name) : null,
         contentType: CONTENT_TYPE_OPTIONS.find((o) => o.value === lesson.study_trails.content_type)?.label ?? null,
       }}

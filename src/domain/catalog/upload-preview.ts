@@ -17,6 +17,10 @@ export interface LessonUploadPreview {
   warnings: string[];
   title: string;
   subject: string | null;
+  /** Código da matéria (para o banner). */
+  disciplineMode: string | null;
+  /** Banner atual da matéria (URL), quando já existe. */
+  banner?: string | null;
   kind: "tema" | "dispositivo";
   law: string | null;
   slug: string;
@@ -64,6 +68,7 @@ export function summarizeLessonUpload(
     warnings: [...(extra.warnings ?? []), ...p.warnings],
     title: m.title,
     subject: m.disciplineMode ? DISCIPLINE_LABELS[m.disciplineMode] : null,
+    disciplineMode: m.disciplineMode,
     kind: m.kind,
     law: m.lawCode ? `${m.lawCode}, art. ${m.articles.join(", ")}` : null,
     slug: p.slug,
