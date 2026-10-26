@@ -111,7 +111,7 @@ describe("comando compacto", () => {
     expect(c).toContain('MÓDULO "Visão geral e lei seca"');
     expect(c).toContain("esquema | Mapa do art. 121 (bloco por bloco) (~");
     expect(c).toContain("| Bloco | O que diz | Pena ou efeito |");
-    expect(c).toContain("Quando eu escrever \"questões\"");
+    expect(c).toContain("Responda com a aula COMPLETA");
     expect(c).toContain("Infanticídio (art. 123).");
     expect(c).toContain("O perdão judicial cabe no homicídio doloso.");
     const long = Array.from({ length: 40 }, (_, i) => `- item ${i} com bastante texto para ocupar espaço na seção`).join("\n") + "\n\n| A | B |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n\n> **Pegadinha:** caixa no fim.";

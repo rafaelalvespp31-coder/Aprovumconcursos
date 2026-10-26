@@ -480,7 +480,7 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     const up = page.getByTestId("upload-aula");
     await up.getByRole("radio", { name: "Completo", exact: true }).click();
     await expect(up.getByRole("button", { name: "Copiar comando para o ChatGPT" })).toBeVisible();
-    await up.getByLabel("2. Cole aqui a resposta do ChatGPT").fill("```text\n" + readFileSync("public/modelos/modelo-aula.txt", "utf8") + "\n```");
+    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").fill("```text\n" + readFileSync("public/modelos/modelo-aula.txt", "utf8") + "\n```");
     await up.getByRole("button", { name: "3. Conferir aula" }).click();
     const pv = up.locator("section[aria-labelledby=previa]");
     await expect(pv.getByRole("heading", { name: "Furto (art. 155 do CP)" })).toBeVisible();
@@ -492,46 +492,29 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await expect(pv.getByText("Fácil: 2", { exact: true })).toBeVisible();
     await expect(up.getByRole("button", { name: "4. Salvar como rascunho" })).toBeEnabled();
     // Mudou o texto depois de conferir: precisa conferir de novo.
-    await up.getByLabel("2. Cole aqui a resposta do ChatGPT").press("End");
-    await up.getByLabel("2. Cole aqui a resposta do ChatGPT").pressSequentially(" ");
+    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").press("End");
+    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").pressSequentially(" ");
     await expect(up.getByRole("button", { name: "4. Salvar como rascunho" })).toBeDisabled();
   });
 
-  test("comando compacto (padrão): uma mensagem, resposta da aula e das questões em dois campos", async ({ page }) => {
+  test("compacto é o padrão e a resposta inteira (aula e questões) vai num campo só", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");
     await expect(up.getByRole("radio", { name: "Compacto (recomendado)" })).toHaveAttribute("aria-checked", "true");
-    await expect(up.getByRole("button", { name: "Copiar comando para o ChatGPT" })).toBeVisible();
-    const full = readFileSync("public/modelos/modelo-aula.txt", "utf8");
-    const cut = full.indexOf("=== QUESTÕES: FÁCIL ===");
-    await up.getByLabel("2. Cole aqui a primeira resposta (a aula)").fill(full.slice(0, cut));
-    await up.getByLabel("Cole aqui a segunda resposta (as questões)").fill(full.slice(cut));
+    await expect(up.getByRole("textbox")).toHaveCount(1);
+    await up.getByRole("radio", { name: "Completo em 2 partes" }).click();
+    await expect(up.getByRole("button", { name: "Copiar parte 2" })).toBeVisible();
+    await expect(up.getByRole("textbox")).toHaveCount(1);
+    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").fill(readFileSync("public/modelos/modelo-aula.txt", "utf8"));
     await up.getByRole("button", { name: "3. Conferir aula" }).click();
     await expect(up.locator("section[aria-labelledby=previa]").getByText("Fácil: 2", { exact: true })).toBeVisible();
-  });
-
-  test("comando dividido em 2 partes: cola a aula e as questões separadas e confere como uma aula só", async ({ page }) => {
-    await page.goto(`${G}/catalogo`);
-    const up = page.getByTestId("upload-aula");
-    await up.getByRole("radio", { name: "Completo em 2 partes" }).click();
-    await expect(up.getByRole("button", { name: "Copiar parte 1" })).toBeVisible();
-    await expect(up.getByRole("button", { name: "Copiar parte 2" })).toBeVisible();
-    const full = readFileSync("public/modelos/modelo-aula.txt", "utf8");
-    const cut = full.indexOf("=== QUESTÕES: FÁCIL ===");
-    await up.getByLabel("2. Cole aqui a resposta da parte 1 (a aula)").fill(full.slice(0, cut));
-    await expect(up.getByRole("button", { name: "3. Conferir aula" })).toBeDisabled();
-    await up.getByLabel("Cole aqui a resposta da parte 2 (as questões)").fill("```\n" + full.slice(cut) + "\n```");
-    await up.getByRole("button", { name: "3. Conferir aula" }).click();
-    const pv = up.locator("section[aria-labelledby=previa]");
-    await expect(pv.getByText("Fácil: 2", { exact: true })).toBeVisible();
-    await expect(pv.getByText("2. Aprofundamento", { exact: true })).toBeVisible();
   });
 
   test("texto fora do formato aponta os erros e não deixa salvar", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");
     await up.getByRole("radio", { name: "Completo", exact: true }).click();
-    await up.getByLabel("2. Cole aqui a resposta do ChatGPT").fill("=== AULA ===\nTítulo: Teste\nMatéria: Astronomia\n");
+    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").fill("=== AULA ===\nTítulo: Teste\nMatéria: Astronomia\n");
     await up.getByRole("button", { name: "3. Conferir aula" }).click();
     await expect(up.getByText(/Não reconheci a matéria “Astronomia”/)).toBeVisible();
     await expect(up.getByRole("button", { name: "4. Salvar como rascunho" })).toBeDisabled();

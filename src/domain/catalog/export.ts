@@ -265,7 +265,7 @@ export function sectionExcerpt(md: string, max = 160): string {
 /**
  * Comando COMPACTO (cabe no ChatGPT): esqueleto com o tamanho de cada seção, o começo de cada
  * seção do modelo (mostra tabelas, caixas e listas), um exemplo de cada tipo de questão por nível
- * e as quantidades. A resposta vem em 2 mensagens: primeiro a aula; depois, ao pedir, as questões.
+ * e as quantidades. A resposta vem inteira (aula + questões), num bloco só.
  */
 export function buildCompactPrompt(t: ExportableTopic): string {
   const o = modelOutline(t);
@@ -344,10 +344,8 @@ TEXTO-BASE: texto LITERAL e VIGENTE dos artigos, um dispositivo por linha, e dep
 QUESTÕES (12 por nível): ${lv("facil", "Fácil")}; ${lv("medio", "Médio")}; ${lv("dificil", "Difícil")}. Múltipla escolha com A a E, cada alternativa com "Comentário:". Todas com Item (existente no TEXTO-BASE), Essencial, Dificuldade, Gabarito e Justificativa. Questões autorais, sem banca ou concurso real; gabaritos coerentes e distribuídos entre A e E.
 Nunca invente súmula, tese ou julgado; o que precisar de conferência vai em "=== A CONFERIR ===".
 
-COMO RESPONDER (em 2 mensagens)
-1) Agora: só a AULA (de "=== AULA ===" até "=== A CONFERIR ==="), num único bloco de código, sem nada fora dele.
-2) Quando eu escrever "questões": só as QUESTÕES (de "=== QUESTÕES: FÁCIL ===" até o fim do difícil), num único bloco de código.
-Se cortar, eu escrevo "continue" e você segue de onde parou, sem repetir. Use exatamente os marcadores e campos do modelo; não use === nem --- dentro do conteúdo.
+COMO RESPONDER
+Responda com a aula COMPLETA — da "=== AULA ===" até o fim das questões do nível difícil — num único bloco de código, sem nada fora dele. Se cortar por tamanho, eu escrevo "continue" e você segue exatamente de onde parou, sem repetir nada. Use exatamente os marcadores e campos do modelo; não use === nem --- dentro do conteúdo.
 
 <<<MODELO RESUMIDO: ${t.title}>>>
 ${sample.join("\n").replace(/\n{3,}/g, "\n\n").trim()}

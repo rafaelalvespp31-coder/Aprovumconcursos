@@ -47,15 +47,13 @@ export function LessonUploadForm({
   type Mode = "compacto" | "partes" | "inteiro";
   const [mode, setMode] = useState<Mode>(compact ? "compacto" : parts && prompt.length > 60_000 ? "partes" : "inteiro");
   const [text, setText] = useState("");
-  const [text2, setText2] = useState("");
   const [checked, setChecked] = useState("");
   const [preview, setPreview] = useState<LessonUploadPreview | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState<number | null>(null);
   const [pending, start] = useTransition();
   const [saving, setSaving] = useState(false);
-  const two = (mode === "partes" && !!parts) || (mode === "compacto" && !!compact);
-  const combined = two ? `${text.trim()}\n\n${text2.trim()}` : text;
+  const combined = text;
   const commands =
     mode === "compacto" && compact
       ? [{ label: "Comando compacto", text: compact }]
@@ -104,7 +102,7 @@ export function LessonUploadForm({
   };
   const stale = preview && combined !== checked;
   const full = !!preview && preview.questions.facil >= 10 && preview.questions.medio >= 10 && preview.questions.dificil >= 10;
-  const textareaCls = "min-h-60 w-full rounded-md border border-linha-forte bg-superficie p-3 font-mono text-[13px] leading-relaxed focus:border-azul focus:outline-none focus:ring-2 focus:ring-azul/20";
+  const textareaCls = "min-h-72 w-full rounded-md border border-linha-forte bg-superficie p-3 font-mono text-[13px] leading-relaxed focus:border-azul focus:outline-none focus:ring-2 focus:ring-azul/20";
 
   return (
     <div className="flex flex-col gap-5" data-testid="upload-aula">
@@ -161,12 +159,12 @@ export function LessonUploadForm({
         )}
         {mode === "compacto" && compact && (
           <p className="mt-2 t-small text-tinta-suave">
-            Envie o comando no ChatGPT: ele responde primeiro <strong>a aula</strong>. Cole no primeiro campo. Depois escreva <strong>questões</strong> na mesma conversa e cole a resposta no segundo campo. As duas são conferidas e publicadas juntas.
+            Envie o comando no ChatGPT: ele responde com a aula completa (teoria e questões). Se ele cortar, escreva <strong>continue</strong> e cole a continuação logo abaixo, no mesmo campo.
           </p>
         )}
         {mode === "partes" && parts && (
           <p className="mt-2 t-small text-tinta-suave">
-            Envie a <strong>parte 1</strong> (a aula) no ChatGPT e, quando ele terminar, envie a <strong>parte 2</strong> (as questões) <strong>na mesma conversa</strong>. Cole cada resposta no campo dela abaixo: as duas são conferidas e publicadas juntas, como uma aula só.
+            Envie a <strong>parte 1</strong> (a aula) no ChatGPT e, quando ele terminar, envie a <strong>parte 2</strong> (as questões) <strong>na mesma conversa</strong>. Cole as duas respostas, uma embaixo da outra, no mesmo campo.
           </p>
         )}
         <div className="mt-3 flex flex-col gap-3">
@@ -189,18 +187,12 @@ export function LessonUploadForm({
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="texto-aula" className="font-semibold">{two ? (mode === "compacto" ? "2. Cole aqui a primeira resposta (a aula)" : "2. Cole aqui a resposta da parte 1 (a aula)") : "2. Cole aqui a resposta do ChatGPT"}</label>
-        <textarea id="texto-aula" value={text} onChange={(e) => setText(e.target.value)} placeholder={"=== AULA ===\nTítulo: …\nMatéria: …"} spellCheck={false} className={textareaCls} />
-        {two && (
-          <>
-            <label htmlFor="texto-questoes" className="mt-2 font-semibold">{mode === "compacto" ? "Cole aqui a segunda resposta (as questões)" : "Cole aqui a resposta da parte 2 (as questões)"}</label>
-            <textarea id="texto-questoes" value={text2} onChange={(e) => setText2(e.target.value)} placeholder={"=== QUESTÕES: FÁCIL ===\n--- QUESTÃO ---\n…"} spellCheck={false} className={textareaCls} />
-          </>
-        )}
+        <label htmlFor="texto-aula" className="font-semibold">2. Cole aqui a resposta completa do ChatGPT (aula e questões)</label>
+        <textarea id="texto-aula" value={text} onChange={(e) => setText(e.target.value)} placeholder={"=== AULA ===\nTítulo: …\nMatéria: …\n…\n=== QUESTÕES: FÁCIL ===\n…"} spellCheck={false} className={textareaCls} />
         <div className="flex flex-wrap items-center gap-2">
-          <Button disabled={!text.trim() || (two && !text2.trim()) || pending} onClick={check}>{pending && !saving ? "Conferindo…" : "3. Conferir aula"}</Button>
-          {(text || text2) && (
-            <Button variant="discreto" disabled={pending} onClick={() => { setText(""); setText2(""); setPreview(null); setError(null); }}>Limpar</Button>
+          <Button disabled={!text.trim() || pending} onClick={check}>{pending && !saving ? "Conferindo…" : "3. Conferir aula"}</Button>
+          {text && (
+            <Button variant="discreto" disabled={pending} onClick={() => { setText(""); setPreview(null); setError(null); }}>Limpar</Button>
           )}
           <span className="t-tiny text-tinta-fraca">{combined.trim().length.toLocaleString("pt-BR")} caracteres</span>
         </div>
