@@ -568,6 +568,25 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await expect(slot.getByRole("button", { name: "Anexar banner" })).toBeVisible();
   });
 
+  test("conferência ao vivo: destaca a linha do erro e corrige com um clique", async ({ page }) => {
+    await page.goto(`${G}/catalogo`);
+    const up = page.getByTestId("upload-aula");
+    await up.getByRole("radio", { name: "Completo", exact: true }).click();
+    const full = readFileSync("public/modelos/modelo-aula.txt", "utf8");
+    // Estraga o gabarito da primeira questão de múltipla escolha.
+    const broken = full.replace(/Gabarito:\s*[A-E]\b/, "Gabarito: Z");
+    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").fill(broken);
+    const live = page.getByTestId("conferencia-ao-vivo");
+    await expect(live.getByText(/1 erro\(s\) no texto/)).toBeVisible();
+    const issue = live.locator("li[data-severidade=erro]").first();
+    await expect(issue.getByText(/Gabarito:” precisa ser a letra/)).toBeVisible();
+    await expect(up.locator("[data-l].bg-erro\\/15")).toHaveCount(1);
+    await issue.getByRole("button", { name: "Ver no texto" }).click();
+    await issue.getByRole("button", { name: /^(✓ )?Gabarito A$/ }).click();
+    await expect(live.getByText("Nenhum erro de formato no texto. Clique em “Conferir aula”.")).toBeVisible();
+    await expect(up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)")).toHaveValue(/Gabarito: A/);
+  });
+
   test("texto fora do formato aponta os erros e não deixa salvar", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");

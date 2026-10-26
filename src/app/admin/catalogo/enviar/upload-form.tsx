@@ -1,11 +1,14 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { Button, Notice, Tag } from "@/components/ui";
 import type { LessonUploadPreview } from "@/domain/catalog/upload-preview";
 import { LESSON_PROMPT } from "@/domain/catalog/chatgpt-prompts";
 import type { AdminResult, UploadPreviewResult } from "../actions";
 import { BannerSlot, type BannerActions } from "../banners/banner-slot";
+import { prepareLessonUpload } from "@/domain/catalog/upload-preview";
+import { applyLineEdit, describeIssues, type LineEdit, type TextIssue } from "@/domain/catalog/upload-fixes";
+import { IssueList, MarkedTextarea, type LineMark, type MarkedTextareaHandle } from "./paste-checker";
 
 interface Actions {
   preview: (text: string) => Promise<UploadPreviewResult>;
@@ -105,8 +108,71 @@ export function LessonUploadForm({
     setTimeout(() => URL.revokeObjectURL(url), 2000);
   };
   const stale = preview && combined !== checked;
+
+  // --- Conferência ao vivo: o texto é lido no navegador enquanto você cola/edita.
+  const [live, setLive] = useState<{ text: string; issues: TextIssue[] } | null>(null);
+  useEffect(() => {
+    if (!combined.trim()) return;
+    const h = setTimeout(() => {
+      try {
+        const p = prepareLessonUpload(combined);
+        setLive({ text: combined, issues: describeIssues(combined, p.errors, p.warnings.filter((w) => !/^Nível /.test(w))) });
+      } catch {
+        setLive(null);
+      }
+    }, 350);
+    return () => clearTimeout(h);
+  }, [combined]);
+  const liveNow = combined.trim() && live ? live : null;
+  const liveFresh = !!liveNow && liveNow.text === combined;
+
+  // Linha do texto juntado → campo (1 ou 2) e linha dentro dele.
+  const field1Lines = text.trimEnd().split("\n").length;
+  const joined = usingTwo && !!text2.trim();
+  const lead2 = (text2.match(/^\s*/)?.[0] ?? "").split("\n").length - 1;
+  const locate = (line: number): { field: 1 | 2; line: number } => (joined && line > field1Lines ? { field: 2, line: Math.max(1, line - (field1Lines + 1) + lead2) } : { field: 1, line });
+  const ta1 = useRef<MarkedTextareaHandle>(null);
+  const ta2 = useRef<MarkedTextareaHandle>(null);
+  const goTo = (i: TextIssue) => {
+    if (!i.line) return;
+    const a = locate(i.line);
+    const b = i.endLine ? locate(i.endLine) : null;
+    (a.field === 2 ? ta2 : ta1).current?.goTo(a.line, b && b.field === a.field ? b.line : null);
+  };
+  const fix = (e: LineEdit) => {
+    const a = locate(e.start);
+    if (a.field === 2) {
+      setText2((t) => applyLineEdit(t, { ...e, start: a.line }));
+    } else {
+      const max = Math.max(0, field1Lines - e.start + 1);
+      setText((t) => applyLineEdit(t, { ...e, deleteCount: Math.min(e.deleteCount, max) }));
+    }
+    setPreview(null);
+  };
+  const shownIssues = preview && !stale ? null : liveNow?.issues ?? null;
+  const markIssues = (preview && !stale ? describeIssues(checked, preview.errors, preview.warnings.filter((w) => !/^Nível /.test(w))) : liveFresh ? liveNow!.issues : []) ?? [];
+  const markKey = `${markIssues.map((i) => `${i.line}-${i.endLine}-${i.severity}`).join(",")}|${field1Lines}|${lead2}|${joined}`;
+  const marks = useMemo(() => {
+    const m: [Map<number, LineMark>, Map<number, LineMark>] = [new Map(), new Map()];
+    for (const i of markIssues) {
+      if (!i.line) continue;
+      const end = Math.max(i.line + 1, i.endLine ?? i.line + 1);
+      for (let l = i.line; l < end && l < i.line + 400; l++) {
+        const at = locate(l);
+        const kind: LineMark = l === i.line ? i.severity : "foco";
+        const mm = at.field === 2 ? m[1] : m[0];
+        const cur = mm.get(at.line);
+        if (cur !== "erro") mm.set(at.line, kind === "foco" && cur ? cur : kind);
+      }
+    }
+    return m;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [markKey]);
+  const lineLabel = (line: number) => {
+    const a = locate(line);
+    return joined ? `parte ${a.field} · linha ${a.line}` : `linha ${a.line}`;
+  };
   const full = !!preview && preview.questions.facil >= 10 && preview.questions.medio >= 10 && preview.questions.dificil >= 10;
-  const textareaCls = "min-h-72 w-full rounded-md border border-linha-forte bg-superficie p-3 font-mono text-[13px] leading-relaxed focus:border-azul focus:outline-none focus:ring-2 focus:ring-azul/20";
 
   return (
     <div className="flex flex-col gap-5" data-testid="upload-aula">
@@ -192,11 +258,11 @@ export function LessonUploadForm({
 
       <div className="flex flex-col gap-2">
         <label htmlFor="texto-aula" className="font-semibold">{usingTwo ? "2. Cole aqui a parte 1 da resposta" : "2. Cole aqui a resposta completa do ChatGPT (aula e questões)"}</label>
-        <textarea id="texto-aula" value={text} onChange={(e) => setText(e.target.value)} placeholder={"=== AULA ===\nTítulo: …\nMatéria: …\n…\n=== QUESTÕES: FÁCIL ===\n…"} spellCheck={false} className={textareaCls} />
+        <MarkedTextarea ref={ta1} id="texto-aula" value={text} onChange={setText} marks={marks[0]} placeholder={"=== AULA ===\nTítulo: …\nMatéria: …\n…\n=== QUESTÕES: FÁCIL ===\n…"} />
         {usingTwo ? (
           <>
             <label htmlFor="texto-parte-2" className="mt-2 font-semibold">Cole aqui a parte 2 da resposta (continuação ou questões)</label>
-            <textarea id="texto-parte-2" value={text2} onChange={(e) => setText2(e.target.value)} placeholder={"Continuação da resposta (ex.: depois de “continue”) ou as questões"} spellCheck={false} className={textareaCls} />
+            <MarkedTextarea ref={ta2} id="texto-parte-2" value={text2} onChange={setText2} marks={marks[1]} placeholder={"Continuação da resposta (ex.: depois de “continue”) ou as questões"} />
             <p className="t-tiny text-tinta-fraca">As duas partes são juntadas na ordem (parte 1 e depois parte 2) e conferidas e publicadas como uma aula só.</p>
             {mode !== "partes" && (
               <button type="button" className="self-start t-small font-semibold text-destaque underline underline-offset-2" onClick={() => { setSplit(false); setText((t) => (text2.trim() ? `${t.trimEnd()}\n\n${text2.trim()}\n` : t)); setText2(""); setPreview(null); }}>
@@ -216,6 +282,18 @@ export function LessonUploadForm({
           )}
           <span className="t-tiny text-tinta-fraca">{combined.trim().length.toLocaleString("pt-BR")} caracteres</span>
         </div>
+        {shownIssues && (
+          <div className={`mt-1 flex flex-col gap-2 ${liveFresh ? "" : "opacity-60"}`} aria-live="polite" data-testid="conferencia-ao-vivo">
+            {shownIssues.some((i) => i.severity === "erro") ? (
+              <p className="t-small font-semibold text-erro">
+                {shownIssues.filter((i) => i.severity === "erro").length} erro(s) no texto — destacados em vermelho no campo. Corrija com os botões ou edite direto no texto.
+              </p>
+            ) : (
+              <p className="t-small font-semibold text-acerto">Nenhum erro de formato no texto. Clique em “Conferir aula”.</p>
+            )}
+            <IssueList issues={shownIssues} disabled={!liveFresh || pending} onGo={goTo} onFix={(e) => fix(e)} lineLabel={lineLabel} />
+          </div>
+        )}
       </div>
 
       {stale && <Notice tone="alerta">O texto mudou depois da conferência. Clique em “Conferir aula” de novo antes de salvar.</Notice>}
@@ -239,8 +317,10 @@ export function LessonUploadForm({
           </div>
 
           {preview.errors.length > 0 && (
-            <Notice tone="erro" title="Corrija o texto (ou peça ao ChatGPT para corrigir) e confira de novo">
-              <ul className="list-disc pl-5">{preview.errors.map((e) => <li key={e}>{e}</li>)}</ul>
+            <Notice tone="erro" title="Corrija o texto (com os botões abaixo, editando no campo ou pedindo ao ChatGPT) e confira de novo">
+              <div className="mt-2">
+                <IssueList issues={describeIssues(checked, preview.errors, []).filter((i) => i.severity === "erro")} disabled={!!stale || pending} onGo={goTo} onFix={(e) => fix(e)} lineLabel={lineLabel} />
+              </div>
             </Notice>
           )}
           {preview.warnings.length > 0 && (

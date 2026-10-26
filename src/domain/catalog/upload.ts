@@ -216,8 +216,9 @@ export function cleanPasted(raw: string): string {
     .replace(/[\u00a0\u2007\u202f]/g, " ")
     .replace(/[\u200b\ufeff]/g, "")
     .split("\n")
-    .filter((l) => !/^\s*```[\w-]*\s*$/.test(l))
     .map((l) => {
+      // Cerca de código vira linha vazia (não some): os números de linha dos erros batem com o texto colado.
+      if (/^\s*```[\w-]*\s*$/.test(l)) return "";
       // "### === AULA ===", "**=== MÓDULO: X ===**", "> --- QUESTÃO ---"
       const m = l.match(/^\s*(?:#{1,6}\s+|>\s*)?(?:\*\*|__)?\s*((?:={3,}|-{3,})\s*[^*_]+?\s*(?:={3,}|-{3,})?)\s*(?:\*\*|__)?\s*$/);
       if (m && /[A-Za-zÀ-ú]/.test(m[1]!)) return m[1]!;
