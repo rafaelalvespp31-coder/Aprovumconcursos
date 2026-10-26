@@ -916,14 +916,14 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
     await expect(q2.getByText("ACERTOU")).toBeVisible();
   });
 
-  test("nível fácil aprovado e o médio liberado", async ({ page }) => {
+  test("ao responder todas do nível, o fácil é aprovado sozinho e o médio é liberado", async ({ page }) => {
     await page.goto(`${G}/aula`);
     await finishTheory(page);
     const q1 = page.getByRole("article", { name: "Questão 1" });
     await q1.getByText("anular a licença, por ilegalidade", { exact: false }).click();
     await q1.getByRole("button", { name: "Responder", exact: true }).click();
     const fac = page.getByTestId("nivel-facil");
-    await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
+    // Respondeu todas do nível: o resultado sai sozinho, sem tocar em "Calcular".
     await expect(fac.getByText(/Nível fácil aprovado com 100%/)).toBeVisible();
     await page.getByTestId("proximo-nivel").click();
     await expect(page.getByTestId("nivel-medio")).toContainText("Liberado");
@@ -937,7 +937,6 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
     await q1.getByRole("button", { name: "Responder", exact: true }).click();
     await expect(q1.getByText("ERROU")).toBeVisible();
     const fac = page.getByTestId("nivel-facil");
-    await fac.getByRole("button", { name: "Calcular resultado do nível fácil" }).click();
     await expect(fac.getByText(/mínimo para avançar é 90%/)).toBeVisible();
     await fac.getByRole("button", { name: "Gerar exercícios de recuperação" }).click();
     await expect(page.getByTestId("recuperacao-facil")).toBeVisible();

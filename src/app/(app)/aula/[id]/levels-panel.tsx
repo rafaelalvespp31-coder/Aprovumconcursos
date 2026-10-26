@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useRef, useState, useTransition, type ReactNode } from "react";
+import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import { Icon } from "@/components/icons";
 import { Button, Notice, Tag } from "@/components/ui";
 import { useStudyApi } from "@/components/study-api";
@@ -185,6 +185,22 @@ function LevelBlock({
   const addMissing = (ids: string[]) => setMissingIds((cur) => [...cur, ...ids.filter((id) => !cur.includes(id))]);
   const missingList = official.filter((q) => missingIds.includes(q.id) && interleavedIds.has(q.id));
   const stillMissing = missingList.filter((q) => !isAnswered || !isAnswered(q.id)).length;
+  // Respondeu todas as questões do nível: o resultado sai sozinho (sem precisar tocar em "Calcular").
+  const answeredAll = !!isAnswered && official.length > 0 && official.every((q) => isAnswered(q.id));
+  const answeredCount = isAnswered ? official.filter((q) => isAnswered(q.id)).length : 0;
+  const autoKey = useRef<number | null>(null);
+  useEffect(() => {
+    if (status !== "liberado" || passedNow || !answeredAll || pending || autoKey.current === answeredCount) return;
+    autoKey.current = answeredCount;
+    start(async () => {
+      const r = await api.evaluateQuiz(lessonId, "fixacao", level.key);
+      setResult(r);
+      if (r.ok && (r.levelsPassed ?? 0) >= level.n) {
+        onPassed(r.levelsPassed ?? level.n);
+        router.refresh();
+      }
+    });
+  }, [status, passedNow, answeredAll, answeredCount, pending, api, lessonId, level.key, level.n, onPassed, router]);
   const headingId = `nivel-${level.key}-titulo`;
   const nextLevel = LEVELS.find((l) => l.n === level.n + 1);
   const advance = onAdvance && nextLevel && (
