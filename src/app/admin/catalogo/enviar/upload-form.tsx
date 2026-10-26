@@ -31,6 +31,7 @@ export function LessonUploadForm({
   bannerActions,
   prompt = LESSON_PROMPT,
   parts,
+  compact,
   model,
 }: {
   actions: Actions;
@@ -38,10 +39,13 @@ export function LessonUploadForm({
   prompt?: string;
   /** O mesmo comando em 2 partes (aula; depois questões). */
   parts?: { part1: string; part2: string } | null;
+  /** Comando compacto (recomendado): resposta em 2 mensagens (aula; depois questões). */
+  compact?: string | null;
   model?: PromptModel | null;
 }) {
-  // Comando grande demais para colar de uma vez: começa em 2 partes.
-  const [mode, setMode] = useState<1 | 2>(parts && prompt.length > 60_000 ? 2 : 1);
+  // Com aula-modelo, começa no compacto (cabe no ChatGPT).
+  type Mode = "compacto" | "partes" | "inteiro";
+  const [mode, setMode] = useState<Mode>(compact ? "compacto" : parts && prompt.length > 60_000 ? "partes" : "inteiro");
   const [text, setText] = useState("");
   const [text2, setText2] = useState("");
   const [checked, setChecked] = useState("");
@@ -50,9 +54,15 @@ export function LessonUploadForm({
   const [copied, setCopied] = useState<number | null>(null);
   const [pending, start] = useTransition();
   const [saving, setSaving] = useState(false);
-  const two = mode === 2 && !!parts;
+  const two = (mode === "partes" && !!parts) || (mode === "compacto" && !!compact);
   const combined = two ? `${text.trim()}\n\n${text2.trim()}` : text;
-  const commands = two ? [{ label: "Parte 1 · a aula", text: parts!.part1 }, { label: "Parte 2 · as questões (na mesma conversa)", text: parts!.part2 }] : [{ label: "Comando", text: prompt }];
+  const commands =
+    mode === "compacto" && compact
+      ? [{ label: "Comando compacto", text: compact }]
+      : mode === "partes" && parts
+        ? [{ label: "Parte 1 · a aula", text: parts.part1 }, { label: "Parte 2 · as questões (na mesma conversa)", text: parts.part2 }]
+        : [{ label: "Comando", text: prompt }];
+  const multi = commands.length > 1;
 
   const check = () => {
     setPreview(null);
@@ -122,37 +132,50 @@ export function LessonUploadForm({
             <ul className="list-disc pl-5">{model.selfCheck.slice(0, 5).map((e) => <li key={e}>{e}</li>)}</ul>
           </Notice>
         )}
-        {parts && (
-          <div className="mt-3 inline-flex rounded-md border border-linha-forte p-0.5 t-small" role="radiogroup" aria-label="Como enviar o comando">
-            {([1, 2] as const).map((m) => (
-              <button
-                key={m}
-                type="button"
-                role="radio"
-                aria-checked={mode === m}
-                onClick={() => {
-                  setMode(m);
-                  setPreview(null);
-                }}
-                className={`min-h-9 rounded px-3 font-semibold ${mode === m ? "bg-tinta text-white" : "text-tinta-suave"}`}
-              >
-                {m === 1 ? "Comando inteiro" : "Dividir em 2 partes"}
-              </button>
-            ))}
+        {(parts || compact) && (
+          <div className="mt-3 inline-flex flex-wrap rounded-md border border-linha-forte p-0.5 t-small" role="radiogroup" aria-label="Como enviar o comando">
+            {(
+              [
+                ["compacto", "Compacto (recomendado)", !!compact],
+                ["partes", "Completo em 2 partes", !!parts],
+                ["inteiro", "Completo", true],
+              ] as const
+            )
+              .filter(([, , ok]) => ok)
+              .map(([m, label]) => (
+                <button
+                  key={m}
+                  type="button"
+                  role="radio"
+                  aria-checked={mode === m}
+                  onClick={() => {
+                    setMode(m);
+                    setPreview(null);
+                  }}
+                  className={`min-h-9 rounded px-3 font-semibold ${mode === m ? "bg-tinta text-white" : "text-tinta-suave"}`}
+                >
+                  {label}
+                </button>
+              ))}
           </div>
         )}
-        {two && (
+        {mode === "compacto" && compact && (
+          <p className="mt-2 t-small text-tinta-suave">
+            Envie o comando no ChatGPT: ele responde primeiro <strong>a aula</strong>. Cole no primeiro campo. Depois escreva <strong>questões</strong> na mesma conversa e cole a resposta no segundo campo. As duas são conferidas e publicadas juntas.
+          </p>
+        )}
+        {mode === "partes" && parts && (
           <p className="mt-2 t-small text-tinta-suave">
             Envie a <strong>parte 1</strong> (a aula) no ChatGPT e, quando ele terminar, envie a <strong>parte 2</strong> (as questões) <strong>na mesma conversa</strong>. Cole cada resposta no campo dela abaixo: as duas são conferidas e publicadas juntas, como uma aula só.
           </p>
         )}
         <div className="mt-3 flex flex-col gap-3">
           {commands.map((c, i) => (
-            <div key={c.label} className={two ? "rounded-md border border-linha p-3" : ""}>
-              {two && <p className="mb-2 t-small font-semibold">{c.label}</p>}
+            <div key={c.label} className={multi ? "rounded-md border border-linha p-3" : ""}>
+              {multi && <p className="mb-2 t-small font-semibold">{c.label}</p>}
               <div className="flex flex-wrap items-center gap-2">
-                <Button variant="secundario" onClick={() => copy(i, c.text)}>{copied === i ? "Comando copiado ✓" : two ? `Copiar parte ${i + 1}` : "Copiar comando para o ChatGPT"}</Button>
-                <Button variant="discreto" onClick={() => download(c.text, two ? `-parte-${i + 1}` : "")}>Baixar (.txt)</Button>
+                <Button variant="secundario" onClick={() => copy(i, c.text)}>{copied === i ? "Comando copiado ✓" : multi ? `Copiar parte ${i + 1}` : "Copiar comando para o ChatGPT"}</Button>
+                <Button variant="discreto" onClick={() => download(c.text, multi ? `-parte-${i + 1}` : mode === "compacto" ? "-compacto" : "")}>Baixar (.txt)</Button>
                 <span className="t-tiny text-tinta-fraca">{c.text.length.toLocaleString("pt-BR")} caracteres</span>
               </div>
               <details className="mt-2 t-small">
@@ -162,15 +185,15 @@ export function LessonUploadForm({
             </div>
           ))}
         </div>
-        {!two && prompt.length > 60_000 && <p className="mt-1 t-tiny text-tinta-fraca">Comando longo: se o ChatGPT não aceitar, use “Dividir em 2 partes” ou anexe o .txt.</p>}
+        {mode === "inteiro" && prompt.length > 60_000 && <p className="mt-1 t-tiny text-tinta-fraca">Comando longo: se o ChatGPT não aceitar, use o “Compacto” ou anexe o .txt.</p>}
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="texto-aula" className="font-semibold">{two ? "2. Cole aqui a resposta da parte 1 (a aula)" : "2. Cole aqui a resposta do ChatGPT"}</label>
+        <label htmlFor="texto-aula" className="font-semibold">{two ? (mode === "compacto" ? "2. Cole aqui a primeira resposta (a aula)" : "2. Cole aqui a resposta da parte 1 (a aula)") : "2. Cole aqui a resposta do ChatGPT"}</label>
         <textarea id="texto-aula" value={text} onChange={(e) => setText(e.target.value)} placeholder={"=== AULA ===\nTítulo: …\nMatéria: …"} spellCheck={false} className={textareaCls} />
         {two && (
           <>
-            <label htmlFor="texto-questoes" className="mt-2 font-semibold">Cole aqui a resposta da parte 2 (as questões)</label>
+            <label htmlFor="texto-questoes" className="mt-2 font-semibold">{mode === "compacto" ? "Cole aqui a segunda resposta (as questões)" : "Cole aqui a resposta da parte 2 (as questões)"}</label>
             <textarea id="texto-questoes" value={text2} onChange={(e) => setText2(e.target.value)} placeholder={"=== QUESTÕES: FÁCIL ===\n--- QUESTÃO ---\n…"} spellCheck={false} className={textareaCls} />
           </>
         )}

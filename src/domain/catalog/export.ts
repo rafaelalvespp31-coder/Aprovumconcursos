@@ -238,3 +238,120 @@ FORMATO DA RESPOSTA
 ${exportTopicText(t, "questoes")}<<<FIM DAS QUESTÕES DO MODELO>>>`;
   return { part1, part2 };
 }
+
+/** Começo de uma seção, mostrando o estilo (tabela, caixa, lista) sem o texto inteiro. */
+export function sectionExcerpt(md: string, max = 160): string {
+  const lines = md.split("\n");
+  const out: string[] = [];
+  let size = 0;
+  let table = 0;
+  let quote = false;
+  for (const raw of lines) {
+    const l = raw.length > 120 ? `${raw.slice(0, 117).trimEnd()}…` : raw;
+    const isTable = /^\s*\|/.test(l);
+    const isQuote = /^\s*>/.test(l);
+    // Sempre mostra o começo da primeira tabela (cabeçalho, separador e 1 linha) e a primeira caixa.
+    const must = (isTable && table < 3) || (isQuote && !quote);
+    if (size >= max && !must) continue;
+    if (isTable && table >= 3) continue;
+    out.push(l);
+    size += l.length;
+    if (isTable) table++;
+    if (isQuote) quote = true;
+  }
+  return `${out.join("\n").trim()}\n(…)`;
+}
+
+/**
+ * Comando COMPACTO (cabe no ChatGPT): esqueleto com o tamanho de cada seção, o começo de cada
+ * seção do modelo (mostra tabelas, caixas e listas), um exemplo de cada tipo de questão por nível
+ * e as quantidades. A resposta vem em 2 mensagens: primeiro a aula; depois, ao pedir, as questões.
+ */
+export function buildCompactPrompt(t: ExportableTopic): string {
+  const o = modelOutline(t);
+  const byKey = new Map(t.nodes.map((n) => [n.key, n]));
+  const item = (k: string) => byKey.get(k)?.path ?? k;
+  const round = (n: number) => (n < 1000 ? Math.round(n / 100) * 100 : Math.round(n / 500) * 500);
+  const srcLines = t.sourceText.trim().split("\n");
+  const law = srcLines.filter((l) => !/^\d+(\.\d+)*\s/.test(l));
+  const topics = srcLines.filter((l) => /^\d+(\.\d+)*\s/.test(l));
+  const sample: string[] = [];
+  sample.push(
+    "=== AULA ===",
+    `Título: ${t.title}`,
+    `Matéria: ${DISCIPLINE_LABELS[t.disciplineMode as DisciplineMode] ?? t.disciplineMode}`,
+    `Tipo: ${t.kind}`,
+    `Lei: ${t.kind === "dispositivo" ? (t.lawCode ?? "") : ""}`,
+    `Artigos: ${t.kind === "dispositivo" ? t.articles.join(", ") : ""}`,
+    `Sinônimos: ${t.aliases.slice(0, 4).join("; ")}`,
+    `Tempo estimado: ${t.estimatedMinutes}`,
+    `Objetivo: ${t.lesson.objective.replace(/\s+/g, " ")}`,
+    `Resumo: ${(t.summary ?? "").replace(/\s+/g, " ").slice(0, 240)}`,
+    "",
+    "=== TEXTO-BASE ===",
+    ...law.slice(0, 5),
+    law.length > 5 ? "(… o texto literal continua, um dispositivo por linha …)" : "",
+    ...topics,
+    "",
+  );
+  let currentModule: string | null = null;
+  for (const s of t.lesson.sections) {
+    const m = s.module?.trim() || "Aula";
+    if (m !== currentModule) {
+      sample.push(`=== MÓDULO: ${m} ===`, "");
+      currentModule = m;
+    }
+    sample.push(`--- SEÇÃO: ${KIND_LABEL[s.kind] ?? s.kind} | ${s.title} ---`);
+    if (s.nodeKeys.length) sample.push(`Itens: ${s.nodeKeys.slice(0, 4).map(item).join("; ")}${s.nodeKeys.length > 4 ? "; …" : ""}`);
+    sample.push(sectionExcerpt(s.bodyMarkdown), "");
+  }
+  if (t.lesson.references.length) sample.push("=== REFERÊNCIAS ===", ...t.lesson.references.slice(0, 3).map((r) => `${REF_LABEL[r.kind] ?? "Outro"}: ${r.citation}`), "");
+  if (t.lesson.unverifiedClaims.length) sample.push("=== A CONFERIR ===", t.lesson.unverifiedClaims[0]!, "");
+
+  const qSample: string[] = [];
+  for (const lv of ["facil", "medio", "dificil"] as const) {
+    const qs = t.questions.filter((q) => q.level === lv);
+    // Um exemplo por nível: certo ou errado no fácil; múltipla escolha no médio e no difícil.
+    const want = lv === "facil" ? "certo_errado" : "multipla_escolha";
+    const picks = [qs.find((q) => (want === "certo_errado" ? q.type === "certo_errado" : q.type !== "certo_errado")) ?? qs[0]].filter(Boolean) as ExportableTopic["questions"];
+    if (!picks.length) continue;
+    qSample.push(`=== QUESTÕES: ${LEVEL_TITLE[lv]} ===`, "");
+    for (const q of picks) {
+      const ce = q.type === "certo_errado";
+      qSample.push("--- QUESTÃO ---", `Tipo: ${ce ? "certo ou errado" : "múltipla escolha"}`, `Item: ${item(q.nodeKey)}`, `Essencial: ${q.essential ? "sim" : "não"}`, `Dificuldade: ${q.difficulty}`, `Enunciado: ${q.statement.trim()}`);
+      if (!ce) for (const op of q.options) qSample.push(`${op.label}) ${op.text.replace(/\s+/g, " ").trim()}`, `Comentário: ${op.explanation.replace(/\s+/g, " ").trim()}`);
+      qSample.push(`Gabarito: ${ce ? (q.correctAnswerTrue ? "Certo" : "Errado") : (q.options.find((x) => x.correct)?.label ?? "")}`, `Justificativa: ${q.justification.trim()}`, "");
+    }
+    qSample.push(`(… mais questões até completar ${o.levels[lv].total} no nível …)`, "");
+  }
+  const sizes = new Map(t.lesson.sections.map((s) => [s.title, s.bodyMarkdown.length]));
+  const skeleton = o.modules
+    .map((m, i) => `${i + 1}. MÓDULO "${m.name}"\n${m.sections.map((s) => `   - ${s.kind} | ${s.title} (~${round(sizes.get(s.title) ?? 1000).toLocaleString("pt-BR")} caracteres)`).join("\n")}`)
+    .join("\n");
+  const lv = (k: "facil" | "medio" | "dificil", name: string) =>
+    `${name}: ${o.levels[k].total} (${o.levels[k].me} múltipla escolha, ${o.levels[k].ce} certo ou errado, ${o.levels[k].essential} essenciais)`;
+
+  return `Escreva uma aula completa para concursos públicos no PADRÃO APROVUM.
+
+TEMA: [ESCREVA AQUI O TEMA, A LEI E OS ARTIGOS — ex.: Furto, Código Penal, art. 155]
+
+Siga EXATAMENTE a forma da aula-modelo "${t.title}" (resumida no fim): os mesmos ${o.modules.length} módulos e as mesmas ${o.sections} seções, na mesma ordem e do mesmo tipo, com títulos equivalentes para o novo tema; tabelas onde o modelo tem tabelas (mesmas colunas), caixas ">" com os mesmos rótulos, listas, **negrito** nos termos-chave, checklist "- [ ]". Cada seção COMPLETA, no tamanho indicado (o modelo mostra só o começo de cada uma, marcado com "(…)"). Não copie o conteúdo do modelo, só a forma. Se o tema não tiver alguma parte, mantenha a seção e explique.
+
+ESQUELETO
+${skeleton}
+
+TEXTO-BASE: texto LITERAL e VIGENTE dos artigos, um dispositivo por linha, e depois o sumário numerado dos subtemas.
+QUESTÕES (12 por nível): ${lv("facil", "Fácil")}; ${lv("medio", "Médio")}; ${lv("dificil", "Difícil")}. Múltipla escolha com A a E, cada alternativa com "Comentário:". Todas com Item (existente no TEXTO-BASE), Essencial, Dificuldade, Gabarito e Justificativa. Questões autorais, sem banca ou concurso real; gabaritos coerentes e distribuídos entre A e E.
+Nunca invente súmula, tese ou julgado; o que precisar de conferência vai em "=== A CONFERIR ===".
+
+COMO RESPONDER (em 2 mensagens)
+1) Agora: só a AULA (de "=== AULA ===" até "=== A CONFERIR ==="), num único bloco de código, sem nada fora dele.
+2) Quando eu escrever "questões": só as QUESTÕES (de "=== QUESTÕES: FÁCIL ===" até o fim do difícil), num único bloco de código.
+Se cortar, eu escrevo "continue" e você segue de onde parou, sem repetir. Use exatamente os marcadores e campos do modelo; não use === nem --- dentro do conteúdo.
+
+<<<MODELO RESUMIDO: ${t.title}>>>
+${sample.join("\n").replace(/\n{3,}/g, "\n\n").trim()}
+
+${qSample.join("\n").replace(/\n{3,}/g, "\n\n").trim()}
+<<<FIM DO MODELO>>>`;
+}

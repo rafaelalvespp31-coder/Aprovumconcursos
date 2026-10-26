@@ -478,6 +478,7 @@ test.describe("catálogo: catalogar aula colando texto", () => {
   test("o texto da aula vira módulos, seções e questões na prévia", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");
+    await up.getByRole("radio", { name: "Completo", exact: true }).click();
     await expect(up.getByRole("button", { name: "Copiar comando para o ChatGPT" })).toBeVisible();
     await up.getByLabel("2. Cole aqui a resposta do ChatGPT").fill("```text\n" + readFileSync("public/modelos/modelo-aula.txt", "utf8") + "\n```");
     await up.getByRole("button", { name: "3. Conferir aula" }).click();
@@ -496,10 +497,23 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await expect(up.getByRole("button", { name: "4. Salvar como rascunho" })).toBeDisabled();
   });
 
+  test("comando compacto (padrão): uma mensagem, resposta da aula e das questões em dois campos", async ({ page }) => {
+    await page.goto(`${G}/catalogo`);
+    const up = page.getByTestId("upload-aula");
+    await expect(up.getByRole("radio", { name: "Compacto (recomendado)" })).toHaveAttribute("aria-checked", "true");
+    await expect(up.getByRole("button", { name: "Copiar comando para o ChatGPT" })).toBeVisible();
+    const full = readFileSync("public/modelos/modelo-aula.txt", "utf8");
+    const cut = full.indexOf("=== QUESTÕES: FÁCIL ===");
+    await up.getByLabel("2. Cole aqui a primeira resposta (a aula)").fill(full.slice(0, cut));
+    await up.getByLabel("Cole aqui a segunda resposta (as questões)").fill(full.slice(cut));
+    await up.getByRole("button", { name: "3. Conferir aula" }).click();
+    await expect(up.locator("section[aria-labelledby=previa]").getByText("Fácil: 2", { exact: true })).toBeVisible();
+  });
+
   test("comando dividido em 2 partes: cola a aula e as questões separadas e confere como uma aula só", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");
-    await up.getByRole("radio", { name: "Dividir em 2 partes" }).click();
+    await up.getByRole("radio", { name: "Completo em 2 partes" }).click();
     await expect(up.getByRole("button", { name: "Copiar parte 1" })).toBeVisible();
     await expect(up.getByRole("button", { name: "Copiar parte 2" })).toBeVisible();
     const full = readFileSync("public/modelos/modelo-aula.txt", "utf8");
@@ -516,6 +530,7 @@ test.describe("catálogo: catalogar aula colando texto", () => {
   test("texto fora do formato aponta os erros e não deixa salvar", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");
+    await up.getByRole("radio", { name: "Completo", exact: true }).click();
     await up.getByLabel("2. Cole aqui a resposta do ChatGPT").fill("=== AULA ===\nTítulo: Teste\nMatéria: Astronomia\n");
     await up.getByRole("button", { name: "3. Conferir aula" }).click();
     await expect(up.getByText(/Não reconheci a matéria “Astronomia”/)).toBeVisible();

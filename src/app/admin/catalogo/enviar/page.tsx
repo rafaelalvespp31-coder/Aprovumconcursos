@@ -27,6 +27,7 @@ export default async function UploadLessonPage({ searchParams }: { searchParams:
         bannerActions={{ save: saveBannerAction, remove: removeBannerAction }}
         prompt={mp?.prompt}
         parts={mp?.parts ?? null}
+        compact={mp?.compact ?? null}
         model={mp ? { title: mp.title, slug: mp.slug, stats: mp.stats, options, selfCheck: mp.selfCheck } : null}
       />
     </div>

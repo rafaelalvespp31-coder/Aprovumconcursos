@@ -103,3 +103,23 @@ describe("comando em 2 partes", () => {
     expect(p.sections).toHaveLength(topic.lesson.sections.length);
   });
 });
+
+describe("comando compacto", () => {
+  it("fica curto, mantém o esqueleto, o começo de cada seção e um exemplo de questão por tipo", async () => {
+    const { buildCompactPrompt, sectionExcerpt } = await import("./export");
+    const c = buildCompactPrompt(topic);
+    expect(c).toContain('MÓDULO "Visão geral e lei seca"');
+    expect(c).toContain("esquema | Mapa do art. 121 (bloco por bloco) (~");
+    expect(c).toContain("| Bloco | O que diz | Pena ou efeito |");
+    expect(c).toContain("Quando eu escrever \"questões\"");
+    expect(c).toContain("Infanticídio (art. 123).");
+    expect(c).toContain("O perdão judicial cabe no homicídio doloso.");
+    const long = Array.from({ length: 40 }, (_, i) => `- item ${i} com bastante texto para ocupar espaço na seção`).join("\n") + "\n\n| A | B |\n|---|---|\n| 1 | 2 |\n| 3 | 4 |\n| 5 | 6 |\n\n> **Pegadinha:** caixa no fim.";
+    const ex = sectionExcerpt(long);
+    expect(ex.length).toBeLessThan(560);
+    expect(ex).toContain("| A | B |");
+    expect(ex).toContain("> **Pegadinha:**");
+    expect(ex).not.toContain("| 5 | 6 |");
+    expect(ex.endsWith("(…)")).toBe(true);
+  });
+});

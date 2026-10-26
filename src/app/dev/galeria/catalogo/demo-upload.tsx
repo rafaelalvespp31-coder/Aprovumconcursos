@@ -7,6 +7,7 @@ import { prepareLessonUpload, summarizeLessonUpload } from "@/domain/catalog/upl
 export function DemoLessonUpload() {
   return (
     <LessonUploadForm
+      compact="Comando compacto de exemplo."
       parts={{ part1: "Comando de exemplo · parte 1 (a aula).", part2: "Comando de exemplo · parte 2 (as questões)." }}
       actions={{
         preview: async (text) => ({ ok: true, preview: summarizeLessonUpload(prepareLessonUpload(text)) }),

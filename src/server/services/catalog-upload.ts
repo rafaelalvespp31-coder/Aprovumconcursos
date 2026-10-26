@@ -2,7 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import type { DisciplineMode } from "@/ai/pedagogy";
 import { prepareLessonUpload, summarizeLessonUpload, type LessonUploadPreview } from "@/domain/catalog/upload-preview";
-import { buildModelPrompt, buildModelPromptParts, exportTopicText, type ExportableTopic } from "@/domain/catalog/export";
+import { buildCompactPrompt, buildModelPrompt, buildModelPromptParts, exportTopicText, type ExportableTopic } from "@/domain/catalog/export";
 import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
 import { auditLog } from "../observability";
@@ -149,6 +149,8 @@ export interface ModelPrompt {
   prompt: string;
   /** O mesmo comando dividido em 2 (aula; depois questões, na mesma conversa). */
   parts: { part1: string; part2: string };
+  /** Versão compacta (começo de cada seção + 1 exemplo de questão por tipo): cabe no ChatGPT. */
+  compact: string;
   /** Problemas ao reler o próprio modelo no formato do painel (vazio = o formato bate). */
   selfCheck: string[];
   stats: { modules: number; sections: number; questions: Record<"facil" | "medio" | "dificil", number> };
@@ -202,6 +204,7 @@ export async function modelPrompt(slug: string = DEFAULT_MODEL_SLUG): Promise<Mo
     title: topic.title,
     prompt: buildModelPrompt(topic),
     parts: buildModelPromptParts(topic),
+    compact: buildCompactPrompt(topic),
     selfCheck: check.errors,
     stats: { modules: new Set(topic.lesson.sections.map((s) => s.module ?? "")).size, sections: topic.lesson.sections.length, questions: { facil: count("facil"), medio: count("medio"), dificil: count("dificil") } },
   };
