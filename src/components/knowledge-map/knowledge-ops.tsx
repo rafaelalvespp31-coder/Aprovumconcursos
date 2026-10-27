@@ -199,6 +199,13 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
   // Alvo da mira do soldado (matéria em foco ou sob o cursor), lido a cada quadro pelo palco.
   const aim = useRef<[number, number] | null>(null);
   const aimTalk = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // Disparo pedido ao palco e os tempos da sequência mirar → atirar → abrir.
+  const shot = useRef<{ at: number } | null>(null);
+  const fireTimers = useRef<Array<ReturnType<typeof setTimeout>>>([]);
+  useEffect(() => {
+    const timers = fireTimers;
+    return () => timers.current.forEach(clearTimeout);
+  }, []);
   // Mira travada na matéria escolhida (laser, luneta e foco total).
   const lock = useRef<{ at: number; target: [number, number]; label: string } | null>(null);
   /** Trava a mira e aproxima a câmera até a matéria (foco total), sem ficar sob o painel. */
@@ -263,15 +270,39 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
   const art = stageKind === "arte";
   // Espaço ocupado pelo painel de detalhes (lateral no computador, inferior no celular).
   const panelInset = () => (window.innerWidth <= 900 ? { bottom: window.innerHeight * 0.5 } : { left: 230, right: 400 });
+  const openTerritory = (t: Territory) => {
+    setSelT(t.id);
+    setSelTopic(null);
+    // Só um tópico? Já abre. Vários: todos fechados, o aluno escolhe qual abrir.
+    setOpenFolder(t.folders.length === 1 && t.topics.every((x) => x.group) ? t.folders[0]!.key : null);
+  };
+  /**
+   * Abrir uma matéria no cenário: a mira trava, o laser chega ao card, o soldado dispara (recuo,
+   * clarão, cápsula, estrondo) e o card atingido acende e abre os tópicos. Sem animação
+   * (reduzir movimento) ou fora do cenário, abre direto.
+   */
   const selectTerritory = (t: Territory) => {
-      setCoreOpen(false);
-      setSelT(t.id);
-      setSelTopic(null);
-      // Só um tópico? Já abre. Vários: todos fechados, o aluno escolhe qual abrir.
-      setOpenFolder(t.folders.length === 1 && t.topics.every((x) => x.group) ? t.folders[0]!.key : null);
-      controls.focusOn(t.pos, 36, 0.55, viewYawFor(t.pos));
-      lockOn(slotFor(t.id).base, t.label);
-      soldier.speak();
+    setCoreOpen(false);
+    controls.focusOn(t.pos, 36, 0.55, viewYawFor(t.pos));
+    lockOn(slotFor(t.id).base, t.label);
+    soldier.speak();
+    for (const id of fireTimers.current) clearTimeout(id);
+    fireTimers.current = [];
+    if (!art || cam.reduced) return openTerritory(t);
+    fireTimers.current.push(
+      setTimeout(() => {
+        shot.current = { at: -1 };
+        soldier.shot();
+        const plate = labels.current.get(`t:${t.id}`);
+        if (plate) {
+          delete plate.dataset.hit;
+          void plate.offsetWidth; // reinicia a animação se acertar o mesmo card de novo
+          plate.dataset.hit = "1";
+          fireTimers.current.push(setTimeout(() => delete plate.dataset.hit, 520));
+        }
+        fireTimers.current.push(setTimeout(() => openTerritory(t), 120));
+      }, 400),
+    );
   };
   const selectTopic = (t: Territory, x: MapTopic) => {
       setCoreOpen(false);
@@ -282,6 +313,8 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
       if (lock.current?.target !== slotFor(t.id).base) lockOn(slotFor(t.id).base, t.label);
   };
   const overview = () => {
+    for (const id of fireTimers.current) clearTimeout(id);
+    fireTimers.current = [];
     setSelT(null);
     setSelTopic(null);
     setCoreOpen(false);
@@ -606,6 +639,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
             onSelectCore={() => !dragged.current && selectCore()}
             onSelectTopic={(t, x) => !dragged.current && selectTopic(t, x)}
             breathClock={(now) => soldier.breathTime(now)}
+            shot={shot}
           />
         )}
         {show3d && (

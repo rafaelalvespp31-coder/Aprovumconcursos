@@ -145,6 +145,8 @@ export class PlateCamera {
   }
   /** Respiração do soldado: deslocamento vertical da câmera (px de tela), aplicado antes dos limites. */
   bob = 0;
+  /** Tranco horizontal da câmera (disparo), px de tela. */
+  shakeX = 0;
   /** Com a mira travada, a câmera fica no alvo (não segue o cursor). */
   locked = false;
   setLocked(v: boolean) {
@@ -273,7 +275,7 @@ export class PlateCamera {
     const caber = this.mode === "caber";
     const panX = Math.max(0, ((caber ? ART.tall.w * s : w) - this.view.w) / 2);
     const panY = caber ? this.view.h * 0.06 : Math.max(0, (h - this.view.h) / 2);
-    let tx = this.view.w / 2 - this.focusNow[0] * s - this.pointerNow[0] * panX * look;
+    let tx = this.view.w / 2 - this.focusNow[0] * s - this.pointerNow[0] * panX * look + this.shakeX;
     let ty = this.cy() - this.focusNow[1] * s - this.pointerNow[1] * panY * look + this.bob;
     // Computador: nunca mostrar a borda da arte (quando ela é maior que a tela).
     if (!caber && w >= this.view.w) tx = Math.min(0, Math.max(this.view.w - w, tx));
@@ -313,9 +315,11 @@ export interface ImageStageProps {
   onSelectTopic: (t: Territory, topic: MapTopic) => void;
   /** Tempo do áudio da respiração (s), quando o som está ligado: a animação segue o som. */
   breathClock?: (nowMs: number) => number | null;
+  /** Disparo pedido (at = -1): o palco marca o quadro do tiro e anima recuo, clarão e impacto. */
+  shot?: React.RefObject<{ at: number } | null>;
 }
 
-export function ImageStage({ cam, territories, selected, labels, topicOffsets, onView, onSelect, onSelectCore, aim, lock, breathClock }: ImageStageProps) {
+export function ImageStage({ cam, territories, selected, labels, topicOffsets, onView, onSelect, onSelectCore, aim, lock, breathClock, shot }: ImageStageProps) {
   const clock = useRef(breathClock);
   useEffect(() => {
     clock.current = breathClock;
@@ -392,6 +396,14 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     let bT = 0;
     let chest = 0;
     let kick = 0;
+    // Disparo: recuo (mola amortecida), tranco da câmera, cápsula ejetada e faíscas no alvo.
+    let recoil = 0;
+    let recoilV = 0;
+    let shake = 0;
+    let shotAt = -1e9;
+    let shotTarget: [number, number] | null = null;
+    const shells: Array<{ x: number; y: number; vx: number; vy: number; a: number; va: number; t: number }> = [];
+    const sparks: Array<{ x: number; y: number; vx: number; vy: number; t: number; life: number }> = [];
     // Fumaça: sprite macio gerado uma vez; cada fonte solta baforadas que sobem e se espalham.
     const sprite = document.createElement("canvas");
     sprite.width = sprite.height = 128;
@@ -468,8 +480,23 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       chest += (pose.chest - chest) * kb;
       kick += (pose.kick - kick) * kb;
       const still = cam.reduced ? 0 : 1;
-      // Câmera no peito do soldado: sobe ao puxar o ar e afunda no sopro (bem sutil).
-      cam.bob = still * (chest * 0.0045 - kick * 0.0022) * cam.view.h;
+      const sh = shot?.current;
+      const fired = !!sh && sh.at < 0;
+      if (sh && fired) {
+        sh.at = now;
+        shotAt = now;
+        recoilV += 30;
+        shake = 1;
+      }
+      // Mola do recuo (subamortecida: chuta, passa um pouco do ponto e assenta), em passos curtos.
+      for (let k = 0, h = Math.min(dt, 0.05) / 4; k < 4; k++) {
+        recoilV += (-300 * recoil - 20 * recoilV) * h;
+        recoil += recoilV * h;
+      }
+      shake *= Math.exp(-Math.min(dt, 0.05) * 13);
+      // Câmera no peito do soldado: sobe ao puxar o ar e afunda no sopro (bem sutil); o tiro dá um tranco.
+      cam.bob = still * ((chest * 0.0045 - kick * 0.0022) * cam.view.h + shake * Math.sin(now * 0.09) * 0.012 * cam.view.h - recoil * 0.006 * cam.view.h);
+      cam.shakeX = still * shake * Math.sin(now * 0.13 + 1) * 0.008 * cam.view.w;
       const t = cam.step(dt);
       ly.style.transform = `translate3d(${t.tx.toFixed(2)}px, ${t.ty.toFixed(2)}px, 0) scale(${t.s.toFixed(5)})`;
       const map = labels.current;
@@ -623,7 +650,13 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         aimA += (wantA - aimA) * (cam.reduced ? 1 : 1 - Math.exp(-dt * 7));
         aimX += (0 - aimX) * ka;
         aimY += (wantY - aimY) * ka;
-        const rt = `translate3d(${(aimX + swayX).toFixed(2)}px, ${(aimY + breathe).toFixed(2)}px, 0) rotate(${(aimA + sway).toFixed(5)}rad) scale(${grow.toFixed(5)})`;
+        // Recuo: a arma volta contra o ombro (para baixo e para a direita), o cano sobe e ela chega
+        // mais perto da câmera; a mola devolve tudo ao lugar.
+        const rcX = recoil * 0.012 * H;
+        const rcY = recoil * 0.02 * H;
+        const rcA = recoil * 0.05;
+        const rcS = recoil * 0.025;
+        const rt = `translate3d(${(aimX + swayX + rcX).toFixed(2)}px, ${(aimY + breathe + rcY).toFixed(2)}px, 0) rotate(${(aimA + sway + rcA).toFixed(5)}rad) scale(${(grow + rcS).toFixed(5)})`;
         if (rt !== lastRifle) {
           lastRifle = rt;
           rf.style.transform = rt;
@@ -631,7 +664,9 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
 
         // Laser, luneta e marcação de alvo travado.
         const lc = laser.current;
-        const lctx = lc && (lk || laserDirty) ? lc.getContext("2d") : null;
+        const sinceShot = now - shotAt;
+        const fxAlive = sinceShot < 900 || shells.length > 0 || sparks.length > 0;
+        const lctx = lc && (lk || laserDirty || fxAlive) ? lc.getContext("2d") : null;
         if (lc && lctx) {
           if (lc.width !== Math.round(cam.view.w) || lc.height !== Math.round(cam.view.h)) {
             lc.width = Math.round(cam.view.w);
@@ -639,15 +674,30 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
           }
           // Sem mira travada a tela do laser fica vazia: limpa uma vez e para de desenhar.
           lctx.clearRect(0, 0, lc.width, lc.height);
-          laserDirty = !!lk;
-          lc.style.display = lk ? "" : "none";
-          if (lk && target) {
-            // Boca do cano depois da rotação do fuzil.
-            const a = aimA + sway;
-            const vx = mx - px;
-            const vy = my - py;
-            const bx = px + (vx * Math.cos(a) - vy * Math.sin(a)) * grow + aimX + swayX;
-            const by = py + (vx * Math.sin(a) + vy * Math.cos(a)) * grow + aimY + breathe;
+          laserDirty = !!lk || fxAlive;
+          lc.style.display = lk || fxAlive ? "" : "none";
+          // Pontos do fuzil depois de toda a transformação (rotação, escala, recuo).
+          const a = aimA + sway + rcA;
+          const sc2 = grow + rcS;
+          const at2 = (x: number, y: number): [number, number] => {
+            const vx = x - px;
+            const vy = y - py;
+            return [px + (vx * Math.cos(a) - vy * Math.sin(a)) * sc2 + aimX + swayX + rcX, py + (vx * Math.sin(a) + vy * Math.cos(a)) * sc2 + aimY + breathe + rcY];
+          };
+          const [bx, by] = at2(mx, my);
+          if (fired) {
+            shotTarget = target ? [target[0], target[1]] : null;
+            // Cápsula sai pela janela de ejeção (lado direito da arma), para a direita e para cima.
+            const [ex0, ey0] = at2(RIFLE.muzzle[0] + (RIFLE.pivot[0] - RIFLE.muzzle[0]) * 0.55, RIFLE.muzzle[1] + (RIFLE.pivot[1] - RIFLE.muzzle[1]) * 0.55);
+            const u = H / 800;
+            shells.push({ x: ex0, y: ey0, vx: (230 + rnd() * 120) * u, vy: -(330 + rnd() * 120) * u, a: rnd() * 6, va: 18 + rnd() * 10, t: 0 });
+            if (shotTarget) for (let k = 0; k < 22; k++) {
+              const ang = rnd() * Math.PI * 2;
+              const sp2 = 120 + rnd() * 320;
+              sparks.push({ x: shotTarget[0], y: shotTarget[1], vx: Math.cos(ang) * sp2, vy: Math.sin(ang) * sp2 - 80, t: 0, life: 0.22 + rnd() * 0.3 });
+            }
+          }
+          if (lk && target && sinceShot > 140) {
             const reach = Math.min(1, since / 380);
             const ex = bx + (target[0] - bx) * reach;
             const ey = by + (target[1] - by) * reach;
@@ -674,6 +724,138 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
               lctx.arc(ex, ey, pulse * 2.2, 0, Math.PI * 2);
               lctx.stroke();
             }
+          }
+          const fdt = Math.min(dt, 0.05);
+          // Clarão do disparo: núcleo branco-amarelado, pétalas no sentido do cano e luz na cena.
+          if (sinceShot < 90) {
+            const f = 1 - sinceShot / 90;
+            // O fogo sai na direção do tiro (para o alvo), não na do desenho da arma.
+            const aimT = shotTarget ?? target;
+            const dirA = aimT ? Math.atan2(aimT[1] - by, aimT[0] - bx) : Math.atan2(by - py, bx - px);
+            const r = H * 0.055 * (0.7 + 0.3 * f);
+            lctx.save();
+            lctx.globalCompositeOperation = "lighter";
+            lctx.fillStyle = `rgba(255,150,70,${(0.12 * f).toFixed(3)})`;
+            lctx.fillRect(0, 0, lc.width, lc.height);
+            const g = lctx.createRadialGradient(bx, by, 0, bx, by, r);
+            g.addColorStop(0, `rgba(255,255,235,${f.toFixed(3)})`);
+            g.addColorStop(0.25, `rgba(255,205,130,${(0.9 * f).toFixed(3)})`);
+            g.addColorStop(0.6, `rgba(255,110,40,${(0.45 * f).toFixed(3)})`);
+            g.addColorStop(1, "rgba(255,80,0,0)");
+            lctx.fillStyle = g;
+            lctx.beginPath();
+            lctx.arc(bx, by, r, 0, Math.PI * 2);
+            lctx.fill();
+            lctx.translate(bx, by);
+            lctx.rotate(dirA);
+            lctx.fillStyle = `rgba(255,212,150,${(0.8 * f).toFixed(3)})`;
+            for (const [len, wid, off] of [[1.7, 0.14, 0], [0.85, 0.11, 0.85], [0.85, 0.11, -0.85], [0.5, 0.09, 1.9], [0.5, 0.09, -1.9]] as const) {
+              lctx.save();
+              lctx.rotate(off);
+              lctx.beginPath();
+              lctx.moveTo(0, -r * wid);
+              lctx.lineTo(r * len, 0);
+              lctx.lineTo(0, r * wid);
+              lctx.closePath();
+              lctx.fill();
+              lctx.restore();
+            }
+            lctx.restore();
+          }
+          // Traçante até o alvo e o impacto (clarão + anel + fumaça que se abre).
+          if (shotTarget && sinceShot < 700) {
+            const [tx2, ty2] = shotTarget;
+            if (sinceShot < 70) {
+              const f = 1 - sinceShot / 70;
+              lctx.lineCap = "round";
+              lctx.strokeStyle = `rgba(255,200,120,${(0.35 * f).toFixed(3)})`;
+              lctx.lineWidth = 6;
+              lctx.beginPath();
+              lctx.moveTo(bx, by);
+              lctx.lineTo(tx2, ty2);
+              lctx.stroke();
+              lctx.strokeStyle = `rgba(255,250,220,${f.toFixed(3)})`;
+              lctx.lineWidth = 1.8;
+              lctx.stroke();
+            }
+            const it = Math.max(0, sinceShot - 40) / 660;
+            if (sinceShot > 40) {
+              lctx.save();
+              lctx.globalCompositeOperation = "lighter";
+              if (it < 0.25) {
+                const f = 1 - it / 0.25;
+                const g = lctx.createRadialGradient(tx2, ty2, 0, tx2, ty2, 46);
+                g.addColorStop(0, `rgba(255,245,200,${f.toFixed(3)})`);
+                g.addColorStop(1, "rgba(255,120,40,0)");
+                lctx.fillStyle = g;
+                lctx.beginPath();
+                lctx.arc(tx2, ty2, 46, 0, Math.PI * 2);
+                lctx.fill();
+              }
+              lctx.strokeStyle = `rgba(255,170,90,${(0.8 * (1 - it)).toFixed(3)})`;
+              lctx.lineWidth = 2 * (1 - it) + 0.5;
+              lctx.beginPath();
+              lctx.arc(tx2, ty2, 8 + it * 60, 0, Math.PI * 2);
+              lctx.stroke();
+              lctx.restore();
+              const smoke = lctx.createRadialGradient(tx2, ty2 - it * 30, 0, tx2, ty2 - it * 30, 14 + it * 46);
+              smoke.addColorStop(0, `rgba(70,64,60,${(0.45 * (1 - it)).toFixed(3)})`);
+              smoke.addColorStop(1, "rgba(70,64,60,0)");
+              lctx.fillStyle = smoke;
+              lctx.beginPath();
+              lctx.arc(tx2, ty2 - it * 30, 14 + it * 46, 0, Math.PI * 2);
+              lctx.fill();
+            }
+          }
+          // Faíscas (gravidade, rastro curto) e a cápsula de latão girando até sair da tela.
+          if (sparks.length) {
+            lctx.save();
+            lctx.globalCompositeOperation = "lighter";
+            lctx.lineCap = "round";
+            for (let k = sparks.length - 1; k >= 0; k--) {
+              const p = sparks[k]!;
+              p.t += fdt;
+              if (p.t > p.life) {
+                sparks.splice(k, 1);
+                continue;
+              }
+              p.vy += 700 * fdt;
+              p.x += p.vx * fdt;
+              p.y += p.vy * fdt;
+              const f = 1 - p.t / p.life;
+              lctx.strokeStyle = `rgba(255,${(180 + 60 * f).toFixed(0)},90,${f.toFixed(3)})`;
+              lctx.lineWidth = 1.6 * f + 0.4;
+              lctx.beginPath();
+              lctx.moveTo(p.x, p.y);
+              lctx.lineTo(p.x - p.vx * 0.025, p.y - p.vy * 0.025);
+              lctx.stroke();
+            }
+            lctx.restore();
+          }
+          for (let k = shells.length - 1; k >= 0; k--) {
+            const c = shells[k]!;
+            c.t += fdt;
+            c.vy += 1500 * (H / 800) * fdt;
+            c.x += c.vx * fdt;
+            c.y += c.vy * fdt;
+            c.a += c.va * fdt;
+            if (c.t > 1.2 || c.y > lc.height + 40 || c.x > lc.width + 40) {
+              shells.splice(k, 1);
+              continue;
+            }
+            const L = H * 0.03;
+            lctx.save();
+            lctx.translate(c.x, c.y);
+            lctx.rotate(c.a);
+            const g = lctx.createLinearGradient(0, -L * 0.18, 0, L * 0.18);
+            g.addColorStop(0, "#f6d27a");
+            g.addColorStop(0.5, "#b8862b");
+            g.addColorStop(1, "#5e4210");
+            lctx.fillStyle = g;
+            lctx.fillRect(-L / 2, -L * 0.17, L, L * 0.34);
+            lctx.fillStyle = "#3a2a0a";
+            lctx.fillRect(L / 2 - L * 0.12, -L * 0.17, L * 0.12, L * 0.34);
+            lctx.restore();
           }
         }
         const sc = scope.current;
@@ -715,7 +897,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       ro.disconnect();
       plateRo.disconnect();
     };
-  }, [cam, territories, labels, topicOffsets, onView, aim, lock]);
+  }, [cam, territories, labels, topicOffsets, onView, aim, lock, shot]);
 
   return (
     <div ref={holder} className="km-art" aria-hidden>

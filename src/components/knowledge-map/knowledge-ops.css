@@ -2428,3 +2428,48 @@
     max-height: calc(100% - 84px - 140px);
   }
 }
+
+/* Card atingido pelo disparo: clarão, tranco curto e brilho que assenta (~0,5 s). */
+.km-plate[data-hit] {
+  animation: km-hit 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.km-plate[data-hit] .km-plateIcon {
+  animation: km-hit-icon 0.5s ease-out;
+}
+@keyframes km-hit {
+  0% {
+    translate: 0 0;
+    filter: brightness(2.4) drop-shadow(0 0 18px rgba(255, 190, 90, 0.95));
+  }
+  12% {
+    translate: 5px -3px;
+  }
+  24% {
+    translate: -4px 2px;
+  }
+  38% {
+    translate: 2px -1px;
+    filter: brightness(1.5) drop-shadow(0 0 12px rgba(255, 60, 40, 0.8));
+  }
+  55% {
+    translate: -1px 0;
+  }
+  100% {
+    translate: 0 0;
+    filter: none;
+  }
+}
+@keyframes km-hit-icon {
+  0% {
+    scale: 1.25;
+  }
+  100% {
+    scale: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .km-plate[data-hit],
+  .km-plate[data-hit] .km-plateIcon {
+    animation: none;
+  }
+}

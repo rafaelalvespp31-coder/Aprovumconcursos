@@ -2,9 +2,11 @@
  * Som do soldado no mapa: respiração ofegante em loop e a fala quando ele mira numa matéria.
  * Só é baixado quando o aluno liga o som. Os volumes passam pelo Web Audio (no iPhone o
  * `volume` do <audio> é fixo), e a respiração abaixa enquanto ele fala.
+ * O disparo (ao abrir uma matéria) é um buffer do Web Audio: toca na hora e pode se sobrepor.
  */
 const BREATH = { src: "/audio/respiracao.m4a", gain: 0.55, duck: 0.15 };
 const VOICE = { src: "/audio/voz-soldado.m4a", gain: 0.9 };
+const SHOT = { src: "/audio/disparo.m4a", gain: 0.85 };
 /** Depois de uma fala, espera um pouco antes de poder falar de novo (não vira repetição). */
 const VOICE_REST_MS = 4000;
 
@@ -16,6 +18,8 @@ export class SoldierAudio {
   private voice: HTMLAudioElement | null = null;
   private breathGain: GainNode | null = null;
   private restUntil = 0;
+  private shotBuf: AudioBuffer | null = null;
+  private shotEl: HTMLAudioElement | null = null;
   private on = false;
 
   /** Chamado dentro do gesto do aluno (clique em "Som"): cria e toca a respiração. */
@@ -42,6 +46,11 @@ export class SoldierAudio {
           ctx.createMediaElementSource(v).connect(vg).connect(ctx.destination);
           this.ctx = ctx;
           this.breathGain = bg;
+          fetch(SHOT.src)
+            .then((r) => r.arrayBuffer())
+            .then((a) => ctx.decodeAudioData(a))
+            .then((buf) => void (this.shotBuf = buf))
+            .catch(() => undefined);
         } catch {
           // Sem Web Audio: usa o volume do próprio elemento.
           b.volume = BREATH.gain;
@@ -52,8 +61,34 @@ export class SoldierAudio {
         v.volume = VOICE.gain;
       }
     }
+    if (!this.ctx && !this.shotEl) {
+      this.shotEl = new Audio(SHOT.src);
+      this.shotEl.preload = "auto";
+      this.shotEl.volume = SHOT.gain;
+    }
     this.ctx?.resume().catch(() => undefined);
     this.breath.play().catch(() => undefined);
+  }
+
+  /** Disparo do fuzil (só com o som ligado). A respiração some por um instante com o estrondo. */
+  shot() {
+    if (!this.on) return;
+    const ctx = this.ctx;
+    if (ctx && this.shotBuf) {
+      const src = ctx.createBufferSource();
+      src.buffer = this.shotBuf;
+      const g = ctx.createGain();
+      g.gain.value = SHOT.gain;
+      src.connect(g).connect(ctx.destination);
+      src.start();
+      if (this.voice?.paused !== false) {
+        this.setBreath(0.05, 0.02);
+        setTimeout(() => this.on && this.voice?.paused !== false && this.setBreath(BREATH.gain, 0.9), 450);
+      }
+    } else if (this.shotEl) {
+      this.shotEl.currentTime = 0;
+      this.shotEl.play().catch(() => undefined);
+    }
   }
 
   stop() {
