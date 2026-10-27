@@ -1165,7 +1165,12 @@ test.describe("novo estudo: mapa do conhecimento (Knowledge Operations)", () => 
   test("seleciona matéria e assunto, começa estudo pela confirmação existente e volta à visão geral", async ({ page }) => {
     await page.goto(`${G}/novo-estudo`);
     const ko = page.getByTestId("knowledge-ops");
-    await ko.getByRole("button", { name: /^Direito Penal: 3 assunto/ }).dispatchEvent("click");
+    const penal = ko.getByRole("button", { name: /^Direito Penal: 3 assunto/ });
+    // 1º clique mira (zoom + neon, sem abrir); 2º clique atira e abre o card da matéria.
+    await penal.dispatchEvent("click");
+    await expect(penal).toHaveAttribute("data-mira", "1");
+    await expect(ko.getByTestId("painel-contexto")).toBeHidden();
+    await penal.dispatchEvent("click");
     const panel = ko.getByTestId("painel-contexto");
     await expect(panel.getByRole("heading", { name: "Direito Penal" })).toBeVisible();
     await expect(panel).toContainText(/170\s*questões/);
@@ -1280,7 +1285,9 @@ test("mapa: aulas em tópicos do edital viram pastas, com estudo do tópico inte
   await page.goto(`${G}/novo-estudo?topicos=1`);
   await expect(page.getByTestId("knowledge-ops")).toHaveAttribute("data-modo", "arte");
   const ko = page.getByTestId("knowledge-ops");
-  await ko.getByRole("button", { name: /^Direito Penal: 5 assunto/ }).dispatchEvent("click");
+  const penal = ko.getByRole("button", { name: /^Direito Penal: 5 assunto/ });
+  await penal.dispatchEvent("click");
+  await penal.dispatchEvent("click");
   // As aulas não se espalham pelo mapa: ficam organizadas no card, dentro de cada tópico.
   await expect(ko.getByTestId("assunto-no-mapa")).toHaveCount(0);
   const pasta = page.getByTestId("pasta-topico").filter({ hasText: "Ilicitude" });

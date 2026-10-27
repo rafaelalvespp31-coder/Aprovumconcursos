@@ -317,9 +317,11 @@ export interface ImageStageProps {
   breathClock?: (nowMs: number) => number | null;
   /** Disparo pedido (at = -1): o palco marca o quadro do tiro e anima recuo, clarão e impacto. */
   shot?: React.RefObject<{ at: number } | null>;
+  /** Mouse ou dedo sobre a base da matéria (neon no card e na base). */
+  onHover?: (t: Territory, on: boolean) => void;
 }
 
-export function ImageStage({ cam, territories, selected, labels, topicOffsets, onView, onSelect, onSelectCore, aim, lock, breathClock, shot }: ImageStageProps) {
+export function ImageStage({ cam, territories, selected, labels, topicOffsets, onView, onSelect, onSelectCore, aim, lock, breathClock, shot, onHover }: ImageStageProps) {
   const clock = useRef(breathClock);
   useEffect(() => {
     clock.current = breathClock;
@@ -928,8 +930,11 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
               data-drawn={sl.drawn ? "1" : undefined}
               data-sel={selected === t.id ? "1" : undefined}
               data-vazio={t.topics.length ? undefined : "1"}
+              data-tid={t.id}
               style={{ left: sl.base[0], top: sl.base[1], ["--c" as string]: t.color }}
               onClick={() => onSelect(t)}
+              onPointerEnter={() => onHover?.(t, true)}
+              onPointerLeave={() => onHover?.(t, false)}
             >
               <i />
               <i />

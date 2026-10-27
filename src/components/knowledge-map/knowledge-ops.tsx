@@ -84,6 +84,9 @@ class SceneBoundary extends Component<{ onError: () => void; children: ReactNode
   }
 }
 
+/** Relógio para os tempos da mira (só usado em eventos, nunca na renderização). */
+const clockMs = () => performance.now();
+
 function hasWebGL(): boolean {
   try {
     const c = document.createElement("canvas");
@@ -198,7 +201,6 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
   }, []);
   // Alvo da mira do soldado (matéria em foco ou sob o cursor), lido a cada quadro pelo palco.
   const aim = useRef<[number, number] | null>(null);
-  const aimTalk = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Disparo pedido ao palco e os tempos da sequência mirar → atirar → abrir.
   const shot = useRef<{ at: number } | null>(null);
   const fireTimers = useRef<Array<ReturnType<typeof setTimeout>>>([]);
@@ -209,13 +211,17 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
   // Mira travada na matéria escolhida (laser, luneta e foco total).
   const lock = useRef<{ at: number; target: [number, number]; label: string } | null>(null);
   /** Trava a mira e aproxima a câmera até a matéria (foco total), sem ficar sob o painel. */
-  const lockOn = (target: [number, number], label: string) => {
+  const lockOn = (target: [number, number], label: string, zoom = false) => {
     // O palco marca o início da animação no primeiro quadro (at = -1).
     lock.current = { at: -1, target, label };
     cam.setLocked(true);
     aim.current = target;
-    // O mapa fica como está (sem aproximar): a câmera só desliza se o card for cobrir a instalação.
-    cam.reveal(target, panelInset());
+    // Mirar (1º clique): aproxima suave até a instalação, um pouco acima e à esquerda do centro
+    // para o fuzil não cobrir o alvo. Sem zoom, a câmera só desliza se o card for cobrir a instalação.
+    if (zoom) {
+      if (cam.mode === "caber") cam.focusOn(target, 1.7, [0, -0.08]);
+      else cam.focusOn(target, 1.55, [-0.08, -0.06]);
+    } else cam.reveal(target, panelInset());
   };
 
   const [selT, setSelT] = useState<string | null>(null);
@@ -277,18 +283,60 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     setOpenFolder(t.folders.length === 1 && t.topics.every((x) => x.group) ? t.folders[0]!.key : null);
   };
   /**
-   * Abrir uma matéria no cenário: a mira trava, o laser chega ao card, o soldado dispara (recuo,
-   * clarão, cápsula, estrondo) e o card atingido acende e abre os tópicos. Sem animação
-   * (reduzir movimento) ou fora do cenário, abre direto.
+   * Neon no card e na base da matéria, direto no DOM (sem renderizar a página): "hover" ao passar
+   * o mouse ou encostar o dedo; "mira" enquanto a matéria está na mira.
    */
-  const selectTerritory = (t: Territory) => {
+  const neon = (id: string | null, kind: "hover" | "mira", on: boolean) => {
+    if (!id) return;
+    const key = kind === "hover" ? "neon" : "mira";
+    const els = [labels.current.get(`t:${id}`), root.current?.querySelector<HTMLElement>(`.km-art-base[data-tid="${CSS.escape(id)}"]`)];
+    for (const el of els) {
+      if (!el) continue;
+      if (on) el.dataset[key] = "1";
+      else delete el.dataset[key];
+    }
+  };
+  // Matéria na mira (1º clique) e quando a mira ficou pronta (zoom feito): o 2º clique atira.
+  const aimed = useRef<{ id: string; at: number } | null>(null);
+  const AIM_READY_MS = 650;
+  const clearAim = () => {
+    neon(aimed.current?.id ?? null, "mira", false);
+    aimed.current = null;
+  };
+  /** Abre direto, sem tiro (busca, lista, teclado, "reduzir movimento" ou fora do cenário). */
+  const openDirect = (t: Territory) => {
     setCoreOpen(false);
     controls.focusOn(t.pos, 36, 0.55, viewYawFor(t.pos));
-    lockOn(slotFor(t.id).base, t.label);
-    soldier.speak();
     for (const id of fireTimers.current) clearTimeout(id);
     fireTimers.current = [];
-    if (!art || cam.reduced) return openTerritory(t);
+    clearAim();
+    lockOn(slotFor(t.id).base, t.label);
+    openTerritory(t);
+  };
+  /**
+   * Matéria no cenário, em dois cliques: o 1º MIRA (trava a mira, aproxima com zoom suave, card e
+   * base em neon, o soldado fala); o 2º ATIRA (recuo, clarão, cápsula, estrondo) e o card atingido
+   * abre os tópicos. Clicar em outra matéria muda a mira para ela.
+   */
+  const selectTerritory = (t: Territory) => {
+    if (!art || cam.reduced) return openDirect(t);
+    setCoreOpen(false);
+    if (aimed.current?.id !== t.id) {
+      for (const id of fireTimers.current) clearTimeout(id);
+      fireTimers.current = [];
+      clearAim();
+      // Outra matéria estava aberta: fecha o card para a mira nova ficar limpa.
+      setSelT(null);
+      setSelTopic(null);
+      aimed.current = { id: t.id, at: clockMs() };
+      neon(t.id, "mira", true);
+      lockOn(slotFor(t.id).base, t.label, true);
+      soldier.speak();
+      return;
+    }
+    // 2º clique: atira (se a mira ainda está terminando o zoom, o tiro sai assim que ela fica pronta).
+    if (fireTimers.current.length) return;
+    const wait = Math.max(0, aimed.current.at + AIM_READY_MS - clockMs());
     fireTimers.current.push(
       setTimeout(() => {
         shot.current = { at: -1 };
@@ -300,8 +348,14 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
           plate.dataset.hit = "1";
           fireTimers.current.push(setTimeout(() => delete plate.dataset.hit, 520));
         }
-        fireTimers.current.push(setTimeout(() => openTerritory(t), 120));
-      }, 400),
+        fireTimers.current.push(
+          setTimeout(() => {
+            openTerritory(t);
+            cam.reveal(slotFor(t.id).base, panelInset());
+            fireTimers.current = [];
+          }, 120),
+        );
+      }, wait),
     );
   };
   const selectTopic = (t: Territory, x: MapTopic) => {
@@ -315,6 +369,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
   const overview = () => {
     for (const id of fireTimers.current) clearTimeout(id);
     fireTimers.current = [];
+    clearAim();
     setSelT(null);
     setSelTopic(null);
     setCoreOpen(false);
@@ -636,6 +691,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
             aim={aim}
             lock={lock}
             onSelect={(t) => !dragged.current && selectTerritory(t)}
+            onHover={(t, on) => neon(t.id, "hover", on)}
             onSelectCore={() => !dragged.current && selectCore()}
             onSelectTopic={(t, x) => !dragged.current && selectTopic(t, x)}
             breathClock={(now) => soldier.breathTime(now)}
@@ -654,7 +710,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
               anchors={anchors}
               labels={labels}
               onHeading={onHeading}
-              onSelectTerritory={selectTerritory}
+              onSelectTerritory={openDirect}
               onSelectTopic={selectTopic}
               onSelectCore={selectCore}
               onContextLost={() => setLost(true)}
@@ -690,17 +746,15 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                   data-done={t.topics.length > 0 && t.done === t.topics.length ? "1" : undefined}
                   style={{ ["--c" as string]: t.color, visibility: "hidden" }}
                   onClick={() => selectTerritory(t)}
-                  onMouseEnter={() => {
+                  onPointerEnter={() => {
                     if (!art) return;
-                    aim.current = slotFor(t.id).base;
-                    // Mirou e segurou a mira no card (não só passou por cima): o soldado fala.
-                    if (aimTalk.current) clearTimeout(aimTalk.current);
-                    aimTalk.current = setTimeout(() => soldier.speak(), 450);
+                    neon(t.id, "hover", true);
+                    if (!lock.current) aim.current = slotFor(t.id).base;
                   }}
-                  onMouseLeave={() => {
+                  onPointerLeave={() => {
                     if (!art) return;
-                    aim.current = selT ? slotFor(selT).base : null;
-                    if (aimTalk.current) clearTimeout(aimTalk.current);
+                    neon(t.id, "hover", false);
+                    if (!lock.current) aim.current = selT ? slotFor(selT).base : null;
                   }}
                   aria-label={t.topics.length ? `${t.label}: ${t.topics.length} assunto(s)${t.progress !== null ? `, progresso ${t.progress}%` : ""}` : `${t.label}: em breve, ainda sem aulas publicadas`}
                   data-testid="territorio"
@@ -785,7 +839,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
             <span>Mapa do conhecimento</span>
           </span>
         </div>
-        <SearchBox map={full} inputRef={search} onPick={(h) => (h.kind === "materia" ? selectTerritory(h.territory) : selectTopic(h.territory, h.topic))} />
+        <SearchBox map={full} inputRef={search} onPick={(h) => (h.kind === "materia" ? openDirect(h.territory) : selectTopic(h.territory, h.topic))} />
         <div className={"km-topRight"}>
           <label className={"km-contest"} title="As aulas do catálogo ainda não estão ligadas a concursos específicos: o mapa mostra todas.">
             <Crosshair aria-hidden />
@@ -1054,7 +1108,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
           {!showStage && <p className={"km-muted"}>{lost ? "O mapa 3D foi interrompido pelo navegador." : "Seu navegador não exibe o mapa 3D."} Escolha a matéria e o assunto por aqui.</p>}
           {map.territories.map((t) => (
             <div key={t.id} className={"km-listGroup"}>
-              <button type="button" className={"km-listDisc"} style={{ ["--c" as string]: t.color }} onClick={() => selectTerritory(t)}>
+              <button type="button" className={"km-listDisc"} style={{ ["--c" as string]: t.color }} onClick={() => openDirect(t)}>
                 {t.label} <span>{t.topics.length}</span>
               </button>
               <ul>
