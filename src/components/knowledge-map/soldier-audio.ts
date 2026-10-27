@@ -97,6 +97,29 @@ export class SoldierAudio {
     } else if (this.breath) this.breath.volume = value;
   }
 
+  /**
+   * Tempo atual do loop da respiração (s), para a animação acompanhar o som quadro a quadro.
+   * O `currentTime` do áudio anda aos saltos em alguns navegadores: usa o relógio da página
+   * ancorado nele e só reancora quando se afasta (sem trancos). Som desligado: null.
+   */
+  breathTime(nowMs: number): number | null {
+    const b = this.breath;
+    if (!this.on || !b || b.paused || b.readyState < 2) {
+      this.anchor = null;
+      return null;
+    }
+    const ct = b.currentTime;
+    const est = this.anchor ? this.anchor.ct + (nowMs - this.anchor.at) / 1000 : ct;
+    const dur = b.duration || 0;
+    // Diferença considerando a volta do loop (o áudio recomeça do zero).
+    let diff = ct - est;
+    if (dur) diff = ((((diff + dur / 2) % dur) + dur) % dur) - dur / 2;
+    if (!this.anchor || Math.abs(diff) > 0.08) this.anchor = { ct, at: nowMs };
+    const t = this.anchor.ct + (nowMs - this.anchor.at) / 1000;
+    return dur ? t % dur : t;
+  }
+  private anchor: { ct: number; at: number } | null = null;
+
   dispose() {
     this.stop();
     this.ctx?.close().catch(() => undefined);

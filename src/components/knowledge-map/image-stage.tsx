@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import type { MapTopic, Territory } from "@/domain/knowledge-map/model";
+import { breathAt } from "./breath";
 
 /**
  * Palco cinematográfico: a arte de referência do Aprovum (campo de guerra, núcleo vermelho,
@@ -142,6 +143,8 @@ export class PlateCamera {
     if (this.hold && !v) this.resume = 0.3;
     this.hold = v;
   }
+  /** Respiração do soldado: deslocamento vertical da câmera (px de tela), aplicado antes dos limites. */
+  bob = 0;
   /** Com a mira travada, a câmera fica no alvo (não segue o cursor). */
   locked = false;
   setLocked(v: boolean) {
@@ -271,7 +274,7 @@ export class PlateCamera {
     const panX = Math.max(0, ((caber ? ART.tall.w * s : w) - this.view.w) / 2);
     const panY = caber ? this.view.h * 0.06 : Math.max(0, (h - this.view.h) / 2);
     let tx = this.view.w / 2 - this.focusNow[0] * s - this.pointerNow[0] * panX * look;
-    let ty = this.cy() - this.focusNow[1] * s - this.pointerNow[1] * panY * look;
+    let ty = this.cy() - this.focusNow[1] * s - this.pointerNow[1] * panY * look + this.bob;
     // Computador: nunca mostrar a borda da arte (quando ela é maior que a tela).
     if (!caber && w >= this.view.w) tx = Math.min(0, Math.max(this.view.w - w, tx));
     if (!caber && h >= this.view.h) ty = Math.min(0, Math.max(this.view.h - h, ty));
@@ -308,9 +311,15 @@ export interface ImageStageProps {
   onSelect: (t: Territory) => void;
   onSelectCore: () => void;
   onSelectTopic: (t: Territory, topic: MapTopic) => void;
+  /** Tempo do áudio da respiração (s), quando o som está ligado: a animação segue o som. */
+  breathClock?: (nowMs: number) => number | null;
 }
 
-export function ImageStage({ cam, territories, selected, labels, topicOffsets, onView, onSelect, onSelectCore, aim, lock }: ImageStageProps) {
+export function ImageStage({ cam, territories, selected, labels, topicOffsets, onView, onSelect, onSelectCore, aim, lock, breathClock }: ImageStageProps) {
+  const clock = useRef(breathClock);
+  useEffect(() => {
+    clock.current = breathClock;
+  }, [breathClock]);
   const rifle = useRef<HTMLDivElement>(null);
   const scope = useRef<HTMLDivElement>(null);
   const lockBox = useRef<HTMLDivElement>(null);
@@ -379,6 +388,10 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     let aimA = 0;
     let aimX = 0;
     let aimY = 0;
+    // Respiração: tempo do loop (segue o áudio quando o som está ligado) e pose suavizada.
+    let bT = 0;
+    let chest = 0;
+    let kick = 0;
     // Fumaça: sprite macio gerado uma vez; cada fonte solta baforadas que sobem e se espalham.
     const sprite = document.createElement("canvas");
     sprite.width = sprite.height = 128;
@@ -446,6 +459,17 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     const loop = (now: number) => {
       const dt = (now - last) / 1000;
       last = now;
+      // Relógio da respiração: o do áudio (sincronia exata) ou, sem som, o próprio ritmo dela.
+      const at = clock.current?.(now) ?? null;
+      bT = at ?? bT + Math.min(dt, 0.1);
+      const pose = breathAt(bT);
+      // Segue a pose com um filtro curto: ligar/desligar o som nunca dá tranco.
+      const kb = 1 - Math.exp(-Math.min(dt, 0.1) * 22);
+      chest += (pose.chest - chest) * kb;
+      kick += (pose.kick - kick) * kb;
+      const still = cam.reduced ? 0 : 1;
+      // Câmera no peito do soldado: sobe ao puxar o ar e afunda no sopro (bem sutil).
+      cam.bob = still * (chest * 0.0045 - kick * 0.0022) * cam.view.h;
       const t = cam.step(dt);
       ly.style.transform = `translate3d(${t.tx.toFixed(2)}px, ${t.ty.toFixed(2)}px, 0) scale(${t.s.toFixed(5)})`;
       const map = labels.current;
@@ -576,8 +600,17 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         const settle = lk ? Math.max(0, Math.min(1, (since - 1300) / 500)) : 0;
         // Braço e fuzil FIXOS no quadro (primeira pessoa): quem vira é a câmera. Só a mira travada
         // sobe e abaixa a arma um pouco (o recorte continua fora da tela nesse movimento).
-        const breathe = 0;
-        const sway = 0;
+        // Respiração (After Effects-like, em camadas): o peito ergue e aproxima a arma ao puxar o ar,
+        // o sopro dá um tranco curto para baixo com mola amortecida; por cima, o balanço lento de quem
+        // segura o peso (figura de oito) e o tremor fino dos braços cansados, maior com o peito cheio.
+        const H = RIFLE.h * s0;
+        const ts = now / 1000;
+        const drift = 0.6 + 0.4 * chest;
+        const tremor = (Math.sin(ts * 37.1) + 0.6 * Math.sin(ts * 53.3 + 2) + 0.35 * Math.sin(ts * 71.7 + 4)) * (0.35 + chest);
+        const breathe = still * (-chest * 0.011 * H + kick * 0.0075 * H + (Math.sin(ts * 2 * Math.PI * 0.42) * 0.0012 * H + tremor * 0.0005 * H) * drift);
+        const swayX = still * (Math.sin(ts * 2 * Math.PI * 0.09) * 0.006 + Math.sin(ts * 2 * Math.PI * 0.21 + 1.3) * 0.0025 + tremor * 0.0003) * H * drift;
+        const sway = still * (chest * 0.007 - kick * 0.0028 + Math.sin(ts * 2 * Math.PI * 0.13 + 0.7) * 0.0018 * drift);
+        const grow = 1 + still * chest * 0.009;
         // Nenhum movimento do braço ao clicar/tocar (nem ao travar a mira): ele é fixo.
         const wantY = 0 * (raise + settle);
         const ka = cam.reduced ? 1 : 1 - Math.exp(-dt * 9);
@@ -590,7 +623,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         aimA += (wantA - aimA) * (cam.reduced ? 1 : 1 - Math.exp(-dt * 7));
         aimX += (0 - aimX) * ka;
         aimY += (wantY - aimY) * ka;
-        const rt = `translate3d(${aimX.toFixed(1)}px, ${(aimY + breathe).toFixed(1)}px, 0) rotate(${(aimA + sway).toFixed(4)}rad)`;
+        const rt = `translate3d(${(aimX + swayX).toFixed(2)}px, ${(aimY + breathe).toFixed(2)}px, 0) rotate(${(aimA + sway).toFixed(5)}rad) scale(${grow.toFixed(5)})`;
         if (rt !== lastRifle) {
           lastRifle = rt;
           rf.style.transform = rt;
@@ -613,11 +646,11 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
             const a = aimA + sway;
             const vx = mx - px;
             const vy = my - py;
-            const bx = px + vx * Math.cos(a) - vy * Math.sin(a) + aimX;
-            const by = py + vx * Math.sin(a) + vy * Math.cos(a) + aimY + breathe;
-            const grow = Math.min(1, since / 380);
-            const ex = bx + (target[0] - bx) * grow;
-            const ey = by + (target[1] - by) * grow;
+            const bx = px + (vx * Math.cos(a) - vy * Math.sin(a)) * grow + aimX + swayX;
+            const by = py + (vx * Math.sin(a) + vy * Math.cos(a)) * grow + aimY + breathe;
+            const reach = Math.min(1, since / 380);
+            const ex = bx + (target[0] - bx) * reach;
+            const ey = by + (target[1] - by) * reach;
             const alpha = since < 1600 ? 1 : 0.55;
             lctx.lineCap = "round";
             lctx.strokeStyle = `rgba(255,40,40,${0.25 * alpha})`;
@@ -629,7 +662,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
             lctx.strokeStyle = `rgba(255,90,90,${0.95 * alpha})`;
             lctx.lineWidth = 1.6;
             lctx.stroke();
-            if (grow >= 1) {
+            if (reach >= 1) {
               const pulse = 5 + Math.sin(now / 120) * 1.5;
               lctx.fillStyle = `rgba(255,60,60,${0.9 * alpha})`;
               lctx.beginPath();

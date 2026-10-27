@@ -605,6 +605,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
             onSelect={(t) => !dragged.current && selectTerritory(t)}
             onSelectCore={() => !dragged.current && selectCore()}
             onSelectTopic={(t, x) => !dragged.current && selectTopic(t, x)}
+            breathClock={(now) => soldier.breathTime(now)}
           />
         )}
         {show3d && (
