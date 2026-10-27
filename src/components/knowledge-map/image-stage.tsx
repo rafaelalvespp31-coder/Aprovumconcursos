@@ -13,7 +13,9 @@ import type { MapTopic, Territory } from "@/domain/knowledge-map/model";
 
 export const ART = { w: 3344, h: 1882, src: "/images/knowledge-ops/territorio.webp", srcSm: "/images/knowledge-ops/territorio-sm.webp" };
 /** Braços e fuzil recortados da arte (camada própria, em primeira pessoa). */
-const RIFLE = { src: "/images/knowledge-ops/fuzil.webp", x: 1424, y: 792, w: 1920, h: 1090, muzzle: [1786, 960] as [number, number], pivot: [2560, 2060] as [number, number] };
+// O recorte continua (escurecendo) para baixo e para a direita da tela: ao girar ou subir a arma,
+// o braço nunca mostra a borda do recorte. "vh" é a altura da parte visível original.
+const RIFLE = { src: "/images/knowledge-ops/fuzil.webp", x: 1424, y: 792, w: 2783, h: 1853, vh: 1090, muzzle: [1786, 960] as [number, number], pivot: [2420, 1500] as [number, number] };
 /** Fumaça: colunas que sobem dos incêndios e névoa baixa sobre o rio (coordenadas da arte). */
 const SMOKE: Array<{ x: number; y: number; kind: "coluna" | "nevoa"; size: number }> = [
   { x: 700, y: 330, kind: "coluna", size: 120 },
@@ -75,7 +77,7 @@ export function slotFor(id: string): ArtSlot {
 const FIT = { x0: 700, x1: 3140, cx: 1920, cy: 860 };
 
 /** Folga da arte além da tela (computador): é o quanto a câmera pode "olhar" para os lados. */
-const LOOK_MARGIN = 1.12;
+const LOOK_MARGIN = 1.22;
 
 /** Cópias espelhadas em volta da arte (só aparecem no celular em pé). */
 const MIRRORS: Array<[number, number]> = [
@@ -225,8 +227,8 @@ export class PlateCamera {
   step(dtRaw: number) {
     const dt = Math.min(dtRaw, 0.05);
     const kk = this.reduced ? 1 : 1 - Math.exp(-dt * 3.4);
-    // O olhar acompanha o cursor de perto (rápido, mas sem tranco).
-    const kp = this.reduced ? 1 : 1 - Math.exp(-dt * 9);
+    // O olhar acompanha o cursor/dedo em sincronia com a arma (sem atraso); ao soltar, volta suave.
+    const kp = this.reduced || (this.screenPointer && !this.locked) ? 1 : 1 - Math.exp(-dt * 9);
     this.focusNow[0] += (this.focus[0] - this.focusNow[0]) * kk;
     this.focusNow[1] += (this.focus[1] - this.focusNow[1]) * kk;
     this.zoomNow += (this.zoom - this.zoomNow) * kk;
@@ -307,7 +309,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         rg.s0 = rw / RIFLE.w;
         // Boca do cano a ~1/3 da largura e logo abaixo do mapa.
         const left = cam.view.w * 0.32 - (RIFLE.muzzle[0] - RIFLE.x) * rg.s0;
-        const top = Math.min(cam.view.h * 0.66 - (RIFLE.muzzle[1] - RIFLE.y) * rg.s0, cam.view.h - RIFLE.h * rg.s0 * 0.8);
+        const top = Math.min(cam.view.h * 0.66 - (RIFLE.muzzle[1] - RIFLE.y) * rg.s0, cam.view.h - RIFLE.vh * rg.s0 * 0.8);
         rg.tx0 = left - RIFLE.x * rg.s0;
         rg.ty0 = top - RIFLE.y * rg.s0;
       } else {
@@ -518,15 +520,17 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         let wantA = 0;
         if (target) {
           // O braço acompanha o alvo (desloca) e o resto é giro exato em volta do ombro.
-          wantX = Math.max(-cam.view.w * 0.16, Math.min(cam.view.w * 0.12, (target[0] - mx) * 0.3));
-          wantY = Math.max(-cam.view.h * 0.1, Math.min(cam.view.h * 0.06, (target[1] - my) * 0.15));
+          // Primeira pessoa: o braço desliza junto com a mira (como quem vira o corpo) e gira pouco,
+          // então a arma nunca sai do quadro; o giro exato fecha a diferença até o alvo.
+          wantX = Math.max(-cam.view.w * 0.32, Math.min(cam.view.w * 0.1, (target[0] - mx) * 0.62));
+          wantY = Math.max(-cam.view.h * 0.14, Math.min(cam.view.h * 0.1, (target[1] - my) * 0.3));
           wantY += -raise * cam.view.h * 0.03 + settle * cam.view.h * 0.1;
           const ppx = px + wantX;
           const ppy = py + wantY + breathe;
           const d = Math.atan2(target[1] - ppy, target[0] - ppx) - Math.atan2(my - py, mx - px);
           wantA = Math.atan2(Math.sin(d), Math.cos(d));
           // Limite só para casos extremos (cursor abaixo do ombro).
-          wantA = Math.max(-1.25, Math.min(0.95, wantA));
+          wantA = Math.max(-1.7, Math.min(1.5, wantA));
         }
         if (following && followBlend >= 1) {
           // Sincronizado: sem atraso nenhum.
