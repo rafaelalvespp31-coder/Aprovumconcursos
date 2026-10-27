@@ -9,6 +9,8 @@ import { CONTENT_TYPE_OPTIONS, boardDisplayName, type ExamBoardSlug } from "@/do
 import { lessonBannerUrl } from "@/server/services/banners";
 import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import { generateLessonAction } from "./actions";
+import { getTopicSiblings } from "@/server/topic-siblings";
+import { SubtopicSearch } from "@/components/aula/subtopic-search";
 
 export const metadata = { title: "Aula" };
 
@@ -90,16 +92,18 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
 
   const notTaught = nodes.filter((n) => !n.taught);
   const discipline = lesson.study_trails.discipline_mode;
-  const [nextInSubject, plan, pdfs, banner] = await Promise.all([
+  const [nextInSubject, plan, pdfs, banner, siblingsInTopic] = await Promise.all([
     getNextInSubject(lesson.trail_id, next ? { id: next.id, title: next.title } : null).catch(() => null),
     getTrailPlan(lesson.trail_id).catch(() => []),
     listStudyPdfs(lesson.trail_id).catch(() => []),
     lessonBannerUrl(lesson.catalog_topic_id as string | null, discipline).catch(() => null),
+    getTopicSiblings(lesson.catalog_topic_id as string | null).catch(() => null),
   ]);
   const units = plan.flatMap((m) => m.lessons);
   const unitsDone = units.filter((l) => l.levelsPassed >= 3).length;
   const notices = (
     <>
+      {siblingsInTopic && <SubtopicSearch group={siblingsInTopic.group} items={siblingsInTopic.items} />}
       {data.catalog?.outdated && (
         <Notice tone="alerta" title="Conteúdo atualizado no catálogo">
           A equipe publicou uma versão revisada deste conteúdo depois que você começou. Revise com atenção: para estudar a versão nova, crie o estudo de novo com o mesmo pedido.

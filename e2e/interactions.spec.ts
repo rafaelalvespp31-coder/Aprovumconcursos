@@ -1294,3 +1294,21 @@ test("plano de tópicos: o sumário vira árvore enquanto digita", async ({ page
   await expect(arvore).toContainText("4.1 Causas de exclusão da ilicitude");
   await expect(arvore).toContainText("4.2.1 Excesso doloso");
 });
+
+test("aula: busca leva direto a outro subtópico do mesmo tópico", async ({ page }) => {
+  await page.goto(`${G}/aula`);
+  const box = page.getByTestId("busca-subtopico");
+  await expect(box).toContainText("Crimes contra a Administração Pública");
+  const input = box.getByRole("combobox", { name: /Buscar subtópico/ });
+  await input.fill("peculato");
+  const options = box.getByRole("option");
+  await expect(options).toHaveCount(2);
+  await expect(options.first()).toContainText("Você está aqui");
+  await input.fill("1.3");
+  await expect(options).toHaveCount(1);
+  await expect(box.getByTestId("ir-subtopico")).toHaveAttribute("href", /\/aula\/00000000-0000-4000-8200-000000000013/);
+  await input.fill("corrupcao");
+  await expect(box.getByTestId("comecar-subtopico")).toContainText("Corrupção passiva");
+  await input.fill("xyz");
+  await expect(box).toContainText("Nenhum subtópico");
+});
