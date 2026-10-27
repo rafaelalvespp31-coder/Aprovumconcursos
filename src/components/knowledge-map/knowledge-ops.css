@@ -1395,34 +1395,23 @@
 }
 
 @media (max-width: 900px) {
-  /* Marcadores compactos no celular: ícone e nome curto; a placa completa só na matéria escolhida. */
+  /* Marcadores compactos no celular, no mesmo estilo da referência: hexágono + nome + concluídos. */
   .km-labels[data-palco="arte"] .km-plate:not([data-sel]) {
-    flex-direction: column;
-    gap: 2px;
-    max-width: 92px;
-    padding: 3px 5px;
-    clip-path: none;
-    border-radius: 6px;
-    background: linear-gradient(180deg, color-mix(in srgb, var(--c) 18%, rgba(8, 9, 12, 0.4)), rgba(8, 9, 12, 0.2));
-    text-align: center;
+    max-width: 124px;
   }
-  .km-labels[data-palco="arte"] .km-plate:not([data-sel]) .km-plateName {
-    font-size: 8.5px;
+  .km-labels[data-palco="arte"] .km-plate .km-plateName {
+    white-space: normal;
+    display: -webkit-box;
     -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    line-height: 1.12;
   }
-  .km-labels[data-palco="arte"] .km-plate:not([data-sel]) .km-platePct,
-  .km-labels[data-palco="arte"] .km-plate:not([data-sel]) .km-plateNew,
-  .km-labels[data-palco="arte"] .km-plate:not([data-sel])::after {
+  .km-labels[data-palco="arte"] .km-plate::after {
     display: none;
   }
-  .km-labels[data-palco="arte"] .km-plate:not([data-sel]) .km-plateIcon {
-    width: 22px;
-    height: 22px;
-    font-size: 12px;
-    margin: 0 auto;
-  }
   .km-labels[data-palco="arte"] .km-plate[data-vazio]:not([data-sel]) {
-    opacity: 0.7;
+    opacity: 0.8;
   }
 }
 
@@ -1866,3 +1855,504 @@
 
 /* Computador: a arte cobre a tela inteira, então o fundo desfocado (caro) nem é desenhado. */
 
+
+/* ===================== Campo de batalha (arte de referência) =====================
+   Cards como na referência: hexágono vermelho com o ícone + caixa escura translúcida com o
+   nome e "concluídos/total" em vermelho; pino fino descendo até a instalação. */
+.km-plateCount {
+  display: none;
+}
+.km-labels[data-palco="arte"] .km-plate {
+  --hex: 46px;
+  --c: #ff2b2b !important;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-width: 0;
+  padding: 0;
+  background: none;
+  border: 0;
+  box-shadow: none;
+  clip-path: none;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.95);
+}
+.km-labels[data-palco="arte"] .km-plate[data-done] {
+  --c: #39ff6a !important;
+}
+.km-labels[data-palco="arte"] .km-plateIcon {
+  position: relative;
+  z-index: 1;
+  width: var(--hex);
+  height: calc(var(--hex) * 1.12);
+  flex: none;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  color: #fff;
+  font-size: 20px;
+  background: var(--c);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--c) 70%, transparent));
+}
+.km-labels[data-palco="arte"] .km-plateIcon::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  background: radial-gradient(circle at 50% 40%, #2a0708, #0b0506 70%);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  z-index: -1;
+}
+.km-labels[data-palco="arte"] .km-plateIcon svg {
+  color: var(--c);
+  width: 22px;
+  height: 22px;
+}
+.km-labels[data-palco="arte"] .km-plateBody {
+  display: grid;
+  gap: 2px;
+  margin-left: -8px;
+  padding: 6px 16px 6px 16px;
+  background: linear-gradient(90deg, rgba(8, 6, 8, 0.82), rgba(8, 6, 8, 0.5) 75%, rgba(8, 6, 8, 0.2));
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+.km-labels[data-palco="arte"] .km-plateName {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #fff;
+}
+.km-labels[data-palco="arte"] .km-plateCount {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--c);
+  font-variant-numeric: tabular-nums;
+}
+.km-labels[data-palco="arte"] .km-platePct,
+.km-labels[data-palco="arte"] .km-plateNew,
+.km-labels[data-palco="arte"] .km-plateBar,
+.km-labels[data-palco="arte"] .km-plateMeta {
+  display: none;
+}
+.km-labels[data-palco="arte"] .km-plate[data-sel] {
+  --hex: 56px;
+}
+.km-labels[data-palco="arte"] .km-plate[data-sel] .km-plateName {
+  font-size: 15px;
+}
+.km-labels[data-palco="arte"] .km-plate[data-sel] .km-plateBody {
+  background: linear-gradient(90deg, rgba(40, 6, 8, 0.9), rgba(12, 6, 8, 0.6) 75%, rgba(8, 6, 8, 0.25));
+}
+.km-labels[data-palco="arte"] .km-plate[data-vazio] .km-plateCount {
+  color: rgba(255, 255, 255, 0.55);
+  font-weight: 600;
+}
+/* Pino: do hexágono até a instalação, vermelho como as rotas do mapa. */
+.km-labels[data-palco="arte"] .km-lead {
+  --c: #ff2b2b !important;
+}
+/* Pulsos da instalação também em vermelho tático. */
+.km-art-base {
+  --c: #ff2b2b !important;
+}
+@media (max-width: 900px) {
+  .km-labels[data-palco="arte"] .km-plate {
+    --hex: 32px;
+    max-width: 150px;
+  }
+  .km-labels[data-palco="arte"] .km-plateIcon svg {
+    width: 15px;
+    height: 15px;
+  }
+  .km-labels[data-palco="arte"] .km-plateBody {
+    margin-left: -6px;
+    padding: 4px 9px 4px 10px;
+  }
+  .km-labels[data-palco="arte"] .km-plateName {
+    font-size: 9.5px;
+  }
+  .km-labels[data-palco="arte"] .km-plateCount {
+    font-size: 9.5px;
+  }
+  .km-labels[data-palco="arte"] .km-plate[data-sel] {
+    --hex: 38px;
+  }
+}
+
+/* ---------- HUD do campo de batalha (fiel à referência) ---------- */
+.km-backBtn,
+.km-hexLogo,
+.km-brandWord,
+.km-bell,
+.km-avatarIcon,
+.km-profileChevron,
+.km-topMotto,
+.km-mapCard,
+.km-progressCard,
+.km-dock,
+.km-mottoCard {
+  display: none;
+}
+@media (min-width: 901px) {
+  .km-root[data-modo="arte"] {
+    --red: #ff2b2b;
+    --hud: rgba(10, 8, 10, 0.72);
+    --hudLine: rgba(255, 255, 255, 0.1);
+  }
+  /* Topo */
+  .km-root[data-modo="arte"] .km-top {
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+  }
+  .km-root[data-modo="arte"] .km-navToggle,
+  .km-root[data-modo="arte"] .km-brandSep,
+  .km-root[data-modo="arte"] .km-brandText,
+  .km-root[data-modo="arte"] .km-contest,
+  .km-root[data-modo="arte"] .km-progressChip,
+  .km-root[data-modo="arte"] .km-profileText span,
+  .km-root[data-modo="arte"] .km-avatar,
+  .km-root[data-modo="arte"] .km-side,
+  .km-root[data-modo="arte"] .km-bottomLeft,
+  .km-root[data-modo="arte"] .km-counter,
+  .km-root[data-modo="arte"] .km-slogan {
+    display: none;
+  }
+  .km-root[data-modo="arte"] .km-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .km-root[data-modo="arte"] .km-backBtn {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 52px;
+    color: #fff;
+    background: var(--hud);
+    border: 1px solid var(--hudLine);
+  }
+  .km-root[data-modo="arte"] .km-backBtn:hover {
+    border-color: var(--red);
+  }
+  .km-root[data-modo="arte"] .km-backBtn svg {
+    width: 22px;
+    height: 22px;
+  }
+  .km-hexLogo {
+    place-items: center;
+    flex: none;
+    width: 66px;
+    height: 74px;
+    background: var(--red, #ff2b2b);
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    filter: drop-shadow(0 0 12px rgba(255, 30, 30, 0.6));
+  }
+  .km-hexLogo img {
+    width: calc(100% - 6px);
+    height: calc(100% - 6px);
+    object-fit: cover;
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    background: #050505;
+  }
+  .km-root[data-modo="arte"] .km-hexLogo {
+    display: grid;
+  }
+  .km-root[data-modo="arte"] .km-brandWord {
+    display: grid;
+    gap: 2px;
+  }
+  /* A imagem do logo traz o slogan minúsculo embaixo: mostra só o nome (o slogan legível vem abaixo). */
+  .km-root[data-modo="arte"] .km-brandWord .km-wordmark {
+    width: 134px;
+    height: 23px;
+    object-fit: cover;
+    object-position: top;
+  }
+  .km-tagline {
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: #fff;
+    white-space: nowrap;
+  }
+  .km-root[data-modo="arte"] .km-search {
+    background: rgba(8, 8, 10, 0.78);
+  }
+  .km-root[data-modo="arte"] .km-topRight {
+    gap: 18px;
+  }
+  .km-root[data-modo="arte"] .km-bell {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    color: #fff;
+  }
+  .km-root[data-modo="arte"] .km-bell:hover {
+    color: var(--red);
+  }
+  .km-root[data-modo="arte"] .km-bell svg {
+    width: 24px;
+    height: 24px;
+  }
+  .km-root[data-modo="arte"] .km-profile {
+    gap: 8px;
+  }
+  .km-root[data-modo="arte"] .km-avatarIcon {
+    display: grid;
+    place-items: center;
+    width: 38px;
+    height: 38px;
+    border: 1.5px solid rgba(255, 255, 255, 0.85);
+    border-radius: 999px;
+  }
+  .km-root[data-modo="arte"] .km-avatarIcon svg {
+    width: 20px;
+    height: 20px;
+  }
+  .km-root[data-modo="arte"] .km-profileText b {
+    font-size: 15px;
+  }
+  .km-root[data-modo="arte"] .km-profileChevron {
+    display: block;
+    width: 16px;
+    height: 16px;
+  }
+  .km-root[data-modo="arte"] .km-topMotto {
+    display: grid;
+    padding: 4px 18px 4px 14px;
+    border-left: 3px solid var(--red);
+    font-size: 12px;
+    font-weight: 800;
+    line-height: 1.25;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #fff;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.55), rgba(0, 0, 0, 0));
+  }
+  /* Cartão "Mapa de estudos" (esquerda) */
+  .km-root[data-modo="arte"] .km-mapCard {
+    position: absolute;
+    left: 28px;
+    top: 132px;
+    z-index: 5;
+    display: grid;
+    gap: 8px;
+    width: 150px;
+    padding: 16px 14px 18px 18px;
+    color: #fff;
+    background: var(--hud);
+    border-left: 2px solid var(--red);
+  }
+  .km-mapCardIcon svg {
+    width: 34px;
+    height: 34px;
+    color: #e5e5e5;
+  }
+  .km-root[data-modo="arte"] .km-mapCard b {
+    font-size: 14px;
+    font-weight: 800;
+    line-height: 1.15;
+    text-transform: uppercase;
+  }
+  .km-root[data-modo="arte"] .km-mapCard p {
+    font-size: 11.5px;
+    line-height: 1.4;
+    color: rgba(255, 255, 255, 0.72);
+  }
+  /* Progresso (canto inferior esquerdo) */
+  .km-root[data-modo="arte"] .km-progressCard {
+    position: absolute;
+    left: 32px;
+    bottom: 36px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    width: 290px;
+    padding: 14px 18px 14px 14px;
+    color: #fff;
+    background: var(--hud);
+    border: 1px solid var(--hudLine);
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 14px 100%, 0 calc(100% - 14px));
+  }
+  .km-hexIcon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 58px;
+    height: 64px;
+    background: var(--red);
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+    position: relative;
+  }
+  .km-hexIcon::before {
+    content: "";
+    position: absolute;
+    inset: 2.5px;
+    background: #0b0506;
+    clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  }
+  .km-hexIcon svg {
+    position: relative;
+    width: 28px;
+    height: 28px;
+    color: #fff;
+  }
+  .km-progressCard > div {
+    flex: 1;
+    min-width: 0;
+  }
+  .km-progressHead {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .km-progressHead b {
+    font-size: 13px;
+    color: var(--red);
+  }
+  .km-progressBar {
+    display: block;
+    height: 7px;
+    margin: 8px 0 7px;
+    background: rgba(255, 255, 255, 0.14);
+  }
+  .km-progressBar i {
+    display: block;
+    height: 100%;
+    background: linear-gradient(90deg, #fff, #fff 80%, var(--red));
+    box-shadow: 0 0 8px rgba(255, 255, 255, 0.4);
+  }
+  .km-progressFoot {
+    font-size: 10.5px;
+    color: rgba(255, 255, 255, 0.7);
+  }
+  /* Barra de navegação inferior */
+  .km-root[data-modo="arte"] .km-dock {
+    position: absolute;
+    left: 50%;
+    bottom: 32px;
+    z-index: 6;
+    translate: -50% 0;
+    display: flex;
+    gap: 4px;
+    padding: 8px 10px;
+    background: rgba(8, 8, 10, 0.78);
+    border: 1px solid var(--hudLine);
+    clip-path: polygon(14px 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%, 0 14px);
+  }
+  .km-dockLink {
+    display: grid;
+    justify-items: center;
+    gap: 4px;
+    min-width: 84px;
+    padding: 10px 8px 8px;
+    font-size: 13px;
+    color: rgba(255, 255, 255, 0.82);
+    transition:
+      color 0.15s,
+      background 0.15s;
+  }
+  .km-dockLink svg {
+    width: 26px;
+    height: 26px;
+  }
+  .km-dockLink:hover {
+    color: #fff;
+    background: rgba(255, 255, 255, 0.06);
+  }
+  .km-dockLink[aria-current="page"] {
+    color: #fff;
+    font-weight: 700;
+    background: radial-gradient(circle at 50% 40%, rgba(255, 43, 43, 0.35), rgba(120, 0, 0, 0.25));
+    box-shadow:
+      inset 0 0 0 1.5px var(--red),
+      0 0 18px rgba(255, 30, 30, 0.45);
+    clip-path: polygon(12px 0, calc(100% - 12px) 0, 100% 12px, 100% calc(100% - 12px), calc(100% - 12px) 100%, 12px 100%, 0 calc(100% - 12px), 0 12px);
+  }
+  .km-dockLink[data-novo] {
+    color: var(--red);
+  }
+  .km-dockLink[data-novo][aria-current="page"] {
+    color: #fff;
+  }
+  /* Lema (canto inferior direito) */
+  .km-root[data-modo="arte"] .km-mottoCard {
+    position: absolute;
+    right: 32px;
+    bottom: 36px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    width: 300px;
+    padding: 14px 18px 14px 14px;
+    color: #fff;
+    background: var(--hud);
+    border: 1px solid var(--hudLine);
+    clip-path: polygon(14px 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%, 0 14px);
+  }
+  .km-root[data-modo="arte"] .km-mottoCard .km-hexLogo {
+    display: grid;
+    width: 54px;
+    height: 60px;
+  }
+  .km-mottoCard b {
+    display: block;
+    font-size: 13px;
+    font-weight: 800;
+    line-height: 1.25;
+    text-transform: uppercase;
+  }
+  .km-mottoCard em {
+    font-style: normal;
+    color: var(--red);
+  }
+  .km-sector {
+    display: block;
+    margin-top: 6px;
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+    font-variant-numeric: tabular-nums;
+  }
+  /* Controles: faixa fina só com ícones (nome no tooltip e para leitores de tela). */
+  .km-root[data-modo="arte"] .km-controls {
+    left: 28px;
+    right: auto;
+    top: 318px;
+    bottom: auto;
+    display: grid;
+    grid-template-columns: repeat(2, 38px);
+    padding: 4px;
+    background: rgba(8, 8, 10, 0.6);
+  }
+  .km-root[data-modo="arte"] .km-controls button {
+    justify-content: center;
+    width: 38px;
+    min-height: 36px;
+    padding: 0;
+  }
+  .km-root[data-modo="arte"] .km-controls button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+  .km-root[data-modo="arte"] .km-filters,
+  .km-root[data-modo="arte"] .km-list {
+    left: 124px;
+    right: auto;
+    bottom: auto;
+    top: 318px;
+  }
+  .km-root[data-modo="arte"] .km-hint {
+    top: 96px;
+  }
+}

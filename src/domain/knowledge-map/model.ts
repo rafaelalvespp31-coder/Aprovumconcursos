@@ -7,7 +7,7 @@ import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import type { ThemeCard } from "@/domain/studies/home";
 import { groupByTopic, groupKey } from "@/domain/catalog/topic-group";
 
-export type TerritoryIcon = "livro" | "chip" | "cerebro" | "balanca" | "pilar" | "escudo" | "martelo" | "documento" | "grafico" | "alvo";
+export type TerritoryIcon = "livro" | "chip" | "monitor" | "cerebro" | "balanca" | "pilar" | "escudo" | "martelo" | "documento" | "grafico" | "alvo";
 
 export interface MapTopic {
   /** Id real do tema do catálogo (catalog_topics.id). */
@@ -58,14 +58,15 @@ export interface KnowledgeMap {
 
 /** Cor e ícone de cada matéria (vermelho fica para o núcleo e o Direito Penal, como na referência). */
 const STYLE: Record<string, { color: string; icon: TerritoryIcon }> = {
-  direito_penal: { color: "#FF4545", icon: "escudo" },
+  // Ícones como na arte do campo de batalha: balança (Penal), livro, cérebro, documento, monitor…
+  direito_penal: { color: "#FF4545", icon: "balanca" },
   lingua_portuguesa: { color: "#3B82F6", icon: "livro" },
-  informatica: { color: "#22D3EE", icon: "chip" },
-  matematica: { color: "#22C55E", icon: "cerebro" },
-  raciocinio_logico: { color: "#4ADE80", icon: "grafico" },
+  informatica: { color: "#22D3EE", icon: "monitor" },
+  matematica: { color: "#22C55E", icon: "grafico" },
+  raciocinio_logico: { color: "#4ADE80", icon: "cerebro" },
   direito_constitucional: { color: "#8B5CF6", icon: "pilar" },
-  direito_administrativo: { color: "#EAB308", icon: "balanca" },
-  direito_processual_penal: { color: "#F97316", icon: "martelo" },
+  direito_administrativo: { color: "#EAB308", icon: "martelo" },
+  direito_processual_penal: { color: "#F97316", icon: "documento" },
   legislacao_especial: { color: "#E879F9", icon: "documento" },
   conhecimentos_especificos: { color: "#94A3B8", icon: "alvo" },
   outras: { color: "#A1A1AA", icon: "alvo" },

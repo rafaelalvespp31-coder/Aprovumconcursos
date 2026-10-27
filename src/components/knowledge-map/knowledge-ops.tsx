@@ -4,9 +4,12 @@ import { Component, useCallback, useEffect, useMemo, useRef, useState, type Reac
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import {
+  Bell,
   BookOpen,
   Brain,
   ChartLine,
+  ChevronDown,
+  ChevronLeft,
   ChartNoAxesColumnIncreasing,
   Check,
   Clock3,
@@ -22,6 +25,7 @@ import {
   LocateFixed,
   Map as MapIcon,
   Minus,
+  Monitor,
   Move,
   Play,
   Plus,
@@ -30,6 +34,7 @@ import {
   Search,
   Shield,
   Target,
+  UserRound,
   Volume2,
   VolumeX,
   X,
@@ -48,6 +53,7 @@ const Scene = dynamic(() => import("./scene/scene"), { ssr: false, loading: () =
 const ICONS: Record<TerritoryIcon, LucideIcon> = {
   livro: BookOpen,
   chip: Cpu,
+  monitor: Monitor,
   cerebro: Brain,
   balanca: Scale,
   pilar: Landmark,
@@ -489,7 +495,16 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     return out;
   }, [artTerritories, selT]);
   const viewRect = useRef<SVGRectElement>(null);
+  const sectorRef = useRef<HTMLSpanElement>(null);
   const onView = useCallback((r: { x: number; y: number; w: number; h: number }) => {
+    // Setor do mapa no centro da tela (grade de 8 colunas A–H × 6 linhas), escrito direto no DOM.
+    const sec = sectorRef.current;
+    if (sec) {
+      const cxn = Math.min(0.999, Math.max(0, r.x + r.w / 2));
+      const cyn = Math.min(0.999, Math.max(0, r.y + r.h / 2));
+      const label = `Setor ${"ABCDEFGH"[Math.floor(cxn * 8)]}${Math.floor(cyn * 6) + 1} · ${(cxn * 100).toFixed(0)}·${(cyn * 100).toFixed(0)}`;
+      if (sec.textContent !== label) sec.textContent = label;
+    }
     const el = viewRect.current;
     if (!el) return;
     // A arte é uma vista em perspectiva: o radar mostra a área enquadrada sobre ela.
@@ -516,6 +531,18 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
   const empty = full.territories.length === 0;
   const done = full.totals.done;
 
+  // Barra inferior (como na referência): o mapa é o "Novo" estudo.
+  const dock = [
+    { label: "Painel", href: `${base}/painel`, icon: House },
+    { label: "Estudos", href: `${base}/trilhas`, icon: BookOpen },
+    { label: "Jogo", href: `${base}/quiz`, icon: Gamepad2 },
+    { label: "Questões", href: `${base}/questoes`, icon: Target },
+    { label: "Revisões", href: `${base}/revisoes`, icon: Clock3 },
+    { label: "Evolução", href: `${base}/desempenho`, icon: ChartNoAxesColumnIncreasing },
+    { label: "Novo", href: `${base}/nova-trilha`, icon: Plus, current: true, novo: true },
+  ];
+  const overallPct = full.totals.topics ? Math.round((done / full.totals.topics) * 100) : 0;
+  const unlocked = plates.filter((t) => t.topics.length > 0).length;
   const nav = [
     { label: "Mapa", href: `${base}/nova-trilha`, icon: MapIcon, current: true },
     { label: "Painel", href: `${base}/painel`, icon: House },
@@ -632,6 +659,8 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                   </span>
                   <span className={"km-plateBody"}>
                     <span className={"km-plateName"}>{t.label}</span>
+                    {/* Arte: como na referência — concluídos/total, em vermelho (dado real do aluno). */}
+                    <span className={"km-plateCount"}>{t.topics.length ? `${t.done}/${t.topics.length}` : "em breve"}</span>
                     {!t.topics.length ? <span className={"km-plateNew"}>Em breve</span> : t.progress !== null ? <span className={"km-platePct"}>{t.progress}%</span> : <span className={"km-plateNew"}>Não iniciado</span>}
                     {t.topics.length > 0 && (
                       <>
@@ -684,8 +713,18 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
           <button type="button" className={"km-navToggle"} onClick={() => setNavOpen((v) => !v)} aria-expanded={navOpen} aria-label="Menu">
             <List aria-hidden />
           </button>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/aprovum-wordmark.png" alt="APROVUM" className={"km-wordmark"} />
+          <Link href={`${base}/painel`} className={"km-backBtn"} aria-label="Voltar ao painel" title="Voltar ao painel">
+            <ChevronLeft aria-hidden />
+          </Link>
+          <span className={"km-hexLogo"} aria-hidden>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/aprovum-mark.png" alt="" />
+          </span>
+          <span className={"km-brandWord"}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/aprovum-wordmark.png" alt="APROVUM" className={"km-wordmark"} />
+            <small className={"km-tagline"}>Sua preparação. Seu próximo cargo.</small>
+          </span>
           <span className={"km-brandSep"} aria-hidden />
           <span className={"km-brandText"}>
             <b>Central de operações</b>
@@ -707,15 +746,27 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
               {done}/{full.totals.topics}
             </b>
           </div>
+          <Link href={`${base}/revisoes`} className={"km-bell"} aria-label="Revisões pendentes" title="Revisões pendentes">
+            <Bell aria-hidden />
+          </Link>
           <Link href={`${base}/perfil`} className={"km-profile"}>
             <span className={"km-avatar"} aria-hidden>
               {(name ?? "A").slice(0, 1).toUpperCase()}
+            </span>
+            <span className={"km-avatarIcon"} aria-hidden>
+              <UserRound />
             </span>
             <span className={"km-profileText"}>
               <b>{name ?? "Seu perfil"}</b>
               <span>Aluno</span>
             </span>
+            <ChevronDown className={"km-profileChevron"} aria-hidden />
           </Link>
+          <p className={"km-topMotto"} aria-hidden>
+            <span>Disciplina</span>
+            <span>Foco</span>
+            <span>Resultado</span>
+          </p>
         </div>
       </header>
 
@@ -736,6 +787,55 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
           <List aria-hidden /> Ver em lista
         </Link>
       </nav>
+
+      {/* Campo de batalha (computador): cartão do mapa, progresso, barra de navegação e lema. */}
+      <aside className={"km-mapCard"} aria-label="Mapa de estudos">
+        <span className={"km-mapCardIcon"} aria-hidden>
+          <Crosshair />
+        </span>
+        <b>Mapa de estudos</b>
+        <p>Explore os territórios e conquiste cada matéria.</p>
+      </aside>
+      <section className={"km-progressCard"} aria-label={`Seu progresso: ${overallPct}% dos assuntos concluídos (${done} de ${full.totals.topics})`} data-testid="seu-progresso">
+        <span className={"km-hexIcon"} aria-hidden>
+          <LocateFixed />
+        </span>
+        <div>
+          <p className={"km-progressHead"}>
+            <span>Seu progresso</span>
+            <b>{overallPct}%</b>
+          </p>
+          <span className={"km-progressBar"} aria-hidden>
+            <i style={{ width: `${overallPct}%` }} />
+          </span>
+          <p className={"km-progressFoot"}>
+            {unlocked}/{plates.length} matérias desbloqueadas
+          </p>
+        </div>
+      </section>
+      <nav className={"km-dock"} aria-label="Navegação principal">
+        {dock.map((n) => (
+          <Link key={n.label} href={n.href} className={"km-dockLink"} aria-current={n.current ? "page" : undefined} data-novo={n.novo ? "1" : undefined}>
+            <n.icon aria-hidden />
+            <span>{n.label}</span>
+          </Link>
+        ))}
+      </nav>
+      <aside className={"km-mottoCard"} aria-label="Lema">
+        <span className={"km-hexLogo"} aria-hidden>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/aprovum-mark.png" alt="" />
+        </span>
+        <div>
+          <b>
+            Disciplina é o que <br />
+            te leva <em>mais longe.</em>
+          </b>
+          <span ref={sectorRef} className={"km-sector"} title="Setor do mapa no centro da tela">
+            Setor —
+          </span>
+        </div>
+      </aside>
 
       {/* Radar e visão geral */}
       <div className={"km-bottomLeft"}>
@@ -804,25 +904,25 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
             <Move aria-hidden /> <span>{dragMode === "mover" ? "Mover" : "Girar"}</span>
           </button>
         )}
-        <button type="button" onClick={toggleSound} aria-pressed={sound} aria-label={sound ? "Desligar a trilha sonora" : "Ligar a trilha sonora"} data-testid="som">
+        <button type="button" onClick={toggleSound} title="Trilha sonora" aria-pressed={sound} aria-label={sound ? "Desligar a trilha sonora" : "Ligar a trilha sonora"} data-testid="som">
           {sound ? <Volume2 aria-hidden /> : <VolumeX aria-hidden />} <span>{sound ? "Som ligado" : "Som"}</span>
         </button>
-        <button type="button" onClick={zoomIn} aria-label="Aproximar">
+        <button type="button" onClick={zoomIn} aria-label="Aproximar" title="Aproximar">
           <Plus aria-hidden /> <span>Zoom +</span>
         </button>
-        <button type="button" onClick={zoomOut} aria-label="Afastar">
+        <button type="button" onClick={zoomOut} aria-label="Afastar" title="Afastar">
           <Minus aria-hidden /> <span>Zoom −</span>
         </button>
-        <button type="button" onClick={centerView}>
+        <button type="button" onClick={centerView} title="Centralizar">
           <LocateFixed aria-hidden /> <span>Centralizar</span>
         </button>
-        <button type="button" onClick={overview}>
+        <button type="button" onClick={overview} title="Visão geral">
           <RotateCcw aria-hidden /> <span>Visão geral</span>
         </button>
-        <button type="button" onClick={() => setFiltersOpen((v) => !v)} aria-expanded={filtersOpen}>
+        <button type="button" onClick={() => setFiltersOpen((v) => !v)} aria-expanded={filtersOpen} title="Filtros">
           <Filter aria-hidden /> <span>Filtros{filterDisc.size || sit !== "todos" ? " •" : ""}</span>
         </button>
-        <button type="button" onClick={() => setListOpen((v) => !v)} aria-expanded={listOpen}>
+        <button type="button" onClick={() => setListOpen((v) => !v)} aria-expanded={listOpen} title="Ver em lista">
           <List aria-hidden /> <span>Lista</span>
         </button>
         {mode3d === "3d" && (

@@ -13,7 +13,7 @@ import type { MapTopic, Territory } from "@/domain/knowledge-map/model";
 
 export const ART = {
   w: 3344,
-  h: 1882,
+  h: 1866,
   src: "/images/knowledge-ops/territorio.webp",
   srcSm: "/images/knowledge-ops/territorio-sm.webp",
   /** Celular em pé: a arte com 60% da altura espelhada (e escurecida) em cima e embaixo. */
@@ -23,30 +23,30 @@ export const ART = {
 /** Braços e fuzil recortados da arte (camada própria, em primeira pessoa). */
 // O recorte continua (escurecendo) para baixo e para a direita da tela: ao girar ou subir a arma,
 // o braço nunca mostra a borda do recorte. "vh" é a altura da parte visível original.
-const RIFLE = { src: "/images/knowledge-ops/fuzil.webp", srcSm: "/images/knowledge-ops/fuzil-sm.webp", x: 1424, y: 792, w: 2783, h: 1853, vh: 1090, muzzle: [1786, 960] as [number, number], pivot: [2420, 1500] as [number, number] };
-/** Fumaça: colunas que sobem dos incêndios e névoa baixa sobre o rio (coordenadas da arte). */
+const RIFLE = { src: "/images/knowledge-ops/fuzil.webp", srcSm: "/images/knowledge-ops/fuzil-sm.webp", x: 1083, y: 967, w: 1608, h: 1529, vh: 899, muzzle: [1769, 975] as [number, number], pivot: [2035, 1549] as [number, number] };
+/** Coordenadas medidas na arte em 2000 px de largura → px da arte (3344). */
+const d = (x: number, y: number): [number, number] => [Math.round(x * 1.672), Math.round(y * 1.672)];
+/** Fumaça: colunas que sobem dos incêndios e névoa baixa sobre o campo (coordenadas da arte). */
 const SMOKE: Array<{ x: number; y: number; kind: "coluna" | "nevoa"; size: number }> = [
-  { x: 700, y: 330, kind: "coluna", size: 120 },
-  { x: 1700, y: 420, kind: "coluna", size: 110 },
-  { x: 1580, y: 470, kind: "coluna", size: 90 },
-  { x: 3200, y: 420, kind: "coluna", size: 150 },
-  { x: 3080, y: 520, kind: "coluna", size: 110 },
-  { x: 1150, y: 360, kind: "coluna", size: 70 },
-  { x: 650, y: 1140, kind: "nevoa", size: 240 },
-  { x: 3150, y: 960, kind: "nevoa", size: 220 },
-  { x: 2700, y: 1180, kind: "nevoa", size: 200 },
-  { x: 260, y: 1250, kind: "nevoa", size: 230 },
+  { x: 936, y: 385, kind: "coluna", size: 150 },
+  { x: 585, y: 351, kind: "coluna", size: 110 },
+  { x: 2424, y: 619, kind: "coluna", size: 95 },
+  { x: 1731, y: 961, kind: "coluna", size: 70 },
+  { x: 502, y: 736, kind: "nevoa", size: 260 },
+  { x: 2090, y: 1070, kind: "nevoa", size: 240 },
+  { x: 1338, y: 1204, kind: "nevoa", size: 240 },
+  { x: 2842, y: 936, kind: "nevoa", size: 220 },
 ];
 /** Focos de fogo que tremulam. */
 const FIRES: Array<[number, number, number]> = [
-  [3190, 525, 90],
-  [3050, 540, 60],
-  [1570, 475, 40],
-  [1150, 365, 34],
-  [2060, 360, 30],
+  [552, 360, 50],
+  [903, 498, 58],
+  [594, 451, 40],
+  [2408, 627, 50],
+  [2458, 602, 36],
+  [803, 819, 34],
+  [1731, 961, 42],
 ];
-/** Coordenadas na arte original (1672×941) multiplicadas por 2. */
-const k = (x: number, y: number): [number, number] => [x * 2, y * 2];
 
 export interface ArtSlot {
   /** Onde fica a placa holográfica. */
@@ -57,22 +57,28 @@ export interface ArtSlot {
   drawn: boolean;
 }
 
-/** Instalações da arte por matéria (as seis da referência + pontos extras para outras matérias). */
+/**
+ * Instalações da arte por matéria, como na referência: Penal nas ruínas, Processo Penal no posto de
+ * comando, Constitucional na estrutura fortificada, Administrativo no centro de operações,
+ * Português no acampamento, Raciocínio no posto de planejamento (morro da torre), Informática no
+ * centro de comunicações. "plate" = centro do card; "base" = a instalação (alvo e pulsos).
+ */
 export const ART_SLOTS: Record<string, ArtSlot> = {
-  lingua_portuguesa: { plate: k(448, 222), base: k(415, 282), drawn: true },
-  informatica: { plate: k(500, 408), base: k(460, 462), drawn: true },
-  matematica: { plate: k(616, 574), base: k(600, 628), drawn: true },
-  direito_penal: { plate: k(998, 250), base: k(910, 385), drawn: true },
-  direito_constitucional: { plate: k(1408, 244), base: k(1357, 302), drawn: true },
-  direito_administrativo: { plate: k(1503, 395), base: k(1432, 462), drawn: true },
-  direito_processual_penal: { plate: k(700, 300), base: k(705, 362), drawn: false },
-  legislacao_especial: { plate: k(1240, 330), base: k(1232, 388), drawn: false },
-  raciocinio_logico: { plate: k(300, 330), base: k(285, 384), drawn: false },
-  conhecimentos_especificos: { plate: k(330, 560), base: k(320, 614), drawn: false },
-  outras: { plate: k(780, 470), base: k(770, 520), drawn: false },
+  direito_penal: { plate: d(440, 215), base: d(420, 300), drawn: true },
+  lingua_portuguesa: { plate: d(1125, 305), base: d(1080, 400), drawn: true },
+  raciocinio_logico: { plate: d(1693, 301), base: d(1600, 360), drawn: true },
+  direito_processual_penal: { plate: d(693, 451), base: d(700, 530), drawn: true },
+  informatica: { plate: d(1760, 440), base: d(1660, 505), drawn: true },
+  direito_constitucional: { plate: d(440, 622), base: d(400, 660), drawn: true },
+  direito_administrativo: { plate: d(1620, 640), base: d(1600, 720), drawn: true },
+  matematica: { plate: d(1180, 690), base: d(1150, 725), drawn: true },
+  legislacao_especial: { plate: d(880, 640), base: d(890, 680), drawn: false },
+  conhecimentos_especificos: { plate: d(190, 470), base: d(160, 520), drawn: false },
+  outras: { plate: d(1000, 560), base: d(1000, 600), drawn: false },
 };
-export const ART_ORDER_DRAWN = ["lingua_portuguesa", "informatica", "matematica", "direito_penal", "direito_constitucional", "direito_administrativo"];
-const CORE = k(910, 390);
+export const ART_ORDER_DRAWN = ["direito_penal", "lingua_portuguesa", "raciocinio_logico", "direito_processual_penal", "informatica", "direito_constitucional", "direito_administrativo"];
+/** Cruzamento das rotas vermelhas no centro do campo (núcleo clicável). */
+const CORE = d(948, 522);
 
 export function slotFor(id: string): ArtSlot {
   return ART_SLOTS[id] ?? ART_SLOTS.outras!;
@@ -82,10 +88,10 @@ export function slotFor(id: string): ArtSlot {
  * Faixa da arte que contém todas as instalações (px da arte). No celular em pé a câmera
  * enquadra essa faixa inteira na largura da tela: o mapa todo cabe, sem cortar nada.
  */
-const FIT = { x0: 700, x1: 3140, cx: 1920, cy: 860 };
+const FIT = { x0: 500, x1: 3100, cx: 1800, cy: 760 };
 
 /** Folga da arte além da tela (computador): é o quanto a câmera pode "olhar" para os lados. */
-const LOOK_MARGIN = 1.5;
+const LOOK_MARGIN = 1.12;
 /** Tamanho do braço/fuzil na tela (independe da folga da câmera). */
 const RIFLE_SCALE = 1.22;
 
@@ -454,12 +460,15 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
             // Linha de luz ligando a placa à instalação no chão (sem desfoque, só gradiente).
             const lead = map.get(`l:${tr.id}`);
             if (lead) {
+              // O pino sai da ponta de baixo do hexágono (à esquerda do card), como na referência.
+              const hexHalf = cam.mode === "caber" ? 16 : 23;
+              const lx = half ? cx - half + hexHalf : cx;
               const top = y + (sz ? sz[1] : 22);
               const bottom = sl.base[1] * t.s + t.ty;
               const len = Math.max(0, bottom - top);
               const bx = sl.base[0] * t.s + t.tx;
-              const ang = Math.atan2(bx - cx, len || 1);
-              lead.style.transform = `translate3d(${cx.toFixed(1)}px, ${top.toFixed(1)}px, 0) rotate(${(-ang).toFixed(4)}rad) scaleY(${(Math.hypot(len, bx - cx) / 100).toFixed(4)})`;
+              const ang = Math.atan2(bx - lx, len || 1);
+              lead.style.transform = `translate3d(${lx.toFixed(1)}px, ${top.toFixed(1)}px, 0) rotate(${(-ang).toFixed(4)}rad) scaleY(${(Math.hypot(len, bx - lx) / 100).toFixed(4)})`;
               setOp(lead, elp.dataset.dim !== undefined || len < 4 ? "0" : "1");
             }
             setVis(elp, x < -260 || x > cam.view.w + 260 || y < -120 || y > cam.view.h + 120 ? "hidden" : "visible");
@@ -679,7 +688,6 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
           <i />
           <i />
         </button>
-        <span className="km-art-beam" style={{ left: CORE[0], top: 0, height: CORE[1] }} />
         {territories.map((t) => {
           const sl = slotFor(t.id);
           return (

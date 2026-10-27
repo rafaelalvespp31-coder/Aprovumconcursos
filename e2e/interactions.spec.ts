@@ -1149,8 +1149,13 @@ test.describe("novo estudo: mapa do conhecimento (Knowledge Operations)", () => 
     await expect(ko.getByRole("button", { name: /^Direito Penal: 3 assunto\(s\), progresso 33%/ })).toBeAttached();
     await expect(ko.getByRole("button", { name: "Língua Portuguesa: em breve, ainda sem aulas publicadas" })).toBeAttached();
     await expect(ko.getByLabel("Visão geral do catálogo")).toContainText("Assuntos6");
-    await expect(ko.getByTestId("radar")).toBeVisible();
-    if (test.info().project.name === "desktop") await expect(ko.getByText("Conhecimento é a sua maior arma")).toBeVisible();
+    if (test.info().project.name === "desktop") {
+      // HUD do campo de batalha (como na referência): progresso real, barra de navegação e lema.
+      await expect(ko.getByTestId("seu-progresso")).toContainText("17%");
+      await expect(ko.getByRole("navigation", { name: "Navegação principal" }).getByRole("link", { name: "Novo" })).toHaveAttribute("aria-current", "page");
+      await expect(ko.getByText(/Disciplina é o que/)).toBeVisible();
+      await expect(ko.getByRole("link", { name: "Voltar ao painel" })).toBeVisible();
+    } else await expect(ko.getByTestId("radar")).toBeVisible();
     await noHorizontalScroll(page);
     expect(errors).toEqual([]);
   });
@@ -1226,6 +1231,8 @@ test.describe("novo estudo: mapa do conhecimento (Knowledge Operations)", () => 
     await page.goto(`${G}/novo-estudo`);
     const ko = page.getByTestId("knowledge-ops");
     const toggle = ko.getByRole("button", { name: /Mapa 3D/ });
+    // A verificação de WebGL é assíncrona: espera o botão aparecer antes de decidir.
+    await toggle.waitFor({ state: "visible", timeout: 5000 }).catch(() => {});
     if (!(await toggle.isVisible())) test.skip(true, "Sem WebGL neste navegador");
     await toggle.click();
     await expect(ko).toHaveAttribute("data-modo", "3d");
