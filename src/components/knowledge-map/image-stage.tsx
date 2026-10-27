@@ -16,9 +16,13 @@ export const ART = {
   h: 1866,
   src: "/images/knowledge-ops/territorio.webp",
   srcSm: "/images/knowledge-ops/territorio-sm.webp",
-  /** Celular em pé: a arte com 60% da altura espelhada (e escurecida) em cima e embaixo. */
-  srcMob: "/images/knowledge-ops/territorio-mob.webp",
-  mobPad: 0.6,
+  /**
+   * Celular em pé: o MESMO cenário em uma imagem alta e contínua (céu acima e chão abaixo estendidos,
+   * sem espelho). Em px da arte: começa `tallTop` acima da arte e tem `tallH` de altura.
+   */
+  srcTall: "/images/knowledge-ops/territorio-alto.webp",
+  tallTop: 1450,
+  tallH: 5945,
 };
 /** Braços e fuzil recortados da arte (camada própria, em primeira pessoa). */
 // O recorte continua (escurecendo) para baixo e para a direita da tela: ao girar ou subir a arma,
@@ -84,11 +88,8 @@ export function slotFor(id: string): ArtSlot {
   return ART_SLOTS[id] ?? ART_SLOTS.outras!;
 }
 
-/**
- * Faixa da arte que contém todas as instalações (px da arte). No celular em pé a câmera
- * enquadra essa faixa inteira na largura da tela: o mapa todo cabe, sem cortar nada.
- */
-const FIT = { x0: 500, x1: 3100, cx: 1800, cy: 760 };
+/** Centro das instalações (px da arte): para onde a câmera olha no celular em pé. */
+const FIT = { cx: 1800, cy: 760 };
 
 /** Folga da arte além da tela (computador): é o quanto a câmera pode "olhar" para os lados. */
 const LOOK_MARGIN = 1.12;
@@ -149,8 +150,8 @@ export class PlateCamera {
   }
   /** Escala no zoom 1: cobre a tela (computador) ou cabe a faixa das instalações (celular). */
   cover() {
-    // Celular em pé: a faixa das instalações quase na largura toda (cards legíveis; as bordas são presas na tela).
-    if (this.mode === "caber") return Math.min(this.view.w / ((FIT.x1 - FIT.x0) * 0.86), (this.view.h * 0.62) / ART.h * 1.6);
+    // Celular em pé: a imagem alta cobre a tela inteira (a faixa das instalações cabe na largura).
+    if (this.mode === "caber") return Math.max(this.view.w / ART.w, this.view.h / ART.tallH);
     return Math.max(this.view.w / ART.w, this.view.h / ART.h);
   }
   /** Centro vertical da cena na tela (no celular fica acima, deixando o fuzil embaixo). */
@@ -168,7 +169,10 @@ export class PlateCamera {
     const down = (this.view.h - this.cy()) / s;
     // Eixo maior que a arte: trava no centro da arte (o fundo desfocado completa a tela).
     const fx = left + right >= ART.w ? ART.w / 2 : Math.min(ART.w - right, Math.max(left, this.focus[0]));
-    const fy = up + down >= ART.h ? (this.mode === "caber" ? FIT.cy : ART.h / 2) : Math.min(ART.h - down, Math.max(up, this.focus[1]));
+    // Celular em pé: o limite vertical é o da imagem alta (céu e chão estendidos).
+    const top = this.mode === "caber" ? -ART.tallTop : 0;
+    const bottom = this.mode === "caber" ? ART.tallH - ART.tallTop : ART.h;
+    const fy = up + down >= bottom - top ? (top + bottom) / 2 : Math.min(bottom - down, Math.max(top + up, this.focus[1]));
     this.focus = [fx, fy];
   }
   /** Zoom; com um ponto da tela (cursor/pinça), o que está sob ele continua no mesmo lugar. */
@@ -260,15 +264,19 @@ export class PlateCamera {
     const look = this.reduced || this.locked ? 0 : 1;
     const w = ART.w * s;
     const h = ART.h * s;
-    // Celular em pé: a arte espelhada preenche as bordas, então a câmera pode virar além dela.
     const caber = this.mode === "caber";
-    const panX = caber ? this.view.w * 0.32 : Math.max(0, (w - this.view.w) / 2);
-    const panY = caber ? this.view.h * 0.1 : Math.max(0, (h - this.view.h) / 2);
+    const panX = Math.max(0, (w - this.view.w) / 2);
+    const panY = caber ? this.view.h * 0.06 : Math.max(0, (h - this.view.h) / 2);
     let tx = this.view.w / 2 - this.focusNow[0] * s - this.pointerNow[0] * panX * look;
     let ty = this.cy() - this.focusNow[1] * s - this.pointerNow[1] * panY * look;
     // Computador: nunca mostrar a borda da arte (quando ela é maior que a tela).
     if (!caber && w >= this.view.w) tx = Math.min(0, Math.max(this.view.w - w, tx));
     if (!caber && h >= this.view.h) ty = Math.min(0, Math.max(this.view.h - h, ty));
+    // Celular em pé: a imagem alta sempre cobre a tela inteira (nunca aparece borda).
+    if (caber) {
+      tx = Math.min(0, Math.max(this.view.w - w, tx));
+      ty = Math.min(ART.tallTop * s, Math.max(this.view.h - (ART.tallH - ART.tallTop) * s, ty));
+    }
     return { s, tx, ty };
   }
   /** Retângulo visível, normalizado (0..1) na arte — para o radar. */
@@ -675,9 +683,9 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
   return (
     <div ref={holder} className="km-art" aria-hidden>
       <div ref={layer} className="km-art-layer" style={{ width: ART.w, height: ART.h }}>
-        {/* Celular em pé: UMA imagem leve com as bordas (espelho escurecido) já embutidas, preenchendo a tela. */}
+        {/* Celular em pé: UMA imagem alta e contínua do mesmo cenário, preenchendo a tela inteira. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={ART.srcMob} alt="" loading="lazy" decoding="async" draggable={false} className="km-art-ext" style={{ left: 0, top: -ART.h * ART.mobPad, width: ART.w, height: ART.h * (1 + ART.mobPad * 2) }} />
+        <img src={ART.srcTall} alt="" loading="lazy" decoding="async" draggable={false} className="km-art-ext" style={{ left: 0, top: -ART.tallTop, width: ART.w, height: ART.tallH }} />
         <picture>
           <source media="(max-width: 700px)" srcSet={ART.srcSm} />
           <img src={ART.src} alt="" width={ART.w} height={ART.h} loading="lazy" decoding="async" draggable={false} className="km-art-img" />
