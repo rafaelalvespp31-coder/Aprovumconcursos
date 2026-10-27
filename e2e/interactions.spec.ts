@@ -945,7 +945,7 @@ test("escolha seu novo estudo (menu Novo): matéria, tema, filtros e progresso r
   // Fica na página do novo estudo, não na de Estudos.
   await page.goto(`${G}/trilhas`);
   await expect(page.getByTestId("escolha-estudo")).toHaveCount(0);
-  await page.goto(`${G}/novo-estudo`);
+  await page.goto(`${G}/novo-estudo?modo=lista`);
   const sec = page.getByTestId("escolha-estudo");
   await expect(sec.getByRole("heading", { name: "Novo estudo" })).toBeVisible();
   // Abre na matéria do tema mais estudado, com o destaque e o link para continuar.
@@ -1131,5 +1131,103 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
     const tree = page.getByRole("navigation", { name: "Aulas deste estudo" }).filter({ visible: true });
     await expect(tree).toHaveCount(1);
     await expect(tree.locator('[aria-current="page"]')).toBeVisible();
+  });
+});
+
+test.describe("novo estudo: mapa do conhecimento (Knowledge Operations)", () => {
+  test("abre em tela cheia com o cenário, as placas reais e a HUD", async ({ page }) => {
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    await page.goto(`${G}/novo-estudo`);
+    const ko = page.getByTestId("knowledge-ops");
+    await expect(ko).toHaveAttribute("data-modo", "arte");
+    await expect(ko.getByRole("searchbox").or(ko.getByRole("combobox", { name: "Buscar matéria, assunto ou concurso" }))).toBeVisible();
+    // Matérias reais com contagem; instalações da arte sem aulas aparecem como "em breve".
+    await expect(ko.getByRole("button", { name: /^Direito Penal: 3 assunto\(s\), progresso 33%/ })).toBeAttached();
+    await expect(ko.getByRole("button", { name: "Língua Portuguesa: em breve, ainda sem aulas publicadas" })).toBeAttached();
+    await expect(ko.getByLabel("Visão geral do catálogo")).toContainText("Assuntos6");
+    await expect(ko.getByTestId("radar")).toBeVisible();
+    if (test.info().project.name === "desktop") await expect(ko.getByText("Conhecimento é a sua maior arma")).toBeVisible();
+    await noHorizontalScroll(page);
+    expect(errors).toEqual([]);
+  });
+
+  test("seleciona matéria e assunto, começa estudo pela confirmação existente e volta à visão geral", async ({ page }) => {
+    await page.goto(`${G}/novo-estudo`);
+    const ko = page.getByTestId("knowledge-ops");
+    await ko.getByRole("button", { name: /^Direito Penal: 3 assunto/ }).dispatchEvent("click");
+    const panel = ko.getByTestId("painel-contexto");
+    await expect(panel.getByRole("heading", { name: "Direito Penal" })).toBeVisible();
+    await expect(panel).toContainText(/170\s*questões/);
+    await panel.getByRole("button", { name: /Roubo \(CP, art\. 157\)/ }).click();
+    await expect(panel.getByRole("heading", { name: "Roubo (CP, art. 157)" })).toBeVisible();
+    await panel.getByRole("button", { name: "Começar estudo: Roubo (CP, art. 157)" }).click();
+    const dlg = page.getByTestId("comecar-estudo");
+    await expect(dlg.getByRole("button", { name: "Criar estudo" })).toBeEnabled();
+    await dlg.getByRole("button", { name: "Cancelar" }).click();
+    await expect(dlg).toBeHidden();
+    // Assunto já estudado: continua no estudo existente.
+    await panel.getByRole("button", { name: "Voltar à disciplina" }).click();
+    await panel.getByRole("button", { name: /Teoria do crime/ }).click();
+    await expect(panel.getByRole("link", { name: "Continuar estudando: Teoria do crime: fato típico" })).toHaveAttribute("href", /\/dev\/galeria\/trilhas\//);
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await expect(panel).toBeHidden();
+  });
+
+  test("busca no catálogo real, teclado, zoom, filtros e lista alternativa", async ({ page }) => {
+    await page.goto(`${G}/novo-estudo`);
+    const ko = page.getByTestId("knowledge-ops");
+    const search = ko.getByRole("combobox", { name: "Buscar matéria, assunto ou concurso" });
+    await search.fill("homic");
+    await expect(ko.getByRole("option", { name: /Homicídio/ })).toBeVisible();
+    await search.press("Enter");
+    await expect(ko.getByTestId("painel-contexto").getByRole("heading", { name: "Homicídio (CP, art. 121)" })).toBeVisible();
+    await search.fill("xyzabc");
+    await expect(ko.getByText(/Nada encontrado no catálogo/)).toBeVisible();
+    await search.press("Escape");
+    await ko.getByRole("button", { name: "Voltar à visão geral" }).click();
+    await expect(ko.getByTestId("painel-contexto")).toBeHidden();
+    await ko.getByRole("button", { name: "Aproximar" }).click();
+    await ko.getByRole("button", { name: "Afastar" }).click();
+    await ko.getByRole("button", { name: "Visão geral", exact: true }).click();
+    await ko.getByRole("button", { name: /^Filtros/ }).click();
+    await ko.getByRole("radio", { name: "Concluídos" }).check();
+    await expect(ko.getByTestId("territorio")).toHaveCount(1);
+    await ko.getByRole("button", { name: "Limpar filtros" }).click();
+    await ko.getByRole("button", { name: "Fechar filtros" }).click();
+    await ko.getByRole("button", { name: /^Lista/ }).click();
+    const list = ko.getByTestId("lista-alternativa");
+    await list.getByRole("button", { name: /Agentes públicos/ }).click();
+    await expect(ko.getByTestId("painel-contexto").getByRole("heading", { name: "Agentes públicos" })).toBeVisible();
+  });
+
+  test("catálogo vazio: estado vazio, sem dados inventados", async ({ page }) => {
+    await page.goto(`${G}/novo-estudo?vazio=1`);
+    await expect(page.getByText("Novas aulas estão sendo cadastradas")).toBeVisible();
+    await expect(page.getByLabel("Visão geral do catálogo")).toContainText("Assuntos0");
+  });
+
+  test("celular: cenário, busca e painel inferior", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.goto(`${G}/novo-estudo`);
+    const ko = page.getByTestId("knowledge-ops");
+    await expect(ko).toHaveAttribute("data-modo", "arte");
+    await ko.getByRole("combobox", { name: "Buscar matéria, assunto ou concurso" }).fill("roubo");
+    await ko.getByRole("option", { name: /Roubo/ }).click();
+    await expect(ko.getByTestId("painel-contexto").getByRole("heading", { name: "Roubo (CP, art. 157)" })).toBeVisible();
+    await noHorizontalScroll(page);
+  });
+
+  test("modo 3D opcional (quando o navegador tem WebGL)", async ({ page }) => {
+    await page.goto(`${G}/novo-estudo`);
+    const ko = page.getByTestId("knowledge-ops");
+    const toggle = ko.getByRole("button", { name: /Mapa 3D/ });
+    if (!(await toggle.isVisible())) test.skip(true, "Sem WebGL neste navegador");
+    await toggle.click();
+    await expect(ko).toHaveAttribute("data-modo", "3d");
+    await expect(ko.locator("canvas").first()).toBeVisible({ timeout: 20_000 });
+    await ko.getByRole("button", { name: /Cenário/ }).click();
+    await expect(ko).toHaveAttribute("data-modo", "arte");
   });
 });

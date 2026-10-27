@@ -1,4 +1,5 @@
 import { StartPicker } from "@/app/(app)/nova-trilha/start-picker";
+import { MapStart } from "@/app/(app)/nova-trilha/map-start";
 import type { ThemeCard } from "@/domain/studies/home";
 
 const st = (trailId: string, answered: number, totalQuestions: number, lessonsDone: number, lessonsTotal: number): ThemeCard["study"] => ({
@@ -22,8 +23,10 @@ const themes: ThemeCard[] = [
   { id: "t-pp-1", title: "Inquérito Policial (CPP, arts. 4º a 23)", discipline: "Direito Processual Penal", questions: 42, minutes: 90, study: st(G(4), 13, 42, 1, 6) },
 ];
 
-/** Prévia do novo estudo (escolha de matéria e tema; criar o estudo não funciona aqui). */
-export default function Page() {
+/** Prévia do novo estudo: mapa do conhecimento; "?modo=lista" mostra a escolha em lista. */
+export default async function Page({ searchParams }: { searchParams: Promise<{ modo?: string; vazio?: string }> }) {
+  const sp = await searchParams;
+  if (sp.modo !== "lista") return <MapStart themes={sp.vazio ? [] : themes} name="Rafael" base="/dev/galeria" />;
   return (
     <div className="mx-auto max-w-5xl">
       <h1 className="sr-only">Novo estudo</h1>

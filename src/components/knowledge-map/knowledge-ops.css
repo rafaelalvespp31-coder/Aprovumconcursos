@@ -1,0 +1,1283 @@
+/* APROVUM — Knowledge Operations: HUD sobre a cena 3D.
+   Paleta: preto #08090C · grafite #222630 · vermelho #D71920 / #FF4545 · branco #F4F4F5 · cinza #A1A1AA */
+
+.km-root {
+  --red: #d71920;
+  --red2: #ff4545;
+  --ink: #f4f4f5;
+  --muted: #a1a1aa;
+  --glass: rgba(10, 11, 15, 0.72);
+  --line: rgba(255, 69, 69, 0.35);
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: hidden;
+  overflow: clip;
+  background: #08090c;
+  color: var(--ink);
+  font-family: "Chakra Petch", "Public Sans Variable", system-ui, sans-serif;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+.km-root :focus-visible {
+  outline: 2px solid var(--red2);
+  outline-offset: 2px;
+}
+.km-root svg {
+  width: 1em;
+  height: 1em;
+  flex: none;
+}
+
+.km-stage {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: clip;
+  cursor: grab;
+}
+.km-stage:active {
+  cursor: grabbing;
+}
+.km-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: radial-gradient(ellipse at 50% 60%, rgba(215, 25, 32, 0.25), transparent 60%), #08090c;
+}
+.km-fallbackBg {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 58%, rgba(215, 25, 32, 0.35), transparent 45%),
+    linear-gradient(180deg, #050608 0%, #1a0d0d 55%, #08090c 100%);
+}
+.km-vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 45%, transparent 55%, rgba(0, 0, 0, 0.6) 100%),
+    linear-gradient(180deg, rgba(0, 0, 0, 0.55) 0%, transparent 14%, transparent 80%, rgba(0, 0, 0, 0.6) 100%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.018) 0 1px, transparent 1px 3px);
+}
+
+/* ---------- Placas holográficas ---------- */
+.km-labels {
+  position: absolute;
+  inset: 0;
+  overflow: clip;
+  pointer-events: none;
+}
+.km-plate,
+.km-topicPlate {
+  position: absolute;
+  left: 0;
+  top: 0;
+  translate: -50% -100%;
+  pointer-events: auto;
+  will-change: transform;
+}
+.km-plate {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 168px;
+  padding: 8px 12px 8px 8px;
+  text-align: left;
+  color: var(--ink);
+  background: linear-gradient(135deg, rgba(10, 12, 18, 0.88), rgba(10, 12, 18, 0.62));
+  border: 1px solid color-mix(in srgb, var(--c) 70%, transparent);
+  clip-path: polygon(12px 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%, 0 12px);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--c) 30%, transparent) inset;
+  transition:
+    opacity 0.25s,
+    filter 0.25s;
+  cursor: pointer;
+}
+.km-plate::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -1px;
+  width: 30%;
+  height: 2px;
+  translate: -50% 0;
+  background: var(--c);
+  box-shadow: 0 0 10px var(--c);
+}
+.km-plate[data-dim] {
+  opacity: 0.45;
+  filter: saturate(0.6);
+}
+.km-plate[data-sel] {
+  min-width: 230px;
+  padding: 12px 16px 12px 12px;
+  background: linear-gradient(135deg, rgba(20, 8, 10, 0.92), rgba(12, 12, 18, 0.75));
+  box-shadow:
+    0 0 30px color-mix(in srgb, var(--c) 45%, transparent) inset,
+    0 0 26px color-mix(in srgb, var(--c) 35%, transparent);
+}
+.km-plate:hover {
+  filter: brightness(1.2);
+}
+.km-plateIcon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1.5px solid var(--c);
+  color: var(--c);
+  font-size: 19px;
+  box-shadow: 0 0 14px color-mix(in srgb, var(--c) 50%, transparent);
+}
+.km-plate[data-sel] .km-plateIcon {
+  width: 52px;
+  height: 52px;
+  font-size: 26px;
+}
+.km-plateBody {
+  display: grid;
+  gap: 1px;
+  min-width: 0;
+}
+.km-plateName {
+  font-weight: 700;
+  font-size: 12.5px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.km-plate[data-sel] .km-plateName {
+  font-size: 16px;
+}
+.km-platePct {
+  font-size: 12px;
+  font-weight: 600;
+}
+.km-plate[data-sel] .km-platePct {
+  font-size: 16px;
+}
+.km-plateNew {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.km-plateBar {
+  display: block;
+  height: 3px;
+  margin: 2px 0;
+  background: rgba(255, 255, 255, 0.12);
+}
+.km-plateBar i {
+  display: block;
+  height: 100%;
+  background: var(--c);
+  box-shadow: 0 0 8px var(--c);
+}
+.km-plateMeta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.km-topicPlate {
+  max-width: 180px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  padding: 5px 9px;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--ink);
+  background: rgba(8, 9, 12, 0.82);
+  border: 1px solid color-mix(in srgb, var(--c) 60%, transparent);
+  border-left: 3px solid var(--c);
+  cursor: pointer;
+}
+.km-topicPlate[data-sel] {
+  background: color-mix(in srgb, var(--c) 30%, rgba(8, 9, 12, 0.9));
+  box-shadow: 0 0 16px color-mix(in srgb, var(--c) 50%, transparent);
+}
+
+/* ---------- Cabeçalho ---------- */
+.km-top {
+  position: absolute;
+  inset: 0 0 auto 0;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 22px;
+  background: linear-gradient(180deg, rgba(4, 5, 7, 0.92), rgba(4, 5, 7, 0));
+  pointer-events: none;
+}
+.km-top > * {
+  pointer-events: auto;
+}
+.km-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+.km-wordmark {
+  height: 34px;
+  width: auto;
+  mix-blend-mode: screen;
+}
+.km-brandSep {
+  width: 1px;
+  height: 34px;
+  background: var(--line);
+}
+.km-brandText {
+  display: grid;
+  line-height: 1.15;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  font-size: 12px;
+}
+.km-brandText b {
+  color: var(--red2);
+  font-weight: 600;
+}
+.km-brandText span {
+  color: var(--ink);
+}
+.km-navToggle {
+  display: none;
+}
+.km-search {
+  position: relative;
+  flex: 1;
+  max-width: 440px;
+  margin: 0 auto;
+}
+.km-search input {
+  width: 100%;
+  height: 42px;
+  padding: 0 40px 0 40px;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13.5px;
+  background: rgba(8, 9, 12, 0.7);
+  border: 1px solid rgba(244, 244, 245, 0.18);
+  border-radius: 4px;
+  user-select: text;
+}
+.km-search input::placeholder {
+  color: var(--muted);
+}
+.km-search input:focus {
+  outline: none;
+  border-color: var(--red2);
+  box-shadow: 0 0 0 3px rgba(255, 69, 69, 0.18);
+}
+.km-searchIcon {
+  position: absolute;
+  left: 13px;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--muted);
+  font-size: 17px;
+}
+.km-kbd,
+.km-searchClear {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  translate: 0 -50%;
+  color: var(--muted);
+}
+.km-kbd {
+  padding: 1px 6px;
+  font: inherit;
+  font-size: 11px;
+  border: 1px solid rgba(244, 244, 245, 0.22);
+  border-radius: 3px;
+}
+.km-searchClear {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  right: 6px;
+  font-size: 16px;
+}
+.km-results {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 6px);
+  max-height: 320px;
+  overflow: auto;
+  background: rgba(8, 9, 12, 0.96);
+  border: 1px solid var(--line);
+  z-index: 5;
+}
+.km-results li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.km-results li[aria-selected="true"] {
+  background: rgba(215, 25, 32, 0.22);
+}
+.km-results li i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  flex: none;
+}
+.km-results li span {
+  flex: 1;
+  min-width: 0;
+}
+.km-results li em {
+  font-style: normal;
+  font-size: 11px;
+  color: var(--muted);
+}
+.km-results .km-noHit {
+  color: var(--muted);
+  cursor: default;
+  line-height: 1.4;
+}
+.km-topRight {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.km-contest {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 42px;
+  padding: 0 12px;
+  border: 1px solid rgba(244, 244, 245, 0.18);
+  background: rgba(8, 9, 12, 0.7);
+  border-radius: 4px;
+  color: var(--red2);
+}
+.km-contest select {
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: 13px;
+  border: 0;
+}
+.km-contest option {
+  background: #111;
+}
+.km-progressChip {
+  display: grid;
+  line-height: 1.1;
+  padding: 4px 10px;
+  border-left: 2px solid var(--red2);
+  font-size: 10.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--muted);
+}
+.km-progressChip b {
+  color: var(--ink);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+}
+.km-profile {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--ink);
+  text-decoration: none;
+}
+.km-avatar {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(244, 244, 245, 0.6);
+  font-weight: 700;
+  background: #15171d;
+}
+.km-profileText {
+  display: grid;
+  line-height: 1.15;
+  font-size: 13px;
+}
+.km-profileText span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ---------- Navegação lateral ---------- */
+.km-side {
+  position: absolute;
+  left: 18px;
+  top: 92px;
+  width: 196px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.km-motto {
+  position: relative;
+  display: grid;
+  gap: 1px;
+  margin-bottom: 18px;
+  padding: 14px 16px 18px;
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: linear-gradient(135deg, rgba(10, 11, 15, 0.7), rgba(10, 11, 15, 0.2));
+  border-left: 1px solid var(--line);
+  border-top: 1px solid var(--line);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+}
+.km-motto i {
+  position: absolute;
+  left: 16px;
+  bottom: 8px;
+  width: 64px;
+  height: 4px;
+  background: var(--red);
+  box-shadow: 70px 0 0 -1px rgba(215, 25, 32, 0.6);
+}
+.km-sideLink {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 42px;
+  padding: 0 14px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 14px;
+  border-left: 3px solid transparent;
+  transition: background 0.2s;
+}
+.km-sideLink svg {
+  font-size: 18px;
+  color: var(--muted);
+}
+.km-sideLink:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+.km-sideLink[aria-current="page"] {
+  color: var(--red2);
+  border-left-color: var(--red);
+  background: linear-gradient(90deg, rgba(215, 25, 32, 0.28), transparent);
+}
+.km-sideLink[aria-current="page"] svg {
+  color: var(--red2);
+}
+
+/* ---------- Radar e visão geral ---------- */
+.km-bottomLeft {
+  position: absolute;
+  left: 18px;
+  bottom: 18px;
+  display: flex;
+  align-items: flex-end;
+  gap: 18px;
+  pointer-events: none;
+}
+.km-bottomLeft > * {
+  pointer-events: auto;
+}
+.km-radar {
+  position: relative;
+  width: 176px;
+  height: 176px;
+  margin: 0;
+}
+.km-radar svg {
+  width: 100%;
+  height: 100%;
+}
+.km-sweep {
+  transform-origin: 50px 50px;
+  animation: km-spin 4s linear infinite;
+}
+@keyframes km-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.km-radar span {
+  position: absolute;
+  font-size: 11px;
+  color: var(--ink);
+}
+.km-n {
+  top: -14px;
+  left: 50%;
+  translate: -50% 0;
+}
+.km-sDir {
+  bottom: -14px;
+  left: 50%;
+  translate: -50% 0;
+}
+.km-e {
+  right: -12px;
+  top: 50%;
+  translate: 0 -50%;
+}
+.km-o {
+  left: -12px;
+  top: 50%;
+  translate: 0 -50%;
+}
+.km-overview {
+  min-width: 172px;
+  margin: 0;
+  padding: 12px 14px;
+  background: var(--glass);
+  border: 1px solid rgba(244, 244, 245, 0.12);
+  border-top: 2px solid var(--red);
+  font-size: 13px;
+}
+.km-ovTitle {
+  margin-bottom: 8px;
+  color: var(--red2);
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  font-size: 12px;
+}
+.km-overview dd {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  margin: 0;
+  padding: 3px 0;
+  color: var(--muted);
+}
+.km-overview dd b {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+/* ---------- Controles ---------- */
+.km-controls {
+  position: absolute;
+  right: 18px;
+  bottom: 132px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  background: var(--glass);
+  border: 1px solid rgba(244, 244, 245, 0.12);
+}
+.km-controls button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 36px;
+  padding: 0 12px;
+  color: var(--ink);
+  font-size: 13px;
+  text-align: left;
+  border-radius: 3px;
+}
+.km-controls button svg {
+  font-size: 17px;
+  color: var(--muted);
+}
+.km-controls button:hover,
+.km-controls button[aria-pressed="true"],
+.km-controls button[aria-expanded="true"] {
+  background: rgba(215, 25, 32, 0.22);
+}
+.km-filters,
+.km-list {
+  position: absolute;
+  right: 18px;
+  bottom: 132px;
+  width: 300px;
+  max-height: calc(100% - 240px);
+  overflow: auto;
+  padding: 14px;
+  background: rgba(8, 9, 12, 0.94);
+  border: 1px solid var(--line);
+  z-index: 3;
+}
+.km-list {
+  right: auto;
+  left: 18px;
+  top: 92px;
+  bottom: auto;
+  max-height: calc(100% - 320px);
+  width: 320px;
+}
+.km-filters fieldset {
+  margin: 10px 0 0;
+  padding: 0;
+  border: 0;
+  display: grid;
+  gap: 4px;
+}
+.km-filters legend {
+  margin-bottom: 4px;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.km-filters label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  font-size: 13px;
+}
+.km-filters label i {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+}
+.km-filters input {
+  accent-color: var(--red);
+}
+.km-listGroup {
+  margin-top: 10px;
+}
+.km-listDisc {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 8px;
+  font-weight: 700;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--ink);
+  border-left: 3px solid var(--c);
+  background: rgba(255, 255, 255, 0.04);
+}
+.km-listDisc span {
+  color: var(--muted);
+}
+.km-listGroup ul {
+  margin: 4px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.km-listGroup li button {
+  width: 100%;
+  min-height: 34px;
+  padding: 4px 10px;
+  font-size: 13px;
+  text-align: left;
+  color: var(--ink);
+}
+.km-listGroup li button:hover,
+.km-listGroup li button[aria-current] {
+  background: rgba(215, 25, 32, 0.2);
+}
+
+/* ---------- Painel contextual ---------- */
+.km-panel {
+  position: absolute;
+  right: 18px;
+  top: 84px;
+  width: 360px;
+  max-height: calc(100% - 84px - 400px);
+  min-height: 220px;
+  overflow: auto;
+  padding: 16px 18px 14px;
+  background: linear-gradient(180deg, rgba(14, 10, 12, 0.95), rgba(8, 9, 12, 0.92));
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--red);
+  clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%);
+  z-index: 4;
+  user-select: text;
+}
+.km-panelHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.km-panelHead button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  color: var(--muted);
+  font-size: 18px;
+}
+.km-kicker {
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+.km-panelTitle {
+  margin: 4px 0 6px;
+  font-size: 21px;
+  line-height: 1.2;
+  font-weight: 700;
+}
+.km-muted {
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+.km-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin: 10px 0;
+  padding: 0;
+  list-style: none;
+}
+.km-stats li {
+  padding: 8px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+  border-left: 2px solid rgba(255, 69, 69, 0.5);
+}
+.km-stats b {
+  display: block;
+  color: var(--ink);
+  font-size: 18px;
+}
+.km-meter {
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  margin: 8px 0 14px;
+  padding-bottom: 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.km-meter b {
+  color: var(--ink);
+}
+.km-meter i {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 3px;
+}
+.km-meter::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.1);
+  z-index: -1;
+}
+.km-sub {
+  margin: 12px 0 4px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.km-topicList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.km-topicList button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 6px 8px;
+  text-align: left;
+  font-size: 13.5px;
+  color: var(--ink);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.km-topicList button:hover {
+  background: rgba(215, 25, 32, 0.16);
+}
+.km-topicList em {
+  flex: none;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--muted);
+}
+.km-actions {
+  display: grid;
+  gap: 8px;
+  margin-top: 12px;
+}
+.km-primary,
+.km-ghost {
+  display: grid;
+  place-items: center;
+  min-height: 46px;
+  padding: 0 16px;
+  font-weight: 700;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  text-decoration: none;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+}
+.km-primary {
+  color: #fff;
+  background: linear-gradient(180deg, var(--red2), var(--red));
+  box-shadow: 0 0 24px rgba(255, 69, 69, 0.35);
+}
+.km-ghost {
+  color: var(--ink);
+  border: 1px solid rgba(244, 244, 245, 0.25);
+  background: rgba(255, 255, 255, 0.03);
+  width: 100%;
+  margin-top: 10px;
+}
+.km-actions .km-ghost {
+  margin-top: 0;
+}
+.km-back {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+
+/* ---------- Rodapé ---------- */
+.km-counter {
+  position: absolute;
+  right: 18px;
+  bottom: 18px;
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  min-width: 250px;
+  padding: 10px 16px 16px;
+  background: var(--glass);
+  border: 1px solid rgba(244, 244, 245, 0.12);
+  clip-path: polygon(14px 0, 100% 0, 100% 100%, 0 100%, 0 14px);
+}
+.km-counter b {
+  font-size: 34px;
+  font-weight: 600;
+  line-height: 1;
+}
+.km-counterSep {
+  width: 1px;
+  height: 26px;
+  background: rgba(244, 244, 245, 0.35);
+  align-self: center;
+}
+.km-counter > span:not(.km-counterSep) {
+  font-size: 22px;
+  color: var(--muted);
+}
+.km-counter small {
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.km-counter i {
+  position: absolute;
+  left: 16px;
+  bottom: 7px;
+  height: 4px;
+  max-width: calc(100% - 32px);
+  background: var(--ink);
+}
+.km-slogan {
+  position: absolute;
+  left: 50%;
+  bottom: 16px;
+  translate: -50% 0;
+  margin: 0;
+  padding: 8px 26px;
+  font-size: 13px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  background: linear-gradient(90deg, transparent, rgba(8, 9, 12, 0.75) 20%, rgba(8, 9, 12, 0.75) 80%, transparent);
+  pointer-events: none;
+}
+.km-slogan::before,
+.km-slogan::after {
+  content: "//";
+  margin: 0 12px;
+  color: var(--red2);
+  font-weight: 700;
+}
+.km-hint {
+  position: absolute;
+  left: 50%;
+  top: 76px;
+  translate: -50% 0;
+  margin: 0;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  color: var(--ink);
+  background: rgba(8, 9, 12, 0.78);
+  border: 1px solid var(--line);
+  pointer-events: none;
+  animation: km-fade 7s ease forwards;
+}
+@keyframes km-fade {
+  0%,
+  80% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.km-empty {
+  position: absolute;
+  left: 50%;
+  top: 42%;
+  translate: -50% -50%;
+  display: grid;
+  gap: 6px;
+  max-width: 420px;
+  padding: 18px 22px;
+  text-align: center;
+  background: rgba(8, 9, 12, 0.9);
+  border: 1px solid var(--line);
+}
+.km-empty span {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .km-sweep,
+  .km-hint {
+    animation: none;
+  }
+}
+
+/* ---------- Celular / tela estreita ---------- */
+@media (max-width: 900px) {
+  .km-top {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: max(10px, env(safe-area-inset-top)) 12px 10px;
+  }
+  .km-navToggle {
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    font-size: 20px;
+    color: var(--ink);
+    border: 1px solid rgba(244, 244, 245, 0.18);
+  }
+  .km-wordmark {
+    height: 24px;
+  }
+  .km-brandSep,
+  .km-brandText,
+  .km-contest,
+  .km-profileText {
+    display: none;
+  }
+  .km-topRight {
+    margin-left: auto;
+  }
+  .km-search {
+    order: 3;
+    flex-basis: 100%;
+    max-width: none;
+  }
+  .km-side {
+    display: none;
+    top: 116px;
+    left: 8px;
+    z-index: 6;
+    padding: 8px;
+    background: rgba(8, 9, 12, 0.96);
+    border: 1px solid var(--line);
+  }
+  .km-side[data-open] {
+    display: flex;
+  }
+  .km-motto {
+    display: none;
+  }
+  .km-bottomLeft {
+    left: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .km-radar {
+    width: 92px;
+    height: 92px;
+  }
+  .km-radar span {
+    display: none;
+  }
+  .km-overview,
+  .km-counter {
+    display: none;
+  }
+  .km-controls {
+    right: 10px;
+    bottom: max(10px, env(safe-area-inset-bottom));
+    padding: 4px;
+  }
+  .km-controls button {
+    justify-content: center;
+    width: 44px;
+    min-height: 40px;
+    padding: 0;
+  }
+  .km-controls button span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+  }
+  .km-filters,
+  .km-list {
+    left: 8px;
+    right: 66px;
+    width: auto;
+    top: 116px;
+    bottom: auto;
+    max-height: calc(100% - 250px);
+  }
+  .km-panel {
+    left: 8px;
+    right: 8px;
+    top: auto;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: auto;
+    min-height: 0;
+    max-height: 50%;
+    z-index: 7;
+  }
+  .km-slogan {
+    display: none;
+  }
+  /* No celular os assuntos aparecem no painel inferior (as placas não cabem em volta). */
+  .km-topicPlate {
+    display: none;
+  }
+  .km-hint {
+    top: 120px;
+    width: max-content;
+    max-width: calc(100% - 24px);
+    text-align: center;
+  }
+  .km-plate {
+    min-width: 0;
+    gap: 6px;
+    padding: 5px 8px 5px 5px;
+  }
+  .km-plateIcon {
+    width: 28px;
+    height: 28px;
+    font-size: 15px;
+  }
+  .km-plateName {
+    font-size: 10.5px;
+  }
+  .km-plateMeta,
+  .km-plateBar {
+    display: none;
+  }
+  .km-plate[data-sel] {
+    min-width: 0;
+  }
+  .km-plate[data-sel] .km-plateIcon {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+  }
+  .km-plate[data-sel] .km-plateName {
+    font-size: 12px;
+  }
+}
+
+/* ---------- Palco cinematográfico (arte de referência) ---------- */
+.km-art {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  overflow: clip;
+  background: #08090c;
+}
+.km-art-layer {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.km-art-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  -webkit-user-drag: none;
+}
+.km-art-embers,
+.km-art-flash {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+}
+.km-art-flash {
+  opacity: 0;
+  background: radial-gradient(ellipse at 60% 8%, rgba(200, 215, 255, 0.55), rgba(140, 150, 190, 0.12) 35%, transparent 60%);
+  mix-blend-mode: screen;
+}
+.km-art-core,
+.km-art-base {
+  position: absolute;
+  translate: -50% -50%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.km-art-core {
+  width: 760px;
+  height: 260px;
+}
+.km-art-core i,
+.km-art-base i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  height: 100%;
+  translate: -50% -50%;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 60, 60, 0.9);
+  box-shadow: 0 0 24px rgba(255, 40, 40, 0.8);
+  opacity: 0;
+  animation: km-pulse 3.6s ease-out infinite;
+}
+.km-art-core i:nth-child(2),
+.km-art-base i:nth-child(2) {
+  animation-delay: 1.2s;
+}
+.km-art-core i:nth-child(3) {
+  animation-delay: 2.4s;
+}
+@keyframes km-pulse {
+  0% {
+    transform: scale(0.35);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  100% {
+    transform: scale(1.25);
+    opacity: 0;
+  }
+}
+.km-art-beam {
+  position: absolute;
+  width: 8px;
+  translate: -50% 0;
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(255, 50, 50, 0), rgba(255, 50, 50, 0.85) 30%, rgba(255, 90, 90, 1));
+  box-shadow: 0 0 26px 6px rgba(255, 30, 30, 0.55);
+  mix-blend-mode: screen;
+  animation: km-beam 2.4s ease-in-out infinite;
+}
+@keyframes km-beam {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.85;
+  }
+}
+.km-art-base {
+  width: 230px;
+  height: 92px;
+}
+.km-art-base i {
+  border-color: color-mix(in srgb, var(--c) 90%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--c) 80%, transparent);
+}
+.km-art-base b {
+  position: absolute;
+  left: 50%;
+  bottom: 50%;
+  width: 4px;
+  height: 120px;
+  translate: -50% 0;
+  background: linear-gradient(0deg, var(--c), transparent);
+  box-shadow: 0 0 16px var(--c);
+  opacity: 0;
+  mix-blend-mode: screen;
+}
+.km-art-base:not([data-drawn]) b {
+  opacity: 0.85;
+}
+.km-art-base:not([data-drawn])::before {
+  content: "";
+  position: absolute;
+  inset: 22% 18%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, color-mix(in srgb, var(--c) 75%, transparent), transparent 70%);
+  mix-blend-mode: screen;
+}
+.km-art-base[data-sel] {
+  width: 320px;
+  height: 128px;
+}
+.km-art-base[data-sel] i {
+  animation-duration: 2.2s;
+  border-width: 4px;
+}
+.km-art-base[data-vazio] i {
+  animation: none;
+  opacity: 0;
+}
+.km-labels[data-palco="arte"] .km-plate {
+  translate: -50% -50%;
+}
+/* Com uma matéria em foco (aproximado), as outras placas saem da frente; voltar mostra todas. */
+.km-labels[data-palco="arte"] .km-plate[data-dim] {
+  opacity: 0;
+  pointer-events: none;
+}
+.km-labels[data-palco="arte"] .km-topicPlate {
+  translate: 0 -50%;
+}
+.km-plate[data-vazio] .km-plateIcon {
+  opacity: 0.7;
+}
+@media (prefers-reduced-motion: reduce) {
+  .km-art-core i,
+  .km-art-base i,
+  .km-art-beam {
+    animation: none;
+  }
+}
