@@ -1176,6 +1176,7 @@
   border: 3px solid rgba(255, 60, 60, 0.9);
   box-shadow: 0 0 24px rgba(255, 40, 40, 0.8);
   opacity: 0;
+  will-change: transform, opacity;
   animation: km-pulse 3.6s ease-out infinite;
 }
 .km-art-core i:nth-child(2),
@@ -1280,4 +1281,21 @@
   .km-art-beam {
     animation: none;
   }
+}
+
+.km-rifle {
+  position: absolute;
+  pointer-events: none;
+  will-change: transform;
+}
+@media (min-width: 901px) {
+  .km-rifle {
+    filter: drop-shadow(-18px -10px 28px rgba(0, 0, 0, 0.6));
+  }
+}
+.km-rifle img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  -webkit-user-drag: none;
 }

@@ -12,6 +12,29 @@ import type { MapTopic, Territory } from "@/domain/knowledge-map/model";
  */
 
 export const ART = { w: 3344, h: 1882, src: "/images/knowledge-ops/territorio.webp", srcSm: "/images/knowledge-ops/territorio-sm.webp" };
+/** Braços e fuzil recortados da arte (camada própria, em primeira pessoa). */
+const RIFLE = { src: "/images/knowledge-ops/fuzil.webp", x: 1424, y: 792, w: 1920, h: 1090, muzzle: [1786, 960] as [number, number], pivot: [2560, 2060] as [number, number] };
+/** Fumaça: colunas que sobem dos incêndios e névoa baixa sobre o rio (coordenadas da arte). */
+const SMOKE: Array<{ x: number; y: number; kind: "coluna" | "nevoa"; size: number }> = [
+  { x: 700, y: 330, kind: "coluna", size: 120 },
+  { x: 1700, y: 420, kind: "coluna", size: 110 },
+  { x: 1580, y: 470, kind: "coluna", size: 90 },
+  { x: 3200, y: 420, kind: "coluna", size: 150 },
+  { x: 3080, y: 520, kind: "coluna", size: 110 },
+  { x: 1150, y: 360, kind: "coluna", size: 70 },
+  { x: 650, y: 1140, kind: "nevoa", size: 240 },
+  { x: 3150, y: 960, kind: "nevoa", size: 220 },
+  { x: 2700, y: 1180, kind: "nevoa", size: 200 },
+  { x: 260, y: 1250, kind: "nevoa", size: 230 },
+];
+/** Focos de fogo que tremulam. */
+const FIRES: Array<[number, number, number]> = [
+  [3190, 525, 90],
+  [3050, 540, 60],
+  [1570, 475, 40],
+  [1150, 365, 34],
+  [2060, 360, 30],
+];
 /** Coordenadas na arte original (1672×941) multiplicadas por 2. */
 const k = (x: number, y: number): [number, number] => [x * 2, y * 2];
 
@@ -75,14 +98,56 @@ export class PlateCamera {
     const hh = this.view.h / 2 / s;
     this.focus = [Math.min(ART.w - hw, Math.max(hw, this.focus[0])), Math.min(ART.h - hh, Math.max(hh, this.focus[1]))];
   }
-  zoomBy(f: number) {
-    this.zoom = Math.min(2.6, Math.max(1, this.zoom * f));
+  /** Zoom; com um ponto da tela (cursor/pinça), o que está sob ele continua no mesmo lugar. */
+  zoomBy(f: number, at?: [number, number]) {
+    const before = this.cover() * this.zoom;
+    const next = Math.min(2.6, Math.max(1, this.zoom * f));
+    if (at) {
+      const ax = this.focus[0] + (at[0] - this.view.w / 2) / before;
+      const ay = this.focus[1] + (at[1] - this.view.h / 2) / before;
+      const after = this.cover() * next;
+      this.focus = [ax - (at[0] - this.view.w / 2) / after, ay - (at[1] - this.view.h / 2) / after];
+    }
+    this.zoom = next;
     this.clampFocus();
   }
   pan(dxScreen: number, dyScreen: number) {
     const s = this.cover() * this.zoom;
     this.focus = [this.focus[0] - dxScreen / s, this.focus[1] - dyScreen / s];
     this.clampFocus();
+  }
+  /** Traz um ponto para dentro da área central da tela, sem mudar o zoom. */
+  reveal(p: [number, number], inset: { right?: number; bottom?: number } = {}) {
+    // Sem mudar o zoom: o soldado mira; a câmera só desloca quando já está aproximada.
+    if (!this.inView(p, inset)) this.revealAt(p, inset);
+  }
+  private bounds(inset: { right?: number; bottom?: number }) {
+    return {
+      minX: -this.view.w * 0.3,
+      maxX: Math.min(this.view.w * 0.3, this.view.w / 2 - (inset.right ?? 0) - 160),
+      minY: -this.view.h * 0.28,
+      maxY: Math.min(this.view.h * 0.28, this.view.h / 2 - (inset.bottom ?? 0) - 90),
+    };
+  }
+  private inView(p: [number, number], inset: { right?: number; bottom?: number }) {
+    const s = this.cover() * this.zoom;
+    const b = this.bounds(inset);
+    const sx = (p[0] - this.focus[0]) * s;
+    const sy = (p[1] - this.focus[1]) * s;
+    return sx >= b.minX - 2 && sx <= b.maxX + 2 && sy >= b.minY - 2 && sy <= b.maxY + 2;
+  }
+  private revealAt(p: [number, number], inset: { right?: number; bottom?: number }) {
+    const s = this.cover() * this.zoom;
+    const sx = (p[0] - this.focus[0]) * s;
+    const sy = (p[1] - this.focus[1]) * s;
+    // Área livre (em px a partir do centro), descontando o painel lateral ou inferior.
+    const { minX, maxX, minY, maxY } = this.bounds(inset);
+    const dx = sx < minX ? sx - minX : sx > maxX ? sx - maxX : 0;
+    const dy = sy < minY ? sy - minY : sy > maxY ? sy - maxY : 0;
+    if (dx || dy) {
+      this.focus = [this.focus[0] + dx / s, this.focus[1] + dy / s];
+      this.clampFocus();
+    }
   }
   focusOn(p: [number, number], zoom: number) {
     this.zoom = Math.min(2.6, Math.max(1, zoom));
@@ -131,12 +196,15 @@ export interface ImageStageProps {
   /** Posição de cada assunto (leque em volta da placa da matéria), em px de tela relativos à placa. */
   topicOffsets: Map<string, [number, number]>;
   onView: (rect: { x: number; y: number; w: number; h: number }) => void;
+  /** Para onde o soldado mira (ponto da arte): matéria em foco ou sob o cursor. */
+  aim: React.RefObject<[number, number] | null>;
   onSelect: (t: Territory) => void;
   onSelectCore: () => void;
   onSelectTopic: (t: Territory, topic: MapTopic) => void;
 }
 
-export function ImageStage({ cam, territories, selected, labels, topicOffsets, onView, onSelect, onSelectCore }: ImageStageProps) {
+export function ImageStage({ cam, territories, selected, labels, topicOffsets, onView, onSelect, onSelectCore, aim }: ImageStageProps) {
+  const rifle = useRef<HTMLDivElement>(null);
   const layer = useRef<HTMLDivElement>(null);
   const holder = useRef<HTMLDivElement>(null);
   const embers = useRef<HTMLCanvasElement>(null);
@@ -149,18 +217,33 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     const cv = embers.current;
     if (!el || !ly || !cv) return;
     const ctx = cv.getContext("2d");
+    // Aparelhos mais fracos/celular: menos partículas, canvas em 1x e efeitos a ~30 fps.
+    const light = window.innerWidth < 900 || (navigator.hardwareConcurrency ?? 8) <= 4;
+    // Geometria do fuzil em px de tela: só muda com o tamanho da tela (nada de layout por quadro).
+    const rg = { s0: 1, tx0: 0, ty0: 0 };
     const resize = () => {
       const r = el.getBoundingClientRect();
       cam.setView(r.width, r.height);
-      const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      const dpr = light ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
       cv.width = Math.round(r.width * dpr);
       cv.height = Math.round(r.height * dpr);
       ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
+      rg.s0 = cam.cover() * 1.035;
+      rg.tx0 = cam.view.w / 2 - (ART.w / 2) * rg.s0;
+      rg.ty0 = cam.view.h / 2 - (ART.h / 2) * rg.s0;
+      const rf = rifle.current;
+      if (rf) {
+        rf.style.left = `${(RIFLE.x * rg.s0 + rg.tx0).toFixed(1)}px`;
+        rf.style.top = `${(RIFLE.y * rg.s0 + rg.ty0).toFixed(1)}px`;
+        rf.style.width = `${(RIFLE.w * rg.s0).toFixed(1)}px`;
+        rf.style.height = `${(RIFLE.h * rg.s0).toFixed(1)}px`;
+        rf.style.transformOrigin = `${((RIFLE.pivot[0] - RIFLE.x) * rg.s0).toFixed(1)}px ${((RIFLE.pivot[1] - RIFLE.y) * rg.s0).toFixed(1)}px`;
+      }
     };
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(el);
-    const N = window.innerWidth < 900 ? 70 : 150;
+    const N = light ? 45 : 110;
     let seed = 17;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     const parts = Array.from({ length: N }, () => ({ x: rnd(), y: rnd(), v: 0.02 + rnd() * 0.05, r: 0.6 + rnd() * 1.6, a: 0.3 + rnd() * 0.7, d: (rnd() - 0.5) * 0.02 }));
@@ -168,6 +251,53 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     let raf = 0;
     let nextFlash = 5 + rnd() * 6;
     let flashT = 0;
+    // Mira do soldado (ângulo e deslocamento atuais, suavizados).
+    let aimA = 0;
+    let aimX = 0;
+    let aimY = 0;
+    // Fumaça: sprite macio gerado uma vez; cada fonte solta baforadas que sobem e se espalham.
+    const sprite = document.createElement("canvas");
+    sprite.width = sprite.height = 128;
+    const sg = sprite.getContext("2d");
+    if (sg) {
+      for (let i = 0; i < 26; i++) {
+        const x = 64 + (rnd() - 0.5) * 60;
+        const y = 64 + (rnd() - 0.5) * 60;
+        const r = 16 + rnd() * 34;
+        const g = sg.createRadialGradient(x, y, 0, x, y, r);
+        g.addColorStop(0, "rgba(120,112,108,0.07)");
+        g.addColorStop(1, "rgba(120,112,108,0)");
+        sg.fillStyle = g;
+        sg.fillRect(0, 0, 128, 128);
+      }
+    }
+    const PER = light ? 3 : 6;
+    // Brasa e fogo pré-desenhados (sem criar gradientes a cada quadro).
+    const mk = (r: number, stops: Array<[number, string]>) => {
+      const c = document.createElement("canvas");
+      c.width = c.height = r * 2;
+      const g2 = c.getContext("2d");
+      if (g2) {
+        const g = g2.createRadialGradient(r, r, 0, r, r, r);
+        for (const [o, col] of stops) g.addColorStop(o, col);
+        g2.fillStyle = g;
+        g2.fillRect(0, 0, r * 2, r * 2);
+      }
+      return c;
+    };
+    const ember = mk(16, [
+      [0, "rgba(255,180,100,1)"],
+      [0.35, "rgba(255,110,40,0.6)"],
+      [1, "rgba(255,60,20,0)"],
+    ]);
+    const fireSpr = mk(64, [
+      [0, "rgba(255,170,60,0.6)"],
+      [0.5, "rgba(255,70,20,0.24)"],
+      [1, "rgba(255,40,0,0)"],
+    ]);
+    let frame = 0;
+    let fxDt = 0;
+    const puffs = SMOKE.flatMap((src, i) => Array.from({ length: PER }, (_, j) => ({ i, u: j / PER + rnd() * 0.08, sp: 0.03 + rnd() * 0.025, rot: rnd() * 6.28, dr: (rnd() - 0.5) * 0.2 })));
     const loop = (now: number) => {
       const dt = (now - last) / 1000;
       last = now;
@@ -197,27 +327,87 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         }
       }
       onView(cam.visible(t));
-      // Brasas subindo (canvas leve).
-      if (ctx && !cam.reduced) {
+      // Fumaça, fogo e brasas (canvas leve, em coordenadas de tela); no modo leve, um quadro sim, outro não.
+      frame++;
+      fxDt += dt;
+      if (ctx && !cam.reduced && (!light || frame % 2 === 0)) {
+        const fdt = fxDt;
+        fxDt = 0;
         const w = cam.view.w;
         const h = cam.view.h;
         ctx.clearRect(0, 0, w, h);
+        ctx.globalCompositeOperation = "source-over";
+        for (const p of puffs) {
+          const src = SMOKE[p.i]!;
+          p.u += p.sp * fdt * (src.kind === "nevoa" ? 0.45 : 1);
+          if (p.u > 1) p.u -= 1;
+          p.rot += p.dr * fdt;
+          const col = src.kind === "coluna";
+          const ax = src.x + (col ? p.u * 260 + Math.sin(p.u * 6 + p.i) * 30 : (p.u - 0.5) * 900);
+          const ay = src.y - (col ? p.u * 420 : Math.sin(p.u * 3.14) * 40);
+          const size = src.size * (col ? 1 + p.u * 2.4 : 2) * t.s * 1.8;
+          const x = ax * t.s + t.tx;
+          const y = ay * t.s + t.ty;
+          if (x < -size || x > w + size || y < -size || y > h + size) continue;
+          ctx.globalAlpha = Math.sin(Math.PI * p.u) * (col ? 0.75 : 0.4);
+          ctx.save();
+          ctx.translate(x, y);
+          ctx.rotate(p.rot);
+          ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
+          ctx.restore();
+        }
+        ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = "lighter";
+        for (const [fx, fy, fr] of FIRES) {
+          const fl = 0.75 + Math.sin(now / 90 + fx) * 0.12 + Math.sin(now / 37 + fy) * 0.08;
+          const x = fx * t.s + t.tx;
+          const y = fy * t.s + t.ty;
+          const r = fr * t.s * 2 * fl;
+          ctx.globalAlpha = Math.min(1, fl);
+          ctx.drawImage(fireSpr, x - r, y - r, r * 2, r * 2);
+        }
         for (const p of parts) {
-          p.y -= p.v * dt;
-          p.x += p.d * dt + Math.sin(now / 900 + p.r * 9) * 0.0004;
+          p.y -= p.v * fdt;
+          p.x += p.d * fdt + Math.sin(now / 900 + p.r * 9) * 0.0004;
           if (p.y < -0.02) {
             p.y = 1.02;
             p.x = rnd();
           }
           const px = p.x * w;
           const py = p.y * h;
-          const g = ctx.createRadialGradient(px, py, 0, px, py, p.r * 3);
-          g.addColorStop(0, `rgba(255,170,90,${p.a})`);
-          g.addColorStop(1, "rgba(255,60,20,0)");
-          ctx.fillStyle = g;
-          ctx.fillRect(px - p.r * 3, py - p.r * 3, p.r * 6, p.r * 6);
+          ctx.globalAlpha = p.a;
+          ctx.drawImage(ember, px - p.r * 3, py - p.r * 3, p.r * 6, p.r * 6);
         }
+        ctx.globalAlpha = 1;
+      }
+      // Soldado em primeira pessoa: fica no enquadramento da tela (não entra no zoom) e gira o
+      // fuzil para mirar na matéria em foco (ou sob o cursor), sem precisar aproximar.
+      const rf = rifle.current;
+      if (rf) {
+        const { s0, tx0, ty0 } = rg;
+        const px = RIFLE.pivot[0] * s0 + tx0;
+        const py = RIFLE.pivot[1] * s0 + ty0;
+        const mx = RIFLE.muzzle[0] * s0 + tx0;
+        const my = RIFLE.muzzle[1] * s0 + ty0;
+        const target = aim.current;
+        let wantA = cam.pointerNow[0] * 0.035;
+        let wantX = cam.pointerNow[0] * 18;
+        let wantY = cam.pointerNow[1] * 10;
+        if (target) {
+          const tx = target[0] * t.s + t.tx;
+          const ty = target[1] * t.s + t.ty;
+          const d = Math.atan2(ty - py, tx - px) - Math.atan2(my - py, mx - px);
+          wantA = Math.max(-0.12, Math.min(0.12, d * 0.55));
+          wantX = Math.max(-cam.view.w * 0.045, Math.min(cam.view.w * 0.055, (tx - mx) * 0.12));
+          wantY = Math.max(-cam.view.h * 0.03, Math.min(cam.view.h * 0.035, (ty - my) * 0.08));
+        }
+        const ka = cam.reduced ? 1 : 1 - Math.exp(-dt * 3.6);
+        aimA += (wantA - aimA) * ka;
+        aimX += (wantX - aimX) * ka;
+        aimY += (wantY - aimY) * ka;
+        const breathe = cam.reduced ? 0 : Math.sin(now / 760) * 3 * s0 * 2;
+        const sway = cam.reduced ? 0 : Math.sin(now / 1300) * 0.004;
+        rf.style.transform = `translate3d(${aimX.toFixed(1)}px, ${(aimY + breathe).toFixed(1)}px, 0) rotate(${(aimA + sway).toFixed(4)}rad)`;
       }
       // Relâmpago ocasional nas nuvens.
       if (!cam.reduced && flash.current) {
@@ -236,7 +426,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [cam, territories, labels, topicOffsets, onView]);
+  }, [cam, territories, labels, topicOffsets, onView, aim]);
 
   return (
     <div ref={holder} className="km-art" aria-hidden>
@@ -277,6 +467,10 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         <div ref={flash} className="km-art-flash" />
       </div>
       <canvas ref={embers} className="km-art-embers" />
+      <div ref={rifle} className="km-rifle">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={RIFLE.src} alt="" draggable={false} />
+      </div>
     </div>
   );
 }

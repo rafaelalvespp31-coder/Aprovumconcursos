@@ -117,6 +117,8 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
   const [stageKind, setStageKind] = useState<"arte" | "3d">("arte");
   const [cam] = useState(() => new PlateCamera());
   const dragged = useRef(false);
+  // Alvo da mira do soldado (matéria em foco ou sob o cursor), lido a cada quadro pelo palco.
+  const aim = useRef<[number, number] | null>(null);
 
   const [selT, setSelT] = useState<string | null>(null);
   const [selTopic, setSelTopic] = useState<string | null>(null);
@@ -165,40 +167,41 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
   }, [rig, cam]);
 
   const art = stageKind === "arte";
-  const selectTerritory = useCallback(
-    (t: Territory) => {
+  // Espaço ocupado pelo painel de detalhes (lateral no computador, inferior no celular).
+  const panelInset = () => (window.innerWidth <= 900 ? { bottom: window.innerHeight * 0.5 } : { right: 400 });
+  const selectTerritory = (t: Territory) => {
       setCoreOpen(false);
       setSelT(t.id);
       setSelTopic(null);
       controls.focusOn(t.pos, 36, 0.55, viewYawFor(t.pos));
-      cam.focusOn(slotFor(t.id).base, portrait ? 1.45 : 1.7);
-    },
-    [controls, cam, portrait],
-  );
-  const selectTopic = useCallback(
-    (t: Territory, x: MapTopic) => {
+      // O soldado mira na matéria; a câmera só desloca se ela estiver fora da área central.
+      aim.current = slotFor(t.id).base;
+      cam.reveal(slotFor(t.id).base, panelInset());
+  };
+  const selectTopic = (t: Territory, x: MapTopic) => {
       setCoreOpen(false);
       setSelT(t.id);
       setSelTopic(x.id);
       controls.focusOn(x.pos, 26, 0.5, viewYawFor(t.pos));
-      cam.focusOn(slotFor(t.id).base, portrait ? 1.6 : 1.95);
-    },
-    [controls, cam, portrait],
-  );
-  const overview = useCallback(() => {
+      aim.current = slotFor(t.id).base;
+      cam.reveal(slotFor(t.id).base, panelInset());
+  };
+  const overview = () => {
     setSelT(null);
     setSelTopic(null);
     setCoreOpen(false);
     controls.overview();
     cam.overview();
-  }, [controls, cam]);
-  const selectCore = useCallback(() => {
+    aim.current = null;
+  };
+  const selectCore = () => {
     setSelT(null);
     setSelTopic(null);
     setCoreOpen(true);
     controls.focusOn([0, 0], 36);
-    cam.focusOn(slotFor("direito_penal").base, 1.45);
-  }, [controls, cam]);
+    aim.current = slotFor("direito_penal").base;
+    cam.reveal(slotFor("direito_penal").base, panelInset());
+  };
   const zoomIn = useCallback(() => (art ? cam.zoomBy(1.25) : controls.zoom(0.78)), [art, cam, controls]);
   const zoomOut = useCallback(() => (art ? cam.zoomBy(0.8) : controls.zoom(1.28)), [art, cam, controls]);
   const centerView = useCallback(() => (art ? cam.center() : controls.center()), [art, cam, controls]);
@@ -275,7 +278,10 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
         const [a, b] = [...pts.values()];
         const d = Math.hypot(a!.x - b!.x, a!.y - b!.y);
         if (pinch > 0 && d > 0) {
-          if (art) cam.zoomBy(d / pinch);
+          if (art) {
+            const r = el.getBoundingClientRect();
+            cam.zoomBy(d / pinch, [(a!.x + b!.x) / 2 - r.left, (a!.y + b!.y) / 2 - r.top]);
+          }
           else controls.zoom(pinch / d);
         }
         pinch = d;
@@ -295,7 +301,10 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     };
     const wheel = (e: WheelEvent) => {
       e.preventDefault();
-      if (art) cam.zoomBy(Math.exp(-e.deltaY * 0.0012));
+      if (art) {
+        const r = el.getBoundingClientRect();
+        cam.zoomBy(Math.exp(-Math.max(-120, Math.min(120, e.deltaY)) * 0.0016), [e.clientX - r.left, e.clientY - r.top]);
+      }
       else controls.zoom(Math.exp(e.deltaY * 0.0012));
       setHint(false);
     };
@@ -397,6 +406,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
             labels={labels}
             topicOffsets={topicOffsets}
             onView={onView}
+            aim={aim}
             onSelect={(t) => !dragged.current && selectTerritory(t)}
             onSelectCore={() => !dragged.current && selectCore()}
             onSelectTopic={(t, x) => !dragged.current && selectTopic(t, x)}
@@ -439,6 +449,14 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                   data-dim={selT && !sel ? "1" : undefined}
                   style={{ ["--c" as string]: t.color, visibility: "hidden" }}
                   onClick={() => selectTerritory(t)}
+                  onMouseEnter={() => {
+                    if (!art) return;
+                    aim.current = slotFor(t.id).base;
+                  }}
+                  onMouseLeave={() => {
+                    if (!art) return;
+                    aim.current = selT ? slotFor(selT).base : null;
+                  }}
                   aria-label={t.topics.length ? `${t.label}: ${t.topics.length} assunto(s)${t.progress !== null ? `, progresso ${t.progress}%` : ""}` : `${t.label}: em breve, ainda sem aulas publicadas`}
                   data-testid="territorio"
                   data-vazio={t.topics.length ? undefined : "1"}
