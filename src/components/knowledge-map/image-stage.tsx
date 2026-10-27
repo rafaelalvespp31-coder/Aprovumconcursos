@@ -21,7 +21,7 @@ export const ART = {
    * sem espelho). Posição e tamanho em px da arte (encaixada pelos pontos em comum com a arte).
    */
   srcTall: "/images/knowledge-ops/territorio-alto.webp",
-  tall: { x: 0, y: -1450, w: 3344, h: 5945 },
+  tall: { x: 102, y: -1969, w: 3153, h: 5649 },
 };
 /** Braços e fuzil recortados da arte (camada própria, em primeira pessoa). */
 // O recorte continua (escurecendo) para baixo e para a direita da tela: ao girar ou subir a arma,
@@ -87,8 +87,8 @@ export function slotFor(id: string): ArtSlot {
   return ART_SLOTS[id] ?? ART_SLOTS.outras!;
 }
 
-/** Centro das instalações (px da arte): para onde a câmera olha no celular em pé. */
-const FIT = { cx: 1800, cy: 760 };
+/** Instalações (px da arte): centro para onde a câmera olha no celular em pé e largura enquadrada. */
+const FIT = { cx: 1800, cy: 760, span: 2236 };
 
 /** Folga da arte além da tela (computador): é o quanto a câmera pode "olhar" para os lados. */
 const LOOK_MARGIN = 1.12;
@@ -149,8 +149,9 @@ export class PlateCamera {
   }
   /** Escala no zoom 1: cobre a tela (computador) ou cabe a faixa das instalações (celular). */
   cover() {
-    // Celular em pé: a imagem alta cobre a tela inteira (a faixa das instalações cabe na largura).
-    if (this.mode === "caber") return Math.max(this.view.w / ART.tall.w, this.view.h / ART.tall.h);
+    // Celular em pé: a faixa das instalações quase na largura toda (cards legíveis) e, no mínimo,
+    // a imagem alta cobrindo a tela inteira.
+    if (this.mode === "caber") return Math.max(this.view.w / FIT.span, this.view.w / ART.tall.w, this.view.h / ART.tall.h);
     return Math.max(this.view.w / ART.w, this.view.h / ART.h);
   }
   /** Centro vertical da cena na tela (no celular fica acima, deixando o fuzil embaixo). */
