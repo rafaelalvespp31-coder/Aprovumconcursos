@@ -1299,3 +1299,150 @@
   height: 100%;
   -webkit-user-drag: none;
 }
+
+/* ---------- Fundo desfocado (completa a tela quando o mapa inteiro é enquadrado) ---------- */
+.km-art-fill {
+  position: absolute;
+  inset: -40px;
+  background-size: cover;
+  background-position: center 40%;
+  filter: blur(22px) brightness(0.55) saturate(0.95);
+  pointer-events: none;
+}
+
+/* ---------- Celular em pé: tudo dentro da tela, nada vaza ---------- */
+@media (max-width: 900px) {
+  .km-root {
+    height: 100dvh;
+  }
+  /* Controles numa linha só, embaixo, ao lado do radar. */
+  .km-controls {
+    left: auto;
+    right: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    flex-direction: row;
+    gap: 0;
+    padding: 3px;
+    max-width: calc(100vw - 88px);
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .km-controls button {
+    width: 40px;
+    min-height: 40px;
+    flex: none;
+  }
+  .km-controls button[title="Arraste o cenário para explorar"] {
+    display: none;
+  }
+  .km-bottomLeft {
+    left: 8px;
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .km-radar {
+    width: 62px;
+    height: 62px;
+  }
+  /* Placas compactas: ícone e nome em até duas linhas. */
+  .km-plate {
+    max-width: 128px;
+    gap: 5px;
+    padding: 4px 7px 4px 4px;
+  }
+  .km-plateBody {
+    min-width: 0;
+  }
+  .km-plateName {
+    white-space: normal;
+    font-size: 9.5px;
+    line-height: 1.15;
+    letter-spacing: 0.02em;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .km-platePct,
+  .km-plateNew {
+    font-size: 9.5px;
+  }
+  .km-plateIcon {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+  }
+  .km-plate[data-sel] {
+    max-width: 150px;
+  }
+  .km-plate[data-sel] .km-plateIcon {
+    width: 28px;
+    height: 28px;
+    font-size: 15px;
+  }
+  .km-plate[data-sel] .km-plateName {
+    font-size: 11px;
+  }
+  .km-panel {
+    max-height: 52%;
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .km-filters,
+  .km-list {
+    right: 8px;
+    max-height: calc(100% - 200px);
+  }
+  .km-hint {
+    font-size: 11.5px;
+    padding: 6px 10px;
+  }
+}
+
+@media (max-width: 900px) {
+  /* Marcadores compactos no celular: ícone e nome curto; a placa completa só na matéria escolhida. */
+  .km-labels[data-palco="arte"] .km-plate:not([data-sel]) {
+    flex-direction: column;
+    gap: 2px;
+    max-width: 92px;
+    padding: 3px 5px;
+    clip-path: none;
+    border-radius: 6px;
+    background: rgba(8, 9, 12, 0.72);
+    text-align: center;
+  }
+  .km-labels[data-palco="arte"] .km-plate:not([data-sel]) .km-plateName {
+    font-size: 8.5px;
+    -webkit-line-clamp: 2;
+  }
+  .km-labels[data-palco="arte"] .km-plate:not([data-sel]) .km-platePct,
+  .km-labels[data-palco="arte"] .km-plate:not([data-sel]) .km-plateNew,
+  .km-labels[data-palco="arte"] .km-plate:not([data-sel])::after {
+    display: none;
+  }
+  .km-labels[data-palco="arte"] .km-plate:not([data-sel]) .km-plateIcon {
+    width: 22px;
+    height: 22px;
+    font-size: 12px;
+    margin: 0 auto;
+  }
+  .km-labels[data-palco="arte"] .km-plate[data-vazio]:not([data-sel]) {
+    opacity: 0.7;
+  }
+}
+
+/* Mapa inteiro no celular: bordas da arte se fundem ao fundo (sem faixa recortada). */
+.km-art[data-enquadramento="caber"] .km-art-img {
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 9%, #000 86%, transparent 100%), linear-gradient(90deg, transparent 0%, #000 4%, #000 96%, transparent 100%);
+  -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(180deg, transparent 0%, #000 9%, #000 86%, transparent 100%), linear-gradient(90deg, transparent 0%, #000 4%, #000 96%, transparent 100%);
+  mask-composite: intersect;
+}
+@media (max-width: 380px) {
+  .km-controls button {
+    width: 34px;
+    min-height: 38px;
+  }
+  .km-radar {
+    width: 54px;
+    height: 54px;
+  }
+}

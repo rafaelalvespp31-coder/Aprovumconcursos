@@ -68,6 +68,12 @@ export function slotFor(id: string): ArtSlot {
   return ART_SLOTS[id] ?? ART_SLOTS.outras!;
 }
 
+/**
+ * Faixa da arte que contém todas as instalações (px da arte). No celular em pé a câmera
+ * enquadra essa faixa inteira na largura da tela: o mapa todo cabe, sem cortar nada.
+ */
+const FIT = { x0: 700, x1: 3140, cx: 1920, cy: 860 };
+
 /** Câmera 2D sobre a arte (valores em pixels da arte). */
 export class PlateCamera {
   focus: [number, number] = [ART.w / 2, ART.h / 2];
@@ -78,9 +84,18 @@ export class PlateCamera {
   pointerNow: [number, number] = [0, 0];
   reduced = false;
   view = { w: 1, h: 1 };
+  /** "cobrir" (computador, paisagem) ou "caber" (celular em pé: o mapa inteiro na tela). */
+  mode: "cobrir" | "caber" = "cobrir";
 
   setView(w: number, h: number) {
     this.view = { w: Math.max(1, w), h: Math.max(1, h) };
+    const next = this.view.w / this.view.h < 1.05 ? "caber" : "cobrir";
+    if (next !== this.mode) {
+      this.mode = next;
+      this.overview();
+      this.focusNow = [...this.focus];
+      this.zoomNow = this.zoom;
+    } else this.clampFocus();
   }
   setReduced(v: boolean) {
     this.reduced = v;
@@ -88,25 +103,38 @@ export class PlateCamera {
   setPointer(x: number, y: number) {
     this.pointer = [Math.max(-1, Math.min(1, x)), Math.max(-1, Math.min(1, y))];
   }
-  /** Escala que faz a arte cobrir a tela inteira (zoom 1). */
+  /** Escala no zoom 1: cobre a tela (computador) ou cabe a faixa das instalações (celular). */
   cover() {
+    if (this.mode === "caber") return Math.min(this.view.w / (FIT.x1 - FIT.x0), (this.view.h * 0.62) / ART.h * 1.6);
     return Math.max(this.view.w / ART.w, this.view.h / ART.h);
+  }
+  /** Centro vertical da cena na tela (no celular fica acima, deixando o fuzil embaixo). */
+  cy() {
+    return this.mode === "caber" ? this.view.h * 0.4 : this.view.h / 2;
+  }
+  maxZoom() {
+    return this.mode === "caber" ? 3.2 : 2.6;
   }
   private clampFocus() {
     const s = this.cover() * this.zoom;
-    const hw = this.view.w / 2 / s;
-    const hh = this.view.h / 2 / s;
-    this.focus = [Math.min(ART.w - hw, Math.max(hw, this.focus[0])), Math.min(ART.h - hh, Math.max(hh, this.focus[1]))];
+    const left = this.view.w / 2 / s;
+    const right = this.view.w / 2 / s;
+    const up = this.cy() / s;
+    const down = (this.view.h - this.cy()) / s;
+    // Eixo maior que a arte: trava no centro da arte (o fundo desfocado completa a tela).
+    const fx = left + right >= ART.w ? ART.w / 2 : Math.min(ART.w - right, Math.max(left, this.focus[0]));
+    const fy = up + down >= ART.h ? (this.mode === "caber" ? FIT.cy : ART.h / 2) : Math.min(ART.h - down, Math.max(up, this.focus[1]));
+    this.focus = [fx, fy];
   }
   /** Zoom; com um ponto da tela (cursor/pinça), o que está sob ele continua no mesmo lugar. */
   zoomBy(f: number, at?: [number, number]) {
     const before = this.cover() * this.zoom;
-    const next = Math.min(2.6, Math.max(1, this.zoom * f));
+    const next = Math.min(this.maxZoom(), Math.max(1, this.zoom * f));
     if (at) {
       const ax = this.focus[0] + (at[0] - this.view.w / 2) / before;
-      const ay = this.focus[1] + (at[1] - this.view.h / 2) / before;
+      const ay = this.focus[1] + (at[1] - this.cy()) / before;
       const after = this.cover() * next;
-      this.focus = [ax - (at[0] - this.view.w / 2) / after, ay - (at[1] - this.view.h / 2) / after];
+      this.focus = [ax - (at[0] - this.view.w / 2) / after, ay - (at[1] - this.cy()) / after];
     }
     this.zoom = next;
     this.clampFocus();
@@ -116,17 +144,17 @@ export class PlateCamera {
     this.focus = [this.focus[0] - dxScreen / s, this.focus[1] - dyScreen / s];
     this.clampFocus();
   }
-  /** Traz um ponto para dentro da área central da tela, sem mudar o zoom. */
+  /** Traz um ponto para dentro da área livre da tela, sem mudar o zoom. */
   reveal(p: [number, number], inset: { right?: number; bottom?: number } = {}) {
-    // Sem mudar o zoom: o soldado mira; a câmera só desloca quando já está aproximada.
     if (!this.inView(p, inset)) this.revealAt(p, inset);
   }
   private bounds(inset: { right?: number; bottom?: number }) {
+    const below = this.view.h - this.cy();
     return {
       minX: -this.view.w * 0.3,
       maxX: Math.min(this.view.w * 0.3, this.view.w / 2 - (inset.right ?? 0) - 160),
-      minY: -this.view.h * 0.28,
-      maxY: Math.min(this.view.h * 0.28, this.view.h / 2 - (inset.bottom ?? 0) - 90),
+      minY: -this.cy() * 0.6,
+      maxY: Math.min(below * 0.6, below - (inset.bottom ?? 0) - 90),
     };
   }
   private inView(p: [number, number], inset: { right?: number; bottom?: number }) {
@@ -140,7 +168,6 @@ export class PlateCamera {
     const s = this.cover() * this.zoom;
     const sx = (p[0] - this.focus[0]) * s;
     const sy = (p[1] - this.focus[1]) * s;
-    // Área livre (em px a partir do centro), descontando o painel lateral ou inferior.
     const { minX, maxX, minY, maxY } = this.bounds(inset);
     const dx = sx < minX ? sx - minX : sx > maxX ? sx - maxX : 0;
     const dy = sy < minY ? sy - minY : sy > maxY ? sy - maxY : 0;
@@ -150,17 +177,20 @@ export class PlateCamera {
     }
   }
   focusOn(p: [number, number], zoom: number) {
-    this.zoom = Math.min(2.6, Math.max(1, zoom));
+    this.zoom = Math.min(this.maxZoom(), Math.max(1, zoom));
     this.focus = [p[0], p[1]];
     this.clampFocus();
   }
+  private home(): [number, number] {
+    return this.mode === "caber" ? [FIT.cx, FIT.cy] : [ART.w / 2, ART.h / 2];
+  }
   center() {
-    this.focus = [ART.w / 2, ART.h / 2];
+    this.focus = this.home();
     this.clampFocus();
   }
   overview() {
     this.zoom = 1;
-    this.focus = [ART.w / 2, ART.h / 2];
+    this.focus = this.home();
     this.clampFocus();
   }
   /** Interpola até o alvo; devolve a transformação atual (escala e deslocamento em px de tela). */
@@ -173,16 +203,18 @@ export class PlateCamera {
     this.zoomNow += (this.zoom - this.zoomNow) * kk;
     this.pointerNow[0] += (this.pointer[0] - this.pointerNow[0]) * kp;
     this.pointerNow[1] += (this.pointer[1] - this.pointerNow[1]) * kp;
-    // Margem para o parallax nunca mostrar a borda da arte.
-    const s = this.cover() * this.zoomNow * 1.035;
-    const par = this.reduced ? 0 : 1;
+    // Margem para o parallax nunca mostrar a borda da arte (só quando ela cobre a tela).
+    const s = this.cover() * this.zoomNow * (this.mode === "cobrir" ? 1.035 : 1);
+    const par = this.reduced || this.mode === "caber" ? 0 : 1;
     const tx = this.view.w / 2 - this.focusNow[0] * s - this.pointerNow[0] * 14 * par;
-    const ty = this.view.h / 2 - this.focusNow[1] * s - this.pointerNow[1] * 9 * par;
+    const ty = this.cy() - this.focusNow[1] * s - this.pointerNow[1] * 9 * par;
     return { s, tx, ty };
   }
   /** Retângulo visível, normalizado (0..1) na arte — para o radar. */
   visible(t: { s: number; tx: number; ty: number }) {
-    return { x: -t.tx / t.s / ART.w, y: -t.ty / t.s / ART.h, w: this.view.w / t.s / ART.w, h: this.view.h / t.s / ART.h };
+    const x = Math.max(0, -t.tx / t.s / ART.w);
+    const y = Math.max(0, -t.ty / t.s / ART.h);
+    return { x, y, w: Math.min(1 - x, this.view.w / t.s / ART.w), h: Math.min(1 - y, this.view.h / t.s / ART.h) };
   }
 }
 
@@ -224,13 +256,25 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     const resize = () => {
       const r = el.getBoundingClientRect();
       cam.setView(r.width, r.height);
+      el.dataset.enquadramento = cam.mode;
       const dpr = light ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
       cv.width = Math.round(r.width * dpr);
       cv.height = Math.round(r.height * dpr);
       ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
-      rg.s0 = cam.cover() * 1.035;
-      rg.tx0 = cam.view.w / 2 - (ART.w / 2) * rg.s0;
-      rg.ty0 = cam.view.h / 2 - (ART.h / 2) * rg.s0;
+      if (cam.mode === "caber") {
+        // Celular em pé: braços e fuzil grandes na parte de baixo da tela, apontando para o mapa.
+        const rw = Math.min(cam.view.w * 1.55, cam.view.h * 0.95);
+        rg.s0 = rw / RIFLE.w;
+        // Boca do cano a ~1/3 da largura e logo abaixo do mapa.
+        const left = cam.view.w * 0.32 - (RIFLE.muzzle[0] - RIFLE.x) * rg.s0;
+        const top = Math.min(cam.view.h * 0.66 - (RIFLE.muzzle[1] - RIFLE.y) * rg.s0, cam.view.h - RIFLE.h * rg.s0 * 0.8);
+        rg.tx0 = left - RIFLE.x * rg.s0;
+        rg.ty0 = top - RIFLE.y * rg.s0;
+      } else {
+        rg.s0 = cam.cover() * 1.035;
+        rg.tx0 = cam.view.w / 2 - (ART.w / 2) * rg.s0;
+        rg.ty0 = cam.view.h / 2 - (ART.h / 2) * rg.s0;
+      }
       const rf = rifle.current;
       if (rf) {
         rf.style.left = `${(RIFLE.x * rg.s0 + rg.tx0).toFixed(1)}px`;
@@ -303,8 +347,9 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       last = now;
       const t = cam.step(dt);
       ly.style.transform = `translate3d(${t.tx.toFixed(2)}px, ${t.ty.toFixed(2)}px, 0) scale(${t.s.toFixed(5)})`;
-      // Placas das matérias e dos assuntos (em px de tela).
       const map = labels.current;
+      // Meia largura das placas (para prendê-las às bordas no celular); lida só de vez em quando.
+      if (map && cam.mode === "caber" && frame % 30 === 0) for (const elp of map.values()) elp.dataset.w = String(Math.ceil(elp.offsetWidth / 2));
       if (map) {
         for (const tr of territories) {
           const sl = slotFor(tr.id);
@@ -312,7 +357,10 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
           const y = sl.plate[1] * t.s + t.ty;
           const elp = map.get(`t:${tr.id}`);
           if (elp) {
-            elp.style.transform = `translate3d(${x.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+            // No celular a placa nunca vaza da tela: fica presa às bordas.
+            const half = cam.mode === "caber" ? (elp.dataset.w ? Number(elp.dataset.w) : 56) : 0;
+            const cx = half ? Math.min(cam.view.w - half - 6, Math.max(half + 6, x)) : x;
+            elp.style.transform = `translate3d(${cx.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
             elp.style.visibility = x < -260 || x > cam.view.w + 260 || y < -120 || y > cam.view.h + 120 ? "hidden" : "visible";
           }
           for (const tp of tr.topics) {
@@ -430,6 +478,8 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
 
   return (
     <div ref={holder} className="km-art" aria-hidden>
+      {/* Fundo desfocado: completa a tela no celular, quando o mapa inteiro é enquadrado. */}
+      <div className="km-art-fill" style={{ backgroundImage: `url(${ART.srcSm})` }} />
       <div ref={layer} className="km-art-layer" style={{ width: ART.w, height: ART.h }}>
         <picture>
           <source media="(max-width: 700px)" srcSet={ART.srcSm} />
