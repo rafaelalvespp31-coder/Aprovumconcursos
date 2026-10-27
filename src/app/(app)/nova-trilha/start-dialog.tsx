@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef } from "react";
 import { X } from "lucide-react";
 import { createTrailAction, type CreateTrailState } from "./actions";
-import { BuildingOverlay } from "./building-overlay";
+import { BuildingOverlay, preloadLoadingScene } from "./building-overlay";
 
 /** Mesmo critério do formulário antigo: título com artigo/lei vira estudo de dispositivo. */
 export const contentTypeOf = (title: string) =>
@@ -28,7 +28,11 @@ export function StartStudyDialog({ theme, onClose }: { theme: StartTheme | null;
   useEffect(() => {
     const d = dialog.current;
     if (!d) return;
-    if (theme && !d.open) d.showModal();
+    if (theme && !d.open) {
+      d.showModal();
+      // A cena da tela de carregamento já vem baixando enquanto o aluno confirma.
+      preloadLoadingScene();
+    }
     if (!theme && d.open) d.close();
   }, [theme]);
 
