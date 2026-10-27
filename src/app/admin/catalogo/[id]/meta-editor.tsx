@@ -12,20 +12,32 @@ interface Props {
   kind: string;
   lawCode: string | null;
   articles: string[];
+  topicGroup?: string | null;
+  topicGroupCode?: string | null;
+  subtopicCode?: string | null;
   /** Troca a gravação (prévia da galeria). */
   save?: typeof saveTopicMetaAction;
+  /** Edição dentro da lista do catálogo: já abre e avisa quando fechar. */
+  onClose?: (saved: boolean) => void;
 }
 
-/** Botão "Editar tema e tipo": corrige o título e o tipo (tema ou artigo de lei) sem recolar a aula. */
+/** Editar tema, tipo e tópico: corrige o título, o tipo (tema ou artigo de lei) e o tópico do edital sem recolar a aula. */
 export function TopicMetaEditor(p: Props) {
   const router = useRouter();
-  const [open, setOpen] = useState(false);
+  const [open, setOpenRaw] = useState(!!p.onClose);
+  const setOpen = (v: boolean, saved = false) => {
+    if (!v && p.onClose) p.onClose(saved);
+    else setOpenRaw(v);
+  };
   const [title, setTitle] = useState(p.title);
   const [kind, setKind] = useState(
     p.kind === "dispositivo" ? "dispositivo" : "tema",
   );
   const [law, setLaw] = useState(p.lawCode ?? "");
   const [articles, setArticles] = useState(p.articles.join(", "));
+  const groupText = p.topicGroup ? `${p.topicGroupCode ? `${p.topicGroupCode}. ` : ""}${p.topicGroup}` : "";
+  const [group, setGroup] = useState(groupText);
+  const [sub, setSub] = useState(p.subtopicCode ?? "");
   const [res, setRes] = useState<AdminResult | null>(null);
   const [pending, start] = useTransition();
 
@@ -34,6 +46,8 @@ export function TopicMetaEditor(p: Props) {
     setKind(p.kind === "dispositivo" ? "dispositivo" : "tema");
     setLaw(p.lawCode ?? "");
     setArticles(p.articles.join(", "));
+    setGroup(groupText);
+    setSub(p.subtopicCode ?? "");
     setRes(null);
   };
 
@@ -45,7 +59,7 @@ export function TopicMetaEditor(p: Props) {
           onClick={() => setOpen(true)}
           data-testid="editar-tema"
         >
-          Editar tema e tipo
+          Editar tema, tipo e tópico
         </Button>
         {res?.ok && (
           <span className="t-small text-tinta-suave" role="status">
@@ -66,10 +80,12 @@ export function TopicMetaEditor(p: Props) {
             kind,
             law,
             articles,
+            topicGroup: group,
+            subtopicCode: sub,
           });
           setRes(r);
           if (r.ok) {
-            setOpen(false);
+            setOpen(false, true);
             router.refresh();
           }
         });
@@ -143,8 +159,18 @@ export function TopicMetaEditor(p: Props) {
           </label>
         </div>
       )}
+      <div className="grid gap-3 sm:grid-cols-[2fr_1fr]">
+        <label className="flex flex-col gap-1 t-small font-semibold">
+          Tópico do edital
+          <input value={group} onChange={(e) => setGroup(e.target.value)} className={inputClass} placeholder="ex.: 4. Ilicitude (vazio = aula avulsa)" name="topico" maxLength={170} />
+        </label>
+        <label className="flex flex-col gap-1 t-small font-semibold">
+          Nº do subtópico
+          <input value={sub} onChange={(e) => setSub(e.target.value)} className={inputClass} placeholder="ex.: 4.1" name="subtopico" inputMode="decimal" maxLength={20} />
+        </label>
+      </div>
       <p className="t-tiny text-tinta-fraca">
-        Muda só o nome e o tipo da aula. O texto, as seções e as questões
+        Aulas com o mesmo tópico ficam juntas, na ordem do número do subtópico. Muda só o nome, o tipo e o tópico da aula. O texto, as seções e as questões
         continuam iguais, e a mudança vale na hora para os alunos.
       </p>
       <div className="flex flex-wrap items-center gap-3">

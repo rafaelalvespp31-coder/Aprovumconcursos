@@ -60,7 +60,7 @@ async function planLimits(userId: string) {
 export async function createTrail(
   userId: string,
   input: unknown,
-  opts: { useCatalog?: boolean; catalogTopicId?: string } = {},
+  opts: { useCatalog?: boolean; catalogTopicId?: string; catalogTopicIds?: string[] } = {},
 ): Promise<{ trailId: string; jobId: string | null; fromCatalog: boolean }> {
   const parsed = trailRequestSchema.safeParse(input);
   if (!parsed.success) {
@@ -84,6 +84,15 @@ export async function createTrail(
   // Modelo híbrido: pedido coberto pelo catálogo revisado é montado sem IA (e sem consumir cota).
   // Com a IA desligada (modo só catálogo), o catálogo é o único caminho.
   const catalogOnly = !aiEnabled();
+  // Tópico inteiro escolhido no mapa (ex.: 4. Ilicitude): um estudo com as aulas dos subtópicos, na ordem.
+  if (opts.catalogTopicIds && opts.catalogTopicIds.length > 1) {
+    const index = await loadPublishedIndex();
+    const topics = opts.catalogTopicIds.map((id) => index.find((t) => t.id === id));
+    if (topics.some((t) => !t)) throw new UserFacingError("Alguma aula deste tópico não está mais disponível no catálogo. Atualize a página e tente de novo.", "catalog_only");
+    const list = topics as NonNullable<(typeof topics)[number]>[];
+    const trailId = await createStudyFromCatalog(userId, req, { kind: "completo", topics: list, reason: `Tópico: ${req.title ?? list[0]!.title}` });
+    return { trailId, jobId: null, fromCatalog: true };
+  }
   // Aula escolhida no seletor do catálogo: usa exatamente esse tema.
   if (opts.catalogTopicId) {
     const topic = (await loadPublishedIndex()).find((t) => t.id === opts.catalogTopicId);

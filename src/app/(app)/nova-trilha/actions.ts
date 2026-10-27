@@ -21,7 +21,7 @@ export async function createTrailAction(_: CreateTrailState, form: FormData): Pr
       contentType: form.get("contentType") || undefined,
       content: String(form.get("content") ?? ""),
       title: form.get("title") || undefined,
-    }, { useCatalog: form.get("usarIa") !== "1", catalogTopicId: topicId(form.get("catalogTopicId")) });
+    }, { useCatalog: form.get("usarIa") !== "1", catalogTopicId: topicId(form.get("catalogTopicId")), catalogTopicIds: topicIds(form.get("catalogTopicIds")) });
   } catch (err) {
     if (err instanceof UserFacingError) return { error: err.message };
     await logEvent("trail.create_error", { userId: user.id, error: (err as Error).message });
@@ -38,6 +38,12 @@ export async function createTrailAction(_: CreateTrailState, form: FormData): Pr
 function topicId(v: FormDataEntryValue | null): string | undefined {
   const s = typeof v === "string" ? v.trim() : "";
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s) ? s : undefined;
+}
+
+/** Aulas de um tópico inteiro ("id1,id2,…"), na ordem do edital; no máximo 20. */
+function topicIds(v: FormDataEntryValue | null): string[] | undefined {
+  const ids = (typeof v === "string" ? v : "").split(",").map((x) => topicId(x)).filter((x): x is string => !!x);
+  return ids.length > 1 ? [...new Set(ids)].slice(0, 20) : undefined;
 }
 
 export interface CatalogHint {

@@ -13,6 +13,8 @@ export interface StartTheme {
   id: string;
   title: string;
   discipline: string;
+  /** Tópico inteiro: as aulas dos subtópicos, na ordem (o estudo junta todas). */
+  ids?: string[];
 }
 
 /**
@@ -52,13 +54,22 @@ export function StartStudyDialog({ theme, onClose }: { theme: StartTheme | null;
                 <X className="h-5 w-5" aria-hidden />
               </button>
             </div>
-            <input type="hidden" name="catalogTopicId" value={theme.id} />
+            {theme.ids && theme.ids.length > 1 ? (
+              <>
+                <input type="hidden" name="catalogTopicIds" value={theme.ids.join(",")} />
+                <input type="hidden" name="title" value={theme.title} />
+              </>
+            ) : (
+              <input type="hidden" name="catalogTopicId" value={theme.id} />
+            )}
             <input type="hidden" name="content" value={theme.title} />
             <input type="hidden" name="contentType" value={contentTypeOf(theme.title)} />
             {/* Sem escolha de banca: o estudo usa o padrão do catálogo (estilo das principais bancas). */}
             <input type="hidden" name="board" value="outra" />
             <input type="hidden" name="otherBoardName" value="Várias bancas" />
-            <p className="mt-4 text-[13.5px] text-[#646B75]">A aula e as questões seguem o estilo das principais bancas. Toque em criar para começar.</p>
+            <p className="mt-4 text-[13.5px] text-[#646B75]">
+              {theme.ids && theme.ids.length > 1 ? `O estudo junta as ${theme.ids.length} aulas deste tópico, na ordem do edital. ` : ""}A aula e as questões seguem o estilo das principais bancas. Toque em criar para começar.
+            </p>
             {state.error && (
               <p className="mt-3 rounded-[10px] bg-[#FDECEC] px-3 py-2 text-[13.5px] text-[#C81018]" role="alert">
                 {state.error}

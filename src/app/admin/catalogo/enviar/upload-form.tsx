@@ -343,6 +343,11 @@ export function LessonUploadForm({
               <p className="mt-1 t-small text-tinta-suave">
                 {preview.subject ?? "Matéria não reconhecida"} · {preview.kind === "dispositivo" ? preview.law : "Tema"} · {preview.items} item(ns) a ensinar
               </p>
+              {preview.group && (
+                <p className="mt-1 t-small" data-testid="previa-topico">
+                  Entra no tópico <strong>{preview.group}</strong> (criado na hora se ainda não existir).
+                </p>
+              )}
               {preview.existing && (
                 <p className="mt-1 t-small">
                   Já existe <strong>{preview.existing.title}</strong> ({preview.existing.status}) com o mesmo endereço: ela será atualizada com este texto.

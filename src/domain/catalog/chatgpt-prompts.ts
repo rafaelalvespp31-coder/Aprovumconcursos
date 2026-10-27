@@ -25,6 +25,8 @@ Matéria: (uma destas: Direito Penal, Direito Processual Penal, Direito Constitu
 Tipo: (dispositivo, se for artigo de lei; tema, se não for)
 Lei: (sigla ou número: CP, CPP, CF, LEP, CTB, ECA, Lei 11.343 …; vazio se for tema)
 Artigos: (ex.: 155 ou 155, 155-A; vazio se for tema)
+Tópico: (opcional: número e nome do tópico do edital que agrupa esta aula, ex.: 4. Ilicitude; vazio se a aula for avulsa)
+Subtópico: (opcional: número e nome do subtópico, ex.: 4.1 Causas de exclusão da ilicitude; vazio se a aula for avulsa)
 Sinônimos: (outros nomes pelos quais o aluno procura o assunto, separados por ;)
 Tempo estimado: (minutos, entre 60 e 120)
 Objetivo: (uma frase: "Dominar o art. X …: tipo penal, formas, penas, temas ligados e diferenças em relação aos crimes próximos.")

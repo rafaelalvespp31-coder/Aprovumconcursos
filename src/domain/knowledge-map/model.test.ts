@@ -43,4 +43,19 @@ describe("mapa do conhecimento", () => {
     const [, y] = radarPoint([0, -20]);
     expect(y).toBeLessThan(0.5);
   });
+
+  it("agrupa as aulas em tópicos do edital, na ordem dos subtópicos", () => {
+    const g = (sub: string) => ({ title: "Ilicitude", code: "4", sub });
+    const m = buildKnowledgeMap([
+      ...themes,
+      { id: "e2", title: "Excesso punível", discipline: "Direito Penal", questions: 30, minutes: 60, study: st(100, true), group: g("4.2") },
+      { id: "e1", title: "Causas de exclusão da ilicitude", discipline: "Direito Penal", questions: 30, minutes: 60, study: null, group: g("4.1") },
+    ]);
+    const penal = m.territories[0]!;
+    expect(penal.topics.map((t) => t.id)).toEqual(["e1", "e2", "b", "a"]);
+    expect(penal.folders).toEqual([expect.objectContaining({ title: "Ilicitude", code: "4", done: 1, progress: 50 })]);
+    expect(penal.folders[0]!.topics.map((t) => t.id)).toEqual(["e1", "e2"]);
+    expect(m.territories[1]!.folders).toEqual([]);
+    expect(searchMap(m, "ilicitude 4.2").map((h) => (h.kind === "assunto" ? h.topic.id : ""))).toContain("e2");
+  });
 });

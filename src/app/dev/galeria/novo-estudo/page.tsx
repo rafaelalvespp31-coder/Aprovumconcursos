@@ -23,10 +23,17 @@ const themes: ThemeCard[] = [
   { id: "t-pp-1", title: "Inquérito Policial (CPP, arts. 4º a 23)", discipline: "Direito Processual Penal", questions: 42, minutes: 90, study: st(G(4), 13, 42, 1, 6) },
 ];
 
+// "?topicos=1": aulas organizadas em tópicos do edital (4. Ilicitude › 4.1, 4.2).
+const ilicitude = (sub: string) => ({ title: "Ilicitude", code: "4", sub });
+const grouped: ThemeCard[] = [
+  { id: "t-pen-41", title: "Causas de exclusão da ilicitude", discipline: "Direito Penal", questions: 36, minutes: 80, study: st(G(5), 36, 36, 1, 1), group: ilicitude("4.1") },
+  { id: "t-pen-42", title: "Excesso punível", discipline: "Direito Penal", questions: 30, minutes: 60, study: st(G(6), 12, 30, 0, 1), group: ilicitude("4.2") },
+];
+
 /** Prévia do novo estudo: mapa do conhecimento; "?modo=lista" mostra a escolha em lista. */
-export default async function Page({ searchParams }: { searchParams: Promise<{ modo?: string; vazio?: string }> }) {
+export default async function Page({ searchParams }: { searchParams: Promise<{ modo?: string; vazio?: string; topicos?: string }> }) {
   const sp = await searchParams;
-  if (sp.modo !== "lista") return <MapStart themes={sp.vazio ? [] : themes} name="Rafael" base="/dev/galeria" />;
+  if (sp.modo !== "lista") return <MapStart themes={sp.vazio ? [] : sp.topicos ? [...themes, ...grouped] : themes} name="Rafael" base="/dev/galeria" />;
   return (
     <div className="mx-auto max-w-5xl">
       <h1 className="sr-only">Novo estudo</h1>

@@ -23,6 +23,8 @@ export interface LessonUploadPreview {
   banner?: string | null;
   kind: "tema" | "dispositivo";
   law: string | null;
+  /** Tópico do edital › subtópico, quando a aula faz parte de um. */
+  group: string | null;
   slug: string;
   existing: { id: string; status: string; title: string } | null;
   items: number;
@@ -42,7 +44,8 @@ export function prepareLessonUpload(text: string) {
   }
   if (source.length > 60000) errors.push("O TEXTO-BASE passa de 60.000 caracteres. Divida a matéria em partes.");
   const m = parsed.meta;
-  const slug = slugify(m.kind === "dispositivo" ? `${m.lawCode}-art-${m.articles.slice(0, 6).join("-")}-${m.title}` : m.title);
+  // Subtópico: o nome do tópico entra no endereço (dois tópicos podem ter um subtópico "Conceito").
+  const slug = slugify(m.kind === "dispositivo" ? `${m.lawCode}-art-${m.articles.slice(0, 6).join("-")}-${m.title}` : m.topicGroup ? `${m.topicGroup}-${m.subtopicCode ?? ""}-${m.title}` : m.title);
   return { parsed, source, nodes, built, errors, warnings: [...parsed.warnings, ...built.warnings], slug };
 }
 
@@ -71,6 +74,7 @@ export function summarizeLessonUpload(
     disciplineMode: m.disciplineMode,
     kind: m.kind,
     law: m.lawCode ? `${m.lawCode}, art. ${m.articles.join(", ")}` : null,
+    group: m.topicGroup ? `${m.topicGroupCode ? `${m.topicGroupCode}. ` : ""}${m.topicGroup}${m.subtopicCode ? ` › ${m.subtopicCode}` : ""}` : null,
     slug: p.slug,
     existing: extra.existing ?? null,
     items: p.built.lesson.taughtNodeKeys.length,

@@ -14,6 +14,7 @@
 import { DISCIPLINE_LABELS, DISCIPLINE_MODES, LESSON_SECTION_KINDS, type DisciplineMode, type LessonSectionKind } from "@/ai/pedagogy";
 import type { ExtractedNode } from "@/domain/content/extract";
 import { LAWS, articleId } from "./match";
+import { codeBelongs, parseCodedTitle } from "./topic-group";
 
 export const LEVELS_UPLOAD = { facil: "Fácil", medio: "Médio", dificil: "Difícil" } as const;
 export type UploadLevel = keyof typeof LEVELS_UPLOAD;
@@ -64,6 +65,11 @@ export interface ParsedLesson {
     estimatedMinutes: number;
     objective: string;
     summary: string | null;
+    /** Tópico do edital que agrupa a aula ("4. Ilicitude"), quando informado. */
+    topicGroup: string | null;
+    topicGroupCode: string | null;
+    /** Numeração do subtópico ("4.1"). */
+    subtopicCode: string | null;
   };
   sourceText: string;
   sections: UploadSection[];
@@ -384,7 +390,10 @@ export function parseLessonUpload(raw: string): ParsedLesson {
     }
     return "";
   };
-  const title = get("titulo");
+  const group = parseCodedTitle(get("topico"));
+  const sub = parseCodedTitle(get("subtopico"));
+  // Sem "Título:", a aula usa o nome do subtópico.
+  const title = get("titulo") || (sub ? sub.title : "");
   const subject = get("materia", "disciplina");
   const tipo = fold(get("tipo"));
   const lawCode = lawCodeFrom(get("lei"));
@@ -402,12 +411,17 @@ export function parseLessonUpload(raw: string): ParsedLesson {
     estimatedMinutes: minutes >= 5 && minutes <= 600 ? minutes : 60,
     objective: get("objetivo"),
     summary: get("resumo") || null,
+    topicGroup: group ? group.title : null,
+    topicGroupCode: group?.code ?? (sub?.code && sub.code.includes(".") ? sub.code.split(".")[0]! : null),
+    subtopicCode: sub?.code ?? null,
   };
 
   if (!Object.keys(metaLines).length) errors.push("Não encontrei o bloco === AULA ===. Use o comando do ChatGPT desta página para gerar a aula no formato certo.");
   if (meta.title.length < 2) errors.push("Informe o “Título:” no bloco === AULA ===.");
   if (meta.objective.length < 5) errors.push("Informe o “Objetivo:” no bloco === AULA ===.");
   if (!meta.disciplineMode) errors.push(`Não reconheci a matéria “${subject || "(vazia)"}”. Use uma destas: ${DISCIPLINE_MODES.filter((m) => m !== "outra").map((m) => DISCIPLINE_LABELS[m]).join(", ")}.`);
+  if (sub && !group) warnings.push("Informe também o “Tópico:” (ex.: 4. Ilicitude): sem ele o subtópico fica como aula avulsa.");
+  if (group && sub?.code && meta.topicGroupCode && !codeBelongs(sub.code, meta.topicGroupCode)) warnings.push(`O subtópico ${sub.code} não começa com o número do tópico (${meta.topicGroupCode}).`);
   if (kind === "dispositivo" && (!meta.lawCode || !meta.articles.length)) errors.push("Tipo dispositivo: informe “Lei:” (ex.: CP) e “Artigos:” (ex.: 155).");
   const sourceText = sourceLines.join("\n").trim();
   if (!sourceText) errors.push("O bloco === TEXTO-BASE === está vazio: coloque a lei seca ou o sumário numerado (1, 1.1, 1.2…).");

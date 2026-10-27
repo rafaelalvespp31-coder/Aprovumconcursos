@@ -59,6 +59,8 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
         <dl className="mt-3 grid gap-x-6 gap-y-2 t-small sm:grid-cols-[max-content_1fr]">
           <dt className="font-semibold">Tema</dt>
           <dd>{topic.title}</dd>
+          <dt className="font-semibold">Tópico</dt>
+          <dd>{topic.topic_group ? `${topic.topic_group_code ? `${topic.topic_group_code}. ` : ""}${topic.topic_group}${topic.subtopic_code ? ` › subtópico ${topic.subtopic_code}` : ""}` : "— (aula avulsa)"}</dd>
           <dt className="font-semibold">Matéria</dt>
           <dd>{DISCIPLINE_LABELS[topic.discipline_mode as DisciplineMode] ?? topic.discipline_mode}</dd>
           <dt className="font-semibold">Tipo</dt>
@@ -75,7 +77,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
           )}
         </dl>
         <div className="mt-4">
-          <TopicMetaEditor id={id} title={topic.title} kind={topic.kind} lawCode={topic.law_code} articles={topic.articles} />
+          <TopicMetaEditor id={id} title={topic.title} kind={topic.kind} lawCode={topic.law_code} articles={topic.articles} topicGroup={topic.topic_group} topicGroupCode={topic.topic_group_code} subtopicCode={topic.subtopic_code} />
         </div>
         <p className="mt-3 t-small text-tinta-suave">
           Para mudar outros dados, texto-base ou a estrutura dos módulos, corrija o texto e{" "}

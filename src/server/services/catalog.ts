@@ -406,6 +406,10 @@ export interface TopicRow {
   origin: string;
   published_at: string | null;
   updated_at: string;
+  /** Tópico do edital que agrupa a aula ("Ilicitude"), número do tópico ("4") e do subtópico ("4.1"). */
+  topic_group: string | null;
+  topic_group_code: string | null;
+  subtopic_code: string | null;
 }
 
 export async function getTopic(id: string): Promise<TopicRow> {
@@ -637,7 +641,7 @@ export async function deleteTopic(user: SessionUser, id: string) {
 export async function listTopics() {
   const db = createAdminClient();
   const [topics, qs] = await Promise.all([
-    db.from("catalog_topics").select("id, title, kind, law_code, articles, status, version, updated_at, origin, lesson, discipline_mode").order("updated_at", { ascending: false }).limit(1000),
+    db.from("catalog_topics").select("id, title, kind, law_code, articles, status, version, updated_at, origin, lesson, discipline_mode, topic_group, topic_group_code, subtopic_code").order("updated_at", { ascending: false }).limit(1000),
     db.from("catalog_questions").select("topic_id, level").eq("active", true).limit(50000),
   ]);
   if (topics.error) throw new Error(topics.error.message);
@@ -661,6 +665,9 @@ export async function listTopics() {
     modules: new Set(((t.lesson as { sections?: Array<{ module?: string }> } | null)?.sections ?? []).map((s) => s.module).filter(Boolean)).size,
     hasLesson: !!t.lesson,
     questions: count.get(t.id as string) ?? {},
+    topicGroup: (t.topic_group as string | null) ?? null,
+    topicGroupCode: (t.topic_group_code as string | null) ?? null,
+    subtopicCode: (t.subtopic_code as string | null) ?? null,
   }));
 }
 

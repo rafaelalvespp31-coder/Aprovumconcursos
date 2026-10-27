@@ -50,6 +50,14 @@ export interface ThemeCard {
   minutes: number;
   /** Estudo do aluno que usa este tema (o mais recente); null quando ainda não começou. */
   study: { trailId: string; answered: number; totalQuestions: number; lessonsDone: number; lessonsTotal: number; lastStudiedAt: string | null; pct: number; done: boolean } | null;
+  /** Tópico do edital que agrupa a aula (ex.: 4. Ilicitude › 4.1); ausente = aula avulsa. */
+  group?: ThemeGroup | null;
+}
+
+export interface ThemeGroup {
+  title: string;
+  code: string | null;
+  sub: string | null;
 }
 
 export interface StudiesHome {
@@ -76,7 +84,7 @@ export interface StudiesRaw {
   progress: Array<{ lesson_id: string; trail_id: string; state: string; levels_passed: number; updated_at: string }>;
   questions: Array<{ id: string; lesson_id: string }>;
   attempts: Array<{ question_id: string; created_at: string; time_spent_seconds: number | null }>;
-  catalog: Array<{ id: string; discipline: string; questions: number; title?: string; minutes?: number }>;
+  catalog: Array<{ id: string; discipline: string; questions: number; title?: string; minutes?: number; group?: ThemeGroup | null }>;
 }
 
 const ACTIVE_STATES = new Set(["em_andamento", "aula_concluida", "em_revisao", "disponivel", "aguardando_dominio"]);
@@ -153,6 +161,7 @@ export function buildStudiesHome(r: StudiesRaw): StudiesHome {
         discipline: c.discipline,
         questions: c.questions,
         minutes: c.minutes ?? 0,
+        group: c.group ?? null,
         study:
           t && p
             ? {

@@ -5,6 +5,7 @@
  */
 import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import type { ThemeCard } from "@/domain/studies/home";
+import { groupByTopic, groupKey } from "@/domain/catalog/topic-group";
 
 export type TerritoryIcon = "livro" | "chip" | "cerebro" | "balanca" | "pilar" | "escudo" | "martelo" | "documento" | "grafico" | "alvo";
 
@@ -18,6 +19,19 @@ export interface MapTopic {
   study: ThemeCard["study"];
   /** Posição no chão do mapa (x, z), em volta do território. */
   pos: [number, number];
+  /** Tópico do edital (4. Ilicitude › 4.1); null = aula avulsa. */
+  group: ThemeCard["group"];
+}
+
+/** Tópico do edital dentro da matéria: pasta com as aulas dos subtópicos, na ordem. */
+export interface TopicFolder {
+  key: string;
+  title: string;
+  code: string | null;
+  topics: MapTopic[];
+  done: number;
+  /** Média do progresso das aulas; null quando o aluno não começou nenhuma. */
+  progress: number | null;
 }
 
 export interface Territory {
@@ -28,6 +42,8 @@ export interface Territory {
   icon: TerritoryIcon;
   pos: [number, number];
   topics: MapTopic[];
+  /** Tópicos do edital desta matéria (vazio quando nenhuma aula tem tópico). */
+  folders: TopicFolder[];
   questions: number;
   started: number;
   done: number;
@@ -63,7 +79,7 @@ export function territoryStyle(id: string): { color: string; icon: TerritoryIcon
 /** Território sem aulas publicadas (aparece no cenário como "em breve", sem números inventados). */
 export function emptyTerritory(id: string, pos: [number, number] = [0, 0]): Territory {
   const st = territoryStyle(id);
-  return { id, label: DISCIPLINE_LABELS[id as DisciplineMode] ?? "Outras matérias", color: st.color, icon: st.icon, pos, topics: [], questions: 0, started: 0, done: 0, progress: null };
+  return { id, label: DISCIPLINE_LABELS[id as DisciplineMode] ?? "Outras matérias", color: st.color, icon: st.icon, pos, topics: [], folders: [], questions: 0, started: 0, done: 0, progress: null };
 }
 
 const LABEL_TO_MODE = new Map(Object.entries(DISCIPLINE_LABELS).map(([k, v]) => [v, k]));
@@ -117,6 +133,22 @@ export function topicSlots(center: [number, number], n: number): Array<[number, 
   return out;
 }
 
+function foldersOf(topics: MapTopic[]): TopicFolder[] {
+  const out = new Map<string, TopicFolder>();
+  for (const t of topics) {
+    if (!t.group) continue;
+    const key = groupKey(t.group.title);
+    const f = out.get(key) ?? { key, title: t.group.title, code: t.group.code, topics: [], done: 0, progress: null };
+    f.code = f.code ?? t.group.code;
+    f.topics.push(t);
+    out.set(key, f);
+  }
+  return [...out.values()].map((f) => {
+    const started = f.topics.filter((t) => t.study).length;
+    return { ...f, done: f.topics.filter((t) => t.study?.done).length, progress: started ? Math.round(f.topics.reduce((s, t) => s + (t.study?.pct ?? 0), 0) / f.topics.length) : null };
+  });
+}
+
 export function buildKnowledgeMap(themes: readonly ThemeCard[]): KnowledgeMap {
   const groups = new Map<string, ThemeCard[]>();
   for (const t of themes) {
@@ -132,18 +164,21 @@ export function buildKnowledgeMap(themes: readonly ThemeCard[]): KnowledgeMap {
   });
   const slots = territorySlots(ids.length);
   const territories = ids.map((id, i): Territory => {
-    const list = [...groups.get(id)!].sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
+    // Aulas com tópico primeiro, na ordem do edital (4.1, 4.2…); depois as avulsas, por título.
+    const list = groupByTopic([...groups.get(id)!].map((t) => ({ ...t, topicGroup: t.group?.title ?? null, topicGroupCode: t.group?.code ?? null, subtopicCode: t.group?.sub ?? null }))).flatMap((g) => g.items);
     const pos = slots[i]!;
     const tp = topicSlots(pos, list.length);
     const started = list.filter((t) => t.study).length;
     const st = STYLE[id] ?? STYLE.outras!;
+    const topics: MapTopic[] = list.map((t, k) => ({ id: t.id, title: t.title, questions: t.questions, minutes: t.minutes, study: t.study, pos: tp[k]!, group: t.group ?? null }));
     return {
       id,
       label: id === "outras" ? "Outras matérias" : DISCIPLINE_LABELS[id as DisciplineMode] ?? list[0]!.discipline,
       color: st.color,
       icon: st.icon,
       pos,
-      topics: list.map((t, k) => ({ id: t.id, title: t.title, questions: t.questions, minutes: t.minutes, study: t.study, pos: tp[k]! })),
+      topics,
+      folders: foldersOf(topics),
       questions: list.reduce((s, t) => s + t.questions, 0),
       started,
       done: list.filter((t) => t.study?.done).length,
@@ -183,7 +218,7 @@ export function searchMap(map: KnowledgeMap, query: string, limit = 8): SearchHi
   };
   const out: SearchHit[] = [];
   for (const t of map.territories) if (has(t.label)) out.push({ kind: "materia", territory: t });
-  for (const t of map.territories) for (const topic of t.topics) if (has(`${topic.title} ${t.label}`)) out.push({ kind: "assunto", territory: t, topic });
+  for (const t of map.territories) for (const topic of t.topics) if (has(`${topic.title} ${t.label} ${topic.group ? `${topic.group.code ?? ""} ${topic.group.title} ${topic.group.sub ?? ""}` : ""}`)) out.push({ kind: "assunto", territory: t, topic });
   return out.slice(0, limit);
 }
 

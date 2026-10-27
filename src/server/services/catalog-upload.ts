@@ -88,6 +88,9 @@ export async function importLessonUpload(user: SessionUser, text: string, fileNa
     nodes: p.nodes,
     lesson: p.built.lesson,
     estimated_minutes: m.estimatedMinutes,
+    topic_group: m.topicGroup,
+    topic_group_code: m.topicGroupCode,
+    subtopic_code: m.subtopicCode,
     updated_at: new Date().toISOString(),
   };
   let id: string;

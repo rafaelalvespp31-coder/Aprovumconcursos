@@ -20,6 +20,7 @@ import {
   updateTopicSection,
 } from "@/server/services/catalog";
 import { addTopicQuestions, applyTopicEnrichment, importLessonUpload, previewLessonUpload, previewTopicEnrichment, previewTopicQuestions, type LessonUploadPreview, type TopicEnrichPreview, type TopicQuestionsPreview } from "@/server/services/catalog-upload";
+import { createOutline, deleteOutline, updateOutline } from "@/server/services/outlines";
 import { bannerUrlFor, removeBanner, removeTopicBanner, saveBanner, saveTopicBanner, topicBannerUrl } from "@/server/services/banners";
 
 export interface AdminResult {
@@ -81,7 +82,7 @@ export async function saveSectionAction(id: string, index: number, data: { title
   return r;
 }
 
-export async function saveTopicMetaAction(id: string, data: { title: string; kind: string; law?: string; articles?: string }): Promise<AdminResult> {
+export async function saveTopicMetaAction(id: string, data: { title: string; kind: string; law?: string; articles?: string; topicGroup?: string; subtopicCode?: string }): Promise<AdminResult> {
   await requireAdmin();
   const r = await guard("catalog.meta", async () => updateTopicMeta(z.uuid().parse(id), data));
   revalidatePath(`/admin/catalogo/${id}`);
@@ -246,4 +247,41 @@ export async function applyTopicEnrichAction(topicId: string, text: string): Pro
     revalidatePath("/admin/catalogo");
   }
   return r;
+}
+
+// ---------------------------------------------------------------------------
+// Plano de tópicos (sumário do edital)
+// ---------------------------------------------------------------------------
+type OutlineInput = { disciplineMode: string; title: string; text: string };
+const outlineInput = (d: unknown): OutlineInput => {
+  const o = (d ?? {}) as Record<string, unknown>;
+  const str = (v: unknown) => (typeof v === "string" ? v : "");
+  return { disciplineMode: str(o.disciplineMode), title: str(o.title), text: str(o.text) };
+};
+
+export async function createOutlineAction(data: OutlineInput): Promise<AdminResult> {
+  const user = await requireAdmin();
+  let id = "";
+  const r = await guard("catalog.outline_create", async () => {
+    id = await createOutline(user, outlineInput(data));
+  });
+  if (!r.ok) return r;
+  revalidatePath("/admin/catalogo/plano");
+  redirect(`/admin/catalogo/plano/${id}`);
+}
+
+export async function updateOutlineAction(id: string, data: OutlineInput): Promise<AdminResult> {
+  const user = await requireAdmin();
+  const r = await guard("catalog.outline_update", async () => updateOutline(user, z.uuid().parse(id), outlineInput(data)));
+  revalidatePath(`/admin/catalogo/plano/${id}`);
+  revalidatePath("/admin/catalogo/plano");
+  return r;
+}
+
+export async function deleteOutlineAction(id: string): Promise<AdminResult> {
+  const user = await requireAdmin();
+  const r = await guard("catalog.outline_delete", async () => deleteOutline(user, z.uuid().parse(id)));
+  if (!r.ok) return r;
+  revalidatePath("/admin/catalogo/plano");
+  redirect("/admin/catalogo/plano");
 }

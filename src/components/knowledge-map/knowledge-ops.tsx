@@ -22,6 +22,7 @@ import {
   Map as MapIcon,
   Minus,
   Move,
+  Play,
   Plus,
   RotateCcw,
   Scale,
@@ -89,7 +90,7 @@ export interface KnowledgeOpsProps {
   base?: string;
   name?: string | null;
   /** "Começar estudo" (abre a confirmação existente). */
-  onStart: (topic: { id: string; title: string; discipline: string }) => void;
+  onStart: (topic: { id: string; title: string; discipline: string; ids?: string[] }) => void;
 }
 
 /**
@@ -471,6 +472,24 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     { label: "Evolução", href: `${base}/desempenho`, icon: ChartNoAxesColumnIncreasing },
     { label: "Jogo", href: `${base}/quiz`, icon: Gamepad2 },
   ];
+
+  const topicRow = (t: Territory, x: MapTopic) => (
+    <li key={x.id}>
+      <button type="button" onClick={() => selectTopic(t, x)} data-done={x.study?.done ? "1" : undefined}>
+        <span>
+          {x.group?.sub && <small className={"km-subCode"}>{x.group.sub}</small>}
+          {x.title}
+        </span>
+        {x.study?.done ? (
+          <em className="km-on" aria-label="Concluído">
+            <b aria-hidden>ON</b> Concluído
+          </em>
+        ) : (
+          <em>{x.study ? `${x.study.pct}%` : "Novo"}</em>
+        )}
+      </button>
+    </li>
+  );
 
   return (
     <div ref={root} className={"km-root"} data-testid="knowledge-ops" data-modo={art ? "arte" : show3d ? "3d" : "lista"}>
@@ -902,28 +921,51 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                 <p className={"km-muted"}>Você ainda não começou nenhum assunto desta matéria.</p>
               )}
               <h3 className={"km-sub"}>Assuntos</h3>
-              <ul className={"km-topicList"}>
-                {territory.topics.map((x) => (
-                  <li key={x.id}>
-                    <button type="button" onClick={() => selectTopic(territory, x)} data-done={x.study?.done ? "1" : undefined}>
-                      <span>{x.title}</span>
-                      {x.study?.done ? (
-                        <em className="km-on" aria-label="Concluído">
-                          <b aria-hidden>ON</b> Concluído
+              {territory.folders.map((f) => {
+                const fdone = f.done === f.topics.length;
+                return (
+                  <details key={f.key} className={"km-folder"} data-done={fdone ? "1" : undefined} open={territory.folders.length <= 3} data-testid="pasta-topico">
+                    <summary>
+                      <span className={"km-folderName"}>
+                        <small>Tópico{f.code ? ` ${f.code}` : ""}</small>
+                        {f.title}
+                      </span>
+                      {fdone ? (
+                        <em className="km-on" aria-label="Tópico concluído">
+                          <b aria-hidden>ON</b> {f.topics.length}/{f.topics.length}
                         </em>
                       ) : (
-                        <em>{x.study ? `${x.study.pct}%` : "Novo"}</em>
+                        <em>
+                          {f.done}/{f.topics.length}
+                          {f.progress !== null ? ` · ${f.progress}%` : ""}
+                        </em>
                       )}
-                    </button>
-                  </li>
-                ))}
-              </ul>
+                    </summary>
+                    <ul className={"km-topicList"}>{f.topics.map((x) => topicRow(territory, x))}</ul>
+                    {f.topics.length > 1 && (
+                      <button
+                        type="button"
+                        className={"km-folderStart"}
+                        onClick={() => onStart({ id: f.topics[0]!.id, title: f.title, discipline: territory.label, ids: f.topics.map((t) => t.id) })}
+                        data-testid="estudar-topico"
+                      >
+                        <Play aria-hidden /> Estudar o tópico inteiro ({f.topics.length} aulas)
+                      </button>
+                    )}
+                  </details>
+                );
+              })}
+              {territory.folders.length > 0 && territory.topics.some((x) => !x.group) && <h3 className={"km-sub"}>Aulas avulsas</h3>}
+              <ul className={"km-topicList"}>{territory.topics.filter((x) => !territory.folders.length || !x.group).map((x) => topicRow(territory, x))}</ul>
             </>
           )}
           {territory && topic && (
             <>
               <h2 className={"km-panelTitle"}>{topic.title}</h2>
-              <p className={"km-muted"}>{territory.label}</p>
+              <p className={"km-muted"}>
+                {territory.label}
+                {topic.group ? ` › ${topic.group.code ? `${topic.group.code}. ` : ""}${topic.group.title}${topic.group.sub ? ` › ${topic.group.sub}` : ""}` : ""}
+              </p>
               <ul className={"km-stats"}>
                 <li>
                   <b>{topic.questions}</b> questões

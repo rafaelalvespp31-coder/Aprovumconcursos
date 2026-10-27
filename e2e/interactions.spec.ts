@@ -1262,3 +1262,35 @@ test("catálogo: botão edita tema e tipo, com validação de lei e artigos", as
   await expect(page.getByTestId("editar-tema")).toBeVisible();
   await expect(page.getByText("Salvo.")).toBeVisible();
 });
+
+test("mapa: aulas em tópicos do edital viram pastas, com estudo do tópico inteiro", async ({ page }) => {
+  await page.goto(`${G}/novo-estudo?topicos=1`);
+  await expect(page.getByTestId("knowledge-ops")).toHaveAttribute("data-modo", "arte");
+  await page.getByTestId("knowledge-ops").getByRole("button", { name: /^Direito Penal: 5 assunto/ }).dispatchEvent("click");
+  const pasta = page.getByTestId("pasta-topico");
+  await expect(pasta).toContainText("Ilicitude");
+  await expect(pasta.getByRole("button", { name: /4\.1.*Causas de exclusão/ })).toBeVisible();
+  await expect(pasta.getByRole("button", { name: /4\.2.*Excesso punível/ })).toBeVisible();
+  await pasta.getByTestId("estudar-topico").click();
+  const dialog = page.getByTestId("comecar-estudo");
+  await expect(dialog).toContainText("Ilicitude");
+  await expect(dialog).toContainText("junta as 2 aulas");
+  await expect(dialog.locator('input[name="catalogTopicIds"]')).toHaveValue("t-pen-41,t-pen-42");
+});
+
+test("plano de tópicos: o sumário vira árvore enquanto digita", async ({ page }) => {
+  await page.goto(`${G}/catalogo`);
+  await page.getByTestId("editar-tema").click();
+  await page.getByRole("textbox", { name: "Tópico do edital" }).fill("4. Ilicitude");
+  await page.getByRole("textbox", { name: "Nº do subtópico" }).fill("5.1");
+  await page.getByRole("button", { name: "Salvar", exact: true }).click();
+  await expect(page.locator("form").getByRole("alert")).toContainText("não começa com o número do tópico");
+  await page.getByRole("textbox", { name: "Nº do subtópico" }).fill("4.1");
+  await page.getByRole("button", { name: "Salvar", exact: true }).click();
+  await expect(page.getByText("Salvo.")).toBeVisible();
+  const arvore = page.getByTestId("arvore-previa");
+  await page.getByRole("textbox", { name: "Sumário do edital" }).fill("tópico: Ilicitude\n4.1. Causas de exclusão da ilicitude\n* 4.1.1. Conceito.\n* 4.1.2. Estado de necessidade.\n4.2. Excesso punível\n* 4.2.1. Excesso doloso.");
+  await expect(arvore).toContainText("1 tópico(s) · 2 subtópico(s)");
+  await expect(arvore).toContainText("4.1 Causas de exclusão da ilicitude");
+  await expect(arvore).toContainText("4.2.1 Excesso doloso");
+});
