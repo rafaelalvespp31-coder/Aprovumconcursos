@@ -18,11 +18,10 @@ export const ART = {
   srcSm: "/images/knowledge-ops/territorio-sm.webp",
   /**
    * Celular em pé: o MESMO cenário em uma imagem alta e contínua (céu acima e chão abaixo estendidos,
-   * sem espelho). Em px da arte: começa `tallTop` acima da arte e tem `tallH` de altura.
+   * sem espelho). Posição e tamanho em px da arte (encaixada pelos pontos em comum com a arte).
    */
   srcTall: "/images/knowledge-ops/territorio-alto.webp",
-  tallTop: 1450,
-  tallH: 5945,
+  tall: { x: 0, y: -1450, w: 3344, h: 5945 },
 };
 /** Braços e fuzil recortados da arte (camada própria, em primeira pessoa). */
 // O recorte continua (escurecendo) para baixo e para a direita da tela: ao girar ou subir a arma,
@@ -151,7 +150,7 @@ export class PlateCamera {
   /** Escala no zoom 1: cobre a tela (computador) ou cabe a faixa das instalações (celular). */
   cover() {
     // Celular em pé: a imagem alta cobre a tela inteira (a faixa das instalações cabe na largura).
-    if (this.mode === "caber") return Math.max(this.view.w / ART.w, this.view.h / ART.tallH);
+    if (this.mode === "caber") return Math.max(this.view.w / ART.tall.w, this.view.h / ART.tall.h);
     return Math.max(this.view.w / ART.w, this.view.h / ART.h);
   }
   /** Centro vertical da cena na tela (no celular fica acima, deixando o fuzil embaixo). */
@@ -168,10 +167,13 @@ export class PlateCamera {
     const up = this.cy() / s;
     const down = (this.view.h - this.cy()) / s;
     // Eixo maior que a arte: trava no centro da arte (o fundo desfocado completa a tela).
-    const fx = left + right >= ART.w ? ART.w / 2 : Math.min(ART.w - right, Math.max(left, this.focus[0]));
-    // Celular em pé: o limite vertical é o da imagem alta (céu e chão estendidos).
-    const top = this.mode === "caber" ? -ART.tallTop : 0;
-    const bottom = this.mode === "caber" ? ART.tallH - ART.tallTop : ART.h;
+    // Celular em pé: os limites são os da imagem alta (céu e chão estendidos).
+    const caber = this.mode === "caber";
+    const x0 = caber ? ART.tall.x : 0;
+    const x1 = caber ? ART.tall.x + ART.tall.w : ART.w;
+    const fx = left + right >= x1 - x0 ? (x0 + x1) / 2 : Math.min(x1 - right, Math.max(x0 + left, this.focus[0]));
+    const top = caber ? ART.tall.y : 0;
+    const bottom = caber ? ART.tall.y + ART.tall.h : ART.h;
     const fy = up + down >= bottom - top ? (top + bottom) / 2 : Math.min(bottom - down, Math.max(top + up, this.focus[1]));
     this.focus = [fx, fy];
   }
@@ -265,7 +267,7 @@ export class PlateCamera {
     const w = ART.w * s;
     const h = ART.h * s;
     const caber = this.mode === "caber";
-    const panX = Math.max(0, (w - this.view.w) / 2);
+    const panX = Math.max(0, ((caber ? ART.tall.w * s : w) - this.view.w) / 2);
     const panY = caber ? this.view.h * 0.06 : Math.max(0, (h - this.view.h) / 2);
     let tx = this.view.w / 2 - this.focusNow[0] * s - this.pointerNow[0] * panX * look;
     let ty = this.cy() - this.focusNow[1] * s - this.pointerNow[1] * panY * look;
@@ -274,8 +276,9 @@ export class PlateCamera {
     if (!caber && h >= this.view.h) ty = Math.min(0, Math.max(this.view.h - h, ty));
     // Celular em pé: a imagem alta sempre cobre a tela inteira (nunca aparece borda).
     if (caber) {
-      tx = Math.min(0, Math.max(this.view.w - w, tx));
-      ty = Math.min(ART.tallTop * s, Math.max(this.view.h - (ART.tallH - ART.tallTop) * s, ty));
+      const t = ART.tall;
+      tx = Math.min(-t.x * s, Math.max(this.view.w - (t.x + t.w) * s, tx));
+      ty = Math.min(-t.y * s, Math.max(this.view.h - (t.y + t.h) * s, ty));
     }
     return { s, tx, ty };
   }
@@ -685,7 +688,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       <div ref={layer} className="km-art-layer" style={{ width: ART.w, height: ART.h }}>
         {/* Celular em pé: UMA imagem alta e contínua do mesmo cenário, preenchendo a tela inteira. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={ART.srcTall} alt="" loading="lazy" decoding="async" draggable={false} className="km-art-ext" style={{ left: 0, top: -ART.tallTop, width: ART.w, height: ART.tallH }} />
+        <img src={ART.srcTall} alt="" loading="lazy" decoding="async" draggable={false} className="km-art-ext" style={{ left: ART.tall.x, top: ART.tall.y, width: ART.tall.w, height: ART.tall.h }} />
         <picture>
           <source media="(max-width: 700px)" srcSet={ART.srcSm} />
           <img src={ART.src} alt="" width={ART.w} height={ART.h} loading="lazy" decoding="async" draggable={false} className="km-art-img" />
