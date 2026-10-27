@@ -74,6 +74,9 @@ export function slotFor(id: string): ArtSlot {
  */
 const FIT = { x0: 700, x1: 3140, cx: 1920, cy: 860 };
 
+/** Folga da arte além da tela (computador): é o quanto a câmera pode "olhar" para os lados. */
+const LOOK_MARGIN = 1.12;
+
 /** Câmera 2D sobre a arte (valores em pixels da arte). */
 export class PlateCamera {
   focus: [number, number] = [ART.w / 2, ART.h / 2];
@@ -84,6 +87,8 @@ export class PlateCamera {
   pointerNow: [number, number] = [0, 0];
   reduced = false;
   view = { w: 1, h: 1 };
+  /** Posição exata do cursor/dedo na tela (px) — o fuzil aponta para ela. */
+  screenPointer: [number, number] | null = null;
   /** "cobrir" (computador, paisagem) ou "caber" (celular em pé: o mapa inteiro na tela). */
   mode: "cobrir" | "caber" = "cobrir";
 
@@ -102,6 +107,14 @@ export class PlateCamera {
   }
   setPointer(x: number, y: number) {
     this.pointer = [Math.max(-1, Math.min(1, x)), Math.max(-1, Math.min(1, y))];
+  }
+  setScreenPointer(p: [number, number] | null) {
+    this.screenPointer = p;
+  }
+  /** Com a mira travada, a câmera fica no alvo (não segue o cursor). */
+  locked = false;
+  setLocked(v: boolean) {
+    this.locked = v;
   }
   /** Escala no zoom 1: cobre a tela (computador) ou cabe a faixa das instalações (celular). */
   cover() {
@@ -145,26 +158,26 @@ export class PlateCamera {
     this.clampFocus();
   }
   /** Traz um ponto para dentro da área livre da tela, sem mudar o zoom. */
-  reveal(p: [number, number], inset: { right?: number; bottom?: number } = {}) {
+  reveal(p: [number, number], inset: { left?: number; right?: number; bottom?: number } = {}) {
     if (!this.inView(p, inset)) this.revealAt(p, inset);
   }
-  private bounds(inset: { right?: number; bottom?: number }) {
+  private bounds(inset: { left?: number; right?: number; bottom?: number }) {
     const below = this.view.h - this.cy();
     return {
-      minX: -this.view.w * 0.3,
+      minX: Math.max(-this.view.w * 0.3, -this.view.w / 2 + (inset.left ?? 0) + 120),
       maxX: Math.min(this.view.w * 0.3, this.view.w / 2 - (inset.right ?? 0) - 160),
       minY: -this.cy() * 0.6,
       maxY: Math.min(below * 0.6, below - (inset.bottom ?? 0) - 90),
     };
   }
-  private inView(p: [number, number], inset: { right?: number; bottom?: number }) {
+  private inView(p: [number, number], inset: { left?: number; right?: number; bottom?: number }) {
     const s = this.cover() * this.zoom;
     const b = this.bounds(inset);
     const sx = (p[0] - this.focus[0]) * s;
     const sy = (p[1] - this.focus[1]) * s;
     return sx >= b.minX - 2 && sx <= b.maxX + 2 && sy >= b.minY - 2 && sy <= b.maxY + 2;
   }
-  private revealAt(p: [number, number], inset: { right?: number; bottom?: number }) {
+  private revealAt(p: [number, number], inset: { left?: number; right?: number; bottom?: number }) {
     const s = this.cover() * this.zoom;
     const sx = (p[0] - this.focus[0]) * s;
     const sy = (p[1] - this.focus[1]) * s;
@@ -176,9 +189,11 @@ export class PlateCamera {
       this.clampFocus();
     }
   }
-  focusOn(p: [number, number], zoom: number) {
+  focusOn(p: [number, number], zoom: number, offset: [number, number] = [0, 0]) {
     this.zoom = Math.min(this.maxZoom(), Math.max(1, zoom));
-    this.focus = [p[0], p[1]];
+    // offset: onde o ponto deve ficar na tela, em fração do tamanho da tela a partir do centro.
+    const s = this.cover() * this.zoom * (this.mode === "cobrir" ? LOOK_MARGIN : 1);
+    this.focus = [p[0] - (offset[0] * this.view.w) / s, p[1] - (offset[1] * this.view.h) / s];
     this.clampFocus();
   }
   private home(): [number, number] {
@@ -197,17 +212,24 @@ export class PlateCamera {
   step(dtRaw: number) {
     const dt = Math.min(dtRaw, 0.05);
     const kk = this.reduced ? 1 : 1 - Math.exp(-dt * 3.4);
-    const kp = 1 - Math.exp(-dt * 3);
+    // O olhar acompanha o cursor de perto (rápido, mas sem tranco).
+    const kp = this.reduced ? 1 : 1 - Math.exp(-dt * 9);
     this.focusNow[0] += (this.focus[0] - this.focusNow[0]) * kk;
     this.focusNow[1] += (this.focus[1] - this.focusNow[1]) * kk;
     this.zoomNow += (this.zoom - this.zoomNow) * kk;
     this.pointerNow[0] += (this.pointer[0] - this.pointerNow[0]) * kp;
     this.pointerNow[1] += (this.pointer[1] - this.pointerNow[1]) * kp;
     // Margem para o parallax nunca mostrar a borda da arte (só quando ela cobre a tela).
-    const s = this.cover() * this.zoomNow * (this.mode === "cobrir" ? 1.035 : 1);
-    const par = this.reduced || this.mode === "caber" ? 0 : 1;
-    const tx = this.view.w / 2 - this.focusNow[0] * s - this.pointerNow[0] * 14 * par;
-    const ty = this.cy() - this.focusNow[1] * s - this.pointerNow[1] * 9 * par;
+    const s = this.cover() * this.zoomNow * (this.mode === "cobrir" ? LOOK_MARGIN : 1);
+    // Câmera olha para onde o cursor/dedo aponta: usa toda a folga da arte além da tela.
+    const look = this.reduced || this.locked ? 0 : 1;
+    const w = ART.w * s;
+    const h = ART.h * s;
+    let tx = this.view.w / 2 - this.focusNow[0] * s - this.pointerNow[0] * Math.max(0, (w - this.view.w) / 2) * look;
+    let ty = this.cy() - this.focusNow[1] * s - (this.mode === "cobrir" ? this.pointerNow[1] * Math.max(0, (h - this.view.h) / 2) * look : 0);
+    // Nunca mostrar a borda da arte (quando ela é maior que a tela).
+    if (w >= this.view.w) tx = Math.min(0, Math.max(this.view.w - w, tx));
+    if (h >= this.view.h) ty = Math.min(0, Math.max(this.view.h - h, ty));
     return { s, tx, ty };
   }
   /** Retângulo visível, normalizado (0..1) na arte — para o radar. */
@@ -230,13 +252,18 @@ export interface ImageStageProps {
   onView: (rect: { x: number; y: number; w: number; h: number }) => void;
   /** Para onde o soldado mira (ponto da arte): matéria em foco ou sob o cursor. */
   aim: React.RefObject<[number, number] | null>;
+  /** Mira travada: animação de mira a laser e foco total na matéria escolhida. */
+  lock: React.RefObject<{ at: number; target: [number, number]; label: string } | null>;
   onSelect: (t: Territory) => void;
   onSelectCore: () => void;
   onSelectTopic: (t: Territory, topic: MapTopic) => void;
 }
 
-export function ImageStage({ cam, territories, selected, labels, topicOffsets, onView, onSelect, onSelectCore, aim }: ImageStageProps) {
+export function ImageStage({ cam, territories, selected, labels, topicOffsets, onView, onSelect, onSelectCore, aim, lock }: ImageStageProps) {
   const rifle = useRef<HTMLDivElement>(null);
+  const scope = useRef<HTMLDivElement>(null);
+  const lockBox = useRef<HTMLDivElement>(null);
+  const laser = useRef<HTMLCanvasElement>(null);
   const layer = useRef<HTMLDivElement>(null);
   const holder = useRef<HTMLDivElement>(null);
   const embers = useRef<HTMLCanvasElement>(null);
@@ -271,7 +298,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         rg.tx0 = left - RIFLE.x * rg.s0;
         rg.ty0 = top - RIFLE.y * rg.s0;
       } else {
-        rg.s0 = cam.cover() * 1.035;
+        rg.s0 = cam.cover() * LOOK_MARGIN;
         rg.tx0 = cam.view.w / 2 - (ART.w / 2) * rg.s0;
         rg.ty0 = cam.view.h / 2 - (ART.h / 2) * rg.s0;
       }
@@ -437,25 +464,102 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         const py = RIFLE.pivot[1] * s0 + ty0;
         const mx = RIFLE.muzzle[0] * s0 + tx0;
         const my = RIFLE.muzzle[1] * s0 + ty0;
-        const target = aim.current;
-        let wantA = cam.pointerNow[0] * 0.035;
-        let wantX = cam.pointerNow[0] * 18;
-        let wantY = cam.pointerNow[1] * 10;
+        const lk = lock.current;
+        if (lk && lk.at < 0) lk.at = now;
+        // Prioridade: mira travada > matéria sob o cursor > cursor/dedo exato.
+        let target: [number, number] | null = null;
+        if (lk) target = [lk.target[0] * t.s + t.tx, lk.target[1] * t.s + t.ty];
+        else if (aim.current) target = [aim.current[0] * t.s + t.tx, aim.current[1] * t.s + t.ty];
+        else if (cam.screenPointer) target = cam.screenPointer;
+        let wantA = 0;
+        let wantX = 0;
+        let wantY = 0;
         if (target) {
-          const tx = target[0] * t.s + t.tx;
-          const ty = target[1] * t.s + t.ty;
-          const d = Math.atan2(ty - py, tx - px) - Math.atan2(my - py, mx - px);
-          wantA = Math.max(-0.12, Math.min(0.12, d * 0.55));
-          wantX = Math.max(-cam.view.w * 0.045, Math.min(cam.view.w * 0.055, (tx - mx) * 0.12));
-          wantY = Math.max(-cam.view.h * 0.03, Math.min(cam.view.h * 0.035, (ty - my) * 0.08));
+          const d = Math.atan2(target[1] - py, target[0] - px) - Math.atan2(my - py, mx - px);
+          const dn = Math.atan2(Math.sin(d), Math.cos(d));
+          // Girar para a direita tira o fuzil do quadro: limite menor desse lado.
+          wantA = Math.max(-0.42, Math.min(0.2, dn));
+          wantX = Math.max(-cam.view.w * 0.12, Math.min(cam.view.w * 0.12, (target[0] - mx) * 0.22));
+          wantY = Math.max(-cam.view.h * 0.08, Math.min(cam.view.h * 0.06, (target[1] - my) * 0.12));
         }
-        const ka = cam.reduced ? 1 : 1 - Math.exp(-dt * 3.6);
+        // Ao travar a mira o soldado sobe a arma (como quem mira pela mira).
+        const since = lk ? now - lk.at : 1e9;
+        // Sobe a arma ao mirar e, com o alvo travado, abaixa um pouco para liberar a vista.
+        const raise = lk ? Math.min(1, since / 350) : 0;
+        const settle = lk ? Math.max(0, Math.min(1, (since - 1300) / 500)) : 0;
+        wantY += -raise * cam.view.h * 0.03 + settle * cam.view.h * 0.1;
+        const ka = cam.reduced ? 1 : 1 - Math.exp(-dt * (lk && since < 600 ? 7 : 11));
         aimA += (wantA - aimA) * ka;
         aimX += (wantX - aimX) * ka;
         aimY += (wantY - aimY) * ka;
         const breathe = cam.reduced ? 0 : Math.sin(now / 760) * 3 * s0 * 2;
         const sway = cam.reduced ? 0 : Math.sin(now / 1300) * 0.004;
         rf.style.transform = `translate3d(${aimX.toFixed(1)}px, ${(aimY + breathe).toFixed(1)}px, 0) rotate(${(aimA + sway).toFixed(4)}rad)`;
+
+        // Laser, luneta e marcação de alvo travado.
+        const lc = laser.current;
+        const lctx = lc?.getContext("2d");
+        if (lc && lctx) {
+          if (lc.width !== Math.round(cam.view.w) || lc.height !== Math.round(cam.view.h)) {
+            lc.width = Math.round(cam.view.w);
+            lc.height = Math.round(cam.view.h);
+          }
+          lctx.clearRect(0, 0, lc.width, lc.height);
+          if (lk && target) {
+            // Boca do cano depois da rotação do fuzil.
+            const a = aimA + sway;
+            const vx = mx - px;
+            const vy = my - py;
+            const bx = px + vx * Math.cos(a) - vy * Math.sin(a) + aimX;
+            const by = py + vx * Math.sin(a) + vy * Math.cos(a) + aimY + breathe;
+            const grow = Math.min(1, since / 380);
+            const ex = bx + (target[0] - bx) * grow;
+            const ey = by + (target[1] - by) * grow;
+            const alpha = since < 1600 ? 1 : 0.55;
+            lctx.lineCap = "round";
+            lctx.strokeStyle = `rgba(255,40,40,${0.25 * alpha})`;
+            lctx.lineWidth = 7;
+            lctx.beginPath();
+            lctx.moveTo(bx, by);
+            lctx.lineTo(ex, ey);
+            lctx.stroke();
+            lctx.strokeStyle = `rgba(255,90,90,${0.95 * alpha})`;
+            lctx.lineWidth = 1.6;
+            lctx.stroke();
+            if (grow >= 1) {
+              const pulse = 5 + Math.sin(now / 120) * 1.5;
+              lctx.fillStyle = `rgba(255,60,60,${0.9 * alpha})`;
+              lctx.beginPath();
+              lctx.arc(ex, ey, pulse * 0.6, 0, Math.PI * 2);
+              lctx.fill();
+              lctx.strokeStyle = `rgba(255,120,120,${0.6 * alpha})`;
+              lctx.lineWidth = 1;
+              lctx.beginPath();
+              lctx.arc(ex, ey, pulse * 2.2, 0, Math.PI * 2);
+              lctx.stroke();
+            }
+          }
+        }
+        const sc = scope.current;
+        if (sc) {
+          // Luneta: entra durante a aproximação e sai quando o foco termina.
+          const o = lk && !cam.reduced ? (since < 250 ? 0 : since < 550 ? (since - 250) / 300 : since < 1200 ? 1 : since < 1600 ? 1 - (since - 1200) / 400 : 0) : 0;
+          sc.style.opacity = o.toFixed(3);
+          if (o > 0 && target) sc.style.transform = `translate3d(${target[0].toFixed(1)}px, ${target[1].toFixed(1)}px, 0) scale(${(1.25 - 0.25 * Math.min(1, since / 900)).toFixed(3)})`;
+        }
+        const lb = lockBox.current;
+        if (lb) {
+          const o = lk && target && since > 350 ? Math.min(1, (since - 350) / 300) : 0;
+          lb.style.opacity = o.toFixed(3);
+          if (o > 0 && target) {
+            lb.style.transform = `translate3d(${target[0].toFixed(1)}px, ${target[1].toFixed(1)}px, 0) scale(${(1 + Math.max(0, 1 - (since - 350) / 400) * 0.6).toFixed(3)})`;
+            if (lk && lb.dataset.label !== lk.label) {
+              lb.dataset.label = lk.label;
+              const tag = lb.querySelector("b");
+              if (tag) tag.textContent = lk.label;
+            }
+          }
+        }
       }
       // Relâmpago ocasional nas nuvens.
       if (!cam.reduced && flash.current) {
@@ -474,7 +578,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       cancelAnimationFrame(raf);
       ro.disconnect();
     };
-  }, [cam, territories, labels, topicOffsets, onView, aim]);
+  }, [cam, territories, labels, topicOffsets, onView, aim, lock]);
 
   return (
     <div ref={holder} className="km-art" aria-hidden>
@@ -517,6 +621,18 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         <div ref={flash} className="km-art-flash" />
       </div>
       <canvas ref={embers} className="km-art-embers" />
+      <canvas ref={laser} className="km-laser" />
+      <div ref={scope} className="km-scope">
+        <i />
+      </div>
+      <div ref={lockBox} className="km-lock">
+        <span />
+        <span />
+        <span />
+        <span />
+        <em>Alvo travado</em>
+        <b />
+      </div>
       <div ref={rifle} className="km-rifle">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={RIFLE.src} alt="" draggable={false} />

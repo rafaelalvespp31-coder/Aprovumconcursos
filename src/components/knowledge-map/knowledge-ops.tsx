@@ -119,6 +119,19 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
   const dragged = useRef(false);
   // Alvo da mira do soldado (matéria em foco ou sob o cursor), lido a cada quadro pelo palco.
   const aim = useRef<[number, number] | null>(null);
+  // Mira travada na matéria escolhida (laser, luneta e foco total).
+  const lock = useRef<{ at: number; target: [number, number]; label: string } | null>(null);
+  /** Trava a mira e aproxima a câmera até a matéria (foco total), sem ficar sob o painel. */
+  const lockOn = (target: [number, number], label: string) => {
+    // O palco marca o início da animação no primeiro quadro (at = -1).
+    lock.current = { at: -1, target, label };
+    cam.setLocked(true);
+    aim.current = target;
+    // Alvo um pouco à esquerda e acima do centro: o fuzil (à direita, embaixo) não cobre a cidade.
+    if (cam.mode === "caber") cam.focusOn(target, 2.3, [0, -0.06]);
+    else cam.focusOn(target, 1.85, [-0.1, -0.08]);
+    cam.reveal(target, panelInset());
+  };
 
   const [selT, setSelT] = useState<string | null>(null);
   const [selTopic, setSelTopic] = useState<string | null>(null);
@@ -168,23 +181,20 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
 
   const art = stageKind === "arte";
   // Espaço ocupado pelo painel de detalhes (lateral no computador, inferior no celular).
-  const panelInset = () => (window.innerWidth <= 900 ? { bottom: window.innerHeight * 0.5 } : { right: 400 });
+  const panelInset = () => (window.innerWidth <= 900 ? { bottom: window.innerHeight * 0.5 } : { left: 230, right: 400 });
   const selectTerritory = (t: Territory) => {
       setCoreOpen(false);
       setSelT(t.id);
       setSelTopic(null);
       controls.focusOn(t.pos, 36, 0.55, viewYawFor(t.pos));
-      // O soldado mira na matéria; a câmera só desloca se ela estiver fora da área central.
-      aim.current = slotFor(t.id).base;
-      cam.reveal(slotFor(t.id).base, panelInset());
+      lockOn(slotFor(t.id).base, t.label);
   };
   const selectTopic = (t: Territory, x: MapTopic) => {
       setCoreOpen(false);
       setSelT(t.id);
       setSelTopic(x.id);
       controls.focusOn(x.pos, 26, 0.5, viewYawFor(t.pos));
-      aim.current = slotFor(t.id).base;
-      cam.reveal(slotFor(t.id).base, panelInset());
+      if (lock.current?.target !== slotFor(t.id).base) lockOn(slotFor(t.id).base, t.label);
   };
   const overview = () => {
     setSelT(null);
@@ -193,14 +203,15 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     controls.overview();
     cam.overview();
     aim.current = null;
+    lock.current = null;
+    cam.setLocked(false);
   };
   const selectCore = () => {
     setSelT(null);
     setSelTopic(null);
     setCoreOpen(true);
     controls.focusOn([0, 0], 36);
-    aim.current = slotFor("direito_penal").base;
-    cam.reveal(slotFor("direito_penal").base, panelInset());
+    lockOn(slotFor("direito_penal").base, "Núcleo Aprovum");
   };
   const zoomIn = useCallback(() => (art ? cam.zoomBy(1.25) : controls.zoom(0.78)), [art, cam, controls]);
   const zoomOut = useCallback(() => (art ? cam.zoomBy(0.8) : controls.zoom(1.28)), [art, cam, controls]);
@@ -253,6 +264,11 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       travel = 0;
       dragged.current = false;
+      if (e.pointerType !== "mouse") {
+        const r = el.getBoundingClientRect();
+        cam.setScreenPointer([e.clientX - r.left, e.clientY - r.top]);
+        cam.setPointer(((e.clientX - r.left) / r.width) * 2 - 1, ((e.clientY - r.top) / r.height) * 2 - 1);
+      }
       if (pts.size === 2) {
         const [a, b] = [...pts.values()];
         pinch = Math.hypot(a!.x - b!.x, a!.y - b!.y);
@@ -261,11 +277,13 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     };
     const move = (e: PointerEvent) => {
       const r = el.getBoundingClientRect();
-      if (e.pointerType === "mouse") {
+      // Mouse sempre; toque enquanto o dedo está na tela: o fuzil e a câmera seguem o ponto exato.
+      if (e.pointerType === "mouse" || pts.has(e.pointerId)) {
         const px = ((e.clientX - r.left) / r.width) * 2 - 1;
         const py = ((e.clientY - r.top) / r.height) * 2 - 1;
         rig.setPointer(px, py);
         cam.setPointer(px, py);
+        cam.setScreenPointer([e.clientX - r.left, e.clientY - r.top]);
       }
       const p = pts.get(e.pointerId);
       if (!p) return;
@@ -298,6 +316,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     const leave = () => {
       rig.setPointer(0, 0);
       cam.setPointer(0, 0);
+      cam.setScreenPointer(null);
     };
     const wheel = (e: WheelEvent) => {
       e.preventDefault();
@@ -407,6 +426,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
             topicOffsets={topicOffsets}
             onView={onView}
             aim={aim}
+            lock={lock}
             onSelect={(t) => !dragged.current && selectTerritory(t)}
             onSelectCore={() => !dragged.current && selectCore()}
             onSelectTopic={(t, x) => !dragged.current && selectTopic(t, x)}
