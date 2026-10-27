@@ -1734,6 +1734,71 @@
   height: 14px;
 }
 
+/* Card da matéria: resumo em uma linha + tópicos em acordeão (um aberto por vez). */
+.km-summary {
+  margin: 0 0 6px;
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.km-summary [data-done] {
+  color: var(--neon, #39ff6a);
+}
+.km-meterSm {
+  margin: 4px 0 8px;
+  padding-bottom: 6px;
+  font-size: 11.5px;
+}
+.km-sub small {
+  letter-spacing: 0.04em;
+  text-transform: none;
+  font-weight: 500;
+  opacity: 0.8;
+}
+.km-folders {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+}
+.km-folders .km-folder {
+  margin: 0;
+}
+.km-folders .km-folder > summary {
+  justify-content: flex-start;
+  min-height: 44px;
+}
+.km-folders .km-folderName {
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
+  line-height: 1.25;
+}
+.km-folderChevron {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  color: var(--muted);
+  transform: rotate(-90deg);
+  transition: transform 0.18s ease;
+}
+.km-folder[open] .km-folderChevron {
+  transform: none;
+  color: #ff6b6b;
+}
+.km-folders .km-topicList {
+  max-height: 260px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+.km-folders .km-topicList button {
+  min-height: 38px;
+  font-size: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .km-folderChevron {
+    transition: none;
+  }
+}
+
 /* Concluído = verde neon (sem selo "ON"): texto, faixa e brilho. */
 .km-root {
   --neon: #39ff6a;
@@ -2354,5 +2419,12 @@
   }
   .km-root[data-modo="arte"] .km-hint {
     top: 96px;
+  }
+}
+
+/* Computador (cenário): o card da matéria usa a altura até o card do lema, sem cortar os tópicos. */
+@media (min-width: 901px) {
+  .km-root[data-modo="arte"] .km-panel {
+    max-height: calc(100% - 84px - 140px);
   }
 }

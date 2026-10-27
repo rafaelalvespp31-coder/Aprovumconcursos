@@ -1273,9 +1273,21 @@ test("catálogo: botão edita tema e tipo, com validação de lei e artigos", as
 test("mapa: aulas em tópicos do edital viram pastas, com estudo do tópico inteiro", async ({ page }) => {
   await page.goto(`${G}/novo-estudo?topicos=1`);
   await expect(page.getByTestId("knowledge-ops")).toHaveAttribute("data-modo", "arte");
-  await page.getByTestId("knowledge-ops").getByRole("button", { name: /^Direito Penal: 5 assunto/ }).dispatchEvent("click");
-  const pasta = page.getByTestId("pasta-topico");
-  await expect(pasta).toContainText("Ilicitude");
+  const ko = page.getByTestId("knowledge-ops");
+  await ko.getByRole("button", { name: /^Direito Penal: 5 assunto/ }).dispatchEvent("click");
+  // As aulas não se espalham pelo mapa: ficam organizadas no card, dentro de cada tópico.
+  await expect(ko.getByTestId("assunto-no-mapa")).toHaveCount(0);
+  const pasta = page.getByTestId("pasta-topico").filter({ hasText: "Ilicitude" });
+  await expect(pasta).toBeVisible();
+  // Tópicos começam fechados; abre um por vez.
+  const outras = page.getByTestId("pasta-topico").filter({ hasText: "Outras aulas" });
+  if (await outras.count()) {
+    await outras.locator("summary").click();
+    await expect(outras.locator("summary")).toHaveAttribute("aria-expanded", "true");
+  }
+  await pasta.locator("summary").click();
+  await expect(pasta.locator("summary")).toHaveAttribute("aria-expanded", "true");
+  if (await outras.count()) await expect(outras.locator("summary")).toHaveAttribute("aria-expanded", "false");
   await expect(pasta.getByRole("button", { name: /4\.1.*Causas de exclusão/ })).toBeVisible();
   await expect(pasta.getByRole("button", { name: /4\.2.*Excesso punível/ })).toBeVisible();
   await pasta.getByTestId("estudar-topico").click();

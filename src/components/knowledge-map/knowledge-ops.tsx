@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { buildKnowledgeMap, emptyTerritory, radarPoint, searchMap, type KnowledgeMap, type MapTopic, type SearchHit, type Territory, type TerritoryIcon } from "@/domain/knowledge-map/model";
 import type { ThemeCard } from "@/domain/studies/home";
+import { groupKey } from "@/domain/catalog/topic-group";
 import { CameraRig, viewYawFor } from "./scene/rig";
 import type { Anchor } from "./scene/scene";
 import { terrainHeight } from "./scene/textures";
@@ -197,15 +198,15 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     lock.current = { at: -1, target, label };
     cam.setLocked(true);
     aim.current = target;
-    // Alvo um pouco à esquerda e acima do centro: o fuzil (à direita, embaixo) não cobre a cidade.
-    if (cam.mode === "caber") cam.focusOn(target, 2.3, [0, -0.06]);
-    else cam.focusOn(target, 1.85, [-0.1, -0.08]);
+    // O mapa fica como está (sem aproximar): a câmera só desliza se o card for cobrir a instalação.
     cam.reveal(target, panelInset());
   };
 
   const [selT, setSelT] = useState<string | null>(null);
   const [selTopic, setSelTopic] = useState<string | null>(null);
   const [coreOpen, setCoreOpen] = useState(false);
+  /** Tópico do edital aberto no card da matéria (um por vez, para o card não ficar poluído). */
+  const [openFolder, setOpenFolder] = useState<string | null>(null);
   const [dragMode, setDragMode] = useState<"girar" | "mover">("girar");
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [listOpen, setListOpen] = useState(false);
@@ -257,6 +258,8 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
       setCoreOpen(false);
       setSelT(t.id);
       setSelTopic(null);
+      // Só um tópico? Já abre. Vários: todos fechados, o aluno escolhe qual abrir.
+      setOpenFolder(t.folders.length === 1 && t.topics.every((x) => x.group) ? t.folders[0]!.key : null);
       controls.focusOn(t.pos, 36, 0.55, viewYawFor(t.pos));
       lockOn(slotFor(t.id).base, t.label);
   };
@@ -264,6 +267,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
       setCoreOpen(false);
       setSelT(t.id);
       setSelTopic(x.id);
+      if (x.group) setOpenFolder(groupKey(x.group.title));
       controls.focusOn(x.pos, 26, 0.5, viewYawFor(t.pos));
       if (lock.current?.target !== slotFor(t.id).base) lockOn(slotFor(t.id).base, t.label);
   };
@@ -677,6 +681,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
               );
             })}
             {territory &&
+              !art &&
               plates
                 .find((t) => t.id === territory.id)
                 ?.topics.map((x) => (
@@ -1058,66 +1063,83 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
           {territory && !topic && territory.topics.length > 0 && (
             <>
               <h2 className={"km-panelTitle"}>{territory.label}</h2>
-              <ul className={"km-stats"}>
-                <li>
-                  <b>{territory.topics.length}</b> assuntos
-                </li>
-                <li>
-                  <b>{territory.questions.toLocaleString("pt-BR")}</b> questões
-                </li>
-                <li>
-                  <b>{territory.started}</b> iniciados
-                </li>
-                <li data-done={territory.done > 0 ? "1" : undefined}>
-                  <b>{territory.done}</b> concluídos
-                </li>
-              </ul>
-              {territory.progress !== null ? (
-                <div className={"km-meter"} aria-label={`Progresso médio: ${territory.progress}%`}>
-                  <span>Progresso médio dos assuntos</span>
+              {/* Resumo em uma linha (dados reais); os detalhes ficam dentro de cada tópico. */}
+              <p className={"km-summary"}>
+                {territory.topics.length} aula{territory.topics.length === 1 ? "" : "s"} · {territory.questions.toLocaleString("pt-BR")} questões ·{" "}
+                <span data-done={territory.done > 0 ? "1" : undefined}>
+                  {territory.done} concluída{territory.done === 1 ? "" : "s"}
+                </span>
+              </p>
+              {territory.progress !== null && (
+                <div className={"km-meter km-meterSm"} aria-label={`Progresso médio: ${territory.progress}%`}>
+                  <span>Progresso médio</span>
                   <b>{territory.progress}%</b>
                   <i style={{ width: `${territory.progress}%`, background: territory.color }} />
                 </div>
-              ) : (
-                <p className={"km-muted"}>Você ainda não começou nenhum assunto desta matéria.</p>
               )}
-              <h3 className={"km-sub"}>Assuntos</h3>
-              {territory.folders.map((f) => {
-                const fdone = f.done === f.topics.length;
+              {(() => {
+                const loose = territory.topics.filter((x) => !territory.folders.length || !x.group);
+                // Sem tópicos do edital: as aulas direto, numa lista só.
+                if (!territory.folders.length) return <ul className={"km-topicList"}>{loose.map((x) => topicRow(territory, x))}</ul>;
+                const groups = [
+                  ...territory.folders.map((f) => ({ key: f.key, code: f.code, title: f.title, topics: f.topics, done: f.done, progress: f.progress, whole: f.topics.length > 1 })),
+                  ...(loose.length ? [{ key: "__avulsas", code: null, title: "Outras aulas", topics: loose, done: loose.filter((x) => x.study?.done).length, progress: null, whole: false }] : []),
+                ];
                 return (
-                  <details key={f.key} className={"km-folder"} data-done={fdone ? "1" : undefined} open={territory.folders.length <= 3} data-testid="pasta-topico">
-                    <summary>
-                      <span className={"km-folderName"}>
-                        <small>Tópico{f.code ? ` ${f.code}` : ""}</small>
-                        {f.title}
-                      </span>
-                      {fdone ? (
-                        <em className="km-on" aria-label={`Tópico concluído: ${f.topics.length} de ${f.topics.length}`}>
-                          <Check aria-hidden /> {f.topics.length}/{f.topics.length}
-                        </em>
-                      ) : (
-                        <em>
-                          {f.done}/{f.topics.length}
-                          {f.progress !== null ? ` · ${f.progress}%` : ""}
-                        </em>
-                      )}
-                    </summary>
-                    <ul className={"km-topicList"}>{f.topics.map((x) => topicRow(territory, x))}</ul>
-                    {f.topics.length > 1 && (
-                      <button
-                        type="button"
-                        className={"km-folderStart"}
-                        onClick={() => onStart({ id: f.topics[0]!.id, title: f.title, discipline: territory.label, ids: f.topics.map((t) => t.id) })}
-                        data-testid="estudar-topico"
-                      >
-                        <Play aria-hidden /> Estudar o tópico inteiro ({f.topics.length} aulas)
-                      </button>
-                    )}
-                  </details>
+                  <>
+                    <h3 className={"km-sub"}>
+                      Tópicos <small>({groups.length}) · toque para ver as aulas</small>
+                    </h3>
+                    <div className={"km-folders"}>
+                      {groups.map((f) => {
+                        const fdone = f.topics.length > 0 && f.done === f.topics.length;
+                        const open = openFolder === f.key;
+                        return (
+                          <details key={f.key} className={"km-folder"} data-done={fdone ? "1" : undefined} open={open} data-testid="pasta-topico">
+                            <summary
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setOpenFolder(open ? null : f.key);
+                              }}
+                              aria-expanded={open}
+                            >
+                              <ChevronDown className={"km-folderChevron"} aria-hidden />
+                              <span className={"km-folderName"}>
+                                {f.code && <small>Tópico {f.code}</small>}
+                                {f.title}
+                              </span>
+                              {fdone ? (
+                                <em className="km-on" aria-label={`Tópico concluído: ${f.topics.length} de ${f.topics.length} aulas`}>
+                                  <Check aria-hidden /> {f.topics.length}/{f.topics.length}
+                                </em>
+                              ) : (
+                                <em aria-label={`${f.done} de ${f.topics.length} aulas concluídas`}>
+                                  {f.done}/{f.topics.length}
+                                </em>
+                              )}
+                            </summary>
+                            {open && (
+                              <>
+                                <ul className={"km-topicList"}>{f.topics.map((x) => topicRow(territory, x))}</ul>
+                                {f.whole && (
+                                  <button
+                                    type="button"
+                                    className={"km-folderStart"}
+                                    onClick={() => onStart({ id: f.topics[0]!.id, title: f.title, discipline: territory.label, ids: f.topics.map((t) => t.id) })}
+                                    data-testid="estudar-topico"
+                                  >
+                                    <Play aria-hidden /> Estudar o tópico inteiro ({f.topics.length} aulas)
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </details>
+                        );
+                      })}
+                    </div>
+                  </>
                 );
-              })}
-              {territory.folders.length > 0 && territory.topics.some((x) => !x.group) && <h3 className={"km-sub"}>Aulas avulsas</h3>}
-              <ul className={"km-topicList"}>{territory.topics.filter((x) => !territory.folders.length || !x.group).map((x) => topicRow(territory, x))}</ul>
+              })()}
             </>
           )}
           {territory && topic && (
