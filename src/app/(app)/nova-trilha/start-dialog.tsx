@@ -41,7 +41,10 @@ export function StartStudyDialog({ theme, onClose }: { theme: StartTheme | null;
       <dialog
         ref={dialog}
         onClose={onClose}
-        className="m-auto w-[min(92vw,440px)] rounded-[20px] p-0 backdrop:bg-black/60"
+        // Enquanto a aula é criada, o card some e fica só a tela de carregamento (ele volta se der erro).
+        onCancel={(e) => pending && e.preventDefault()}
+        data-pending={pending ? "1" : undefined}
+        className="m-auto w-[min(92vw,440px)] rounded-[20px] p-0 backdrop:bg-black/60 data-[pending]:pointer-events-none data-[pending]:opacity-0 data-[pending]:backdrop:bg-transparent"
         aria-labelledby="comecar-titulo"
         data-testid="comecar-estudo"
       >

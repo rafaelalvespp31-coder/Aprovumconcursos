@@ -555,7 +555,8 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         // sobe e abaixa a arma um pouco (o recorte continua fora da tela nesse movimento).
         const breathe = 0;
         const sway = 0;
-        const wantY = -raise * cam.view.h * 0.025 + settle * cam.view.h * 0.06;
+        // Nenhum movimento do braço ao clicar/tocar (nem ao travar a mira): ele é fixo.
+        const wantY = 0 * (raise + settle);
         const ka = cam.reduced ? 1 : 1 - Math.exp(-dt * 9);
         aimA += (0 - aimA) * ka;
         aimX += (0 - aimX) * ka;

@@ -359,11 +359,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
       travel = 0;
       dragged.current = false;
       pressed = pts.size === 1 ? ((e.target as Element).closest?.("[data-pick]") as HTMLElement | null) : null;
-      if (e.pointerType !== "mouse") {
-        const r = rect;
-        cam.setScreenPointer([e.clientX - r.left, e.clientY - r.top]);
-        cam.setPointer(((e.clientX - r.left) / r.width) * 2 - 1, ((e.clientY - r.top) / r.height) * 2 - 1);
-      }
+      // Toque: só apertar não move nada (nem câmera, nem braço); o olhar só segue quando o dedo arrasta.
       if (pts.size === 2) {
         const [a, b] = [...pts.values()];
         pinch = Math.hypot(a!.x - b!.x, a!.y - b!.y);
@@ -376,7 +372,8 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
       // (Com um card apertado, a câmera espera: o card não foge de baixo do cursor.)
       // Sobre um card a câmera também segura: o card não "foge" do cursor na hora do clique.
       const overPick = !!(e.target as Element | null)?.closest?.("[data-pick]");
-      if (e.pointerType === "mouse" || pts.has(e.pointerId)) {
+      const dragging = pts.has(e.pointerId) && travel > 8;
+      if (e.pointerType === "mouse" || dragging) {
         const px = ((e.clientX - r.left) / r.width) * 2 - 1;
         const py = ((e.clientY - r.top) / r.height) * 2 - 1;
         cam.setHold(!!pressed || overPick);
