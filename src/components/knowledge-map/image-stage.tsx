@@ -77,7 +77,9 @@ export function slotFor(id: string): ArtSlot {
 const FIT = { x0: 700, x1: 3140, cx: 1920, cy: 860 };
 
 /** Folga da arte além da tela (computador): é o quanto a câmera pode "olhar" para os lados. */
-const LOOK_MARGIN = 1.22;
+const LOOK_MARGIN = 1.5;
+/** Tamanho do braço/fuzil na tela (independe da folga da câmera). */
+const RIFLE_SCALE = 1.22;
 
 /** Cópias espelhadas em volta da arte (só aparecem no celular em pé). */
 const MIRRORS: Array<[number, number]> = [
@@ -240,11 +242,15 @@ export class PlateCamera {
     const look = this.reduced || this.locked ? 0 : 1;
     const w = ART.w * s;
     const h = ART.h * s;
-    let tx = this.view.w / 2 - this.focusNow[0] * s - this.pointerNow[0] * Math.max(0, (w - this.view.w) / 2) * look;
-    let ty = this.cy() - this.focusNow[1] * s - (this.mode === "cobrir" ? this.pointerNow[1] * Math.max(0, (h - this.view.h) / 2) * look : 0);
-    // Nunca mostrar a borda da arte (quando ela é maior que a tela).
-    if (w >= this.view.w) tx = Math.min(0, Math.max(this.view.w - w, tx));
-    if (h >= this.view.h) ty = Math.min(0, Math.max(this.view.h - h, ty));
+    // Celular em pé: a arte espelhada preenche as bordas, então a câmera pode virar além dela.
+    const caber = this.mode === "caber";
+    const panX = caber ? this.view.w * 0.32 : Math.max(0, (w - this.view.w) / 2);
+    const panY = caber ? this.view.h * 0.1 : Math.max(0, (h - this.view.h) / 2);
+    let tx = this.view.w / 2 - this.focusNow[0] * s - this.pointerNow[0] * panX * look;
+    let ty = this.cy() - this.focusNow[1] * s - this.pointerNow[1] * panY * look;
+    // Computador: nunca mostrar a borda da arte (quando ela é maior que a tela).
+    if (!caber && w >= this.view.w) tx = Math.min(0, Math.max(this.view.w - w, tx));
+    if (!caber && h >= this.view.h) ty = Math.min(0, Math.max(this.view.h - h, ty));
     return { s, tx, ty };
   }
   /** Retângulo visível, normalizado (0..1) na arte — para o radar. */
@@ -299,7 +305,9 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       const r = el.getBoundingClientRect();
       cam.setView(r.width, r.height);
       el.dataset.enquadramento = cam.mode;
-      const dpr = light ? 1 : Math.min(window.devicePixelRatio || 1, 1.5);
+      // Fumaça e brasas são macias: meia resolução (o CSS estica) = 4x menos para pintar e enviar à tela.
+      const dpr = 0.5;
+
       cv.width = Math.round(r.width * dpr);
       cv.height = Math.round(r.height * dpr);
       ctx?.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -313,7 +321,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         rg.tx0 = left - RIFLE.x * rg.s0;
         rg.ty0 = top - RIFLE.y * rg.s0;
       } else {
-        rg.s0 = cam.cover() * LOOK_MARGIN;
+        rg.s0 = cam.cover() * RIFLE_SCALE;
         rg.tx0 = cam.view.w / 2 - (ART.w / 2) * rg.s0;
         rg.ty0 = cam.view.h / 2 - (ART.h / 2) * rg.s0;
       }
@@ -329,7 +337,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(el);
-    const N = light ? 45 : 110;
+    const N = light ? 36 : 70;
     let seed = 17;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     const parts = Array.from({ length: N }, () => ({ x: rnd(), y: rnd(), v: 0.02 + rnd() * 0.05, r: 0.6 + rnd() * 1.6, a: 0.3 + rnd() * 0.7, d: (rnd() - 0.5) * 0.02 }));
@@ -341,8 +349,6 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     let aimA = 0;
     let aimX = 0;
     let aimY = 0;
-    // 0..1: transição curta ao começar a seguir o cursor; em 1 o fuzil acompanha sem atraso.
-    let followBlend = 0;
     // Fumaça: sprite macio gerado uma vez; cada fonte solta baforadas que sobem e se espalham.
     const sprite = document.createElement("canvas");
     sprite.width = sprite.height = 128;
@@ -359,7 +365,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         sg.fillRect(0, 0, 128, 128);
       }
     }
-    const PER = light ? 3 : 6;
+    const PER = light ? 3 : 4;
     // Brasa e fogo pré-desenhados (sem criar gradientes a cada quadro).
     const mk = (r: number, stops: Array<[number, string]>) => {
       const c = document.createElement("canvas");
@@ -385,6 +391,27 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     ]);
     let frame = 0;
     let fxDt = 0;
+    // Tamanho das placas sem forçar layout: o observador avisa quando muda.
+    const sizes = new WeakMap<HTMLElement, [number, number]>();
+    const observed = new WeakSet<HTMLElement>();
+    const plateRo = new ResizeObserver((entries) => {
+      for (const e of entries) {
+        const box = e.borderBoxSize?.[0];
+        const w = box ? box.inlineSize : e.contentRect.width;
+        const h = box ? box.blockSize : e.contentRect.height;
+        sizes.set(e.target as HTMLElement, [Math.ceil(w / 2), Math.ceil(h / 2)]);
+      }
+    });
+    // Só escreve no DOM quando o valor muda (menos recálculo de estilo por quadro).
+    const setVis = (elx: HTMLElement, v: string) => {
+      if (elx.style.visibility !== v) elx.style.visibility = v;
+    };
+    const setOp = (elx: HTMLElement, v: string) => {
+      if (elx.style.opacity !== v) elx.style.opacity = v;
+    };
+    let lastView = "";
+    let laserDirty = true;
+    let lastRifle = "";
     const puffs = SMOKE.flatMap((src, i) => Array.from({ length: PER }, (_, j) => ({ i, u: j / PER + rnd() * 0.08, sp: 0.03 + rnd() * 0.025, rot: rnd() * 6.28, dr: (rnd() - 0.5) * 0.2 })));
     const loop = (now: number) => {
       const dt = (now - last) / 1000;
@@ -392,12 +419,13 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       const t = cam.step(dt);
       ly.style.transform = `translate3d(${t.tx.toFixed(2)}px, ${t.ty.toFixed(2)}px, 0) scale(${t.s.toFixed(5)})`;
       const map = labels.current;
-      // Meia largura das placas (para prendê-las às bordas no celular); lida só de vez em quando.
-      if (map && frame % 30 === 0)
+      // Meia largura/altura das placas: medidas pelo ResizeObserver (nunca lidas no laço).
+      if (map && frame % 60 === 0)
         for (const [key, elp] of map) {
-          if (!key.startsWith("t:")) continue;
-          elp.dataset.w = String(Math.ceil(elp.offsetWidth / 2));
-          elp.dataset.h = String(Math.ceil(elp.offsetHeight / 2));
+          if (key.startsWith("t:") && !observed.has(elp)) {
+            observed.add(elp);
+            plateRo.observe(elp);
+          }
         }
       if (map) {
         for (const tr of territories) {
@@ -407,21 +435,22 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
           const elp = map.get(`t:${tr.id}`);
           if (elp) {
             // No celular a placa nunca vaza da tela: fica presa às bordas.
-            const half = elp.dataset.w ? Number(elp.dataset.w) : cam.mode === "caber" ? 56 : 0;
+            const sz = sizes.get(elp);
+            const half = sz ? sz[0] : cam.mode === "caber" ? 56 : 0;
             const cx = half ? Math.min(cam.view.w - half - 6, Math.max(half + 6, x)) : x;
             elp.style.transform = `translate3d(${cx.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
             // Linha de luz ligando a placa à instalação no chão (sem desfoque, só gradiente).
             const lead = map.get(`l:${tr.id}`);
             if (lead) {
-              const top = y + Number(elp.dataset.h || 22);
+              const top = y + (sz ? sz[1] : 22);
               const bottom = sl.base[1] * t.s + t.ty;
               const len = Math.max(0, bottom - top);
               const bx = sl.base[0] * t.s + t.tx;
               const ang = Math.atan2(bx - cx, len || 1);
               lead.style.transform = `translate3d(${cx.toFixed(1)}px, ${top.toFixed(1)}px, 0) rotate(${(-ang).toFixed(4)}rad) scaleY(${(Math.hypot(len, bx - cx) / 100).toFixed(4)})`;
-              lead.style.opacity = elp.dataset.dim !== undefined || len < 4 ? "0" : "1";
+              setOp(lead, elp.dataset.dim !== undefined || len < 4 ? "0" : "1");
             }
-            elp.style.visibility = x < -260 || x > cam.view.w + 260 || y < -120 || y > cam.view.h + 120 ? "hidden" : "visible";
+            setVis(elp, x < -260 || x > cam.view.w + 260 || y < -120 || y > cam.view.h + 120 ? "hidden" : "visible");
           }
           for (const tp of tr.topics) {
             const ea = map.get(`a:${tp.id}`);
@@ -430,15 +459,21 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
             const bx = sl.base[0] * t.s + t.tx;
             const by = sl.base[1] * t.s + t.ty;
             ea.style.transform = `translate3d(${(bx + off[0]).toFixed(1)}px, ${(by + off[1]).toFixed(1)}px, 0)`;
-            ea.style.visibility = "visible";
+            setVis(ea, "visible");
           }
         }
       }
-      onView(cam.visible(t));
+      const vr = cam.visible(t);
+      const vk = `${vr.x.toFixed(3)}:${vr.y.toFixed(3)}:${vr.w.toFixed(3)}:${vr.h.toFixed(3)}`;
+      if (vk !== lastView) {
+        lastView = vk;
+        onView(vr);
+      }
       // Fumaça, fogo e brasas (canvas leve, em coordenadas de tela); no modo leve, um quadro sim, outro não.
       frame++;
       fxDt += dt;
-      if (ctx && !cam.reduced && (!light || frame % 2 === 0)) {
+      // Efeitos a ~30 qps em qualquer tela (60, 90 ou 120 Hz): fumaça e brasas não pedem mais que isso.
+      if (ctx && !cam.reduced && fxDt >= (light ? 1 / 24 : 1 / 30)) {
         const fdt = fxDt;
         fxDt = 0;
         const w = cam.view.w;
@@ -449,7 +484,6 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
           const src = SMOKE[p.i]!;
           p.u += p.sp * fdt * (src.kind === "nevoa" ? 0.45 : 1);
           if (p.u > 1) p.u -= 1;
-          p.rot += p.dr * fdt;
           const col = src.kind === "coluna";
           const ax = src.x + (col ? p.u * 260 + Math.sin(p.u * 6 + p.i) * 30 : (p.u - 0.5) * 900);
           const ay = src.y - (col ? p.u * 420 : Math.sin(p.u * 3.14) * 40);
@@ -458,11 +492,8 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
           const y = ay * t.s + t.ty;
           if (x < -size || x > w + size || y < -size || y > h + size) continue;
           ctx.globalAlpha = Math.sin(Math.PI * p.u) * (col ? 0.75 : 0.4);
-          ctx.save();
-          ctx.translate(x, y);
-          ctx.rotate(p.rot);
-          ctx.drawImage(sprite, -size / 2, -size / 2, size, size);
-          ctx.restore();
+          // Sem girar (num borrão macio não se vê) e sem save/restore: bem mais barato por baforada.
+          ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size);
         }
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = "lighter";
@@ -501,7 +532,6 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         if (lk && lk.at < 0) lk.at = now;
         // Prioridade: mira travada > cursor/dedo exato > matéria em foco.
         const sp = cam.screenPointer;
-        const following = !lk && !!sp;
         let target: [number, number] | null = null;
         if (lk) target = [lk.target[0] * t.s + t.tx, lk.target[1] * t.s + t.ty];
         else if (sp) target = sp;
@@ -511,57 +541,33 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         // Sobe a arma ao mirar e, com o alvo travado, abaixa um pouco para liberar a vista.
         const raise = lk ? Math.min(1, since / 350) : 0;
         const settle = lk ? Math.max(0, Math.min(1, (since - 1300) / 500)) : 0;
-        // Respiração e balanço só parado: seguindo o cursor, o cano aponta exatamente para ele.
-        const idle = !following && !cam.reduced;
-        const breathe = idle ? Math.sin(now / 760) * 3 * s0 * 2 : 0;
-        const sway = idle ? Math.sin(now / 1300) * 0.004 : 0;
-        let wantX = 0;
-        let wantY = 0;
-        let wantA = 0;
-        if (target) {
-          // O braço acompanha o alvo (desloca) e o resto é giro exato em volta do ombro.
-          // Primeira pessoa: o braço desliza junto com a mira (como quem vira o corpo) e gira pouco,
-          // então a arma nunca sai do quadro; o giro exato fecha a diferença até o alvo.
-          wantX = Math.max(-cam.view.w * 0.32, Math.min(cam.view.w * 0.1, (target[0] - mx) * 0.62));
-          wantY = Math.max(-cam.view.h * 0.14, Math.min(cam.view.h * 0.1, (target[1] - my) * 0.3));
-          wantY += -raise * cam.view.h * 0.03 + settle * cam.view.h * 0.1;
-          const ppx = px + wantX;
-          const ppy = py + wantY + breathe;
-          const d = Math.atan2(target[1] - ppy, target[0] - ppx) - Math.atan2(my - py, mx - px);
-          wantA = Math.atan2(Math.sin(d), Math.cos(d));
-          // Limite só para casos extremos (cursor abaixo do ombro).
-          wantA = Math.max(-1.7, Math.min(1.5, wantA));
+        // Braço e fuzil FIXOS no quadro (primeira pessoa): quem vira é a câmera. Só a mira travada
+        // sobe e abaixa a arma um pouco (o recorte continua fora da tela nesse movimento).
+        const breathe = 0;
+        const sway = 0;
+        const wantY = -raise * cam.view.h * 0.025 + settle * cam.view.h * 0.06;
+        const ka = cam.reduced ? 1 : 1 - Math.exp(-dt * 9);
+        aimA += (0 - aimA) * ka;
+        aimX += (0 - aimX) * ka;
+        aimY += (wantY - aimY) * ka;
+        const rt = `translate3d(${aimX.toFixed(1)}px, ${(aimY + breathe).toFixed(1)}px, 0) rotate(${(aimA + sway).toFixed(4)}rad)`;
+        if (rt !== lastRifle) {
+          lastRifle = rt;
+          rf.style.transform = rt;
         }
-        if (following && followBlend >= 1) {
-          // Sincronizado: sem atraso nenhum.
-          aimA = wantA;
-          aimX = wantX;
-          aimY = wantY;
-        } else {
-          const ka = cam.reduced ? 1 : 1 - Math.exp(-dt * (lk && since < 600 ? 7 : 14));
-          aimA += (wantA - aimA) * ka;
-          aimX += (wantX - aimX) * ka;
-          aimY += (wantY - aimY) * ka;
-        }
-        // Entrar no modo "seguir" (depois de travar a mira ou parado) faz uma transição curta; depois é exato.
-        followBlend = following ? Math.min(1, followBlend + dt / 0.18) : 0;
-        if (following && followBlend < 1) {
-          const k = followBlend;
-          aimA += (wantA - aimA) * k;
-          aimX += (wantX - aimX) * k;
-          aimY += (wantY - aimY) * k;
-        }
-        rf.style.transform = `translate3d(${aimX.toFixed(1)}px, ${(aimY + breathe).toFixed(1)}px, 0) rotate(${(aimA + sway).toFixed(4)}rad)`;
 
         // Laser, luneta e marcação de alvo travado.
         const lc = laser.current;
-        const lctx = lc?.getContext("2d");
+        const lctx = lc && (lk || laserDirty) ? lc.getContext("2d") : null;
         if (lc && lctx) {
           if (lc.width !== Math.round(cam.view.w) || lc.height !== Math.round(cam.view.h)) {
             lc.width = Math.round(cam.view.w);
             lc.height = Math.round(cam.view.h);
           }
+          // Sem mira travada a tela do laser fica vazia: limpa uma vez e para de desenhar.
           lctx.clearRect(0, 0, lc.width, lc.height);
+          laserDirty = !!lk;
+          lc.style.display = lk ? "" : "none";
           if (lk && target) {
             // Boca do cano depois da rotação do fuzil.
             const a = aimA + sway;
@@ -634,6 +640,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     return () => {
       cancelAnimationFrame(raf);
       ro.disconnect();
+      plateRo.disconnect();
     };
   }, [cam, territories, labels, topicOffsets, onView, aim, lock]);
 

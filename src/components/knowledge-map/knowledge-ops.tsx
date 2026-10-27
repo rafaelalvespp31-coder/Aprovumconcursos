@@ -325,6 +325,14 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     const pts = new Map<number, { x: number; y: number }>();
     let pinch = 0;
     let travel = 0;
+    // Retângulo do palco guardado (ler o layout a cada movimento do mouse força recálculo e trava).
+    let rect = el.getBoundingClientRect();
+    const remeasure = () => {
+      rect = el.getBoundingClientRect();
+    };
+    const ro = new ResizeObserver(remeasure);
+    ro.observe(el);
+    window.addEventListener("scroll", remeasure, { passive: true });
     // Mira na ponta do cursor/dedo: movida no próprio evento (sem esperar o próximo quadro).
     let hideTimer = 0;
     const reticleAt = (e: PointerEvent) => {
@@ -335,7 +343,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
         rt.dataset.on = "";
         return;
       }
-      const r = el.getBoundingClientRect();
+      const r = rect;
       rt.style.transform = `translate3d(${(e.clientX - r.left).toFixed(1)}px, ${(e.clientY - r.top).toFixed(1)}px, 0)`;
       rt.dataset.on = "1";
       rt.dataset.alvo = (e.target as Element).closest?.(".km-plate, .km-topicPlate, .km-art-base, .km-art-core") ? "1" : "";
@@ -347,7 +355,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
       travel = 0;
       dragged.current = false;
       if (e.pointerType !== "mouse") {
-        const r = el.getBoundingClientRect();
+        const r = rect;
         cam.setScreenPointer([e.clientX - r.left, e.clientY - r.top]);
         cam.setPointer(((e.clientX - r.left) / r.width) * 2 - 1, ((e.clientY - r.top) / r.height) * 2 - 1);
       }
@@ -358,7 +366,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
       setHint(false);
     };
     const move = (e: PointerEvent) => {
-      const r = el.getBoundingClientRect();
+      const r = rect;
       // Mouse sempre; toque enquanto o dedo está na tela: o fuzil e a câmera seguem o ponto exato.
       if (e.pointerType === "mouse" || pts.has(e.pointerId)) {
         const px = ((e.clientX - r.left) / r.width) * 2 - 1;
@@ -380,7 +388,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
         const d = Math.hypot(a!.x - b!.x, a!.y - b!.y);
         if (pinch > 0 && d > 0) {
           if (art) {
-            const r = el.getBoundingClientRect();
+            const r = rect;
             cam.zoomBy(d / pinch, [(a!.x + b!.x) / 2 - r.left, (a!.y + b!.y) / 2 - r.top]);
           }
           else controls.zoom(pinch / d);
@@ -407,19 +415,21 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     const wheel = (e: WheelEvent) => {
       e.preventDefault();
       if (art) {
-        const r = el.getBoundingClientRect();
+        const r = rect;
         cam.zoomBy(Math.exp(-Math.max(-120, Math.min(120, e.deltaY)) * 0.0016), [e.clientX - r.left, e.clientY - r.top]);
       }
       else controls.zoom(Math.exp(e.deltaY * 0.0012));
       setHint(false);
     };
     el.addEventListener("pointerdown", down);
-    window.addEventListener("pointermove", move);
+    window.addEventListener("pointermove", move, { passive: true });
     window.addEventListener("pointerup", up);
     window.addEventListener("pointercancel", up);
     el.addEventListener("pointerleave", leave);
     el.addEventListener("wheel", wheel, { passive: false });
     return () => {
+      ro.disconnect();
+      window.removeEventListener("scroll", remeasure);
       window.clearTimeout(hideTimer);
       el.removeEventListener("pointerdown", down);
       window.removeEventListener("pointermove", move);
