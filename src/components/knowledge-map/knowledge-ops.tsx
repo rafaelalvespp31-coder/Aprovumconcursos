@@ -48,6 +48,7 @@ import type { Anchor } from "./scene/scene";
 import { terrainHeight } from "./scene/textures";
 import "./knowledge-ops.css";
 import { ART, ART_ORDER_DRAWN, ImageStage, PlateCamera, slotFor } from "./image-stage";
+import { SoldierAudio } from "./soldier-audio";
 
 const Scene = dynamic(() => import("./scene/scene"), { ssr: false, loading: () => <div className={"km-loading"}>Carregando o território…</div> });
 
@@ -131,7 +132,10 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
   // Trilha sonora original (loop de 42 s, ~0,5 MB): só é baixada quando o aluno liga o som.
   const audio = useRef<HTMLAudioElement | null>(null);
   const [sound, setSound] = useState(false);
+  // Respiração do soldado (loop) e a fala dele ao mirar numa matéria: junto com a trilha.
+  const [soldier] = useState(() => new SoldierAudio());
   const startSound = () => {
+    soldier.start();
     if (!audio.current) {
       const a = new Audio("/audio/trilha-operacoes.m4a");
       a.loop = true;
@@ -143,6 +147,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
   };
   const stopSound = () => {
     audio.current?.pause();
+    soldier.stop();
     setSound(false);
   };
   const toggleSound = () => {
@@ -175,9 +180,11 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
       if (document.hidden) {
         resume = !el.paused;
         el.pause();
+        soldier.hide();
       } else if (resume) {
         resume = false;
         el.play().catch(() => undefined);
+        soldier.show();
       }
     };
     document.addEventListener("visibilitychange", vis);
@@ -185,11 +192,13 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
       window.removeEventListener("pointerdown", first);
       document.removeEventListener("visibilitychange", vis);
       audio.current?.pause();
+      soldier.dispose();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // Alvo da mira do soldado (matéria em foco ou sob o cursor), lido a cada quadro pelo palco.
   const aim = useRef<[number, number] | null>(null);
+  const aimTalk = useRef<ReturnType<typeof setTimeout> | null>(null);
   // Mira travada na matéria escolhida (laser, luneta e foco total).
   const lock = useRef<{ at: number; target: [number, number]; label: string } | null>(null);
   /** Trava a mira e aproxima a câmera até a matéria (foco total), sem ficar sob o painel. */
@@ -262,6 +271,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
       setOpenFolder(t.folders.length === 1 && t.topics.every((x) => x.group) ? t.folders[0]!.key : null);
       controls.focusOn(t.pos, 36, 0.55, viewYawFor(t.pos));
       lockOn(slotFor(t.id).base, t.label);
+      soldier.speak();
   };
   const selectTopic = (t: Territory, x: MapTopic) => {
       setCoreOpen(false);
@@ -648,10 +658,14 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                   onMouseEnter={() => {
                     if (!art) return;
                     aim.current = slotFor(t.id).base;
+                    // Mirou e segurou a mira no card (não só passou por cima): o soldado fala.
+                    if (aimTalk.current) clearTimeout(aimTalk.current);
+                    aimTalk.current = setTimeout(() => soldier.speak(), 450);
                   }}
                   onMouseLeave={() => {
                     if (!art) return;
                     aim.current = selT ? slotFor(selT).base : null;
+                    if (aimTalk.current) clearTimeout(aimTalk.current);
                   }}
                   aria-label={t.topics.length ? `${t.label}: ${t.topics.length} assunto(s)${t.progress !== null ? `, progresso ${t.progress}%` : ""}` : `${t.label}: em breve, ainda sem aulas publicadas`}
                   data-testid="territorio"

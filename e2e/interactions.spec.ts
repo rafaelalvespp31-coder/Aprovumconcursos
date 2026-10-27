@@ -1248,9 +1248,12 @@ test("mapa: a trilha sonora só é baixada quando o aluno liga o som", async ({ 
   await page.goto(`${G}/novo-estudo`);
   await expect(page.getByTestId("knowledge-ops")).toHaveAttribute("data-modo", "arte");
   await page.waitForTimeout(800);
-  expect(requests.some((u) => u.includes("trilha-operacoes"))).toBe(false);
+  expect(requests.some((u) => /trilha-operacoes|respiracao|voz-soldado/.test(u))).toBe(false);
   await page.getByTestId("som").click();
   await expect.poll(() => requests.some((u) => u.includes("trilha-operacoes"))).toBe(true);
+  // Respiração do soldado (loop) e a fala dele vêm junto, só depois de ligar o som.
+  await expect.poll(() => requests.some((u) => u.includes("respiracao"))).toBe(true);
+  await expect.poll(() => requests.some((u) => u.includes("voz-soldado"))).toBe(true);
 });
 
 test("catálogo: botão edita tema e tipo, com validação de lei e artigos", async ({ page }) => {
