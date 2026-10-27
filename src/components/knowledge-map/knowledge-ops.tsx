@@ -28,6 +28,8 @@ import {
   Search,
   Shield,
   Target,
+  Volume2,
+  VolumeX,
   X,
   type LucideIcon,
 } from "lucide-react";
@@ -117,6 +119,66 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
   const [stageKind, setStageKind] = useState<"arte" | "3d">("arte");
   const [cam] = useState(() => new PlateCamera());
   const dragged = useRef(false);
+  // Trilha sonora original (loop de 42 s, ~0,5 MB): só é baixada quando o aluno liga o som.
+  const audio = useRef<HTMLAudioElement | null>(null);
+  const [sound, setSound] = useState(false);
+  const startSound = () => {
+    if (!audio.current) {
+      const a = new Audio("/audio/trilha-operacoes.m4a");
+      a.loop = true;
+      a.volume = 0.32;
+      a.preload = "auto";
+      audio.current = a;
+    }
+    audio.current.play().then(() => setSound(true)).catch(() => setSound(false));
+  };
+  const stopSound = () => {
+    audio.current?.pause();
+    setSound(false);
+  };
+  const toggleSound = () => {
+    const next = !sound;
+    if (next) startSound();
+    else stopSound();
+    try {
+      localStorage.setItem("km-som", next ? "1" : "0");
+    } catch {
+      /* sem armazenamento: só não lembra a escolha */
+    }
+  };
+  useEffect(() => {
+    // Quem deixou o som ligado: volta a tocar no primeiro toque/clique (o navegador exige um gesto).
+    let wants = false;
+    try {
+      wants = localStorage.getItem("km-som") === "1";
+    } catch {
+      wants = false;
+    }
+    const first = () => {
+      if (wants && !audio.current?.played.length) startSound();
+    };
+    if (wants) window.addEventListener("pointerdown", first, { once: true });
+    // Aba oculta: pausa (economiza bateria) e retoma ao voltar, se estava tocando.
+    let resume = false;
+    const vis = () => {
+      const el = audio.current;
+      if (!el) return;
+      if (document.hidden) {
+        resume = !el.paused;
+        el.pause();
+      } else if (resume) {
+        resume = false;
+        el.play().catch(() => undefined);
+      }
+    };
+    document.addEventListener("visibilitychange", vis);
+    return () => {
+      window.removeEventListener("pointerdown", first);
+      document.removeEventListener("visibilitychange", vis);
+      audio.current?.pause();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Alvo da mira do soldado (matéria em foco ou sob o cursor), lido a cada quadro pelo palco.
   const aim = useRef<[number, number] | null>(null);
   // Mira travada na matéria escolhida (laser, luneta e foco total).
@@ -456,6 +518,16 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
         {/* Placas holográficas (HTML, legíveis e clicáveis) */}
         {showStage && (
           <div className={"km-labels"} data-palco={art ? "arte" : "3d"}>
+            {art &&
+              plates.map((t) => (
+                <span
+                  key={`l:${t.id}`}
+                  aria-hidden
+                  className="km-lead"
+                  style={{ ["--c" as string]: t.color }}
+                  ref={(el) => void (el ? labels.current.set(`l:${t.id}`, el) : labels.current.delete(`l:${t.id}`))}
+                />
+              ))}
             {plates.map((t) => {
               const Icon = ICONS[t.icon];
               const sel = selT === t.id;
@@ -650,6 +722,9 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
             <Move aria-hidden /> <span>{dragMode === "mover" ? "Mover" : "Girar"}</span>
           </button>
         )}
+        <button type="button" onClick={toggleSound} aria-pressed={sound} aria-label={sound ? "Desligar a trilha sonora" : "Ligar a trilha sonora"} data-testid="som">
+          {sound ? <Volume2 aria-hidden /> : <VolumeX aria-hidden />} <span>{sound ? "Som ligado" : "Som"}</span>
+        </button>
         <button type="button" onClick={zoomIn} aria-label="Aproximar">
           <Plus aria-hidden /> <span>Zoom +</span>
         </button>

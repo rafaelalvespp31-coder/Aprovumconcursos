@@ -376,7 +376,12 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       ly.style.transform = `translate3d(${t.tx.toFixed(2)}px, ${t.ty.toFixed(2)}px, 0) scale(${t.s.toFixed(5)})`;
       const map = labels.current;
       // Meia largura das placas (para prendê-las às bordas no celular); lida só de vez em quando.
-      if (map && cam.mode === "caber" && frame % 30 === 0) for (const elp of map.values()) elp.dataset.w = String(Math.ceil(elp.offsetWidth / 2));
+      if (map && frame % 30 === 0)
+        for (const [key, elp] of map) {
+          if (!key.startsWith("t:")) continue;
+          elp.dataset.w = String(Math.ceil(elp.offsetWidth / 2));
+          elp.dataset.h = String(Math.ceil(elp.offsetHeight / 2));
+        }
       if (map) {
         for (const tr of territories) {
           const sl = slotFor(tr.id);
@@ -385,9 +390,20 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
           const elp = map.get(`t:${tr.id}`);
           if (elp) {
             // No celular a placa nunca vaza da tela: fica presa às bordas.
-            const half = cam.mode === "caber" ? (elp.dataset.w ? Number(elp.dataset.w) : 56) : 0;
+            const half = elp.dataset.w ? Number(elp.dataset.w) : cam.mode === "caber" ? 56 : 0;
             const cx = half ? Math.min(cam.view.w - half - 6, Math.max(half + 6, x)) : x;
             elp.style.transform = `translate3d(${cx.toFixed(1)}px, ${y.toFixed(1)}px, 0)`;
+            // Linha de luz ligando a placa à instalação no chão (sem desfoque, só gradiente).
+            const lead = map.get(`l:${tr.id}`);
+            if (lead) {
+              const top = y + Number(elp.dataset.h || 22);
+              const bottom = sl.base[1] * t.s + t.ty;
+              const len = Math.max(0, bottom - top);
+              const bx = sl.base[0] * t.s + t.tx;
+              const ang = Math.atan2(bx - cx, len || 1);
+              lead.style.transform = `translate3d(${cx.toFixed(1)}px, ${top.toFixed(1)}px, 0) rotate(${(-ang).toFixed(4)}rad) scaleY(${(Math.hypot(len, bx - cx) / 100).toFixed(4)})`;
+              lead.style.opacity = elp.dataset.dim !== undefined || len < 4 ? "0" : "1";
+            }
             elp.style.visibility = x < -260 || x > cam.view.w + 260 || y < -120 || y > cam.view.h + 120 ? "hidden" : "visible";
           }
           for (const tp of tr.topics) {

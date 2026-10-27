@@ -366,9 +366,12 @@ test.describe("casco pastel", () => {
   test("busca encontra itens reais e navega", async ({ page, isMobile }) => {
     test.skip(isMobile, "a busca fica no cabeçalho a partir de telas médias");
     await page.goto(`${G}/painel`);
-    await page.keyboard.press("Control+k");
     const box = page.getByRole("combobox", { name: /Buscar/ });
-    await expect(box).toBeFocused();
+    // O atalho só existe depois da hidratação: repete até a busca receber o foco.
+    await expect(async () => {
+      await page.keyboard.press("Control+k");
+      await expect(box).toBeFocused({ timeout: 1000 });
+    }).toPass({ timeout: 10000 });
     await box.fill("atributos");
     await expect(page.getByRole("option", { name: /Revisão.*Atributos do ato/ })).toBeVisible();
     await box.fill("desemp");
@@ -1230,4 +1233,15 @@ test.describe("novo estudo: mapa do conhecimento (Knowledge Operations)", () => 
     await ko.getByRole("button", { name: /Cenário/ }).click();
     await expect(ko).toHaveAttribute("data-modo", "arte");
   });
+});
+
+test("mapa: a trilha sonora só é baixada quando o aluno liga o som", async ({ page }) => {
+  const requests: string[] = [];
+  page.on("request", (r) => requests.push(r.url()));
+  await page.goto(`${G}/novo-estudo`);
+  await expect(page.getByTestId("knowledge-ops")).toHaveAttribute("data-modo", "arte");
+  await page.waitForTimeout(800);
+  expect(requests.some((u) => u.includes("trilha-operacoes"))).toBe(false);
+  await page.getByTestId("som").click();
+  await expect.poll(() => requests.some((u) => u.includes("trilha-operacoes"))).toBe(true);
 });
