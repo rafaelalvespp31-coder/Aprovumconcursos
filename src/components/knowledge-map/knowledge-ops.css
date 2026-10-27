@@ -1869,3 +1869,8 @@
     transition: none;
   }
 }
+
+/* Computador: a arte cobre a tela inteira, então o fundo desfocado (caro) nem é desenhado. */
+.km-art[data-enquadramento="cobrir"] .km-art-fill {
+  display: none;
+}

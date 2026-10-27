@@ -127,6 +127,13 @@ export class PlateCamera {
   setScreenPointer(p: [number, number] | null) {
     this.screenPointer = p;
   }
+  /** Cursor sobre um card (ou card apertado): a câmera segura o olhar para o clique acertar. */
+  hold = false;
+  private resume = 0;
+  setHold(v: boolean) {
+    if (this.hold && !v) this.resume = 0.3;
+    this.hold = v;
+  }
   /** Com a mira travada, a câmera fica no alvo (não segue o cursor). */
   locked = false;
   setLocked(v: boolean) {
@@ -230,7 +237,10 @@ export class PlateCamera {
     const dt = Math.min(dtRaw, 0.05);
     const kk = this.reduced ? 1 : 1 - Math.exp(-dt * 3.4);
     // O olhar acompanha o cursor/dedo em sincronia com a arma (sem atraso); ao soltar, volta suave.
-    const kp = this.reduced || (this.screenPointer && !this.locked) ? 1 : 1 - Math.exp(-dt * 9);
+    // Saindo de cima de um card, o olhar volta suave (0,3 s) e depois segue sem atraso.
+    this.resume = Math.max(0, this.resume - dt);
+    const sync = this.screenPointer && !this.locked && this.resume <= 0;
+    const kp = this.hold ? 0 : this.reduced || sync ? 1 : 1 - Math.exp(-dt * 12);
     this.focusNow[0] += (this.focus[0] - this.focusNow[0]) * kk;
     this.focusNow[1] += (this.focus[1] - this.focusNow[1]) * kk;
     this.zoomNow += (this.zoom - this.zoomNow) * kk;
@@ -664,7 +674,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
           <img src={ART.src} alt="" width={ART.w} height={ART.h} draggable={false} className="km-art-img" />
         </picture>
         {/* Feixe e pulsos do núcleo (clicável). */}
-        <button type="button" tabIndex={-1} className="km-art-core" style={{ left: CORE[0], top: CORE[1] }} onClick={onSelectCore} aria-hidden>
+        <button type="button" tabIndex={-1} className="km-art-core" data-pick="" style={{ left: CORE[0], top: CORE[1] }} onClick={onSelectCore} aria-hidden>
           <i />
           <i />
           <i />
@@ -679,6 +689,7 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
               tabIndex={-1}
               aria-hidden
               className="km-art-base"
+              data-pick=""
               data-drawn={sl.drawn ? "1" : undefined}
               data-sel={selected === t.id ? "1" : undefined}
               data-vazio={t.topics.length ? undefined : "1"}

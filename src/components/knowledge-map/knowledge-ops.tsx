@@ -349,11 +349,16 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
       rt.dataset.alvo = (e.target as Element).closest?.(".km-plate, .km-topicPlate, .km-art-base, .km-art-core") ? "1" : "";
       window.clearTimeout(hideTimer);
     };
+    // Card pressionado: o mapa fica parado enquanto o botão/dedo está apertado sobre ele e,
+    // se a soltura cair fora do card (mapa se mexeu alguns px), o clique é entregue mesmo assim.
+    let pressed: HTMLElement | null = null;
+    const PICK_SLOP = 14;
     const down = (e: PointerEvent) => {
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       reticleAt(e);
       travel = 0;
       dragged.current = false;
+      pressed = pts.size === 1 ? ((e.target as Element).closest?.("[data-pick]") as HTMLElement | null) : null;
       if (e.pointerType !== "mouse") {
         const r = rect;
         cam.setScreenPointer([e.clientX - r.left, e.clientY - r.top]);
@@ -368,9 +373,13 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     const move = (e: PointerEvent) => {
       const r = rect;
       // Mouse sempre; toque enquanto o dedo está na tela: o fuzil e a câmera seguem o ponto exato.
+      // (Com um card apertado, a câmera espera: o card não foge de baixo do cursor.)
+      // Sobre um card a câmera também segura: o card não "foge" do cursor na hora do clique.
+      const overPick = !!(e.target as Element | null)?.closest?.("[data-pick]");
       if (e.pointerType === "mouse" || pts.has(e.pointerId)) {
         const px = ((e.clientX - r.left) / r.width) * 2 - 1;
         const py = ((e.clientY - r.top) / r.height) * 2 - 1;
+        cam.setHold(!!pressed || overPick);
         rig.setPointer(px, py);
         cam.setPointer(px, py);
         cam.setScreenPointer([e.clientX - r.left, e.clientY - r.top]);
@@ -382,6 +391,11 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
       const dy = e.clientY - p.y;
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
       travel += Math.abs(dx) + Math.abs(dy);
+      if (pressed) {
+        // Tremida pequena sobre o card não é arrasto: nada se mexe.
+        if (travel <= PICK_SLOP) return;
+        pressed = null;
+      }
       if (travel > 6) dragged.current = true;
       if (pts.size === 2) {
         const [a, b] = [...pts.values()];
@@ -402,6 +416,10 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     };
     const up = (e: PointerEvent) => {
       pts.delete(e.pointerId);
+      const target = pressed;
+      pressed = null;
+      // Soltou fora do card (o clique nativo se perderia): entrega o clique ao card apertado.
+      if (target && travel <= PICK_SLOP && (e.target as Element).closest?.("[data-pick]") !== target) target.click();
       // No toque, a mira fica um instante onde o dedo saiu e some.
       if (e.pointerType !== "mouse") hideTimer = window.setTimeout(() => reticle.current && (reticle.current.dataset.on = ""), 900);
       if (pts.size < 2) pinch = 0;
@@ -409,6 +427,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     const leave = (e: PointerEvent) => {
       if (e.pointerType === "mouse" && reticle.current) reticle.current.dataset.on = "";
       rig.setPointer(0, 0);
+      cam.setHold(false);
       cam.setPointer(0, 0);
       cam.setScreenPointer(null);
     };
@@ -605,6 +624,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                   }}
                   aria-label={t.topics.length ? `${t.label}: ${t.topics.length} assunto(s)${t.progress !== null ? `, progresso ${t.progress}%` : ""}` : `${t.label}: em breve, ainda sem aulas publicadas`}
                   data-testid="territorio"
+                  data-pick=""
                   data-vazio={t.topics.length ? undefined : "1"}
                 >
                   <span className={"km-plateIcon"}>
@@ -641,6 +661,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                     style={{ ["--c" as string]: territory.color, visibility: "hidden" }}
                     onClick={() => selectTopic(territory, x)}
                     data-testid="assunto-no-mapa"
+                    data-pick=""
                     title={x.title}
                   >
                     {x.study?.done ? "✓ " : ""}
