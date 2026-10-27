@@ -1429,12 +1429,26 @@
   }
 }
 
-/* Mapa inteiro no celular: bordas da arte se fundem ao fundo (sem faixa recortada). */
-.km-art[data-enquadramento="caber"] .km-art-img {
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 9%, #000 86%, transparent 100%), linear-gradient(90deg, transparent 0%, #000 4%, #000 96%, transparent 100%);
-  -webkit-mask-composite: source-in;
-  mask-image: linear-gradient(180deg, transparent 0%, #000 9%, #000 86%, transparent 100%), linear-gradient(90deg, transparent 0%, #000 4%, #000 96%, transparent 100%);
-  mask-composite: intersect;
+/* Arte espelhada nas bordas (celular em pé): o fundo preenche a tela toda, sem emenda. */
+.km-art-mirror {
+  display: none;
+  position: absolute;
+  background-size: 100% 100%;
+  pointer-events: none;
+}
+.km-art[data-enquadramento="caber"] .km-art-mirror {
+  display: block;
+  filter: brightness(0.75) saturate(0.85);
+}
+/* Quanto mais longe da arte, mais escuro (a atenção fica nas instalações). */
+/* (As cópias de cima e de baixo estão viradas: o topo do elemento é a emenda com a arte.) */
+.km-art[data-enquadramento="caber"] .km-art-mirror[data-lado="cima"] {
+  -webkit-mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.7) 14%, rgba(0, 0, 0, 0.25) 45%, transparent 75%);
+  mask-image: linear-gradient(180deg, #000 0%, rgba(0, 0, 0, 0.7) 14%, rgba(0, 0, 0, 0.25) 45%, transparent 75%);
+}
+.km-art[data-enquadramento="caber"] .km-art-mirror[data-lado="baixo"] {
+  -webkit-mask-image: linear-gradient(0deg, #000 0%, rgba(0, 0, 0, 0.75) 16%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0.15) 100%);
+  mask-image: linear-gradient(0deg, #000 0%, rgba(0, 0, 0, 0.75) 16%, rgba(0, 0, 0, 0.35) 50%, rgba(0, 0, 0, 0.15) 100%);
 }
 @media (max-width: 380px) {
   .km-controls button {
@@ -1795,4 +1809,63 @@
 .km-meter[data-done] span {
   color: var(--neon);
   text-shadow: 0 0 10px rgba(57, 255, 106, 0.7);
+}
+
+/* Mira na ponta do cursor/dedo (o cano do fuzil aponta exatamente para o centro dela). */
+.km-reticle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 40;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  opacity: 0;
+  will-change: transform;
+}
+.km-reticle[data-on="1"] {
+  opacity: 1;
+}
+.km-reticle i {
+  position: absolute;
+  left: -17px;
+  top: -17px;
+  width: 34px;
+  height: 34px;
+  border: 1.5px solid rgba(255, 70, 70, 0.95);
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(255, 30, 30, 0.6), inset 0 0 6px rgba(255, 30, 30, 0.35);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+  background:
+    linear-gradient(rgba(255, 80, 80, 0.95), rgba(255, 80, 80, 0.95)) center 0 / 1.5px 9px no-repeat,
+    linear-gradient(rgba(255, 80, 80, 0.95), rgba(255, 80, 80, 0.95)) center 100% / 1.5px 9px no-repeat,
+    linear-gradient(rgba(255, 80, 80, 0.95), rgba(255, 80, 80, 0.95)) 0 center / 9px 1.5px no-repeat,
+    linear-gradient(rgba(255, 80, 80, 0.95), rgba(255, 80, 80, 0.95)) 100% center / 9px 1.5px no-repeat;
+}
+.km-reticle b {
+  position: absolute;
+  left: -2.5px;
+  top: -2.5px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #ff3b3b;
+  box-shadow: 0 0 6px #ff2020, 0 0 12px rgba(255, 32, 32, 0.7);
+}
+/* Sobre uma matéria: a mira fecha (alvo). */
+.km-reticle[data-alvo="1"] i {
+  transform: scale(0.72) rotate(45deg);
+  border-color: #fff;
+}
+/* Mouse: a mira substitui a seta sobre o mapa. */
+@media (hover: hover) and (pointer: fine) {
+  .km-root[data-modo="arte"] .km-stage,
+  .km-root[data-modo="arte"] .km-stage button {
+    cursor: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .km-reticle i {
+    transition: none;
+  }
 }

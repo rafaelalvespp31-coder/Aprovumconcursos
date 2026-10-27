@@ -77,6 +77,18 @@ const FIT = { x0: 700, x1: 3140, cx: 1920, cy: 860 };
 /** Folga da arte além da tela (computador): é o quanto a câmera pode "olhar" para os lados. */
 const LOOK_MARGIN = 1.12;
 
+/** Cópias espelhadas em volta da arte (só aparecem no celular em pé). */
+const MIRRORS: Array<[number, number]> = [
+  [-1, -1],
+  [0, -1],
+  [1, -1],
+  [-1, 0],
+  [1, 0],
+  [-1, 1],
+  [0, 1],
+  [1, 1],
+];
+
 /** Câmera 2D sobre a arte (valores em pixels da arte). */
 export class PlateCamera {
   focus: [number, number] = [ART.w / 2, ART.h / 2];
@@ -118,7 +130,8 @@ export class PlateCamera {
   }
   /** Escala no zoom 1: cobre a tela (computador) ou cabe a faixa das instalações (celular). */
   cover() {
-    if (this.mode === "caber") return Math.min(this.view.w / (FIT.x1 - FIT.x0), (this.view.h * 0.62) / ART.h * 1.6);
+    // Celular em pé: a faixa das instalações quase na largura toda (cards legíveis; as bordas são presas na tela).
+    if (this.mode === "caber") return Math.min(this.view.w / ((FIT.x1 - FIT.x0) * 0.86), (this.view.h * 0.62) / ART.h * 1.6);
     return Math.max(this.view.w / ART.w, this.view.h / ART.h);
   }
   /** Centro vertical da cena na tela (no celular fica acima, deixando o fuzil embaixo). */
@@ -326,6 +339,8 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     let aimA = 0;
     let aimX = 0;
     let aimY = 0;
+    // 0..1: transição curta ao começar a seguir o cursor; em 1 o fuzil acompanha sem atraso.
+    let followBlend = 0;
     // Fumaça: sprite macio gerado uma vez; cada fonte solta baforadas que sobem e se espalham.
     const sprite = document.createElement("canvas");
     sprite.width = sprite.height = 128;
@@ -482,34 +497,56 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         const my = RIFLE.muzzle[1] * s0 + ty0;
         const lk = lock.current;
         if (lk && lk.at < 0) lk.at = now;
-        // Prioridade: mira travada > matéria sob o cursor > cursor/dedo exato.
+        // Prioridade: mira travada > cursor/dedo exato > matéria em foco.
+        const sp = cam.screenPointer;
+        const following = !lk && !!sp;
         let target: [number, number] | null = null;
         if (lk) target = [lk.target[0] * t.s + t.tx, lk.target[1] * t.s + t.ty];
+        else if (sp) target = sp;
         else if (aim.current) target = [aim.current[0] * t.s + t.tx, aim.current[1] * t.s + t.ty];
-        else if (cam.screenPointer) target = cam.screenPointer;
-        let wantA = 0;
-        let wantX = 0;
-        let wantY = 0;
-        if (target) {
-          const d = Math.atan2(target[1] - py, target[0] - px) - Math.atan2(my - py, mx - px);
-          const dn = Math.atan2(Math.sin(d), Math.cos(d));
-          // Girar para a direita tira o fuzil do quadro: limite menor desse lado.
-          wantA = Math.max(-0.42, Math.min(0.2, dn));
-          wantX = Math.max(-cam.view.w * 0.12, Math.min(cam.view.w * 0.12, (target[0] - mx) * 0.22));
-          wantY = Math.max(-cam.view.h * 0.08, Math.min(cam.view.h * 0.06, (target[1] - my) * 0.12));
-        }
         // Ao travar a mira o soldado sobe a arma (como quem mira pela mira).
         const since = lk ? now - lk.at : 1e9;
         // Sobe a arma ao mirar e, com o alvo travado, abaixa um pouco para liberar a vista.
         const raise = lk ? Math.min(1, since / 350) : 0;
         const settle = lk ? Math.max(0, Math.min(1, (since - 1300) / 500)) : 0;
-        wantY += -raise * cam.view.h * 0.03 + settle * cam.view.h * 0.1;
-        const ka = cam.reduced ? 1 : 1 - Math.exp(-dt * (lk && since < 600 ? 7 : 11));
-        aimA += (wantA - aimA) * ka;
-        aimX += (wantX - aimX) * ka;
-        aimY += (wantY - aimY) * ka;
-        const breathe = cam.reduced ? 0 : Math.sin(now / 760) * 3 * s0 * 2;
-        const sway = cam.reduced ? 0 : Math.sin(now / 1300) * 0.004;
+        // Respiração e balanço só parado: seguindo o cursor, o cano aponta exatamente para ele.
+        const idle = !following && !cam.reduced;
+        const breathe = idle ? Math.sin(now / 760) * 3 * s0 * 2 : 0;
+        const sway = idle ? Math.sin(now / 1300) * 0.004 : 0;
+        let wantX = 0;
+        let wantY = 0;
+        let wantA = 0;
+        if (target) {
+          // O braço acompanha o alvo (desloca) e o resto é giro exato em volta do ombro.
+          wantX = Math.max(-cam.view.w * 0.16, Math.min(cam.view.w * 0.12, (target[0] - mx) * 0.3));
+          wantY = Math.max(-cam.view.h * 0.1, Math.min(cam.view.h * 0.06, (target[1] - my) * 0.15));
+          wantY += -raise * cam.view.h * 0.03 + settle * cam.view.h * 0.1;
+          const ppx = px + wantX;
+          const ppy = py + wantY + breathe;
+          const d = Math.atan2(target[1] - ppy, target[0] - ppx) - Math.atan2(my - py, mx - px);
+          wantA = Math.atan2(Math.sin(d), Math.cos(d));
+          // Limite só para casos extremos (cursor abaixo do ombro).
+          wantA = Math.max(-1.25, Math.min(0.95, wantA));
+        }
+        if (following && followBlend >= 1) {
+          // Sincronizado: sem atraso nenhum.
+          aimA = wantA;
+          aimX = wantX;
+          aimY = wantY;
+        } else {
+          const ka = cam.reduced ? 1 : 1 - Math.exp(-dt * (lk && since < 600 ? 7 : 14));
+          aimA += (wantA - aimA) * ka;
+          aimX += (wantX - aimX) * ka;
+          aimY += (wantY - aimY) * ka;
+        }
+        // Entrar no modo "seguir" (depois de travar a mira ou parado) faz uma transição curta; depois é exato.
+        followBlend = following ? Math.min(1, followBlend + dt / 0.18) : 0;
+        if (following && followBlend < 1) {
+          const k = followBlend;
+          aimA += (wantA - aimA) * k;
+          aimX += (wantX - aimX) * k;
+          aimY += (wantY - aimY) * k;
+        }
         rf.style.transform = `translate3d(${aimX.toFixed(1)}px, ${(aimY + breathe).toFixed(1)}px, 0) rotate(${(aimA + sway).toFixed(4)}rad)`;
 
         // Laser, luneta e marcação de alvo travado.
@@ -601,6 +638,15 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       {/* Fundo desfocado: completa a tela no celular, quando o mapa inteiro é enquadrado. */}
       <div className="km-art-fill" style={{ backgroundImage: `url(${ART.srcSm})` }} />
       <div ref={layer} className="km-art-layer" style={{ width: ART.w, height: ART.h }}>
+        {/* Celular em pé: a arte continua espelhada nas bordas e preenche a tela toda, sem emenda. */}
+        {MIRRORS.map(([dx, dy]) => (
+          <span
+            key={`${dx}:${dy}`}
+            className="km-art-mirror"
+            data-lado={dy < 0 ? "cima" : dy > 0 ? "baixo" : "lado"}
+            style={{ left: dx * ART.w, top: dy * ART.h, width: ART.w, height: ART.h, backgroundImage: `url(${ART.srcSm})`, transform: `scale(${dx ? -1 : 1}, ${dy ? -1 : 1})` }}
+          />
+        ))}
         <picture>
           <source media="(max-width: 700px)" srcSet={ART.srcSm} />
           {/* eslint-disable-next-line @next/next/no-img-element */}

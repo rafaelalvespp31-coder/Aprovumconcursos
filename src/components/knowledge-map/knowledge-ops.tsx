@@ -208,6 +208,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
   const labels = useRef(new Map<string, HTMLElement>());
   const root = useRef<HTMLDivElement>(null);
   const stage = useRef<HTMLDivElement>(null);
+  const reticle = useRef<HTMLDivElement>(null);
 
   const territory = map.territories.find((t) => t.id === selT) ?? full.territories.find((t) => t.id === selT) ?? (selT && ART_ORDER_DRAWN.includes(selT) ? emptyTerritory(selT) : null);
   const topic = territory?.topics.find((t) => t.id === selTopic) ?? full.territories.flatMap((t) => t.topics).find((t) => t.id === selTopic) ?? null;
@@ -324,8 +325,25 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     const pts = new Map<number, { x: number; y: number }>();
     let pinch = 0;
     let travel = 0;
+    // Mira na ponta do cursor/dedo: movida no próprio evento (sem esperar o próximo quadro).
+    let hideTimer = 0;
+    const reticleAt = (e: PointerEvent) => {
+      const rt = reticle.current;
+      if (!rt || !art) return;
+      const inside = el.contains(e.target as Node);
+      if (!inside) {
+        rt.dataset.on = "";
+        return;
+      }
+      const r = el.getBoundingClientRect();
+      rt.style.transform = `translate3d(${(e.clientX - r.left).toFixed(1)}px, ${(e.clientY - r.top).toFixed(1)}px, 0)`;
+      rt.dataset.on = "1";
+      rt.dataset.alvo = (e.target as Element).closest?.(".km-plate, .km-topicPlate, .km-art-base, .km-art-core") ? "1" : "";
+      window.clearTimeout(hideTimer);
+    };
     const down = (e: PointerEvent) => {
       pts.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      reticleAt(e);
       travel = 0;
       dragged.current = false;
       if (e.pointerType !== "mouse") {
@@ -348,6 +366,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
         rig.setPointer(px, py);
         cam.setPointer(px, py);
         cam.setScreenPointer([e.clientX - r.left, e.clientY - r.top]);
+        reticleAt(e);
       }
       const p = pts.get(e.pointerId);
       if (!p) return;
@@ -375,9 +394,12 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     };
     const up = (e: PointerEvent) => {
       pts.delete(e.pointerId);
+      // No toque, a mira fica um instante onde o dedo saiu e some.
+      if (e.pointerType !== "mouse") hideTimer = window.setTimeout(() => reticle.current && (reticle.current.dataset.on = ""), 900);
       if (pts.size < 2) pinch = 0;
     };
-    const leave = () => {
+    const leave = (e: PointerEvent) => {
+      if (e.pointerType === "mouse" && reticle.current) reticle.current.dataset.on = "";
       rig.setPointer(0, 0);
       cam.setPointer(0, 0);
       cam.setScreenPointer(null);
@@ -398,6 +420,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     el.addEventListener("pointerleave", leave);
     el.addEventListener("wheel", wheel, { passive: false });
     return () => {
+      window.clearTimeout(hideTimer);
       el.removeEventListener("pointerdown", down);
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);
@@ -614,6 +637,12 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                     {x.title}
                   </button>
                 ))}
+          </div>
+        )}
+        {art && (
+          <div ref={reticle} className={"km-reticle"} aria-hidden>
+            <i />
+            <b />
           </div>
         )}
       </div>
