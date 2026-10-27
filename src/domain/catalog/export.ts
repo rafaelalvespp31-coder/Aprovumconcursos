@@ -149,6 +149,23 @@ FLASHCARDS — obrigatórios
 → Resposta curta, com **negrito** no essencial.`;
 }
 
+/** As mesmas regras dos exemplos visuais, em versão curta (para comandos com limite de tamanho). */
+export function visualRulesCompact(): string {
+  return `EXEMPLOS VISUAIS ("Na prática"), obrigatórios
+- Feche CADA seção de introdução, conceitos fundamentais, explicação, aprofundamento, comparação, quadro comparativo, aplicação, exceções, doutrina e jurisprudência com UM bloco :::exemplo (vira um card com tirinha, carimbo e esquema). Tirinha e Esquema em JSON válido numa linha.
+- Tirinha: 1 a 3 quadros; "cenario": delegacia, local_crime, cela, forum, rua, casa, bar, hospital, piscina, reparticao, escola, obra, transito ou rodovia; até 3 "personagens" {"p": delegado, pm, policial_penal, perito, promotor, juiz, advogado, vitima, investigado, preso, cidadao, servidor, gestor ou professor; "lado": esq/centro/dir; "pose": neutro/fala/aponta/pega/ataca/bracos_cruzados; "humor": neutro/serio/bravo/surpreso/feliz/triste; "objeto" opcional: arma/documento/celular/maleta/faca/copo/carimbo}; "legenda" até 90 caracteres; "fala" {"quem": índice, "texto": até 80}; "efeito" até 12 (sem violência explícita).
+- Carimbo: até 40 caracteres + "|" + erro, ok ou alerta.
+- Esquema: {"tipo": "fluxo", "passos": 2 a 6 {"rotulo","detalhe","estado"}} ou {"tipo": "comparacao", "lados": 2 {"titulo","resultado","estado","itens"}} ou {"tipo": "linha_tempo", "unidade", "marcos": 2 a 6 {"em","rotulo","estado"}}; "estado": ok, erro, neutro ou alerta.
+:::exemplo
+Situação: (caso curto)
+Pergunta: (o que decidir)
+Resposta: (com **negrito** no essencial)
+Tirinha: [{"cenario": "rua", "legenda": "(quadro 1)", "personagens": [{"p": "investigado", "lado": "esq", "pose": "pega", "humor": "serio", "objeto": "celular"}, {"p": "cidadao", "lado": "dir", "pose": "fala", "humor": "surpreso"}], "fala": {"quem": 1, "texto": "(fala)"}}]
+Carimbo: (resultado) | ok
+Esquema: {"tipo": "fluxo", "passos": [{"rotulo": "(pergunta)", "estado": "ok", "detalhe": "(resposta)"}, {"rotulo": "(conclusão)", "estado": "neutro"}]}
+:::`;
+}
+
 /** Raio-x do modelo, para o comando dizer exatamente o que reproduzir. */
 export function modelOutline(t: ExportableTopic) {
   const modules: Array<{ name: string; sections: Array<{ kind: string; title: string }> }> = [];
