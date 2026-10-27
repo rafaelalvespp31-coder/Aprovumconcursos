@@ -1088,7 +1088,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                 return (
                   <>
                     <h3 className={"km-sub"}>
-                      Tópicos <small>({groups.length}) · toque para ver as aulas</small>
+                      Conteúdo <small>({groups.length}) · toque para ver as aulas</small>
                     </h3>
                     <div className={"km-folders"}>
                       {groups.map((f) => {
@@ -1105,11 +1105,13 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                             >
                               <ChevronDown className={"km-folderChevron"} aria-hidden />
                               <span className={"km-folderName"}>
-                                {f.code && <small>Tópico {f.code}</small>}
-                                {f.title}
+                                <span>
+                                  {f.code && <b className={"km-subCode"}>{f.code}</b>}
+                                  {f.title}
+                                </span>
                               </span>
                               {fdone ? (
-                                <em className="km-on" aria-label={`Tópico concluído: ${f.topics.length} de ${f.topics.length} aulas`}>
+                                <em className="km-on" aria-label={`Concluído: ${f.topics.length} de ${f.topics.length} aulas`}>
                                   <Check aria-hidden /> {f.topics.length}/{f.topics.length}
                                 </em>
                               ) : (
@@ -1128,7 +1130,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                                     onClick={() => onStart({ id: f.topics[0]!.id, title: f.title, discipline: territory.label, ids: f.topics.map((t) => t.id) })}
                                     data-testid="estudar-topico"
                                   >
-                                    <Play aria-hidden /> Estudar o tópico inteiro ({f.topics.length} aulas)
+                                    <Play aria-hidden /> Estudar todas as {f.topics.length} aulas
                                   </button>
                                 )}
                               </>
