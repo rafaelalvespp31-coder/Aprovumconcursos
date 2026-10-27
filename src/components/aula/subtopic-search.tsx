@@ -11,9 +11,9 @@ import { contentTypeOf } from "@/app/(app)/nova-trilha/start-dialog";
  * Barra de busca dentro da aula: encontra outro subtópico do MESMO tópico do edital e vai direto
  * para ele (abre a aula se o aluno já estuda; senão, cria o estudo daquele subtópico).
  */
-export function SubtopicSearch({ group, items }: { group: { title: string; code: string | null }; items: SubtopicEntry[] }) {
+export function SubtopicSearch({ group, items, autoFocus = false }: { group: { title: string; code: string | null }; items: SubtopicEntry[]; autoFocus?: boolean }) {
   const [q, setQ] = useState("");
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(autoFocus);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const [starting, setStarting] = useState<string | null>(null);
@@ -57,6 +57,7 @@ export function SubtopicSearch({ group, items }: { group: { title: string; code:
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-tinta-fraca" aria-hidden />
         <input
           ref={input}
+          autoFocus={autoFocus}
           type="text"
           enterKeyHint="search"
           role="combobox"
@@ -129,5 +130,34 @@ export function SubtopicSearch({ group, items }: { group: { title: string; code:
       )}
       {err && <p className="mt-2 t-small text-erro" role="alert">{err}</p>}
     </section>
+  );
+}
+
+/**
+ * Atalho fixo no topo da aula (visível em todas as páginas: início, módulos e questões):
+ * "Subtópicos de …" abre a busca logo abaixo.
+ */
+export function SubtopicJump({ group, items }: { group: { title: string; code: string | null }; items: SubtopicEntry[] }) {
+  const [open, setOpen] = useState(false);
+  const others = items.filter((i) => !i.current).length;
+  return (
+    <div className="mt-2" data-testid="atalho-subtopicos">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="inline-flex min-h-9 max-w-full items-center gap-2 rounded-full border border-linha-forte bg-superficie px-3 py-1 text-left text-[13px] leading-tight font-semibold text-tinta hover:border-destaque"
+      >
+        <Search className="h-4 w-4 text-destaque" aria-hidden />
+        Subtópicos de {group.code ? `${group.code}. ` : ""}
+        {group.title}
+        <span className="rounded-full bg-nevoa px-1.5 text-[11px] text-tinta-suave">{others + 1}</span>
+      </button>
+      {open && (
+        <div className="mt-2">
+          <SubtopicSearch group={group} items={items} autoFocus />
+        </div>
+      )}
+    </div>
   );
 }

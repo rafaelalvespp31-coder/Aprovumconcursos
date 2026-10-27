@@ -2,7 +2,7 @@ import { LessonReader } from "@/app/(app)/aula/[id]/reader";
 import { Notice } from "@/components/ui";
 import { reader } from "../fixtures";
 import { PdfPanel } from "@/app/(app)/trilhas/[id]/pdf-panel";
-import { SubtopicSearch } from "@/components/aula/subtopic-search";
+import { SubtopicJump } from "@/components/aula/subtopic-search";
 
 // Exemplo: aula de um tópico com vários subtópicos (dados de exemplo, nada é gravado).
 const S = (n: number) =>
@@ -77,20 +77,11 @@ export default function Page() {
           pdfs={[]}
         />
       }
+      topicSearch={<SubtopicJump group={{ title: "Crimes contra a Administração Pública", code: "1" }} items={subtopics} />}
       notices={
-        <>
-          <SubtopicSearch
-            group={{
-              title: "Crimes contra a Administração Pública",
-              code: "1",
-            }}
-            items={subtopics}
-          />
-          <Notice tone="alerta" title="Contém informação não verificada">
-            A seção de jurisprudência foi escrita sem conferência em fonte
-            oficial.
-          </Notice>
-        </>
+        <Notice tone="alerta" title="Contém informação não verificada">
+          A seção de jurisprudência foi escrita sem conferência em fonte oficial.
+        </Notice>
       }
     />
   );

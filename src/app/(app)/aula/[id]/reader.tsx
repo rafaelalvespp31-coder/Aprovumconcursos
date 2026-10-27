@@ -68,6 +68,8 @@ export interface ReaderProps {
   nextHref: string | null;
   nextLabel: string | null;
   notices: React.ReactNode;
+  /** Busca dos subtópicos do mesmo tópico do edital (fica no topo, em todas as páginas). */
+  topicSearch?: React.ReactNode;
   /** Painel do PDF do conteúdo (gerar, baixar e excluir versões). */
   pdf?: React.ReactNode;
   /** Posição da aula no estudo (para "Aula 03" e "3 de 12 aulas"). */
@@ -537,6 +539,7 @@ export function LessonReader(props: ReaderProps) {
             </button>
           </div>
         </div>
+        {props.topicSearch}
         <nav className="ap-paginas" aria-label="Páginas da aula">
           {pages.map((p, i) => (
             <button

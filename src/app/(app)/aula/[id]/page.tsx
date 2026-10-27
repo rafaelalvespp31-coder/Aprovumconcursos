@@ -10,7 +10,8 @@ import { lessonBannerUrl } from "@/server/services/banners";
 import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import { generateLessonAction } from "./actions";
 import { getTopicSiblings } from "@/server/topic-siblings";
-import { SubtopicSearch } from "@/components/aula/subtopic-search";
+import { logEvent } from "@/server/observability";
+import { SubtopicJump } from "@/components/aula/subtopic-search";
 
 export const metadata = { title: "Aula" };
 
@@ -97,13 +98,15 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
     getTrailPlan(lesson.trail_id).catch(() => []),
     listStudyPdfs(lesson.trail_id).catch(() => []),
     lessonBannerUrl(lesson.catalog_topic_id as string | null, discipline).catch(() => null),
-    getTopicSiblings(lesson.catalog_topic_id as string | null).catch(() => null),
+    getTopicSiblings(lesson.catalog_topic_id as string | null).catch(async (e) => {
+      await logEvent("aula.topic_siblings_failed", { error: (e as Error).message });
+      return null;
+    }),
   ]);
   const units = plan.flatMap((m) => m.lessons);
   const unitsDone = units.filter((l) => l.levelsPassed >= 3).length;
   const notices = (
     <>
-      {siblingsInTopic && <SubtopicSearch group={siblingsInTopic.group} items={siblingsInTopic.items} />}
       {data.catalog?.outdated && (
         <Notice tone="alerta" title="Conteúdo atualizado no catálogo">
           A equipe publicou uma versão revisada deste conteúdo depois que você começou. Revise com atenção: para estudar a versão nova, crie o estudo de novo com o mesmo pedido.
@@ -156,6 +159,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       nextHref={nextInSubject?.href ?? null}
       nextLabel={nextInSubject?.label ?? null}
       notices={notices}
+      topicSearch={siblingsInTopic ? <SubtopicJump group={siblingsInTopic.group} items={siblingsInTopic.items} /> : null}
       pdf={<PdfPanel trailId={lesson.trail_id} ready={units.length > 0 && unitsDone === units.length} unitsDone={unitsDone} unitsTotal={units.length} pdfs={pdfs} />}
       position={idx >= 0 ? { index: idx, total: siblings.length } : null}
       moduleTitle={lesson.learning_modules?.title ?? null}

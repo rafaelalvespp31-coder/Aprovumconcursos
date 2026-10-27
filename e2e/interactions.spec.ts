@@ -1297,6 +1297,9 @@ test("plano de tópicos: o sumário vira árvore enquanto digita", async ({ page
 
 test("aula: busca leva direto a outro subtópico do mesmo tópico", async ({ page }) => {
   await page.goto(`${G}/aula`);
+  // O atalho fica no topo em todas as páginas da aula (também dentro dos módulos).
+  await page.getByTestId("sumario-modulo-1").click();
+  await page.getByTestId("atalho-subtopicos").getByRole("button", { name: /Subtópicos de 1\. Crimes/ }).click();
   const box = page.getByTestId("busca-subtopico");
   await expect(box).toContainText("Crimes contra a Administração Pública");
   const input = box.getByRole("combobox", { name: /Buscar subtópico/ });
