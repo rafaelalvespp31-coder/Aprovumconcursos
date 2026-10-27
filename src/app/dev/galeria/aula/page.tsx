@@ -79,8 +79,8 @@ export default function Page() {
       }
       topicSearch={<SubtopicJump group={{ title: "Crimes contra a Administração Pública", code: "1" }} items={subtopics} />}
       notices={
-        <Notice tone="alerta" title="Contém informação não verificada">
-          A seção de jurisprudência foi escrita sem conferência em fonte oficial.
+        <Notice tone="alerta" title="Conteúdo atualizado no catálogo">
+          Esta aula tem uma versão mais nova no catálogo.
         </Notice>
       }
     />

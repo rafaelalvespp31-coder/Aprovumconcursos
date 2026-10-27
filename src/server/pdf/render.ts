@@ -798,20 +798,11 @@ export async function renderStudyPdf(s: PdfSnapshot, meta: { pdfVersion: number;
       { bg: SOFT, accent: RED, pad: 9, padX: 10, gap: 10 },
     );
     for (const sec of u.sections) {
-      w.subheading(sec.title, sec.verificationStatus === "pendente" ? "[não verificado]" : undefined);
+      w.subheading(sec.title);
       drawMarkdown(w, sec.body);
       w.y -= 4;
     }
-    if (u.unverifiedClaims.length) {
-      w.card(
-        () => {
-          w.spaced("Pendente de verificação na fonte oficial", w.left, w.y - 7, 7, w.fonts.bold, RED, 0.2);
-          w.y -= 14;
-          for (const c of u.unverifiedClaims) drawMarkdown(w, `- ${c.replace(/\n/g, " ")}`);
-        },
-        { bg: RED_SOFT, accent: RED, pad: 10 },
-      );
-    }
+    // Pontos a conferir na fonte oficial ficam só para a equipe: o aluno nunca vê esse aviso.
   });
 
   // ---- Questões ----
@@ -851,8 +842,8 @@ export async function renderStudyPdf(s: PdfSnapshot, meta: { pdfVersion: number;
   if (refs.length) {
     drawTable(
       w,
-      [[[{ text: "Nº" }], [{ text: "Referência" }], [{ text: "Situação" }]], ...refs.map((r, i) => [[{ text: String(i + 1), bold: true }], [{ text: r.citation }], [{ text: r.verified ? "Verificada" : "Não verificada", bold: !r.verified, color: r.verified ? INK : RED }]])],
-      { align: ["center", "left", "left"] },
+      [[[{ text: "Nº" }], [{ text: "Referência" }]], ...refs.map((r, i) => [[{ text: String(i + 1), bold: true }], [{ text: r.citation }]])],
+      { align: ["center", "left"] },
     );
   } else {
     w.text("Nenhuma referência externa citada nas aulas.", { color: MUTED });

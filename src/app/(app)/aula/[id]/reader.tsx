@@ -51,7 +51,7 @@ export interface ReaderProps {
   questions: Array<ReaderQuestion>;
   /** Referências da aula (tabela "Referências e fontes"). */
   references?: Array<{ kind?: string; citation: string; verified: boolean }>;
-  /** Pontos que dependem de conferência na fonte oficial (caixa "Pendente de verificação"). */
+  /** Pontos a conferir na fonte oficial: ficam só para a equipe (o aluno nunca vê este aviso). */
   unverifiedClaims?: string[];
   /** Níveis aprovados nesta unidade (0–3): fácil → médio → difícil. */
   levelsPassed: number;
@@ -341,12 +341,6 @@ export function LessonReader(props: ReaderProps) {
             />
           ))}
         </div>
-        {last && (props.unverifiedClaims?.length ?? 0) > 0 && (
-          <div className="ap-pendente">
-            <p className="ap-kicker">Pendente de verificação na fonte oficial</p>
-            <ul>{props.unverifiedClaims!.map((c) => <li key={c}>{c}</li>)}</ul>
-          </div>
-        )}
         <div className="ap-fim">
           <button type="button" className="ap-btn ap-btn-contorno" onClick={() => goIdx(currentIdx - 1)}>
             <Icon name="setaEsquerda" className="size-4" /> <span className="sr-only sm:not-sr-only">Anterior</span>
@@ -481,7 +475,6 @@ export function LessonReader(props: ReaderProps) {
               <tr>
                 <th className="w-10">Nº</th>
                 <th>Referência</th>
-                <th className="w-32">Situação</th>
               </tr>
             </thead>
             <tbody>
@@ -489,7 +482,6 @@ export function LessonReader(props: ReaderProps) {
                 <tr key={`${i}-${r.citation}`}>
                   <td><b>{i + 1}</b></td>
                   <td>{r.kind && REF_KIND[r.kind] ? <span className="text-tinta-fraca">{REF_KIND[r.kind]}: </span> : null}{r.citation}</td>
-                  <td className={r.verified ? "ap-ok" : "ap-nao-verificada"}>{r.verified ? "Do seu conteúdo" : "Não verificada"}</td>
                 </tr>
               ))}
             </tbody>
@@ -614,7 +606,6 @@ function ApostilaSection({
   clarifications: ReaderClarification[];
   onAnnotation: (a: Annotation, removed?: boolean) => void;
 }) {
-  const unverified = s.verification_status === "pendente";
   // Exemplos ":::exemplo" viram o card visual "Na prática" (tirinha, esquema e carimbo) no fim da seção.
   const { body: md, cases: ownCases } = extractPractice(s.body_markdown);
   const cases = ownCases.length ? ownCases : (s.practice ?? []);
@@ -624,7 +615,6 @@ function ApostilaSection({
     <section id={sectionDomId(s.id)} className="ap-secao" aria-labelledby={`h-${s.id}`}>
       <h3 id={`h-${s.id}`} className="ap-sub">
         {s.title}
-        {unverified && <i className="ap-nao-verificado"> [não verificado]</i>}
       </h3>
       {flash ? <Flashcards markdown={md} /> : md.trim() ? <ApostilaMarkdown legal={legal}>{md}</ApostilaMarkdown> : null}
       {legal && <p className="ap-nota">Confira sempre a redação vigente no Portal da Legislação do Planalto.</p>}
@@ -739,7 +729,7 @@ function SectionActions({
               </p>
               <div className="leitura mt-1 !text-[1rem]"><Markdown>{c.answer_markdown}</Markdown></div>
               <p className="t-tiny text-tinta-fraca">
-                Explicação gerada por IA a partir desta aula.{c.verification_pending ? " Contém ponto que depende de conferência na fonte oficial." : ""}
+                Explicação gerada por IA a partir desta aula.
               </p>
             </div>
           ))}

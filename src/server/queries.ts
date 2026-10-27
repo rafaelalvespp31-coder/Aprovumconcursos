@@ -145,7 +145,6 @@ export async function getCoverage(trailId: string) {
 
 export function rulerStateOf(c: CoverageRow): RulerState {
   if (c.mastered) return "dominado";
-  if (c.taught && (c.verification_status === "pendente" || c.verification_status === "divergente")) return "nao_verificado";
   if (c.taught && c.questions_answered > 0) return "praticado";
   if (c.taught) return "ensinado";
   if (c.planned) return "planejado";

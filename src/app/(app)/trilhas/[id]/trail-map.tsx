@@ -105,7 +105,6 @@ export function TrailMap({
                         {isCurrent && <Tag tone="azul">Próximo passo</Tag>}
                         {l.reviewDue && <Tag tone="ambar">Revisão pendente</Tag>}
                         {incomplete && <Tag tone="ambar">Cobertura incompleta</Tag>}
-                        {l.verification_pending && <Tag tone="ambar">Não verificado</Tag>}
                         <span className="inline-flex items-center gap-1 t-tiny text-tinta-fraca">
                           <Icon name="questoes" className="size-3.5" /> {l.status === "planned" ? "Questões ao preparar a aula" : `${l.questionCount} questão(ões)`}
                         </span>

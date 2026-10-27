@@ -9,13 +9,6 @@ import { CONTAINER_KINDS } from "@/domain/content/types";
 
 export const metadata = { title: "Cobertura" };
 
-const VERIF: Record<string, { label: string; tone: "neutro" | "ambar" | "verde" | "vermelho" }> = {
-  nao_aplicavel: { label: "Não se aplica", tone: "neutro" },
-  pendente: { label: "Não verificado", tone: "ambar" },
-  verificada: { label: "Verificado", tone: "verde" },
-  divergente: { label: "Divergente", tone: "vermelho" },
-};
-
 export default async function CoveragePage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ filtro?: string }> }) {
   const { id } = await params;
   const { filtro = "todos" } = await searchParams;
@@ -42,7 +35,6 @@ export default async function CoveragePage({ params, searchParams }: { params: P
     todos: () => true,
     pendentes: (r) => !CONTAINER_KINDS.has(r.kind as NodeKind) && !r.coverage.taught,
     incompletos: (r) => agg.get(r.key)?.status === "incompleto",
-    nao_verificados: (r) => r.coverage.verification_status === "pendente" || r.coverage.verification_status === "divergente",
     dominados: (r) => agg.get(r.key)?.status === "dominado",
   };
   const shown = rows.filter(filters[filtro] ?? filters.todos!);
@@ -60,7 +52,7 @@ export default async function CoveragePage({ params, searchParams }: { params: P
       </div>
 
       <nav aria-label="Filtrar itens" className="mt-5 flex flex-wrap gap-2">
-        {[["todos", "Todos"], ["pendentes", "Sem aula ensinada"], ["incompletos", "Incompletos"], ["nao_verificados", "Não verificados"], ["dominados", "Dominados"]].map(([k, label]) => (
+        {[["todos", "Todos"], ["pendentes", "Sem aula ensinada"], ["incompletos", "Incompletos"], ["dominados", "Dominados"]].map(([k, label]) => (
           <Link
             key={k}
             href={`?filtro=${k}`}
@@ -80,14 +72,12 @@ export default async function CoveragePage({ params, searchParams }: { params: P
               <th scope="col" className="px-3 py-2 font-semibold">Situação</th>
               <th scope="col" className="px-3 py-2 font-semibold">Aula</th>
               <th scope="col" className="px-3 py-2 font-semibold">Questões</th>
-              <th scope="col" className="px-3 py-2 font-semibold">Fonte</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-linha">
             {shown.map((r) => {
               const a = agg.get(r.key);
               const container = CONTAINER_KINDS.has(r.kind as NodeKind) || !r.coverage.requires_direct_coverage;
-              const v = VERIF[r.coverage.verification_status] ?? VERIF.nao_aplicavel!;
               return (
                 <tr key={r.key} className={container ? "bg-papel/60" : ""}>
                   <td className="px-3 py-2 align-top" style={{ paddingLeft: `${12 + Math.min(r.depth, 5) * 14}px` }}>
@@ -112,7 +102,6 @@ export default async function CoveragePage({ params, searchParams }: { params: P
                   <td className="px-3 py-2 align-top tabular-nums text-tinta-suave">
                     {container ? "" : `${r.coverage.questions_answered}/${r.coverage.questions_available}`}
                   </td>
-                  <td className="px-3 py-2 align-top">{!container && <Tag tone={v.tone}>{v.label}</Tag>}</td>
                 </tr>
               );
             })}

@@ -1010,7 +1010,7 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
     await noHorizontalScroll(page);
   });
 
-  test("um módulo por página: caixas, tabelas, texto legal, negrito vermelho e marca de não verificado", async ({ page }) => {
+  test("um módulo por página: caixas, tabelas, texto legal, negrito vermelho e sem aviso de verificação", async ({ page }) => {
     await page.goto(`${G}/aula`);
     await page.getByTestId("comecar-aula").click();
     await expect(page.getByRole("heading", { name: "Introdução", level: 3 })).toBeVisible();
@@ -1025,8 +1025,10 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
     const th = page.locator(".ap-tabela thead th").first();
     await expect(th).toHaveCSS("background-color", "rgb(10, 10, 10)");
     await page.getByTestId("concluir-modulo-2").click();
-    await expect(page.getByRole("heading", { name: /Entendimento dos tribunais/, level: 3 })).toContainText("[não verificado]");
-    await expect(page.locator(".ap-pendente")).toContainText("Súmula 473");
+    // O aluno nunca vê "não verificado" nem "pendente de verificação" (fica só para a equipe).
+    await expect(page.getByRole("heading", { name: /Entendimento dos tribunais/, level: 3 })).not.toContainText("não verificado");
+    await expect(page.locator(".ap-pendente")).toHaveCount(0);
+    await expect(page.getByText(/pendente de verifica|não verificad/i)).toHaveCount(0);
     // Seção de flashcards vira os cartões interativos.
     await expect(page.getByTestId("flashcards")).toBeVisible();
     await noHorizontalScroll(page);
@@ -1123,7 +1125,7 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
     await page.goto(`${G}/aula`);
     await pages(page).getByRole("button", { name: /Revisão e fontes/ }).click();
     await expect(page.getByRole("cell", { name: "STF, Súmula 473", exact: false })).toBeVisible();
-    await expect(page.getByRole("cell", { name: "Não verificada" })).toBeVisible();
+    await expect(page.getByRole("cell", { name: "Não verificada" })).toHaveCount(0);
     await expect(page.locator("section#pdf").getByRole("heading", { name: "PDF deste conteúdo" })).toBeVisible();
     await noHorizontalScroll(page);
   });
