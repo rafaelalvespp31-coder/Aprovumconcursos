@@ -109,7 +109,9 @@ function themeScore(query: string, topic: CatalogTopicIndex): number {
   const names = [topic.title, ...topic.aliases].map(normalizeText).filter(Boolean);
   if (names.some((n) => n === q)) return 1;
   // O pedido contém o nome inteiro do tema (ex.: "quero estudar prisão em flagrante").
-  if (names.some((n) => n.length >= 6 && (` ${q} `).includes(` ${n} `))) return 0.95;
+  // Entre nomes contidos no pedido, o mais específico vence ("extorsão mediante sequestro" > "extorsão").
+  const inside = names.filter((n) => n.length >= 6 && (` ${q} `).includes(` ${n} `));
+  if (inside.length) return 0.95 + Math.min(0.04, Math.max(...inside.map((n) => n.length)) / 5000);
   const qt = new Set(tokens(query));
   if (!qt.size) return 0;
   let best = 0;

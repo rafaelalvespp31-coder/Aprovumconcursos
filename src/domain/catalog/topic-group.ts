@@ -217,11 +217,19 @@ export interface CatalogGroupRef {
   subtopicCode: string | null;
 }
 
-/** Acha a aula do catálogo que cobre o subtópico: mesmo tópico e mesmo número (ou mesmo título). */
+/**
+ * Acha a aula do catálogo que cobre o subtópico: mesmo tópico e mesmo número. Sem número de um
+ * dos lados, vale só o título IDÊNTICO — nunca "contém": "Extorsão" e "Extorsão mediante
+ * sequestro" (ou "Furto" e "Furto de coisa comum") são aulas diferentes e uma não toca a outra.
+ */
 export function findCatalogFor(group: OutlineItem, sub: OutlineItem, catalog: readonly CatalogGroupRef[]): CatalogGroupRef | null {
   const gk = groupKey(group.title);
   const same = catalog.filter((c) => c.topicGroup && groupKey(c.topicGroup) === gk && c.status !== "arquivado");
+  if (sub.code) {
+    const byCode = same.find((c) => c.subtopicCode === sub.code);
+    if (byCode) return byCode;
+  }
   const sk = foldKey(sub.title);
-  const hit = (sub.code && same.find((c) => c.subtopicCode === sub.code)) || same.find((c) => foldKey(c.title).includes(sk) || sk.includes(foldKey(c.title)));
-  return hit || null;
+  // Número diferente nos dois lados = subtópicos diferentes, mesmo com o mesmo nome.
+  return same.find((c) => foldKey(c.title) === sk && !(sub.code && c.subtopicCode && c.subtopicCode !== sub.code)) ?? null;
 }

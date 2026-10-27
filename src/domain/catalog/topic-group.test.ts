@@ -81,4 +81,22 @@ describe("tópicos do edital", () => {
     expect(findCatalogFor(g, { code: "4.2", title: "Excesso punível" }, cat)?.id).toBe("2");
     expect(findCatalogFor(g, { code: "4.3", title: "Conduta" }, cat)).toBeNull();
   });
+
+  it("subtópicos de nome parecido são independentes (Extorsão × Extorsão mediante sequestro)", () => {
+    const g = { code: "1", title: "Crimes contra o patrimônio" };
+    const extorsao = { id: "e", title: "Extorsão", status: "publicado", topicGroup: "Crimes contra o patrimônio", subtopicCode: "1.3" };
+    const sequestro = { id: "s", title: "Extorsão mediante sequestro", status: "publicado", topicGroup: "Crimes contra o patrimônio", subtopicCode: "1.4" };
+    // Só uma catalogada: a outra continua pendente (com o botão Catalogar).
+    expect(findCatalogFor(g, { code: "1.4", title: "Extorsão mediante sequestro" }, [extorsao])).toBeNull();
+    expect(findCatalogFor(g, { code: "1.3", title: "Extorsão" }, [sequestro])).toBeNull();
+    // As duas catalogadas: cada subtópico abre a sua própria aula.
+    expect(findCatalogFor(g, { code: "1.3", title: "Extorsão" }, [sequestro, extorsao])?.id).toBe("e");
+    expect(findCatalogFor(g, { code: "1.4", title: "Extorsão mediante sequestro" }, [extorsao, sequestro])?.id).toBe("s");
+    // Sem número, só nome idêntico.
+    const semNumero = { ...extorsao, subtopicCode: null };
+    expect(findCatalogFor(g, { code: null, title: "Extorsão mediante sequestro" }, [semNumero])).toBeNull();
+    expect(findCatalogFor(g, { code: null, title: "extorsao" }, [semNumero])?.id).toBe("e");
+    // Mesmo nome, números diferentes: subtópicos diferentes.
+    expect(findCatalogFor(g, { code: "2.3", title: "Extorsão" }, [extorsao])).toBeNull();
+  });
 });

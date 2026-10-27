@@ -79,3 +79,15 @@ describe("intervalos com hífen", () => {
     expect(parseLawReference("CP art. 121-A").articles).toEqual(["121-A"]);
   });
 });
+
+describe("temas de nome parecido", () => {
+  const t = (id: string, title: string) => ({ id, title, kind: "tema" as const, lawCode: null, articles: [], aliases: [] });
+  const cat = [t("e", "Extorsão"), t("s", "Extorsão mediante sequestro")];
+  it("cada pedido acha a sua aula", () => {
+    const pick = (q: string) => { const m = matchCatalog(q, cat); return m.kind === "completo" ? m.topics.map((x) => x.id) : []; };
+    expect(pick("extorsão")).toEqual(["e"]);
+    expect(pick("extorsão mediante sequestro")).toEqual(["s"]);
+    expect(pick("quero estudar extorsão mediante sequestro qualificada")).toEqual(["s"]);
+    expect(pick("quero estudar extorsão simples")).toEqual(["e"]);
+  });
+});
