@@ -7,6 +7,7 @@ import { DemoLessonUpload } from "./demo-upload";
 import { DemoAddQuestions } from "./demo-add-questions";
 import { DemoAddVisuals } from "./demo-add-visuals";
 import { DemoTopicBanner } from "./demo-topic-banner";
+import { DemoTopicMeta } from "./demo-meta";
 
 /** Prévia do editor do catálogo (área da equipe) com dados de EXEMPLO. Os botões não gravam aqui. */
 export default function Page() {
@@ -25,6 +26,7 @@ export default function Page() {
     <div className="flex flex-col gap-8">
       <h1 className="t-h1">Editor do catálogo (prévia)</h1>
       <PublishPanel id="exemplo" status="rascunho" version={0} blockers={publishBlockers(topic, questions)} />
+      <DemoTopicMeta />
       <DemoLessonUpload />
       <DemoAddQuestions />
       <DemoAddVisuals />

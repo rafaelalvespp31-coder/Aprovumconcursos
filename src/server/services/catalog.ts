@@ -21,6 +21,7 @@ import { getSessionUser, isAdmin, type SessionUser } from "../auth";
 import { lessonPayload, nodesPayload, planPayload } from "../repos/payloads";
 import { auditLog, logEvent } from "../observability";
 import { UserFacingError } from "./trails";
+import { parseTopicMeta, type TopicMetaInput } from "@/domain/catalog/topic-meta";
 
 /** Rótulo de banca nas questões do catálogo (não são feitas para uma banca específica). */
 export const CATALOG_BOARD_LABEL = "várias bancas";
@@ -783,4 +784,16 @@ export async function promoteLesson(user: SessionUser, lessonId: string): Promis
   if (rows.length) await db.from("catalog_questions").insert(rows);
   await auditLog(db, { actorId: user.id, userId: user.id, action: "catalog.lesson_promoted", entity: "catalog_topics", entityId: id, meta: { lessonId } });
   return id;
+}
+
+/** Corrige o tema (título) e o tipo da aula sem recolar o texto; vale na hora para todos. */
+export async function updateTopicMeta(id: string, input: TopicMetaInput) {
+  await getTopic(id);
+  const r = parseTopicMeta(input);
+  if (!r.ok) throw new UserFacingError(r.error, "invalid_input");
+  const up = await createAdminClient()
+    .from("catalog_topics")
+    .update({ ...r.meta, updated_at: new Date().toISOString() })
+    .eq("id", id);
+  if (up.error) throw new UserFacingError("Não foi possível salvar: confira a lei e os artigos.", "invalid_input");
 }

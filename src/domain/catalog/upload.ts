@@ -168,7 +168,7 @@ export function disciplineFrom(subject: string, lawCode: string | null): Discipl
   return null;
 }
 
-function lawCodeFrom(raw: string): string | null {
+export function lawCodeFrom(raw: string): string | null {
   const v = raw.trim();
   if (!v) return null;
   const up = v.toUpperCase().replace(/\s+/g, "");
@@ -180,7 +180,7 @@ function lawCodeFrom(raw: string): string | null {
   return /^[A-Z0-9]{2,12}$/.test(up) ? up : null;
 }
 
-function articlesFrom(raw: string): string[] {
+export function articlesFrom(raw: string): string[] {
   const out: string[] = [];
   for (const part of raw.split(/[,;]+/)) {
     const p = part.trim();

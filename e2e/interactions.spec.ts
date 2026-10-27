@@ -1245,3 +1245,20 @@ test("mapa: a trilha sonora só é baixada quando o aluno liga o som", async ({ 
   await page.getByTestId("som").click();
   await expect.poll(() => requests.some((u) => u.includes("trilha-operacoes"))).toBe(true);
 });
+
+test("catálogo: botão edita tema e tipo, com validação de lei e artigos", async ({ page }) => {
+  await page.goto(`${G}/catalogo`);
+  await page.getByTestId("editar-tema").click();
+  const tema = page.getByRole("textbox", { name: "Tema" });
+  await expect(tema).toHaveValue("Homicídio");
+  await expect(page.getByLabel("Lei", { exact: true })).toHaveValue("CP");
+  await page.getByRole("textbox", { name: "Artigos" }).fill("");
+  await page.getByRole("button", { name: "Salvar", exact: true }).click();
+  await expect(page.locator("form").getByRole("alert")).toContainText("artigos");
+  await tema.fill("Homicídio simples");
+  await page.getByRole("radio", { name: "Tema", exact: true }).check();
+  await expect(page.getByLabel("Lei", { exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Salvar", exact: true }).click();
+  await expect(page.getByTestId("editar-tema")).toBeVisible();
+  await expect(page.getByText("Salvo.")).toBeVisible();
+});

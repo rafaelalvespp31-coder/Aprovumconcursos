@@ -539,6 +539,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                   className={"km-plate"}
                   data-sel={sel ? "1" : undefined}
                   data-dim={selT && !sel ? "1" : undefined}
+                  data-done={t.topics.length > 0 && t.done === t.topics.length ? "1" : undefined}
                   style={{ ["--c" as string]: t.color, visibility: "hidden" }}
                   onClick={() => selectTerritory(t)}
                   onMouseEnter={() => {
@@ -583,6 +584,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                     ref={(el) => void (el ? labels.current.set(`a:${x.id}`, el) : labels.current.delete(`a:${x.id}`))}
                     className={"km-topicPlate"}
                     data-sel={selTopic === x.id ? "1" : undefined}
+                    data-done={x.study?.done ? "1" : undefined}
                     style={{ ["--c" as string]: territory.color, visibility: "hidden" }}
                     onClick={() => selectTopic(territory, x)}
                     data-testid="assunto-no-mapa"
@@ -824,7 +826,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
               <ul>
                 {t.topics.map((x) => (
                   <li key={x.id}>
-                    <button type="button" onClick={() => selectTopic(t, x)} aria-current={selTopic === x.id ? "true" : undefined}>
+                    <button type="button" onClick={() => selectTopic(t, x)} aria-current={selTopic === x.id ? "true" : undefined} data-done={x.study?.done ? "1" : undefined}>
                       {x.study?.done ? "✓ " : x.study ? "• " : ""}
                       {x.title}
                     </button>
@@ -886,7 +888,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                 <li>
                   <b>{territory.started}</b> iniciados
                 </li>
-                <li>
+                <li data-done={territory.done > 0 ? "1" : undefined}>
                   <b>{territory.done}</b> concluídos
                 </li>
               </ul>
@@ -903,9 +905,15 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
               <ul className={"km-topicList"}>
                 {territory.topics.map((x) => (
                   <li key={x.id}>
-                    <button type="button" onClick={() => selectTopic(territory, x)}>
+                    <button type="button" onClick={() => selectTopic(territory, x)} data-done={x.study?.done ? "1" : undefined}>
                       <span>{x.title}</span>
-                      <em>{x.study?.done ? "Concluído" : x.study ? `${x.study.pct}%` : "Novo"}</em>
+                      {x.study?.done ? (
+                        <em className="km-on" aria-label="Concluído">
+                          <b aria-hidden>ON</b> Concluído
+                        </em>
+                      ) : (
+                        <em>{x.study ? `${x.study.pct}%` : "Novo"}</em>
+                      )}
                     </button>
                   </li>
                 ))}
@@ -943,10 +951,10 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                 )}
               </ul>
               {topic.study ? (
-                <div className={"km-meter"} aria-label={`Seu progresso: ${topic.study.pct}%`}>
+                <div className={"km-meter"} aria-label={`Seu progresso: ${topic.study.pct}%`} data-done={topic.study.done ? "1" : undefined}>
                   <span>{topic.study.done ? "Concluído" : "Seu progresso"}</span>
                   <b>{topic.study.pct}%</b>
-                  <i style={{ width: `${topic.study.pct}%`, background: territory.color }} />
+                  <i style={{ width: `${topic.study.pct}%`, background: topic.study.done ? "var(--on)" : territory.color }} />
                 </div>
               ) : (
                 <p className={"km-muted"}>Você ainda não começou este assunto.</p>

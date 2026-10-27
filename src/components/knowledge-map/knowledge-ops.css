@@ -1598,3 +1598,53 @@
     display: none;
   }
 }
+
+/* Assunto concluído: verde aceso ("ON") em todo lugar do mapa. */
+.km-root {
+  --on: #22c55e;
+}
+.km-topicList button[data-done] {
+  color: #dcfce7;
+  background: linear-gradient(90deg, rgba(34, 197, 94, 0.16), rgba(34, 197, 94, 0.02) 70%);
+  box-shadow: inset 3px 0 0 var(--on);
+}
+.km-topicList button[data-done]:hover {
+  background: linear-gradient(90deg, rgba(34, 197, 94, 0.26), rgba(34, 197, 94, 0.06) 70%);
+}
+.km-topicList em.km-on {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #4ade80;
+  font-weight: 600;
+}
+.km-on b {
+  padding: 1px 6px;
+  border: 1px solid rgba(74, 222, 128, 0.7);
+  border-radius: 3px;
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: #052e16;
+  background: var(--on);
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.65);
+}
+.km-topicPlate[data-done] {
+  --c: #22c55e !important;
+  color: #dcfce7;
+}
+.km-listGroup button[data-done] {
+  color: #4ade80;
+}
+.km-meter[data-done] span {
+  color: #4ade80;
+}
+.km-plate[data-done] {
+  --c: #22c55e !important;
+}
+.km-stats li[data-done] {
+  border-left-color: var(--on) !important;
+}
+.km-stats li[data-done] b {
+  color: #4ade80;
+  text-shadow: 0 0 12px rgba(34, 197, 94, 0.55);
+}

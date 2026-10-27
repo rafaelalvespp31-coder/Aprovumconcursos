@@ -15,6 +15,7 @@ import {
   removeTopicQuestion,
   requireAdmin,
   setTopicStatus,
+  updateTopicMeta,
   updateTopicQuestion,
   updateTopicSection,
 } from "@/server/services/catalog";
@@ -77,6 +78,15 @@ export async function saveSectionAction(id: string, index: number, data: { title
   await requireAdmin();
   const r = await guard("catalog.section", async () => updateTopicSection(id, index, data));
   revalidatePath(`/admin/catalogo/${id}`);
+  return r;
+}
+
+export async function saveTopicMetaAction(id: string, data: { title: string; kind: string; law?: string; articles?: string }): Promise<AdminResult> {
+  await requireAdmin();
+  const r = await guard("catalog.meta", async () => updateTopicMeta(z.uuid().parse(id), data));
+  revalidatePath(`/admin/catalogo/${id}`);
+  revalidatePath("/admin/catalogo");
+  revalidatePath("/nova-trilha");
   return r;
 }
 

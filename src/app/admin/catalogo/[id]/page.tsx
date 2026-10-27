@@ -5,6 +5,7 @@ import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
 import { PublishPanel, QuestionsEditor, SectionsEditor } from "./editor";
 import { AddQuestionsPanel } from "./add-questions";
 import { AddVisualsPanel } from "./add-visuals";
+import { TopicMetaEditor } from "./meta-editor";
 import { BannerSlot } from "../banners/banner-slot";
 import { bannerUrlFor, topicBannerUrl } from "@/server/services/banners";
 import { removeTopicBannerAction, saveTopicBannerAction, addTopicQuestionsAction, applyTopicEnrichAction, previewTopicEnrichAction, previewTopicQuestionsAction } from "../actions";
@@ -56,6 +57,8 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
       <section aria-labelledby="dados" className="rounded-lg border border-linha p-5">
         <h2 id="dados" className="t-h2">Dados e reconhecimento</h2>
         <dl className="mt-3 grid gap-x-6 gap-y-2 t-small sm:grid-cols-[max-content_1fr]">
+          <dt className="font-semibold">Tema</dt>
+          <dd>{topic.title}</dd>
           <dt className="font-semibold">Matéria</dt>
           <dd>{DISCIPLINE_LABELS[topic.discipline_mode as DisciplineMode] ?? topic.discipline_mode}</dd>
           <dt className="font-semibold">Tipo</dt>
@@ -71,8 +74,11 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
             </>
           )}
         </dl>
+        <div className="mt-4">
+          <TopicMetaEditor id={id} title={topic.title} kind={topic.kind} lawCode={topic.law_code} articles={topic.articles} />
+        </div>
         <p className="mt-3 t-small text-tinta-suave">
-          Para mudar dados, texto-base ou a estrutura dos módulos, corrija o texto e{" "}
+          Para mudar outros dados, texto-base ou a estrutura dos módulos, corrija o texto e{" "}
           <Link href="/admin/catalogo/enviar" className="font-semibold text-destaque underline underline-offset-2">cole de novo</Link>
           {topic.status === "publicado" ? " (aula publicada: envie como nova parte ou arquive esta antes)." : " — o rascunho é atualizado."} Os textos das seções e as questões podem ser corrigidos aqui mesmo.
         </p>
