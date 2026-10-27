@@ -1,0 +1,198 @@
+/* Tela de carregamento da aula: cena animada em tela cheia + painel de progresso. */
+.cl-root {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  overflow: hidden;
+  background: #0b0705;
+  color: #fff;
+}
+.cl-stage {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+.cl-scene {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.cl-img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+.cl-fx,
+.cl-flag {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+}
+/* Brilho do sol no fim da rua, pulsando devagar. */
+.cl-sun {
+  position: absolute;
+  width: 520px;
+  height: 520px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 214, 140, 0.55), rgba(255, 150, 60, 0.18) 40%, rgba(255, 120, 40, 0) 70%);
+  animation: cl-sun 5s ease-in-out infinite;
+  will-change: opacity, transform;
+  pointer-events: none;
+}
+@keyframes cl-sun {
+  0%,
+  100% {
+    opacity: 0.65;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.04);
+  }
+}
+/* Escurece embaixo e nas bordas: o texto fica legível e a cena ganha profundidade. */
+.cl-shade {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.35) 0%, rgba(0, 0, 0, 0) 22%, rgba(0, 0, 0, 0) 48%, rgba(5, 3, 2, 0.78) 82%, rgba(5, 3, 2, 0.92) 100%),
+    radial-gradient(ellipse at 50% 45%, rgba(0, 0, 0, 0) 55%, rgba(0, 0, 0, 0.45) 100%);
+}
+.cl-hud {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  margin: 0 auto;
+  width: min(100%, 560px);
+  padding: 0 20px max(28px, env(safe-area-inset-bottom));
+  font-family: "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+}
+@media (min-width: 900px) {
+  .cl-hud {
+    left: 56px;
+    right: auto;
+    bottom: 48px;
+    margin: 0;
+    padding: 0;
+  }
+}
+.cl-kicker {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.72);
+}
+.cl-kicker b {
+  color: #ff2a2a;
+}
+.cl-title {
+  margin-top: 6px;
+  font-size: clamp(26px, 6vw, 40px);
+  font-weight: 800;
+  line-height: 1.05;
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6);
+}
+.cl-topic {
+  margin-top: 6px;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.85);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cl-line {
+  margin-top: 16px;
+  min-height: 22px;
+  font-size: 15px;
+  font-weight: 600;
+}
+.cl-caret {
+  display: inline-block;
+  width: 2px;
+  height: 16px;
+  margin-left: 2px;
+  translate: 0 3px;
+  background: #ff2a2a;
+  animation: cl-blink 1s steps(2, start) infinite;
+}
+@keyframes cl-blink {
+  to {
+    visibility: hidden;
+  }
+}
+.cl-bar {
+  margin-top: 10px;
+  height: 4px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.16);
+}
+.cl-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #ff2a2a, #ff7a3a);
+  box-shadow: 0 0 12px rgba(255, 60, 30, 0.8);
+  transition: width 0.2s ease-out;
+}
+.cl-steps {
+  margin-top: 14px;
+  display: grid;
+  gap: 6px;
+  font-size: 13px;
+  list-style: none;
+  padding: 0;
+}
+.cl-steps li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  transition:
+    color 0.4s,
+    opacity 0.4s;
+}
+.cl-steps li span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+}
+.cl-steps li[data-estado="agora"] {
+  color: #fff;
+  font-weight: 600;
+}
+.cl-steps li[data-estado="agora"] span {
+  border-color: #ff2a2a;
+  background: #ff2a2a;
+}
+.cl-steps li[data-estado="feito"] {
+  color: rgba(255, 255, 255, 0.82);
+}
+.cl-steps li[data-estado="feito"] span {
+  border-color: #39ff6a;
+  color: #39ff6a;
+}
+@media (max-width: 420px) {
+  .cl-steps {
+    gap: 4px;
+    font-size: 12px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cl-sun,
+  .cl-caret {
+    animation: none;
+  }
+}
