@@ -8,6 +8,7 @@ import {
   Brain,
   ChartLine,
   ChartNoAxesColumnIncreasing,
+  Check,
   Clock3,
   Cpu,
   Crosshair,
@@ -481,8 +482,8 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
           {x.title}
         </span>
         {x.study?.done ? (
-          <em className="km-on" aria-label="Concluído">
-            <b aria-hidden>ON</b> Concluído
+          <em className="km-on">
+            <Check aria-hidden /> Concluído
           </em>
         ) : (
           <em>{x.study ? `${x.study.pct}%` : "Novo"}</em>
@@ -931,8 +932,8 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                         {f.title}
                       </span>
                       {fdone ? (
-                        <em className="km-on" aria-label="Tópico concluído">
-                          <b aria-hidden>ON</b> {f.topics.length}/{f.topics.length}
+                        <em className="km-on" aria-label={`Tópico concluído: ${f.topics.length} de ${f.topics.length}`}>
+                          <Check aria-hidden /> {f.topics.length}/{f.topics.length}
                         </em>
                       ) : (
                         <em>

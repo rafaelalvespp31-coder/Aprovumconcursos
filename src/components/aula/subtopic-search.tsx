@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useId, useMemo, useRef, useState, useTransition } from "react";
-import { Search, X } from "lucide-react";
+import { ChevronDown, Search, X } from "lucide-react";
 import { searchSubtopics, type SubtopicEntry } from "@/domain/catalog/subtopic-search";
 import { createTrailAction } from "@/app/(app)/nova-trilha/actions";
 import { contentTypeOf } from "@/app/(app)/nova-trilha/start-dialog";
@@ -11,7 +11,7 @@ import { contentTypeOf } from "@/app/(app)/nova-trilha/start-dialog";
  * Barra de busca dentro da aula: encontra outro subtópico do MESMO tópico do edital e vai direto
  * para ele (abre a aula se o aluno já estuda; senão, cria o estudo daquele subtópico).
  */
-export function SubtopicSearch({ group, items, autoFocus = false }: { group: { title: string; code: string | null }; items: SubtopicEntry[]; autoFocus?: boolean }) {
+export function SubtopicSearch({ group, items, autoFocus = false, hideTitle = false }: { group: { title: string; code: string | null }; items: SubtopicEntry[]; autoFocus?: boolean; hideTitle?: boolean }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(autoFocus);
   const [err, setErr] = useState<string | null>(null);
@@ -49,11 +49,11 @@ export function SubtopicSearch({ group, items, autoFocus = false }: { group: { t
 
   return (
     <section ref={box} className="scroll-mt-24 rounded-[14px] border border-linha bg-superficie p-3 sm:p-4" aria-labelledby={`${listId}-t`} data-testid="busca-subtopico">
-      <h2 id={`${listId}-t`} className="t-small font-semibold">
+      <h2 id={`${listId}-t`} className={hideTitle ? "sr-only" : "t-small font-semibold"}>
         Ir para outro subtópico de <span className="text-destaque">{label}</span>{" "}
         <span className="font-normal text-tinta-fraca">({items.length})</span>
       </h2>
-      <div className="relative mt-2">
+      <div className={`relative ${hideTitle ? "" : "mt-2"}`}>
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-tinta-fraca" aria-hidden />
         <input
           ref={input}
@@ -141,21 +141,27 @@ export function SubtopicJump({ group, items }: { group: { title: string; code: s
   const [open, setOpen] = useState(false);
   const others = items.filter((i) => !i.current).length;
   return (
-    <div className="mt-2" data-testid="atalho-subtopicos">
+    <div className="mt-3" data-testid="atalho-subtopicos">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
         aria-expanded={open}
-        className="inline-flex min-h-9 max-w-full items-center gap-2 rounded-full border border-linha-forte bg-superficie px-3 py-1 text-left text-[13px] leading-tight font-semibold text-tinta hover:border-destaque"
+        className="flex min-h-12 w-full items-center gap-3 rounded-[12px] border-2 border-[#B80006] bg-[#E10600] px-4 py-2 text-left text-white shadow-[0_8px_20px_rgba(225,6,0,0.35)] transition hover:bg-[#C70500] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#E10600]/35 aria-expanded:rounded-b-[4px]"
       >
-        <Search className="h-4 w-4 text-destaque" aria-hidden />
-        Subtópicos de {group.code ? `${group.code}. ` : ""}
-        {group.title}
-        <span className="rounded-full bg-nevoa px-1.5 text-[11px] text-tinta-suave">{others + 1}</span>
+        <Search className="h-5 w-5 flex-none" aria-hidden />
+        <span className="min-w-0 flex-1 leading-tight">
+          <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-white/80">Buscar subtópico deste tópico</span>
+          <span className="block text-[14.5px] font-bold">
+            {group.code ? `${group.code}. ` : ""}
+            {group.title}
+          </span>
+        </span>
+        <span className="flex-none rounded-full bg-white px-2 py-0.5 text-[12px] font-bold text-[#E10600]">{others + 1}</span>
+        <ChevronDown className={`h-5 w-5 flex-none transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
       {open && (
-        <div className="mt-2">
-          <SubtopicSearch group={group} items={items} autoFocus />
+        <div className="-mt-px rounded-b-[12px] border-2 border-t-0 border-[#E10600]">
+          <SubtopicSearch group={group} items={items} autoFocus hideTitle />
         </div>
       )}
     </div>
