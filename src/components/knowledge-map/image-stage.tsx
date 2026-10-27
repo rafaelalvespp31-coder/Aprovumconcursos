@@ -11,11 +11,19 @@ import type { MapTopic, Territory } from "@/domain/knowledge-map/model";
  * (o texto não aumenta junto com o zoom).
  */
 
-export const ART = { w: 3344, h: 1882, src: "/images/knowledge-ops/territorio.webp", srcSm: "/images/knowledge-ops/territorio-sm.webp" };
+export const ART = {
+  w: 3344,
+  h: 1882,
+  src: "/images/knowledge-ops/territorio.webp",
+  srcSm: "/images/knowledge-ops/territorio-sm.webp",
+  /** Celular em pé: a arte com 60% da altura espelhada (e escurecida) em cima e embaixo. */
+  srcMob: "/images/knowledge-ops/territorio-mob.webp",
+  mobPad: 0.6,
+};
 /** Braços e fuzil recortados da arte (camada própria, em primeira pessoa). */
 // O recorte continua (escurecendo) para baixo e para a direita da tela: ao girar ou subir a arma,
 // o braço nunca mostra a borda do recorte. "vh" é a altura da parte visível original.
-const RIFLE = { src: "/images/knowledge-ops/fuzil.webp", x: 1424, y: 792, w: 2783, h: 1853, vh: 1090, muzzle: [1786, 960] as [number, number], pivot: [2420, 1500] as [number, number] };
+const RIFLE = { src: "/images/knowledge-ops/fuzil.webp", srcSm: "/images/knowledge-ops/fuzil-sm.webp", x: 1424, y: 792, w: 2783, h: 1853, vh: 1090, muzzle: [1786, 960] as [number, number], pivot: [2420, 1500] as [number, number] };
 /** Fumaça: colunas que sobem dos incêndios e névoa baixa sobre o rio (coordenadas da arte). */
 const SMOKE: Array<{ x: number; y: number; kind: "coluna" | "nevoa"; size: number }> = [
   { x: 700, y: 330, kind: "coluna", size: 120 },
@@ -81,17 +89,6 @@ const LOOK_MARGIN = 1.5;
 /** Tamanho do braço/fuzil na tela (independe da folga da câmera). */
 const RIFLE_SCALE = 1.22;
 
-/** Cópias espelhadas em volta da arte (só aparecem no celular em pé). */
-const MIRRORS: Array<[number, number]> = [
-  [-1, -1],
-  [0, -1],
-  [1, -1],
-  [-1, 0],
-  [1, 0],
-  [-1, 1],
-  [0, 1],
-  [1, 1],
-];
 
 /** Câmera 2D sobre a arte (valores em pixels da arte). */
 export class PlateCamera {
@@ -126,6 +123,11 @@ export class PlateCamera {
   }
   setScreenPointer(p: [number, number] | null) {
     this.screenPointer = p;
+  }
+  /** Toque (celular): a câmera fica parada e só a arma gira para o dedo. */
+  touchAim = false;
+  setTouchAim(v: boolean) {
+    this.touchAim = v;
   }
   /** Cursor sobre um card (ou card apertado): a câmera segura o olhar para o clique acertar. */
   hold = false;
@@ -558,7 +560,13 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         // Nenhum movimento do braço ao clicar/tocar (nem ao travar a mira): ele é fixo.
         const wantY = 0 * (raise + settle);
         const ka = cam.reduced ? 1 : 1 - Math.exp(-dt * 9);
-        aimA += (0 - aimA) * ka;
+        // Celular arrastando: a arma gira (pouco, suave) apontando para o dedo; a câmera não segue.
+        let wantA = 0;
+        if (cam.touchAim && sp && !lk) {
+          const d = Math.atan2(sp[1] - py, sp[0] - px) - Math.atan2(my - py, mx - px);
+          wantA = Math.max(-0.35, Math.min(0.3, Math.atan2(Math.sin(d), Math.cos(d))));
+        }
+        aimA += (wantA - aimA) * (cam.reduced ? 1 : 1 - Math.exp(-dt * 7));
         aimX += (0 - aimX) * ka;
         aimY += (wantY - aimY) * ka;
         const rt = `translate3d(${aimX.toFixed(1)}px, ${(aimY + breathe).toFixed(1)}px, 0) rotate(${(aimA + sway).toFixed(4)}rad)`;
@@ -657,22 +665,13 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
 
   return (
     <div ref={holder} className="km-art" aria-hidden>
-      {/* Fundo desfocado: completa a tela no celular, quando o mapa inteiro é enquadrado. */}
-      <div className="km-art-fill" style={{ backgroundImage: `url(${ART.srcSm})` }} />
       <div ref={layer} className="km-art-layer" style={{ width: ART.w, height: ART.h }}>
-        {/* Celular em pé: a arte continua espelhada nas bordas e preenche a tela toda, sem emenda. */}
-        {MIRRORS.map(([dx, dy]) => (
-          <span
-            key={`${dx}:${dy}`}
-            className="km-art-mirror"
-            data-lado={dy < 0 ? "cima" : dy > 0 ? "baixo" : "lado"}
-            style={{ left: dx * ART.w, top: dy * ART.h, width: ART.w, height: ART.h, backgroundImage: `url(${ART.srcSm})`, transform: `scale(${dx ? -1 : 1}, ${dy ? -1 : 1})` }}
-          />
-        ))}
+        {/* Celular em pé: UMA imagem leve com as bordas (espelho escurecido) já embutidas, preenchendo a tela. */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={ART.srcMob} alt="" loading="lazy" decoding="async" draggable={false} className="km-art-ext" style={{ left: 0, top: -ART.h * ART.mobPad, width: ART.w, height: ART.h * (1 + ART.mobPad * 2) }} />
         <picture>
           <source media="(max-width: 700px)" srcSet={ART.srcSm} />
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={ART.src} alt="" width={ART.w} height={ART.h} draggable={false} className="km-art-img" />
+          <img src={ART.src} alt="" width={ART.w} height={ART.h} loading="lazy" decoding="async" draggable={false} className="km-art-img" />
         </picture>
         {/* Feixe e pulsos do núcleo (clicável). */}
         <button type="button" tabIndex={-1} className="km-art-core" data-pick="" style={{ left: CORE[0], top: CORE[1] }} onClick={onSelectCore} aria-hidden>
@@ -719,8 +718,10 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         <b />
       </div>
       <div ref={rifle} className="km-rifle">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={RIFLE.src} alt="" draggable={false} />
+        <picture>
+          <source media="(max-width: 900px)" srcSet={RIFLE.srcSm} />
+          <img src={RIFLE.src} alt="" decoding="async" draggable={false} />
+        </picture>
       </div>
     </div>
   );

@@ -378,7 +378,10 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
         const py = ((e.clientY - r.top) / r.height) * 2 - 1;
         cam.setHold(!!pressed || overPick);
         rig.setPointer(px, py);
-        cam.setPointer(px, py);
+        // Celular: a câmera não segue o dedo (só o arrasto move o mapa) — quem acompanha é a arma.
+        const touch = e.pointerType !== "mouse";
+        cam.setTouchAim(touch);
+        if (!touch) cam.setPointer(px, py);
         cam.setScreenPointer([e.clientX - r.left, e.clientY - r.top]);
         reticleAt(e);
       }
