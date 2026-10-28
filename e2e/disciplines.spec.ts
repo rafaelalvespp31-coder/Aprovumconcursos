@@ -69,6 +69,6 @@ test("plano de tópicos: cores por matéria e quantos subtópicos estão publica
   await expect(especial).toContainText("67% publicado · 1 em rascunho");
   await expect(penal.getByTestId("plano-salvo").filter({ hasText: "Parte Geral" })).toContainText("100% publicado");
   // Cada matéria tem a sua cor.
-  const cores = await page.getByTestId("planos-materia").evaluateAll((els) => els.map((e) => getComputedStyle(e).borderLeftColor));
+  const cores = await page.getByTestId("planos-materia").evaluateAll((els) => els.map((e) => getComputedStyle(e).backgroundColor));
   expect(new Set(cores).size).toBe(cores.length);
 });

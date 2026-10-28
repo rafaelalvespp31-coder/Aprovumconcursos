@@ -2,7 +2,7 @@ import Link from "next/link";
 import type { CSSProperties } from "react";
 import { disciplineLabel, disciplineSlugs } from "@/ai/pedagogy";
 import { parseOutline } from "@/domain/catalog/topic-group";
-import { territoryStyle } from "@/domain/knowledge-map/model";
+import { disciplineColor } from "@/domain/catalog/discipline-colors";
 
 export interface SavedOutline {
   id: string;
@@ -30,8 +30,8 @@ export function groupOutlines<T extends { disciplineMode: string; title: string 
     }));
 }
 
-/** Cor da matéria (a mesma do mapa imersivo), para distinguir as pastas e os cards. */
-const colorOf = (mode: string) => territoryStyle(mode === "outra" ? "outras" : mode).color;
+/** Cor sólida da matéria (uma diferente para cada), para distinguir as pastas e os cards. */
+const colorOf = (mode: string) => disciplineColor(mode);
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -58,7 +58,7 @@ export function SavedOutlines({ outlines, base = "/admin/catalogo/plano" }: { ou
                   <span aria-hidden className="plano-seta">▸</span>
                   <span className="plano-ponto" aria-hidden />
                   <span className="truncate font-bold">{g.label}</span>
-                  <span className="t-small font-normal text-tinta-fraca">· {plural(g.items.length, "plano", "planos")}</span>
+                  <span className="t-small font-normal opacity-85">· {plural(g.items.length, "plano", "planos")}</span>
                 </span>
                 {hasTotals && (
                   <span className="flex shrink-0 flex-wrap items-center gap-1.5" data-testid="materia-contagem">
@@ -78,8 +78,8 @@ export function SavedOutlines({ outlines, base = "/admin/catalogo/plano" }: { ou
                       <Link href={`${base}/${o.id}`} className="plano-card" data-testid="plano-salvo">
                         <span className="flex items-start justify-between gap-3">
                           <span className="min-w-0">
-                            <span className="block font-semibold text-tinta">{o.title}</span>
-                            <span className="mt-0.5 block t-small text-tinta-suave">
+                            <span className="block font-semibold">{o.title}</span>
+                            <span className="mt-0.5 block t-small opacity-85">
                               {plural(tree.groups.length, "tópico", "tópicos")} · {plural(subs, "subtópico", "subtópicos")}
                             </span>
                           </span>
@@ -95,7 +95,7 @@ export function SavedOutlines({ outlines, base = "/admin/catalogo/plano" }: { ou
                             <span className="plano-barra" aria-hidden>
                               <span style={{ width: `${pct}%` }} />
                             </span>
-                            <span className="mt-1 block t-tiny text-tinta-fraca">
+                            <span className="mt-1 block t-tiny opacity-85">
                               {pct}% publicado{t.rascunho ? ` · ${plural(t.rascunho, "em rascunho", "em rascunho")}` : ""}
                             </span>
                           </span>
