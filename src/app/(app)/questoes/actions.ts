@@ -1,6 +1,8 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { loadErrorNotebook, saveErrorNotebookEntries } from "@/server/services/error-notebook";
+import type { ErrorNotebookData, ErrorNotebookEdit } from "@/domain/notebooks/error-notebook";
 import { requireUser } from "@/server/auth";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
@@ -101,4 +103,14 @@ export async function notebookPositionAction(notebookId: string, questionId: str
     await saveNotebookPosition(user.id, notebookId, questionId);
     return null;
   });
+}
+
+export async function openErrorNotebookAction(notebookId: string): Promise<Result<ErrorNotebookData>> {
+  const user = await requireUser();
+  return guard("error_notebook_open", () => loadErrorNotebook(user.id, notebookId));
+}
+
+export async function saveErrorNotebookAction(notebookId: string, edits: ErrorNotebookEdit[]): Promise<Result<{ savedAt: string }>> {
+  const user = await requireUser();
+  return guard("error_notebook_save", () => saveErrorNotebookEntries(user.id, notebookId, edits));
 }

@@ -1,3 +1,5 @@
+import type { ErrorNotebookEdit, ErrorNotebookEntry } from "@/domain/notebooks/error-notebook";
+import { plainToHtml, richToText, sanitizeRichHtml } from "@/domain/notebooks/rich-text";
 import type { Notebook, NotebookLookups, NotebookQuestion, Notice } from "@/server/services/notebooks";
 import { EMPTY_FILTERS, type IndexedQuestion } from "@/domain/notebooks/filters";
 import type { AnswerFeedback } from "@/server/services/study";
@@ -174,3 +176,38 @@ export function demoFeedback(questionId: string, input: { optionId?: string; ans
     options: q.options.map((o) => ({ id: o.id, label: o.label, isCorrect: o.id === k.correct, explanation: o.id === k.correct ? "" : `Incorreta: a alternativa ${o.label} não corresponde à regra.` })),
   };
 }
+
+// ---------------------------------------------------------------------------
+// Caderno de erros (galeria): erros fictícios e gravação em memória
+// ---------------------------------------------------------------------------
+
+const demoErrorBase: Array<Omit<ErrorNotebookEntry, "html" | "edited" | "updatedAt">> = [
+  { questionId: "e0000000-0000-4000-8000-000000000001", code: "Q-1042", subject: "Direito Penal", theme: "Crimes contra o patrimônio", topic: "Roubo", source: "FGV · 2025", originalHtml: plainToHtml("O roubo exige **violência ou grave ameaça** contra a pessoa; sem isso, a subtração é furto.\n\n**Fundamentação:** art. 157 do Código Penal."), stillWrong: true, wrongAttempts: 2 },
+  { questionId: "e0000000-0000-4000-8000-000000000002", code: "Q-1043", subject: "Direito Penal", theme: "Crimes contra o patrimônio", topic: "Furto", source: "Cebraspe · 2024", originalHtml: plainToHtml("Furto é subtrair, para si ou para outrem, coisa alheia móvel, **sem violência**.\n\n**Fundamentação:** art. 155 do Código Penal."), stillWrong: false, wrongAttempts: 1 },
+  { questionId: "e0000000-0000-4000-8000-000000000003", code: "Q-1050", subject: "Direito Penal", theme: "Crimes contra o patrimônio", topic: "Furto", source: "Vunesp · 2025", originalHtml: plainToHtml("O repouso noturno aumenta a pena do furto em um terço."), stillWrong: true, wrongAttempts: 1 },
+  { questionId: "e0000000-0000-4000-8000-000000000004", code: "Q-0310", subject: "Direito Administrativo", theme: "Atos administrativos", topic: null, source: "FCC · 2023", originalHtml: plainToHtml("A **anulação** decorre de ilegalidade e, em regra, retroage; a **revogação** é por conveniência e não retroage."), stillWrong: true, wrongAttempts: 3 },
+];
+const demoErrorSaved = new Map<string, { html: string; at: string }>();
+
+/** Ações do caderno de erros na galeria (nada sai do navegador). */
+export const demoErrorApi = {
+  open: async (notebookId: string) => {
+    await new Promise((r) => setTimeout(r, 200));
+    const n = demoNotebooks.find((x) => x.id === notebookId) ?? demoNotebooks[0]!;
+    const entries: ErrorNotebookEntry[] = demoErrorBase.map((e) => {
+      const s = demoErrorSaved.get(e.questionId);
+      return { ...e, html: s?.html ?? e.originalHtml, edited: !!s, updatedAt: s?.at ?? null };
+    });
+    return { ok: true as const, data: { notebook: { id: n.id, title: n.title }, entries } };
+  },
+  save: async (_notebookId: string, edits: ErrorNotebookEdit[]) => {
+    await new Promise((r) => setTimeout(r, 200));
+    const at = new Date().toISOString();
+    for (const e of edits) {
+      const clean = e.html ? sanitizeRichHtml(e.html) : "";
+      if (richToText(clean)) demoErrorSaved.set(e.questionId, { html: clean, at });
+      else demoErrorSaved.delete(e.questionId);
+    }
+    return { ok: true as const, data: { savedAt: at } };
+  },
+};

@@ -54,37 +54,3 @@ export interface PdfSnapshot {
   /** Pontos de revisão: itens com erro em alguma tentativa. */
   review: Array<{ topic: string; unitTitle: string; wrongAttempts: number }>;
 }
-
-/**
- * Caderno de erros de um caderno de questões: as questões que o aluno errou ao menos uma vez
- * NAQUELE caderno, com a última resposta, o gabarito e o comentário. Gerado na hora do download.
- */
-export interface ErrorNotebookSnapshot {
-  schema: 1;
-  generatedAt: string;
-  student: { name: string | null };
-  notebook: { id: string; title: string; scope: string; filters: string[] };
-  totals: { answered: number; correct: number; stillWrong: number; corrected: number };
-  questions: Array<{
-    id: string;
-    code: string | null;
-    subject: string;
-    /** Tema: o assunto de primeiro nível do cadastro (ex.: Crimes contra a vida). */
-    theme: string;
-    /** Assunto dentro do tema (ex.: Homicídio qualificado); nulo quando a questão está no próprio tema. */
-    topic: string | null;
-    source: string | null;
-    type: string;
-    caseContext: string | null;
-    statement: string;
-    options: Array<{ label: string; text: string; correct: boolean; explanation: string }>;
-    correctAnswerTrue: boolean | null;
-    justification: string;
-    /** Última resposta neste caderno. */
-    answer: { label: string | null; bool: boolean | null; correct: boolean; at: string };
-    attempts: number;
-    wrongAttempts: number;
-    /** Anotação pessoal do aluno na questão. */
-    note: string | null;
-  }>;
-}

@@ -6,7 +6,6 @@ import {
   BookOpen,
   BrainCircuit,
   BriefcaseBusiness,
-  FileDown,
   CalendarDays,
   Check,
   ChevronLeft,
@@ -37,7 +36,9 @@ import { AnswerExplanation } from "@/components/answer-explanation";
 import { callAction } from "@/components/safe-action";
 import { useStored } from "@/components/use-stored";
 import { canConfirm, classifyTap, DOUBLE_TAP_MS, initialChoice, selectOption, toggleStrike, type ChoiceState } from "@/domain/notebooks/elimination";
-import { answerNotebookAction, favoriteQuestionAction, fullStatementAction, notebookPositionAction, reportQuestionAction, saveNoteAction, type Result } from "../../actions";
+import { answerNotebookAction, favoriteQuestionAction, fullStatementAction, notebookPositionAction, openErrorNotebookAction, reportQuestionAction, saveErrorNotebookAction, saveNoteAction, type Result } from "../../actions";
+import { ErrorNotebookModal } from "@/components/notebooks/error-notebook-modal";
+import type { ErrorNotebookData, ErrorNotebookEdit } from "@/domain/notebooks/error-notebook";
 
 type AnswerInput = { optionId?: string; answerTrue?: boolean; attemptKey: string; seconds?: number };
 type Answer = (input: { notebookId: string; questionId: string } & AnswerInput) => Promise<Result<AnswerFeedback>>;
@@ -51,6 +52,9 @@ export interface NotebookViewActions {
   report: (questionId: string, details: string) => Promise<Result<null>>;
   /** Guarda a questão em que o aluno está (para continuar dela ao voltar). */
   position: (notebookId: string, questionId: string) => Promise<Result<null>>;
+  /** Caderno de erros (janela editável). */
+  errorsOpen: (notebookId: string) => Promise<Result<ErrorNotebookData>>;
+  errorsSave: (notebookId: string, edits: ErrorNotebookEdit[]) => Promise<Result<{ savedAt: string }>>;
 }
 
 const serverActions: NotebookViewActions = {
@@ -60,6 +64,8 @@ const serverActions: NotebookViewActions = {
   saveNote: saveNoteAction,
   report: reportQuestionAction,
   position: notebookPositionAction,
+  errorsOpen: openErrorNotebookAction,
+  errorsSave: saveErrorNotebookAction,
 };
 
 const PAGE = 60;
@@ -76,7 +82,6 @@ export function NotebookView({
   questions,
   base,
   start = 0,
-  errorsPdfHref,
   actions: given,
 }: {
   notebook: Notebook;
@@ -84,8 +89,6 @@ export function NotebookView({
   base: string;
   /** Questão onde o caderno continua (a última em que o aluno estava). */
   start?: number;
-  /** Endereço do PDF do caderno de erros (sem ele, o botão não aparece). */
-  errorsPdfHref?: string;
   /** A galeria troca as ações do servidor por versões em memória. */
   actions?: Partial<NotebookViewActions>;
 }) {
@@ -94,6 +97,8 @@ export function NotebookView({
   const [favs, setFavs] = useState(() => new Set(questions.filter((q) => q.favorite).map((q) => q.id)));
   const [notes, setNotes] = useState<Record<string, string>>(() => Object.fromEntries(questions.map((q) => [q.id, q.note])));
   const [notice, setNotice] = useState<string | null>(null);
+  const [errorsOpen, setErrorsOpen] = useState(false);
+  const [errorsApi] = useState(() => ({ open: actions.errorsOpen, save: actions.errorsSave }));
   const total = questions.length;
   // Continua de onde parou; as respostas já gravadas neste caderno voltam com gabarito e comentário.
   const [i, setI] = useState(() => Math.min(Math.max(0, start), Math.max(0, total - 1)));
@@ -182,7 +187,8 @@ export function NotebookView({
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]" data-testid="caderno-view">
       <div className="flex min-w-0 flex-col gap-4">
-        <Top n={n} total={total} q={q} errorsPdfHref={erred > 0 ? errorsPdfHref : undefined} wrong={erred} />
+        <Top n={n} total={total} q={q} onOpenErrors={erred > 0 ? () => setErrorsOpen(true) : undefined} wrong={erred} />
+        {errorsOpen && <ErrorNotebookModal notebookId={n.id} title={n.title} api={errorsApi} onClose={() => setErrorsOpen(false)} />}
         {notice && (
           <p role="alert" className="rounded-[10px] border border-[#E50914]/50 bg-[#2A0A0C] px-3 py-2 text-[13px] font-medium text-[#FFB3B8]">
             {notice}
@@ -242,7 +248,7 @@ export function NotebookView({
 // Topo: caderno, modo e faixa com os dados da questão atual
 // ---------------------------------------------------------------------------
 
-function Top({ n, total, q, errorsPdfHref, wrong = 0 }: { n: Notebook; total: number; q?: NotebookQuestion; errorsPdfHref?: string; wrong?: number }) {
+function Top({ n, total, q, onOpenErrors, wrong = 0 }: { n: Notebook; total: number; q?: NotebookQuestion; onOpenErrors?: () => void; wrong?: number }) {
   const tiles: Array<{ icon: ReactNode; label: string; value: string }> = q
     ? [
         { icon: <span className="qz-hexa"><Shield className="h-4 w-4" aria-hidden /></span>, label: "Banca", value: q.board ?? "—" },
@@ -267,16 +273,16 @@ function Top({ n, total, q, errorsPdfHref, wrong = 0 }: { n: Notebook; total: nu
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-3">
-          {errorsPdfHref && (
-            <a href={errorsPdfHref} download className="qz-pdf-erros" data-testid="pdf-erros" title="Baixa o PDF com as questões que você errou neste caderno">
-              <FileDown className="h-5 w-5 shrink-0" aria-hidden />
-              <span>
-                <span className="block text-[13.5px] font-bold">Gerar Caderno de Erros</span>
+          {onOpenErrors && (
+            <button type="button" onClick={onOpenErrors} className="qz-pdf-erros" data-testid="abrir-caderno-erros" aria-haspopup="dialog" title="Abre os seus erros deste caderno, organizados e editáveis">
+              <NotebookPen className="h-5 w-5 shrink-0" aria-hidden />
+              <span className="text-left">
+                <span className="block text-[13.5px] font-bold">Abrir caderno de erros</span>
                 <span className="block text-[11.5px] opacity-80">
-                  {wrong} {wrong === 1 ? "questão que você errou" : "questões que você errou"}, com gabarito e comentário
+                  {wrong} {wrong === 1 ? "questão que você errou" : "questões que você errou"}, organizadas e editáveis
                 </span>
               </span>
-            </a>
+            </button>
           )}
           <div className="qz-modo">
             <BrainCircuit className="h-7 w-7 shrink-0 text-white" aria-hidden />
