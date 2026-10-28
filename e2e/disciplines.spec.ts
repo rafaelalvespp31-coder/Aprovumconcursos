@@ -58,3 +58,17 @@ test("plano de tópicos: planos salvos ficam dentro da matéria de cada um", asy
   await penal.locator("summary").click();
   await expect(penal.getByTestId("plano-salvo").first()).toBeVisible();
 });
+
+test("plano de tópicos: cores por matéria e quantos subtópicos estão publicados e quantos faltam", async ({ page }) => {
+  await page.goto("/dev/galeria/catalogo");
+  const penal = page.getByTestId("planos-materia").filter({ hasText: "Direito Penal" });
+  // Soma da matéria: 2 + 3 publicados, 1 + 0 faltam.
+  await expect(penal.getByTestId("materia-contagem")).toHaveText(/5 publicados\s*1 falta/);
+  const especial = penal.getByTestId("plano-salvo").filter({ hasText: "Parte Especial" });
+  await expect(especial.getByTestId("plano-contagem")).toHaveText(/2 publicados\s*1 falta/);
+  await expect(especial).toContainText("67% publicado · 1 em rascunho");
+  await expect(penal.getByTestId("plano-salvo").filter({ hasText: "Parte Geral" })).toContainText("100% publicado");
+  // Cada matéria tem a sua cor.
+  const cores = await page.getByTestId("planos-materia").evaluateAll((els) => els.map((e) => getComputedStyle(e).borderLeftColor));
+  expect(new Set(cores).size).toBe(cores.length);
+});

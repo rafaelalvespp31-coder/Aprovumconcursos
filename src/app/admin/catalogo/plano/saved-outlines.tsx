@@ -1,12 +1,16 @@
 import Link from "next/link";
+import type { CSSProperties } from "react";
 import { disciplineLabel, disciplineSlugs } from "@/ai/pedagogy";
 import { parseOutline } from "@/domain/catalog/topic-group";
+import { territoryStyle } from "@/domain/knowledge-map/model";
 
 export interface SavedOutline {
   id: string;
   title: string;
   disciplineMode: string;
   sourceText: string;
+  /** Subtópicos do plano já publicados e os que faltam (sem isso, só a contagem do plano). */
+  totals?: { subtopics: number; publicado: number; rascunho: number; faltam: number };
 }
 
 /** Agrupa os planos pela matéria (na ordem das matérias; os de matéria desconhecida no fim), por título. */
@@ -26,49 +30,84 @@ export function groupOutlines<T extends { disciplineMode: string; title: string 
     }));
 }
 
+/** Cor da matéria (a mesma do mapa imersivo), para distinguir as pastas e os cards. */
+const colorOf = (mode: string) => territoryStyle(mode === "outra" ? "outras" : mode).color;
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+
 /**
- * Planos salvos, cada um dentro da sua matéria (uma pasta por matéria, que abre e fecha), para
- * a página não virar uma lista solta e misturada.
+ * Planos salvos, cada um dentro da sua matéria (uma pasta colorida por matéria, que abre e fecha),
+ * com quantos subtópicos já estão publicados e quantos faltam — no plano e na matéria.
  */
 export function SavedOutlines({ outlines, base = "/admin/catalogo/plano" }: { outlines: readonly SavedOutline[]; base?: string }) {
   const groups = groupOutlines(outlines);
   return (
     <section aria-labelledby="planos">
       <h2 id="planos" className="t-h2">
-        Planos salvos <span className="t-small font-normal text-tinta-fraca">({outlines.length} em {groups.length} {groups.length === 1 ? "matéria" : "matérias"})</span>
+        Planos salvos <span className="t-small font-normal text-tinta-fraca">({outlines.length} em {plural(groups.length, "matéria", "matérias")})</span>
       </h2>
       <div className="mt-3 flex flex-col gap-3">
-        {groups.map((g) => (
-          <details key={g.mode} open className="group rounded-lg border border-linha bg-superficie" data-testid="planos-materia" data-materia={g.mode}>
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 rounded-lg px-4 py-3 hover:bg-nevoa [&::-webkit-details-marker]:hidden">
-              <span className="flex items-center gap-2">
-                <span aria-hidden className="inline-block text-tinta-fraca transition-transform group-open:rotate-90">
-                  ▸
+        {groups.map((g) => {
+          const color = colorOf(g.mode);
+          const sum = g.items.reduce((a, o) => (o.totals ? { publicado: a.publicado + o.totals.publicado, faltam: a.faltam + o.totals.faltam } : a), { publicado: 0, faltam: 0 });
+          const hasTotals = g.items.some((o) => o.totals);
+          return (
+            <details key={g.mode} open className="plano-materia group" style={{ "--cor": color } as CSSProperties} data-testid="planos-materia" data-materia={g.mode}>
+              <summary className="plano-materia-topo">
+                <span className="flex min-w-0 items-center gap-2.5">
+                  <span aria-hidden className="plano-seta">▸</span>
+                  <span className="plano-ponto" aria-hidden />
+                  <span className="truncate font-bold">{g.label}</span>
+                  <span className="t-small font-normal text-tinta-fraca">· {plural(g.items.length, "plano", "planos")}</span>
                 </span>
-                <span className="font-bold">{g.label}</span>
-              </span>
-              <span className="t-small text-tinta-fraca">
-                {g.items.length} {g.items.length === 1 ? "plano" : "planos"}
-              </span>
-            </summary>
-            <ul className="grid gap-3 px-4 pb-4 sm:grid-cols-2">
-              {g.items.map((o) => {
-                const tree = parseOutline(o.sourceText);
-                const subs = tree.groups.reduce((n, x) => n + x.subtopics.length, 0);
-                return (
-                  <li key={o.id}>
-                    <Link href={`${base}/${o.id}`} className="block h-full rounded-lg border border-linha p-4 hover:border-destaque" data-testid="plano-salvo">
-                      <p className="font-semibold">{o.title}</p>
-                      <p className="mt-1 t-small text-tinta-suave">
-                        {tree.groups.length} tópico(s) · {subs} subtópico(s)
-                      </p>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
-          </details>
-        ))}
+                {hasTotals && (
+                  <span className="flex shrink-0 flex-wrap items-center gap-1.5" data-testid="materia-contagem">
+                    <span className="plano-pill plano-pill-ok">{plural(sum.publicado, "publicado", "publicados")}</span>
+                    <span className="plano-pill plano-pill-falta">{sum.faltam} {sum.faltam === 1 ? "falta" : "faltam"}</span>
+                  </span>
+                )}
+              </summary>
+              <ul className="grid gap-3 px-4 pb-4 sm:grid-cols-2">
+                {g.items.map((o) => {
+                  const tree = parseOutline(o.sourceText);
+                  const subs = o.totals?.subtopics ?? tree.groups.reduce((n, x) => n + x.subtopics.length, 0);
+                  const t = o.totals;
+                  const pct = t && t.subtopics ? Math.round((t.publicado / t.subtopics) * 100) : 0;
+                  return (
+                    <li key={o.id}>
+                      <Link href={`${base}/${o.id}`} className="plano-card" data-testid="plano-salvo">
+                        <span className="flex items-start justify-between gap-3">
+                          <span className="min-w-0">
+                            <span className="block font-semibold text-tinta">{o.title}</span>
+                            <span className="mt-0.5 block t-small text-tinta-suave">
+                              {plural(tree.groups.length, "tópico", "tópicos")} · {plural(subs, "subtópico", "subtópicos")}
+                            </span>
+                          </span>
+                          {t && (
+                            <span className="plano-contagem" data-testid="plano-contagem" aria-label={`${t.publicado} publicados e ${t.faltam} faltando de ${t.subtopics}`}>
+                              <span className="plano-pill plano-pill-ok">{t.publicado} publicado{t.publicado === 1 ? "" : "s"}</span>
+                              <span className="plano-pill plano-pill-falta">{t.faltam} {t.faltam === 1 ? "falta" : "faltam"}</span>
+                            </span>
+                          )}
+                        </span>
+                        {t && (
+                          <span className="mt-3 block">
+                            <span className="plano-barra" aria-hidden>
+                              <span style={{ width: `${pct}%` }} />
+                            </span>
+                            <span className="mt-1 block t-tiny text-tinta-fraca">
+                              {pct}% publicado{t.rascunho ? ` · ${plural(t.rascunho, "em rascunho", "em rascunho")}` : ""}
+                            </span>
+                          </span>
+                        )}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </details>
+          );
+        })}
       </div>
     </section>
   );

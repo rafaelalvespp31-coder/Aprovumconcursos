@@ -2335,3 +2335,22 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 @keyframes ce-fade { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ce-entra { from { opacity: 0; transform: translateY(14px) scale(0.985); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .ce-fundo, .ce-card, .ce-paleta { animation: none; } }
+
+/* Plano de tópicos: pastas e cards coloridos pela matéria (--cor) */
+.plano-materia { border-radius: 14px; border: 1px solid color-mix(in srgb, var(--cor) 35%, #E6E7EB); border-left: 5px solid var(--cor); background: color-mix(in srgb, var(--cor) 6%, #fff); }
+.plano-materia-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; cursor: pointer; list-style: none; border-radius: 12px; }
+.plano-materia-topo::-webkit-details-marker { display: none; }
+.plano-materia-topo:hover { background: color-mix(in srgb, var(--cor) 10%, transparent); }
+.plano-materia-topo:focus-visible { outline: 2px solid var(--cor); outline-offset: 2px; }
+.plano-seta { display: inline-block; color: color-mix(in srgb, var(--cor) 70%, #08090B); transition: transform 150ms; }
+.plano-materia[open] .plano-seta { transform: rotate(90deg); }
+.plano-ponto { width: 12px; height: 12px; flex-shrink: 0; border-radius: 999px; background: var(--cor); box-shadow: 0 0 0 3px color-mix(in srgb, var(--cor) 25%, transparent); }
+.plano-card { display: block; height: 100%; border-radius: 12px; padding: 14px 16px; background: color-mix(in srgb, var(--cor) 11%, #fff); border: 1px solid color-mix(in srgb, var(--cor) 30%, #E6E7EB); border-top: 3px solid var(--cor); transition: transform 150ms, box-shadow 150ms, border-color 150ms; }
+.plano-card:hover { transform: translateY(-1px); border-color: var(--cor); box-shadow: 0 8px 22px color-mix(in srgb, var(--cor) 22%, transparent); }
+.plano-card:focus-visible { outline: 2px solid var(--cor); outline-offset: 2px; }
+.plano-contagem { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; flex-shrink: 0; }
+.plano-pill { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 11.5px; font-weight: 700; white-space: nowrap; }
+.plano-pill-ok { background: #E3F6E8; color: #166534; }
+.plano-pill-falta { background: #FFF1E0; color: #9A4A00; }
+.plano-barra { display: block; height: 6px; overflow: hidden; border-radius: 999px; background: color-mix(in srgb, var(--cor) 18%, #fff); }
+.plano-barra > span { display: block; height: 100%; border-radius: inherit; background: var(--cor); }

@@ -124,3 +124,46 @@ export async function subtopicPrompt(outlineId: string, ref: string): Promise<{ 
   if (!g || !s) return null;
   return { prompt: buildSubtopicPrompt({ disciplineMode: o.disciplineMode, group: g, sub: s }), label: `${s.code ? `${s.code} ` : ""}${s.title}`, planTitle: o.title };
 }
+
+export interface OutlineTotals {
+  subtopics: number;
+  publicado: number;
+  rascunho: number;
+  /** Ainda não publicados (em rascunho ou nem catalogados). */
+  faltam: number;
+}
+
+/** Planos salvos com quantos subtópicos já estão publicados e quantos faltam (uma consulta só ao catálogo). */
+export async function listOutlinesWithTotals(): Promise<Array<OutlineRow & { totals: OutlineTotals }>> {
+  const outlines = await listOutlines();
+  if (!outlines.length) return [];
+  const modes = [...new Set(outlines.map((o) => o.disciplineMode))];
+  const { data, error } = await createAdminClient()
+    .from("catalog_topics")
+    .select("id, title, status, topic_group, subtopic_code, discipline_mode")
+    .in("discipline_mode", modes)
+    .not("topic_group", "is", null)
+    .limit(10000);
+  if (error) throw new Error(error.message);
+  type Row = { id: string; title: string; status: string; topicGroup: string | null; subtopicCode: string | null; mode: string };
+  const byMode = new Map<string, Row[]>();
+  for (const t of data ?? []) {
+    const row: Row = { id: t.id as string, title: t.title as string, status: t.status as string, topicGroup: t.topic_group as string | null, subtopicCode: t.subtopic_code as string | null, mode: t.discipline_mode as string };
+    byMode.set(row.mode, [...(byMode.get(row.mode) ?? []), row]);
+  }
+  return outlines.map((o) => {
+    const catalog = byMode.get(o.disciplineMode) ?? [];
+    const totals: OutlineTotals = { subtopics: 0, publicado: 0, rascunho: 0, faltam: 0 };
+    for (const g of parseOutline(o.sourceText).groups)
+      for (const sub of g.subtopics) {
+        const hit = findCatalogFor(g, sub, catalog);
+        totals.subtopics++;
+        if (hit?.status === "publicado") totals.publicado++;
+        else {
+          totals.faltam++;
+          if (hit) totals.rascunho++;
+        }
+      }
+    return { ...o, totals };
+  });
+}

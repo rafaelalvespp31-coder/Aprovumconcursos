@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { requireAdmin } from "@/server/services/catalog";
-import { listOutlines } from "@/server/services/outlines";
+import { listOutlinesWithTotals } from "@/server/services/outlines";
 import { createOutlineAction } from "../actions";
 import { OutlineForm } from "./outline-form";
 import { SavedOutlines } from "./saved-outlines";
@@ -9,7 +9,7 @@ export const metadata = { title: "Plano de tópicos" };
 
 export default async function PlanListPage() {
   await requireAdmin();
-  const outlines = await listOutlines();
+  const outlines = await listOutlinesWithTotals();
   return (
     <div className="flex flex-col gap-8">
       <div>
