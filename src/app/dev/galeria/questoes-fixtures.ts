@@ -106,6 +106,8 @@ export const demoQuestions: NotebookQuestion[] = [
     ],
     favorite: true,
     last: { correct: false, at: "2026-10-08T13:00:00Z" },
+    saved: null,
+    wrongHere: false,
   },
   {
     id: "q-demo-2",
@@ -124,6 +126,8 @@ export const demoQuestions: NotebookQuestion[] = [
     options: [],
     favorite: false,
     last: null,
+    saved: null,
+    wrongHere: false,
   },
   {
     id: "q-demo-3",
@@ -148,6 +152,8 @@ export const demoQuestions: NotebookQuestion[] = [
     ],
     favorite: false,
     last: null,
+    saved: null,
+    wrongHere: false,
   },
 ];
 

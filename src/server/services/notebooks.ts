@@ -17,6 +17,7 @@ import {
   type NotebookFilters,
 } from "@/domain/notebooks/filters";
 import type { AnswerFeedback } from "./study";
+import { resumeIndex } from "@/domain/notebooks/resume";
 
 /**
  * Cadernos de questões: filtros salvos (matérias, assuntos, bancas, concursos, anos,
@@ -190,7 +191,7 @@ export async function notebookLookups(userId: string): Promise<NotebookLookups> 
 
 type NotebookRow = {
   id: string; title: string; filters: unknown; show_full_statement: boolean | null; pinned: boolean; last_opened_at: string | null; created_at: string;
-  subject_id: string | null; exam_id: string | null; board_slug: string | null; question_type: string | null;
+  subject_id: string | null; exam_id: string | null; board_slug: string | null; question_type: string | null; last_question_id?: string | null;
 };
 
 /** Filtros do caderno; os criados antes do JSON usam as colunas de valor único. */
@@ -245,7 +246,7 @@ function lastAnswerStats(list: AttemptRow[]): { answered: number; correct: numbe
   return { answered: last.size, correct: [...last.values()].filter(Boolean).length };
 }
 
-const NOTEBOOK_COLUMNS = "id, title, filters, show_full_statement, pinned, last_opened_at, created_at, subject_id, exam_id, board_slug, question_type";
+const NOTEBOOK_COLUMNS = "id, title, filters, show_full_statement, pinned, last_opened_at, created_at, subject_id, exam_id, board_slug, question_type, last_question_id";
 
 export async function listNotebooks(userId: string): Promise<Notebook[]> {
   const db = await createUserClient();
@@ -349,9 +350,16 @@ export interface NotebookQuestion {
   favorite: boolean;
   /** Última resposta do aluno a esta questão (em qualquer caderno). */
   last: { correct: boolean; at: string } | null;
+  /**
+   * Resposta já gravada NESTE caderno (a última): a alternativa marcada e a correção completa.
+   * Ao voltar, a questão aparece como foi respondida, com gabarito e comentário.
+   */
+  saved: { choice: string; fb: AnswerFeedback } | null;
+  /** Já errou esta questão neste caderno alguma vez (entra no caderno de erros). */
+  wrongHere: boolean;
 }
 
-export async function openNotebook(userId: string, id: string): Promise<{ notebook: Notebook; questions: NotebookQuestion[] } | null> {
+export async function openNotebook(userId: string, id: string): Promise<{ notebook: Notebook; questions: NotebookQuestion[]; start: number } | null> {
   const nid = z.uuid().safeParse(id);
   if (!nid.success) return null;
   const db = await createUserClient();
@@ -363,10 +371,15 @@ export async function openNotebook(userId: string, id: string): Promise<{ notebo
     loadNames(),
     publishedIndex(),
     userContext(userId),
-    admin.from("bank_attempts").select("notebook_id, question_id, is_correct, created_at").eq("user_id", userId).eq("notebook_id", nid.data).order("created_at", { ascending: false }).limit(20000),
+    admin.from("bank_attempts").select("notebook_id, question_id, is_correct, created_at, selected_label, answer_bool").eq("user_id", userId).eq("notebook_id", nid.data).order("created_at", { ascending: false }).limit(20000),
   ]);
   const mctx: MatchContext = { ...ctx, topicParent: names.topicParent };
-  const notebook = toNotebook(row as NotebookRow, names, index, mctx, lastAnswerStats((stats.data ?? []) as AttemptRow[]));
+  const mine = (stats.data ?? []) as Array<AttemptRow & { selected_label: string | null; answer_bool: boolean | null }>;
+  const notebook = toNotebook(row as NotebookRow, names, index, mctx, lastAnswerStats(mine));
+  // Última resposta de cada questão neste caderno (a lista vem da mais nova para a mais antiga).
+  const lastHere = new Map<string, (typeof mine)[number]>();
+  for (const a of mine) if (!lastHere.has(a.question_id)) lastHere.set(a.question_id, a);
+  const wrongHere = new Set(mine.filter((a) => !a.is_correct).map((a) => a.question_id));
   const ids = index.filter((q) => matchQuestion(q, notebook.filters, mctx)).map((q) => q.id).slice(0, 500);
 
   type Row = {
@@ -398,10 +411,43 @@ export async function openNotebook(userId: string, id: string): Promise<{ notebo
     if (!last.has(h.question_id)) last.set(h.question_id, { correct: h.is_correct, at: h.created_at });
   }
 
+  // Correção das questões já respondidas aqui (o gabarito só sai porque o aluno já respondeu).
+  type KeyRow = { id: string; justification: string | null; legal_basis: string | null; correct_answer_true: boolean | null; bank_question_options: Array<{ id: string; label: string; is_correct: boolean; explanation: string | null; sort_order: number }> | null };
+  const answeredIds = rows.map((r) => r.id).filter((qid) => lastHere.has(qid));
+  const keys = new Map<string, KeyRow>();
+  for (let i = 0; i < answeredIds.length; i += 100) {
+    const part = await admin
+      .from("bank_questions")
+      .select("id, justification, legal_basis, correct_answer_true, bank_question_options(id, label, is_correct, explanation, sort_order)")
+      .in("id", answeredIds.slice(i, i + 100));
+    if (part.error) throw new Error(part.error.message);
+    for (const k of (part.data ?? []) as KeyRow[]) keys.set(k.id, k);
+  }
+  const savedFor = (r: Row): NotebookQuestion["saved"] => {
+    const a = lastHere.get(r.id);
+    const k = keys.get(r.id);
+    if (!a || !k) return null;
+    const opts = (k.bank_question_options ?? []).sort((x, y) => x.sort_order - y.sort_order);
+    const choice = r.question_type === "certo_errado" ? (a.answer_bool === null ? null : String(a.answer_bool)) : (opts.find((o) => o.label === a.selected_label)?.id ?? null);
+    if (!choice) return null;
+    const justification = [k.justification, k.legal_basis ? `Fundamentação: ${k.legal_basis}` : null].filter(Boolean).join("\n\n");
+    return {
+      choice,
+      fb: {
+        correct: a.is_correct,
+        justification: justification || "Esta questão ainda não tem comentário validado.",
+        correctAnswerTrue: r.question_type === "certo_errado" ? k.correct_answer_true : null,
+        options: opts.map((o) => ({ id: o.id, label: o.label, isCorrect: o.is_correct, explanation: o.explanation ?? "" })),
+      },
+    };
+  };
+
   await db.from("question_notebooks").update({ last_opened_at: new Date().toISOString() }).eq("id", notebook.id).eq("user_id", userId);
 
+  const orderedIds = rows.map((r) => r.id);
   return {
     notebook,
+    start: resumeIndex(orderedIds, (row as NotebookRow).last_question_id ?? null, new Set(lastHere.keys())),
     questions: rows.map((r) => ({
       id: r.id,
       code: r.public_code,
@@ -419,8 +465,20 @@ export async function openNotebook(userId: string, id: string): Promise<{ notebo
       options: (r.bank_question_options ?? []).sort((a, b) => a.sort_order - b.sort_order).map(({ id, label, text }) => ({ id, label, text })),
       favorite: ctx.favorites.has(r.id),
       last: last.get(r.id) ?? null,
+      saved: savedFor(r),
+      wrongHere: wrongHere.has(r.id),
     })),
   };
+}
+
+/** Guarda a questão em que o aluno está no caderno (para continuar dela ao voltar). */
+export async function saveNotebookPosition(userId: string, notebookId: string, questionId: string) {
+  const nid = z.uuid().parse(notebookId);
+  const qid = z.uuid().parse(questionId);
+  await enforceRateLimit(userId, "notebook_position", 240);
+  const db = await createUserClient();
+  const { error } = await db.from("question_notebooks").update({ last_question_id: qid }).eq("id", nid).eq("user_id", userId);
+  if (error) throw new Error(error.message);
 }
 
 const answerSchema = z.object({
@@ -456,6 +514,8 @@ export async function answerNotebookQuestion(userId: string, raw: unknown): Prom
     throw new Error(r.error.message);
   }
   const d = r.data as { correct: boolean; justification: string | null; correctAnswerTrue: boolean | null; options: AnswerFeedback["options"]; duplicate: boolean };
+  // A resposta já está gravada (bank_attempts); a posição do caderno acompanha a última respondida.
+  await (await createUserClient()).from("question_notebooks").update({ last_question_id: a.questionId }).eq("id", a.notebookId).eq("user_id", userId);
   return {
     correct: d.correct,
     justification: d.justification ?? "Esta questão ainda não tem comentário validado.",

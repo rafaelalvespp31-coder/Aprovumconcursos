@@ -16,7 +16,7 @@ export default async function NotebookPage({ params }: { params: Promise<{ id: s
       <Link href="/questoes" className="self-start text-[13px] font-semibold text-[#C8000C] underline underline-offset-2">
         ← Cadernos de Questões
       </Link>
-      <NotebookView notebook={data.notebook} questions={data.questions} base="" />
+      <NotebookView notebook={data.notebook} questions={data.questions} start={data.start} base="" errorsPdfHref={`/api/cadernos/${data.notebook.id}/erros`} />
     </div>
   );
 }

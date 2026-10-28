@@ -1894,6 +1894,11 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .qz-topo-ico { display: flex; width: 64px; height: 64px; flex-shrink: 0; align-items: center; justify-content: center; border-radius: 14px; background: linear-gradient(180deg, #F0121E, #B8000A); color: #fff; box-shadow: 0 12px 26px -12px rgba(229,9,20,0.9); }
 @media (min-width: 640px) { .qz-topo-ico { width: 72px; height: 72px; } }
 .qz-modo { display: flex; align-items: center; gap: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.14); background: rgba(255,255,255,0.03); padding: 10px 16px; }
+.qz-pdf-erros { display: flex; align-items: center; gap: 12px; border-radius: 12px; border: 1px solid #E50914; background: linear-gradient(180deg, rgba(229,9,20,0.22), rgba(229,9,20,0.08)); padding: 10px 16px; color: #fff; transition: background 150ms, transform 150ms; }
+.qz-pdf-erros:hover { background: linear-gradient(180deg, rgba(229,9,20,0.34), rgba(229,9,20,0.14)); }
+.qz-pdf-erros:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.qz-refazer { display: inline-flex; min-height: 46px; align-items: center; gap: 8px; border-radius: 12px; border: 1px solid #D5D7DC; background: #fff; padding: 0 16px; font-size: 14px; font-weight: 700; color: #3A3C42; }
+.qz-refazer:hover { border-color: #C8000C; color: #C8000C; }
 .qz-faixa { display: flex; flex-wrap: wrap; gap: 8px; border-top: 1px solid rgba(255,255,255,0.08); background: #08090A; padding: 12px; }
 .qz-faixa-item { display: flex; flex: 1 1 160px; min-width: 0; align-items: center; gap: 12px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.08); background: #111214; padding: 12px 14px; }
 .qz-hexa { display: flex; width: 30px; height: 30px; align-items: center; justify-content: center; clip-path: polygon(25% 4%, 75% 4%, 100% 50%, 75% 96%, 25% 96%, 0 50%); background: linear-gradient(180deg, #F0121E, #A8000A); color: #fff; }

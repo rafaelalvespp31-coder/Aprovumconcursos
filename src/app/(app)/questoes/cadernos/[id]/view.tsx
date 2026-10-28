@@ -6,6 +6,7 @@ import {
   BookOpen,
   BrainCircuit,
   BriefcaseBusiness,
+  FileDown,
   CalendarDays,
   Check,
   ChevronLeft,
@@ -36,7 +37,7 @@ import { AnswerExplanation } from "@/components/answer-explanation";
 import { callAction } from "@/components/safe-action";
 import { useStored } from "@/components/use-stored";
 import { canConfirm, classifyTap, DOUBLE_TAP_MS, initialChoice, selectOption, toggleStrike, type ChoiceState } from "@/domain/notebooks/elimination";
-import { answerNotebookAction, favoriteQuestionAction, fullStatementAction, reportQuestionAction, saveNoteAction, type Result } from "../../actions";
+import { answerNotebookAction, favoriteQuestionAction, fullStatementAction, notebookPositionAction, reportQuestionAction, saveNoteAction, type Result } from "../../actions";
 
 type AnswerInput = { optionId?: string; answerTrue?: boolean; attemptKey: string; seconds?: number };
 type Answer = (input: { notebookId: string; questionId: string } & AnswerInput) => Promise<Result<AnswerFeedback>>;
@@ -48,6 +49,8 @@ export interface NotebookViewActions {
   saveFull: (id: string, on: boolean) => Promise<Result<null>>;
   saveNote: (questionId: string, body: string) => Promise<Result<null>>;
   report: (questionId: string, details: string) => Promise<Result<null>>;
+  /** Guarda a questão em que o aluno está (para continuar dela ao voltar). */
+  position: (notebookId: string, questionId: string) => Promise<Result<null>>;
 }
 
 const serverActions: NotebookViewActions = {
@@ -56,6 +59,7 @@ const serverActions: NotebookViewActions = {
   saveFull: fullStatementAction,
   saveNote: saveNoteAction,
   report: reportQuestionAction,
+  position: notebookPositionAction,
 };
 
 const PAGE = 60;
@@ -71,11 +75,17 @@ export function NotebookView({
   notebook: n,
   questions,
   base,
+  start = 0,
+  errorsPdfHref,
   actions: given,
 }: {
   notebook: Notebook;
   questions: NotebookQuestion[];
   base: string;
+  /** Questão onde o caderno continua (a última em que o aluno estava). */
+  start?: number;
+  /** Endereço do PDF do caderno de erros (sem ele, o botão não aparece). */
+  errorsPdfHref?: string;
   /** A galeria troca as ações do servidor por versões em memória. */
   actions?: Partial<NotebookViewActions>;
 }) {
@@ -84,9 +94,33 @@ export function NotebookView({
   const [favs, setFavs] = useState(() => new Set(questions.filter((q) => q.favorite).map((q) => q.id)));
   const [notes, setNotes] = useState<Record<string, string>>(() => Object.fromEntries(questions.map((q) => [q.id, q.note])));
   const [notice, setNotice] = useState<string | null>(null);
-  const [i, setI] = useState(0);
-  const [done, setDone] = useState<Done>({});
   const total = questions.length;
+  // Continua de onde parou; as respostas já gravadas neste caderno voltam com gabarito e comentário.
+  const [i, setI] = useState(() => Math.min(Math.max(0, start), Math.max(0, total - 1)));
+  const [done, setDone] = useState<Done>(() => Object.fromEntries(questions.flatMap((q) => (q.saved ? [[q.id, q.saved] as const] : []))));
+
+  // Guarda a posição (com uma pequena espera, para não gravar a cada clique rápido) e na saída da aba.
+  const posTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const savedPos = useRef<string | null>(questions[i]?.id ?? null);
+  const currentId = questions[i]?.id ?? null;
+  useEffect(() => {
+    if (!currentId || currentId === savedPos.current) return;
+    const send = () => {
+      if (savedPos.current === currentId) return;
+      savedPos.current = currentId;
+      void actions.position(n.id, currentId).catch(() => undefined);
+    };
+    posTimer.current = setTimeout(send, 500);
+    const onHide = () => document.visibilityState === "hidden" && send();
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", send);
+    return () => {
+      if (posTimer.current) clearTimeout(posTimer.current);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", send);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentId, n.id]);
 
   const toggleFull = async (on: boolean) => {
     setFull(on);
@@ -112,17 +146,19 @@ export function NotebookView({
     }
   };
 
-  // Situação de cada questão: resposta desta sessão, senão a última já gravada.
+  // Situação de cada questão NESTE caderno: a última resposta dada aqui (gravada no banco).
   const stateOf = (q: NotebookQuestion): "certa" | "errada" | null => {
     const d = done[q.id];
-    if (d) return d.fb.correct ? "certa" : "errada";
-    return q.last ? (q.last.correct ? "certa" : "errada") : null;
+    return d ? (d.fb.correct ? "certa" : "errada") : null;
   };
   const states = questions.map(stateOf);
   const answered = states.filter(Boolean).length;
   const right = states.filter((s) => s === "certa").length;
   const wrong = states.filter((s) => s === "errada").length;
   const pct = total ? Math.round((answered / total) * 100) : 0;
+  // Caderno de erros: toda questão já errada aqui (mesmo que tenha acertado depois).
+  const [erredNow, setErredNow] = useState<Set<string>>(() => new Set());
+  const erred = questions.filter((x) => x.wrongHere || erredNow.has(x.id) || (done[x.id] && !done[x.id]!.fb.correct)).length;
 
   if (total === 0) {
     return (
@@ -146,7 +182,7 @@ export function NotebookView({
   return (
     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]" data-testid="caderno-view">
       <div className="flex min-w-0 flex-col gap-4">
-        <Top n={n} total={total} q={q} />
+        <Top n={n} total={total} q={q} errorsPdfHref={erred > 0 ? errorsPdfHref : undefined} wrong={erred} />
         {notice && (
           <p role="alert" className="rounded-[10px] border border-[#E50914]/50 bg-[#2A0A0C] px-3 py-2 text-[13px] font-medium text-[#FFB3B8]">
             {notice}
@@ -167,7 +203,17 @@ export function NotebookView({
           onNoteSaved={(body) => setNotes((x) => ({ ...x, [q.id]: body }))}
           actions={actions}
           onAnswer={(questionId, input) => actions.answer({ notebookId: n.id, questionId, ...input })}
-          onDone={(choice, fb) => setDone((d) => ({ ...d, [q.id]: { choice, fb } }))}
+          onDone={(choice, fb) => {
+            setDone((d) => ({ ...d, [q.id]: { choice, fb } }));
+            if (!fb.correct) setErredNow((x) => new Set(x).add(q.id));
+          }}
+          onRedo={() =>
+            setDone((d) => {
+              const x = { ...d };
+              delete x[q.id];
+              return x;
+            })
+          }
           onPrev={i > 0 ? () => setI(i - 1) : null}
           onNext={i < total - 1 ? () => setI(i + 1) : null}
         />
@@ -196,7 +242,7 @@ export function NotebookView({
 // Topo: caderno, modo e faixa com os dados da questão atual
 // ---------------------------------------------------------------------------
 
-function Top({ n, total, q }: { n: Notebook; total: number; q?: NotebookQuestion }) {
+function Top({ n, total, q, errorsPdfHref, wrong = 0 }: { n: Notebook; total: number; q?: NotebookQuestion; errorsPdfHref?: string; wrong?: number }) {
   const tiles: Array<{ icon: ReactNode; label: string; value: string }> = q
     ? [
         { icon: <span className="qz-hexa"><Shield className="h-4 w-4" aria-hidden /></span>, label: "Banca", value: q.board ?? "—" },
@@ -220,12 +266,25 @@ function Top({ n, total, q }: { n: Notebook; total: number; q?: NotebookQuestion
             </p>
           </div>
         </div>
-        <div className="qz-modo">
-          <BrainCircuit className="h-7 w-7 shrink-0 text-white" aria-hidden />
-          <span>
-            <span className="block text-[13.5px] font-bold text-white">Modo Estudo</span>
-            <span className="block text-[11.5px] text-white/70">Gabarito logo após cada resposta</span>
-          </span>
+        <div className="flex flex-wrap items-center gap-3">
+          {errorsPdfHref && (
+            <a href={errorsPdfHref} download className="qz-pdf-erros" data-testid="pdf-erros">
+              <FileDown className="h-5 w-5 shrink-0" aria-hidden />
+              <span>
+                <span className="block text-[13.5px] font-bold">Caderno de erros (PDF)</span>
+                <span className="block text-[11.5px] opacity-80">
+                  {wrong} {wrong === 1 ? "questão que você errou" : "questões que você errou"}, com gabarito e comentário
+                </span>
+              </span>
+            </a>
+          )}
+          <div className="qz-modo">
+            <BrainCircuit className="h-7 w-7 shrink-0 text-white" aria-hidden />
+            <span>
+              <span className="block text-[13.5px] font-bold text-white">Modo Estudo</span>
+              <span className="block text-[11.5px] text-white/70">Gabarito logo após cada resposta</span>
+            </span>
+          </div>
         </div>
       </div>
       {q && (
@@ -264,6 +323,7 @@ function QuestionPanel({
   actions,
   onAnswer,
   onDone,
+  onRedo,
   onPrev,
   onNext,
 }: {
@@ -281,6 +341,7 @@ function QuestionPanel({
   actions: NotebookViewActions;
   onAnswer: (questionId: string, input: AnswerInput) => Promise<Result<AnswerFeedback>>;
   onDone: (choice: string, fb: AnswerFeedback) => void;
+  onRedo: () => void;
   onPrev: (() => void) | null;
   onNext: (() => void) | null;
 }) {
@@ -341,6 +402,15 @@ function QuestionPanel({
   }, []);
 
   const explRef = useRef<HTMLDivElement>(null);
+  // Refazer: volta a questão para sem resposta; a nova resposta é gravada como outra tentativa.
+  const redo = () => {
+    setFb(null);
+    setCs(initialChoice(null));
+    setError(null);
+    attemptKey.current = crypto.randomUUID();
+    startedAt.current = Date.now();
+    onRedo();
+  };
   const submit = () => {
     if (fb || pending) return;
     if (!canConfirm(cs) || !choice) return setError("Escolha uma alternativa (não riscada) para confirmar a resposta.");
@@ -509,7 +579,12 @@ function QuestionPanel({
           >
             <Lightbulb className="h-[18px] w-[18px]" aria-hidden /> Explicação
           </button>
-          <div className="ml-auto flex flex-col items-end gap-1">
+          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+            {fb && (
+              <button type="button" onClick={redo} className="qz-refazer" data-testid="refazer-questao">
+                <RotateCcw className="h-4 w-4" aria-hidden /> Refazer questão
+              </button>
+            )}
             {!fb ? (
               <button type="button" onClick={submit} disabled={!canConfirm(cs) || pending} aria-busy={pending} className="qz-confirmar">
                 {pending ? "Corrigindo…" : "Confirmar resposta"} <ChevronRight className="h-4 w-4" aria-hidden />

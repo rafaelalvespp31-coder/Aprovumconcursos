@@ -230,6 +230,30 @@ test.describe("menu Questões: cadernos", () => {
     await expect(page.getByText("Resposta correta")).toBeVisible();
   });
 
+  test("caderno: volta de onde parou, com a resposta gravada, refaz a questão e oferece o PDF de erros", async ({ page }) => {
+    await page.goto(`${G}/questoes/cadernos/11111111-1111-4111-8111-111111111111?retomar=1`);
+    // Continua na questão em que estava (a 2ª), não na primeira.
+    await expect(page.getByText("Questão 2 de 3")).toBeVisible();
+    const lista = page.getByRole("list", { name: "Lista de questões do caderno" });
+    await expect(lista.getByRole("button", { name: /^Questão 1, respondida \(errou\)/ })).toBeVisible();
+    await expect(page.getByTestId("tempo-card")).toContainText(/Erradas\s*1/);
+    // Há erro no caderno: o botão do PDF do caderno de erros aparece.
+    await expect(page.getByTestId("pdf-erros")).toHaveAttribute("href", /\/api\/cadernos\/11111111-1111-4111-8111-111111111111\/erros$/);
+    // A questão já respondida volta como foi respondida, com gabarito e comentário.
+    await lista.getByRole("button", { name: /^Questão 1, respondida/ }).click();
+    await expect(page.getByText("Resposta incorreta")).toBeVisible();
+    await expect(page.getByTestId("gabarito-comentado")).toBeVisible();
+    // Refazer: volta sem resposta e a nova resposta conta.
+    await page.getByTestId("refazer-questao").click();
+    await expect(page.getByTestId("gabarito-comentado")).toHaveCount(0);
+    await expect(lista.getByRole("button", { name: /^Questão 1, em andamento, não respondida/ })).toBeVisible();
+    await page.getByRole("radio", { name: /anular a licença, por ilegalidade/ }).click();
+    await page.getByRole("button", { name: "Confirmar resposta", exact: true }).click();
+    await expect(page.getByText("Resposta correta")).toBeVisible();
+    // Corrigiu, mas já tinha errado: continua no caderno de erros (para revisar).
+    await expect(page.getByTestId("pdf-erros")).toContainText("1 questão que você errou");
+  });
+
   test("riscar alternativas: clique duplo risca e restaura; riscada não confirma", async ({ page, isMobile }) => {
     await page.goto(`${G}/questoes/cadernos/11111111-1111-4111-8111-111111111111`);
     const alt = page.getByRole("radio", { name: /revogar a licença/ });

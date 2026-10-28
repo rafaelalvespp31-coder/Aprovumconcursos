@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { requireUser } from "@/server/auth";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
-import { answerNotebookQuestion, createNotebook, deleteNotebook, reportQuestion, saveQuestionNote, setFavorite, updateNotebook, type NotebookInput } from "@/server/services/notebooks";
+import { answerNotebookQuestion, saveNotebookPosition, createNotebook, deleteNotebook, reportQuestion, saveQuestionNote, setFavorite, updateNotebook, type NotebookInput } from "@/server/services/notebooks";
 import type { AnswerFeedback } from "@/server/services/study";
 import { ZodError } from "zod";
 
@@ -91,6 +91,14 @@ export async function reportQuestionAction(questionId: string, details: string):
   const user = await requireUser();
   return guard("question_report", async () => {
     await reportQuestion(user.id, questionId, details);
+    return null;
+  });
+}
+
+export async function notebookPositionAction(notebookId: string, questionId: string): Promise<Result<null>> {
+  const user = await requireUser();
+  return guard("notebook_position", async () => {
+    await saveNotebookPosition(user.id, notebookId, questionId);
     return null;
   });
 }
