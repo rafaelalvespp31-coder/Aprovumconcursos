@@ -1,10 +1,9 @@
 import Link from "next/link";
-import { disciplineLabel } from "@/ai/pedagogy";
 import { requireAdmin } from "@/server/services/catalog";
 import { listOutlines } from "@/server/services/outlines";
-import { parseOutline } from "@/domain/catalog/topic-group";
 import { createOutlineAction } from "../actions";
 import { OutlineForm } from "./outline-form";
+import { SavedOutlines } from "./saved-outlines";
 
 export const metadata = { title: "Plano de tópicos" };
 
@@ -22,27 +21,7 @@ export default async function PlanListPage() {
         </p>
       </div>
 
-      {outlines.length > 0 && (
-        <section aria-labelledby="planos">
-          <h2 id="planos" className="t-h2">Planos salvos</h2>
-          <ul className="mt-3 grid gap-3 sm:grid-cols-2">
-            {outlines.map((o) => {
-              const tree = parseOutline(o.sourceText);
-              const subs = tree.groups.reduce((n, g) => n + g.subtopics.length, 0);
-              return (
-                <li key={o.id}>
-                  <Link href={`/admin/catalogo/plano/${o.id}`} className="block rounded-lg border border-linha p-4 hover:border-destaque" data-testid="plano-salvo">
-                    <p className="font-semibold">{o.title}</p>
-                    <p className="mt-1 t-small text-tinta-suave">
-                      {disciplineLabel(o.disciplineMode) ?? o.disciplineMode} · {tree.groups.length} tópico(s) · {subs} subtópico(s)
-                    </p>
-                  </Link>
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
+      {outlines.length > 0 && <SavedOutlines outlines={outlines} />}
 
       <section aria-labelledby="novo-plano" className="rounded-lg border border-linha p-5">
         <h2 id="novo-plano" className="t-h2">Novo plano</h2>

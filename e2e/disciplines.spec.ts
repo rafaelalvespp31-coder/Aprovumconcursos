@@ -43,3 +43,18 @@ test.describe("catálogo: nova matéria", () => {
     await expect(penal.getByRole("button")).toHaveCount(0);
   });
 });
+
+test("plano de tópicos: planos salvos ficam dentro da matéria de cada um", async ({ page }) => {
+  await page.goto("/dev/galeria/catalogo");
+  const pastas = page.getByTestId("planos-materia");
+  // Ordem das matérias (Português, Constitucional, Penal) e os sem matéria por último.
+  await expect(pastas.locator("summary .font-bold")).toHaveText(["Língua Portuguesa", "Direito Constitucional", "Direito Penal", "Sem matéria definida"]);
+  const penal = pastas.filter({ hasText: "Direito Penal" });
+  await expect(penal.locator("summary")).toContainText("2 planos");
+  await expect(penal.getByTestId("plano-salvo")).toHaveText([/Penal — Parte Especial/, /Penal — Parte Geral/]);
+  // Abre e fecha a pasta da matéria.
+  await penal.locator("summary").click();
+  await expect(penal.getByTestId("plano-salvo").first()).toBeHidden();
+  await penal.locator("summary").click();
+  await expect(penal.getByTestId("plano-salvo").first()).toBeVisible();
+});
