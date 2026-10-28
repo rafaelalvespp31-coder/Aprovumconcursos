@@ -268,10 +268,10 @@ function Top({ n, total, q, errorsPdfHref, wrong = 0 }: { n: Notebook; total: nu
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {errorsPdfHref && (
-            <a href={errorsPdfHref} download className="qz-pdf-erros" data-testid="pdf-erros">
+            <a href={errorsPdfHref} download className="qz-pdf-erros" data-testid="pdf-erros" title="Baixa o PDF com as questões que você errou neste caderno">
               <FileDown className="h-5 w-5 shrink-0" aria-hidden />
               <span>
-                <span className="block text-[13.5px] font-bold">Caderno de erros (PDF)</span>
+                <span className="block text-[13.5px] font-bold">Gerar Caderno de Erros</span>
                 <span className="block text-[11.5px] opacity-80">
                   {wrong} {wrong === 1 ? "questão que você errou" : "questões que você errou"}, com gabarito e comentário
                 </span>
