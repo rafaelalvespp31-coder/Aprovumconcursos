@@ -5,21 +5,17 @@ import { getSessionUser } from "@/server/auth";
 import { computeMentor, setRecommendationStatus } from "@/server/services/mentor";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
-import type { MentorCardState } from "@/components/mentor/types";
-import { toMentorItem } from "@/components/mentor/to-item";
+import type { MentorPanelState } from "@/components/mentor/types";
 
-/** Card do Mentor no painel. A identidade vem só da sessão; sem sessão, avisa (sem dados). */
-export async function mentorCardAction(): Promise<MentorCardState> {
+/** Mentor flutuante: a identidade vem só da sessão; sem sessão, avisa (sem dados). */
+export async function mentorPanelAction(): Promise<MentorPanelState> {
   const user = await getSessionUser();
   if (!user) return { state: "sessao" };
   try {
     const m = await computeMentor(user.id);
-    if (m.result.insufficientData) return { state: "sem_dados", name: m.name };
-    const items = m.visible.map(toMentorItem);
-    if (!items.length) return { state: "vazio", name: m.name, completed: m.result.completedLessons.length };
-    return { state: "ok", name: m.name, items, pending: m.result.all.filter((r) => r.kind !== "manutencao").length, completed: m.result.completedLessons.length };
+    return { state: "ok", name: m.name, result: m.result, visible: m.visible, lessons: m.lessons };
   } catch (e) {
-    await logEvent("mentor.card_failed", { error: (e as Error).message });
+    await logEvent("mentor.panel_failed", { error: (e as Error).message });
     return { state: "erro" };
   }
 }

@@ -88,6 +88,7 @@ export function PastelShell({
   logout,
   basePath = "",
   notice,
+  floating,
 }: {
   summary: ShellSummary;
   children: ReactNode;
@@ -95,6 +96,8 @@ export function PastelShell({
   /** Prefixo das rotas (a galeria de desenvolvimento usa /dev/galeria). */
   basePath?: string;
   notice?: ReactNode;
+  /** Elementos flutuantes que acompanham todas as telas (ex.: o Mentor), fora da animação de troca de tela. */
+  floating?: ReactNode;
 }) {
   const path = usePathname();
   const router = useRouter();
@@ -413,6 +416,8 @@ export function PastelShell({
             <BottomNavigation activeId={bottomActive} basePath={basePath} />
           </div>
         </div>
+
+        {floating}
 
         <div className="pointer-events-none fixed bottom-28 left-1/2 z-[80] flex -translate-x-1/2 flex-col items-center gap-2 lg:bottom-32" aria-live="polite">
           {toast && (

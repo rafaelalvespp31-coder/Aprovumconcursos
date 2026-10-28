@@ -4,8 +4,6 @@ import Link from "next/link";
 import type { UnitState } from "@/domain/progress/state-machine";
 import type { PainelOverview } from "@/server/queries";
 import type { Stage } from "./model";
-import { MentorCard } from "@/components/mentor/mentor-card";
-import type { MentorCardState } from "@/components/mentor/types";
 import {
   ContinueBand,
   GamePromo,
@@ -43,8 +41,6 @@ export interface DashboardData {
   pendingTrails: Array<{ id: string; title: string; status: string }>;
   /** Prefixo de rotas (a galeria usa /dev/galeria). */
   basePath?: string;
-  /** Galeria: estado do Mentor em memória (no app, o card busca os dados reais). */
-  mentorDemo?: MentorCardState;
 }
 
 const pctOf = (a: number, b: number) => (b ? Math.round((a / b) * 100) : null);
@@ -97,8 +93,6 @@ export function DashboardView(d: DashboardData) {
           ))}
         </div>
       )}
-
-      <MentorCard base={base} demo={d.mentorDemo} />
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:gap-5 xl:grid-cols-[minmax(0,1.43fr)_minmax(0,1fr)]">
         <ProgressCard

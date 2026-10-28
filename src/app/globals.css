@@ -1708,6 +1708,43 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .mentor-sec:focus-visible, .mentor-dispensar:focus-visible { outline: 2px solid #E50914; outline-offset: 2px; }
 .mentor-dispensar { display: inline-flex; min-height: 40px; align-items: center; gap: 4px; padding: 0 8px; font-size: 12px; font-weight: 600; color: #64666D; }
 .mentor-dispensar:hover { color: #08090B; }
+
+/* Mentor flutuante: bolha arrastável + painel (folha inferior no celular). */
+.mentor-flut { position: fixed; z-index: 60; width: 58px; height: 58px; }
+.mentor-bolha { position: relative; display: grid; place-items: center; width: 58px; height: 58px; border-radius: 999px; color: #fff; touch-action: none; cursor: grab;
+  background: radial-gradient(circle at 30% 25%, #2A2B30, #08090B 70%); border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.38), 0 0 0 0 rgba(229,9,20,0.55); animation: mentor-pulso 3.2s ease-out infinite;
+  transition: transform 180ms cubic-bezier(.2,.8,.2,1), box-shadow 180ms; }
+.mentor-bolha:hover { transform: scale(1.06); }
+.mentor-bolha:active, .mentor-bolha.is-arrastando { cursor: grabbing; transform: scale(1.1); animation: none; box-shadow: 0 18px 40px rgba(0,0,0,0.45); }
+.mentor-bolha:focus-visible { outline: 3px solid #E50914; outline-offset: 3px; }
+.mentor-badge { position: absolute; top: -3px; right: -3px; min-width: 21px; height: 21px; padding: 0 5px; border-radius: 999px; background: #E50914; color: #fff;
+  font-size: 11.5px; font-weight: 800; display: grid; place-items: center; border: 2px solid #fff; }
+.mentor-bolha-carregando { position: absolute; inset: -3px; border-radius: 999px; border: 2px solid transparent; border-top-color: #E50914; animation: mentor-gira 900ms linear infinite; }
+.mentor-aviso { position: absolute; right: calc(100% + 10px); top: 50%; translate: 0 -50%; width: max-content; max-width: min(250px, calc(100vw - 100px)); border-radius: 14px; background: #fff; border: 1px solid #E6E7EB; padding: 9px 12px; text-align: left;
+  font-size: 12.5px; font-weight: 600; color: #08090B; box-shadow: 0 10px 28px rgba(0,0,0,0.16); animation: mentor-entra 260ms cubic-bezier(.2,.8,.2,1) both; }
+.mentor-painel { position: fixed; z-index: 60; display: flex; flex-direction: column; overflow: hidden; border-radius: 18px; background: #fff; outline: none;
+  border: 1px solid #E6E7EB; box-shadow: 0 24px 64px rgba(0,0,0,0.28); animation: mentor-entra 240ms cubic-bezier(.2,.8,.2,1) both; }
+.mentor-painel.is-arrastando { user-select: none; box-shadow: 0 30px 80px rgba(0,0,0,0.35); }
+.mentor-painel.is-folha { left: 8px; right: 8px; bottom: calc(92px + env(safe-area-inset-bottom)); height: min(72dvh, 600px); }
+.mentor-painel-topo { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; background: #08090B; touch-action: none; }
+.mentor-topo-btn { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: rgba(255,255,255,0.8); transition: background 150ms, color 150ms; }
+.mentor-topo-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+.mentor-topo-btn:focus-visible { outline: 2px solid #E50914; outline-offset: 1px; }
+.mentor-abas { display: flex; gap: 4px; padding: 8px 10px 0; border-bottom: 1px solid #ECEDF0; }
+.mentor-abas button { padding: 8px 10px 9px; font-size: 13px; font-weight: 700; color: #64666D; border-bottom: 2px solid transparent; margin-bottom: -1px; }
+.mentor-abas button.is-on { color: #08090B; border-bottom-color: #E50914; }
+.mentor-abas button:focus-visible { outline: 2px solid #E50914; outline-offset: -2px; border-radius: 6px; }
+.mentor-painel-corpo { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 12px 14px 14px; background: #FAFAFB; display: flex; flex-direction: column; }
+.mentor-painel-corpo > section:not([hidden]) { flex: 1; min-height: 0; }
+.mentor-botao-p { min-height: 38px; padding: 0 14px; font-size: 13px; }
+.mentor-chips { overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.mentor-chips::-webkit-scrollbar { display: none; }
+.mentor-flut.is-esquerda .mentor-aviso { right: auto; left: calc(100% + 10px); }
+@keyframes mentor-entra { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes mentor-gira { to { transform: rotate(360deg); } }
+@keyframes mentor-pulso { 0% { box-shadow: 0 12px 28px rgba(0,0,0,0.38), 0 0 0 0 rgba(229,9,20,0.5); } 70%, 100% { box-shadow: 0 12px 28px rgba(0,0,0,0.38), 0 0 0 14px rgba(229,9,20,0); } }
+@media (prefers-reduced-motion: reduce) { .mentor-bolha, .mentor-painel, .mentor-aviso, .mentor-bolha-carregando { animation: none; } }
 .pc-selo { display: inline-flex; border-radius: 6px; background: #E50914; padding: 3px 8px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #fff; }
 
 /* Próxima aula: arte à direita, desbotando para o branco */
