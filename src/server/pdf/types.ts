@@ -69,6 +69,9 @@ export interface ErrorNotebookSnapshot {
     id: string;
     code: string | null;
     subject: string;
+    /** Tema: o assunto de primeiro nível do cadastro (ex.: Crimes contra a vida). */
+    theme: string;
+    /** Assunto dentro do tema (ex.: Homicídio qualificado); nulo quando a questão está no próprio tema. */
     topic: string | null;
     source: string | null;
     type: string;

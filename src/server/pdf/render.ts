@@ -930,14 +930,10 @@ export async function renderStudyPdf(s: PdfSnapshot, meta: { pdfVersion: number;
 
 /**
  * PDF do caderno de erros (mesma identidade e estrutura do PDF das aulas):
- * capa → sumário → resumo (números, questões por matéria e assunto, filtros) → questões erradas
- * agrupadas por matéria e assunto: enunciado, alternativas neutras e só a justificativa (sem
- * gabarito, sem "sua resposta", sem certo/errado) e a anotação do aluno.
+ * capa → sumário → resumo (números e erros por matéria, tema e assunto) → justificativas dos erros
+ * organizadas por matéria › tema › assunto. Cada erro mostra só de que se trata (matéria, tema,
+ * assunto) e a justificativa direta — sem enunciado, alternativas, gabarito ou certo/errado.
  */
-function groups0(qs: ErrorNotebookSnapshot["questions"]) {
-  return { subjects: new Set(qs.map((q) => q.subject)).size, topics: new Set(qs.map((q) => `${q.subject}|${q.topic ?? ""}`)).size };
-}
-
 export async function renderErrorNotebookPdf(e: ErrorNotebookSnapshot): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(`Caderno de erros — ${e.notebook.title} — APROVUM`);
@@ -963,35 +959,44 @@ export async function renderErrorNotebookPdf(e: ErrorNotebookSnapshot): Promise<
   drawCoverWith(w, coverArt, {
     kicker: "Caderno de erros",
     title: e.notebook.title,
-    subtitle: `${plural(errs.length, "questão errada", "questões erradas")} · ${e.notebook.scope}`,
+    subtitle: `${plural(errs.length, "erro", "erros")} organizados por matéria, tema e assunto · ${e.notebook.scope}`,
     info: [
       ["Estudante", e.student.name ?? "—"],
-      ["Questões erradas", String(errs.length)],
+      ["Erros para revisar", String(errs.length)],
       ["Respondidas no caderno", String(e.totals.answered)],
       ["Gerado em", fmtDateTime(e.generatedAt)],
     ],
   });
 
+  // ---- Organização: matéria › tema › assunto (na ordem já ordenada pelo serviço) ----
+  type Err = ErrorNotebookSnapshot["questions"][number];
+  const tree = new Map<string, Map<string, Map<string, Err[]>>>();
+  for (const q of errs) {
+    const themes = tree.get(q.subject) ?? new Map<string, Map<string, Err[]>>();
+    const topics = themes.get(q.theme) ?? new Map<string, Err[]>();
+    const key = q.topic ?? "";
+    topics.set(key, [...(topics.get(key) ?? []), q]);
+    themes.set(q.theme, topics);
+    tree.set(q.subject, themes);
+  }
+  const count = (m: Map<string, unknown>): number => [...m.values()].reduce<number>((n, v) => n + (Array.isArray(v) ? v.length : count(v as Map<string, unknown>)), 0);
+  const erros = (n: number) => plural(n, "erro", "erros");
+
   // ---- Resumo ----
   w.section("Resumo do caderno", { newPage: true });
   statTiles(w, [
-    [String(errs.length), errs.length === 1 ? "questão para revisar" : "questões para revisar"],
+    [String(errs.length), errs.length === 1 ? "erro para revisar" : "erros para revisar"],
+    [String(tree.size), tree.size === 1 ? "matéria" : "matérias"],
+    [String([...tree.values()].reduce((n, t) => n + t.size, 0)), "temas"],
     [String(e.totals.answered), e.totals.answered === 1 ? "questão respondida" : "questões respondidas"],
-    [String(groups0(errs).subjects), groups0(errs).subjects === 1 ? "matéria" : "matérias"],
-    [String(groups0(errs).topics), groups0(errs).topics === 1 ? "assunto" : "assuntos"],
   ]);
-  const groups = new Map<string, Map<string, ErrorNotebookSnapshot["questions"]>>();
-  for (const q of errs) {
-    const g = groups.get(q.subject) ?? new Map<string, ErrorNotebookSnapshot["questions"]>();
-    const t = q.topic ?? "Sem assunto definido";
-    g.set(t, [...(g.get(t) ?? []), q]);
-    groups.set(q.subject, g);
-  }
   if (errs.length) {
-    w.subheading("Erros por matéria e assunto");
-    const rows: Run[][][] = [[[{ text: "Matéria" }], [{ text: "Assunto" }], [{ text: "Questões" }]]];
-    for (const [subject, topics] of groups) for (const [topic, qs] of topics) rows.push([[{ text: subject, bold: true }], [{ text: topic }], [{ text: String(qs.length), bold: true }]]);
-    drawTable(w, rows, { align: ["left", "left", "center"] });
+    w.subheading("Erros por matéria, tema e assunto");
+    const rows: Run[][][] = [[[{ text: "Matéria" }], [{ text: "Tema" }], [{ text: "Assunto" }], [{ text: "Erros" }]]];
+    for (const [subject, themes] of tree)
+      for (const [theme, topics] of themes)
+        for (const [topic, qs] of topics) rows.push([[{ text: subject, bold: true }], [{ text: theme }], [{ text: topic || "—" }], [{ text: String(qs.length), bold: true, color: RED }]]);
+    drawTable(w, rows, { align: ["left", "left", "left", "center"] });
   }
   if (e.notebook.filters.length) {
     w.subheading("Filtros do caderno");
@@ -999,40 +1004,56 @@ export async function renderErrorNotebookPdf(e: ErrorNotebookSnapshot): Promise<
   }
   w.card(
     () =>
-      w.text(
-        "Como usar: leia o enunciado, tente resolver de novo e só então leia a justificativa. Anote a regra que faltou e refaça a questão no caderno.",
-        { size: 9, italic: true, color: MUTED, gap: 0 },
-      ),
+      w.text("Como usar: leia cada justificativa, identifique a regra que faltou e refaça as questões do tema no caderno. Os erros estão organizados por matéria, tema e assunto.", {
+        size: 9,
+        italic: true,
+        color: MUTED,
+        gap: 0,
+      }),
     { bg: SOFT, accent: RED, pad: 9 },
   );
 
-  // ---- Questões erradas ----
-  w.section("Questões erradas", { newPage: true });
+  // ---- Justificativas dos erros ----
+  w.section("Justificativas dos erros", { newPage: true });
   if (!errs.length) {
     w.card(() => w.text("Você ainda não errou nenhuma questão neste caderno. Continue resolvendo: os erros aparecem aqui automaticamente.", { gap: 0 }), { bg: SOFT, accent: INK, pad: 10 });
   }
   let n = 0;
-  for (const [subject, topics] of groups) {
-    const qs = [...topics.values()].flat();
-    // O título da matéria nunca fica sozinho no fim da página.
-    if (w.room < 200) w.newPage();
-    w.unit(plural(qs.length, "questão para revisar", "questões para revisar"), subject);
-    for (const [topic, list] of topics) {
-      // O assunto já é o título do grupo: não se repete dentro do cartão.
-      const card = (q: ErrorNotebookSnapshot["questions"][number], num: number) =>
-        drawQuestionCard(w, { ...q, topic: null }, num, {
-          // Sem "certo/errado" nem no rótulo do tipo da questão.
-          chips: [{ text: q.type === "certo_errado" ? "Julgue o item" : (TYPE_LABEL[q.type] ?? q.type) }],
-          meta: [q.code, q.source].filter(Boolean).join(" · ") || null,
-          justificationOnly: true,
-        });
-      // O título do assunto nunca fica sozinho no fim da página: vai junto com a 1ª questão.
-      const firstH = w.measureBlock(() => card(list[0]!, n + 1));
-      if (w.room < firstH + 40 && firstH + 40 < A4[1] - M.top - M.bottom) w.newPage();
-      w.subheading(topic);
-      for (const q of list) {
-        n++;
-        card(q, n);
+  const card = (q: Err, num: number) =>
+    w.card(
+      () => {
+        w.ensure(30);
+        const top = w.y;
+        w.spaced(`Erro ${String(num).padStart(2, "0")}`, w.left, top - 9, 8, w.fonts.bold, RED, 0.16);
+        w.y = top - 16;
+        w.rich([{ text: [q.subject, q.theme, q.topic].filter(Boolean).join(" › "), italic: true }], { size: 8.3, color: MUTED, gap: 5 });
+        w.rich([{ text: plainJustification(q.justification) || q.justification }], { size: 10, gap: 0, lineHeight: 14 });
+        if (q.note) {
+          w.y -= 6;
+          w.rich([{ text: "Sua anotação: ", bold: true }, { text: q.note, italic: true }], { size: 9, color: MUTED, gap: 0, lineHeight: 13 });
+        }
+      },
+      { border: LINE, accent: RED, pad: 10, padX: 12, gap: 8 },
+    );
+  for (const [subject, themes] of tree) {
+    if (w.room < 220) w.newPage();
+    w.unit(`Matéria · ${erros(count(themes))}`, subject);
+    for (const [theme, topics] of themes) {
+      // O título do tema (e do assunto) nunca fica sozinho no fim da página.
+      const first = [...topics.values()][0]![0]!;
+      const firstH = w.measureBlock(() => card(first, n + 1));
+      if (w.room < firstH + 70 && firstH + 70 < A4[1] - M.top - M.bottom) w.newPage();
+      w.subheading(`Tema: ${theme}`, `  ${erros(count(topics))}`);
+      for (const [topic, qs] of topics) {
+        if (topic) {
+          const h = w.measureBlock(() => card(qs[0]!, n + 1));
+          if (w.room < h + 30 && h + 30 < A4[1] - M.top - M.bottom) w.newPage();
+          w.ensure(24);
+          w.y -= 2;
+          w.spaced(`Assunto · ${topic} · ${erros(qs.length)}`.toLocaleUpperCase("pt-BR"), w.left + 10, w.y - 8, 7, w.fonts.bold, INK, 0.14);
+          w.y -= 16;
+        }
+        for (const q of qs) card(q, ++n);
       }
     }
   }

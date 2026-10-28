@@ -51,14 +51,22 @@ export async function buildErrorNotebook(userId: string, notebookIdInput: string
   const ids = (k: keyof Q) => [...new Set(rows.map((r) => r[k] as string | null).filter((x): x is string => !!x))];
   const [subjects, topics, boards, exams, notes] = await Promise.all([
     ids("subject_id").length ? admin.from("subjects").select("id, name").in("id", ids("subject_id")) : { data: [] },
-    ids("topic_id").length ? admin.from("subject_topics").select("id, name").in("id", ids("topic_id")) : { data: [] },
+    ids("subject_id").length ? admin.from("subject_topics").select("id, name, parent_id, sort_order").in("subject_id", ids("subject_id")).limit(5000) : { data: [] },
     ids("board_slug").length ? admin.from("exam_boards").select("slug, name").in("slug", ids("board_slug")) : { data: [] },
     ids("exam_id").length ? admin.from("exams").select("id, name, role_name").in("id", ids("exam_id")) : { data: [] },
     wrongIds.length ? db.from("bank_question_notes").select("question_id, body").eq("user_id", userId).in("question_id", wrongIds) : { data: [] },
   ]);
   const name = <T extends Record<string, unknown>>(list: T[] | null | undefined, key: keyof T, val: keyof T) => new Map((list ?? []).map((x) => [x[key] as string, x[val] as string]));
   const subjectName = name((subjects.data ?? []) as Array<{ id: string; name: string }>, "id", "name");
-  const topicName = name((topics.data ?? []) as Array<{ id: string; name: string }>, "id", "name");
+  // Árvore de assuntos: o primeiro nível é o TEMA; abaixo dele, o ASSUNTO (caminho até a folha).
+  type TopicRow = { id: string; name: string; parent_id: string | null; sort_order: number | null };
+  const topicRows = new Map(((topics.data ?? []) as TopicRow[]).map((t) => [t.id, t]));
+  const placeOf = (topicId: string | null): { theme: string; topic: string | null } => {
+    const chain: TopicRow[] = [];
+    for (let t = topicId ? topicRows.get(topicId) : undefined, guard = 0; t && guard < 10; t = t.parent_id ? topicRows.get(t.parent_id) : undefined, guard++) chain.unshift(t);
+    if (!chain.length) return { theme: "Sem tema definido", topic: null };
+    return { theme: chain[0]!.name, topic: chain.length > 1 ? chain.slice(1).map((t) => t.name).join(" › ") : null };
+  };
   const boardName = name((boards.data ?? []) as Array<{ slug: string; name: string }>, "slug", "name");
   const examRows = new Map(((exams.data ?? []) as Array<{ id: string; name: string; role_name: string | null }>).map((e) => [e.id, e]));
   const noteOf = name((notes.data ?? []) as Array<{ question_id: string; body: string }>, "question_id", "body");
@@ -72,7 +80,7 @@ export async function buildErrorNotebook(userId: string, notebookIdInput: string
       id: r.id,
       code: r.public_code,
       subject: (r.subject_id && subjectName.get(r.subject_id)) || "Sem matéria",
-      topic: (r.topic_id && topicName.get(r.topic_id)) || null,
+      ...placeOf(r.topic_id),
       source,
       type: r.question_type,
       caseContext: r.case_context,
@@ -86,8 +94,14 @@ export async function buildErrorNotebook(userId: string, notebookIdInput: string
       note: noteOf.get(r.id) ?? null,
     };
   });
-  // Matéria › assunto; dentro do assunto, as que continuam erradas primeiro.
-  questions.sort((a, b) => a.subject.localeCompare(b.subject, "pt-BR") || (a.topic ?? "").localeCompare(b.topic ?? "", "pt-BR") || Number(a.answer.correct) - Number(b.answer.correct) || (a.code ?? "").localeCompare(b.code ?? ""));
+  // Organizado: matéria › tema › assunto (as questões do próprio tema antes dos assuntos), e o código.
+  questions.sort(
+    (a, b) =>
+      a.subject.localeCompare(b.subject, "pt-BR") ||
+      a.theme.localeCompare(b.theme, "pt-BR") ||
+      (a.topic ?? "").localeCompare(b.topic ?? "", "pt-BR") ||
+      (a.code ?? "").localeCompare(b.code ?? ""),
+  );
 
   return {
     schema: 1,
