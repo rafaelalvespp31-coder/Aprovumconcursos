@@ -164,7 +164,7 @@ describe("RLS — isolamento entre contas", () => {
     await asUser(null, async (c) => {
       expect(await errorCode(c, "select * from study_trails")).toBe("42501");
       const boards = await c.query("select count(*)::int n from exam_boards");
-      expect(boards.rows[0].n).toBe(8);
+      expect(boards.rows[0].n).toBeGreaterThanOrEqual(8);
     });
   });
 

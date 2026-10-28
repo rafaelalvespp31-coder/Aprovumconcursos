@@ -6,7 +6,7 @@ import { ENDED_ELSEWHERE, isEndedElsewhere } from "@/lib/session";
  * Renova a sessão do Supabase a cada requisição e protege as rotas privadas.
  * A autorização definitiva acontece no servidor (requireUser) e no banco (RLS).
  */
-const PRIVATE_PREFIXES = ["/questoes", "/painel", "/trilhas", "/nova-trilha", "/aula", "/desempenho", "/perfil", "/admin", "/revisoes", "/banco", "/quiz"];
+const PRIVATE_PREFIXES = ["/questoes", "/painel", "/trilhas", "/nova-trilha", "/aula", "/desempenho", "/perfil", "/admin", "/revisoes", "/banco", "/quiz", "/mentor"];
 
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });

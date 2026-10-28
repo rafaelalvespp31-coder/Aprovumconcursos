@@ -1702,6 +1702,12 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 }
 .pc-botao:hover { background: linear-gradient(180deg, #E50914, #B9000B); box-shadow: 0 10px 22px -6px rgba(229, 9, 20, 0.65); }
 .pc-botao:active { transform: scale(0.97); }
+/* Mentor APROVUM: ações secundárias do card (mesma linguagem dos botões do painel). */
+.mentor-sec { display: inline-flex; min-height: 40px; align-items: center; gap: 6px; border-radius: 10px; border: 1px solid #E6E7EB; background: #fff; padding: 0 14px; font-size: 13px; font-weight: 700; color: #08090B; transition: border-color 150ms, color 150ms; }
+.mentor-sec:hover { border-color: #E50914; color: #B9000B; }
+.mentor-sec:focus-visible, .mentor-dispensar:focus-visible { outline: 2px solid #E50914; outline-offset: 2px; }
+.mentor-dispensar { display: inline-flex; min-height: 40px; align-items: center; gap: 4px; padding: 0 8px; font-size: 12px; font-weight: 600; color: #64666D; }
+.mentor-dispensar:hover { color: #08090B; }
 .pc-selo { display: inline-flex; border-radius: 6px; background: #E50914; padding: 3px 8px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.04em; text-transform: uppercase; color: #fff; }
 
 /* Próxima aula: arte à direita, desbotando para o branco */
