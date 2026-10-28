@@ -61,7 +61,8 @@ export class SoldierAudio {
         v.volume = VOICE.gain;
       }
     }
-    if (!this.ctx && !this.shotEl) {
+    // Elemento de reserva: toca o disparo se o Web Audio não decodificar o arquivo neste navegador.
+    if (!this.shotEl) {
       this.shotEl = new Audio(SHOT.src);
       this.shotEl.preload = "auto";
       this.shotEl.volume = SHOT.gain;
@@ -80,14 +81,20 @@ export class SoldierAudio {
       const g = ctx.createGain();
       g.gain.value = SHOT.gain;
       src.connect(g).connect(ctx.destination);
+      // O arquivo começa no estalo do disparo (silêncio inicial cortado): sai junto com o clarão.
       src.start();
       if (this.voice?.paused !== false) {
         this.setBreath(0.05, 0.02);
-        setTimeout(() => this.on && this.voice?.paused !== false && this.setBreath(BREATH.gain, 0.9), 450);
+        // O eco do tiro dura uns 3 s: a respiração volta devagar enquanto ele some.
+        setTimeout(() => this.on && this.voice?.paused !== false && this.setBreath(BREATH.gain, 1.8), 900);
       }
     } else if (this.shotEl) {
       this.shotEl.currentTime = 0;
       this.shotEl.play().catch(() => undefined);
+      if (this.ctx) {
+        // Sem buffer (ainda decodificando ou formato não suportado): a reserva toca sem controle de ganho.
+        this.shotEl.volume = SHOT.gain;
+      }
     }
   }
 
