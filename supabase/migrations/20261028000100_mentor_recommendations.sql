@@ -33,7 +33,6 @@ create table if not exists public.mentor_recommendations (
 create index if not exists mentor_recommendations_user_recent on public.mentor_recommendations (user_id, created_at desc);
 
 alter table public.mentor_recommendations enable row level security;
-drop policy if exists "dono le" on public.mentor_recommendations;
 create policy "dono le" on public.mentor_recommendations for select to authenticated using (user_id = (select auth.uid()));
 revoke all on public.mentor_recommendations from anon, authenticated;
 grant select on public.mentor_recommendations to authenticated;
