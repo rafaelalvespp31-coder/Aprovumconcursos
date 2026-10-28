@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DISCIPLINE_LABELS, DISCIPLINE_MODES } from "@/ai/pedagogy";
+import { disciplineLabel, disciplineSlugs } from "@/ai/pedagogy";
 import { requireAdmin } from "@/server/services/catalog";
 import { bannerVersions } from "@/server/services/banners";
 import { removeBannerAction, saveBannerAction } from "../actions";
@@ -18,11 +18,11 @@ export default async function BannersPage() {
         <p className="mt-1 max-w-3xl t-small text-tinta-suave">Cada matéria tem um banner que aparece no topo de todas as aulas dela. Troque quando quiser: as aulas passam a usar o novo na hora.</p>
       </div>
       <div className="grid gap-4 md:grid-cols-2">
-        {DISCIPLINE_MODES.map((m) => (
+        {disciplineSlugs().map((m) => (
           <BannerSlot
             key={m}
             mode={m}
-            label={DISCIPLINE_LABELS[m]}
+            label={disciplineLabel(m) ?? m}
             url={versions[m] ? `/banner/${m}?v=${new Date(versions[m]!).getTime().toString(36)}` : null}
             actions={{ save: saveBannerAction, remove: removeBannerAction }}
           />

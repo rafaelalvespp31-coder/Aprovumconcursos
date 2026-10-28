@@ -1,6 +1,7 @@
 import "server-only";
 import { z } from "zod";
-import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
+import { ensureDisciplines } from "./disciplines";
+import { disciplineLabel } from "@/ai/pedagogy";
 import { MENTOR_RULES_VERSION, recommend, type LessonState, type MentorAttempt, type MentorLesson, type MentorResult, type MentorSnapshot, type MentorTopicPerformance } from "@/domain/mentor/engine";
 import { reconcile, type RecommendationStatus, type StoredRecommendation, type VisibleRecommendation } from "@/domain/mentor/history";
 import { createAdminClient, createUserClient } from "../supabase";
@@ -23,6 +24,7 @@ const LIMIT = { lessons: 3000, attempts: 3000, bankAttempts: 3000, stored: 300 }
 
 /** Monta o retrato dos dados reais do aluno para o motor. */
 export async function loadMentorSnapshot(userId: string): Promise<{ snapshot: MentorSnapshot; name: string | null }> {
+  await ensureDisciplines();
   const db = await createUserClient();
   const admin = createAdminClient();
   const [profile, trails, lessons, progress, prereqs, questions, attempts, reviews, bankAttempts, notebooks] = await Promise.all([
@@ -49,7 +51,7 @@ export async function loadMentorSnapshot(userId: string): Promise<{ snapshot: Me
     const { data } = await admin.from("catalog_topics").select("id, discipline_mode").in("id", topicIds.slice(0, 500));
     for (const t of (data ?? []) as Array<{ id: string; discipline_mode: string }>) topicDiscipline.set(t.id, t.discipline_mode);
   }
-  const label = (mode: string | null | undefined) => (mode && DISCIPLINE_LABELS[mode as DisciplineMode] && mode !== "outra" ? DISCIPLINE_LABELS[mode as DisciplineMode] : null);
+  const label = (mode: string | null | undefined) => (mode && mode !== "outra" ? (disciplineLabel(mode) ?? null) : null);
   const trailInfo = new Map(
     trailRows.map((t) => {
       const fromCatalog = (t.scope_summary?.catalogTopics ?? []).map((c) => label(topicDiscipline.get(c.id))).find(Boolean) ?? null;

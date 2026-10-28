@@ -1,6 +1,7 @@
 import "server-only";
 import sharp from "sharp";
-import { DISCIPLINE_MODES, type DisciplineMode } from "@/ai/pedagogy";
+import { isDisciplineSlug } from "@/ai/pedagogy";
+import { ensureDisciplines } from "./disciplines";
 import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
 import { auditLog } from "../observability";
@@ -11,24 +12,27 @@ export const BANNER_W = 1600;
 export const BANNER_H = 400;
 const MAX_UPLOAD = 8_000_000;
 
-const isMode = (m: string): m is DisciplineMode => (DISCIPLINE_MODES as readonly string[]).includes(m);
+const isMode = (m: string): boolean => isDisciplineSlug(m);
 
 /** Versão (data de atualização) do banner de cada matéria que tem um. */
-export async function bannerVersions(): Promise<Partial<Record<DisciplineMode, string>>> {
+export async function bannerVersions(): Promise<Partial<Record<string, string>>> {
+  await ensureDisciplines();
   const { data } = await createAdminClient().from("discipline_banners").select("discipline_mode, updated_at");
-  const out: Partial<Record<DisciplineMode, string>> = {};
-  for (const r of data ?? []) if (isMode(r.discipline_mode as string)) out[r.discipline_mode as DisciplineMode] = r.updated_at as string;
+  const out: Partial<Record<string, string>> = {};
+  for (const r of data ?? []) if (isMode(r.discipline_mode as string)) out[r.discipline_mode as string] = r.updated_at as string;
   return out;
 }
 
 /** URL pública do banner (com a versão para renovar o cache) ou null quando a matéria não tem. */
 export async function bannerUrlFor(mode: string | null | undefined): Promise<string | null> {
+  await ensureDisciplines();
   if (!mode || !isMode(mode)) return null;
   const { data } = await createAdminClient().from("discipline_banners").select("updated_at").eq("discipline_mode", mode).maybeSingle();
   return data ? `/banner/${mode}?v=${encodeURIComponent(new Date(data.updated_at as string).getTime().toString(36))}` : null;
 }
 
 export async function readBanner(mode: string): Promise<{ mime: string; bytes: Buffer; updatedAt: string } | null> {
+  await ensureDisciplines();
   if (!isMode(mode)) return null;
   const { data } = await createAdminClient().from("discipline_banners").select("mime, data, updated_at").eq("discipline_mode", mode).maybeSingle();
   if (!data) return null;
@@ -52,6 +56,7 @@ async function toBannerWebp(file: File): Promise<Buffer> {
 
 /** Recebe a imagem, recorta na proporção do banner (4:1) e grava já otimizada (WebP). */
 export async function saveBanner(user: SessionUser, mode: string, file: File) {
+  await ensureDisciplines();
   if (!isMode(mode)) throw new UserFacingError("Matéria inválida.", "invalid_input");
   const out = await toBannerWebp(file);
   const db = createAdminClient();
@@ -69,6 +74,7 @@ export async function saveBanner(user: SessionUser, mode: string, file: File) {
 }
 
 export async function removeBanner(user: SessionUser, mode: string) {
+  await ensureDisciplines();
   if (!isMode(mode)) throw new UserFacingError("Matéria inválida.", "invalid_input");
   const db = createAdminClient();
   const { error } = await db.from("discipline_banners").delete().eq("discipline_mode", mode);

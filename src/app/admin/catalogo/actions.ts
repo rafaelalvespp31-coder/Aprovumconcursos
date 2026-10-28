@@ -21,6 +21,7 @@ import {
 } from "@/server/services/catalog";
 import { addTopicQuestions, applyTopicEnrichment, importLessonUpload, previewLessonUpload, previewTopicEnrichment, previewTopicQuestions, type LessonUploadPreview, type TopicEnrichPreview, type TopicQuestionsPreview } from "@/server/services/catalog-upload";
 import { createOutline, deleteOutline, updateOutline } from "@/server/services/outlines";
+import { createDiscipline, deleteDiscipline, updateDiscipline } from "@/server/services/disciplines";
 import { bannerUrlFor, removeBanner, removeTopicBanner, saveBanner, saveTopicBanner, topicBannerUrl } from "@/server/services/banners";
 
 export interface AdminResult {
@@ -82,7 +83,7 @@ export async function saveSectionAction(id: string, index: number, data: { title
   return r;
 }
 
-export async function saveTopicMetaAction(id: string, data: { title: string; kind: string; law?: string; articles?: string; topicGroup?: string; subtopicCode?: string }): Promise<AdminResult> {
+export async function saveTopicMetaAction(id: string, data: { title: string; kind: string; law?: string; articles?: string; topicGroup?: string; subtopicCode?: string; disciplineMode?: string }): Promise<AdminResult> {
   await requireAdmin();
   const r = await guard("catalog.meta", async () => updateTopicMeta(z.uuid().parse(id), data));
   revalidatePath(`/admin/catalogo/${id}`);
@@ -284,4 +285,47 @@ export async function deleteOutlineAction(id: string): Promise<AdminResult> {
   if (!r.ok) return r;
   revalidatePath("/admin/catalogo/plano");
   redirect("/admin/catalogo/plano");
+}
+
+// ---------------------------------------------------------------------------
+// Matérias cadastradas pela equipe
+// ---------------------------------------------------------------------------
+
+type DisciplineInput = { label: string; base: string };
+const disciplineInput = (d: unknown): DisciplineInput => {
+  const o = (d ?? {}) as Record<string, unknown>;
+  return { label: typeof o.label === "string" ? o.label : "", base: typeof o.base === "string" ? o.base : "" };
+};
+const revalidateDisciplines = () => {
+  for (const p of ["/admin/catalogo", "/admin/catalogo/plano", "/admin/catalogo/banners", "/admin/catalogo/enviar", "/nova-trilha", "/trilhas"]) revalidatePath(p);
+};
+
+export async function createDisciplineAction(data: DisciplineInput): Promise<AdminResult> {
+  const user = await requireAdmin();
+  const r = await guard("catalog.discipline_create", async () => {
+    const d = await createDiscipline(user, disciplineInput(data));
+    return `Matéria “${d.label}” cadastrada.`;
+  });
+  if (r.ok) revalidateDisciplines();
+  return r;
+}
+
+export async function updateDisciplineAction(slug: string, data: DisciplineInput): Promise<AdminResult> {
+  const user = await requireAdmin();
+  const r = await guard("catalog.discipline_update", async () => {
+    await updateDiscipline(user, slug, disciplineInput(data));
+    return "Matéria atualizada.";
+  });
+  if (r.ok) revalidateDisciplines();
+  return r;
+}
+
+export async function deleteDisciplineAction(slug: string): Promise<AdminResult> {
+  const user = await requireAdmin();
+  const r = await guard("catalog.discipline_delete", async () => {
+    await deleteDiscipline(user, slug);
+    return "Matéria excluída.";
+  });
+  if (r.ok) revalidateDisciplines();
+  return r;
 }

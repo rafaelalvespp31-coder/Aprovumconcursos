@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getLatestJob, getLessonForStudy, getNextInSubject, getTrailPlan, listStudyPdfs } from "@/server/queries";
+import { ensureDisciplines } from "@/server/services/disciplines";
 import { PdfPanel } from "@/app/(app)/trilhas/[id]/pdf-panel";
 import { Button, ButtonLink, Notice, Tag } from "@/components/ui";
 import { JobRunner, type PublicJob } from "@/components/job-runner";
@@ -7,7 +8,7 @@ import { STATE_LABELS } from "@/domain/progress/state-machine";
 import { LessonReader } from "./reader";
 import { CONTENT_TYPE_OPTIONS, boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
 import { lessonBannerUrl } from "@/server/services/banners";
-import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
+import { disciplineLabel } from "@/ai/pedagogy";
 import { generateLessonAction } from "./actions";
 import { getTopicSiblings } from "@/server/topic-siblings";
 import { logEvent } from "@/server/observability";
@@ -23,6 +24,7 @@ const LESSON_STAGES: Record<string, string> = {
 };
 
 export default async function LessonPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ erro?: string; revisao?: string }> }) {
+  await ensureDisciplines();
   const { id } = await params;
   const sp = await searchParams;
   const data = await getLessonForStudy(id);
@@ -137,7 +139,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
         stateLabel: progress ? STATE_LABELS[progress.state] : null,
       }}
       meta={{
-        subject: lesson.study_trails.scope_summary?.subject ?? (discipline && discipline !== "outra" ? DISCIPLINE_LABELS[discipline as DisciplineMode] ?? null : null),
+        subject: lesson.study_trails.scope_summary?.subject ?? (discipline && discipline !== "outra" ? disciplineLabel(discipline) ?? null : null),
         banner,
         board: lesson.study_trails.board_slug ? boardDisplayName(lesson.study_trails.board_slug as ExamBoardSlug, lesson.study_trails.other_board_name) : null,
         contentType: CONTENT_TYPE_OPTIONS.find((o) => o.value === lesson.study_trails.content_type)?.label ?? null,

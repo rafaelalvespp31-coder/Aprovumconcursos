@@ -3,7 +3,7 @@
  * correções de um clique (remover a questão, escolher o gabarito, trocar o tipo de seção…).
  * Puro: roda no navegador enquanto o administrador cola e edita.
  */
-import { DISCIPLINE_LABELS, DISCIPLINE_MODES, LESSON_SECTION_KINDS } from "@/ai/pedagogy";
+import { disciplineLabel, disciplineSlugs, LESSON_SECTION_KINDS } from "@/ai/pedagogy";
 import { cleanPasted, fold } from "./upload";
 
 /** Troca `deleteCount` linhas a partir da linha `start` (1 = primeira) por `insert`. */
@@ -247,12 +247,13 @@ export function describeIssues(raw: string, errors: readonly string[], warnings:
     if (/^Não reconheci a matéria/.test(msg)) {
       const at = metaLine(/^(materia|disciplina)\s*:/);
       const typed = fold(metaValue(at));
-      const modes = DISCIPLINE_MODES.filter((x) => x !== "outra");
-      const best = typed ? [...modes].sort((a, b) => similarity(typed, fold(DISCIPLINE_LABELS[b])) - similarity(typed, fold(DISCIPLINE_LABELS[a])))[0] : null;
+      const modes = disciplineSlugs().filter((x) => x !== "outra");
+      const name = (x: string) => disciplineLabel(x) ?? x;
+      const best = typed ? [...modes].sort((a, b) => similarity(typed, fold(name(b))) - similarity(typed, fold(name(a))))[0] : null;
       const fixes = modes
-        .map((x) => ({ x, e: upsertMeta(/^(materia|disciplina)\s*:/, `Matéria: ${DISCIPLINE_LABELS[x]}`) }))
+        .map((x) => ({ x, e: upsertMeta(/^(materia|disciplina)\s*:/, `Matéria: ${name(x)}`) }))
         .filter((f) => f.e)
-        .map((f) => ({ label: DISCIPLINE_LABELS[f.x], recommended: f.x === best, edit: f.e! }));
+        .map((f) => ({ label: name(f.x), recommended: f.x === best, edit: f.e! }));
       return add(severity, msg.replace(/ Use uma destas: .*$/, " Escolha a matéria:"), at ?? aulaLine, null, fixes);
     }
     if (/^Tipo dispositivo: informe/.test(msg)) {

@@ -4,7 +4,8 @@ import { notFound } from "next/navigation";
 import { z } from "zod";
 import { getAIProvider } from "@/ai";
 import { completeLessonSections, delimitScope, generateLesson, generateQuestions } from "@/ai/services";
-import { DISCIPLINE_LABELS, DISCIPLINE_MODES, type DisciplineMode } from "@/ai/pedagogy";
+import { disciplineLabel, isDisciplineSlug, type DisciplineMode } from "@/ai/pedagogy";
+import { ensureDisciplines } from "./disciplines";
 import type { CatalogPickerGroup } from "@/domain/catalog/picker";
 import { lessonSchema, type LessonOutput } from "@/ai/schemas";
 import { normalizeContent } from "@/domain/content/normalize";
@@ -79,6 +80,7 @@ export async function loadPublishedIndex(): Promise<CatalogTopicIndex[]> {
 
 /** Aulas publicadas, agrupadas por matéria, para o seletor do novo estudo. */
 export async function catalogPicker(): Promise<CatalogPickerGroup[]> {
+  await ensureDisciplines();
   const db = createAdminClient();
   const { data, error } = await db
     .from("catalog_topics")
@@ -88,7 +90,7 @@ export async function catalogPicker(): Promise<CatalogPickerGroup[]> {
   if (error) throw new Error(error.message);
   const groups = new Map<string, CatalogPickerGroup>();
   for (const t of data ?? []) {
-    const discipline = DISCIPLINE_LABELS[t.discipline_mode as DisciplineMode] ?? "Outras matérias";
+    const discipline = disciplineLabel(t.discipline_mode as string) ?? "Outras matérias";
     const g = groups.get(discipline) ?? { discipline, topics: [] };
     g.topics.push({ id: t.id as string, title: t.title as string, summary: (t.summary as string | null) ?? null, minutes: t.estimated_minutes as number });
     groups.set(discipline, g);
@@ -155,6 +157,7 @@ function rowToQuestion(q: Record<string, unknown>): CatalogQuestion {
  * uma amostra de questões por nível. O estudo nasce pronto para conferência.
  */
 export async function createStudyFromCatalog(userId: string, req: TrailRequest, match: Extract<CatalogMatch, { kind: "completo" }>): Promise<string> {
+  await ensureDisciplines();
   const db = createAdminClient();
   const topics = await loadTopicContents(match.topics.map((t) => t.id));
   const title = req.title || (topics.length === 1 ? topics[0]!.title : req.content.trim().slice(0, 80));
@@ -196,7 +199,7 @@ export async function createStudyFromCatalog(userId: string, req: TrailRequest, 
     const nodes = await db.rpc("replace_trail_nodes", { p_trail: trailId, p_user: userId, p_version: ver.data.id, p_nodes: nodesPayload(composed.nodes) });
     if (nodes.error) throw new Error(nodes.error.message);
     const audit = auditPlan({ normalizedText: composed.normalizedText, nodes: composed.nodes, unassigned: [], plan: composed.plan });
-    const mode = (DISCIPLINE_MODES as readonly string[]).includes(composed.disciplineMode) ? composed.disciplineMode : "outra";
+    const mode = isDisciplineSlug(composed.disciplineMode) ? composed.disciplineMode : "outra";
     const plan = await db.rpc("persist_trail_plan", {
       p_trail: trailId,
       p_user: userId,
@@ -302,6 +305,8 @@ export async function recoveryFromBank(
 export async function requireAdmin(): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user || !(await isAdmin())) notFound();
+  // Matérias cadastradas pela equipe: rótulos e validações de toda a área do admin.
+  await ensureDisciplines();
   return user;
 }
 
@@ -315,7 +320,7 @@ export const topicInputSchema = z
     lawCode: z.string().trim().toUpperCase().max(12).optional().transform((v) => v || null),
     articles: z.string().max(500).optional().transform((v) => (v ? v.split(/[,;\s]+/).filter(Boolean).map(articleId) : [])),
     aliases: z.string().max(2000).optional().transform((v) => (v ? v.split("\n").map((a) => a.trim()).filter(Boolean).slice(0, 30) : [])),
-    disciplineMode: z.enum(DISCIPLINE_MODES),
+    disciplineMode: z.string().refine((v) => isDisciplineSlug(v), "Escolha uma matéria válida."),
     summary: z.string().trim().max(2000).optional().transform((v) => v || null),
     sourceText: z.string().max(60000).optional().transform((v) => v ?? ""),
     estimatedMinutes: z.coerce.number().int().min(5).max(600).default(40),
@@ -763,7 +768,7 @@ export async function promoteLesson(user: SessionUser, lessonId: string): Promis
     lawCode: null,
     articles: [],
     aliases: [],
-    disciplineMode: ((DISCIPLINE_MODES as readonly string[]).includes(disc) ? disc : "outra") as DisciplineMode,
+    disciplineMode: isDisciplineSlug(disc) ? disc : "outra",
     summary: l.data.objective as string,
     sourceText: "",
     estimatedMinutes: (l.data.estimated_minutes as number) ?? 40,

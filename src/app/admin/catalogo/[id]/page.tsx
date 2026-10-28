@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Markdown } from "@/components/markdown";
 import { getTopic, getTopicQuestions, publishBlockers, requireAdmin } from "@/server/services/catalog";
-import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
+import { disciplineLabel } from "@/ai/pedagogy";
 import { PublishPanel, QuestionsEditor, SectionsEditor } from "./editor";
 import { AddQuestionsPanel } from "./add-questions";
 import { AddVisualsPanel } from "./add-visuals";
@@ -62,7 +62,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
           <dt className="font-semibold">Tópico</dt>
           <dd>{topic.topic_group ? `${topic.topic_group_code ? `${topic.topic_group_code}. ` : ""}${topic.topic_group}${topic.subtopic_code ? ` › subtópico ${topic.subtopic_code}` : ""}` : "— (aula avulsa)"}</dd>
           <dt className="font-semibold">Matéria</dt>
-          <dd>{DISCIPLINE_LABELS[topic.discipline_mode as DisciplineMode] ?? topic.discipline_mode}</dd>
+          <dd>{disciplineLabel(topic.discipline_mode) ?? topic.discipline_mode}</dd>
           <dt className="font-semibold">Tipo</dt>
           <dd>{topic.kind === "dispositivo" ? `${topic.law_code}, art. ${topic.articles.join(", ")}` : "Tema"}</dd>
           <dt className="font-semibold">Sinônimos</dt>
@@ -77,7 +77,7 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
           )}
         </dl>
         <div className="mt-4">
-          <TopicMetaEditor id={id} title={topic.title} kind={topic.kind} lawCode={topic.law_code} articles={topic.articles} topicGroup={topic.topic_group} topicGroupCode={topic.topic_group_code} subtopicCode={topic.subtopic_code} />
+          <TopicMetaEditor id={id} title={topic.title} kind={topic.kind} lawCode={topic.law_code} articles={topic.articles} topicGroup={topic.topic_group} topicGroupCode={topic.topic_group_code} subtopicCode={topic.subtopic_code} disciplineMode={topic.discipline_mode} />
         </div>
         <p className="mt-3 t-small text-tinta-suave">
           Para mudar outros dados, texto-base ou a estrutura dos módulos, corrija o texto e{" "}

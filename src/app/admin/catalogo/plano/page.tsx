@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
+import { disciplineLabel } from "@/ai/pedagogy";
 import { requireAdmin } from "@/server/services/catalog";
 import { listOutlines } from "@/server/services/outlines";
 import { parseOutline } from "@/domain/catalog/topic-group";
@@ -34,7 +34,7 @@ export default async function PlanListPage() {
                   <Link href={`/admin/catalogo/plano/${o.id}`} className="block rounded-lg border border-linha p-4 hover:border-destaque" data-testid="plano-salvo">
                     <p className="font-semibold">{o.title}</p>
                     <p className="mt-1 t-small text-tinta-suave">
-                      {DISCIPLINE_LABELS[o.disciplineMode as DisciplineMode] ?? o.disciplineMode} · {tree.groups.length} tópico(s) · {subs} subtópico(s)
+                      {disciplineLabel(o.disciplineMode) ?? o.disciplineMode} · {tree.groups.length} tópico(s) · {subs} subtópico(s)
                     </p>
                   </Link>
                 </li>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { Button, inputClass } from "@/components/ui";
-import { DISCIPLINE_LABELS, DISCIPLINE_MODES, type DisciplineMode } from "@/ai/pedagogy";
+import { disciplineLabel, disciplineSlugs } from "@/ai/pedagogy";
 import { parseOutline } from "@/domain/catalog/topic-group";
 import type { AdminResult } from "../actions";
 
@@ -43,9 +43,11 @@ export function OutlineForm({ initial, submit, submitLabel, onDone }: { initial?
         <label className="flex flex-col gap-1 t-small font-semibold">
           Matéria
           <select value={disciplineMode} onChange={(e) => setDiscipline(e.target.value)} className={inputClass} name="materia">
-            {DISCIPLINE_MODES.filter((m) => m !== "outra").map((m) => (
-              <option key={m} value={m}>{DISCIPLINE_LABELS[m as DisciplineMode]}</option>
-            ))}
+            {disciplineSlugs()
+              .filter((m) => m !== "outra")
+              .map((m) => (
+                <option key={m} value={m}>{disciplineLabel(m) ?? m}</option>
+              ))}
           </select>
         </label>
         <label className="flex flex-col gap-1 t-small font-semibold">

@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { ensureDisciplines } from "../services/disciplines";
 import type { ExtractedNode } from "@/domain/content/extract";
 import { boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
 import type { DisciplineMode } from "@/ai/pedagogy";
@@ -196,6 +197,7 @@ export class SupabaseLessonRepo implements LessonRepo {
   constructor(private db: SupabaseClient) {}
 
   async getContext(lessonId: string, userId: string): Promise<LessonGenContext> {
+    await ensureDisciplines();
     const l = must(
       await this.db
         .from("lessons")

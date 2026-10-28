@@ -1,5 +1,6 @@
 import "server-only";
-import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
+import { disciplineLabel } from "@/ai/pedagogy";
+import { ensureDisciplines } from "./disciplines";
 import { extractPractice } from "@/domain/content/practice";
 import { computeStreak, streakMessage } from "@/domain/progress/gamification";
 import { buildAll, checkCloze, shuffle, seeded, type ClozeItem, type LawNode } from "@/domain/quiz/cloze";
@@ -29,6 +30,7 @@ let cache: { at: number; topics: QuizTopic[] } | null = null;
 const TTL = 5 * 60_000;
 
 async function loadTopics(): Promise<QuizTopic[]> {
+  await ensureDisciplines();
   if (cache && Date.now() - cache.at < TTL) return cache.topics;
   const db = createAdminClient();
   const { data, error } = await db.from("catalog_topics").select("id, title, discipline_mode, law_code, nodes, lesson").eq("status", "publicado").order("title");
@@ -39,7 +41,7 @@ async function loadTopics(): Promise<QuizTopic[]> {
       return {
         id: t.id as string,
         title: t.title as string,
-        discipline: DISCIPLINE_LABELS[(t.discipline_mode as DisciplineMode) ?? "outra"] ?? "Outra",
+        discipline: disciplineLabel((t.discipline_mode as string) ?? "outra") ?? "Outra",
         lawCode: (t.law_code as string | null) ?? null,
         nodes: (t.nodes ?? []) as LawNode[],
         items: buildAll(((t.nodes ?? []) as LawNode[]), t.id as string),

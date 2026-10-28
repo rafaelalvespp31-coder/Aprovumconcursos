@@ -1,5 +1,6 @@
 import "server-only";
-import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
+import { disciplineLabel } from "@/ai/pedagogy";
+import { ensureDisciplines } from "./services/disciplines";
 import { computeGamification } from "@/domain/progress/gamification";
 import { buildStudiesHome, type StudiesHome } from "@/domain/studies/home";
 import { createAdminClient, createUserClient } from "./supabase";
@@ -11,6 +12,7 @@ import { getStudyStats } from "./queries";
  * equipe também leem dados de outros pela RLS "admin le"). O catálogo é público (publicado).
  */
 export async function getStudiesHome(): Promise<StudiesHome> {
+  await ensureDisciplines();
   const db = await createUserClient();
   const me = (await getSessionUser())?.id ?? "00000000-0000-0000-0000-000000000000";
   const admin = createAdminClient();
@@ -45,7 +47,7 @@ export async function getStudiesHome(): Promise<StudiesHome> {
       id: t.id,
       title: t.title,
       minutes: t.estimated_minutes ?? 0,
-      discipline: DISCIPLINE_LABELS[t.discipline_mode as DisciplineMode] ?? "Outras matérias",
+      discipline: disciplineLabel(t.discipline_mode as string) ?? "Outras matérias",
       questions: perTopic.get(t.id) ?? 0,
       group: t.topic_group ? { title: t.topic_group, code: t.topic_group_code, sub: t.subtopic_code } : null,
     })),

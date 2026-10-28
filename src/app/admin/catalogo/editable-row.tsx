@@ -12,6 +12,7 @@ interface RowTopic {
   topicGroup: string | null;
   topicGroupCode: string | null;
   subtopicCode: string | null;
+  disciplineMode: string;
 }
 
 /**

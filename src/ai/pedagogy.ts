@@ -31,8 +31,51 @@ export const DISCIPLINE_LABELS: Record<DisciplineMode, string> = {
   outra: "Outra disciplina",
 };
 
-export function isLegalMode(mode: DisciplineMode): boolean {
-  return mode.startsWith("direito_") || mode === "legislacao_especial";
+// ---------------------------------------------------------------------------
+// Matérias cadastradas pela equipe (além das fixas acima). Cada uma segue o estilo pedagógico de
+// uma matéria fixa ("base"). O registro é preenchido no servidor (do banco) e no navegador (pela
+// página), então rótulos e validações funcionam igual nos dois lados.
+// ---------------------------------------------------------------------------
+
+export interface CustomDiscipline {
+  slug: string;
+  label: string;
+  /** Matéria fixa cujo estilo pedagógico esta segue (ex.: direito_penal para uma matéria jurídica). */
+  base: DisciplineMode;
+}
+
+const customs = new Map<string, CustomDiscipline>();
+const isBuiltIn = (slug: string): slug is DisciplineMode => (DISCIPLINE_MODES as readonly string[]).includes(slug);
+
+/** Troca a lista de matérias cadastradas (idempotente). */
+export function setCustomDisciplines(list: readonly CustomDiscipline[]): void {
+  customs.clear();
+  for (const d of list) if (!isBuiltIn(d.slug) && isBuiltIn(d.base)) customs.set(d.slug, d);
+}
+export function customDisciplines(): CustomDiscipline[] {
+  return [...customs.values()].sort((a, b) => a.label.localeCompare(b.label, "pt-BR"));
+}
+/** Nome da matéria (fixa ou cadastrada); undefined quando não existe. */
+export function disciplineLabel(slug: string | null | undefined): string | undefined {
+  if (!slug) return undefined;
+  return isBuiltIn(slug) ? DISCIPLINE_LABELS[slug] : customs.get(slug)?.label;
+}
+export function isDisciplineSlug(slug: string | null | undefined): boolean {
+  return !!slug && (isBuiltIn(slug) || customs.has(slug));
+}
+/** Todas as matérias escolhíveis (fixas, depois as cadastradas; "outra" por último). */
+export function disciplineSlugs(): string[] {
+  return [...DISCIPLINE_MODES.filter((m) => m !== "outra"), ...customDisciplines().map((d) => d.slug), "outra"];
+}
+/** Estilo pedagógico de uma matéria (a própria, se fixa; a base, se cadastrada). */
+export function baseMode(slug: string | null | undefined): DisciplineMode {
+  if (!slug) return "outra";
+  return isBuiltIn(slug) ? slug : (customs.get(slug)?.base ?? "outra");
+}
+
+export function isLegalMode(mode: string): boolean {
+  const m = baseMode(mode);
+  return m.startsWith("direito_") || m === "legislacao_especial";
 }
 
 const GUIDES: Record<DisciplineMode, string> = {
@@ -61,8 +104,8 @@ export const LEGAL_RULES = `MODO JURÍDICO:
 - Diferencie legislação vigente, histórica e alterações. Se não puder confirmar que o texto está atualizado, diga isso explicitamente.
 - Não apresente interpretação controvertida como consenso; indique quando houver divergência.`;
 
-export function disciplineGuide(mode: DisciplineMode): string {
-  return isLegalMode(mode) ? LEGAL_RULES : GUIDES[mode];
+export function disciplineGuide(mode: string): string {
+  return isLegalMode(mode) ? LEGAL_RULES : GUIDES[baseMode(mode)];
 }
 
 export const LESSON_SECTION_KINDS = [

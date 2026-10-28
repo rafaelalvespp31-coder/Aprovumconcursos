@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Tag } from "@/components/ui";
-import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
+import { disciplineLabel } from "@/ai/pedagogy";
 import { requireAdmin } from "@/server/services/catalog";
 import { getOutline, planView } from "@/server/services/outlines";
 import { deleteOutlineAction, updateOutlineAction } from "../../actions";
@@ -30,7 +30,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         <Link href="/admin/catalogo/plano" className="t-small text-destaque underline underline-offset-2">Plano de tópicos</Link>
         <h1 className="mt-1 t-h1">{outline.title}</h1>
         <p className="mt-1 t-small text-tinta-suave">
-          {DISCIPLINE_LABELS[outline.disciplineMode as DisciplineMode] ?? outline.disciplineMode} · {v.totals.subtopics} subtópico(s): {v.totals.publicado} publicado(s), {v.totals.rascunho} em rascunho,{" "}
+          {disciplineLabel(outline.disciplineMode) ?? outline.disciplineMode} · {v.totals.subtopics} subtópico(s): {v.totals.publicado} publicado(s), {v.totals.rascunho} em rascunho,{" "}
           {v.totals.pendente} pendente(s)
         </p>
         <div className="mt-2 h-2 max-w-md overflow-hidden rounded-full bg-nevoa" aria-label={`Publicados: ${pct}%`}>

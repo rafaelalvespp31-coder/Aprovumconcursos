@@ -3,7 +3,7 @@
  * matéria, com o progresso real do aluno) em territórios posicionados num mapa.
  * Puro: sem React e sem Three.js — a cena 3D, o radar e a lista alternativa leem daqui.
  */
-import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
+import { baseMode, disciplineLabel, disciplineSlugs } from "@/ai/pedagogy";
 import type { ThemeCard } from "@/domain/studies/home";
 import { groupByTopic, groupKey } from "@/domain/catalog/topic-group";
 
@@ -74,16 +74,17 @@ const STYLE: Record<string, { color: string; icon: TerritoryIcon }> = {
 
 /** Estilo (cor e ícone) de uma matéria. */
 export function territoryStyle(id: string): { color: string; icon: TerritoryIcon } {
-  return STYLE[id] ?? STYLE.outras!;
+  return STYLE[id] ?? STYLE[baseMode(id)] ?? STYLE.outras!;
 }
 
 /** Território sem aulas publicadas (aparece no cenário como "em breve", sem números inventados). */
 export function emptyTerritory(id: string, pos: [number, number] = [0, 0]): Territory {
   const st = territoryStyle(id);
-  return { id, label: DISCIPLINE_LABELS[id as DisciplineMode] ?? "Outras matérias", color: st.color, icon: st.icon, pos, topics: [], folders: [], questions: 0, started: 0, done: 0, progress: null };
+  return { id, label: disciplineLabel(id) ?? "Outras matérias", color: st.color, icon: st.icon, pos, topics: [], folders: [], questions: 0, started: 0, done: 0, progress: null };
 }
 
-const LABEL_TO_MODE = new Map(Object.entries(DISCIPLINE_LABELS).map(([k, v]) => [v, k]));
+/** Matéria (fixa ou cadastrada pela equipe) pelo nome mostrado no card. */
+const modeOfLabel = (label: string): string | undefined => disciplineSlugs().find((m) => m !== "outra" && disciplineLabel(m) === label);
 /** Ordem de destaque: Direito Penal fica à frente do núcleo, como na referência. */
 const ORDER = ["direito_penal", "lingua_portuguesa", "direito_constitucional", "informatica", "direito_administrativo", "matematica", "direito_processual_penal", "raciocinio_logico", "legislacao_especial", "conhecimentos_especificos"];
 
@@ -153,7 +154,7 @@ function foldersOf(topics: MapTopic[]): TopicFolder[] {
 export function buildKnowledgeMap(themes: readonly ThemeCard[]): KnowledgeMap {
   const groups = new Map<string, ThemeCard[]>();
   for (const t of themes) {
-    const mode = LABEL_TO_MODE.get(t.discipline) ?? "outras";
+    const mode = modeOfLabel(t.discipline) ?? "outras";
     const g = groups.get(mode) ?? [];
     g.push(t);
     groups.set(mode, g);
@@ -170,11 +171,11 @@ export function buildKnowledgeMap(themes: readonly ThemeCard[]): KnowledgeMap {
     const pos = slots[i]!;
     const tp = topicSlots(pos, list.length);
     const started = list.filter((t) => t.study).length;
-    const st = STYLE[id] ?? STYLE.outras!;
+    const st = territoryStyle(id);
     const topics: MapTopic[] = list.map((t, k) => ({ id: t.id, title: t.title, questions: t.questions, minutes: t.minutes, study: t.study, pos: tp[k]!, group: t.group ?? null }));
     return {
       id,
-      label: id === "outras" ? "Outras matérias" : DISCIPLINE_LABELS[id as DisciplineMode] ?? list[0]!.discipline,
+      label: id === "outras" ? "Outras matérias" : disciplineLabel(id) ?? list[0]!.discipline,
       color: st.color,
       icon: st.icon,
       pos,

@@ -5,9 +5,11 @@ import { EditableRow } from "./editable-row";
 import { ButtonLink, EmptyState, Tag } from "@/components/ui";
 import { LEVELS } from "@/domain/progress/levels";
 import { LAWS } from "@/domain/catalog/match";
-import { DISCIPLINE_LABELS, DISCIPLINE_MODES, type DisciplineMode } from "@/ai/pedagogy";
+import { disciplineLabel, disciplineSlugs, isDisciplineSlug } from "@/ai/pedagogy";
+import { listDisciplinesWithUsage } from "@/server/services/disciplines";
+import { DisciplinesManager } from "./disciplines-manager";
+import { createDisciplineAction, deleteDisciplineAction, deleteImpactAction, deleteTopicAction, updateDisciplineAction } from "./actions";
 import { listTopics, MIN_BANK_PER_LEVEL, requireAdmin } from "@/server/services/catalog";
-import { deleteImpactAction, deleteTopicAction } from "./actions";
 import { DeleteTopic } from "./delete-topic";
 
 export const metadata = { title: "Catálogo" };
@@ -24,10 +26,10 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
   // A verificação fica também na página: layout e página renderizam em paralelo.
   await requireAdmin();
   const sp = await searchParams;
-  const all = await listTopics();
+  const [all, disciplines] = await Promise.all([listTopics(), listDisciplinesWithUsage()]);
   const q = (sp.q ?? "").trim().toLowerCase();
   const topics = all.filter((t) => (!sp.status || t.status === sp.status) && (!q || t.title.toLowerCase().includes(q) || (t.topicGroup ?? "").toLowerCase().includes(q)));
-  const groups = DISCIPLINE_MODES.map((m) => ({ mode: m, label: DISCIPLINE_LABELS[m as DisciplineMode], topics: topics.filter((t) => (t.disciplineMode === m) || (m === "outra" && !(DISCIPLINE_MODES as readonly string[]).includes(t.disciplineMode))) })).filter((g) => g.topics.length).map((g) => ({ ...g, hasGroups: g.topics.some((t) => t.topicGroup) }));
+  const groups = disciplineSlugs().map((m) => ({ mode: m, label: disciplineLabel(m) ?? m, topics: topics.filter((t) => t.disciplineMode === m || (m === "outra" && !isDisciplineSlug(t.disciplineMode))) })).filter((g) => g.topics.length).map((g) => ({ ...g, hasGroups: g.topics.some((t) => t.topicGroup) }));
   const counts = { publicado: all.filter((t) => t.status === "publicado").length, rascunho: all.filter((t) => t.status === "rascunho").length };
   return (
     <div>
@@ -43,7 +45,8 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
           <ButtonLink href="/admin/catalogo/enviar">Catalogar aula</ButtonLink>
         </div>
       </div>
-      <p className="mt-2 t-small text-tinta-suave">Use “Editar” em cada aula para corrigir o tema e o tipo e para colocá-la num tópico do edital (ex.: 4. Ilicitude › 4.1). Aulas do mesmo tópico aparecem juntas, na ordem do subtópico.</p>
+      <DisciplinesManager rows={disciplines} actions={{ create: createDisciplineAction, update: updateDisciplineAction, remove: deleteDisciplineAction }} />
+      <p className="mt-4 t-small text-tinta-suave">Use “Editar” em cada aula para corrigir o tema e o tipo e para colocá-la num tópico do edital (ex.: 4. Ilicitude › 4.1). Aulas do mesmo tópico aparecem juntas, na ordem do subtópico.</p>
       <form className="mt-5 flex flex-wrap gap-2 t-small" role="search">
         <input name="q" defaultValue={sp.q} placeholder="Buscar pelo título ou tópico" className="min-h-10 rounded-md border border-linha-forte px-3" aria-label="Buscar pelo título ou tópico" />
         <select name="status" defaultValue={sp.status ?? ""} className="min-h-10 rounded-md border border-linha-forte px-3" aria-label="Situação">
@@ -101,7 +104,7 @@ export default async function CatalogPage({ searchParams }: { searchParams: Prom
                         <EditableRow
                           key={t.id}
                           cols={COLS}
-                          topic={{ id: t.id, title: t.title, kind: t.kind, lawCode: t.lawCode, articles: t.articles, topicGroup: t.topicGroup, topicGroupCode: t.topicGroupCode, subtopicCode: t.subtopicCode }}
+                          topic={{ id: t.id, title: t.title, kind: t.kind, lawCode: t.lawCode, articles: t.articles, topicGroup: t.topicGroup, topicGroupCode: t.topicGroupCode, subtopicCode: t.subtopicCode, disciplineMode: t.disciplineMode }}
                           cells={
                             <>
                               <td className={`px-3 py-2 ${tg.key ? "pl-6" : ""}`}>

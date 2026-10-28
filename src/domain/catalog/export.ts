@@ -3,7 +3,7 @@
  * e monta o comando do ChatGPT usando essa aula inteira como MODELO OFICIAL — puro.
  * Ida e volta: exportar → colar → ler devolve a mesma estrutura (módulos, seções, itens, questões).
  */
-import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
+import { disciplineLabel } from "@/ai/pedagogy";
 import type { ExtractedNode } from "@/domain/content/extract";
 
 export interface ExportableTopic {
@@ -71,7 +71,7 @@ export function exportTopicText(t: ExportableTopic, part: "tudo" | "aula" | "que
   if (part !== "questoes") out.push(
     "=== AULA ===",
     `Título: ${t.title}`,
-    `Matéria: ${DISCIPLINE_LABELS[t.disciplineMode as DisciplineMode] ?? t.disciplineMode}`,
+    `Matéria: ${disciplineLabel(t.disciplineMode) ?? t.disciplineMode}`,
     `Tipo: ${t.kind}`,
     `Lei: ${t.kind === "dispositivo" ? (t.lawCode ?? "") : ""}`,
     `Artigos: ${t.kind === "dispositivo" ? t.articles.join(", ") : ""}`,
@@ -336,7 +336,7 @@ export function buildCompactPrompt(t: ExportableTopic): string {
   sample.push(
     "=== AULA ===",
     `Título: ${t.title}`,
-    `Matéria: ${DISCIPLINE_LABELS[t.disciplineMode as DisciplineMode] ?? t.disciplineMode}`,
+    `Matéria: ${disciplineLabel(t.disciplineMode) ?? t.disciplineMode}`,
     `Tipo: ${t.kind}`,
     `Lei: ${t.kind === "dispositivo" ? (t.lawCode ?? "") : ""}`,
     `Artigos: ${t.kind === "dispositivo" ? t.articles.join(", ") : ""}`,

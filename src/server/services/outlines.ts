@@ -1,5 +1,5 @@
 import "server-only";
-import { DISCIPLINE_MODES, type DisciplineMode } from "@/ai/pedagogy";
+import { isDisciplineSlug } from "@/ai/pedagogy";
 import { buildSubtopicPrompt } from "@/domain/catalog/subtopic-prompt";
 import { findCatalogFor, parseOutline, type Outline, type OutlineStatus } from "@/domain/catalog/topic-group";
 import { createAdminClient } from "../supabase";
@@ -30,11 +30,11 @@ const rowOf = (r: Record<string, unknown>): OutlineRow => ({
 function validate(input: { disciplineMode: string; title: string; text: string }) {
   const title = input.title.replace(/\s+/g, " ").trim();
   const text = input.text.replace(/\r/g, "").trim();
-  if (!(DISCIPLINE_MODES as readonly string[]).includes(input.disciplineMode) || input.disciplineMode === "outra") throw new UserFacingError("Escolha a matéria do sumário.", "invalid_input");
+  if (!isDisciplineSlug(input.disciplineMode) || input.disciplineMode === "outra") throw new UserFacingError("Escolha a matéria do sumário.", "invalid_input");
   if (title.length < 2 || title.length > 160) throw new UserFacingError("Dê um nome ao plano (ex.: Direito Penal — Parte Geral).", "invalid_input");
   if (text.length < 2 || text.length > 60000) throw new UserFacingError("Cole o sumário (até 60 mil caracteres).", "invalid_input");
   if (!parseOutline(text).groups.length) throw new UserFacingError("Não encontrei tópicos no texto. Use a numeração do edital: 4. Tópico, 4.1 Subtópico, 4.1.1 Item.", "invalid_input");
-  return { discipline_mode: input.disciplineMode as DisciplineMode, title, source_text: text };
+  return { discipline_mode: input.disciplineMode, title, source_text: text };
 }
 
 export async function listOutlines(): Promise<OutlineRow[]> {

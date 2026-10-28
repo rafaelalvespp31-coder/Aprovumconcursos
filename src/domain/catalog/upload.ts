@@ -11,7 +11,7 @@
  *   --- QUESTÃO ---          enunciado, alternativas, gabarito e justificativa
  * O resultado tem exatamente a forma das aulas já catalogadas (lesson + nodes + questões).
  */
-import { DISCIPLINE_LABELS, DISCIPLINE_MODES, LESSON_SECTION_KINDS, type DisciplineMode, type LessonSectionKind } from "@/ai/pedagogy";
+import { customDisciplines, disciplineLabel, disciplineSlugs, LESSON_SECTION_KINDS, type DisciplineMode, type LessonSectionKind } from "@/ai/pedagogy";
 import type { ExtractedNode } from "@/domain/content/extract";
 import { LAWS, articleId } from "./match";
 import { codeBelongs, parseCodedTitle } from "./topic-group";
@@ -57,7 +57,8 @@ export interface ParsedLesson {
   meta: {
     title: string;
     subject: string;
-    disciplineMode: DisciplineMode | null;
+    /** Matéria fixa ou cadastrada pela equipe (slug). */
+    disciplineMode: string | null;
     kind: "tema" | "dispositivo";
     lawCode: string | null;
     articles: string[];
@@ -156,10 +157,12 @@ const LAW_DISCIPLINE: Record<string, DisciplineMode> = {
 };
 
 /** Matéria pelo nome ("Direito Penal", "Português"…); sem matéria, pela lei. */
-export function disciplineFrom(subject: string, lawCode: string | null): DisciplineMode | null {
+export function disciplineFrom(subject: string, lawCode: string | null): string | null {
   const s = fold(subject);
   if (s) {
-    for (const m of DISCIPLINE_MODES) if (fold(DISCIPLINE_LABELS[m]) === s || m === s.replace(/ /g, "_")) return m;
+    for (const m of disciplineSlugs()) if (fold(disciplineLabel(m) ?? "") === s || m === s.replace(/ /g, "_")) return m;
+    // Matéria cadastrada: o nome dela contido no texto (ex.: "Criminologia aplicada").
+    for (const d of customDisciplines()) if (s.includes(fold(d.label))) return d.slug;
     if (/portugues|interpretacao de texto|gramatica/.test(s)) return "lingua_portuguesa";
     if (/processo penal|processual penal/.test(s)) return "direito_processual_penal";
     if (/penal/.test(s)) return "direito_penal";
@@ -419,7 +422,7 @@ export function parseLessonUpload(raw: string): ParsedLesson {
   if (!Object.keys(metaLines).length) errors.push("Não encontrei o bloco === AULA ===. Use o comando do ChatGPT desta página para gerar a aula no formato certo.");
   if (meta.title.length < 2) errors.push("Informe o “Título:” no bloco === AULA ===.");
   if (meta.objective.length < 5) errors.push("Informe o “Objetivo:” no bloco === AULA ===.");
-  if (!meta.disciplineMode) errors.push(`Não reconheci a matéria “${subject || "(vazia)"}”. Use uma destas: ${DISCIPLINE_MODES.filter((m) => m !== "outra").map((m) => DISCIPLINE_LABELS[m]).join(", ")}.`);
+  if (!meta.disciplineMode) errors.push(`Não reconheci a matéria “${subject || "(vazia)"}”. Use uma destas: ${disciplineSlugs().filter((m) => m !== "outra").map((m) => disciplineLabel(m)).join(", ")}.`);
   if (sub && !group) warnings.push("Informe também o “Tópico:” (ex.: 4. Ilicitude): sem ele o subtópico fica como aula avulsa.");
   if (group && sub?.code && meta.topicGroupCode && !codeBelongs(sub.code, meta.topicGroupCode)) warnings.push(`O subtópico ${sub.code} não começa com o número do tópico (${meta.topicGroupCode}).`);
   if (kind === "dispositivo" && (!meta.lawCode || !meta.articles.length)) errors.push("Tipo dispositivo: informe “Lei:” (ex.: CP) e “Artigos:” (ex.: 155).");

@@ -7,7 +7,7 @@
  * Inclui a regra de atualização até 2026 e a revisão do próprio comando e da resposta antes de
  * entregar. Cada comando tem no máximo {@link SUBTOPIC_PROMPT_MAX} caracteres. Puro.
  */
-import { DISCIPLINE_LABELS, isLegalMode, type DisciplineMode } from "@/ai/pedagogy";
+import { disciplineLabel, isLegalMode, type DisciplineMode } from "@/ai/pedagogy";
 import { visualRulesCompact } from "./export";
 import { groupHeaderLines, type OutlineItem, type OutlineSubtopic } from "./topic-group";
 
@@ -60,8 +60,8 @@ function itemModules(items: Array<{ key: string; title: string; code: string | n
 export function buildSubtopicPrompt(input: { disciplineMode: string; group: OutlineItem; sub: OutlineSubtopic; year?: number }): string {
   const { group, sub } = input;
   const mode = input.disciplineMode as DisciplineMode;
-  const subject = DISCIPLINE_LABELS[mode] ?? "";
-  const legal = DISCIPLINE_LABELS[mode] ? isLegalMode(mode) : false;
+  const subject = disciplineLabel(mode) ?? "";
+  const legal = disciplineLabel(mode) ? isLegalMode(mode) : false;
   const year = input.year ?? 2026;
   const raw = sub.items.length ? sub.items : [{ code: sub.code ? `${sub.code}.1` : null, title: sub.title }];
   const items = raw.map((it, i) => ({ key: it.code ?? `${i + 1}`, title: it.title, code: it.code ?? `${i + 1}` }));

@@ -1,8 +1,9 @@
 import "server-only";
 import { notFound } from "next/navigation";
+import { ensureDisciplines } from "./services/disciplines";
 import { createAdminClient, createUserClient } from "./supabase";
 import { buildSubjectsMenu, studyStatus, type StudyStatus, type SubjectMenuItem } from "@/domain/studies/subjects-menu";
-import { DISCIPLINE_LABELS, type DisciplineMode } from "@/ai/pedagogy";
+import { disciplineLabel } from "@/ai/pedagogy";
 import { getSessionUser } from "./auth";
 import { normalizeText } from "@/domain/catalog/match";
 import type { PracticeCase } from "@/domain/content/practice";
@@ -665,9 +666,10 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
   const topicIds = [...new Set(mineRows.flatMap((t) => t.catalogTopicIds))];
   const topicDiscipline = new Map<string, string>();
   if (topicIds.length) {
+    await ensureDisciplines();
     const { data: topics } = await createAdminClient().from("catalog_topics").select("id, discipline_mode").in("id", topicIds);
     for (const t of (topics ?? []) as Array<{ id: string; discipline_mode: string }>) {
-      const label = DISCIPLINE_LABELS[t.discipline_mode as DisciplineMode];
+      const label = disciplineLabel(t.discipline_mode as string);
       if (label) topicDiscipline.set(t.id, label);
     }
   }
@@ -744,9 +746,10 @@ export async function getPainelOverview(base = ""): Promise<PainelOverview> {
   const topicIds = [...new Set(trails.flatMap((t) => t.catalogTopicIds))];
   const topicDiscipline = new Map<string, string>();
   if (topicIds.length) {
+    await ensureDisciplines();
     const { data: topics } = await createAdminClient().from("catalog_topics").select("id, discipline_mode").in("id", topicIds);
     for (const t of (topics ?? []) as Array<{ id: string; discipline_mode: string }>) {
-      const label = DISCIPLINE_LABELS[t.discipline_mode as DisciplineMode];
+      const label = disciplineLabel(t.discipline_mode as string);
       if (label) topicDiscipline.set(t.id, label);
     }
   }

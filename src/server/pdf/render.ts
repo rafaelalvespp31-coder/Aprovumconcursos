@@ -29,7 +29,6 @@ const RED_SOFT = rgb(0.995, 0.93, 0.925);
 const LINE = rgb(0.85, 0.85, 0.86);
 const SOFT = rgb(0.958, 0.958, 0.962);
 const ZEBRA = rgb(0.975, 0.975, 0.978);
-const DARK2 = rgb(0.11, 0.11, 0.12);
 
 const LEVEL_LABEL = { facil: "Fácil", medio: "Médio", dificil: "Difícil" } as const;
 const TYPE_LABEL: Record<string, string> = { multipla_escolha: "Múltipla escolha", certo_errado: "Certo ou errado", situacional: "Situacional", discursiva: "Discursiva" };

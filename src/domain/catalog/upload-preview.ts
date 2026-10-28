@@ -3,7 +3,7 @@
  * O servidor acrescenta as conferências que dependem do banco (aula já existente, duplicatas).
  */
 import { lessonSchema } from "@/ai/schemas";
-import { DISCIPLINE_LABELS, SECTION_LABELS } from "@/ai/pedagogy";
+import { disciplineLabel, SECTION_LABELS } from "@/ai/pedagogy";
 import { extractStructure } from "@/domain/content/extract";
 import { normalizeContent } from "@/domain/content/normalize";
 import { normalizeText } from "./match";
@@ -70,7 +70,7 @@ export function summarizeLessonUpload(
     errors,
     warnings: [...(extra.warnings ?? []), ...p.warnings],
     title: m.title,
-    subject: m.disciplineMode ? DISCIPLINE_LABELS[m.disciplineMode] : null,
+    subject: m.disciplineMode ? (disciplineLabel(m.disciplineMode) ?? null) : null,
     disciplineMode: m.disciplineMode,
     kind: m.kind,
     law: m.lawCode ? `${m.lawCode}, art. ${m.articles.join(", ")}` : null,

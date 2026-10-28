@@ -4,6 +4,7 @@
  */
 import { articlesFrom, lawCodeFrom } from "./upload";
 import { codeBelongs, parseCodedTitle } from "./topic-group";
+import { isDisciplineSlug } from "@/ai/pedagogy";
 
 export interface TopicMetaInput {
   title: string;
@@ -14,6 +15,8 @@ export interface TopicMetaInput {
   topicGroup?: string;
   /** Número do subtópico ("4.1"). */
   subtopicCode?: string;
+  /** Matéria (fixa ou cadastrada). Ausente = não mexe. */
+  disciplineMode?: string;
 }
 
 export interface TopicGroupMeta {
@@ -22,7 +25,7 @@ export interface TopicGroupMeta {
   subtopic_code: string | null;
 }
 
-export type TopicMeta = ({ title: string; kind: "tema"; law_code: null; articles: [] } | { title: string; kind: "dispositivo"; law_code: string; articles: string[] }) & Partial<TopicGroupMeta>;
+export type TopicMeta = { discipline_mode?: string } & ({ title: string; kind: "tema"; law_code: null; articles: [] } | { title: string; kind: "dispositivo"; law_code: string; articles: string[] }) & Partial<TopicGroupMeta>;
 
 const SUB_CODE = /^\d{1,3}(\.\d{1,3}){0,4}$/;
 
@@ -39,11 +42,15 @@ export function parseGroupFields(topicGroup: string, subtopicCode: string): { ok
 
 export function parseTopicMeta(input: TopicMetaInput): { ok: true; meta: TopicMeta } | { ok: false; error: string } {
   const title = (input.title ?? "").replace(/\s+/g, " ").trim();
-  let group: Partial<TopicGroupMeta> = {};
+  let group: Partial<TopicGroupMeta> & { discipline_mode?: string } = {};
   if (input.topicGroup !== undefined || input.subtopicCode !== undefined) {
     const gr = parseGroupFields(input.topicGroup ?? "", input.subtopicCode ?? "");
     if (!gr.ok) return gr;
     group = gr.meta;
+  }
+  if (input.disciplineMode !== undefined) {
+    if (!isDisciplineSlug(input.disciplineMode) || input.disciplineMode === "outra") return { ok: false, error: "Escolha a matéria da aula." };
+    group = { ...group, discipline_mode: input.disciplineMode };
   }
   if (title.length < 2) return { ok: false, error: "Escreva o tema (pelo menos 2 letras)." };
   if (title.length > 200) return { ok: false, error: "Tema longo demais (máximo de 200 caracteres)." };

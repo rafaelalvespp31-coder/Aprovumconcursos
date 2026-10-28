@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button, inputClass } from "@/components/ui";
 import { LAWS } from "@/domain/catalog/match";
+import { disciplineLabel, disciplineSlugs, isDisciplineSlug } from "@/ai/pedagogy";
 import { saveTopicMetaAction, type AdminResult } from "../actions";
 
 interface Props {
@@ -15,6 +16,8 @@ interface Props {
   topicGroup?: string | null;
   topicGroupCode?: string | null;
   subtopicCode?: string | null;
+  /** Matéria atual (mostra o campo para trocar de matéria). */
+  disciplineMode?: string | null;
   /** Troca a gravação (prévia da galeria). */
   save?: typeof saveTopicMetaAction;
   /** Edição dentro da lista do catálogo: já abre e avisa quando fechar. */
@@ -38,6 +41,7 @@ export function TopicMetaEditor(p: Props) {
   const groupText = p.topicGroup ? `${p.topicGroupCode ? `${p.topicGroupCode}. ` : ""}${p.topicGroup}` : "";
   const [group, setGroup] = useState(groupText);
   const [sub, setSub] = useState(p.subtopicCode ?? "");
+  const [discipline, setDiscipline] = useState(p.disciplineMode ?? "");
   const [res, setRes] = useState<AdminResult | null>(null);
   const [pending, start] = useTransition();
 
@@ -48,6 +52,7 @@ export function TopicMetaEditor(p: Props) {
     setArticles(p.articles.join(", "));
     setGroup(groupText);
     setSub(p.subtopicCode ?? "");
+    setDiscipline(p.disciplineMode ?? "");
     setRes(null);
   };
 
@@ -82,6 +87,7 @@ export function TopicMetaEditor(p: Props) {
             articles,
             topicGroup: group,
             subtopicCode: sub,
+            ...(p.disciplineMode !== undefined && discipline ? { disciplineMode: discipline } : {}),
           });
           setRes(r);
           if (r.ok) {
@@ -102,6 +108,21 @@ export function TopicMetaEditor(p: Props) {
           name="tema"
         />
       </label>
+      {p.disciplineMode !== undefined && (
+        <label className="flex flex-col gap-1 t-small font-semibold">
+          Matéria
+          <select value={discipline} onChange={(e) => setDiscipline(e.target.value)} className={inputClass} name="materia">
+            {!isDisciplineSlug(discipline) || discipline === "outra" ? <option value="">Escolha a matéria</option> : null}
+            {disciplineSlugs()
+              .filter((m) => m !== "outra")
+              .map((m) => (
+                <option key={m} value={m}>
+                  {disciplineLabel(m) ?? m}
+                </option>
+              ))}
+          </select>
+        </label>
+      )}
       <fieldset className="flex flex-col gap-1">
         <legend className="t-small font-semibold">Tipo</legend>
         <div className="flex flex-wrap gap-4 t-small">
@@ -170,7 +191,7 @@ export function TopicMetaEditor(p: Props) {
         </label>
       </div>
       <p className="t-tiny text-tinta-fraca">
-        Aulas com o mesmo tópico ficam juntas, na ordem do número do subtópico. Muda só o nome, o tipo e o tópico da aula. O texto, as seções e as questões
+        Aulas com o mesmo tópico ficam juntas, na ordem do número do subtópico. Muda só a matéria, o nome, o tipo e o tópico da aula. O texto, as seções e as questões
         continuam iguais, e a mudança vale na hora para os alunos.
       </p>
       <div className="flex flex-wrap items-center gap-3">

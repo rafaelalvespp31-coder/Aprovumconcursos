@@ -26,6 +26,7 @@ import {
 import { UNTRUSTED_RULES, wrapUntrusted } from "./untrusted";
 import {
   DISCIPLINE_LABELS,
+  disciplineLabel,
   LEGAL_RULES,
   LESSON_SECTION_KINDS,
   REQUIRED_QUESTION_LEVELS,
@@ -391,7 +392,7 @@ export async function generateLesson(
     temperature: 0.3,
     schema: lessonSchema,
     prompt: `Escreva a aula "${ctx.lesson.title}" (objetivo: ${ctx.lesson.objective}).
-Disciplina: ${DISCIPLINE_LABELS[ctx.disciplineMode]}. Banca de referência: ${ctx.board} (não atribua à banca padrões que você não possa comprovar; se descrever estilo, deixe claro que é orientação geral).
+Disciplina: ${disciplineLabel(ctx.disciplineMode) ?? DISCIPLINE_LABELS.outra}. Banca de referência: ${ctx.board} (não atribua à banca padrões que você não possa comprovar; se descrever estilo, deixe claro que é orientação geral).
 Diretrizes da disciplina: ${disciplineGuide(ctx.disciplineMode)}
 ${ctx.lesson.supplementary.length ? `Apoio pedagógico a incluir (identifique como complementar): ${ctx.lesson.supplementary.map((s) => s.title).join("; ")}.` : ""}
 ${ctx.previousLessonTitles.length ? `Aulas anteriores (não repita): ${ctx.previousLessonTitles.slice(-8).join("; ")}.` : ""}
