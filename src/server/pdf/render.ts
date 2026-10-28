@@ -706,7 +706,22 @@ type QuestionChip = { text: string; red?: boolean };
 type CardQuestion = Pick<PdfSnapshot["questions"][number], "type" | "statement" | "topic" | "options" | "correctAnswerTrue" | "justification" | "answer"> & { caseContext: string | null; note: string | null };
 
 /** Cartão de questão (mesmo visual no PDF das aulas e no caderno de erros). */
-function drawQuestionCard(w: Writer, q: CardQuestion, n: number, o: { chips: QuestionChip[]; result: string; foot: string; meta?: string | null }) {
+/**
+ * Só a justificativa (caderno de erros): sem gabarito, sem "sua resposta", sem acertou/errou e
+ * sem certo/errado — o enunciado, as alternativas neutras e a justificativa direta.
+ */
+function plainJustification(text: string): string {
+  return text
+    .split("\n")
+    .filter((l) => !/^\s*gabarito\b/i.test(l))
+    .join("\n")
+    .replace(/^\s*(certo|errado|correta|incorreta|verdadeiro|falso)\s*[.!:;,–-]\s*/i, "")
+    .replace(/^\s*(alternativa\s+)?[a-e]\)?\s*[.:–-]\s*(?=[A-ZÁÉÍÓÚÂÊÔÃÕÇ])/, "")
+    .trim();
+}
+
+function drawQuestionCard(w: Writer, q: CardQuestion, n: number, o: { chips: QuestionChip[]; result?: string; foot?: string; meta?: string | null; justificationOnly?: boolean }) {
+  const only = !!o.justificationOnly;
   w.card(
     () => {
       // Cabeçalho do cartão: número, chips e resultado
@@ -716,15 +731,28 @@ function drawQuestionCard(w: Writer, q: CardQuestion, n: number, o: { chips: Que
       const lw = w.spaced(label, w.left, top - 10, 9, w.fonts.bold, INK, 0.12);
       let x = w.left + lw + 10;
       for (const c of o.chips) x += w.chip(c.text, x, top - 1, c.red ? { bg: RED_SOFT, fg: RED, border: RED } : { bg: SOFT, fg: INK, border: LINE }) + 5;
-      const rw = w.spacedWidth(o.result, 7, w.fonts.bold, 0.1) + 12;
-      w.chip(o.result, w.right - rw, top - 1, { bg: q.answer.correct ? INK : RED, fg: WHITE });
+      if (o.result && !only) {
+        const rw = w.spacedWidth(o.result, 7, w.fonts.bold, 0.1) + 12;
+        w.chip(o.result, w.right - rw, top - 1, { bg: q.answer.correct ? INK : RED, fg: WHITE });
+      }
       w.y = top - 22;
       if (q.topic) w.rich([{ text: q.topic, italic: true }], { size: 8.5, color: MUTED, gap: 2 });
       if (o.meta) w.rich([{ text: o.meta }], { size: 8, color: FAINT, gap: 4 });
       if (q.caseContext) w.card(() => w.rich([{ text: q.caseContext! }], { size: 9.5, color: MUTED, gap: 0 }), { bg: SOFT, pad: 8, gap: 6 });
       w.rich([{ text: q.statement }], { size: 10.5, gap: 8 });
 
-      if (q.type === "certo_errado") {
+      if (only) {
+        // Alternativas sem nenhuma marcação (certo/errado não aparecem na justificativa-only).
+        if (q.type !== "certo_errado")
+          for (const op of q.options) {
+            w.ensure(22);
+            const cy = w.y - 7;
+            w.drawCircle({ x: w.left + 8, y: cy, size: 7.5, color: WHITE, borderColor: FAINT, borderWidth: 0.8 });
+            const lt = w.clean(op.label);
+            w.drawText(lt, { x: w.left + 8 - measure(w.fonts.bold, lt, 8) / 2, y: cy - 2.8, size: 8, font: w.fonts.bold, color: INK });
+            w.rich([{ text: op.text }], { size: 10, indent: 22, gap: 3 });
+          }
+      } else if (q.type === "certo_errado") {
         const gab = q.correctAnswerTrue ? "Certo" : "Errado";
         const mine = q.answer.bool === null ? "—" : q.answer.bool ? "Certo" : "Errado";
         drawTable(
@@ -754,9 +782,9 @@ function drawQuestionCard(w: Writer, q: CardQuestion, n: number, o: { chips: Que
       w.y -= 2;
       w.card(
         () => {
-          w.spaced("Comentário", w.left, w.y - 7, 7, w.fonts.bold, RED, 0.2);
+          w.spaced(only ? "Justificativa" : "Comentário", w.left, w.y - 7, 7, w.fonts.bold, RED, 0.2);
           w.y -= 13;
-          w.rich([{ text: q.justification }], { size: 9.5, gap: 0, lineHeight: 13.5 });
+          w.rich([{ text: only ? plainJustification(q.justification) || q.justification : q.justification }], { size: 9.5, gap: 0, lineHeight: 13.5 });
         },
         { bg: SOFT, accent: RED, pad: 9, padX: 10, gap: 4 },
       );
@@ -769,7 +797,7 @@ function drawQuestionCard(w: Writer, q: CardQuestion, n: number, o: { chips: Que
           },
           { border: LINE, accent: INK, pad: 9, padX: 10, gap: 4 },
         );
-      w.rich([{ text: o.foot }], { size: 7.8, color: FAINT, gap: 0 });
+      if (o.foot) w.rich([{ text: o.foot }], { size: 7.8, color: FAINT, gap: 0 });
     },
     { border: LINE, pad: 12, gap: 10 },
   );
@@ -902,10 +930,14 @@ export async function renderStudyPdf(s: PdfSnapshot, meta: { pdfVersion: number;
 
 /**
  * PDF do caderno de erros (mesma identidade e estrutura do PDF das aulas):
- * capa → sumário → resumo (números, erros por matéria e assunto, filtros) → questões erradas
- * agrupadas por matéria e assunto (cartões com sua resposta, gabarito, explicações, comentário e
- * sua anotação) → gabarito para revisão rápida.
+ * capa → sumário → resumo (números, questões por matéria e assunto, filtros) → questões erradas
+ * agrupadas por matéria e assunto: enunciado, alternativas neutras e só a justificativa (sem
+ * gabarito, sem "sua resposta", sem certo/errado) e a anotação do aluno.
  */
+function groups0(qs: ErrorNotebookSnapshot["questions"]) {
+  return { subjects: new Set(qs.map((q) => q.subject)).size, topics: new Set(qs.map((q) => `${q.subject}|${q.topic ?? ""}`)).size };
+}
+
 export async function renderErrorNotebookPdf(e: ErrorNotebookSnapshot): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(`Caderno de erros — ${e.notebook.title} — APROVUM`);
@@ -943,10 +975,10 @@ export async function renderErrorNotebookPdf(e: ErrorNotebookSnapshot): Promise<
   // ---- Resumo ----
   w.section("Resumo do caderno", { newPage: true });
   statTiles(w, [
+    [String(errs.length), errs.length === 1 ? "questão para revisar" : "questões para revisar"],
     [String(e.totals.answered), e.totals.answered === 1 ? "questão respondida" : "questões respondidas"],
-    [e.totals.answered ? `${Math.round((e.totals.correct / e.totals.answered) * 100)}%` : "—", "acerto na última resposta"],
-    [String(e.totals.stillWrong), e.totals.stillWrong === 1 ? "ainda errada" : "ainda erradas"],
-    [String(e.totals.corrected), e.totals.corrected === 1 ? "errada e corrigida" : "erradas e corrigidas"],
+    [String(groups0(errs).subjects), groups0(errs).subjects === 1 ? "matéria" : "matérias"],
+    [String(groups0(errs).topics), groups0(errs).topics === 1 ? "assunto" : "assuntos"],
   ]);
   const groups = new Map<string, Map<string, ErrorNotebookSnapshot["questions"]>>();
   for (const q of errs) {
@@ -957,13 +989,9 @@ export async function renderErrorNotebookPdf(e: ErrorNotebookSnapshot): Promise<
   }
   if (errs.length) {
     w.subheading("Erros por matéria e assunto");
-    const rows: Run[][][] = [[[{ text: "Matéria" }], [{ text: "Assunto" }], [{ text: "Erradas" }], [{ text: "Ainda erradas" }]]];
-    for (const [subject, topics] of groups)
-      for (const [topic, qs] of topics) {
-        const still = qs.filter((q) => !q.answer.correct).length;
-        rows.push([[{ text: subject, bold: true }], [{ text: topic }], [{ text: String(qs.length), bold: true }], [{ text: String(still), bold: true, color: still ? RED : INK }]]);
-      }
-    drawTable(w, rows, { align: ["left", "left", "center", "center"] });
+    const rows: Run[][][] = [[[{ text: "Matéria" }], [{ text: "Assunto" }], [{ text: "Questões" }]]];
+    for (const [subject, topics] of groups) for (const [topic, qs] of topics) rows.push([[{ text: subject, bold: true }], [{ text: topic }], [{ text: String(qs.length), bold: true }]]);
+    drawTable(w, rows, { align: ["left", "left", "center"] });
   }
   if (e.notebook.filters.length) {
     w.subheading("Filtros do caderno");
@@ -972,7 +1000,7 @@ export async function renderErrorNotebookPdf(e: ErrorNotebookSnapshot): Promise<
   w.card(
     () =>
       w.text(
-        "Como usar: comece pelas questões que continuam erradas, leia o comentário e as explicações de cada alternativa, anote a regra que faltou e refaça a questão no caderno. As corrigidas ficam aqui para revisão: você já errou uma vez.",
+        "Como usar: leia o enunciado, tente resolver de novo e só então leia a justificativa. Anote a regra que faltou e refaça a questão no caderno.",
         { size: 9, italic: true, color: MUTED, gap: 0 },
       ),
     { bg: SOFT, accent: RED, pad: 9 },
@@ -984,21 +1012,19 @@ export async function renderErrorNotebookPdf(e: ErrorNotebookSnapshot): Promise<
     w.card(() => w.text("Você ainda não errou nenhuma questão neste caderno. Continue resolvendo: os erros aparecem aqui automaticamente.", { gap: 0 }), { bg: SOFT, accent: INK, pad: 10 });
   }
   let n = 0;
-  const key: Array<{ n: number; code: string; topic: string; answer: string }> = [];
   for (const [subject, topics] of groups) {
     const qs = [...topics.values()].flat();
-    const still = qs.filter((q) => !q.answer.correct).length;
     // O título da matéria nunca fica sozinho no fim da página.
     if (w.room < 200) w.newPage();
-    w.unit(`${plural(qs.length, "questão errada", "questões erradas")} · ${plural(still, "ainda errada", "ainda erradas")}`, subject);
+    w.unit(plural(qs.length, "questão para revisar", "questões para revisar"), subject);
     for (const [topic, list] of topics) {
       // O assunto já é o título do grupo: não se repete dentro do cartão.
       const card = (q: ErrorNotebookSnapshot["questions"][number], num: number) =>
         drawQuestionCard(w, { ...q, topic: null }, num, {
-          chips: [{ text: TYPE_LABEL[q.type] ?? q.type }, q.answer.correct ? { text: "Corrigida" } : { text: "Ainda errada", red: true }],
-          result: q.answer.correct ? "Acertou" : "Errou",
+          // Sem "certo/errado" nem no rótulo do tipo da questão.
+          chips: [{ text: q.type === "certo_errado" ? "Julgue o item" : (TYPE_LABEL[q.type] ?? q.type) }],
           meta: [q.code, q.source].filter(Boolean).join(" · ") || null,
-          foot: [`Tentativas: ${q.attempts}`, `errou ${q.wrongAttempts === 1 ? "1 vez" : `${q.wrongAttempts} vezes`}`, `última em ${fmtDateTime(q.answer.at)}`].join("  ·  "),
+          justificationOnly: true,
         });
       // O título do assunto nunca fica sozinho no fim da página: vai junto com a 1ª questão.
       const firstH = w.measureBlock(() => card(list[0]!, n + 1));
@@ -1006,22 +1032,9 @@ export async function renderErrorNotebookPdf(e: ErrorNotebookSnapshot): Promise<
       w.subheading(topic);
       for (const q of list) {
         n++;
-        const gab = q.type === "certo_errado" ? (q.correctAnswerTrue ? "Certo" : "Errado") : (q.options.find((o) => o.correct)?.label ?? "—");
-        key.push({ n, code: q.code ?? "—", topic: `${subject} › ${topic}`, answer: gab });
         card(q, n);
       }
     }
-  }
-
-  // ---- Gabarito ----
-  if (key.length) {
-    w.section("Gabarito para revisão rápida", { newPage: true });
-    w.text("Tente lembrar a resposta antes de olhar: é o jeito mais rápido de fixar o que você errou.", { color: MUTED, size: 9.5, gap: 8 });
-    drawTable(
-      w,
-      [[[{ text: "Nº" }], [{ text: "Código" }], [{ text: "Matéria › assunto" }], [{ text: "Gabarito" }]], ...key.map((k) => [[{ text: String(k.n).padStart(2, "0"), bold: true }], [{ text: k.code }], [{ text: k.topic }], [{ text: k.answer, bold: true, color: RED }]])],
-      { align: ["center", "left", "left", "center"] },
-    );
   }
 
   // ---- Sumário, cabeçalho e rodapé ----
