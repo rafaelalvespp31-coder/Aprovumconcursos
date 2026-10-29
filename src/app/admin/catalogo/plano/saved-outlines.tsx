@@ -10,7 +10,7 @@ export interface SavedOutline {
   disciplineMode: string;
   sourceText: string;
   /** Subtópicos do plano já publicados e os que faltam (sem isso, só a contagem do plano). */
-  totals?: { subtopics: number; publicado: number; rascunho: number; faltam: number };
+  totals?: { subtopics: number; publicado: number; rascunho: number; faltam: number; duplicados?: number };
 }
 
 /** Agrupa os planos pela matéria (na ordem das matérias; os de matéria desconhecida no fim), por título. */
@@ -49,7 +49,7 @@ export function SavedOutlines({ outlines, base = "/admin/catalogo/plano" }: { ou
       <div className="mt-3 flex flex-col gap-3">
         {groups.map((g) => {
           const color = colorOf(g.mode);
-          const sum = g.items.reduce((a, o) => (o.totals ? { publicado: a.publicado + o.totals.publicado, faltam: a.faltam + o.totals.faltam } : a), { publicado: 0, faltam: 0 });
+          const sum = g.items.reduce((a, o) => (o.totals ? { publicado: a.publicado + o.totals.publicado, faltam: a.faltam + o.totals.faltam, dup: a.dup + (o.totals.duplicados ?? 0) } : a), { publicado: 0, faltam: 0, dup: 0 });
           const hasTotals = g.items.some((o) => o.totals);
           return (
             <details key={g.mode} open className="plano-materia group" style={{ "--cor": color } as CSSProperties} data-testid="planos-materia" data-materia={g.mode}>
@@ -64,6 +64,11 @@ export function SavedOutlines({ outlines, base = "/admin/catalogo/plano" }: { ou
                   <span className="flex shrink-0 flex-wrap items-center gap-1.5" data-testid="materia-contagem">
                     <span className="plano-pill plano-pill-ok">{plural(sum.publicado, "publicado", "publicados")}</span>
                     <span className="plano-pill plano-pill-falta">{sum.faltam} {sum.faltam === 1 ? "falta" : "faltam"}</span>
+                    {sum.dup > 0 && (
+                      <span className="plano-pill plano-pill-dup">
+                        ⚠ {sum.dup} duplicado{sum.dup === 1 ? "" : "s"}
+                      </span>
+                    )}
                   </span>
                 )}
               </summary>
@@ -87,6 +92,11 @@ export function SavedOutlines({ outlines, base = "/admin/catalogo/plano" }: { ou
                             <span className="plano-contagem" data-testid="plano-contagem" aria-label={`${t.publicado} publicados e ${t.faltam} faltando de ${t.subtopics}`}>
                               <span className="plano-pill plano-pill-ok">{t.publicado} publicado{t.publicado === 1 ? "" : "s"}</span>
                               <span className="plano-pill plano-pill-falta">{t.faltam} {t.faltam === 1 ? "falta" : "faltam"}</span>
+                              {!!t.duplicados && (
+                                <span className="plano-pill plano-pill-dup" data-testid="plano-duplicados">
+                                  ⚠ {t.duplicados} duplicado{t.duplicados === 1 ? "" : "s"}
+                                </span>
+                              )}
                             </span>
                           )}
                         </span>

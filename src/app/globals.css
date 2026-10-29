@@ -2352,5 +2352,6 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .plano-pill { display: inline-flex; align-items: center; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 11.5px; font-weight: 800; white-space: nowrap; background: #fff; }
 .plano-pill-ok { color: #14532D; }
 .plano-pill-falta { color: #8A3B00; }
+.plano-pill-dup { background: #FFE14D; color: #5A1A00; }
 .plano-barra { display: block; height: 6px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,0.25); }
 .plano-barra > span { display: block; height: 100%; border-radius: inherit; background: #fff; }

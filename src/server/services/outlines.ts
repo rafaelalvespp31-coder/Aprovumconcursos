@@ -1,7 +1,7 @@
 import "server-only";
 import { isDisciplineSlug } from "@/ai/pedagogy";
 import { buildSubtopicPrompt } from "@/domain/catalog/subtopic-prompt";
-import { findCatalogFor, parseOutline, type Outline, type OutlineStatus } from "@/domain/catalog/topic-group";
+import { findAllCatalogFor, parseOutline, type Outline, type OutlineStatus } from "@/domain/catalog/topic-group";
 import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
 import { auditLog } from "../observability";
@@ -80,12 +80,14 @@ export interface PlanSubtopic {
   status: OutlineStatus;
   topicId: string | null;
   prompt: string;
+  /** Mais de uma aula cobrindo este subtópico (duplicadas): todas, publicadas primeiro. */
+  duplicates: Array<{ id: string; title: string; status: string }>;
 }
 export interface PlanView {
   outline: OutlineRow;
   warnings: string[];
   groups: Array<{ code: string | null; title: string; subtopics: PlanSubtopic[] }>;
-  totals: { subtopics: number; publicado: number; rascunho: number; pendente: number };
+  totals: { subtopics: number; publicado: number; rascunho: number; pendente: number; duplicados: number };
 }
 
 /** Árvore do plano com a situação de cada subtópico no catálogo e o comando pronto do ChatGPT. */
@@ -98,16 +100,27 @@ export async function planView(outline: OutlineRow): Promise<PlanView> {
     .not("topic_group", "is", null)
     .limit(2000);
   const catalog = (data ?? []).map((t) => ({ id: t.id as string, title: t.title as string, status: t.status as string, topicGroup: t.topic_group as string | null, subtopicCode: t.subtopic_code as string | null }));
-  const totals = { subtopics: 0, publicado: 0, rascunho: 0, pendente: 0 };
+  const totals = { subtopics: 0, publicado: 0, rascunho: 0, pendente: 0, duplicados: 0 };
   const groups = parsed.groups.map((g, gi) => ({
     code: g.code,
     title: g.title,
     subtopics: g.subtopics.map((s, si): PlanSubtopic => {
-      const hit = findCatalogFor(g, s, catalog);
+      const all = findAllCatalogFor(g, s, catalog);
+      const hit = all[0] ?? null;
       const status: OutlineStatus = hit ? (hit.status === "publicado" ? "publicado" : "rascunho") : "pendente";
       totals.subtopics++;
       totals[status]++;
-      return { ref: `${gi}-${si}`, code: s.code, title: s.title, items: s.items, status, topicId: hit?.id ?? null, prompt: buildSubtopicPrompt({ disciplineMode: outline.disciplineMode, group: g, sub: s }) };
+      if (all.length > 1) totals.duplicados++;
+      return {
+        ref: `${gi}-${si}`,
+        code: s.code,
+        title: s.title,
+        items: s.items,
+        status,
+        topicId: hit?.id ?? null,
+        prompt: buildSubtopicPrompt({ disciplineMode: outline.disciplineMode, group: g, sub: s }),
+        duplicates: all.length > 1 ? all.map((x) => ({ id: x.id, title: x.title, status: x.status })) : [],
+      };
     }),
   }));
   return { outline, warnings: parsed.warnings, groups, totals };
@@ -131,6 +144,8 @@ export interface OutlineTotals {
   rascunho: number;
   /** Ainda não publicados (em rascunho ou nem catalogados). */
   faltam: number;
+  /** Subtópicos com mais de uma aula (duplicadas). */
+  duplicados: number;
 }
 
 /** Planos salvos com quantos subtópicos já estão publicados e quantos faltam (uma consulta só ao catálogo). */
@@ -153,10 +168,12 @@ export async function listOutlinesWithTotals(): Promise<Array<OutlineRow & { tot
   }
   return outlines.map((o) => {
     const catalog = byMode.get(o.disciplineMode) ?? [];
-    const totals: OutlineTotals = { subtopics: 0, publicado: 0, rascunho: 0, faltam: 0 };
+    const totals: OutlineTotals = { subtopics: 0, publicado: 0, rascunho: 0, faltam: 0, duplicados: 0 };
     for (const g of parseOutline(o.sourceText).groups)
       for (const sub of g.subtopics) {
-        const hit = findCatalogFor(g, sub, catalog);
+        const all = findAllCatalogFor(g, sub, catalog);
+        const hit = all[0];
+        if (all.length > 1) totals.duplicados++;
         totals.subtopics++;
         if (hit?.status === "publicado") totals.publicado++;
         else {

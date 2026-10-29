@@ -4,6 +4,7 @@ import type { DisciplineMode } from "@/ai/pedagogy";
 import { prepareLessonUpload, summarizeLessonUpload, type LessonUploadPreview } from "@/domain/catalog/upload-preview";
 import { buildCompactPrompt, buildModelPrompt, buildModelPromptParts, exportTopicText, type ExportableTopic } from "@/domain/catalog/export";
 import { parseQuestionsForTopic } from "@/domain/catalog/upload";
+import { existingForUpload } from "@/domain/catalog/topic-group";
 import { applyEnrichment, enrichStatus, parseEnrichment, type EnrichLesson } from "@/domain/catalog/enrich";
 import { lessonSchema } from "@/ai/schemas";
 import { createAdminClient } from "../supabase";
@@ -12,19 +13,39 @@ import { auditLog } from "../observability";
 import { UserFacingError } from "./trails";
 import { bannerUrlFor } from "./banners";
 
+
+type ExistingTopic = { id: string; status: string; title: string; by: "endereco" | "subtopico" };
+
+/**
+ * A aula que este texto vai atualizar: a do mesmo endereço ou, se não houver, a que já cobre o
+ * mesmo subtópico na mesma matéria (mesmo tópico e número) — catalogar de novo nunca duplica.
+ */
+async function findExisting(db: ReturnType<typeof createAdminClient>, p: ReturnType<typeof prepareLessonUpload>): Promise<ExistingTopic | null> {
+  const { data: bySlug } = await db.from("catalog_topics").select("id, status, title").eq("slug", p.slug).maybeSingle();
+  if (bySlug) return { id: bySlug.id as string, status: bySlug.status as string, title: bySlug.title as string, by: "endereco" };
+  const m = p.parsed.meta;
+  if (!m.topicGroup || !m.disciplineMode) return null;
+  const { data } = await db.from("catalog_topics").select("id, slug, title, status, topic_group, subtopic_code").eq("discipline_mode", m.disciplineMode).not("topic_group", "is", null).limit(5000);
+  const rows = (data ?? []).map((t) => ({ id: t.id as string, slug: t.slug as string, title: t.title as string, status: t.status as string, topicGroup: t.topic_group as string | null, subtopicCode: t.subtopic_code as string | null }));
+  const hit = existingForUpload(m, p.slug, rows);
+  return hit ? { id: hit.row.id, status: hit.row.status, title: hit.row.title, by: hit.by } : null;
+}
+
 /** Confere o arquivo e mostra como a aula vai ficar, sem gravar nada. */
 export async function previewLessonUpload(text: string): Promise<LessonUploadPreview> {
   const p = prepareLessonUpload(text);
   const db = createAdminClient();
-  const { data: existing } = await db.from("catalog_topics").select("id, status, title").eq("slug", p.slug).maybeSingle();
+  const existing = await findExisting(db, p);
   const errors: string[] = [];
   const warnings: string[] = [];
+  if (existing?.by === "subtopico")
+    warnings.push(`Este subtópico já está catalogado na aula “${existing.title}”. Ao salvar, esta versão atualiza essa aula — não cria uma aula duplicada.`);
   if (existing?.status === "publicado") warnings.push(`“${existing.title}” já está publicada: ao salvar, esta versão substitui a do site (as questões antigas ficam inativas e quem já estudava recebe o aviso de atualização).`);
   const m = p.parsed.meta;
   if (m.kind === "dispositivo" && m.lawCode && m.articles.length) {
     const { data: same } = await db.from("catalog_topics").select("slug, title, articles").eq("law_code", m.lawCode).eq("status", "publicado").overlaps("articles", m.articles);
     for (const t of same ?? []) if (t.slug !== p.slug) warnings.push(`Atenção: “${t.title}” já está publicada e cobre ${m.lawCode}, art. ${(t.articles as string[]).filter((a) => m.articles.includes(a)).join(", ")}. A nova aula entra como rascunho separado; publique só se não for duplicar a existente.`);
-  } else if (m.title && m.disciplineMode) {
+  } else if (m.title && m.disciplineMode && !existing) {
     const { data: same } = await db.from("catalog_topics").select("title").eq("status", "publicado").eq("discipline_mode", m.disciplineMode).ilike("title", m.title.replace(/[%_\\]/g, ""));
     for (const t of same ?? []) warnings.push(`Atenção: já existe a aula publicada “${t.title}” na mesma matéria.`);
   }
@@ -70,7 +91,7 @@ export async function importLessonUpload(user: SessionUser, text: string, fileNa
   if (p.errors.length) throw new UserFacingError(p.errors[0]!, "invalid_input");
   const blockers = autoPublishBlockers(p);
   const db = createAdminClient();
-  const { data: existing } = await db.from("catalog_topics").select("id, status").eq("slug", p.slug).maybeSingle();
+  const existing = await findExisting(db, p);
   const wasPublished = existing?.status === "publicado";
   if (wasPublished && blockers.length) {
     throw new UserFacingError(`Esta aula já está publicada e a nova versão ainda não pode ir ao ar (${blockers.join("; ")}). Complete e cole de novo: a versão publicada continua no site.`, "not_ready");

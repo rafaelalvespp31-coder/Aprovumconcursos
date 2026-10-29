@@ -233,3 +233,33 @@ export function findCatalogFor(group: OutlineItem, sub: OutlineItem, catalog: re
   // Número diferente nos dois lados = subtópicos diferentes, mesmo com o mesmo nome.
   return same.find((c) => foldKey(c.title) === sk && !(sub.code && c.subtopicCode && c.subtopicCode !== sub.code)) ?? null;
 }
+
+/**
+ * TODAS as aulas do catálogo que cobrem o mesmo subtópico (mesma regra de `findCatalogFor`):
+ * mais de uma = aula duplicada. Publicadas primeiro.
+ */
+export function findAllCatalogFor<T extends CatalogGroupRef>(group: OutlineItem, sub: OutlineItem, catalog: readonly T[]): T[] {
+  const gk = groupKey(group.title);
+  const sk = foldKey(sub.title);
+  const same = catalog.filter((c) => c.topicGroup && groupKey(c.topicGroup) === gk && c.status !== "arquivado");
+  const hits = same.filter((c) => (sub.code && c.subtopicCode === sub.code) || (foldKey(c.title) === sk && !(sub.code && c.subtopicCode && c.subtopicCode !== sub.code)));
+  const rank = (s: string) => (s === "publicado" ? 0 : 1);
+  return [...hits].sort((a, b) => rank(a.status) - rank(b.status));
+}
+
+/**
+ * Aula que um texto colado deve ATUALIZAR em vez de criar outra: primeiro o mesmo endereço
+ * (slug); senão, a aula que já cobre o mesmo subtópico (mesma matéria, tópico e número).
+ * Assim catalogar de novo um subtópico nunca duplica a aula.
+ */
+export function existingForUpload<T extends CatalogGroupRef & { slug: string }>(
+  meta: { title: string; topicGroup: string | null; topicGroupCode: string | null; subtopicCode: string | null },
+  slug: string,
+  sameDiscipline: readonly T[],
+): { row: T; by: "endereco" | "subtopico" } | null {
+  const bySlug = sameDiscipline.find((c) => c.slug === slug);
+  if (bySlug) return { row: bySlug, by: "endereco" };
+  if (!meta.topicGroup) return null;
+  const [hit] = findAllCatalogFor({ code: meta.topicGroupCode, title: meta.topicGroup }, { code: meta.subtopicCode, title: meta.title }, sameDiscipline);
+  return hit ? { row: hit, by: "subtopico" } : null;
+}

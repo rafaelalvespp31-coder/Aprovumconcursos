@@ -72,3 +72,11 @@ test("plano de tópicos: cores por matéria e quantos subtópicos estão publica
   const cores = await page.getByTestId("planos-materia").evaluateAll((els) => els.map((e) => getComputedStyle(e).backgroundColor));
   expect(new Set(cores).size).toBe(cores.length);
 });
+
+test("plano de tópicos: subtópico com aula duplicada aparece com aviso no card e na matéria", async ({ page }) => {
+  await page.goto("/dev/galeria/catalogo");
+  const penal = page.getByTestId("planos-materia").filter({ hasText: "Direito Penal" });
+  await expect(penal.getByTestId("materia-contagem")).toContainText("⚠ 1 duplicado");
+  await expect(penal.getByTestId("plano-salvo").filter({ hasText: "Parte Especial" }).getByTestId("plano-duplicados")).toHaveText("⚠ 1 duplicado");
+  await expect(penal.getByTestId("plano-salvo").filter({ hasText: "Parte Geral" }).getByTestId("plano-duplicados")).toHaveCount(0);
+});
