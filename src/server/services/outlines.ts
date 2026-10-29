@@ -1,6 +1,6 @@
 import "server-only";
 import { isDisciplineSlug } from "@/ai/pedagogy";
-import { buildSubtopicPrompt } from "@/domain/catalog/subtopic-prompt";
+import { buildSubtopicPrompt, buildSubtopicPromptParts } from "@/domain/catalog/subtopic-prompt";
 import { findAllCatalogFor, parseOutline, type Outline, type OutlineStatus } from "@/domain/catalog/topic-group";
 import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
@@ -127,7 +127,7 @@ export async function planView(outline: OutlineRow): Promise<PlanView> {
 }
 
 /** Comando de um subtópico do plano (para abrir direto em "Catalogar aula"). */
-export async function subtopicPrompt(outlineId: string, ref: string): Promise<{ prompt: string; label: string; planTitle: string } | null> {
+export async function subtopicPrompt(outlineId: string, ref: string): Promise<{ prompt: string; parts: { part1: string; part2: string }; big: boolean; label: string; planTitle: string } | null> {
   const o = await getOutline(outlineId);
   const m = ref.match(/^(\d{1,3})-(\d{1,3})$/);
   if (!o || !m) return null;
@@ -135,7 +135,8 @@ export async function subtopicPrompt(outlineId: string, ref: string): Promise<{ 
   const g = parsed.groups[Number(m[1])];
   const s = g?.subtopics[Number(m[2])];
   if (!g || !s) return null;
-  return { prompt: buildSubtopicPrompt({ disciplineMode: o.disciplineMode, group: g, sub: s }), label: `${s.code ? `${s.code} ` : ""}${s.title}`, planTitle: o.title };
+  const input = { disciplineMode: o.disciplineMode, group: g, sub: s };
+  return { prompt: buildSubtopicPrompt(input), parts: buildSubtopicPromptParts(input), big: s.items.length > 10, label: `${s.code ? `${s.code} ` : ""}${s.title}`, planTitle: o.title };
 }
 
 export interface OutlineTotals {

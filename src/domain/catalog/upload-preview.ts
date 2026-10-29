@@ -9,7 +9,30 @@ import { normalizeContent } from "@/domain/content/normalize";
 import { normalizeText } from "./match";
 import { buildLesson, parseLessonUpload, type UploadLevel } from "./upload";
 
-const slugify = (s: string) => normalizeText(s).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 100) || "tema";
+const slugFull = (s: string) => normalizeText(s).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+// Igual ao formato de sempre (endereços antigos continuam batendo).
+const slugify = (s: string) => slugFull(s).slice(0, 100) || "tema";
+
+/** Hash curto e estável (FNV-1a), para diferenciar endereços que precisaram ser encurtados. */
+function shortHash(s: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193) >>> 0;
+  return h.toString(36).padStart(7, "0").slice(-7);
+}
+
+/**
+ * Endereço (slug) da aula. Com tópico do edital: tópico + número + título — e, se o nome do
+ * tópico for longo demais, o endereço é encurtado SEM perder o número e o título (mais um hash do
+ * nome inteiro), para dois subtópicos do mesmo tópico nunca caírem no mesmo endereço.
+ */
+export function lessonSlug(m: { kind: string; lawCode: string | null; articles: string[]; title: string; topicGroup: string | null; subtopicCode: string | null }): string {
+  if (m.kind === "dispositivo") return slugify(`${m.lawCode}-art-${m.articles.slice(0, 6).join("-")}-${m.title}`);
+  if (!m.topicGroup) return slugify(m.title);
+  const full = slugFull(`${m.topicGroup}-${m.subtopicCode ?? ""}-${m.title}`);
+  if (full.length <= 100) return full || "tema";
+  const cut = (x: string, n: number) => slugFull(x).slice(0, n).replace(/-+$/, "");
+  return [cut(m.topicGroup, 28), slugFull(m.subtopicCode ?? ""), cut(m.title, 50), shortHash(full)].filter(Boolean).join("-");
+}
 
 export interface LessonUploadPreview {
   ok: boolean;
@@ -45,7 +68,7 @@ export function prepareLessonUpload(text: string) {
   if (source.length > 60000) errors.push("O TEXTO-BASE passa de 60.000 caracteres. Divida a matéria em partes.");
   const m = parsed.meta;
   // Subtópico: o nome do tópico entra no endereço (dois tópicos podem ter um subtópico "Conceito").
-  const slug = slugify(m.kind === "dispositivo" ? `${m.lawCode}-art-${m.articles.slice(0, 6).join("-")}-${m.title}` : m.topicGroup ? `${m.topicGroup}-${m.subtopicCode ?? ""}-${m.title}` : m.title);
+  const slug = lessonSlug(m);
   return { parsed, source, nodes, built, errors, warnings: [...parsed.warnings, ...built.warnings], slug };
 }
 

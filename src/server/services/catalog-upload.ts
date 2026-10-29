@@ -4,7 +4,7 @@ import type { DisciplineMode } from "@/ai/pedagogy";
 import { prepareLessonUpload, summarizeLessonUpload, type LessonUploadPreview } from "@/domain/catalog/upload-preview";
 import { buildCompactPrompt, buildModelPrompt, buildModelPromptParts, exportTopicText, type ExportableTopic } from "@/domain/catalog/export";
 import { parseQuestionsForTopic } from "@/domain/catalog/upload";
-import { existingForUpload } from "@/domain/catalog/topic-group";
+import { existingForUpload, slugMatchIsSameLesson } from "@/domain/catalog/topic-group";
 import { applyEnrichment, enrichStatus, parseEnrichment, type EnrichLesson } from "@/domain/catalog/enrich";
 import { lessonSchema } from "@/ai/schemas";
 import { createAdminClient } from "../supabase";
@@ -21,9 +21,10 @@ type ExistingTopic = { id: string; status: string; title: string; by: "endereco"
  * mesmo subtópico na mesma matéria (mesmo tópico e número) — catalogar de novo nunca duplica.
  */
 async function findExisting(db: ReturnType<typeof createAdminClient>, p: ReturnType<typeof prepareLessonUpload>): Promise<ExistingTopic | null> {
-  const { data: bySlug } = await db.from("catalog_topics").select("id, status, title").eq("slug", p.slug).maybeSingle();
-  if (bySlug) return { id: bySlug.id as string, status: bySlug.status as string, title: bySlug.title as string, by: "endereco" };
   const m = p.parsed.meta;
+  const { data: bySlug } = await db.from("catalog_topics").select("id, status, title, topic_group, subtopic_code").eq("slug", p.slug).maybeSingle();
+  if (bySlug && slugMatchIsSameLesson(m, { topicGroup: bySlug.topic_group as string | null, subtopicCode: bySlug.subtopic_code as string | null }))
+    return { id: bySlug.id as string, status: bySlug.status as string, title: bySlug.title as string, by: "endereco" };
   if (!m.topicGroup || !m.disciplineMode) return null;
   const { data } = await db.from("catalog_topics").select("id, slug, title, status, topic_group, subtopic_code").eq("discipline_mode", m.disciplineMode).not("topic_group", "is", null).limit(5000);
   const rows = (data ?? []).map((t) => ({ id: t.id as string, slug: t.slug as string, title: t.title as string, status: t.status as string, topicGroup: t.topic_group as string | null, subtopicCode: t.subtopic_code as string | null }));
@@ -121,7 +122,10 @@ export async function importLessonUpload(user: SessionUser, text: string, fileNa
     const { data: olds } = await db.from("catalog_questions").select("id").eq("topic_id", id).eq("active", true);
     oldQuestionIds = (olds ?? []).map((r) => r.id as string);
   } else {
-    const ins = await db.from("catalog_topics").insert({ ...row, status: "rascunho", slug: p.slug, created_by: user.id }).select("id").single();
+    // Endereço já usado por OUTRA aula (outro subtópico): ganha um sufixo, nunca sobrescreve.
+    const { data: taken } = await db.from("catalog_topics").select("id").eq("slug", p.slug).maybeSingle();
+    const slug = taken ? `${p.slug.slice(0, 90).replace(/-+$/, "")}-${(m.subtopicCode ?? "").replace(/\./g, "-") || "b"}-${Date.now().toString(36).slice(-4)}` : p.slug;
+    const ins = await db.from("catalog_topics").insert({ ...row, status: "rascunho", slug, created_by: user.id }).select("id").single();
     if (ins.error) throw new UserFacingError(`Não foi possível criar a aula: ${ins.error.message}`, "invalid_input");
     id = ins.data.id as string;
   }

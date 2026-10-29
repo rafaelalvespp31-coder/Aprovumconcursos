@@ -5,7 +5,7 @@ import { disciplineLabel } from "@/ai/pedagogy";
 import { requireAdmin } from "@/server/services/catalog";
 import { getOutline, planView } from "@/server/services/outlines";
 import { deleteOutlineAction, updateOutlineAction } from "../../actions";
-import { CopyPrompt, EditPlan } from "./plan-tools";
+import { EditPlan, SubtopicCommands } from "./plan-tools";
 
 export const metadata = { title: "Plano de tópicos" };
 
@@ -42,6 +42,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
         <h2 id="como" className="font-semibold">Como catalogar cada subtópico</h2>
         <ol className="mt-2 list-decimal pl-5 text-tinta-suave">
           <li>Clique em <strong>Copiar comando</strong> no subtópico (ou em <strong>Catalogar</strong>, que abre o painel com o comando pronto).</li>
+          <li>Aula grande? Use o <strong>Comando 1</strong> (a aula) e, na mesma conversa, o <strong>Comando 2</strong> (as questões); cole as duas respostas nos dois campos de “Catalogar aula”.</li>
           <li>Cole no ChatGPT e copie a resposta inteira (peça “continue” se ela vier cortada).</li>
           <li>Cole em <strong>Catalogar aula</strong>: a aula já entra no tópico certo, na ordem do número. Aqui ela passa de “Pendente” para “Rascunho” ou “Publicado”.</li>
         </ol>
@@ -121,7 +122,7 @@ export default async function PlanPage({ params }: { params: Promise<{ id: strin
                         Catalogar
                       </Link>
                     )}
-                    <CopyPrompt prompt={s.prompt} name={(s.code ?? s.ref).replace(/\./g, "-")} />
+                    <SubtopicCommands disciplineMode={outline.disciplineMode} group={{ code: g.code, title: g.title }} sub={{ code: s.code, title: s.title, items: s.items }} />
                   </div>
                 </div>
                 {s.items.length > 0 && (

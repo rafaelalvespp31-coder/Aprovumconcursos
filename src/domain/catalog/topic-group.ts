@@ -258,8 +258,19 @@ export function existingForUpload<T extends CatalogGroupRef & { slug: string }>(
   sameDiscipline: readonly T[],
 ): { row: T; by: "endereco" | "subtopico" } | null {
   const bySlug = sameDiscipline.find((c) => c.slug === slug);
-  if (bySlug) return { row: bySlug, by: "endereco" };
+  if (bySlug && slugMatchIsSameLesson(meta, bySlug)) return { row: bySlug, by: "endereco" };
   if (!meta.topicGroup) return null;
   const [hit] = findAllCatalogFor({ code: meta.topicGroupCode, title: meta.topicGroup }, { code: meta.subtopicCode, title: meta.title }, sameDiscipline);
   return hit ? { row: hit, by: "subtopico" } : null;
+}
+
+/**
+ * O mesmo endereço só vale como "a mesma aula" se não for de OUTRO subtópico: endereços antigos
+ * encurtados podiam repetir para subtópicos diferentes do mesmo tópico (ex.: 2.1 e 2.3), e um
+ * catalogar sobrescrevia o outro.
+ */
+export function slugMatchIsSameLesson(meta: { topicGroup: string | null; subtopicCode: string | null }, row: { topicGroup: string | null; subtopicCode: string | null }): boolean {
+  if (meta.subtopicCode && row.subtopicCode && meta.subtopicCode !== row.subtopicCode) return false;
+  if (meta.topicGroup && row.topicGroup && groupKey(meta.topicGroup) !== groupKey(row.topicGroup)) return false;
+  return true;
 }

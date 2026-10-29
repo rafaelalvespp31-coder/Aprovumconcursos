@@ -36,6 +36,7 @@ export function LessonUploadForm({
   parts,
   compact,
   model,
+  initialMode,
 }: {
   actions: Actions;
   bannerActions?: BannerActions;
@@ -45,10 +46,12 @@ export function LessonUploadForm({
   /** Comando compacto (recomendado): resposta em 2 mensagens (aula; depois questões). */
   compact?: string | null;
   model?: PromptModel | null;
+  /** Modo inicial dos comandos (ex.: o plano de tópicos abre aula grande já em 2 partes). */
+  initialMode?: "compacto" | "partes" | "inteiro";
 }) {
   // Com aula-modelo, começa no compacto (cabe no ChatGPT).
   type Mode = "compacto" | "partes" | "inteiro";
-  const [mode, setMode] = useState<Mode>(compact ? "compacto" : parts && prompt.length > 60_000 ? "partes" : "inteiro");
+  const [mode, setMode] = useState<Mode>(initialMode ?? (compact ? "compacto" : parts && prompt.length > 60_000 ? "partes" : "inteiro"));
   const [text, setText] = useState("");
   // Resposta grande: dá para colar em 2 partes (a segunda é juntada no fim da primeira).
   const [split, setSplit] = useState(false);
@@ -65,7 +68,7 @@ export function LessonUploadForm({
     mode === "compacto" && compact
       ? [{ label: "Comando compacto", text: compact }]
       : mode === "partes" && parts
-        ? [{ label: "Parte 1 · a aula", text: parts.part1 }, { label: "Parte 2 · as questões (na mesma conversa)", text: parts.part2 }]
+        ? [{ label: "Comando 1 · a aula", text: parts.part1 }, { label: "Comando 2 · as questões (na mesma conversa)", text: parts.part2 }]
         : [{ label: "Comando", text: prompt }];
   const multi = commands.length > 1;
 
@@ -239,7 +242,7 @@ export function LessonUploadForm({
             {(
               [
                 ["compacto", "Compacto (recomendado)", !!compact],
-                ["partes", "Completo em 2 partes", !!parts],
+                ["partes", "Em 2 comandos (aula grande)", !!parts],
                 ["inteiro", "Completo", true],
               ] as const
             )
@@ -268,7 +271,7 @@ export function LessonUploadForm({
         )}
         {mode === "partes" && parts && (
           <p className="mt-2 t-small text-tinta-suave">
-            Envie a <strong>parte 1</strong> (a aula) no ChatGPT e, quando ele terminar, envie a <strong>parte 2</strong> (as questões) <strong>na mesma conversa</strong>. Cole a resposta da parte 1 no primeiro campo e a da parte 2 no segundo: são publicadas juntas, como uma aula só.
+            Envie o <strong>comando 1</strong> (a aula) no ChatGPT e, quando ele terminar, envie o <strong>comando 2</strong> (as questões) <strong>na mesma conversa</strong>. Cole a resposta do comando 1 no primeiro campo e a do comando 2 no segundo: são publicadas juntas, como uma aula só.
           </p>
         )}
         <div className="mt-3 flex flex-col gap-3">
@@ -276,8 +279,8 @@ export function LessonUploadForm({
             <div key={c.label} className={multi ? "rounded-md border border-linha p-3" : ""}>
               {multi && <p className="mb-2 t-small font-semibold">{c.label}</p>}
               <div className="flex flex-wrap items-center gap-2">
-                <Button variant="secundario" onClick={() => copy(i, c.text)}>{copied === i ? "Comando copiado ✓" : multi ? `Copiar parte ${i + 1}` : "Copiar comando para o ChatGPT"}</Button>
-                <Button variant="discreto" onClick={() => download(c.text, multi ? `-parte-${i + 1}` : mode === "compacto" ? "-compacto" : "")}>Baixar (.txt)</Button>
+                <Button variant="secundario" onClick={() => copy(i, c.text)}>{copied === i ? "Comando copiado ✓" : multi ? `Copiar comando ${i + 1}` : "Copiar comando para o ChatGPT"}</Button>
+                <Button variant="discreto" onClick={() => download(c.text, multi ? `-comando-${i + 1}` : mode === "compacto" ? "-compacto" : "")}>Baixar (.txt)</Button>
                 <span className="t-tiny text-tinta-fraca">{c.text.length.toLocaleString("pt-BR")} caracteres</span>
               </div>
               <details className="mt-2 t-small">

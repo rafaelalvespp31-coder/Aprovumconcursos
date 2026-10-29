@@ -538,8 +538,8 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await up.getByRole("button", { name: "3. Conferir aula" }).click();
     await expect(up.locator("section[aria-labelledby=previa]").getByText("Fácil: 2", { exact: true })).toBeVisible();
     // Comando completo em 2 partes já abre com os dois campos.
-    await up.getByRole("radio", { name: "Completo em 2 partes" }).click();
-    await expect(up.getByRole("button", { name: "Copiar parte 2" })).toBeVisible();
+    await up.getByRole("radio", { name: "Em 2 comandos (aula grande)" }).click();
+    await expect(up.getByRole("button", { name: "Copiar comando 2" })).toBeVisible();
     await expect(up.getByRole("textbox")).toHaveCount(2);
   });
 

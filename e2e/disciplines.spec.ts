@@ -80,3 +80,27 @@ test("plano de tópicos: subtópico com aula duplicada aparece com aviso no card
   await expect(penal.getByTestId("plano-salvo").filter({ hasText: "Parte Especial" }).getByTestId("plano-duplicados")).toHaveText("⚠ 1 duplicado");
   await expect(penal.getByTestId("plano-salvo").filter({ hasText: "Parte Geral" }).getByTestId("plano-duplicados")).toHaveCount(0);
 });
+
+test("plano de tópicos: comando 1 (aula) e comando 2 (questões) para aula grande", async ({ page, context, browserName }) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"]).catch(() => undefined);
+  await page.goto("/dev/galeria/catalogo");
+  const grande = page.getByTestId("sub-grande");
+  await expect(grande).toContainText("Aula grande: use os comandos 1 e 2");
+  await grande.getByTestId("copiar-comando-1").click();
+  await expect(grande.getByTestId("copiar-comando-1")).toHaveText("✓ Copiado");
+  const c1 = await page.evaluate(() => navigator.clipboard.readText());
+  expect(c1).toContain("COMANDO 1");
+  expect(c1).toContain("=== AULA ===");
+  expect(c1).not.toContain("=== QUESTÕES: FÁCIL ===");
+  await grande.getByTestId("copiar-comando-2").click();
+  const c2 = await page.evaluate(() => navigator.clipboard.readText());
+  expect(c2).toContain("=== QUESTÕES: FÁCIL ===");
+  expect(c2).toContain("2.1.19 Item 19 do edital");
+  expect(c1.length).toBeLessThanOrEqual(12000);
+  expect(c2.length).toBeLessThanOrEqual(12000);
+  // Aula pequena: os dois comandos existem, mas o recomendado continua sendo o inteiro.
+  const pequeno = page.getByTestId("sub-pequeno");
+  await expect(pequeno).not.toContainText("Aula grande");
+  await expect(pequeno.getByRole("button", { name: "Copiar comando" })).toBeVisible();
+  expect(browserName).toBe("chromium");
+});

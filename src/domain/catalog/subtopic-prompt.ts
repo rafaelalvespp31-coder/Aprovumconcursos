@@ -57,7 +57,10 @@ function itemModules(items: Array<{ key: string; title: string; code: string | n
     .join("\n\n");
 }
 
-export function buildSubtopicPrompt(input: { disciplineMode: string; group: OutlineItem; sub: OutlineSubtopic; year?: number }): string {
+type SubtopicInput = { disciplineMode: string; group: OutlineItem; sub: OutlineSubtopic; year?: number };
+
+/** Partes do comando de um subtópico (usadas no comando inteiro e no dividido em 2). */
+function pieces(input: SubtopicInput) {
   const { group, sub } = input;
   const mode = input.disciplineMode as DisciplineMode;
   const subject = disciplineLabel(mode) ?? "";
@@ -112,13 +115,12 @@ ${full ? `--- SEÇÃO: doutrina | ${legal ? "Como a doutrina explica" : "Como os
 - doutrina${legal ? "/jurisprudência" : ""}: só o majoritário${legal ? " e súmulas/teses com tribunal e número que você sabe que existem" : ""}. banca: como Cebraspe, FGV e Vunesp cobram + "Roteiro para resolver qualquer questão:".
 - resumo: tabela | Pergunta | Resposta | (10 a 14 linhas). checklist: 10 a 15 "- [ ] …?", última linha "Marcou tudo? Passe para as questões de fixação: são três níveis (fácil, médio e difícil), e cada um exige 90% de acertos.". flashcards: 12 a 15 "**Pergunta?**" + linha "→ resposta", separados por linha em branco.`;
 
-  const questions = `=== REFERÊNCIAS ===
+  const refs = `=== REFERÊNCIAS ===
 ${legal ? "Lei: (cada lei usada e cada lei que a alterou, com número e ano)\nJurisprudência: (súmulas e teses citadas, ex.: STJ, Súmula 18)" : "Outro: (normas, manuais ou documentos oficiais usados)"}
 
 === A CONFERIR ===
-(Uma linha por ponto a conferir na fonte oficial antes de publicar: alterações recentes, entendimentos novos, divergências deste comando.)
-
-=== QUESTÕES: FÁCIL ===
+(Uma linha por ponto a conferir na fonte oficial antes de publicar: alterações recentes, entendimentos novos, divergências deste comando.)`;
+  const qs = `=== QUESTÕES: FÁCIL ===
 (12: 6 múltipla escolha e 6 certo ou errado; Dificuldade: 1; ${legal ? "letra da lei" : "regras"} e conceitos; 6 essenciais.)
 
 --- QUESTÃO ---
@@ -185,22 +187,62 @@ ${mods}
 
 ${fixedRest}`;
 
+  return { head, updates: updatesBlock(legal, year), review: reviewBlock(legal), sectionRules, lesson, refs, qs, items, slots, legal, sub, group };
+}
+
+export function buildSubtopicPrompt(input: SubtopicInput): string {
+  const p = pieces(input);
+  return fitPrompt(p.items.length, p.slots, (mods, vis) => [p.head, p.updates, p.review, vis, p.sectionRules, p.lesson(mods), p.refs, p.qs].join("\n\n"), itemModules(p.items, p.slots));
+}
+
+/**
+ * O mesmo comando em DUAS PARTES, para aulas grandes: o comando 1 pede só a aula (teoria,
+ * referências e pontos a conferir); o comando 2, na MESMA conversa, pede só as questões dos três
+ * níveis. As duas respostas são coladas nos dois campos de "Catalogar aula" e viram uma aula só.
+ * Cada parte tem no máximo {@link SUBTOPIC_PROMPT_MAX} caracteres.
+ */
+export function buildSubtopicPromptParts(input: SubtopicInput): { part1: string; part2: string } {
+  const p = pieces(input);
+  const intro = `VAMOS FAZER EM DUAS PARTES, NESTA MESMA CONVERSA: agora o COMANDO 1 (só a aula: teoria, referências e pontos a conferir, SEM questões). Depois eu envio o COMANDO 2, que pede as questões.`;
+  const stop = `NÃO escreva questões agora: termine em "=== A CONFERIR ===". As questões vêm no comando 2.`;
+  const part1 = fitPrompt(
+    p.items.length,
+    p.slots,
+    (mods, vis) => [intro, p.head, p.updates, p.review, vis, p.sectionRules, p.lesson(mods), p.refs, stop].join("\n\n"),
+    itemModules(p.items, p.slots),
+  );
+  const keys = p.items.map((it) => `${it.key} ${it.title}`).join("\n");
+  const part2Text = `COMANDO 2: agora escreva SOMENTE as QUESTÕES DE FIXAÇÃO da aula que você acabou de escrever no comando 1 (subtópico ${label(p.sub)}), no PADRÃO APROVUM.
+
+FORMATO DA RESPOSTA
+- SOMENTE as questões, em UM bloco de código, nada antes ou depois. Comece exatamente em "=== QUESTÕES: FÁCIL ===" e não repita a aula, as referências nem o "=== AULA ===".
+- Marcadores e campos exatamente iguais aos do modelo abaixo. Cortou? Eu peço "continue": siga de onde parou, sem repetir.
+
+"Item:" DE CADA QUESTÃO = um destes itens do TEXTO-BASE (use o número):
+${keys}
+
+${p.qs}
+
+REVISÃO (em silêncio, antes de responder): cada questão com uma só resposta certa; gabarito igual à justificativa; nada que contradiga a aula do comando 1${p.legal ? " nem a lei e a jurisprudência vigentes" : ""}; quantidades certas em cada nível; todos os itens cobrados ao longo dos três níveis.`;
+  const part2 = part2Text.length <= SUBTOPIC_PROMPT_MAX ? part2Text : part2Text.replace(keys, keys.split("\n").map((l) => l.split(" ")[0]).join("; "));
+  return { part1, part2 };
+}
+
+/**
+ * Monta o comando e, se passar de {@link SUBTOPIC_PROMPT_MAX}, enxuga: primeiro o esqueleto de cada
+ * item vira uma regra só; depois, as regras visuais ficam sem o bloco de exemplo.
+ */
+function fitPrompt(itemCount: number, slots: number, build: (mods: string, vis: string) => string, itemsMods?: string): string {
   const visual = visualRulesCompact();
-  let vis = visual;
-  const build = (mods: string) => [head, updatesBlock(legal, year), reviewBlock(legal), vis, sectionRules, lesson(mods), questions].join("\n\n");
-  let out = build(itemModules(items, slots));
-  // Muitos itens: o esqueleto de cada um vira uma regra só (o tamanho do comando fica fixo).
-  if (out.length > SUBTOPIC_PROMPT_MAX) {
-    const per = Math.max(1, Math.ceil(items.length / slots));
-    out = build(`(Um módulo por item${per > 1 ? ` — ou por grupo de ${per} itens seguidos, para caber em 30 seções` : ""}, na ordem do TEXTO-BASE, assim:
+  const full = itemsMods ?? "";
+  let out = build(full, visual);
+  if (out.length <= SUBTOPIC_PROMPT_MAX) return out;
+  const per = Math.max(1, Math.ceil(itemCount / slots));
+  const rule = `(Um módulo por item${per > 1 ? ` — ou por grupo de ${per} itens seguidos, para caber em 30 seções` : ""}, na ordem do TEXTO-BASE, assim:
 === MÓDULO: <número> <nome do item> ===
 --- SEÇÃO: explicação | <nome do item> ---
-Itens: <número>)`);
-  }
-  // Último recurso (edital enorme): as regras visuais ficam sem o bloco de exemplo.
-  if (out.length > SUBTOPIC_PROMPT_MAX) {
-    vis = visual.slice(0, visual.indexOf(":::exemplo\nSituação")).trimEnd();
-    out = build(out.slice(out.indexOf("(Um módulo por item"), out.indexOf("\n\n=== MÓDULO: Aprofundamento") >= 0 ? out.indexOf("\n\n=== MÓDULO: Aprofundamento") : out.indexOf("\n\n=== MÓDULO: Combinações")));
-  }
-  return out;
+Itens: <número>)`;
+  out = build(rule, visual);
+  if (out.length <= SUBTOPIC_PROMPT_MAX) return out;
+  return build(rule, visual.slice(0, visual.indexOf(":::exemplo\nSituação")).trimEnd());
 }

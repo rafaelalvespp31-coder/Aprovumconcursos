@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildSubtopicPrompt, SUBTOPIC_PROMPT_MAX } from "./subtopic-prompt";
+import { buildSubtopicPrompt, buildSubtopicPromptParts, SUBTOPIC_PROMPT_MAX } from "./subtopic-prompt";
+import { lessonSlug } from "./upload-preview";
+import { existingForUpload, slugMatchIsSameLesson } from "./topic-group";
 import { parseOutline } from "./topic-group";
 import { prepareLessonUpload } from "./upload-preview";
 
@@ -108,5 +110,55 @@ describe("comando do subtópico", () => {
     const p = prepareLessonUpload(fakeAnswer(prompt).replace(/^Tópico:.*\n^Subtópico:.*\n/m, ""));
     expect(p.parsed.meta).toMatchObject({ topicGroup: null, subtopicCode: null });
     expect(p.slug).toBe("causas-de-exclusao-da-ilicitude");
+  });
+});
+
+describe("comando dividido em 2 (comando 1 = aula, comando 2 = questões)", () => {
+  it("cada parte cabe no limite, a 1 sem questões e a 2 só com questões", () => {
+    for (const n of [3, 10, 19, 30, 45]) {
+      const { part1, part2 } = buildSubtopicPromptParts({ disciplineMode: "informatica", group, sub: many(n) as never });
+      expect(part1.length, `parte 1 com ${n} itens`).toBeLessThanOrEqual(SUBTOPIC_PROMPT_MAX);
+      expect(part2.length, `parte 2 com ${n} itens`).toBeLessThanOrEqual(SUBTOPIC_PROMPT_MAX);
+      expect(part1).toContain("=== AULA ===");
+      expect(part1).not.toContain("=== QUESTÕES: FÁCIL ===");
+      expect(part1).toContain("COMANDO 2");
+      expect(part2).toContain("=== QUESTÕES: FÁCIL ===");
+      expect(part2).not.toContain("=== TEXTO-BASE ===");
+      expect(part2).not.toContain("--- SEÇÃO:");
+    }
+  });
+
+  it("as duas respostas coladas juntas viram uma aula só, sem erros", () => {
+    const { part1 } = buildSubtopicPromptParts({ disciplineMode: "direito_penal", group, sub });
+    const whole = fakeAnswer(part1.replace(/NÃO escreva questões agora[\s\S]*$/, "=== REFERÊNCIAS ==="));
+    const p = prepareLessonUpload(whole);
+    expect(p.errors).toEqual([]);
+    expect(p.built.questions).toHaveLength(30);
+  });
+});
+
+describe("endereço da aula com tópico de nome longo", () => {
+  const longGroup = "Conceitos e Modos de Utilização de Tecnologias, Ferramentas, Aplicativos e Procedimentos Associados à Internet/Intranet";
+  const meta = (code: string, title: string) => ({ kind: "tema", lawCode: null, articles: [], title, topicGroup: longGroup, subtopicCode: code });
+
+  it("subtópicos diferentes do mesmo tópico longo nunca têm o mesmo endereço", () => {
+    const a = lessonSlug(meta("2.1", "Ferramentas e Aplicativos Comerciais de Navegação"));
+    const c = lessonSlug(meta("2.3", "Acesso a Distância a Computadores"));
+    expect(a).not.toBe(c);
+    expect(a.length).toBeLessThanOrEqual(100);
+    expect(a).toContain("2-1");
+    expect(c).toContain("2-3");
+    expect(lessonSlug(meta("2.1", "Ferramentas e Aplicativos Comerciais de Navegação"))).toBe(a);
+  });
+
+  it("tópico curto mantém o endereço de sempre", () => {
+    expect(lessonSlug({ kind: "tema", lawCode: null, articles: [], title: "Cookies e cache", topicGroup: "Navegadores de internet", subtopicCode: "1.8" })).toBe("navegadores-de-internet-1-8-cookies-e-cache");
+  });
+
+  it("endereço antigo repetido de OUTRO subtópico não faz uma aula sobrescrever a outra", () => {
+    const old = { id: "x", slug: "conceitos-e-modos-de-utilizacao-a-", title: "Ferramentas…", status: "publicado", topicGroup: longGroup, subtopicCode: "2.1" };
+    expect(slugMatchIsSameLesson({ topicGroup: longGroup, subtopicCode: "2.3" }, old)).toBe(false);
+    expect(existingForUpload({ title: "Acesso a Distância", topicGroup: longGroup, topicGroupCode: "2", subtopicCode: "2.3" }, old.slug, [old])).toBeNull();
+    expect(existingForUpload({ title: "Ferramentas (nova versão)", topicGroup: longGroup, topicGroupCode: "2", subtopicCode: "2.1" }, "outro-endereco", [old])?.row.id).toBe("x");
   });
 });
