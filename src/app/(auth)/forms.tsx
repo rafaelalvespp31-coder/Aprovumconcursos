@@ -97,10 +97,13 @@ export function ResetRequestForm() {
   return (
     <form action={action} className="flex flex-col gap-4" noValidate>
       {state.error && <Notice tone="erro">{state.error}</Notice>}
+      <Field id="name" label="Nome completo" hint="Como você escreveu no cadastro." error={err(state, "name")}>
+        <input id="name" name="name" type="text" autoComplete="name" required maxLength={80} className={inputClass} aria-invalid={!!err(state, "name")} />
+      </Field>
       <Field id="email" label="E-mail da conta" error={err(state, "email")}>
         <input id="email" name="email" type="email" autoComplete="email" required className={inputClass} aria-invalid={!!err(state, "email")} />
       </Field>
-      <Button type="submit" disabled={pending}>{pending ? "Enviando…" : "Enviar link de redefinição"}</Button>
+      <Button type="submit" disabled={pending}>{pending ? "Conferindo…" : "Conferir e enviar o link"}</Button>
     </form>
   );
 }

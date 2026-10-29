@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { ENDED_ELSEWHERE, isEndedElsewhere } from "@/lib/session";
+import { canonicalRedirect } from "@/domain/auth/identity";
 
 /**
  * Renova a sessão do Supabase a cada requisição e protege as rotas privadas.
@@ -9,6 +10,9 @@ import { ENDED_ELSEWHERE, isEndedElsewhere } from "@/lib/session";
 const PRIVATE_PREFIXES = ["/questoes", "/painel", "/trilhas", "/nova-trilha", "/aula", "/desempenho", "/perfil", "/admin", "/revisoes", "/banco", "/quiz", "/mentor"];
 
 export async function proxy(request: NextRequest) {
+  // Produção: sempre no endereço oficial (aprovumconcursos.com.br), com o mesmo caminho.
+  const canonical = canonicalRedirect(request.headers.get("host"), process.env.VERCEL_ENV);
+  if (canonical) return NextResponse.redirect(new URL(`${request.nextUrl.pathname}${request.nextUrl.search}`, canonical), 308);
   let response = NextResponse.next({ request });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;

@@ -5,6 +5,7 @@ import { cookies, headers } from "next/headers";
 import { z } from "zod";
 import { createUserClient, createAdminClient, SESSION_ONLY_COOKIE } from "@/server/supabase";
 import { publicEnv } from "@/lib/env";
+import { CANONICAL_URL, nameMatches } from "@/domain/auth/identity";
 
 export interface AuthState {
   error?: string;
@@ -104,7 +105,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     password: parsed.data.password,
     options: {
       data: { display_name: parsed.data.name },
-      emailRedirectTo: `${publicEnv().siteUrl}/auth/callback?next=/nova-trilha`,
+      emailRedirectTo: `${authBaseUrl()}/auth/callback?next=/nova-trilha`,
     },
   });
   if (error) {
@@ -116,16 +117,34 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
   return { message: "Enviamos um link de confirmação para o seu e-mail. Abra-o para ativar a conta." };
 }
 
+/** Endereço dos links de e-mail: em produção, sempre o domínio oficial. */
+function authBaseUrl(): string {
+  return process.env.VERCEL_ENV === "production" ? CANONICAL_URL : publicEnv().siteUrl;
+}
+
+/**
+ * Recuperar senha: o aluno informa o nome (como cadastrou) e o e-mail da conta. Se conferirem,
+ * enviamos o link de redefinição para ESSE e-mail (é ele que prova que a conta é do aluno). A
+ * resposta é a mesma conferindo ou não, para ninguém descobrir quem tem conta.
+ */
 export async function requestPasswordReset(_: AuthState, form: FormData): Promise<AuthState> {
-  const parsed = z.object({ email }).safeParse({ email: form.get("email") });
+  const parsed = z
+    .object({ name: z.string().trim().min(2, "Informe seu nome completo, como no cadastro.").max(80), email })
+    .safeParse({ name: form.get("name"), email: form.get("email") });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error) };
   if (await rateLimited("reset", 5)) return { error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
+  const done = { message: "Se o nome e o e-mail conferirem com uma conta, você receberá agora um e-mail com o link para criar a nova senha. O link abre em aprovumconcursos.com.br. Confira também a caixa de spam." };
+  const { data, error } = await createAdminClient().rpc("auth_user_by_email", { p_email: parsed.data.email });
+  if (error) {
+    console.error("auth.reset_lookup", error.message);
+    return { error: GENERIC };
+  }
+  const account = (data as Array<{ id: string; display_name: string | null }> | null)?.[0];
+  if (!account || !nameMatches(parsed.data.name, account.display_name)) return done;
   const supabase = await createUserClient();
-  await supabase.auth.resetPasswordForEmail(parsed.data.email, {
-    redirectTo: `${publicEnv().siteUrl}/auth/callback?next=/redefinir-senha`,
-  });
-  // Mesma resposta exista ou não a conta.
-  return { message: "Se houver uma conta com esse e-mail, você receberá um link para criar uma nova senha." };
+  const r = await supabase.auth.resetPasswordForEmail(parsed.data.email, { redirectTo: `${authBaseUrl()}/auth/callback?next=/redefinir-senha` });
+  if (r.error) console.error("auth.reset_send", r.error.message);
+  return done;
 }
 
 export async function updatePassword(_: AuthState, form: FormData): Promise<AuthState> {

@@ -65,6 +65,13 @@ test.describe("tela de login", () => {
     await expect(manter).not.toBeChecked();
   });
 
+  test("recuperar senha pede o nome completo e o e-mail da conta", async ({ page }) => {
+    await page.goto("/recuperar-senha");
+    await expect(page.getByLabel("Nome completo")).toBeVisible();
+    await expect(page.getByLabel("E-mail da conta")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Conferir e enviar o link" })).toBeVisible();
+  });
+
   test("links levam à recuperação de senha e ao cadastro existentes", async ({ page }) => {
     await page.goto("/entrar");
     await expect(page.getByRole("link", { name: "Esqueci minha senha" })).toHaveAttribute("href", "/recuperar-senha");
