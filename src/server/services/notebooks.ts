@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { assertQuota } from "./plans";
 import { createAdminClient, createUserClient } from "../supabase";
 import { UserFacingError, enforceRateLimit } from "./trails";
 import { NOTEBOOK_TITLE_MAX } from "@/domain/notebooks/model";
@@ -499,6 +500,7 @@ export async function answerNotebookQuestion(userId: string, raw: unknown): Prom
   const a = answerSchema.parse(raw);
   if (!a.optionId && a.answerTrue === undefined) throw new UserFacingError("Escolha uma alternativa para confirmar.", "invalid_input");
   await enforceRateLimit(userId, "answer", 120);
+  await assertQuota(userId, "questoes");
   const r = await createAdminClient().rpc("bank_answer_question", {
     p_user: userId,
     p_question: a.questionId,

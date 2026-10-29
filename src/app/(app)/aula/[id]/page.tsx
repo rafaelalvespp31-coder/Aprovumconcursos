@@ -13,6 +13,8 @@ import { generateLessonAction } from "./actions";
 import { getTopicSiblings } from "@/server/topic-siblings";
 import { logEvent } from "@/server/observability";
 import { SubtopicJump } from "@/components/aula/subtopic-search";
+import { requireUser } from "@/server/auth";
+import { claimDailyLesson } from "@/server/services/plans";
 
 export const metadata = { title: "Aula" };
 
@@ -88,6 +90,26 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
               </form>
             </>
           )}
+        </div>
+      </div>
+    );
+  }
+
+  // Plano gratuito: 1 aula por dia (a do dia continua aberta quantas vezes quiser).
+  const me = await requireUser(`/aula/${id}`);
+  const gate = await claimDailyLesson(me.id, id);
+  if (!gate.ok) {
+    return (
+      <div className="mx-auto max-w-3xl">
+        {header}
+        <div className="mt-6 flex flex-col gap-3" data-testid="limite-aula">
+          <Notice tone="alerta" title="Limite diário do plano gratuito">
+            {gate.message}
+          </Notice>
+          <div className="flex flex-wrap gap-2">
+            {gate.today && <ButtonLink href={`/aula/${gate.today.id}`}>Voltar para a aula de hoje: {gate.today.title}</ButtonLink>}
+            <ButtonLink href="/perfil#plano" variant="secundario">Ver planos</ButtonLink>
+          </div>
         </div>
       </div>
     );

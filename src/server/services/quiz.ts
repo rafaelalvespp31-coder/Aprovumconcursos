@@ -1,5 +1,6 @@
 import "server-only";
 import { disciplineLabel } from "@/ai/pedagogy";
+import { assertQuota } from "./plans";
 import { ensureDisciplines } from "./disciplines";
 import { extractPractice } from "@/domain/content/practice";
 import { computeStreak, streakMessage } from "@/domain/progress/gamification";
@@ -156,7 +157,8 @@ export interface QuizRound {
  * Primeiro os dispositivos que ele ainda não acertou; nos níveis altos, os de mais lacunas.
  */
 export async function startRound(topicId: string): Promise<QuizRound> {
-  await requireUser("/quiz");
+  const user = await requireUser("/quiz");
+  await assertQuota(user.id, "jogo");
   const [topics, attempts] = await Promise.all([loadTopics(), myAttempts()]);
   const topic = topics.find((t) => t.id === topicId);
   if (!topic) throw new UserFacingError("Este conteúdo não está disponível no quiz.", "not_found");
@@ -195,6 +197,7 @@ export interface QuizCheck {
 export async function checkAnswer(topicId: string, nodeKey: string, given: string[], tierN: number): Promise<QuizCheck> {
   const user = await requireUser("/quiz");
   await enforceRateLimit(user.id, "quiz_check", 120);
+  await assertQuota(user.id, "jogo");
   const [topics, before] = await Promise.all([loadTopics(), myAttempts()]);
   const topic = topics.find((t) => t.id === topicId);
   // A dificuldade da questão não pode passar a do nível que o aluno já conquistou.

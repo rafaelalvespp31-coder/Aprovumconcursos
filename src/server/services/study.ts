@@ -1,5 +1,6 @@
 import "server-only";
 import { z } from "zod";
+import { assertLesson } from "./plans";
 import {
   DEFAULT_CRITERIA,
   transition,
@@ -151,6 +152,9 @@ export async function submitAnswer(userId: string, input: unknown): Promise<Answ
   if (!a.optionId && a.answerTrue === undefined) throw new UserFacingError("Selecione uma resposta.", "invalid_input");
   await enforceRateLimit(userId, "answer", 120);
   const db = createAdminClient();
+  // Plano gratuito: responder as questões de uma aula conta como estudar aquela aula no dia.
+  const { data: q } = await db.from("questions").select("lesson_id").eq("id", a.questionId).eq("user_id", userId).maybeSingle();
+  if (q?.lesson_id) await assertLesson(userId, q.lesson_id as string);
   const r = await db.rpc("submit_answer", {
     p_user: userId,
     p_question: a.questionId,
