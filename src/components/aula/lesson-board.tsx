@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { moduleTitle as cleanModuleTitle } from "@/domain/content/apostila";
 import { useMemo, useState, useSyncExternalStore, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import {
@@ -196,7 +197,7 @@ export function LessonBoardView({
           </nav>
           <div className="al-meta">
             {position && <span className="al-chip-aula">Aula {n2(position.index + 1)}</span>}
-            {moduleTitle && <span className="al-chip-modulo">{moduleTitle}</span>}
+            {moduleTitle && <span className="al-chip-modulo">{cleanModuleTitle(moduleTitle)}</span>}
             <span className="al-pct" data-testid="progresso-aula">{progressPct}%</span>
             <span className="al-barra" role="progressbar" aria-label="Progresso nesta aula" aria-valuenow={progressPct} aria-valuemin={0} aria-valuemax={100}>
               <span style={{ width: `${progressPct}%` }} />
@@ -617,9 +618,7 @@ function LessonTree({ trailId, trailTitle, outline, currentId }: { trailId: stri
             <li key={gi}>
               {groups.length > 1 ? (
                 <button type="button" className="al-arvore-modulo" aria-expanded={openGroups.has(gi)} onClick={() => toggle(gi)}>
-                  <span className="truncate">
-                    {gi + 1}. {g.module}
-                  </span>
+                  <span className="truncate">{cleanModuleTitle(g.module)}</span>
                   <ChevronDown className={`size-3.5 shrink-0 transition-transform ${openGroups.has(gi) ? "rotate-180" : ""}`} aria-hidden />
                 </button>
               ) : null}

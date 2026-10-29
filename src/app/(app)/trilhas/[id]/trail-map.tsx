@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Icon, type IconName } from "@/components/icons";
+import { moduleTitle } from "@/domain/content/apostila";
 import { Tag } from "@/components/ui";
 import { TripleProgress } from "@/components/progress";
 import { STATE_LABELS, type UnitState } from "@/domain/progress/state-machine";
@@ -48,7 +49,7 @@ export function TrailMap({
               <div className="flex items-start gap-3">
                 <Icon name="chevronRight" className="mt-1 size-4 text-tinta-fraca transition-transform group-open:rotate-90" />
                 <div className="min-w-0 flex-1">
-                  <p className="t-h3">{m.title}</p>
+                  <p className="t-h3">{moduleTitle(m.title)}</p>
                   <p className="t-tiny text-tinta-fraca">
                     {m.lessons.length} unidade(s), ~{m.lessons.reduce((s, l) => s + l.estimated_minutes, 0)} min (estimativa)
                   </p>
@@ -56,7 +57,7 @@ export function TrailMap({
               </div>
               {p && p.total > 0 && !review && (
                 <div className="pl-7">
-                  <TripleProgress counts={p} label={`Progresso em ${m.title}`} />
+                  <TripleProgress counts={p} label={`Progresso em ${moduleTitle(m.title)}`} />
                 </div>
               )}
             </summary>

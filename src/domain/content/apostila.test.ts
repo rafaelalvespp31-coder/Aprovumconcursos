@@ -35,6 +35,13 @@ describe("apostila em módulos", () => {
   it("títulos sem numeração e páginas na ordem do PDF", () => {
     expect(moduleTitle("3. Distinções importantes")).toBe("Distinções importantes");
     expect(moduleTitle("Módulo 2: Consumação")).toBe("Consumação");
+    expect(moduleTitle("4.1.1 Conceito de ilicitude")).toBe("Conceito de ilicitude");
+    expect(moduleTitle("2.1.10 - Correio eletrônico")).toBe("Correio eletrônico");
+    expect(moduleTitle("4.2. Excesso punível")).toBe("Excesso punível");
+    expect(moduleTitle("Módulo 3 Revisão")).toBe("Revisão");
+    expect(moduleTitle("10 regras de ouro")).toBe("10 regras de ouro");
+    expect(moduleTitle("13º salário")).toBe("13º salário");
+    expect(moduleTitle("Visão geral e lei seca")).toBe("Visão geral e lei seca");
     expect(apostilaPages(2).map(pageKey)).toEqual(["inicio", "m0", "m1", "questoes", "revisao"]);
   });
 });

@@ -16,7 +16,16 @@ export interface ApostilaModule<T> {
 /** Máximo de seções por página de módulo: acima disso o módulo vira "parte 1", "parte 2"… */
 export const MAX_SECTIONS_PER_MODULE = 8;
 
-export const moduleTitle = (raw: string) => raw.replace(/^\s*(m[óo]dulo\s*)?\d+\s*[.)\-–—:]\s*/i, "").trim() || raw.trim();
+/**
+ * Título do módulo como o ALUNO vê: sem a numeração da catalogação ("4.1.1 ", "3. ", "Módulo 2: ").
+ * Número que faz parte do nome ("10 regras de ouro", "13º salário") fica.
+ */
+export const moduleTitle = (raw: string) =>
+  raw
+    .replace(/^\s*m[óo]dulo\s*\d+(\.\d+)*\s*[.)\-–—:]?\s*/i, "")
+    .replace(/^\s*\d+(\.\d+)+\.?\s*[)\-–—:]?\s+/, "")
+    .replace(/^\s*\d+\s*[.)\-–—:]\s*/, "")
+    .trim() || raw.trim();
 
 function splitLarge<T>(mods: ApostilaModule<T>[]): ApostilaModule<T>[] {
   const out: ApostilaModule<T>[] = [];
