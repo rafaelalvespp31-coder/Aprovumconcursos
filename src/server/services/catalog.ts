@@ -6,6 +6,7 @@ import { getAIProvider } from "@/ai";
 import { completeLessonSections, delimitScope, generateLesson, generateQuestions } from "@/ai/services";
 import { disciplineLabel, isDisciplineSlug, type DisciplineMode } from "@/ai/pedagogy";
 import { ensureDisciplines } from "./disciplines";
+import { getPartnerStatus } from "./partner";
 import type { CatalogPickerGroup } from "@/domain/catalog/picker";
 import { lessonSchema, type LessonOutput } from "@/ai/schemas";
 import { normalizeContent } from "@/domain/content/normalize";
@@ -304,7 +305,12 @@ export async function recoveryFromBank(
 // ---------------------------------------------------------------------------
 export async function requireAdmin(): Promise<SessionUser> {
   const user = await getSessionUser();
-  if (!user || !(await isAdmin())) notFound();
+  if (!user || !(await isAdmin())) {
+    // Sócio tentando o ADMIN MASTER: nega e registra.
+    if (user && (await getPartnerStatus(user.id)).isPartner)
+      await auditLog(createAdminClient(), { actorId: user.id, userId: user.id, action: "partner.acesso_negado", entity: "admin", meta: { motivo: "rota_admin" } });
+    notFound();
+  }
   // Matérias cadastradas pela equipe: rótulos e validações de toda a área do admin.
   await ensureDisciplines();
   return user;

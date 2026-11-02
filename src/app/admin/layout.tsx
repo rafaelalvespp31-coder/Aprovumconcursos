@@ -27,7 +27,7 @@ export default async function AdminLayout({
             </div>
             <nav
               aria-label="Administração"
-              className="flex gap-4 t-small font-semibold"
+              className="flex flex-wrap gap-x-4 gap-y-1 t-small font-semibold"
             >
               <Link
                 href="/admin/catalogo"
@@ -58,6 +58,18 @@ export default async function AdminLayout({
                 className="text-destaque underline-offset-2 hover:underline"
               >
                 Fila da IA
+              </Link>
+              <Link
+                href="/admin/alunos"
+                className="text-destaque underline-offset-2 hover:underline"
+              >
+                Alunos
+              </Link>
+              <Link
+                href="/admin/socio"
+                className="text-destaque underline-offset-2 hover:underline"
+              >
+                Sócio admin
               </Link>
               <Link
                 href="/banco"

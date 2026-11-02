@@ -6,6 +6,7 @@ import { z } from "zod";
 import { createUserClient, createAdminClient, SESSION_ONLY_COOKIE } from "@/server/supabase";
 import { publicEnv } from "@/lib/env";
 import { CANONICAL_URL, nameMatches } from "@/domain/auth/identity";
+import { getPartnerStatus } from "@/server/services/partner";
 
 export interface AuthState {
   error?: string;
@@ -71,7 +72,7 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   else store.set(SESSION_ONLY_COOKIE, "navegador", { httpOnly: true, sameSite: "lax", secure: process.env.NODE_ENV === "production", path: "/" });
 
   const supabase = await createUserClient();
-  const { error } = await supabase.auth.signInWithPassword(parsed.data);
+  const { data: signed, error } = await supabase.auth.signInWithPassword(parsed.data);
   if (error) {
     if (/confirm/i.test(error.message)) return { error: "Confirme seu e-mail pelo link que enviamos antes de entrar." };
     // Mensagem única para não revelar se o e-mail existe.
@@ -79,6 +80,8 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   }
   // Sessão única por conta: entrar aqui encerra a sessão dos outros aparelhos.
   await endOtherSessions(supabase);
+  // Sócio administrativo vai direto para o APROVUM BUSINESS (conferido no servidor).
+  if (signed.user && (await getPartnerStatus(signed.user.id)).isPartner) redirect("/business");
   redirect(safeNext(form.get("next")));
 }
 

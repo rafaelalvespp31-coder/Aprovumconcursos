@@ -2362,3 +2362,173 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 @media (min-width: 1024px) { .jogo-frase { max-height: max(92px, calc(100dvh - 625px)); } }
 .jogo-topo { scroll-margin-top: 94px; }
 @media (min-width: 1024px) { .jogo-topo { scroll-margin-top: 96px; } }
+
+/* ---------------------------------------------------------------------------
+ * APROVUM BUSINESS — painel do sócio (grafite + vermelho APROVUM)
+ * ------------------------------------------------------------------------- */
+.bz {
+  --bz-fundo: #0b0b0d;
+  --bz-card: #16161a;
+  --bz-card-2: #1d1d22;
+  --bz-linha: rgba(255, 255, 255, 0.08);
+  --bz-texto: rgba(255, 255, 255, 0.72);
+  --bz-vermelho: #e50914;
+  min-height: 100dvh;
+  background: var(--bz-fundo);
+  color: var(--bz-texto);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  overflow-x: clip;
+}
+@media (min-width: 1024px) {
+  .bz { grid-template-columns: 248px minmax(0, 1fr); }
+}
+.bz-lateral {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--bz-linha);
+  background: #101013;
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+@media (min-width: 1024px) {
+  .bz-lateral {
+    flex-direction: column;
+    flex-wrap: nowrap;
+    align-items: stretch;
+    gap: 24px;
+    height: 100dvh;
+    padding: 24px 18px;
+    border-bottom: 0;
+    border-right: 1px solid var(--bz-linha);
+  }
+}
+.bz-marca { display: flex; flex-direction: column; line-height: 1.05; margin-right: auto; }
+.bz-marca-a { font-weight: 900; letter-spacing: 0.06em; color: #fff; font-size: 17px; }
+.bz-marca-b { font-weight: 900; letter-spacing: 0.22em; color: var(--bz-vermelho); font-size: 12px; margin-top: 3px; }
+.bz-marca-c { font-size: 11px; color: rgba(255, 255, 255, 0.45); margin-top: 4px; }
+.bz-nav { display: flex; gap: 6px; overflow-x: auto; order: 3; width: 100%; scrollbar-width: none; }
+.bz-nav::-webkit-scrollbar { display: none; }
+@media (min-width: 1024px) { .bz-nav { flex-direction: column; order: 0; overflow: visible; } }
+.bz-nav a {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  padding: 8px 12px;
+  border-radius: 10px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  background: var(--bz-card);
+  border: 1px solid var(--bz-linha);
+}
+@media (min-width: 1024px) { .bz-nav a { background: transparent; border-color: transparent; padding: 10px 12px; } }
+.bz-nav a:hover, .bz-nav a:focus-visible { color: #fff; background: rgba(229, 9, 20, 0.14); border-color: rgba(229, 9, 20, 0.35); }
+.bz-nav svg, .bz-sair svg { width: 16px; height: 16px; }
+.bz-quem { font-size: 12px; min-width: 0; display: flex; align-items: center; gap: 10px; }
+.bz-quem > p:nth-child(2) { display: none; }
+@media (min-width: 1024px) {
+  .bz-quem { margin-top: auto; flex-direction: column; align-items: stretch; gap: 2px; padding-top: 16px; border-top: 1px solid var(--bz-linha); }
+  .bz-quem > p:nth-child(2) { display: block; color: rgba(255, 255, 255, 0.5); }
+}
+@media (max-width: 1023px) { .bz-quem > p:first-child { display: none; } }
+.bz-sair, .bz-botao {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #fff;
+  background: var(--bz-card-2);
+  border: 1px solid var(--bz-linha);
+}
+@media (min-width: 1024px) { .bz-sair { margin-top: 10px; } }
+.bz-sair:hover, .bz-botao:hover { border-color: rgba(229, 9, 20, 0.5); }
+.bz-conteudo { min-width: 0; padding: 20px 16px 48px; max-width: 1240px; width: 100%; }
+@media (min-width: 1024px) { .bz-conteudo { padding: 32px 36px 64px; } }
+.bz-cabecalho { margin-bottom: 18px; }
+.bz-sobre { font-size: 11px; font-weight: 800; letter-spacing: 0.16em; color: var(--bz-vermelho); }
+.bz-cabecalho h1 { margin-top: 6px; font-size: clamp(22px, 3vw, 30px); font-weight: 800; color: #fff; }
+.bz-filtros { display: flex; flex-wrap: wrap; gap: 6px; }
+.bz-filtros a, .bz-abas button {
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.7);
+  background: var(--bz-card);
+  border: 1px solid var(--bz-linha);
+}
+.bz-filtros a.is-on, .bz-abas button.is-on { color: #fff; background: var(--bz-vermelho); border-color: var(--bz-vermelho); }
+.bz-abas { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+.bz-secao { scroll-margin-top: 120px; display: flex; flex-direction: column; gap: 14px; }
+@media (min-width: 1024px) { .bz-secao { scroll-margin-top: 24px; } }
+.bz-secao-topo h2 { font-size: 18px; font-weight: 800; color: #fff; }
+.bz-secao-topo p { font-size: 12.5px; color: rgba(255, 255, 255, 0.5); margin-top: 2px; }
+.bz-grade { display: grid; gap: 12px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (min-width: 768px) { .bz-grade { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .bz-grade { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.bz-card {
+  background: linear-gradient(180deg, var(--bz-card-2), var(--bz-card));
+  border: 1px solid var(--bz-linha);
+  border-radius: 16px;
+  padding: 16px;
+  min-width: 0;
+}
+.bz-card-topo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
+.bz-card-topo h3 { font-size: 14.5px; font-weight: 700; color: #fff; }
+.bz-kpi { position: relative; overflow: hidden; }
+.bz-kpi::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 3px; background: var(--bz-vermelho); opacity: 0.85; }
+.bz-kpi-ico { display: inline-flex; width: 30px; height: 30px; align-items: center; justify-content: center; border-radius: 9px; background: rgba(229, 9, 20, 0.14); color: #ff6b5e; }
+.bz-kpi-ico svg { width: 16px; height: 16px; }
+.bz-kpi-rotulo { margin-top: 10px; font-size: 12px; font-weight: 600; color: rgba(255, 255, 255, 0.6); }
+.bz-kpi-valor { margin-top: 2px; font-size: clamp(20px, 2.6vw, 28px); font-weight: 800; color: #fff; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.bz-kpi-dica { margin-top: 4px; font-size: 11.5px; color: rgba(255, 255, 255, 0.45); line-height: 1.35; }
+.bz-esqueleto { min-height: 118px; animation: bz-pulso 1.4s ease-in-out infinite; }
+@keyframes bz-pulso { 50% { opacity: 0.55; } }
+@media (prefers-reduced-motion: reduce) { .bz-esqueleto { animation: none; } }
+.bz-estado { display: flex; flex-direction: column; gap: 6px; font-size: 14px; line-height: 1.5; }
+.bz-grafico { position: relative; margin: 0; }
+.bz-grafico svg { display: block; height: auto; }
+.bz-eixo { fill: rgba(255, 255, 255, 0.45); font-size: 11px; font-variant-numeric: tabular-nums; }
+.bz-dica {
+  position: absolute;
+  top: 4px;
+  transform: translateX(-50%);
+  pointer-events: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: #fff;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.5);
+}
+.bz-dica i, .bz-legenda i { display: inline-block; width: 8px; height: 8px; border-radius: 99px; margin-right: 4px; }
+.bz-legenda { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; font-size: 12px; }
+.bz-vazio { padding: 24px 0; text-align: center; font-size: 13px; color: rgba(255, 255, 255, 0.45); }
+.bz-comparacao { margin-top: 10px; font-size: 13px; }
+.bz-comparacao b { color: #fff; }
+.bz-sobe { color: #4ade80; font-weight: 700; }
+.bz-desce { color: #ff6b5e; font-weight: 700; }
+.bz-tabela { overflow-x: auto; }
+.bz-tabela table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.bz-tabela th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: rgba(255, 255, 255, 0.45); padding: 8px 10px; border-bottom: 1px solid var(--bz-linha); white-space: nowrap; }
+.bz-tabela td { padding: 10px; border-bottom: 1px solid var(--bz-linha); color: rgba(255, 255, 255, 0.85); white-space: nowrap; }
+.bz-tabela tr:last-child td { border-bottom: 0; }
+.bz a:focus-visible, .bz button:focus-visible { outline: 2px solid #ff6b5e; outline-offset: 2px; }
+@media (max-width: 640px) {
+  /* o gráfico encolhe ~50% no celular: eixo maior em unidades do SVG para continuar legível */
+  .bz-eixo { font-size: 19px; }
+}
