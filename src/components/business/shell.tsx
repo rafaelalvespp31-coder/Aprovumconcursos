@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import {
   BarChart3,
+  GraduationCap,
   BadgeDollarSign,
   Gauge,
   LogOut,
@@ -23,11 +24,13 @@ export function BusinessShell({
   sections,
   who,
   signOut,
+  studentHref = "/painel",
   children,
 }: {
   sections: ReadonlySet<BusinessSectionId>;
   who: { name: string | null; email: string | null };
   signOut?: () => Promise<void>;
+  studentHref?: string;
   children: ReactNode;
 }) {
   const nav = BUSINESS_SECTIONS.filter((s) => sections.has(s.id));
@@ -54,6 +57,13 @@ export function BusinessShell({
             {who.name ?? "Sócio"}
           </p>
           {who.email && <p className="truncate">{who.email}</p>}
+          <a
+            href={studentHref}
+            className="bz-sair"
+            data-testid="business-area-aluno"
+          >
+            <GraduationCap aria-hidden /> Área do aluno
+          </a>
           {signOut && (
             <form action={signOut}>
               <button type="submit" className="bz-sair">

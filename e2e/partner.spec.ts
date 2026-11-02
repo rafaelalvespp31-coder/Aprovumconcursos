@@ -9,6 +9,8 @@ test.describe("APROVUM BUSINESS", () => {
     await expect(page.getByTestId("kpi-total")).toContainText("1.842");
     await expect(page.getByTestId("kpi-faturamento")).toContainText("R$");
     await expect(page.getByTestId("lista-pagantes")).toContainText("b•••@exemplo.com");
+    // O sócio continua aluno: atalho para a área do aluno.
+    await expect(page.getByTestId("business-area-aluno")).toHaveAttribute("href", "/dev/galeria");
   });
 
   test("permissão desativada: o indicador some (sem zero no lugar)", async ({ page }) => {

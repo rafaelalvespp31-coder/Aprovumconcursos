@@ -39,7 +39,7 @@ export default async function Page({
     ? `/dev/business?perfil=${encodeURIComponent(sp.perfil)}`
     : "/dev/business";
   return (
-    <BusinessShell sections={visibleSections(data)} who={who}>
+    <BusinessShell sections={visibleSections(data)} who={who} studentHref="/dev/galeria">
       <p className="mb-4 rounded-lg border border-dashed border-white/20 px-3 py-2 text-[12px]">
         Galeria de desenvolvimento: dados de exemplo. Nada aqui é real.
       </p>

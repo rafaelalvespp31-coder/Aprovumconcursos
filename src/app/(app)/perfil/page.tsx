@@ -2,6 +2,7 @@ import { getDashboard, getProfile, getStudyStats } from "@/server/queries";
 import { requireUser } from "@/server/auth";
 import { computeGamification } from "@/domain/progress/gamification";
 import Link from "next/link";
+import { getPartnerStatus } from "@/server/services/partner";
 import { PastelCard } from "@/components/pastel/card";
 import { getBankRoles } from "@/server/services/bank";
 import { signOut } from "../../(auth)/actions";
@@ -15,7 +16,7 @@ export const metadata = { title: "Perfil" };
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const [{ profile, subscription }, stats, dash, roles, usage] = await Promise.all([getProfile(), getStudyStats(), getDashboard(), getBankRoles(user.id), getPlanUsage(user.id)]);
+  const [{ profile, subscription }, stats, dash, roles, usage, partner] = await Promise.all([getProfile(), getStudyStats(), getDashboard(), getBankRoles(user.id), getPlanUsage(user.id), getPartnerStatus(user.id)]);
   const staff = roles.admin || roles.autor || roles.revisor;
   const sub = subscription as unknown as { plan_id: string; status: string; current_period_end?: string | null; billing_period?: string | null } | null;
   const eff = effectivePlan(sub ? { planId: sub.plan_id, status: sub.status, currentPeriodEnd: sub.current_period_end ?? null } : null);
@@ -32,6 +33,13 @@ export default async function ProfilePage() {
         weekLessonsCompleted: dash.weekLessonsCompleted,
       }}
     >
+      {partner.isPartner && partner.active && (
+        <PastelCard noTilt className="p-6" testId="area-socio">
+          <h2 className="mb-1 text-[13px] font-bold">Sócio administrativo</h2>
+          <p className="mb-4 text-[12px] text-[#5C5C5C]">Indicadores da plataforma liberados para você.</p>
+          <Link href="/business" className="inline-flex min-h-11 items-center rounded-xl bg-[#0A0A0A] px-4 text-[13px] font-bold text-white active:scale-95">Abrir APROVUM BUSINESS</Link>
+        </PastelCard>
+      )}
       {staff && (
         <PastelCard noTilt className="p-6" testId="area-equipe">
           <h2 className="mb-1 text-[13px] font-bold">Área da equipe</h2>

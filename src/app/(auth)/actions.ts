@@ -80,9 +80,10 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   }
   // Sessão única por conta: entrar aqui encerra a sessão dos outros aparelhos.
   await endOtherSessions(supabase);
-  // Sócio administrativo vai direto para o APROVUM BUSINESS (conferido no servidor).
-  if (signed.user && (await getPartnerStatus(signed.user.id)).isPartner) redirect("/business");
-  redirect(safeNext(form.get("next")));
+  // Sócio administrativo cai no APROVUM BUSINESS (conferido no servidor), mas continua aluno:
+  // se pediu uma página específica, vai para ela; dos dois lados há atalho para o outro.
+  const fallback = signed.user && (await getPartnerStatus(signed.user.id)).isPartner ? "/business" : "/painel";
+  redirect(safeNext(form.get("next"), fallback));
 }
 
 export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {

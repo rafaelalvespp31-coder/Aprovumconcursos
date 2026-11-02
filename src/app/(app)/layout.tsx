@@ -1,6 +1,4 @@
-import { redirect } from "next/navigation";
 import { requireUser } from "@/server/auth";
-import { getPartnerStatus } from "@/server/services/partner";
 import { getShellSummary } from "@/server/queries";
 import { PastelShell } from "@/components/pastel/shell";
 import { DisciplinesSync } from "@/components/disciplines-sync";
@@ -16,8 +14,6 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const user = await requireUser();
-  // Sócio administrativo não usa a área do aluno: o painel dele é o APROVUM BUSINESS.
-  if ((await getPartnerStatus(user.id)).isPartner) redirect("/business");
   const [summary, disciplines] = await Promise.all([
     getShellSummary(user.email ?? null),
     ensureDisciplines(),
