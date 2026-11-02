@@ -184,7 +184,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       nextLabel={nextInSubject?.label ?? null}
       notices={notices}
       topicSearch={siblingsInTopic ? <SubtopicJump group={siblingsInTopic.group} items={siblingsInTopic.items} /> : null}
-      pdf={<PdfPanel trailId={lesson.trail_id} ready={units.length > 0 && unitsDone === units.length} unitsDone={unitsDone} unitsTotal={units.length} pdfs={pdfs} />}
+      pdf={<PdfPanel trailId={lesson.trail_id} ready={units.length > 0 && unitsDone === units.length} unitsDone={unitsDone} unitsTotal={units.length} pdfs={pdfs} mindMapHref={`/api/mapa-mental/${id}`} />}
       position={idx >= 0 ? { index: idx, total: siblings.length } : null}
       moduleTitle={lesson.learning_modules?.title ?? null}
       outline={siblings.map((s) => ({ id: s.id, title: s.title, module: s.module }))}

@@ -64,17 +64,19 @@ const subtopics = [
   },
 ];
 
-export default function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ pronto?: string }> }) {
+  const ready = (await searchParams).pronto === "1";
   return (
     <LessonReader
       {...reader}
       pdf={
         <PdfPanel
           trailId={reader.lesson.trailId}
-          ready={false}
-          unitsDone={2}
+          ready={ready}
+          unitsDone={ready ? 6 : 2}
           unitsTotal={6}
           pdfs={[]}
+          mindMapHref="/dev/mapa-mental"
         />
       }
       topicSearch={<SubtopicJump group={{ title: "Crimes contra a Administração Pública", code: "1" }} items={subtopics} />}

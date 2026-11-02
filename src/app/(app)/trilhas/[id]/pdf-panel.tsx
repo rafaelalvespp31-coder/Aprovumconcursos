@@ -12,7 +12,7 @@ import { createPdfAction, deletePdfAction, type PdfState } from "./actions";
  * níveis. Cada geração cria uma nova versão; as anteriores continuam disponíveis até o
  * aluno excluí-las (com confirmação).
  */
-export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs }: { trailId: string; ready: boolean; unitsDone: number; unitsTotal: number; pdfs: StudyPdfItem[] }) {
+export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs, mindMapHref }: { trailId: string; ready: boolean; unitsDone: number; unitsTotal: number; pdfs: StudyPdfItem[]; mindMapHref?: string }) {
   const [state, action, pending] = useActionState<PdfState, FormData>(createPdfAction.bind(null, trailId), {});
   const router = useRouter();
   const [confirming, setConfirming] = useState<string | null>(null);
@@ -37,15 +37,32 @@ export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs }: { trai
             Teoria completa no escopo estudado, dispositivos e fontes, exemplos e pegadinhas, as questões que você respondeu com gabarito e comentários, seus erros e os pontos de revisão.
           </p>
         </div>
-        <form action={action}>
-          <Button type="submit" disabled={!ready || pending}>
-            <Icon name="download" className="size-4" /> {pending ? "Gerando…" : pdfs.length ? "Gerar nova versão" : "Gerar PDF"}
-          </Button>
-        </form>
+        <div className="flex flex-wrap items-center gap-2">
+          <form action={action}>
+            <Button type="submit" disabled={!ready || pending}>
+              <Icon name="download" className="size-4" /> {pending ? "Gerando…" : pdfs.length ? "Gerar nova versão" : "Gerar PDF"}
+            </Button>
+          </form>
+          {mindMapHref &&
+            (ready ? (
+              <a
+                href={mindMapHref}
+                download
+                data-testid="gerar-mapa-mental"
+                className="inline-flex min-h-11 select-none items-center justify-center gap-2 rounded-md bg-[#0A0A0A] px-4 text-[0.95rem] font-semibold text-white transition-transform duration-150 active:scale-[0.97]"
+              >
+                <Icon name="download" className="size-4" /> Gerar mapa mental
+              </a>
+            ) : (
+              <Button type="button" variant="secundario" disabled data-testid="gerar-mapa-mental">
+                <Icon name="download" className="size-4" /> Gerar mapa mental
+              </Button>
+            ))}
+        </div>
       </div>
       {!ready && (
         <p className="mt-3 t-small text-tinta-suave">
-          Liberado após a aprovação nos três níveis (fácil, médio e difícil) de todas as unidades: {unitsDone} de {unitsTotal} concluída(s).
+          {mindMapHref ? "PDF e mapa mental liberados" : "Liberado"} após a aprovação nos três níveis (fácil, médio e difícil) de todas as unidades: {unitsDone} de {unitsTotal} concluída(s).
         </p>
       )}
       {state.error && <div className="mt-3"><Notice tone="erro">{state.error}</Notice></div>}
