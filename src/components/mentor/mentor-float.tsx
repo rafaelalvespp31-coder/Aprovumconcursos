@@ -77,7 +77,8 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
   const drag = useRef<{ x: number; y: number; start: Pos; moved: boolean; id: number } | null>(null);
   const justDragged = useRef(false);
 
-  const hidden = pathname === `${base}/mentor`;
+  // Some na página do Mentor (já está em tela cheia) e no Modo Jogo (a questão ocupa a tela toda).
+  const hidden = pathname === `${base}/mentor` || pathname === `${base}/quiz`;
 
   const apply = (d: MentorPanelState) => {
     loaded.current = { at: Date.now(), path: window.location.pathname };

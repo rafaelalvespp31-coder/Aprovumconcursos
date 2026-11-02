@@ -793,7 +793,7 @@ test.describe("modo jogo", () => {
     await expect(verify).toBeDisabled();
     const slots = card.getByRole("button", { name: /^Espaço \d/ });
     const n = await slots.count();
-    const words = card.locator("button.min-h-12");
+    const words = card.getByTestId("palavra");
     for (let i = 0; i < n; i++) await words.nth(i).click();
     await expect(verify).toBeEnabled();
     await expect(card.getByText(`${n}/${n} preenchidos`)).toBeVisible();
@@ -806,21 +806,32 @@ test.describe("modo jogo", () => {
     await expect(card.getByText(`0/${n} preenchidos`)).toBeVisible();
   });
 
-  test("pausa: o cronômetro para, a frase fica coberta e as palavras travam", async ({ page }) => {
-    await page.clock.install();
+  test("sem pausa: o cronômetro não tem botão de pausar", async ({ page }) => {
     await page.goto(`${G}/quiz`);
-    const card = page.getByRole("region", { name: "Questão do jogo" });
-    await card.scrollIntoViewIfNeeded();
-    const timer = page.getByTestId("cronometro");
-    await page.getByRole("button", { name: "Pausar o cronômetro" }).click();
-    const before = await timer.getAttribute("aria-label");
-    await page.clock.runFor(5_000);
-    await expect(timer).toHaveAttribute("aria-label", before!);
-    await expect(card.getByText(/Pausado/)).toBeVisible();
-    await expect(card.locator("button.min-h-12").first()).toBeDisabled();
-    await page.getByRole("button", { name: "Retomar o cronômetro" }).click();
-    await expect(card.locator("button.min-h-12").first()).toBeEnabled();
+    await page.getByRole("region", { name: "Questão do jogo" }).scrollIntoViewIfNeeded();
+    await expect(page.getByTestId("cronometro")).toBeVisible();
+    await expect(page.getByRole("button", { name: /Pausar|Retomar/ })).toHaveCount(0);
   });
+
+  test("a questão inteira cabe na tela: dá para confirmar sem rolar a página", async ({ page }) => {
+    await page.goto(`${G}/quiz`);
+    await page.locator(".jogo-topo").evaluate((e) => e.scrollIntoView({ block: "start" }));
+    const card = page.getByRole("region", { name: "Questão do jogo" });
+    const words = card.getByTestId("palavra");
+    const n = Number((await card.getByText(/\/\d+ preenchidos/).textContent())!.match(/\/(\d+)/)![1]);
+    const confirmar = page.getByRole("button", { name: /^Confirmar$/ });
+    await expect(confirmar).toBeInViewport({ ratio: 1 });
+    // O botão fica acima do menu inferior (não coberto por ele).
+    const btn = (await confirmar.boundingBox())!;
+    const nav = await page.locator(".bn-moldura").boundingBox();
+    if (nav) expect(btn.y + btn.height).toBeLessThanOrEqual(nav.y + 1);
+    const before = await page.evaluate(() => window.scrollY);
+    for (let i = 0; i < n; i++) await words.nth(i).click();
+    await expect(confirmar).toBeEnabled();
+    await confirmar.click();
+    expect(await page.evaluate(() => window.scrollY)).toBe(before);
+  });
+
   test("cronômetro de 35 s por questão: corre com a questão na tela e esgota o tempo", async ({ page }) => {
     await page.clock.install();
     await page.goto(`${G}/quiz`);
@@ -838,7 +849,7 @@ test.describe("modo jogo", () => {
     await expect(timer).toHaveAttribute("data-urgente", "true");
     for (let i = 0; i < 10 && (await secs()) > 0; i++) await page.clock.runFor(1_000);
     await expect(page.getByRole("button", { name: /Tempo esgotado/ })).toBeVisible();
-    await expect(card.locator("button.min-h-12").first()).toBeDisabled();
+    await expect(card.getByTestId("palavra").first()).toBeDisabled();
   });
 
   test("nível e ranking: botão abre o ranking; ?nivel=1 mostra a passagem de nível", async ({ page }) => {

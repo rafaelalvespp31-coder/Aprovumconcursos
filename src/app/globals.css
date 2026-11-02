@@ -2355,3 +2355,10 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .plano-pill-dup { background: #FFE14D; color: #5A1A00; }
 .plano-barra { display: block; height: 6px; overflow: hidden; border-radius: 999px; background: rgba(255,255,255,0.25); }
 .plano-barra > span { display: block; height: 100%; border-radius: inherit; background: #fff; }
+
+/* Modo Jogo: a questão inteira (frase, palavras e Confirmar) cabe na tela sem rolar a página;
+   frase muito longa rola dentro do próprio quadro. */
+.jogo-frase { max-height: max(120px, calc(100dvh - 548px)); }
+@media (min-width: 1024px) { .jogo-frase { max-height: max(92px, calc(100dvh - 625px)); } }
+.jogo-topo { scroll-margin-top: 94px; }
+@media (min-width: 1024px) { .jogo-topo { scroll-margin-top: 96px; } }
