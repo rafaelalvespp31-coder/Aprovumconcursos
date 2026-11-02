@@ -26,6 +26,8 @@ export interface MindMapMnemonic {
   acronym: string;
   label: string;
   terms: string[];
+  /** Os itens completos da lista de origem (termo + explicação). */
+  items: string[];
 }
 export interface MindMapModule {
   title: string;
@@ -157,7 +159,7 @@ export function buildMindMap(input: { title: string; subject?: string | null; se
         const terms = body.map((r) => r[0]!).filter((t) => t.length <= 40);
         if (!EXCLUDE_MNEMONIC.has(s.kind) && terms.length === body.length && !terms.some(isLabel)) {
           const acr = acronymFor(terms);
-          if (acr) mnemonicCandidates.push({ acronym: acr, label: s.title, terms, score: 1 + (s.kind === "esquema" ? 1 : 0) });
+          if (acr) mnemonicCandidates.push({ acronym: acr, label: s.title, terms, items: body.map((r) => (r[1] ? `${r[0]}: ${r[1]}` : r[0]!)), score: 1 + (s.kind === "esquema" ? 1 : 0) });
         }
         points.push(...body.slice(0, 6).map((r) => r.filter(Boolean).join(" — ")));
       } else if (n.type === "list") {
@@ -180,7 +182,7 @@ export function buildMindMap(input: { title: string; subject?: string | null; se
           if (!EXCLUDE_MNEMONIC.has(s.kind) && terms.every((t): t is string => !!t)) {
             const acr = acronymFor(terms);
             const prev = i > 0 && nodes[i - 1]!.type === "paragraph" ? squash(text(nodes[i - 1]!)).replace(/[:(].*$/, "").trim() : "";
-            if (acr) mnemonicCandidates.push({ acronym: acr, label: prev.length >= 3 && prev.length <= 70 ? prev : s.title, terms, score: 2 + (/decore|memoriz/i.test(text(nodes[i - 1] ?? list)) ? 2 : 0) });
+            if (acr) mnemonicCandidates.push({ acronym: acr, label: prev.length >= 3 && prev.length <= 70 ? prev : s.title, terms, items, score: 2 + (/decore|memoriz/i.test(text(nodes[i - 1] ?? list)) ? 2 : 0) });
           }
           if (s.kind === "interpretacao_banca" && items[0]) bankTip ??= firstSentences(items[0], 220);
           points.push(...items.slice(0, 8).map((x) => firstSentences(x, 160)));
@@ -200,13 +202,20 @@ export function buildMindMap(input: { title: string; subject?: string | null; se
   for (const c of mnemonicCandidates.sort((a, b) => b.score - a.score)) {
     if (seenAcronyms.has(c.acronym) || map.mnemonics.length >= 3) continue;
     seenAcronyms.add(c.acronym);
-    map.mnemonics.push({ acronym: c.acronym, label: c.label, terms: c.terms });
+    map.mnemonics.push({ acronym: c.acronym, label: c.label, terms: c.terms, items: c.items });
   }
-  // Sem lista de termos: mnemônico pelas iniciais dos módulos da aula.
-  if (!map.mnemonics.length) {
-    const terms = [...modules.keys()].slice(0, 7);
-    const acr = acronymFor(terms);
-    if (acr) map.mnemonics.push({ acronym: acr, label: "Ordem dos módulos da aula", terms });
+  // Faltando mnemônico (o modelo tem três): iniciais dos módulos e dos blocos do esquema.
+  const fallbacks: Array<{ label: string; terms: string[]; items: string[] }> = [
+    { label: "Ordem dos módulos da aula", terms: [...modules.keys()].slice(0, 7), items: [...modules.keys()].slice(0, 7) },
+    { label: "Pontos do resumo", terms: map.summary.slice(0, 6).map((r) => r.q.replace(/^(qual|quais|quem|como|quando|o que|pena d[oa]s?|é|são)\s+/i, "")), items: map.summary.slice(0, 6).map((r) => `${r.q} ${r.a}`) },
+  ];
+  for (const f of fallbacks) {
+    if (map.mnemonics.length >= 3) break;
+    const acr = acronymFor(f.terms);
+    if (acr && !seenAcronyms.has(acr)) {
+      seenAcronyms.add(acr);
+      map.mnemonics.push({ acronym: acr, ...f });
+    }
   }
   // Sem esquema em tabela: o quadro comparativo vira os blocos principais.
   if (!map.blocks.length && map.comparisons.length) {

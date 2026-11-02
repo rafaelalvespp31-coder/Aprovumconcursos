@@ -1,51 +1,47 @@
 /**
- * PDF do MAPA MENTAL (modelo padrão APROVUM): A4 deitado, fundo preto, arte do operador,
- * cartões com borda vermelha. Página 1 = o mapa (blocos, mnemônicos, dica, resumo, o que
- * lembrar). Páginas seguintes = a matéria inteira da aula, módulo por módulo, com todos os
- * mnemônicos, pegadinhas e comparações — tudo no mesmo PDF.
- * pdf-lib com fontes padrão e imagens embutidas (nada lido do disco).
+ * PDF do MAPA MENTAL — fiel ao modelo oficial (1536 x 1024): o fundo É o próprio modelo, com os
+ * textos apagados; o PDF escreve por cima, nas mesmas posições, com fontes condensadas em
+ * negrito itálico como no original. Página 1 = o mapa. Páginas seguintes = a matéria inteira
+ * da aula (módulo por módulo, mnemônicos, pegadinhas, esquema e resumo) no mesmo estilo.
  */
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage, type RGB } from "pdf-lib";
-import type { MindMap } from "@/domain/content/mind-map";
-import { LOGO_CLARA_PNG, OPERADOR_JPG } from "./mind-map-assets";
+import { PDFDocument, rgb, PDFName, pushGraphicsState, popGraphicsState, beginText, endText, setFontAndSize, setTextRenderingMode, TextRenderingMode, showText, setTextMatrix, drawObject, concatTransformationMatrix, type PDFFont, type PDFImage, type PDFPage, type RGB } from "pdf-lib";
+import fontkit from "@pdf-lib/fontkit";
+import type { MindMap, MindMapBlock, MindMapMnemonic } from "@/domain/content/mind-map";
+import { FONTE_TEXTO, FONTE_TEXTO_B, FONTE_TEXTO_I, FONTE_TITULO, FONTE_TITULO_B, METAL_PNG, MODELO_CONTINUACAO_JPG, MODELO_JPG } from "./mind-map-assets";
 
-const W = 841.89;
-const H = 595.28;
-const BG = rgb(0.035, 0.035, 0.04);
-const CARD = rgb(0.075, 0.075, 0.085);
-const CARD_HEAD = rgb(0.11, 0.11, 0.125);
+/** Coordenadas do modelo (px) → página (pt). */
+const PX_W = 1536;
+const PX_H = 1024;
+const K = 0.5625;
+const W = PX_W * K;
+const H = PX_H * K;
+
 const WHITE = rgb(1, 1, 1);
-const SOFT = rgb(0.84, 0.84, 0.86);
-const MUTED = rgb(0.6, 0.6, 0.63);
-const RED = rgb(0.9, 0.04, 0.05);
-const RED_DARK = rgb(0.55, 0.02, 0.03);
-const GOLD = rgb(0.98, 0.76, 0.18);
-const PURPLE = rgb(0.66, 0.36, 0.95);
-const ACCENTS = [PURPLE, GOLD, RED] as const;
+const SOFT = rgb(0.9, 0.9, 0.92);
+const RED = rgb(0.93, 0.08, 0.1);
+const RED_TEXT = rgb(1, 0.16, 0.16);
+const GOLD = rgb(1, 0.8, 0.2);
+const INK = rgb(0.06, 0.06, 0.06);
+const PURPLE = rgb(0.73, 0.45, 1);
 
 interface Fonts {
-  r: PDFFont;
-  b: PDFFont;
-  bi: PDFFont;
-  i: PDFFont;
+  title: PDFFont;
+  titleB: PDFFont;
+  text: PDFFont;
+  textB: PDFFont;
+  textI: PDFFont;
 }
+type Box = [number, number, number, number]; // x0, y0, x1, y1 em px
 
 const b64 = (s: string) => Uint8Array.from(Buffer.from(s, "base64"));
 
-/** Só o que a fonte padrão (WinAnsi) desenha. */
 function clean(font: PDFFont, s: string): string {
   const set = new Set(font.getCharacterSet());
-  const mapped = s
-    .normalize("NFC")
-    .replace(/[→⇒]/g, "->")
-    .replace(/[≥]/g, ">=")
-    .replace(/[≤]/g, "<=")
-    .replace(/[✓✔]/g, "")
-    .replace(/[−‐‑]/g, "-")
-    .replace(/[​-‍﻿]/g, "")
-    .replace(/\s+/g, " ");
   let out = "";
-  for (const ch of mapped) out += set.has(ch.codePointAt(0)!) ? ch : "";
+  for (const ch of s.normalize("NFC").replace(/[→⇒]/g, "→").replace(/\s+/g, " ")) {
+    const cp = ch.codePointAt(0)!;
+    out += set.has(cp) ? ch : ch === "→" ? "->" : "";
+  }
   return out.trim();
 }
 
@@ -58,13 +54,18 @@ function wrap(font: PDFFont, text: string, size: number, width: number): string[
     if (font.widthOfTextAtSize(next, size) <= width) line = next;
     else {
       if (line) lines.push(line);
-      // Palavra maior que a linha: quebra à força.
       let rest = w;
       while (font.widthOfTextAtSize(rest, size) > width && rest.length > 1) {
-        let k = rest.length - 1;
-        while (k > 1 && font.widthOfTextAtSize(rest.slice(0, k), size) > width) k--;
-        lines.push(rest.slice(0, k));
-        rest = rest.slice(k);
+        // maior prefixo que cabe (busca binária)
+        let lo = 1;
+        let hi = rest.length - 1;
+        while (lo < hi) {
+          const mid = Math.ceil((lo + hi) / 2);
+          if (font.widthOfTextAtSize(rest.slice(0, mid), size) <= width) lo = mid;
+          else hi = mid - 1;
+        }
+        lines.push(rest.slice(0, lo));
+        rest = rest.slice(lo);
       }
       line = rest;
     }
@@ -73,343 +74,400 @@ function wrap(font: PDFFont, text: string, size: number, width: number): string[
   return lines;
 }
 
-/** Linhas que cabem em `maxLines`; a última ganha reticências se sobrar texto. */
-function clamp(font: PDFFont, text: string, size: number, width: number, maxLines: number): string[] {
-  const lines = wrap(font, text, size, width);
-  if (lines.length <= maxLines) return lines;
-  const out = lines.slice(0, Math.max(1, maxLines));
-  let last = out[out.length - 1]!;
+function ellipsize(font: PDFFont, lines: string[], size: number, width: number, max: number): string[] {
+  if (lines.length <= max) return lines;
+  const out = lines.slice(0, max);
+  let last = out[max - 1]!;
   while (last && font.widthOfTextAtSize(`${last}…`, size) > width) last = last.replace(/\s*\S+$/, "");
-  out[out.length - 1] = `${last}…`;
+  out[max - 1] = `${last}…`;
   return out;
 }
 
-/** Coordenadas "de cima para baixo" (y a partir do topo da página). */
 class Canvas {
   constructor(
+    readonly doc: PDFDocument,
     readonly page: PDFPage,
     readonly f: Fonts,
   ) {}
-  rect(x: number, y: number, w: number, h: number, o: { color?: RGB; border?: RGB; bw?: number; opacity?: number } = {}) {
-    this.page.drawRectangle({ x, y: H - y - h, width: w, height: h, color: o.color, borderColor: o.border, borderWidth: o.border ? (o.bw ?? 1) : 0, opacity: o.opacity, borderOpacity: o.opacity });
-  }
-  text(s: string, x: number, y: number, size: number, font: PDFFont, color: RGB = WHITE, o: { spacing?: number } = {}) {
+  /** Texto com o topo da caixa em `y` (px). */
+  text(s: string, x: number, y: number, size: number, font: PDFFont, color: RGB) {
     const t = clean(font, s);
-    if (!t) return;
-    if (o.spacing) {
-      let cx = x;
-      for (const ch of t) {
-        this.page.drawText(ch, { x: cx, y: H - y - size * 0.8, size, font, color });
-        cx += font.widthOfTextAtSize(ch, size) + o.spacing;
+    if (t) this.page.drawText(t, { x: x * K, y: H - (y + size * 0.82) * K, size: size * K, font, color });
+  }
+  width(s: string, size: number, font: PDFFont) {
+    return font.widthOfTextAtSize(clean(font, s), size);
+  }
+  path(d: string, o: { fill?: RGB; stroke?: RGB; width?: number; opacity?: number }) {
+    this.page.drawSvgPath(d, { x: 0, y: H, scale: K, color: o.fill, borderColor: o.stroke, borderWidth: o.stroke ? (o.width ?? 1) : 0, opacity: o.opacity, borderOpacity: o.opacity });
+  }
+  /** Visto vermelho do modelo. */
+  check(x: number, y: number, s: number, color: RGB = RED) {
+    this.path(`M ${x} ${y + s * 0.5} L ${x + s * 0.38} ${y + s * 0.88} L ${x + s} ${y + s * 0.05} L ${x + s * 0.86} ${y - s * 0.08} L ${x + s * 0.36} ${y + s * 0.6} L ${x + s * 0.14} ${y + s * 0.36} Z`, { fill: color });
+  }
+  /** Seta dupla vermelha (»). */
+  chevrons(x: number, y: number, s: number) {
+    for (const dx of [0, s * 0.5]) this.path(`M ${x + dx} ${y} L ${x + dx + s * 0.32} ${y} L ${x + dx + s * 0.62} ${y + s * 0.5} L ${x + dx + s * 0.32} ${y + s} L ${x + dx} ${y + s} L ${x + dx + s * 0.3} ${y + s * 0.5} Z`, { fill: RED });
+  }
+}
+
+interface Span {
+  text: string;
+  color?: RGB;
+}
+/** Parágrafo que cabe na caixa: reduz a fonte até caber; o que sobrar ganha reticências. */
+function paragraph(c: Canvas, box: Box, text: string | Span[], o: { font: PDFFont; color: RGB; max: number; min?: number; align?: "left" | "center"; lh?: number; vcenter?: boolean }) {
+  const spans: Span[] = typeof text === "string" ? [{ text }] : text;
+  const whole = spans.map((s) => s.text).join("");
+  const [x0, y0, x1, y1] = box;
+  const w = x1 - x0;
+  const h = y1 - y0;
+  const lhK = o.lh ?? 1.12;
+  let size = o.max;
+  let lines = wrap(o.font, whole, size, w);
+  while (size > (o.min ?? o.max * 0.55) && lines.length * size * lhK > h) {
+    size -= 0.5;
+    lines = wrap(o.font, whole, size, w);
+  }
+  const max = Math.max(1, Math.floor(h / (size * lhK)));
+  lines = ellipsize(o.font, lines, size, w, max);
+  const total = lines.length * size * lhK;
+  let y = o.vcenter === false ? y0 : y0 + Math.max(0, (h - total) / 2);
+  // Cores por trecho: acompanha o índice de caractere de cada linha.
+  const colored = spans.length > 1;
+  let charPos = 0;
+  const cleanWhole = clean(o.font, whole);
+  for (const ln of lines) {
+    const lw = c.width(ln, size, o.font);
+    let x = o.align === "left" ? x0 : x0 + (w - lw) / 2;
+    if (!colored) c.text(ln, x, y, size, o.font, o.color);
+    else {
+      const start = cleanWhole.indexOf(ln.replace(/…$/, ""), charPos);
+      let pos = start < 0 ? charPos : start;
+      // desenha palavra a palavra com a cor do trecho em que ela começa
+      const bounds: Array<{ end: number; color: RGB }> = [];
+      let e = 0;
+      for (const s of spans) {
+        e += s.text.length;
+        bounds.push({ end: e, color: s.color ?? o.color });
       }
-      return;
+      for (const word of ln.split(" ")) {
+        const at = cleanWhole.indexOf(word.replace(/…$/, ""), pos);
+        const p = at < 0 ? pos : at;
+        const col = bounds.find((b) => p < b.end)?.color ?? o.color;
+        c.text(word, x, y, size, o.font, col);
+        x += c.width(word, size, o.font) + o.font.widthOfTextAtSize(" ", size);
+        pos = p + word.length;
+      }
+      charPos = pos;
     }
-    this.page.drawText(t, { x, y: H - y - size * 0.8, size, font, color });
-  }
-  width(s: string, size: number, font: PDFFont, spacing = 0) {
-    const t = clean(font, s);
-    return font.widthOfTextAtSize(t, size) + spacing * Math.max(0, [...t].length - 1);
-  }
-  poly(points: Array<[number, number]>, color: RGB, opacity = 1) {
-    const path = points.map(([x, y], i) => `${i ? "L" : "M"} ${x} ${y}`).join(" ") + " Z";
-    this.page.drawSvgPath(path, { x: 0, y: H, color, opacity, borderWidth: 0 });
-  }
-  check(x: number, y: number, s = 6, color: RGB = RED) {
-    this.page.drawLine({ start: { x, y: H - y - s * 0.55 }, end: { x: x + s * 0.38, y: H - y - s }, thickness: 1.6, color });
-    this.page.drawLine({ start: { x: x + s * 0.38, y: H - y - s }, end: { x: x + s, y: H - y - s * 0.05 }, thickness: 1.6, color });
+    y += size * lhK;
   }
 }
 
-function background(c: Canvas, art: PDFImage | null) {
-  c.rect(0, 0, W, H, { color: BG });
-  if (art) c.page.drawImage(art, { x: 250, y: H - 300, width: 264, height: 300, opacity: 0.42 });
-  // Faixas diagonais vermelhas (cantos), como no modelo.
-  for (let k = 0; k < 3; k++) {
-    const o = k * 9;
-    c.poly([[W - 120 + o, 0], [W - 112 + o, 0], [W - 152 + o, 40], [W - 160 + o, 40]], RED, 0.85 - k * 0.2);
-    c.poly([[o, H - 8], [o + 8, H - 8], [o + 30, H - 36], [o + 22, H - 36]], RED, 0.7 - k * 0.2);
-  }
-}
-
-function footer(c: Canvas, label: string) {
-  c.rect(0, H - 34, W, 34, { color: rgb(0.02, 0.02, 0.025) });
-  c.rect(0, H - 34, W, 1.2, { color: RED });
-  const word = "APROVUM";
-  let x = 290;
-  for (const ch of word) {
-    c.text(ch, x, H - 25, 15, c.f.b, ch === "V" ? RED : WHITE);
-    x += c.width(ch, 15, c.f.b) + 9;
-  }
-  c.text(label, 520, H - 21, 8, c.f.b, SOFT, { spacing: 2.2 });
-  for (let k = 0; k < 3; k++) c.poly([[470 + k * 8, H - 8], [476 + k * 8, H - 8], [490 + k * 8, H - 28], [484 + k * 8, H - 28]], RED, 0.9);
-}
-
-/** Cartão com cabeçalho (título + selo colorido) e corpo; devolve a área interna. */
-function card(c: Canvas, x: number, y: number, w: number, h: number, title: string, o: { accent?: RGB; sub?: string | null; filled?: boolean } = {}) {
-  const accent = o.accent ?? RED;
-  c.rect(x, y, w, h, { color: o.filled ? accent : CARD, border: accent, bw: 1.1, opacity: 0.96 });
-  const headH = o.sub ? 30 : 20;
-  if (!o.filled) c.rect(x + 0.6, y + 0.6, w - 1.2, headH, { color: CARD_HEAD });
-  // selo
-  c.rect(x + 7, y + 6, 3, headH - 12 > 6 ? headH - 12 : 8, { color: accent });
-  const titleColor = o.filled ? rgb(0.05, 0.05, 0.05) : accent === GOLD ? GOLD : WHITE;
-  const tl = clamp(c.f.bi, title.toUpperCase(), 9.5, w - 22, 1);
-  c.text(tl[0] ?? "", x + 15, y + 6, 9.5, c.f.bi, titleColor);
-  if (o.sub) c.text(clamp(c.f.r, o.sub, 7.5, w - 22, 1)[0] ?? "", x + 15, y + 18, 7.5, c.f.r, o.filled ? rgb(0.1, 0.1, 0.1) : MUTED);
-  return { x: x + 9, y: y + headH + 5, w: w - 18, h: h - headH - 9 };
-}
-
-type Item = { text: string; bold?: string; bullet?: "check" | "arrow" | "none" };
-
-/** Lista dentro de uma área: reduz a fonte até caber; o que sobrar ganha reticências. */
-function list(c: Canvas, area: { x: number; y: number; w: number; h: number }, items: Item[], o: { color?: RGB; max?: number; min?: number; center?: boolean } = {}) {
-  const color = o.color ?? SOFT;
-  for (let size = o.max ?? 8.4; size >= (o.min ?? 5.6); size -= 0.4) {
-    const lh = size * 1.22;
-    const layout: Array<{ lines: string[]; item: Item; bw: number }> = [];
-    let used = 0;
-    for (const it of items) {
-      const indent = it.bullet === "none" ? 0 : size + 3;
-      const full = it.bold ? `${it.bold} ${it.text}` : it.text;
-      const lines = wrap(c.f.r, full, size, area.w - indent);
-      layout.push({ lines, item: it, bw: indent });
-      used += lines.length * lh + size * 0.35;
-    }
-    if (used <= area.h || size - 0.4 < (o.min ?? 5.6)) {
-      let y = area.y;
-      const maxLines = Math.floor(area.h / lh);
-      let left = maxLines;
-      for (const { lines, item, bw } of layout) {
-        if (left <= 0) break;
-        const show = lines.length > left ? clamp(c.f.r, item.bold ? `${item.bold} ${item.text}` : item.text, size, area.w - bw, left) : lines;
-        if (item.bullet === "check") c.check(area.x, y + 1, size * 0.8);
-        else if (item.bullet === "arrow") c.text("»", area.x, y - 0.5, size + 1, c.f.b, RED);
-        show.forEach((ln, i) => {
-          let x = area.x + bw;
-          if (o.center) x = area.x + (area.w - c.width(ln, size, c.f.r)) / 2;
-          if (i === 0 && item.bold && ln.startsWith(clean(c.f.b, item.bold))) {
-            const bold = clean(c.f.b, item.bold);
-            c.text(bold, x, y, size, c.f.b, WHITE);
-            c.text(ln.slice(bold.length), x + c.width(bold, size, c.f.b) + c.width("n", size, c.f.r) * 0.5, y, size, c.f.r, color);
-          } else c.text(ln, x, y, size, c.f.r, color);
-          y += lh;
-        });
+type Bullet = "check" | "chevron" | "triangle" | "none";
+/** Lista com marcador: reduz a fonte até caber. */
+function bullets(c: Canvas, box: Box, items: string[], o: { font: PDFFont; color: RGB; max: number; min?: number; bullet: Bullet; gap?: number; vcenter?: boolean; markColor?: RGB }) {
+  const [x0, y0, x1, y1] = box;
+  const h = y1 - y0;
+  for (let size = o.max; size >= (o.min ?? 13); size -= 0.5) {
+    const ind = o.bullet === "none" ? 0 : size * (o.bullet === "chevron" ? 1.45 : 1.25);
+    const lh = size * 1.1;
+    const gap = o.gap ?? size * 0.28;
+    const laid = items.map((t) => wrap(o.font, t, size, x1 - x0 - ind));
+    const total = laid.reduce((a, l) => a + l.length * lh + gap, -gap);
+    if (total <= h || size - 0.5 < (o.min ?? 13)) {
+      let y = o.vcenter === false ? y0 : y0 + Math.max(0, (h - total) / 2);
+      let left = Math.floor((h + gap) / lh);
+      for (let i = 0; i < laid.length && left > 0; i++) {
+        const show = ellipsize(o.font, laid[i]!, size, x1 - x0 - ind, Math.max(1, left));
+        const ms = size * 0.82;
+        if (o.bullet === "check") c.check(x0, y + size * 0.12, ms, o.markColor);
+        else if (o.bullet === "chevron") c.chevrons(x0, y + size * 0.1, ms);
+        else if (o.bullet === "triangle") c.path(`M ${x0} ${y + size * 0.15} L ${x0 + ms * 0.8} ${y + size * 0.5} L ${x0} ${y + size * 0.85} Z`, { fill: o.markColor ?? INK });
+        show.forEach((ln, k) => c.text(ln, x0 + ind, y + k * lh, size, o.font, o.color));
+        y += show.length * lh + gap;
         left -= show.length;
-        y += size * 0.35;
       }
       return;
     }
   }
 }
 
-function mnemonicCard(c: Canvas, x: number, y: number, w: number, h: number, m: MindMap["mnemonics"][number], accent: RGB) {
-  const a = card(c, x, y, w, h, "Mnemônico", { accent, sub: m.label });
-  let size = 26;
-  while (size > 12 && c.width(`“${m.acronym}”`, size, c.f.bi) > a.w) size -= 1;
-  c.text(`“${m.acronym}”`, a.x + (a.w - c.width(`“${m.acronym}”`, size, c.f.bi)) / 2, a.y, size, c.f.bi, accent === GOLD ? GOLD : accent === PURPLE ? rgb(0.86, 0.72, 1) : RED);
-  list(c, { x: a.x, y: a.y + size + 3, w: a.w, h: a.h - size - 3 }, [{ text: m.terms.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(", "), bullet: "none" }], { center: true, max: 7.6, min: 5.4 });
+/** Texto prateado (recorte do texto sobre o degradê), com sombra escura — o título do modelo. */
+function metalText(c: Canvas, s: string, x: number, y: number, size: number, font: PDFFont, metal: PDFImage) {
+  const t = clean(font, s);
+  const tw = font.widthOfTextAtSize(t, size);
+  // sombra/contorno
+  for (const [dx, dy] of [[3, 4], [2, 2], [-1, 1]] as const) c.text(t, x + dx, y + dy, size, font, rgb(0.04, 0.04, 0.05));
+  const page = c.page;
+  const fontKey = page.node.newFontDictionary(font.name, font.ref);
+  const imgKey = page.node.newXObject("Image", metal.ref);
+  const bx = x * K;
+  const by = H - (y + size * 0.82) * K;
+  page.pushOperators(
+    pushGraphicsState(),
+    beginText(),
+    setFontAndSize(fontKey, size * K),
+    setTextRenderingMode(TextRenderingMode.Clip),
+    setTextMatrix(1, 0, 0, 1, bx, by),
+    showText(font.encodeText(t)),
+    endText(),
+    // degradê do topo (claro) à base (mais escuro), do tamanho do texto
+    concatTransformationMatrix(tw * K, 0, 0, size * 1.25 * K, bx, by - size * 0.22 * K),
+    drawObject(imgKey as unknown as PDFName),
+    popGraphicsState(),
+  );
 }
 
-function header(c: Canvas, map: MindMap, logo: PDFImage | null, compact = false) {
-  if (logo) c.page.drawImage(logo, { x: 20, y: H - 18 - 41, width: 200, height: 41 });
-  // "MAPA MENTAL"
-  const mm = compact ? "MATÉRIA COMPLETA" : "MAPA MENTAL";
-  const ms = compact ? 16 : 24;
-  c.text(mm, W - 22 - c.width(mm, ms, c.f.bi), 16, ms, c.f.bi, WHITE);
-  const tag = "ESTUDE • FIXE • EVOLUA";
-  c.text(tag, W - 22 - c.width(tag, 7.5, c.f.b, 1.6), 16 + ms + 3, 7.5, c.f.b, SOFT, { spacing: 1.6 });
-  if (compact) {
-    const t = clean(c.f.bi, map.title.toUpperCase());
-    c.text(clamp(c.f.bi, t, 18, 520, 1)[0] ?? "", 240, 22, 18, c.f.bi, WHITE);
-    if (map.subtitle) c.text(map.subtitle.toUpperCase(), 240, 44, 9, c.f.b, RED);
+const upperFirst = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const lawArticle = (map: MindMap) => {
+  const m = /art\.?\s*([\w-]+)/i.exec(map.subtitle ?? "");
+  return m ? `Art. ${m[1]}` : null;
+};
+
+/** Nome curto do bloco (ex.: "Homicídio simples") e a referência "(Art. 121, caput)". */
+function blockHeading(map: MindMap, b: MindMapBlock): { title: string; sub: string | null } {
+  const art = lawArticle(map);
+  const bt = /^caput$/i.test(b.title) ? "caput" : b.title;
+  const ref = art ? `(${art}, ${bt})` : `(${bt})`;
+  const paren = /\(([^()]{3,40})\)\s*$/.exec(b.detail);
+  if (paren && !/^(lei|art|incisos?)\b/i.test(paren[1]!)) return { title: upperFirst(paren[1]!), sub: ref };
+  const head = b.detail.split(/\s*[(:;]\s*/)[0]!.trim();
+  if (head.length >= 3) return { title: upperFirst(head), sub: ref };
+  return { title: b.title, sub: b.detail || null };
+}
+
+/** Três blocos principais (como simples / qualificado / culposo no modelo): os de pena, os mais diretos. */
+function pickTypeBlocks(map: MindMap): MindMapBlock[] {
+  const strong = map.blocks.filter((b) => b.value && /reclus|deten|\d+\s*(a|até)\s*\d+\s*anos|multa/i.test(b.value));
+  const pool = strong.length >= 3 ? strong : [...strong, ...map.blocks.filter((b) => !strong.includes(b))];
+  const chosen = [...pool].sort((a, b) => a.detail.length - b.detail.length).slice(0, 3);
+  return map.blocks.filter((b) => chosen.includes(b));
+}
+
+function acronymRun(c: Canvas, box: Box, acr: string, o: { max: number; style: "purple" | "red" | "gold"; metal: PDFImage }) {
+  const [x0, y0, x1, y1] = box;
+  const font = c.f.title;
+  const q = `“${acr}”`;
+  let size = o.max;
+  while (size > 18 && c.width(q, size, font) > x1 - x0) size -= 1;
+  const tw = c.width(q, size, font);
+  const x = x0 + (x1 - x0 - tw) / 2;
+  const y = y0 + (y1 - y0 - size * 0.86) / 2;
+  if (o.style === "gold") {
+    c.text(q, x, y, size, font, INK);
     return;
   }
-  // Título grande + faixa vermelha com o dispositivo
+  if (o.style === "red") {
+    c.text(q, x + 2, y + 2, size, font, rgb(0.15, 0, 0));
+    c.text(q, x, y, size, font, RED_TEXT);
+    return;
+  }
+  // roxo do modelo: metade vermelha, metade prateada
+  const half = Math.ceil(acr.length / 2);
+  const a = `“${acr.slice(0, half)}`;
+  c.text(a, x + 2, y + 2, size, font, rgb(0.15, 0, 0));
+  c.text(a, x, y, size, font, RED_TEXT);
+  metalText(c, `${acr.slice(half)}”`, x + c.width(a, size, font), y, size, font, o.metal);
+}
+
+function termsLine(m: MindMapMnemonic) {
+  return m.terms.map(upperFirst).join(", ");
+}
+
+/** Página 1 — o mapa, exatamente no desenho do modelo. */
+function drawMapPage(doc: PDFDocument, f: Fonts, map: MindMap, bg: PDFImage, metal: PDFImage) {
+  const page = doc.addPage([W, H]);
+  page.drawImage(bg, { x: 0, y: 0, width: W, height: H });
+  const c = new Canvas(doc, page, f);
+
+  // Título prateado + faixa vermelha
   const title = map.title.toUpperCase();
-  const area = { x: 430, w: 390 };
-  let size = 44;
-  let lines = wrap(c.f.bi, title, size, area.w);
-  while ((lines.length > 2 || (lines.length === 2 && size > 30)) && size > 18) {
-    size -= 2;
-    lines = wrap(c.f.bi, title, size, area.w);
-  }
-  lines = clamp(c.f.bi, title, size, area.w, 2);
-  let y = 58;
-  for (const ln of lines) {
-    const lw = c.width(ln, size, c.f.bi);
-    c.text(ln, area.x + (area.w - lw) / 2 + 1.5, y + 1.5, size, c.f.bi, RED_DARK);
-    c.text(ln, area.x + (area.w - lw) / 2, y, size, c.f.bi, WHITE);
-    y += size * 0.98;
-  }
+  let ts = 112;
+  while (ts > 40 && c.width(title, ts, f.title) > 585) ts -= 2;
+  if (c.width(title, ts, f.title) > 585) {
+    // título muito longo: duas linhas
+    let s2 = 60;
+    let lines = wrap(f.title, title, s2, 585);
+    while (s2 > 30 && (lines.length > 2 || c.width(lines[0] ?? "", s2, f.title) > 585)) {
+      s2 -= 2;
+      lines = wrap(f.title, title, s2, 585);
+    }
+    lines = ellipsize(f.title, lines, s2, 585, 2);
+    lines.forEach((ln, i) => metalText(c, ln, 1085 - c.width(ln, s2, f.title) / 2, 100 + i * s2 * 0.95 + (2 - lines.length) * s2 * 0.45, s2, f.title, metal));
+  } else metalText(c, title, 1085 - c.width(title, ts, f.title) / 2, 100 + (105 - ts * 0.86) / 2, ts, f.title, metal);
   const rib = (map.subtitle ?? map.subject ?? "").toUpperCase();
-  if (rib) {
-    const rs = 15;
-    const rw = Math.min(area.w, c.width(rib, rs, c.f.bi) + 40);
-    const rx = area.x + (area.w - rw) / 2;
-    const ry = y + 2;
-    c.poly([[rx + 10, ry], [rx + rw, ry], [rx + rw - 10, ry + 24], [rx, ry + 24]], RED);
-    c.poly([[rx - 18, ry + 6], [rx - 6, ry + 6], [rx - 12, ry + 18], [rx - 24, ry + 18]], RED, 0.8);
-    c.poly([[rx + rw + 6, ry + 6], [rx + rw + 18, ry + 6], [rx + rw + 12, ry + 18], [rx + rw, ry + 18]], RED, 0.8);
-    const t = clamp(c.f.bi, rib, rs, rw - 24, 1)[0] ?? "";
-    c.text(t, rx + (rw - c.width(t, rs, c.f.bi)) / 2, ry + 5, rs, c.f.bi, WHITE);
-  }
-}
+  if (rib) paragraph(c, [930, 208, 1212, 246], rib, { font: f.title, color: WHITE, max: 38, min: 18 });
 
-/** Página 1: o mapa no modelo padrão. */
-function drawMapPage(doc: PDFDocument, f: Fonts, map: MindMap, art: PDFImage | null, logo: PDFImage | null) {
-  const c = new Canvas(doc.addPage([W, H]), f);
-  background(c, art);
-  header(c, map, logo);
-
-  const top = 150;
-  const gridBottom = 452;
-  const gap = 9;
-  const colW = (W - 36 - gap * 3) / 4;
-  const colX = (i: number) => 18 + i * (colW + gap);
-
-  // Coluna 1: o que é + mnemônico principal
+  const blocks = pickTypeBlocks(map);
   const mn = map.mnemonics;
-  const introH = mn.length ? 160 : gridBottom - top;
-  const intro = card(c, colX(0), top, colW, introH, "O que é?", { accent: RED });
-  list(c, intro, [{ text: map.intro ?? `${map.title}: veja os blocos ao lado e os módulos nas próximas páginas.`, bullet: "none" }], { max: 9, min: 6 });
-  if (mn[0]) mnemonicCard(c, colX(0), top + introH + gap, colW, gridBottom - top - introH - gap, mn[0], PURPLE);
-
-  // Colunas 2 e 3: blocos do esquema (ou módulos, se a aula não tiver esquema)
-  const blocks = map.blocks.length
-    ? map.blocks.map((b) => ({ title: b.title, sub: b.detail, value: b.value }))
-    : map.modules.map((m) => ({ title: m.title, sub: m.points[0] ?? "", value: m.points[1] ?? null }));
-  const right = mn.length > 1 ? 1 : 0;
-  const perCol = 4;
-  const slots = perCol * 2 - right;
-  const shown = blocks.slice(0, slots);
-  const colA = shown.slice(0, Math.ceil(shown.length / 2));
-  const colB = shown.slice(colA.length);
-  const drawBlocks = (items: typeof shown, x: number, height: number) => {
-    if (!items.length) return;
-    const bh = (height - gap * (items.length - 1)) / items.length;
-    items.forEach((b, i) => {
-      const y = top + i * (bh + gap);
-      const a = card(c, x, y, colW, bh, b.title, { accent: RED });
-      const valueH = b.value ? (c.width(b.value, 7.6, c.f.r) + 30 > colW - 18 ? 26 : 17) : 0;
-      list(c, { x: a.x, y: a.y, w: a.w, h: a.h - valueH - (valueH ? 3 : 0) }, [{ text: b.sub, bullet: "none" }], { max: 8, min: 5.6 });
-      if (b.value) {
-        c.rect(x + 1, y + bh - valueH - 1, colW - 2, valueH, { color: rgb(0.02, 0.02, 0.025) });
-        const label = map.blocks.length && map.valueLabel ? `${map.valueLabel.split(/\s+ou\s+/i)[0]}: ` : "";
-        list(c, { x: a.x, y: y + bh - valueH + 3, w: a.w, h: valueH - 4 }, [{ text: b.value, bold: label || undefined, bullet: "none" }], { max: 8, min: 5.6, color: WHITE });
-      }
-    });
+  const valueLabel = map.valueLabel ? upperFirst(map.valueLabel.split(/\s+(ou|e)\s+/i)[0]!.toLowerCase()) : null;
+  const typeCard = (b: MindMapBlock | undefined, head: Box, pena: Box, twoLine: boolean) => {
+    if (!b) return;
+    const { title: t, sub } = blockHeading(map, b);
+    const [x0, y0, x1, y1] = head;
+    const tSize = 31;
+    let tl = wrap(f.title, t.toUpperCase(), tSize, x1 - x0);
+    tl = ellipsize(f.title, tl, tSize, x1 - x0, twoLine ? 2 : 1);
+    const subH = sub ? 24 : 0;
+    const total = tl.length * tSize * 0.95 + subH;
+    let y = y0 + (y1 - y0 - total) / 2;
+    for (const ln of tl) {
+      c.text(ln, twoLine ? x0 : x0 + (x1 - x0 - c.width(ln, tSize, f.title)) / 2, y, tSize, f.title, WHITE);
+      y += tSize * 0.95;
+    }
+    if (sub) {
+      const s = ellipsize(f.textB, wrap(f.textB, sub, 22, x1 - x0), 22, x1 - x0, 1)[0] ?? "";
+      c.text(s, twoLine ? x0 + 12 : x0 + (x1 - x0 - c.width(s, 22, f.textB)) / 2, y + 1, 22, f.textB, SOFT);
+    }
+    if (b.value) paragraph(c, pena, valueLabel ? `${valueLabel}: ${b.value.charAt(0).toLowerCase()}${b.value.slice(1)}` : b.value, { font: f.text, color: WHITE, max: 24, min: 15 });
   };
-  const bHeight = gridBottom - top;
-  drawBlocks(colA, colX(1), bHeight);
-  const colBHeight = right ? bHeight - 132 - gap : bHeight;
-  drawBlocks(colB, colX(2), colBHeight);
-  if (right && mn[1]) mnemonicCard(c, colX(2), top + colBHeight + gap, colW, 132, mn[1], GOLD);
 
-  // Coluna 4: atenção (pegadinhas) + 3º mnemônico ou comparação
-  const traps = map.traps.slice(0, 6);
-  const col4Second = mn[2] ? "mn" : map.comparisons.length ? "cmp" : null;
-  const trapsH = col4Second ? 230 : gridBottom - top;
-  const ta = card(c, colX(3), top, colW, trapsH, "Atenção: pegadinhas", { accent: RED });
-  list(c, ta, traps.length ? traps.map((t) => ({ text: t.truth, bold: t.claim, bullet: "arrow" as const })) : [{ text: "Releia os pontos de cada módulo nas próximas páginas.", bullet: "none" }], { max: 7.8, min: 5.4 });
-  const y4 = top + trapsH + gap;
-  const h4 = gridBottom - y4;
-  if (col4Second === "mn" && mn[2]) mnemonicCard(c, colX(3), y4, colW, h4, mn[2], RED);
-  else if (col4Second === "cmp") {
-    const a = card(c, colX(3), y4, colW, h4, "Não confunda", { accent: GOLD });
-    list(c, a, map.comparisons.slice(0, 5).map((r) => ({ text: r.detail, bold: `${r.title}:`, bullet: "arrow" as const })), { max: 7.6, min: 5.4 });
+  // Coluna 1
+  typeCard(blocks[0], [150, 210, 420, 282], [80, 293, 402, 327], false);
+  c.text("O QUE É?", 143, 374, 33, f.title, RED_TEXT);
+  paragraph(c, [102, 424, 372, 562], map.intro ?? `${map.title}: os pontos principais estão nos cartões ao lado e na matéria completa, nas próximas páginas.`, { font: f.text, color: WHITE, max: 25, min: 14 });
+  if (mn[0]) {
+    acronymRun(c, [138, 633, 378, 688], mn[0].acronym, { max: 54, style: "purple", metal });
+    paragraph(c, [112, 686, 386, 716], termsLine(mn[0]), { font: f.text, color: WHITE, max: 21, min: 13 });
   }
 
-  // Linha de baixo: dica | resumo | o que lembrar
-  const by = gridBottom + gap;
-  const bh = H - 40 - by;
-  const bw = (W - 36 - gap * 2) / 3;
-  const dica = card(c, 18, by, bw, bh, "Dica de prova", { accent: RED });
-  list(c, dica, [{ text: map.tip ?? "Revise os blocos e os mnemônicos antes da prova.", bullet: "none" }], { max: 8.4, min: 5.6 });
-  const res = card(c, 18 + bw + gap, by, bw, bh, "Resumo estratégico", { accent: RED });
-  list(c, res, (map.summary.length ? map.summary.slice(0, 4).map((r) => ({ text: r.a, bold: r.q.replace(/\?$/, ":"), bullet: "check" as const })) : map.blocks.slice(0, 4).map((b) => ({ text: b.value ?? b.detail, bold: `${b.title}:`, bullet: "check" as const }))), { max: 8, min: 5.6 });
-  const lem = card(c, 18 + (bw + gap) * 2, by, bw, bh, "O que lembrar?", { accent: GOLD });
-  const remember = [...mn.map((m) => ({ text: m.label, bold: `${m.acronym} =`, bullet: "check" as const })), ...map.remember.slice(0, 3).map((r) => ({ text: r, bullet: "check" as const }))];
-  list(c, lem, remember.length ? remember.slice(0, 4) : [{ text: "Os pontos de cada módulo estão nas próximas páginas.", bullet: "none" }], { max: 8, min: 5.6 });
+  // Coluna 2
+  typeCard(blocks[1], [568, 280, 805, 364], [490, 369, 806, 401], true);
+  const m1 = mn[1];
+  const list2 = m1 ? m1.items : map.summary.map((r) => `${r.q} ${r.a}`);
+  c.text(clean(f.titleB, m1 ? upperFirst(m1.label) : "Resumo").slice(0, 26) + (m1 && m1.label.length > 26 ? "…" : ""), 570, 430, 26, f.titleB, RED_TEXT);
+  bullets(c, [500, 470, 815, 650], list2.slice(0, 7), { font: f.text, color: WHITE, max: 22, min: 13, bullet: "check" });
+  if (m1) {
+    acronymRun(c, [580, 699, 772, 749], m1.acronym, { max: 54, style: "red", metal });
+    paragraph(c, [542, 746, 790, 792], termsLine(m1), { font: f.textI, color: WHITE, max: 20, min: 12 });
+  }
 
-  footer(c, "FOCO • DISCIPLINA • APROVAÇÃO");
+  // Coluna 3 (amarela)
+  typeCard(blocks[2], [952, 280, 1150, 364], [878, 369, 1150, 401], true);
+  const m2 = mn[2];
+  c.text(clean(f.titleB, m2 ? upperFirst(m2.label) : "Atenção").slice(0, 22) + (m2 && m2.label.length > 22 ? "…" : ""), 957, 433, 25, f.titleB, GOLD);
+  bullets(c, [886, 478, 1146, 534], [m2 ? m2.items.slice(0, 2).join("; ") : (map.traps[0]?.truth ?? map.tip ?? "")], { font: f.textB, color: INK, max: 21, min: 14, bullet: "triangle" });
+  if (m2) {
+    acronymRun(c, [945, 612, 1112, 670], m2.acronym, { max: 58, style: "gold", metal });
+    paragraph(c, [896, 668, 1152, 715], termsLine(m2), { font: f.textB, color: INK, max: 21, min: 12 });
+  }
+
+  // Coluna 4: outros blocos do esquema + pegadinha
+  const others = map.blocks.filter((b) => !blocks.includes(b));
+  c.text(others.length ? "Mais do esquema" : "Pegadinhas", 1305, 288, 27, f.titleB, WHITE);
+  if (map.subtitle) c.text(`(${map.subtitle})`, 1305, 320, 21, f.textB, SOFT);
+  const col4 = others.length ? others.map((b) => `${b.title}: ${b.detail}${b.value ? ` (${b.value})` : ""}`) : map.traps.map((t) => `${t.claim} ${t.truth}`);
+  bullets(c, [1220, 372, 1498, 620], col4.slice(0, 4), { font: f.text, color: WHITE, max: 21, min: 12.5, bullet: "chevron" });
+  const trap = others.length ? map.traps[0] : map.traps[1];
+  c.text("Pegadinha de prova", 1293, 655, 26, f.titleB, WHITE);
+  c.text("(atenção!)", 1293, 686, 21, f.textB, SOFT);
+  paragraph(c, [1228, 722, 1498, 792], trap ? `${trap.claim} ${trap.truth}` : (map.tip ?? ""), { font: f.textB, color: INK, max: 20, min: 11.5, align: "left" });
+
+  // Linha de baixo
+  c.text("Dica de Prova", 403, 815, 29, f.titleB, WHITE);
+  const tip = map.tip ?? "Revise os mnemônicos e o esquema antes da prova.";
+  const cut = tip.lastIndexOf(": ");
+  paragraph(c, [352, 858, 632, 943], cut > 10 && tip.length - cut < 48 ? [{ text: tip.slice(0, cut + 2) }, { text: tip.slice(cut + 2), color: RED_TEXT }] : tip, { font: f.text, color: WHITE, max: 22, min: 12 });
+  c.text("Resumo Estratégico", 785, 815, 29, f.titleB, WHITE);
+  const short = (q: string) => q.replace(/\?$/, "").replace(/^(qual\s+[ée]\s+a\s+|qual\s+a\s+|quais\s+s[ãa]o\s+)/i, "").replace(/^pena d[oa]s?\s+/i, "").trim();
+  const summary = map.summary.length ? map.summary.slice(0, 3).map((r) => `${upperFirst(short(r.q))} = ${r.a}`) : blocks.map((b) => `${blockHeading(map, b).title} = ${b.value ?? b.detail}`);
+  bullets(c, [742, 857, 1030, 946], summary, { font: f.text, color: WHITE, max: 22, min: 12, bullet: "check" });
+  c.text("O que lembrar?", 1212, 815, 29, f.titleB, WHITE);
+  const remember = mn.length ? mn.slice(0, 3).map((m) => `${upperFirst(m.label)} = ${m.acronym}`) : map.remember.slice(0, 3);
+  bullets(c, [1170, 857, 1450, 946], remember, { font: f.text, color: WHITE, max: 22, min: 12, bullet: "check" });
 }
 
-type FlowCard = { title: string; accent: RGB; sub?: string | null; items: Item[]; big?: string };
+/** Cartão das páginas seguintes: cantos cortados, borda vermelha com brilho, como no modelo. */
+function chamferCard(c: Canvas, x: number, y: number, w: number, h: number, accent: RGB) {
+  const k = 16;
+  const d = `M ${x + k} ${y} L ${x + w} ${y} L ${x + w} ${y + h - k} L ${x + w - k} ${y + h} L ${x} ${y + h} L ${x} ${y + k} Z`;
+  for (const [wd, op] of [[14, 0.06], [9, 0.1], [5, 0.18]] as const) c.path(d, { stroke: accent, width: wd, opacity: op });
+  c.path(d, { fill: rgb(0.035, 0.035, 0.04), opacity: 0.94 });
+  c.path(d, { stroke: accent, width: 2.4 });
+  // faixa do cabeçalho
+  c.path(`M ${x + k} ${y + 2} L ${x + w - 2} ${y + 2} L ${x + w - 2} ${y + 44} L ${x + 2} ${y + 44} L ${x + 2} ${y + k} Z`, { fill: rgb(0.1, 0.1, 0.11), opacity: 0.9 });
+  c.path(`M ${x + 2} ${y + 44} L ${x + w - 2} ${y + 44}`, { stroke: accent, width: 1.2, opacity: 0.8 });
+}
 
-/** Páginas seguintes: toda a matéria da aula em cartões (3 colunas, quantas páginas precisar). */
-function drawFullPages(doc: PDFDocument, f: Fonts, map: MindMap, logo: PDFImage | null) {
+type FlowCard = { title: string; sub?: string | null; accent: RGB; items: string[]; bullet: Bullet; big?: string };
+
+function drawFullPages(doc: PDFDocument, f: Fonts, map: MindMap, bg: PDFImage, metal: PDFImage) {
   const cards: FlowCard[] = [];
-  map.modules.forEach((m, i) => cards.push({ title: m.title, sub: `Módulo ${i + 1}`, accent: RED, items: m.points.map((p) => ({ text: p, bullet: "arrow" })) }));
-  map.mnemonics.forEach((m, i) => cards.push({ title: "Mnemônico", sub: m.label, accent: ACCENTS[i % 3]!, big: m.acronym, items: m.terms.map((t) => ({ text: t, bold: `${t.charAt(0).toUpperCase()} —`, bullet: "none" })) }));
-  if (map.blocks.length) cards.push({ title: "Esquema completo", sub: map.valueLabel, accent: RED, items: map.blocks.map((b) => ({ text: `${b.detail}${b.value ? ` → ${b.value}` : ""}`, bold: `${b.title}:`, bullet: "check" })) });
-  if (map.traps.length) cards.push({ title: "Pegadinhas", accent: RED, items: map.traps.map((t) => ({ text: t.truth, bold: t.claim, bullet: "arrow" })) });
-  if (map.comparisons.length) cards.push({ title: "Não confunda", accent: GOLD, items: map.comparisons.map((r) => ({ text: `${r.detail}${r.value ? ` (${r.value})` : ""}`, bold: `${r.title}:`, bullet: "arrow" })) });
-  if (map.summary.length) cards.push({ title: "Resumo estratégico", accent: RED, items: map.summary.map((r) => ({ text: r.a, bold: r.q, bullet: "check" })) });
-  if (map.remember.length) cards.push({ title: "Você consegue…", accent: GOLD, items: map.remember.map((r) => ({ text: r, bullet: "check" })) });
+  map.modules.forEach((m, i) => cards.push({ title: m.title, sub: `Módulo ${i + 1}`, accent: RED, items: m.points, bullet: "chevron" }));
+  map.mnemonics.forEach((m, i) => cards.push({ title: "Mnemônico", sub: upperFirst(m.label), accent: [PURPLE, RED, GOLD][i % 3]!, big: m.acronym, items: m.items.length ? m.items : m.terms, bullet: "check" }));
+  if (map.blocks.length) cards.push({ title: "Esquema completo", sub: map.valueLabel, accent: RED, items: map.blocks.map((b) => `${b.title}: ${b.detail}${b.value ? ` → ${b.value}` : ""}`), bullet: "check" });
+  if (map.traps.length) cards.push({ title: "Pegadinhas de prova", accent: RED, items: map.traps.map((t) => `${t.claim} ${t.truth}`), bullet: "chevron" });
+  if (map.comparisons.length) cards.push({ title: "Não confunda", accent: GOLD, items: map.comparisons.map((r) => `${r.title}: ${r.detail}${r.value ? ` (${r.value})` : ""}`), bullet: "chevron" });
+  if (map.summary.length) cards.push({ title: "Resumo estratégico", accent: RED, items: map.summary.map((r) => `${r.q} ${r.a}`), bullet: "check" });
+  if (map.remember.length) cards.push({ title: "O que lembrar?", accent: GOLD, items: map.remember, bullet: "check" });
   if (!cards.length) return;
 
-  const gap = 9;
-  const top = 66;
-  const bottom = H - 42;
-  const colW = (W - 36 - gap * 2) / 3;
-  const size = 7.6;
-  const lh = size * 1.22;
-  const measureCard = (cd: FlowCard) => {
-    const headH = cd.sub ? 30 : 20;
-    let h = headH + 10 + (cd.big ? 26 : 0);
-    for (const it of cd.items) {
-      const indent = it.bullet === "none" ? 0 : size + 3;
-      h += wrap(f.r, it.bold ? `${it.bold} ${it.text}` : it.text, size, colW - 18 - indent).length * lh + size * 0.35;
-    }
-    return Math.min(h, bottom - top);
+  const gap = 18;
+  const top = 262;
+  const bottom = 944;
+  const colW = (PX_W - 60 - gap * 2) / 3;
+  const size = 18;
+  const lh = size * 1.1;
+  const measure = (cd: FlowCard) => {
+    const ind = size * 1.45;
+    let hgt = 44 + 14 + (cd.big ? 58 : 0);
+    for (const it of cd.items) hgt += wrap(f.text, it, size, colW - 36 - ind).length * lh + size * 0.28;
+    return Math.min(hgt + 10, bottom - top);
   };
-
-  let c: Canvas | null = null;
+  let c!: Canvas;
   let cols = [top, top, top];
   const newPage = () => {
-    c = new Canvas(doc.addPage([W, H]), f);
-    background(c, null);
-    header(c, map, logo, true);
-    footer(c, "FOCO • DISCIPLINA • APROVAÇÃO");
+    const page = doc.addPage([W, H]);
+    page.drawImage(bg, { x: 0, y: 0, width: W, height: H });
+    c = new Canvas(doc, page, f);
+    const title = map.title.toUpperCase();
+    let ts = 96;
+    while (ts > 30 && c.width(title, ts, f.title) > 585) ts -= 2;
+    metalText(c, ellipsize(f.title, wrap(f.title, title, ts, 585), ts, 585, 1)[0] ?? "", 1085 - Math.min(585, c.width(title, ts, f.title)) / 2, 100 + (105 - ts * 0.86) / 2, ts, f.title, metal);
+    paragraph(c, [930, 208, 1212, 246], "MATÉRIA COMPLETA", { font: f.title, color: WHITE, max: 34, min: 18 });
     cols = [top, top, top];
   };
   newPage();
   for (const cd of cards) {
-    const h = measureCard(cd);
+    const hgt = measure(cd);
     let col = cols.indexOf(Math.min(...cols));
-    if (cols[col]! + h > bottom) {
+    if (cols[col]! + hgt > bottom) {
       newPage();
       col = 0;
     }
-    const x = 18 + col * (colW + gap);
+    const x = 30 + col * (colW + gap);
     const y = cols[col]!;
-    const cv = c as unknown as Canvas;
-    const a = card(cv, x, y, colW, h, cd.title, { accent: cd.accent, sub: cd.sub });
-    let ay = a.y;
+    chamferCard(c, x, y, colW, hgt, cd.accent);
+    c.text(ellipsize(f.titleB, wrap(f.titleB, cd.title, 25, colW - 40), 25, colW - 40, 1)[0] ?? "", x + 20, y + 6, 25, f.titleB, cd.accent === GOLD ? GOLD : WHITE);
+    if (cd.sub) c.text(ellipsize(f.textB, wrap(f.textB, cd.sub, 15, colW - 40), 15, colW - 40, 1)[0] ?? "", x + 20, y + 28, 15, f.textB, rgb(0.72, 0.72, 0.75));
+    let by = y + 56;
     if (cd.big) {
-      const t = `“${cd.big}”`;
-      cv.text(t, a.x + (a.w - cv.width(t, 22, f.bi)) / 2, ay, 22, f.bi, cd.accent === GOLD ? GOLD : cd.accent === PURPLE ? rgb(0.86, 0.72, 1) : RED);
-      ay += 26;
+      acronymRun(c, [x + 18, by, x + colW - 18, by + 52], cd.big, { max: 50, style: cd.accent === PURPLE ? "purple" : "red", metal });
+      by += 58;
     }
-    list(cv, { x: a.x, y: ay, w: a.w, h: y + h - ay - 4 }, cd.items, { max: size, min: 5.4 });
-    cols[col] = y + h + gap;
+    bullets(c, [x + 18, by, x + colW - 18, y + hgt - 10], cd.items, { font: f.text, color: WHITE, max: size, min: 12, bullet: cd.bullet, vcenter: false });
+    cols[col] = y + hgt + gap;
   }
 }
 
 export async function renderMindMapPdf(map: MindMap): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
+  doc.registerFontkit(fontkit);
   doc.setTitle(`Mapa mental — ${map.title}`);
   doc.setAuthor("APROVUM");
   doc.setCreator("APROVUM");
   const f: Fonts = {
-    r: await doc.embedFont(StandardFonts.Helvetica),
-    b: await doc.embedFont(StandardFonts.HelveticaBold),
-    bi: await doc.embedFont(StandardFonts.HelveticaBoldOblique),
-    i: await doc.embedFont(StandardFonts.HelveticaOblique),
+    title: await doc.embedFont(b64(FONTE_TITULO), { subset: true }),
+    titleB: await doc.embedFont(b64(FONTE_TITULO_B), { subset: true }),
+    text: await doc.embedFont(b64(FONTE_TEXTO), { subset: true }),
+    textB: await doc.embedFont(b64(FONTE_TEXTO_B), { subset: true }),
+    textI: await doc.embedFont(b64(FONTE_TEXTO_I), { subset: true }),
   };
-  const art = await doc.embedJpg(b64(OPERADOR_JPG)).catch(() => null);
-  const logo = await doc.embedPng(b64(LOGO_CLARA_PNG)).catch(() => null);
-  drawMapPage(doc, f, map, art, logo);
-  drawFullPages(doc, f, map, logo);
+  const bg = await doc.embedJpg(b64(MODELO_JPG));
+  const bg2 = await doc.embedJpg(b64(MODELO_CONTINUACAO_JPG));
+  const metal = await doc.embedPng(b64(METAL_PNG));
+  drawMapPage(doc, f, map, bg, metal);
+  drawFullPages(doc, f, map, bg2, metal);
   return doc.save();
 }
