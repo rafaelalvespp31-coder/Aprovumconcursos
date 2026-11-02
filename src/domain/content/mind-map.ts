@@ -223,7 +223,7 @@ export function buildMindMap(input: { title: string; subject?: string | null; se
     map.valueLabel = comparisonLabel;
     map.comparisons = [];
   }
-  map.tip = bankTip ?? calloutTip;
+  map.tip = calloutTip ?? bankTip;
   if (!map.tip && map.traps[0]) map.tip = map.traps[0].truth ? `${map.traps[0].claim} → ${map.traps[0].truth}` : map.traps[0].claim;
   map.modules = [...modules].map(([t, p]) => ({ title: t, points: [...new Set(p)].filter(Boolean).slice(0, 14) })).filter((m) => m.points.length);
   return map;

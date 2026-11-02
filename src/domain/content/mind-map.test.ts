@@ -33,7 +33,7 @@ describe("mapa mental", () => {
     expect(map.traps[0]).toEqual({ claim: "O feminicídio é qualificadora do inciso VI do § 2º.", truth: "Errado desde a Lei 14.994/2024: é o crime autônomo do art. 121-A." });
     expect(map.remember[0]).toBe("Dizer a pena do caput, do § 2º, do § 2º-D e do § 3º sem consultar");
     expect(map.intro).toMatch(/^Tipo objetivo: a conduta matar/);
-    expect(map.tip).toMatch(/Cebraspe/);
+    expect(map.tip).toMatch(/^usar veneno ou fogo/);
     expect(map.modules.map((m) => m.title)).toEqual(["Visão geral e lei seca", "O crime de homicídio", "Doutrina, jurisprudência e bancas", "Revisão final"]);
   });
 });
