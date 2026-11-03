@@ -62,7 +62,7 @@ test.describe("painel (avatar)", () => {
 
   test("Solicitar meu avatar: foto de corpo inteiro e aviso de iluminação", async ({ page }) => {
     await page.goto(URL);
-    await page.getByTestId("avatar-solicitar-botao").click();
+    await page.getByTestId("solicitar-avatar").click();
     await expect(page.getByTestId("avatar-obs-iluminacao")).toContainText("bem iluminado");
     await expect(page.getByTestId("avatar-enviar-foto")).toBeDisabled();
     // imagem 1x1 PNG válida

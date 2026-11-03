@@ -333,7 +333,7 @@ export function PastelShell({
 
           <div className="min-w-0 flex-1">
             <header
-              className={`sticky top-0 z-20 border-b backdrop-blur-[18px] ${dark ? "border-transparent bg-[#070707] text-white" : "border-black/[0.06] bg-white/75"}`}
+              className={`sticky top-0 z-20 border-b backdrop-blur-[18px] ${dark ? "border-transparent bg-[#070707] text-white" : "border-black/[0.06] bg-white/75"} ${isPainel ? "max-lg:hidden" : ""}`}
               style={{ top: "env(safe-area-inset-top, 0px)" }}
             >
               {isEstudos ? (
@@ -409,7 +409,7 @@ export function PastelShell({
             </header>
 
             <ConnectivityBanner />
-            <main className="px-4 py-7 pb-28 sm:px-5 lg:px-10 lg:pb-12">
+            <main className={isPainel ? "pb-28 lg:px-10 lg:py-7 lg:pb-12" : "px-4 py-7 pb-28 sm:px-5 lg:px-10 lg:pb-12"}>
               <div key={active?.id ?? path} className="animate-[enter_0.5s_cubic-bezier(0.34,1.56,0.64,1)]">{children}</div>
             </main>
 
