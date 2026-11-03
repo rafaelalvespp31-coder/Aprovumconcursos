@@ -1,16 +1,17 @@
 import { expect, test } from "@playwright/test";
 
-/** Painel = avatar (réplica do layout oficial). Galeria com dados de exemplo. */
+/** Painel: banner das aprovações + card do avatar + "Solicitar meu avatar" (galeria). */
 const URL = "/dev/galeria/painel";
 
 test.describe("painel (avatar)", () => {
-  test("só o avatar no painel: palco, card do aluno e editor", async ({ page }) => {
+  test("banner no topo e só o card do avatar (sem editor e sem os cards antigos)", async ({ page }) => {
     await page.goto(URL);
+    await expect(page.getByTestId("painel-banner")).toBeVisible();
     await expect(page.getByTestId("painel-avatar")).toBeVisible();
-    await expect(page.getByRole("heading", { name: /PERSONALIZE SEU AVATAR/ })).toBeVisible();
     await expect(page.getByTestId("avatar-info")).toContainText("Rafael Silva");
     await expect(page.getByTestId("avatar-xp")).toHaveText("1.250");
     await expect(page.getByTestId("avatar-ranking")).toHaveText(/#12\.487/);
+    await expect(page.getByText(/PERSONALIZE SEU/)).toHaveCount(0);
     await expect(page.getByText(/Seu progresso|Acesso rápido|Seu desempenho/)).toHaveCount(0);
   });
 
@@ -32,35 +33,22 @@ test.describe("painel (avatar)", () => {
     expect(samples.at(-1)!.blinks).toBeGreaterThanOrEqual(1);
   });
 
-  test("guarda-roupa, cores, item bloqueado, salvar e restaurar", async ({ page }) => {
+  test("Solicitar meu avatar: foto de corpo inteiro e aviso de iluminação", async ({ page }) => {
     await page.goto(URL);
-    await page.getByTestId("avatar-item-camiseta_preta").click();
-    await expect(page.getByTestId("avatar-item-camiseta_preta")).toHaveAttribute("aria-pressed", "true");
-    await page.getByTestId("avatar-item-jaqueta_aprovum").dispatchEvent("click");
-    await expect(page.getByTestId("avatar-msg")).toContainText("libera no nível 30");
-    await page.getByTestId("avatar-pele-negra").first().click();
-    await expect(page.getByTestId("avatar-pele-negra").first()).toHaveAttribute("aria-pressed", "true");
-    await page.getByTestId("avatar-cabelo-cor-loiro").first().click();
-    await page.getByTestId("avatar-salvar").click();
-    await expect(page.getByTestId("avatar-msg")).toHaveText("Avatar salvo.");
-    await page.getByTestId("avatar-restaurar").click();
-    await expect(page.getByTestId("avatar-item-camiseta_oficial")).toHaveAttribute("aria-pressed", "true");
+    await page.getByTestId("avatar-solicitar-botao").click();
+    await expect(page.getByTestId("avatar-obs-iluminacao")).toContainText("bem iluminado");
+    await expect(page.getByTestId("avatar-enviar-foto")).toBeDisabled();
+    // imagem 1x1 PNG válida
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==", "base64");
+    await page.getByTestId("avatar-foto").setInputFiles({ name: "corpo.png", mimeType: "image/png", buffer: png });
+    await page.getByTestId("avatar-enviar-foto").click();
+    await expect(page.getByTestId("avatar-solicitacao-status")).toContainText("Foto recebida");
+    await expect(page.getByTestId("avatar-solicitar-botao")).toHaveText(/Enviar outra foto/);
   });
 
-  test("abas e troca para o avatar feminino", async ({ page }) => {
+  test("trocar para feminino mostra o aviso de produção", async ({ page }) => {
     await page.goto(URL);
-    await page.getByTestId("avatar-aba-cabelo").click();
-    await expect(page.getByTestId("avatar-item-cabelo_m_degrade").first()).toBeVisible();
     await page.getByTestId("avatar-genero-f").click();
-    await expect(page.getByTestId("avatar-genero-f")).toHaveAttribute("aria-checked", "true");
     await expect(page.getByTestId("avatar-palco-producao")).toContainText("Personagem 3D em produção");
-    await expect(page.getByText("Acessórios:")).toBeVisible();
-  });
-
-  test("manequim de teste 3D também anima (motor dos modelos futuros)", async ({ page }) => {
-    await page.goto(`${URL}?avatar=manequim`);
-    const palco = page.getByTestId("avatar-palco");
-    await expect(palco).toHaveAttribute("data-mode", "3d");
-    await expect.poll(async () => Number(await palco.getAttribute("data-breath")), { timeout: 8000 }).toBeGreaterThan(0.2);
   });
 });

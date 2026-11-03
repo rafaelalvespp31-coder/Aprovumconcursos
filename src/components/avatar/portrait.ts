@@ -100,7 +100,7 @@ export class PortraitEngine {
     private readonly onDebug?: (d: EngineDebug) => void,
   ) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    this.renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    this.renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.mql = window.matchMedia?.("(prefers-reduced-motion: reduce)") ?? null;
     this.reduced = !!this.mql?.matches;
@@ -266,8 +266,12 @@ export class PortraitEngine {
     Object.assign(this.debug, { breath: b, chestScale: 1 + 0.013 * b, headYaw: roll });
   }
 
-  private loop = () => {
+  private last = 0;
+  private loop = (now: number) => {
     this.raf = requestAnimationFrame(this.loop);
+    // 30 quadros por segundo bastam para respiração e piscadas (economiza bateria e CPU)
+    if (now - this.last < 32) return;
+    this.last = now;
     this.update(this.clock.getElapsedTime());
     this.renderer.render(this.scene, this.camera);
     this.debug.frames++;

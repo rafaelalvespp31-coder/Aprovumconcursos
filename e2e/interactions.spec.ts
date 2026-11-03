@@ -845,7 +845,7 @@ test.describe("modo jogo", () => {
 });
 
 test("banners: arte e animações aparecem juntas, mesmo com a imagem demorando", async ({ page }) => {
-  for (const [path, id, img] of [["quiz", "jogo-banner-marca", /jogo-hero-arte(-sm)?\.webp/]] as const) {
+  for (const [path, id, img] of [["painel", "painel-banner", /aprovum-login-hero-mobile\.webp/], ["quiz", "jogo-banner-marca", /jogo-hero-arte(-sm)?\.webp/]] as const) {
     let release: () => void = () => {};
     const gate = new Promise<void>((r) => (release = r));
     await page.route(img, async (route) => {
@@ -906,6 +906,35 @@ test.describe("página de estudos", () => {
   });
 });
 
+test("painel: banner de saudação reveza com os banners de aprovação a cada 3 s", async ({ page }) => {
+  await page.goto(`${G}/painel`);
+  const rot = page.getByTestId("banner-rotator");
+  await expect(rot).toHaveAttribute("data-slide", "0");
+  await expect(rot).toHaveAttribute("data-slide", "1", { timeout: 5000 });
+  await expect(rot.getByRole("img", { name: /William Abreu/ })).toBeVisible();
+  // Pontos levam direto a um banner; pausa interrompe a troca.
+  await rot.getByRole("button", { name: "Mostrar banner 5 de 5" }).click();
+  await expect(rot.getByRole("img", { name: /Sd Lacerda/ })).toBeVisible();
+  await rot.getByRole("button", { name: "Mostrar banner 3 de 5" }).click();
+  await expect(rot.getByRole("img", { name: /Fábio Bezerra/ })).toBeVisible();
+  await rot.getByRole("button", { name: /Pausar troca automática/ }).click();
+  // pausado: o slide atual não muda mais (lê depois do clique, sem depender do relógio da máquina de teste)
+  const paused = await rot.getAttribute("data-slide");
+  await page.waitForTimeout(3600);
+  await expect(rot).toHaveAttribute("data-slide", paused!);
+  // Card na proporção exata das artes (2000×711): o banner ativo preenche 100% do card.
+  await page.waitForTimeout(1000);
+  const fit = await page.evaluate(() => {
+    const card = document.querySelector("[data-testid=painel-banner]")!.getBoundingClientRect();
+    const art = document.querySelector(".br-slide-aprovado[data-ativo='1'] .br-arte")!.getBoundingClientRect();
+    return { ratio: card.width / card.height, dw: Math.abs(art.width - card.width), dh: Math.abs(art.height - card.height), dx: Math.abs(art.left - card.left) };
+  });
+  expect(Math.abs(fit.ratio - 2000 / 711)).toBeLessThan(0.02);
+  expect(fit.dw).toBeLessThan(2);
+  expect(fit.dh).toBeLessThan(2);
+  expect(fit.dx).toBeLessThan(2);
+  await noHorizontalScroll(page);
+});
 
 test("menu Estudos: submenu com as matérias abre os assuntos estudados", async ({ page, isMobile }) => {
   // No celular o menu completo (hambúrguer) fica no topo da página de Estudos.

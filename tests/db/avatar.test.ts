@@ -66,3 +66,13 @@ describe("ranking do avatar", () => {
     expect(r.rows[0]).toEqual({ id: "camiseta_oficial", preview_path: "/avatar/ui/roupa-camiseta_oficial.webp" });
   });
 });
+
+describe("solicitação de avatar", () => {
+  itDb("aluno lê só as próprias solicitações e não grava pelo navegador", async () => {
+    await t.db.query("insert into avatar_requests (user_id, photo_path) values ($1, $2), ($3, $4)", [A, `${A}/1.jpg`, B, `${B}/1.jpg`]);
+    const r = await as(A, () => t.db.query("select user_id, status from avatar_requests"));
+    expect(r.rows).toEqual([{ user_id: A, status: "enviada" }]);
+    await expect(as(A, () => t.db.query("insert into avatar_requests (user_id, photo_path) values ($1, 'x/y.jpg')", [A]))).rejects.toThrow(/permission denied/);
+    await expect(as(A, () => t.db.query("update avatar_requests set status = 'concluida'"))).rejects.toThrow(/permission denied/);
+  });
+});

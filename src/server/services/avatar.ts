@@ -94,3 +94,80 @@ export async function saveMyAvatar(userId: string, input: unknown): Promise<Avat
   if (error) throw new Error(error.message);
   return c;
 }
+
+// ---------------------------------------------------------------------------
+// Solicitação de avatar personalizado (foto de corpo inteiro)
+// ---------------------------------------------------------------------------
+export type AvatarRequestStatus = "enviada" | "em_producao" | "concluida" | "recusada";
+export interface AvatarRequest {
+  id: string;
+  status: AvatarRequestStatus;
+  note: string | null;
+  createdAt: string;
+}
+const PHOTO_TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp", "image/heic": "heic", "image/heif": "heif" };
+export const AVATAR_PHOTO_MAX = 12 * 1024 * 1024;
+
+/** Última solicitação do aluno (para mostrar o andamento). */
+export async function getMyAvatarRequest(userId: string): Promise<AvatarRequest | null> {
+  const { data } = await (await createUserClient()).from("avatar_requests").select("id, status, note, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  if (!data) return null;
+  return { id: data.id as string, status: data.status as AvatarRequestStatus, note: (data.note as string | null) ?? null, createdAt: data.created_at as string };
+}
+
+/** Recebe a foto (validada no servidor), guarda no bucket privado e registra a solicitação. */
+export async function submitAvatarRequest(userId: string, file: File): Promise<AvatarRequest> {
+  const ext = PHOTO_TYPES[file.type];
+  if (!ext) throw new UserFacingError("Envie uma foto (JPG, PNG, WEBP ou HEIC).", "validation");
+  if (file.size < 20_000) throw new UserFacingError("A foto está pequena demais. Envie uma foto de corpo inteiro com boa resolução.", "validation");
+  if (file.size > AVATAR_PHOTO_MAX) throw new UserFacingError("A foto passa de 12 MB. Envie uma versão menor.", "validation");
+  const db = createAdminClient();
+  const path = `${userId}/${Date.now()}.${ext}`;
+  const up = await db.storage.from("avatar-solicitacoes").upload(path, Buffer.from(await file.arrayBuffer()), { contentType: file.type, upsert: false });
+  if (up.error) throw new Error(up.error.message);
+  const { data, error } = await db.from("avatar_requests").insert({ user_id: userId, photo_path: path }).select("id, status, note, created_at").single();
+  if (error) {
+    await db.storage.from("avatar-solicitacoes").remove([path]);
+    throw new Error(error.message);
+  }
+  return { id: data.id as string, status: data.status as AvatarRequestStatus, note: null, createdAt: data.created_at as string };
+}
+
+export interface AvatarRequestAdminRow extends AvatarRequest {
+  userId: string;
+  name: string | null;
+  email: string | null;
+  photoUrl: string | null;
+}
+
+/** Equipe: solicitações com link temporário da foto (quem chama confere que é administrador). */
+export async function listAvatarRequests(limit = 100): Promise<AvatarRequestAdminRow[]> {
+  const db = createAdminClient();
+  const { data, error } = await db.from("avatar_requests").select("id, user_id, photo_path, status, note, created_at").order("created_at", { ascending: false }).limit(limit);
+  if (error) throw new Error(error.message);
+  const rows = data ?? [];
+  const ids = [...new Set(rows.map((r) => r.user_id as string))];
+  const profiles = ids.length ? ((await db.from("profiles").select("id, display_name").in("id", ids)).data ?? []) : [];
+  const names = new Map(profiles.map((p) => [p.id as string, p.display_name as string | null]));
+  const emails = new Map<string, string | null>();
+  await Promise.all(ids.map(async (id) => emails.set(id, (await db.auth.admin.getUserById(id)).data.user?.email ?? null)));
+  const signed = rows.length ? await db.storage.from("avatar-solicitacoes").createSignedUrls(rows.map((r) => r.photo_path as string), 3600) : { data: [] };
+  const urlBy = new Map((signed.data ?? []).map((s) => [s.path, s.signedUrl]));
+  return rows.map((r) => ({
+    id: r.id as string,
+    userId: r.user_id as string,
+    name: names.get(r.user_id as string) ?? null,
+    email: emails.get(r.user_id as string) ?? null,
+    status: r.status as AvatarRequestStatus,
+    note: (r.note as string | null) ?? null,
+    createdAt: r.created_at as string,
+    photoUrl: urlBy.get(r.photo_path as string) ?? null,
+  }));
+}
+
+export async function setAvatarRequestStatus(id: string, status: AvatarRequestStatus, note: string | null) {
+  if (!["enviada", "em_producao", "concluida", "recusada"].includes(status)) throw new UserFacingError("Situação inválida.", "validation");
+  if (!/^[0-9a-f-]{36}$/i.test(id)) throw new UserFacingError("Solicitação inválida.", "validation");
+  const { error } = await createAdminClient().from("avatar_requests").update({ status, note: note?.trim().slice(0, 500) || null, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) throw new Error(error.message);
+}
