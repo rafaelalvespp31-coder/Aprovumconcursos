@@ -3,12 +3,27 @@ import { getDashboard, getDueReviews, getPainelOverview, getTrailPlan, listTrail
 import { DashboardView } from "./view";
 import { HeroBanner } from "./hero-banner";
 import { overdueDays, stageOf, type PlanModule } from "./model";
+import { requireUser } from "@/server/auth";
+import { loadMyAvatar } from "@/server/services/avatar";
+import { PainelAvatar } from "@/components/avatar/painel-avatar";
+import { saveAvatarAction } from "./avatar-actions";
+import { logEvent } from "@/server/observability";
 
 export const metadata = { title: "Painel" };
 
 export default async function DashboardPage({ searchParams }: { searchParams: Promise<{ senha?: string }> }) {
   const sp = await searchParams;
-  const [trails, reviews, dash, overview] = await Promise.all([listTrails(), getDueReviews(), getDashboard(), getPainelOverview()]);
+  const me = await requireUser("/painel");
+  const [trails, reviews, dash, overview, avatar] = await Promise.all([
+    listTrails(),
+    getDueReviews(),
+    getDashboard(),
+    getPainelOverview(),
+    loadMyAvatar(me.id).catch(async (e) => {
+      await logEvent("avatar.load_failed", { error: (e as Error).message });
+      return null;
+    }),
+  ]);
   if (trails.length === 0 && !dash.profile?.onboarding_completed) redirect("/nova-trilha");
 
   const now = new Date();
@@ -37,6 +52,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: Pr
       {sp.senha === "alterada" && (
         <p role="status" className="mb-4 rounded-[14px] border border-[#E6E7EB] bg-white px-4 py-2 text-[13px] font-medium text-[#08090B]">Senha alterada.</p>
       )}
+      {avatar && <PainelAvatar name={dash.profile?.display_name ?? null} initial={avatar.config} saved={avatar.saved} items={avatar.items} progress={avatar.progress} save={saveAvatarAction} />}
       <DashboardView
         name={name}
         goals={{ dailyQuestions: dash.profile?.daily_questions_goal ?? null, weeklyLessons: dash.profile?.weekly_lessons_goal ?? null }}
