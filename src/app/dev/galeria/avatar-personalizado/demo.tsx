@@ -5,6 +5,7 @@ import { CustomAvatar } from "@/app/admin/avatares/custom-avatar";
 import { AvatarStage } from "@/components/avatar/avatar-stage";
 import type { Portrait } from "@/components/avatar/portraits";
 import { defaultAvatar } from "@/domain/avatar/catalog";
+import { standardFigureRect } from "@/domain/avatar/custom";
 import { demoAvatarItems } from "../avatar-fixtures";
 
 /**
@@ -22,12 +23,11 @@ export function DemoCustomAvatar() {
           remove={async () => (setPortrait(null), { ok: true })}
           save={async (_id, fd) => {
             const p = JSON.parse(String(fd.get("params")));
-            const w = Math.round(792 * p.aspect);
             setPortrait({
               src: URL.createObjectURL(fd.get("arte") as File),
               lids: URL.createObjectURL(fd.get("palpebras") as File),
               ...p,
-              backdrop: { src: "/avatar/ui/palco-fundo.webp", w: 562, h: 840, figure: { x: Math.round(291 - w * p.centerX), y: 3, w, h: 792 } },
+              backdrop: { src: "/avatar/ui/palco-fundo.webp", w: 562, h: 840, figure: standardFigureRect(p.aspect, p.centerX) },
             });
             return { ok: true };
           }}

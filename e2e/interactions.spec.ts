@@ -1341,7 +1341,7 @@ test("aula: busca leva direto a outro subtópico do mesmo tópico", async ({ pag
   await page.goto(`${G}/aula`);
   // O atalho fica no topo em todas as páginas da aula (também dentro dos módulos).
   await page.getByTestId("sumario-modulo-1").click();
-  await page.getByTestId("atalho-subtopicos").getByRole("button", { name: /Buscar subtópico.*1\. Crimes/ }).click();
+  await page.getByTestId("atalho-subtopicos").getByRole("button", { name: /Buscar subtópico.*Crimes contra a Administração/ }).click();
   const box = page.getByTestId("busca-subtopico");
   await expect(box).toContainText("Crimes contra a Administração Pública");
   const input = box.getByRole("combobox", { name: /Buscar subtópico/ });

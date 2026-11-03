@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { customParamsSchema, eyeBoxes, landmarksFromSilhouette } from "./custom";
+import { customParamsSchema, eyeBoxes, landmarksFromSilhouette, standardFigureRect } from "./custom";
 
 /** Silhueta sintética: cabeça, pescoço fino, ombros largos, cintura e pernas. */
 function figure(H = 1000, W = 400) {
@@ -7,8 +7,8 @@ function figure(H = 1000, W = 400) {
   for (let y = 0; y < H; y++) {
     const f = y / H;
     const half = f < 0.02 ? -1 : f < 0.13 ? 45 : f < 0.16 ? 25 : f < 0.19 ? 90 : f < 0.36 ? 150 : f < 0.45 ? 95 : f < 0.5 ? 110 : 70;
-    if (half < 0) (left.push(-1), right.push(-1));
-    else (left.push(200 - half), right.push(200 + half));
+    left.push(half < 0 ? -1 : 200 - half);
+    right.push(half < 0 ? -1 : 200 + half);
   }
   return { left, right, W };
 }
@@ -37,6 +37,16 @@ describe("avatar personalizado", () => {
     expect(l.x0).toBeLessThan(r.x0);
     expect((l.x1 - l.x0) * 578).toBeCloseTo(33, 0);
     expect((l.y1 - l.y0) * 1584).toBeCloseTo(16.3, 0);
+  });
+
+  it("toda arte anexada fica na posição padrão: cabeça, pés e eixo do corpo nas mesmas linhas", () => {
+    for (const [aspect, cx] of [[0.36, 0.47], [0.26, 0.5], [0.55, 0.42]] as const) {
+      const r = standardFigureRect(aspect, cx);
+      expect(r.y).toBe(9);
+      expect(r.y + r.h).toBe(791);
+      expect(r.x + r.w * cx).toBeCloseTo(282, 1);
+      expect(r.w / r.h).toBeCloseTo(aspect, 4);
+    }
   });
 
   it("parâmetros inválidos são recusados", () => {

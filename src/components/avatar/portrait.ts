@@ -45,18 +45,36 @@ uniform vec3 uSkinRatio, uHair;
 uniform float uHairOn, uNeckF;
 uniform vec4 uEyeL, uEyeR;
 varying vec2 vUv;
-float lidMask(vec4 e, float iy) {
-  float inside = step(e.x, vUv.x) * step(vUv.x, e.z);
+// Pálpebra real: borda curva (desce mais no meio), suave, com cílios acompanhando a borda
+// e a pálpebra de baixo subindo um pouco. u = posição horizontal (-1..1), t = vertical (0..1).
+float upperEdge(float u) { return uBlink * 1.06 + 0.22 * uBlink * (1.0 - u * u) - 0.04; }
+vec3 lidAt(vec4 e, float iy, vec3 base, vec4 lid, inout float lash) {
+  // a pálpebra é um pouco mais larga que a caixa do olho (cantos): margem de 30% de cada lado
+  float mw = (e.z - e.x) * 0.3;
+  float inside = step(e.x - mw, vUv.x) * step(vUv.x, e.z + mw);
+  if (inside < 0.5 || uBlink < 0.02) return base;
+  float u = clamp((vUv.x - e.x) / (e.z - e.x) * 2.0 - 1.0, -1.0, 1.0);
   float t = (iy - e.y) / (e.w - e.y);
-  return inside * step(t, uBlink * 1.08);
+  float edge = upperEdge(u);
+  float soft = 0.07;
+  float upper = 1.0 - smoothstep(edge - soft, edge + soft * 0.4, t);
+  float lower = smoothstep(1.0 - 0.16 * uBlink - soft, 1.0 - 0.16 * uBlink + soft, t) * smoothstep(0.15, 0.6, uBlink);
+  float cover = max(upper, lower) * lid.a;
+  // sombra suave logo acima da borda (volume da pálpebra) e cílios na borda em movimento
+  float shade = 1.0 - 0.18 * smoothstep(edge - 0.35, edge, t) * upper;
+  float band = exp(-pow((t - edge) / 0.06, 2.0)) * (1.0 - smoothstep(0.92, 1.0, uBlink)) * smoothstep(0.04, 0.2, uBlink) * lid.a * (1.0 - u * u * 0.55);
+  lash = max(lash, band);
+  return mix(base, lid.rgb * shade, cover);
 }
 void main() {
   vec4 c = texture2D(uTex, vUv);
   if (c.a < 0.02) discard;
   float iy = 1.0 - vUv.y;
   vec4 lid = texture2D(uLids, vUv);
-  float m = max(lidMask(uEyeL, iy), lidMask(uEyeR, iy)) * lid.a * step(0.02, uBlink);
-  vec3 col = mix(c.rgb, lid.rgb, m);
+  float lash = 0.0;
+  vec3 col = lidAt(uEyeL, iy, c.rgb, lid, lash);
+  col = lidAt(uEyeR, iy, col, lid, lash);
+  col = mix(col, vec3(0.08, 0.05, 0.04), lash * 0.85);
   float l = dot(col, vec3(0.299, 0.587, 0.114));
   float skin = smoothstep(0.03, 0.08, col.r - col.g) * smoothstep(0.015, 0.05, col.g - col.b) * smoothstep(0.14, 0.24, l);
   col = mix(col, clamp(col * uSkinRatio, 0.0, 1.0), skin);
@@ -245,15 +263,16 @@ export class PortraitEngine {
   private blinkAt(t: number) {
     if (this.blinkStart < 0 && t >= this.nextBlink) {
       this.blinkStart = t;
-      this.blinkDur = { close: rand(0.06, 0.09), hold: rand(0.03, 0.07), open: rand(0.11, 0.17) };
+      this.blinkDur = { close: rand(0.07, 0.1), hold: rand(0.04, 0.08), open: rand(0.16, 0.24) };
       this.debug.blinks++;
     }
     if (this.blinkStart < 0) return 0;
     const d = t - this.blinkStart;
     const { close, hold, open } = this.blinkDur;
-    if (d < close) return smooth(d / close);
+    // fecha acelerando (músculo puxa), abre desacelerando (volta devagar no fim)
+    if (d < close) return Math.pow(d / close, 1.6);
     if (d < close + hold) return 1;
-    if (d < close + hold + open) return 1 - smooth((d - close - hold) / open);
+    if (d < close + hold + open) return Math.pow(1 - (d - close - hold) / open, 2.2);
     this.blinkStart = -1;
     this.double = !this.double && Math.random() < 0.15;
     this.nextBlink = t + (this.double ? rand(0.12, 0.25) : rand(2, 7));
@@ -275,8 +294,9 @@ export class PortraitEngine {
   private last = 0;
   private loop = (now: number) => {
     this.raf = requestAnimationFrame(this.loop);
-    // 30 quadros por segundo bastam para respiração e piscadas (economiza bateria e CPU)
-    if (now - this.last < 32) return;
+    // 30 quadros por segundo bastam para a respiração (economiza bateria); durante a piscada,
+    // todos os quadros (a pálpebra desce em ~80 ms e precisa de movimento contínuo).
+    if (this.blinkStart < 0 && now - this.last < 32) return;
     this.last = now;
     this.update(this.clock.getElapsedTime());
     this.renderer.render(this.scene, this.camera);

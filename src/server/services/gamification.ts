@@ -1,4 +1,5 @@
 import "server-only";
+import sharp from "sharp";
 import { z } from "zod";
 import { createAdminClient } from "@/server/supabase";
 import { computeMentor } from "@/server/services/mentor";
@@ -194,6 +195,8 @@ export async function listContestsAdmin(): Promise<Array<Contest & { active: boo
 
 const IMAGE_TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
 const MAX_IMAGE = 5 * 1024 * 1024;
+/** Tamanho da arte do concurso no card da Home (proporção 14:9). */
+export const CONTEST_IMAGE = { w: 720, h: 460 } as const;
 
 export async function saveContest(adminId: string, id: string | null, input: unknown, image?: { file: File | null; remove: boolean }) {
   const parsed = contestSchema.safeParse(input);
@@ -205,11 +208,21 @@ export async function saveContest(adminId: string, id: string | null, input: unk
   let imagePath: string | null | undefined;
   const file = image?.file && image.file.size > 0 ? image.file : null;
   if (file) {
-    const ext = IMAGE_TYPES[file.type];
-    if (!ext) throw new UserFacingError("Imagem em JPG, PNG ou WEBP.", "invalid_input");
+    if (!IMAGE_TYPES[file.type]) throw new UserFacingError("Imagem em JPG, PNG ou WEBP.", "invalid_input");
     if (file.size > MAX_IMAGE) throw new UserFacingError("Imagem de até 5 MB.", "invalid_input");
-    imagePath = `capas/${contestId}-${Date.now()}.${ext}`;
-    const up = await db.storage.from("concursos").upload(imagePath, file, { contentType: file.type, upsert: false });
+    // Tamanho padrão do card "Próximos concursos": 720 × 460 (14:9), recortado no centro de interesse.
+    let webp: Buffer;
+    try {
+      webp = await sharp(Buffer.from(await file.arrayBuffer()), { failOn: "error" })
+        .rotate()
+        .resize(CONTEST_IMAGE.w, CONTEST_IMAGE.h, { fit: "cover", position: "attention" })
+        .webp({ quality: 88 })
+        .toBuffer();
+    } catch {
+      throw new UserFacingError("Não foi possível ler essa imagem. Tente outro arquivo.", "invalid_input");
+    }
+    imagePath = `capas/${contestId}-${Date.now()}.webp`;
+    const up = await db.storage.from("concursos").upload(imagePath, webp, { contentType: "image/webp", upsert: false });
     if (up.error) throw new Error(up.error.message);
   } else if (image?.remove) {
     imagePath = null;

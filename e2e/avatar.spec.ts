@@ -111,8 +111,8 @@ test("equipe anexa a arte do aluno: recorte do fundo, olhos marcados e avatar an
   await expect(head).toBeVisible({ timeout: 30_000 });
   const box = (await head.boundingBox())!;
   // Olhos da arte feminina (coordenadas da arte recortada, parte de cima = 24% da altura).
-  await head.click({ position: { x: box.width * 0.4228, y: box.height * (0.0918 / 0.24) } });
-  await head.click({ position: { x: box.width * 0.5417, y: box.height * (0.0918 / 0.24) } });
+  await head.click({ position: { x: box.width * 0.4215, y: box.height * (0.0862 / 0.24) } });
+  await head.click({ position: { x: box.width * 0.5432, y: box.height * (0.0862 / 0.24) } });
   await page.getByRole("button", { name: "Salvar como avatar do aluno" }).click();
   await expect(page.getByRole("status")).toContainText("Avatar do aluno atualizado", { timeout: 30_000 });
   const palco = page.getByTestId("demo-palco-personalizado").getByTestId("avatar-palco");
@@ -120,7 +120,6 @@ test("equipe anexa a arte do aluno: recorte do fundo, olhos marcados e avatar an
   await expect(palco).toHaveAttribute("data-mode", "arte-2d");
   // Respira e pisca com a arte nova.
   const b1 = Number(await palco.getAttribute("data-breath"));
-  await page.waitForTimeout(1500);
-  expect(Number(await palco.getAttribute("data-breath"))).not.toBe(b1);
+  await expect.poll(async () => Number(await palco.getAttribute("data-breath")), { timeout: 8_000 }).not.toBe(b1);
   await expect.poll(async () => Number(await palco.getAttribute("data-blinks")), { timeout: 15_000 }).toBeGreaterThan(0);
 });

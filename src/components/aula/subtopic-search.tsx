@@ -28,7 +28,7 @@ export function SubtopicSearch({ group, items, autoFocus = false, hideTitle = fa
     if (r.top < 72 || r.top > window.innerHeight * 0.35) el.scrollIntoView({ block: "start", behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
   };
   const results = useMemo(() => searchSubtopics(items, q), [items, q]);
-  const label = `${group.code ? `${group.code}. ` : ""}${group.title}`;
+  const label = group.title;
 
   const begin = (it: SubtopicEntry) => {
     setErr(null);
@@ -102,7 +102,6 @@ export function SubtopicSearch({ group, items, autoFocus = false, hideTitle = fa
             const body = (
               <>
                 <span className="min-w-0">
-                  {it.code && <span className="mr-1.5 t-tiny font-bold tabular-nums text-tinta-fraca">{it.code}</span>}
                   <span className="font-semibold">{it.title}</span>
                 </span>
                 <span className={`flex-none t-tiny font-semibold ${it.done && !it.current ? "text-[#16a34a]" : it.current ? "text-destaque" : "text-tinta-fraca"}`}>
@@ -152,7 +151,6 @@ export function SubtopicJump({ group, items }: { group: { title: string; code: s
         <span className="min-w-0 flex-1 leading-tight">
           <span className="block text-[11px] font-bold uppercase tracking-[0.14em] text-white/80">Buscar subtópico deste tópico</span>
           <span className="block text-[14.5px] font-bold">
-            {group.code ? `${group.code}. ` : ""}
             {group.title}
           </span>
         </span>

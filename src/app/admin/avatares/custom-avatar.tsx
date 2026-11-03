@@ -25,7 +25,7 @@ function loadImage(file: File): Promise<HTMLImageElement> {
 
 /** Recorte: usa a transparência da imagem; sem ela, remove o fundo liso a partir das bordas. */
 function prepare(img: HTMLImageElement, tolerance: number): Prepared {
-  const scale = Math.min(1, MAX_H / img.naturalHeight, 4096 / img.naturalWidth);
+  const scale = Math.min(1, 4096 / img.naturalHeight, 4096 / img.naturalWidth);
   const W = Math.round(img.naturalWidth * scale);
   const H = Math.round(img.naturalHeight * scale);
   const c = document.createElement("canvas");
@@ -42,8 +42,14 @@ function prepare(img: HTMLImageElement, tolerance: number): Prepared {
     border++;
     if (px[(y * W + x) * 4 + 3]! < 200) clear++;
   };
-  for (let x = 0; x < W; x++) (visit(x, 0), visit(x, H - 1));
-  for (let y = 0; y < H; y++) (visit(0, y), visit(W - 1, y));
+  for (let x = 0; x < W; x++) {
+    visit(x, 0);
+    visit(x, H - 1);
+  }
+  for (let y = 0; y < H; y++) {
+    visit(0, y);
+    visit(W - 1, y);
+  }
   let removedBg = false;
   if (clear / border < 0.5) {
     removedBg = true;
@@ -60,10 +66,19 @@ function prepare(img: HTMLImageElement, tolerance: number): Prepared {
     const bg = new Uint8Array(W * H);
     const stack: number[] = [];
     const push = (p: number) => {
-      if (!bg[p] && near(p * 4)) (bg[p] = 1), stack.push(p);
+      if (!bg[p] && near(p * 4)) {
+        bg[p] = 1;
+        stack.push(p);
+      }
     };
-    for (let x = 0; x < W; x++) (push(x), push((H - 1) * W + x));
-    for (let y = 0; y < H; y++) (push(y * W), push(y * W + W - 1));
+    for (let x = 0; x < W; x++) {
+      push(x);
+      push((H - 1) * W + x);
+    }
+    for (let y = 0; y < H; y++) {
+      push(y * W);
+      push(y * W + W - 1);
+    }
     while (stack.length) {
       const p = stack.pop()!;
       const x = p % W, y = (p / W) | 0;
@@ -86,7 +101,7 @@ function prepare(img: HTMLImageElement, tolerance: number): Prepared {
   let x0 = W, y0 = H, x1 = -1, y1 = -1;
   for (let y = 0; y < H; y++)
     for (let x = 0; x < W; x++)
-      if (px[(y * W + x) * 4 + 3]! > 16) {
+      if (px[(y * W + x) * 4 + 3]! > 8) {
         if (x < x0) x0 = x;
         if (x > x1) x1 = x;
         if (y < y0) y0 = y;
@@ -94,69 +109,125 @@ function prepare(img: HTMLImageElement, tolerance: number): Prepared {
       }
   if (x1 < 0) throw new Error("Não sobrou nada depois do recorte. Diminua a tolerância.");
   ctx.putImageData(data, 0, 0);
-  const pad = Math.round((y1 - y0) * 0.006);
-  const cx0 = Math.max(0, x0 - pad), cy0 = Math.max(0, y0 - pad), cx1 = Math.min(W - 1, x1 + pad), cy1 = Math.min(H - 1, y1 + 1);
+  // Recorte justo: o topo da cabeça e a sola dos pés vão exatamente para as linhas da posição padrão.
+  const cx0 = x0, cy0 = y0, cx1 = x1, cy1 = y1;
+  // Mesmo tamanho do avatar padrão: 3168 px de altura (sem ampliar imagens menores).
+  const cw = cx1 - cx0 + 1, ch = cy1 - cy0 + 1;
+  const k = Math.min(1, MAX_H / ch);
   const art = document.createElement("canvas");
-  art.width = cx1 - cx0 + 1;
-  art.height = cy1 - cy0 + 1;
-  art.getContext("2d")!.drawImage(c, cx0, cy0, art.width, art.height, 0, 0, art.width, art.height);
+  art.width = Math.max(1, Math.round(cw * k));
+  art.height = Math.max(1, Math.round(ch * k));
+  const ag = art.getContext("2d")!;
+  ag.imageSmoothingQuality = "high";
+  ag.drawImage(c, cx0, cy0, cw, ch, 0, 0, art.width, art.height);
   // Silhueta → pontos do corpo (respiração).
   const a = art.getContext("2d", { willReadFrequently: true })!.getImageData(0, 0, art.width, art.height).data;
   const left: number[] = [], right: number[] = [];
   for (let y = 0; y < art.height; y++) {
     let l = -1, r = -1;
-    for (let x = 0; x < art.width; x++) if (a[(y * art.width + x) * 4 + 3]! > 64) ((l < 0 ? (l = x) : 0), (r = x));
+    for (let x = 0; x < art.width; x++)
+      if (a[(y * art.width + x) * 4 + 3]! > 64) {
+        if (l < 0) l = x;
+        r = x;
+      }
     left.push(l);
     right.push(r);
   }
   return { art, lm: landmarksFromSilhouette(left, right, art.width), removedBg };
 }
 
-/** Camada das pálpebras (pele amostrada acima e abaixo de cada olho + linha dos cílios). */
+/**
+ * Camada das pálpebras, como nas artes padrão: a abertura do olho é preenchida com a própria
+ * pele ao redor (sobrancelha e cílios não entram no preenchimento), com sombra suave em cima,
+ * vinco, linha dos cílios curva e borda esfumada. A sobrancelha continua por cima.
+ */
 function buildLids(art: HTMLCanvasElement, eyes: [EyeBox, EyeBox]): HTMLCanvasElement {
   const W = art.width, H = art.height;
   const src = art.getContext("2d", { willReadFrequently: true })!;
   const out = document.createElement("canvas");
   out.width = W;
   out.height = H;
-  const g = out.getContext("2d")!;
-  const avg = (x: number, y: number, w: number, h: number): [number, number, number] | null => {
-    const d = src.getImageData(Math.max(0, Math.round(x)), Math.max(0, Math.round(y)), Math.max(1, Math.round(w)), Math.max(1, Math.round(h))).data;
-    // Mediana por canal dos pixels claros (pele), ignorando sombras, cílios e maquiagem.
-    const px: Array<[number, number, number]> = [];
-    for (let i = 0; i < d.length; i += 4) if (d[i + 3]! > 200 && d[i]! + d[i + 1]! + d[i + 2]! > 180) px.push([d[i]!, d[i + 1]!, d[i + 2]!]);
-    if (!px.length) return null;
-    px.sort((a, b) => a[0] + a[1] + a[2] - (b[0] + b[1] + b[2]));
-    const sel = px.slice(Math.floor(px.length * 0.35), Math.max(Math.floor(px.length * 0.35) + 1, Math.floor(px.length * 0.85)));
-    const m = [0, 1, 2].map((k) => sel.map((p) => p[k]!).sort((a, b) => a - b)[sel.length >> 1]!);
-    return [m[0]!, m[1]!, m[2]!];
-  };
-  const rgb = (c: [number, number, number], f = 1) => `rgb(${Math.round(c[0] * f)},${Math.round(c[1] * f)},${Math.round(c[2] * f)})`;
+  const og = out.getContext("2d")!;
   for (const e of eyes) {
-    const bx = e.x0 * W, by = e.y0 * H, bw = (e.x1 - e.x0) * W, bh = (e.y1 - e.y0) * H;
-    const cx = bx + bw / 2, cy = by + bh / 2;
-    // Pele da maçã do rosto, logo abaixo do olho (sem maquiagem nem sobrancelha).
-    const skin = avg(bx + bw * 0.1, by + bh * 1.3, bw * 0.8, bh * 1.1) ?? [190, 140, 110];
-    const grad = g.createLinearGradient(0, by - bh * 0.2, 0, by + bh * 1.2);
-    grad.addColorStop(0, rgb(skin, 0.86));
-    grad.addColorStop(0.6, rgb(skin, 0.94));
-    grad.addColorStop(1, rgb(skin, 0.9));
-    g.save();
-    g.filter = `blur(${Math.max(0.6, bh * 0.08)}px)`;
-    g.fillStyle = grad;
-    g.beginPath();
-    g.ellipse(cx, cy, bw * 0.62, bh * 0.82, 0, 0, Math.PI * 2);
-    g.fill();
-    g.restore();
-    g.save();
-    g.strokeStyle = "rgba(38,24,18,0.85)";
-    g.lineWidth = Math.max(1, bh * 0.09);
-    g.lineCap = "round";
-    g.beginPath();
-    g.moveTo(cx - bw * 0.5, cy + bh * 0.16);
-    g.quadraticCurveTo(cx, cy + bh * 0.44, cx + bw * 0.5, cy + bh * 0.16);
-    g.stroke();
-    g.restore();
+    const bx0 = e.x0 * W, by0 = e.y0 * H, bw = (e.x1 - e.x0) * W, bh = (e.y1 - e.y0) * H;
+    const rx = bw * 0.64, ry = bh * 0.7;
+    const cx = bx0 + bw / 2, cy = by0 + bh / 2 - bh * 0.06;
+    const X0 = Math.max(0, Math.floor(cx - rx * 1.8)), Y0 = Math.max(0, Math.floor(by0 - bh * 0.3));
+    const X1 = Math.min(W, Math.ceil(cx + rx * 1.8)), Y1 = Math.min(H, Math.ceil(by0 + bh * 2.4));
+    const w = X1 - X0, h = Y1 - Y0;
+    if (w < 4 || h < 4) continue;
+    const d = src.getImageData(X0, Y0, w, h).data;
+    const n = w * h;
+    const R = new Float32Array(n), G = new Float32Array(n), B = new Float32Array(n), lum = new Float32Array(n);
+    const U = new Float32Array(n), V = new Float32Array(n), unknown = new Uint8Array(n);
+    for (let i = 0; i < n; i++) {
+      R[i] = d[i * 4]!; G[i] = d[i * 4 + 1]!; B[i] = d[i * 4 + 2]!;
+      lum[i] = 0.299 * R[i]! + 0.587 * G[i]! + 0.114 * B[i]!;
+      const x = i % w, y = (i / w) | 0;
+      U[i] = (x + X0 - cx) / rx;
+      V[i] = (y + Y0 - cy) / ry;
+      const inEllipse = U[i]! * U[i]! + V[i]! * V[i]! <= 1;
+      if (inEllipse || lum[i]! < 95 || d[i * 4 + 3]! < 200) unknown[i] = 1;
+    }
+    // Sobrancelha encostada no olho? Protege mais (como na arte masculina padrão).
+    let near = 0, nearDark = 0;
+    for (let i = 0; i < n; i++)
+      if (V[i]! < -1.25 && V[i]! > -1.8 && Math.abs(U[i]!) < 0.8) {
+        near++;
+        if (lum[i]! < 95) nearDark++;
+      }
+    const browV = near && nearDark / near > 0.25 ? -0.35 : -0.92;
+    // Preenche o desconhecido com a pele conhecida (difusão), começando pela média da pele.
+    let sr = 0, sg = 0, sb = 0, sc = 0;
+    for (let i = 0; i < n; i++)
+      if (!unknown[i]) {
+        sr += R[i]!;
+        sg += G[i]!;
+        sb += B[i]!;
+        sc++;
+      }
+    if (!sc) continue;
+    for (let i = 0; i < n; i++)
+      if (unknown[i]) {
+        R[i] = sr / sc;
+        G[i] = sg / sc;
+        B[i] = sb / sc;
+      }
+    for (let it = 0; it < 220; it++) {
+      for (let y = 1; y < h - 1; y++)
+        for (let x = 1; x < w - 1; x++) {
+          const i = y * w + x;
+          if (!unknown[i]) continue;
+          R[i] = (R[i - 1]! + R[i + 1]! + R[i - w]! + R[i + w]!) / 4;
+          G[i] = (G[i - 1]! + G[i + 1]! + G[i - w]! + G[i + w]!) / 4;
+          B[i] = (B[i - 1]! + B[i + 1]! + B[i - w]! + B[i + w]!) / 4;
+        }
+    }
+    const img = og.createImageData(w, h);
+    const o = img.data;
+    for (let i = 0; i < n; i++) {
+      const u = U[i]!, v = V[i]!;
+      let f = 1 - 0.13 * Math.min(1, Math.max(0, (0.35 - v) / 1.35)); // sombra suave no alto da pálpebra
+      const crease = Math.exp(-(((v + 0.78 + 0.2 * u * u) / 0.16) ** 2)) * Math.max(0, 1 - Math.abs(u));
+      f *= 1 - 0.22 * crease;
+      const lv = 0.4 + 0.2 * (1 - u * u), lw = 0.08 + 0.06 * (1 - u * u);
+      const lash = Math.exp(-(((v - lv) / lw) ** 2)) * Math.min(1, Math.max(0, 1.15 - Math.abs(u)));
+      const mix = (c: number, dark: number) => c * f * (1 - 0.95 * lash) + dark * 0.95 * lash;
+      let alpha = Math.min(1, Math.max(0, 1 - (u * u + v * v - 0.72) / 0.5));
+      if (lum[i]! < 95 && v < browV) alpha *= 0; // sobrancelha por cima
+      o[i * 4] = mix(R[i]!, 24);
+      o[i * 4 + 1] = mix(G[i]!, 16);
+      o[i * 4 + 2] = mix(B[i]!, 14);
+      o[i * 4 + 3] = Math.round(alpha * 255);
+    }
+    const tmp = document.createElement("canvas");
+    tmp.width = w;
+    tmp.height = h;
+    tmp.getContext("2d")!.putImageData(img, 0, 0);
+    og.save();
+    og.filter = `blur(${Math.max(0.5, bh * 0.05)}px)`;
+    og.drawImage(tmp, X0, Y0);
+    og.restore();
   }
   return out;
 }

@@ -48,7 +48,7 @@ export function ContestForm({ contest, action }: { contest: (Contest & { active:
           <img src={c.imageUrl} alt={`Imagem de ${c.name}`} className="h-20 w-32 rounded border border-linha object-cover" />
         )}
         <label className="flex flex-col">
-          Imagem do concurso (JPG, PNG ou WEBP, até 4 MB)
+          Imagem do concurso — ideal 720 × 460 px (proporção 14:9), JPG, PNG ou WEBP, até 4 MB
           <input
             name="imagem"
             type="file"
@@ -65,7 +65,7 @@ export function ContestForm({ contest, action }: { contest: (Contest & { active:
           />
         </label>
         {c?.imageUrl && <label className="flex items-center gap-2"><input type="checkbox" name="remover_imagem" /> Remover imagem (volta a arte padrão)</label>}
-        <span className="t-small text-tinta-suave">Aparece no card “Próximos concursos” da Home, no lugar da arte padrão.</span>
+        <span className="t-small text-tinta-suave">Aparece no card “Próximos concursos” da Home, no lugar da arte padrão. Outros tamanhos são ajustados para 720 × 460 automaticamente (as bordas são cortadas, sem distorcer): deixe o assunto principal no centro.</span>
       </div>
       <div className="flex items-center gap-3 sm:col-span-2">
         <button type="submit" disabled={pending} className="rounded bg-tinta px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">

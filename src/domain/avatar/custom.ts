@@ -30,7 +30,11 @@ export function landmarksFromSilhouette(left: readonly number[], right: readonly
   const at = (f: number) => Math.round(f * (H - 1));
   const minRow = (a: number, b: number) => {
     let best = at(a), bw = Infinity;
-    for (let y = at(a); y <= at(b); y++) if (w[y]! > 0 && w[y]! < bw) (bw = w[y]!), (best = y);
+    for (let y = at(a); y <= at(b); y++)
+      if (w[y]! > 0 && w[y]! < bw) {
+        bw = w[y]!;
+        best = y;
+      }
     return best;
   };
   const neck = minRow(0.09, 0.22);
@@ -79,3 +83,16 @@ export const customParamsSchema = z
   .refine((p) => p.eyes[0].y1 < p.neckY && p.eyes[1].y1 < p.neckY, "olhos abaixo do pescoço");
 
 export type CustomParams = z.infer<typeof customParamsSchema>;
+
+/**
+ * Posição padrão (a do avatar oficial) no quadro do palco 562×840: cabeça na linha 9, pés na
+ * linha 791 (sobre o pedestal) e o eixo do corpo (pescoço) em x = 282. Toda arte anexada é
+ * encaixada nessas linhas — mesma altura, mesma base e mesmo centro do personagem padrão.
+ */
+export const STANDARD_FRAME = { w: 562, h: 840, headTop: 9, feetBottom: 791, axisX: 282 } as const;
+
+export function standardFigureRect(aspect: number, centerX: number) {
+  const h = STANDARD_FRAME.feetBottom - STANDARD_FRAME.headTop;
+  const w = h * aspect;
+  return { x: Math.round((STANDARD_FRAME.axisX - w * centerX) * 100) / 100, y: STANDARD_FRAME.headTop, w: Math.round(w * 100) / 100, h };
+}

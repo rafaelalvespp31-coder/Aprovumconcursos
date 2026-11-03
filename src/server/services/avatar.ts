@@ -7,7 +7,7 @@ import { XP_RULES, defaultAvatar, parseGender, switchGender, validateAvatar, xpF
 import { UserFacingError } from "./trails";
 import sharp from "sharp";
 import { z } from "zod";
-import { customParamsSchema, type CustomParams } from "@/domain/avatar/custom";
+import { STANDARD_FRAME, customParamsSchema, standardFigureRect, type CustomParams } from "@/domain/avatar/custom";
 import type { Portrait } from "@/components/avatar/portraits";
 
 export interface AvatarProgress {
@@ -99,13 +99,11 @@ export async function loadMyAvatar(userId: string): Promise<AvatarState> {
 const CUSTOM_BUCKET = "avatar-personalizado";
 type StoredCustom = CustomParams & { art: string; lids: string; requestId?: string; at?: string };
 
-/** Mesma moldura das artes oficiais: personagem com 792 de altura num quadro 562×840, centralizado. */
+/** Posição padrão do avatar oficial (cabeça, pés e eixo do corpo nas mesmas linhas). */
 async function customPortrait(c: StoredCustom): Promise<Portrait> {
   const signed = await createAdminClient().storage.from(CUSTOM_BUCKET).createSignedUrls([c.art, c.lids], 6 * 3600);
   const [art, lids] = (signed.data ?? []).map((x) => x.signedUrl);
   if (signed.error || !art || !lids) throw new Error(signed.error?.message ?? "link do avatar indisponível");
-  const h = 792;
-  const w = Math.round(h * c.aspect);
   return {
     src: art,
     lids,
@@ -116,7 +114,7 @@ async function customPortrait(c: StoredCustom): Promise<Portrait> {
     chestY: c.chestY,
     waistY: c.waistY,
     eyes: c.eyes,
-    backdrop: { src: "/avatar/ui/palco-fundo.webp", w: 562, h: 840, figure: { x: Math.round(291 - w * c.centerX), y: 3, w, h } },
+    backdrop: { src: "/avatar/ui/palco-fundo.webp", w: STANDARD_FRAME.w, h: STANDARD_FRAME.h, figure: standardFigureRect(c.aspect, c.centerX) },
   };
 }
 

@@ -659,7 +659,6 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
     <li key={x.id}>
       <button type="button" onClick={() => selectTopic(t, x)} data-done={x.study?.done ? "1" : undefined}>
         <span>
-          {x.group?.sub && <small className={"km-subCode"}>{x.group.sub}</small>}
           {x.title}
         </span>
         {x.study?.done ? (
@@ -1209,7 +1208,6 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
                               <ChevronDown className={"km-folderChevron"} aria-hidden />
                               <span className={"km-folderName"}>
                                 <span>
-                                  {f.code && <b className={"km-subCode"}>{f.code}</b>}
                                   {f.title}
                                 </span>
                               </span>
@@ -1252,7 +1250,7 @@ export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsP
               <h2 className={"km-panelTitle"}>{topic.title}</h2>
               <p className={"km-muted"}>
                 {territory.label}
-                {topic.group ? ` › ${topic.group.code ? `${topic.group.code}. ` : ""}${topic.group.title}${topic.group.sub ? ` › ${topic.group.sub}` : ""}` : ""}
+                {topic.group ? ` › ${topic.group.title}` : ""}
               </p>
               <ul className={"km-stats"}>
                 <li>
