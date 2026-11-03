@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import fixture from "../../../../tests/fixtures/mind-map-homicidio.json";
+import fixture from "../../../../tests/fixtures/mind-map-homicidio-completo.json";
 import { buildMindMap } from "@/domain/content/mind-map";
 import { renderMindMapPdf } from "@/server/pdf/mind-map";
 

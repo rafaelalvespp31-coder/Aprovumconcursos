@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { writeFileSync } from "node:fs";
 import { PDFDocument } from "pdf-lib";
-import fixture from "../../../tests/fixtures/mind-map-homicidio.json";
+import fixture from "../../../tests/fixtures/mind-map-homicidio-completo.json";
 import { buildMindMap } from "@/domain/content/mind-map";
 import { renderMindMapPdf } from "./mind-map";
 

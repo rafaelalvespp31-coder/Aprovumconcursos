@@ -34,7 +34,7 @@ describe("mapa mental", () => {
     expect(map.remember[0]).toBe("Dizer a pena do caput, do § 2º, do § 2º-D e do § 3º sem consultar");
     expect(map.intro).toMatch(/^Tipo objetivo: a conduta matar/);
     expect(map.tip).toMatch(/^usar veneno ou fogo/);
-    expect(map.modules.map((m) => m.title)).toEqual(["Visão geral e lei seca", "O crime de homicídio", "Doutrina, jurisprudência e bancas", "Revisão final"]);
+    expect(map.modules.map((m) => m.title)).toEqual(["Visão geral e lei seca", "O crime de homicídio", "Casos práticos e pegadinhas", "Doutrina, jurisprudência e bancas", "Revisão final"]);
   });
 });
 
@@ -49,5 +49,28 @@ describe("mapa mental sem esquema", () => {
       { title: "ROM", detail: "Não", value: "Firmware" },
     ]);
     expect(map.comparisons).toEqual([]);
+  });
+});
+
+describe("pontos principais por módulo", () => {
+  it("cada módulo traz seus pontos, com o termo em destaque e as penas", async () => {
+    const full = (await import("../../../tests/fixtures/mind-map-homicidio-completo.json")).default;
+    const map = buildMindMap(full);
+    expect(map.modules.map((m) => m.title)).toEqual([
+      "Visão geral e lei seca",
+      "O crime de homicídio",
+      "Privilégio e qualificadoras",
+      "Homicídio culposo",
+      "Nexo causal, omissão e erros",
+      "Combinações, crimes próximos e Júri",
+      "Casos práticos e pegadinhas",
+      "Doutrina, jurisprudência e bancas",
+      "Revisão final",
+    ]);
+    const geral = map.modules[0]!.keys;
+    expect(geral.find((k) => k.lead === "Caput")).toMatchObject({ text: "Matar alguém (homicídio simples) — Reclusão de 6 a 20 anos" });
+    expect(map.modules[1]!.mnemonic).toBe("CMDIFP");
+    expect(map.modules[6]!.keys[0]!.text).toMatch(/^“O feminicídio é qualificadora/);
+    expect(JSON.stringify(map.modules)).not.toMatch(/Tirinha|cenario/);
   });
 });

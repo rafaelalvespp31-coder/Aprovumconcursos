@@ -28,10 +28,23 @@ export interface MindMapMnemonic {
   terms: string[];
   /** Os itens completos da lista de origem (termo + explicação). */
   items: string[];
+  /** Módulo de onde saiu a lista. */
+  module?: string | null;
+}
+export interface MindMapKey {
+  /** Termo em destaque (ex.: "§ 2º", "Dolo eventual"), quando houver. */
+  lead: string | null;
+  text: string;
+  /** Peso para prova: números/penas, termos em destaque, esquema/resumo/pegadinha valem mais. */
+  score: number;
 }
 export interface MindMapModule {
   title: string;
   points: string[];
+  /** Pontos principais do módulo, na ordem da aula. */
+  keys: MindMapKey[];
+  /** Sigla do mnemônico que saiu deste módulo, se houver. */
+  mnemonic: string | null;
 }
 export interface MindMap {
   title: string;
@@ -92,6 +105,9 @@ function initial(term: string): string | null {
 /** Mnemônico pelas iniciais de uma lista de 3 a 7 termos. */
 export function acronymFor(terms: readonly string[]): string | null {
   if (terms.length < 3 || terms.length > 7) return null;
+  // Termos que começam igual ("Quem pode…", "Quem pode…") não formam mnemônico útil.
+  const firsts = terms.map((t) => t.trim().toLowerCase().split(/\s+/).find((w) => !STOP.has(w)) ?? t);
+  if (new Set(firsts).size < firsts.length) return null;
   const letters = terms.map(initial);
   if (letters.some((l) => !l || !/^[A-Z]$/.test(l))) return null;
   return letters.join("");
@@ -159,7 +175,7 @@ export function buildMindMap(input: { title: string; subject?: string | null; se
         const terms = body.map((r) => r[0]!).filter((t) => t.length <= 40);
         if (!EXCLUDE_MNEMONIC.has(s.kind) && terms.length === body.length && !terms.some(isLabel)) {
           const acr = acronymFor(terms);
-          if (acr) mnemonicCandidates.push({ acronym: acr, label: s.title, terms, items: body.map((r) => (r[1] ? `${r[0]}: ${r[1]}` : r[0]!)), score: 1 + (s.kind === "esquema" ? 1 : 0) });
+          if (acr) mnemonicCandidates.push({ acronym: acr, label: s.title, terms, module: moduleName, items: body.map((r) => (r[1] ? `${r[0]}: ${r[1]}` : r[0]!)), score: 1 + (s.kind === "esquema" ? 1 : 0) });
         }
         points.push(...body.slice(0, 6).map((r) => r.filter(Boolean).join(" — ")));
       } else if (n.type === "list") {
@@ -182,7 +198,7 @@ export function buildMindMap(input: { title: string; subject?: string | null; se
           if (!EXCLUDE_MNEMONIC.has(s.kind) && terms.every((t): t is string => !!t)) {
             const acr = acronymFor(terms);
             const prev = i > 0 && nodes[i - 1]!.type === "paragraph" ? squash(text(nodes[i - 1]!)).replace(/[:(].*$/, "").trim() : "";
-            if (acr) mnemonicCandidates.push({ acronym: acr, label: prev.length >= 3 && prev.length <= 70 ? prev : s.title, terms, items, score: 2 + (/decore|memoriz/i.test(text(nodes[i - 1] ?? list)) ? 2 : 0) });
+            if (acr) mnemonicCandidates.push({ acronym: acr, label: prev.length >= 3 && prev.length <= 70 ? prev : s.title, terms, items, module: moduleName, score: 2 + (/decore|memoriz/i.test(text(nodes[i - 1] ?? list)) ? 2 : 0) });
           }
           if (s.kind === "interpretacao_banca" && items[0]) bankTip ??= firstSentences(items[0], 220);
           points.push(...items.slice(0, 8).map((x) => firstSentences(x, 160)));
@@ -202,7 +218,7 @@ export function buildMindMap(input: { title: string; subject?: string | null; se
   for (const c of mnemonicCandidates.sort((a, b) => b.score - a.score)) {
     if (seenAcronyms.has(c.acronym) || map.mnemonics.length >= 3) continue;
     seenAcronyms.add(c.acronym);
-    map.mnemonics.push({ acronym: c.acronym, label: c.label, terms: c.terms, items: c.items });
+    map.mnemonics.push({ acronym: c.acronym, label: c.label, terms: c.terms, items: c.items, module: c.module ?? null });
   }
   // Faltando mnemônico (o modelo tem três): iniciais dos módulos e dos blocos do esquema.
   const fallbacks: Array<{ label: string; terms: string[]; items: string[] }> = [
@@ -225,6 +241,92 @@ export function buildMindMap(input: { title: string; subject?: string | null; se
   }
   map.tip = calloutTip ?? bankTip;
   if (!map.tip && map.traps[0]) map.tip = map.traps[0].truth ? `${map.traps[0].claim} → ${map.traps[0].truth}` : map.traps[0].claim;
-  map.modules = [...modules].map(([t, p]) => ({ title: t, points: [...new Set(p)].filter(Boolean).slice(0, 14) })).filter((m) => m.points.length);
+  const keys = moduleKeys(input.sections);
+  map.modules = [...new Set([...keys.keys(), ...modules.keys()])]
+    .map((t) => ({
+      title: t,
+      points: [...new Set(modules.get(t) ?? [])].filter(Boolean).slice(0, 14),
+      keys: keys.get(t) ?? [],
+      mnemonic: map.mnemonics.find((m) => m.module === t)?.acronym ?? null,
+    }))
+    .filter((m) => m.keys.length || m.points.length);
   return map;
+}
+
+// ---------------------------------------------------------------------------
+// Pontos principais de cada módulo (o que mais cai em prova), sem repetir.
+// ---------------------------------------------------------------------------
+const SKIP_KEYS = new Set(["texto_legal", "checklist", "referencias", "proxima_etapa", "flashcards", "objetivo", "conhecimentos_previos"]);
+const KIND_BONUS: Record<string, number> = { esquema: 2, resumo: 2, pegadinhas: 2, quadro_comparativo: 1.5, comparacao: 1.5, conceitos_fundamentais: 1.5, excecoes: 1, jurisprudencia: 1, explicacao: 0.5, aprofundamento: 0.5 };
+
+function scoreKey(lead: string | null, txt: string, kind: string): number {
+  let sc = KIND_BONUS[kind] ?? 0;
+  if (lead) sc += 1.5;
+  if (/\d+\s*(a|até)\s*\d+\s*anos|\d\/\d|reclus|deten|súmula|s[uú]mula|\bart\.\s*\d|§|\bLei\s+\d/i.test(`${lead ?? ""} ${txt}`)) sc += 2;
+  if (/\b(não|nunca|só|somente|exceto|salvo|errado|vedad)/i.test(txt)) sc += 0.7;
+  if (txt.length > 140) sc -= 1;
+  return sc;
+}
+
+function shortText(s: string, max = 120): string {
+  return firstSentences(s.replace(/\s+/g, " ").trim(), max).replace(/[.;:]+$/, "");
+}
+
+function moduleKeys(sections: readonly MindMapSection[]): Map<string, MindMapKey[]> {
+  const out = new Map<string, MindMapKey[]>();
+  const seen = new Set<string>();
+  const push = (mod: string, lead: string | null, txt: string, kind: string) => {
+    const t = shortText(txt);
+    const l = lead ? lead.replace(/[:.]+$/, "").trim() : null;
+    if (!t && !l) return;
+    const sig = `${(l ?? "").toLowerCase()}|${t.toLowerCase().slice(0, 50)}`;
+    if (seen.has(sig) || t.length < 3) return;
+    seen.add(sig);
+    const list = out.get(mod) ?? [];
+    list.push({ lead: l, text: t, score: scoreKey(l, t, kind) });
+    out.set(mod, list);
+  };
+  for (const s of sections) {
+    if (SKIP_KEYS.has(s.kind)) continue;
+    const mod = (s.module ?? "").trim() || s.title;
+    for (const n of parse(s.body).children as RootContent[]) {
+      if (n.type === "table") {
+        const rows = tableRows(n);
+        const head = rows[0] ?? [];
+        for (const r of rows.slice(1)) {
+          if (!r[0]) continue;
+          if (r.length >= 3 && (s.kind === "esquema" || /pena|efeito|consequ|resultado/i.test(head[head.length - 1] ?? ""))) push(mod, r[0], `${shortText(r[1] ?? "", 38)} — ${r[r.length - 1]}`, s.kind);
+          else if (r.length >= 3) push(mod, r[0], r[1] ?? "", s.kind);
+          else push(mod, r[0], r[1] ?? "", s.kind);
+        }
+      } else if (n.type === "list") {
+        for (const it of (n as List).children) {
+          const p = it.children.find((c): c is Paragraph => c.type === "paragraph");
+          if (!p) continue;
+          const full = squash(text(p));
+          if (s.kind === "pegadinhas") {
+            const strong = p.children.find((c) => c.type === "strong");
+            const claim = strong ? squash(text(strong)).replace(/^["“]|["”]$/g, "").replace(/[.]$/, "") : "";
+            const truth = squash(full.replace(strong ? squash(text(strong)) : "", ""));
+            push(mod, null, claim ? `“${claim}” ${truth || "Errado"}` : full, s.kind);
+            continue;
+          }
+          const lead = leadTerm(it);
+          if (lead) push(mod, lead, full.slice(full.indexOf(lead) + lead.length).replace(/^[\s:–—-]+/, ""), s.kind);
+          else push(mod, null, full, s.kind);
+        }
+      } else if (n.type === "paragraph") {
+        const first = n.children[0];
+        const full = squash(text(n));
+        if (first && first.type === "strong") {
+          const lead = squash(text(first)).replace(/[:.]+$/, "");
+          if (lead.length <= 60) push(mod, lead, full.slice(squash(text(first)).length).replace(/^[\s:–—-]+/, ""), s.kind);
+        } else if (full.length > 40 && !/:$/.test(full)) push(mod, null, full, s.kind);
+      } else if (n.type === "blockquote") {
+        const t = squash(text(n)).replace(/^[^:]{2,45}:\s*/, "");
+        if (t.length > 20) push(mod, "Atenção", t, s.kind);
+      }
+    }
+  }
+  return out;
 }
