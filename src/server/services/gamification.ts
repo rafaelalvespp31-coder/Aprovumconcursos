@@ -34,6 +34,8 @@ export interface Contest {
   sourceName: string;
   sourceUrl: string | null;
   infoUpdatedAt: string;
+  /** Arte do concurso (bucket público "concursos"); null = arte padrão do layout. */
+  imageUrl: string | null;
 }
 
 export interface Insight {
@@ -159,12 +161,13 @@ export async function ackLevelUps(userId: string): Promise<void> {
 type ContestRow = {
   id: string; name: string; institution: string; role_name: string | null; status: string; vacancies: number | null;
   salary: string | null; exam_date: string | null; exam_date_confirmed: boolean; info_confirmed: boolean;
-  source_name: string; source_url: string | null; info_updated_at: string; active: boolean;
+  source_name: string; source_url: string | null; info_updated_at: string; active: boolean; image_path: string | null;
 };
 const toContest = (c: ContestRow): Contest => ({
   id: c.id, name: c.name, institution: c.institution, roleName: c.role_name, status: c.status, vacancies: c.vacancies,
   salary: c.salary, examDate: c.exam_date, examDateConfirmed: c.exam_date_confirmed, infoConfirmed: c.info_confirmed,
   sourceName: c.source_name, sourceUrl: c.source_url, infoUpdatedAt: c.info_updated_at,
+  imageUrl: c.image_path ? createAdminClient().storage.from("concursos").getPublicUrl(c.image_path).data.publicUrl : null,
 });
 
 const blank = (v: unknown) => (typeof v === "string" && v.trim() === "" ? null : v);
@@ -189,15 +192,45 @@ export async function listContestsAdmin(): Promise<Array<Contest & { active: boo
   return ((data ?? []) as ContestRow[]).map((c) => ({ ...toContest(c), active: c.active }));
 }
 
-export async function saveContest(adminId: string, id: string | null, input: unknown) {
+const IMAGE_TYPES: Record<string, string> = { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" };
+const MAX_IMAGE = 5 * 1024 * 1024;
+
+export async function saveContest(adminId: string, id: string | null, input: unknown, image?: { file: File | null; remove: boolean }) {
   const parsed = contestSchema.safeParse(input);
   if (!parsed.success) throw new UserFacingError("Confira os campos: nome, órgão e fonte são obrigatórios; datas no formato AAAA-MM-DD; link começando com http.", "invalid_input");
   const v = parsed.data;
   if (v.exam_date_confirmed && !v.exam_date) throw new UserFacingError("Para marcar a data como confirmada, informe a data da prova.", "invalid_input");
-  const row = { ...v, info_updated_at: new Date().toISOString().slice(0, 10), updated_at: new Date().toISOString() };
   const db = createAdminClient();
+  const contestId = id ? z.uuid().parse(id) : crypto.randomUUID();
+  let imagePath: string | null | undefined;
+  const file = image?.file && image.file.size > 0 ? image.file : null;
+  if (file) {
+    const ext = IMAGE_TYPES[file.type];
+    if (!ext) throw new UserFacingError("Imagem em JPG, PNG ou WEBP.", "invalid_input");
+    if (file.size > MAX_IMAGE) throw new UserFacingError("Imagem de até 5 MB.", "invalid_input");
+    imagePath = `capas/${contestId}-${Date.now()}.${ext}`;
+    const up = await db.storage.from("concursos").upload(imagePath, file, { contentType: file.type, upsert: false });
+    if (up.error) throw new Error(up.error.message);
+  } else if (image?.remove) {
+    imagePath = null;
+  }
+  let previous: string | null = null;
+  if (id && imagePath !== undefined) {
+    const cur = await db.from("contest_catalog").select("image_path").eq("id", contestId).maybeSingle();
+    previous = (cur.data?.image_path as string | null | undefined) ?? null;
+  }
+  const row = {
+    ...v,
+    ...(imagePath !== undefined ? { image_path: imagePath } : {}),
+    info_updated_at: new Date().toISOString().slice(0, 10),
+    updated_at: new Date().toISOString(),
+  };
   const r = id
-    ? await db.from("contest_catalog").update(row).eq("id", z.uuid().parse(id))
-    : await db.from("contest_catalog").insert({ ...row, created_by: adminId });
-  if (r.error) throw new Error(r.error.message);
+    ? await db.from("contest_catalog").update(row).eq("id", contestId)
+    : await db.from("contest_catalog").insert({ ...row, id: contestId, created_by: adminId });
+  if (r.error) {
+    if (imagePath) await db.storage.from("concursos").remove([imagePath]);
+    throw new Error(r.error.message);
+  }
+  if (previous && previous !== imagePath) await db.storage.from("concursos").remove([previous]);
 }

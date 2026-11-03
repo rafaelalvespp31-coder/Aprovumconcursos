@@ -4,6 +4,7 @@ import { requireUser } from "@/server/auth";
 import { getMyAvatarRequest, loadMyAvatar } from "@/server/services/avatar";
 import { loadHome } from "@/server/services/gamification";
 import { HomeOperacao } from "@/components/home/home-operacao";
+import { HeroBanner } from "./hero-banner";
 import { ackLevelUpsAction, requestAvatarAction } from "./avatar-actions";
 import { logEvent } from "@/server/observability";
 
@@ -23,15 +24,23 @@ export default async function DashboardPage() {
     getMyAvatarRequest(me.id).catch(() => null),
     loadHome(me.id),
   ]);
-  if (trails.length === 0 && !dash.profile?.onboarding_completed) redirect("/nova-trilha");
+  if (trails.length === 0 && !dash.profile?.onboarding_completed)
+    redirect("/nova-trilha");
+  const name = dash.profile?.display_name ?? null;
   return (
-    <HomeOperacao
-      name={dash.profile?.display_name ?? null}
-      data={home}
-      avatar={avatar ? { config: avatar.config, items: avatar.items } : null}
-      request={request}
-      requestAction={requestAvatarAction}
-      ackLevels={ackLevelUpsAction}
-    />
+    <>
+      <HomeOperacao
+        name={name}
+        data={home}
+        avatar={avatar ? { config: avatar.config, items: avatar.items } : null}
+        request={request}
+        requestAction={requestAvatarAction}
+        ackLevels={ackLevelUpsAction}
+      />
+      {/* Banner das aprovações: no fim da página */}
+      <div className="cl-banner">
+        <HeroBanner name={name?.split(" ")[0] ?? null} />
+      </div>
+    </>
   );
 }

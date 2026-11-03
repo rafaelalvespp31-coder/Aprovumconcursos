@@ -20,6 +20,11 @@ test.describe("painel (avatar)", () => {
     await expect(page.getByTestId("conquista-primeiro_combate")).toHaveAttribute("data-unlocked", "true");
     await expect(page.getByTestId("conquista-caveira_elite")).toHaveAttribute("data-unlocked", "false");
     await expect(page.getByTestId("contagem-regressiva")).toBeVisible();
+    // Banner das aprovações volta, no fim da página (abaixo dos concursos).
+    const banner = page.getByTestId("painel-banner");
+    await expect(banner).toBeVisible();
+    const [conc, ban] = await Promise.all([page.getByTestId("home-operacao").boundingBox(), banner.boundingBox()]);
+    expect(ban!.y).toBeGreaterThan(conc!.y + conc!.height - 2);
     // Sem rolagem horizontal.
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });

@@ -42,6 +42,31 @@ export function ContestForm({ contest, action }: { contest: (Contest & { active:
       </div>
       <label className="text-sm">Fonte*<input name="source_name" required defaultValue={c?.sourceName} className={input} placeholder="Edital nº 1/2027, DOU de…" /></label>
       <label className="text-sm">Link da fonte<input name="source_url" type="url" defaultValue={c?.sourceUrl ?? ""} className={input} placeholder="https://" /></label>
+      <div className="flex flex-wrap items-center gap-3 text-sm sm:col-span-2">
+        {c?.imageUrl && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={c.imageUrl} alt={`Imagem de ${c.name}`} className="h-20 w-32 rounded border border-linha object-cover" />
+        )}
+        <label className="flex flex-col">
+          Imagem do concurso (JPG, PNG ou WEBP, até 4 MB)
+          <input
+            name="imagem"
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="mt-1 text-sm"
+            data-testid={c ? `concurso-imagem-${c.id}` : "concurso-imagem-novo"}
+            onChange={(e) => {
+              const f = e.currentTarget.files?.[0];
+              if (f && f.size > 4_000_000) {
+                setMsg("Imagem acima de 4 MB: reduza antes de enviar.");
+                e.currentTarget.value = "";
+              } else setMsg(null);
+            }}
+          />
+        </label>
+        {c?.imageUrl && <label className="flex items-center gap-2"><input type="checkbox" name="remover_imagem" /> Remover imagem (volta a arte padrão)</label>}
+        <span className="t-small text-tinta-suave">Aparece no card “Próximos concursos” da Home, no lugar da arte padrão.</span>
+      </div>
       <div className="flex items-center gap-3 sm:col-span-2">
         <button type="submit" disabled={pending} className="rounded bg-tinta px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
           {pending ? "Salvando…" : c ? "Salvar alterações" : "Cadastrar concurso"}

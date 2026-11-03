@@ -22,7 +22,10 @@ export function AvatarStage({
   mannequin = false,
   testId = "avatar-palco",
   rank = "aluno",
+  transparent = false,
 }: {
+  /** Só o personagem, sem o cenário da arte (a página desenha o cenário por trás). */
+  transparent?: boolean;
   rank?: RankId;
   config: AvatarConfig;
   items: readonly AvatarItem[];
@@ -54,7 +57,7 @@ export function AvatarStage({
     const boot = portrait
       ? import("./portrait").then(({ PortraitEngine }) => {
           if (!alive) return;
-          const engine = new PortraitEngine(canvas, portrait, onDebug);
+          const engine = new PortraitEngine(canvas, portrait, onDebug, transparent);
           canvas.dataset.mode = "arte-2d";
           engineRef.current = { setConfig: (c) => engine.setConfig(c), resize: () => engine.resize(), dispose: () => engine.dispose() };
           engine.load(config).catch(() => setFailed(true));
@@ -81,7 +84,7 @@ export function AvatarStage({
     };
     // o motor é criado uma vez por gênero/modo; as trocas de roupa entram pelo efeito abaixo
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasModel, mannequin, config.gender, interactive, portrait]);
+  }, [hasModel, mannequin, config.gender, interactive, portrait, transparent]);
 
   useEffect(() => {
     Promise.resolve(engineRef.current?.setConfig(config, items)).catch(() => setFailed(true));

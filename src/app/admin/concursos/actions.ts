@@ -22,7 +22,7 @@ export async function saveContestAction(id: string | null, form: FormData): Prom
       source_name: get("source_name"),
       source_url: get("source_url"),
       active: get("active") === "on",
-    });
+    }, { file: get("imagem") instanceof File ? (get("imagem") as File) : null, remove: get("remover_imagem") === "on" });
     revalidatePath("/admin/concursos");
     revalidatePath("/painel");
     return { ok: true };

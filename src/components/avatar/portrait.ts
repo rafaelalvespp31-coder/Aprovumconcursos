@@ -98,9 +98,13 @@ export class PortraitEngine {
     private readonly canvas: HTMLCanvasElement,
     private readonly portrait: Portrait,
     private readonly onDebug?: (d: EngineDebug) => void,
+    /** Desenha só o personagem (fundo transparente): a página mostra o próprio cenário por trás. */
+    private readonly transparent = false,
   ) {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-    this.renderer.setPixelRatio(Math.min(1.5, window.devicePixelRatio || 1));
+    // Resolução real da tela (até 3×): contorno nítido em telas de alta densidade.
+    this.renderer.setPixelRatio(Math.min(3, window.devicePixelRatio || 1));
+    this.renderer.setClearColor(0x000000, 0);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.mql = window.matchMedia?.("(prefers-reduced-motion: reduce)") ?? null;
     this.reduced = !!this.mql?.matches;
@@ -136,7 +140,7 @@ export class PortraitEngine {
     const [tex, lids] = await Promise.all([loader.loadAsync(this.portrait.src), loader.loadAsync(this.portrait.lids)]);
     tex.colorSpace = THREE.SRGBColorSpace;
     lids.colorSpace = THREE.SRGBColorSpace;
-    tex.anisotropy = 4;
+    tex.anisotropy = this.renderer.capabilities.getMaxAnisotropy();
     const p = this.portrait;
     const e = (i: number) => new THREE.Vector4(p.eyes[i]!.x0, p.eyes[i]!.y0, p.eyes[i]!.x1, p.eyes[i]!.y1);
     this.mat = new THREE.ShaderMaterial({
@@ -169,11 +173,13 @@ export class PortraitEngine {
     if (p.backdrop) {
       const b = p.backdrop;
       const bw = b.w / b.h;
-      const bg = await loader.loadAsync(b.src);
-      bg.colorSpace = THREE.SRGBColorSpace;
-      const back = new THREE.Mesh(new THREE.PlaneGeometry(bw, 1), new THREE.MeshBasicMaterial({ map: bg }));
-      back.position.set(0, 0.5, -1);
-      this.scene.add(back);
+      if (!this.transparent) {
+        const bg = await loader.loadAsync(b.src);
+        bg.colorSpace = THREE.SRGBColorSpace;
+        const back = new THREE.Mesh(new THREE.PlaneGeometry(bw, 1), new THREE.MeshBasicMaterial({ map: bg }));
+        back.position.set(0, 0.5, -1);
+        this.scene.add(back);
+      }
       const s = b.figure.h / b.h;
       figure.scale.set(s, s, 1);
       figure.position.set(-bw / 2 + (b.figure.x + b.figure.w / 2) / b.h, 1 - (b.figure.y + b.figure.h) / b.h, 0);

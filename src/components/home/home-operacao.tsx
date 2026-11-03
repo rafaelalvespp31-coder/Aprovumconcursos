@@ -33,11 +33,6 @@ const MEDAL_ROW = [
   { id: "caveira_elite", x: 805, l1: "Caveira de Elite", l2: "(Nível 10)" },
 ];
 const medalSrc = (id: string) => `/home/medalhas/${id.startsWith("disciplina_") ? "disciplina" : id}.webp`;
-/** Silhueta (dilatada) de cada arte: só o personagem aparece sobre o cenário do layout. */
-const MASK: Record<"m" | "f", CSSProperties> = {
-  m: { maskImage: "url(/home/mascara-m.png)", WebkitMaskImage: "url(/home/mascara-m.png)", maskSize: "51.42% 94.29%", WebkitMaskSize: "51.42% 94.29%", maskPosition: "53.85% 6.25%", WebkitMaskPosition: "53.85% 6.25%" },
-  f: { maskImage: "url(/home/mascara-f.png)", WebkitMaskImage: "url(/home/mascara-f.png)", maskSize: "36.3% 94.29%", WebkitMaskSize: "36.3% 94.29%", maskPosition: "50.28% 6.25%", WebkitMaskPosition: "50.28% 6.25%" },
-};
 
 export interface HomeOperacaoProps {
   name: string | null;
@@ -82,7 +77,6 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, ackLe
   const contest = contests[0] ?? null;
   const left = contest ? daysUntil(contest.examDate, contest.examDateConfirmed, game.today) : null;
   const missionHref: Record<MissionKey, string> = { estudar: cont ? `/aula/${cont.lessonId}` : "/trilhas", combater: "/questoes", revisar: "/revisoes" };
-  const gender = avatar?.config.gender === "f" ? "f" : "m";
   const alerts = insights?.length ?? 0;
 
   return (
@@ -99,8 +93,8 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, ackLe
           <Link href="/perfil" aria-label="Configurações" className="cl-hit cl-round" style={at(836, 72, 76, 76)}><Settings className="cl-sr" /></Link>
 
           {avatar ? (
-            <div className="cl-palco" style={{ ...at(220, 145, 482, 721), ...MASK[gender] }}>
-              <AvatarStage config={avatar.config} items={avatar.items} interactive className="cl-palco-arte" mannequin={mannequin} rank={rank.id} />
+            <div className="cl-palco" style={at(220, 145, 482, 721)}>
+              <AvatarStage config={avatar.config} items={avatar.items} interactive className="cl-palco-arte" mannequin={mannequin} rank={rank.id} transparent />
             </div>
           ) : (
             <p role="alert" className="cl-t cl-c" style={at(350, 420, 240, 80, fs(18))}>Não foi possível carregar seu avatar agora. Recarregue a página.</p>
@@ -259,6 +253,10 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, ackLe
           <div data-testid="proximos-concursos">
             {contest ? (
               <div title={`Fonte: ${contest.sourceName} · atualizado em ${dateBR(contest.infoUpdatedAt)} · ${CONTEST_STATUS[contest.status] ?? contest.status}`}>
+                {contest.imageUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={contest.imageUrl} alt={`Imagem do concurso ${contest.name}`} className="cl-conc-img" style={at(31, 1393 - 935, 178, 114)} data-testid="concurso-imagem" />
+                )}
                 <T box={at(290, 1434 - 935, 205, 38, fs(contest.name.length > 12 ? 24 : 32))} className="cl-ell cl-b">{contest.name}</T>
                 <T box={at(290, 1472 - 935, 205, 28, fs(20))} className={contest.vacancies != null ? "cl-ouro cl-b" : "cl-dim"}>
                   {contest.vacancies != null ? `+${fmt(contest.vacancies)} vagas` : "Vagas não divulgadas"}

@@ -2912,6 +2912,9 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .cl-aviso { color: #ffcf5a; font-family: "Barlow Semi Condensed", Inter, sans-serif; }
 .cl-dias-box { position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: calc(8 * var(--u)); border: calc(3 * var(--u)) solid #ff2a1f; background: linear-gradient(180deg, #b80400, #6e0200); box-shadow: 0 0 calc(16 * var(--u)) rgba(255,30,20,0.6), inset 0 0 calc(12 * var(--u)) rgba(0,0,0,0.4); line-height: 0.95; }
 .cl-dias-box b, .cl-dias-box span { font-weight: 600; }
+.cl-conc-img { position: absolute; object-fit: cover; border-radius: calc(6 * var(--u)); clip-path: polygon(calc(10 * var(--u)) 0, 100% 0, 100% calc(100% - calc(10 * var(--u))), calc(100% - calc(10 * var(--u))) 100%, 0 100%, 0 calc(10 * var(--u))); box-shadow: inset 0 0 0 1px rgba(255,60,50,0.6); }
+.cl-banner { width: 100%; max-width: 941px; margin: 10px auto 0; padding: 0 10px; }
+@media (min-width: 1024px) { .cl-banner { padding: 0; margin-top: 16px; } }
 .cl-req { padding: 0 16px; }
 .cl-req .avr { max-width: 560px; margin: 0 auto; }
 .cl-req [data-testid=avatar-solicitar-botao] { display: none; }
