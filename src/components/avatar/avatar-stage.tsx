@@ -3,12 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 import type { AvatarConfig, AvatarItem } from "@/domain/avatar/catalog";
 import { SKIN_TONES, HAIR_COLORS } from "@/domain/avatar/catalog";
-import type { AvatarEngine, EngineDebug } from "./engine";
+import type { EngineDebug } from "./engine";
+import { PORTRAITS } from "./portraits";
+
+type Engine = { setConfig: (c: AvatarConfig, items: readonly AvatarItem[]) => Promise<void> | void; resize: () => void; dispose: () => void };
 
 /**
- * Palco 3D do avatar. Carrega o three.js só quando aparece (não pesa nas outras telas).
- * Sem modelo 3D cadastrado para o gênero, mostra o aviso de "personagem em produção" — nunca
- * um boneco genérico no lugar.
+ * Palco do avatar. Carrega o three.js só quando aparece (não pesa nas outras telas).
+ * Ordem: modelo 3D publicado → arte 2D oficial animada (personagem do layout) → aviso de
+ * "personagem em produção". Nunca um boneco genérico no lugar.
  */
 export function AvatarStage({
   config,
@@ -27,36 +30,46 @@ export function AvatarStage({
   testId?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const engineRef = useRef<AvatarEngine | null>(null);
+  const engineRef = useRef<Engine | null>(null);
   const [failed, setFailed] = useState(false);
-  const hasModel = mannequin || items.some((i) => i.slot === "base" && i.genders.includes(config.gender) && i.modelUrl);
+  const has3d = mannequin || items.some((i) => i.slot === "base" && i.genders.includes(config.gender) && i.modelUrl);
+  const portrait = !has3d ? PORTRAITS[config.gender] : undefined;
+  const hasModel = has3d || !!portrait;
 
   useEffect(() => {
     if (!hasModel || !canvasRef.current) return;
     let alive = true;
     let ro: ResizeObserver | null = null;
     const canvas = canvasRef.current;
-    import("./engine")
-      .then(({ AvatarEngine, buildTestMannequin }) => {
-        if (!alive) return;
-        const engine = new AvatarEngine(canvas, {
-          interactive,
-          onDebug: (d: EngineDebug) => {
-            canvas.dataset.breath = d.breath.toFixed(3);
-            canvas.dataset.blinks = String(d.blinks);
-            canvas.dataset.chest = d.chestScale.toFixed(4);
-            canvas.dataset.head = d.headYaw.toFixed(4);
-            canvas.dataset.ready = String(d.ready);
-          },
+    const onDebug = (d: EngineDebug) => {
+      canvas.dataset.breath = d.breath.toFixed(3);
+      canvas.dataset.blinks = String(d.blinks);
+      canvas.dataset.chest = d.chestScale.toFixed(4);
+      canvas.dataset.head = d.headYaw.toFixed(4);
+      canvas.dataset.ready = String(d.ready);
+    };
+    const boot = portrait
+      ? import("./portrait").then(({ PortraitEngine }) => {
+          if (!alive) return;
+          const engine = new PortraitEngine(canvas, portrait, onDebug);
+          canvas.dataset.mode = "arte-2d";
+          engineRef.current = { setConfig: (c) => engine.setConfig(c), resize: () => engine.resize(), dispose: () => engine.dispose() };
+          engine.load(config).catch(() => setFailed(true));
+          ro = new ResizeObserver(() => engine.resize());
+          ro.observe(canvas);
+        })
+      : import("./engine").then(({ AvatarEngine, buildTestMannequin }) => {
+          if (!alive) return;
+          const engine = new AvatarEngine(canvas, { interactive, onDebug });
+          canvas.dataset.mode = "3d";
+          engineRef.current = engine;
+          if (mannequin) engine.setModelObject(buildTestMannequin(config.gender));
+          engine.setConfig(config, items).catch(() => setFailed(true));
+          engine.start();
+          ro = new ResizeObserver(() => engine.resize());
+          ro.observe(canvas);
         });
-        engineRef.current = engine;
-        if (mannequin) engine.setModelObject(buildTestMannequin(config.gender));
-        engine.setConfig(config, items).catch(() => setFailed(true));
-        engine.start();
-        ro = new ResizeObserver(() => engine.resize());
-        ro.observe(canvas);
-      })
-      .catch(() => setFailed(true));
+    boot.catch(() => setFailed(true));
     return () => {
       alive = false;
       ro?.disconnect();
@@ -68,7 +81,7 @@ export function AvatarStage({
   }, [hasModel, mannequin, config.gender, interactive]);
 
   useEffect(() => {
-    engineRef.current?.setConfig(config, items).catch(() => setFailed(true));
+    Promise.resolve(engineRef.current?.setConfig(config, items)).catch(() => setFailed(true));
   }, [config, items]);
 
   if (!hasModel || failed) {

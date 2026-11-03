@@ -44,9 +44,20 @@ test.describe("avatar no painel", () => {
     await expect(page.getByTestId("avatar-pele-morena_clara")).toHaveAttribute("aria-pressed", "true");
   });
 
-  test("sem modelo 3D publicado, mostra o aviso de produção (nunca um boneco genérico)", async ({ page }) => {
-    await page.goto(`${URL}?avatar=producao`);
+  test("masculino usa a arte oficial animada; feminino sem arte mostra o aviso de produção", async ({ page }) => {
+    await page.goto(URL);
+    await expect(page.getByTestId("avatar-palco")).toHaveAttribute("data-mode", "arte-2d");
+    await page.getByTestId("avatar-genero-f").click();
     await expect(page.getByTestId("avatar-palco-producao")).toContainText("Personagem 3D em produção");
-    await expect(page.getByTestId("avatar-palco")).toHaveCount(0);
+    await page.getByTestId("avatar-genero-m").click();
+    await expect(page.getByTestId("avatar-palco")).toHaveAttribute("data-ready", "true");
+  });
+
+  test("manequim de teste 3D também anima (motor dos modelos futuros)", async ({ page }) => {
+    await page.goto(`${URL}?avatar=manequim`);
+    const palco = page.getByTestId("avatar-palco");
+    await expect(palco).toHaveAttribute("data-mode", "3d");
+    await expect(palco).toHaveAttribute("data-ready", "true");
+    await expect.poll(async () => Number(await palco.getAttribute("data-breath")), { timeout: 8000 }).toBeGreaterThan(0.2);
   });
 });

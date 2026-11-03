@@ -8,7 +8,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ a
   return (
     <>
       <HeroBanner name={dashboard.name} />
-      <DemoAvatar mannequin={sp.avatar !== "producao"} />
+      <DemoAvatar mannequin={sp.avatar === "manequim"} />
       <DashboardView {...dashboard} />
     </>
   );

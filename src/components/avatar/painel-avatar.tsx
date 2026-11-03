@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { Check, Lock, RotateCcw, Shirt, Sparkles, User, Scissors, Smile, PersonStanding, Footprints, Glasses, X } from "lucide-react";
 import { AvatarStage } from "./avatar-stage";
+import { PORTRAITS } from "./portraits";
 import {
   BODY_SLIDERS,
   FACE_OPTIONS,
@@ -304,6 +305,11 @@ export function PainelAvatar({ name, initial, saved, items, progress, save, mann
               <Check aria-hidden /> {pending ? "Salvando…" : "Salvar alterações"}
             </button>
           </div>
+          {!mannequin && PORTRAITS[draft.gender] && !items.some((i) => i.slot === "base" && i.genders.includes(draft.gender) && i.modelUrl) && (
+            <p className="av-nota" data-testid="avatar-nota-arte">
+              Este personagem é a arte oficial APROVUM animada: nele, mudam o avatar e o tom de pele. Cabelo, barba, rosto, corpo e roupas ficam salvos e aparecem quando as artes dessas peças forem publicadas.
+            </p>
+          )}
           {[...Object.values(draft.equipped)].some((id) => id && !byId.get(id)?.modelUrl) && items.some((i) => i.slot === "base" && i.modelUrl) && <p className="av-nota">Algumas peças ainda estão sem modelo 3D e aparecem no personagem quando forem publicadas.</p>}
         </div>
       )}

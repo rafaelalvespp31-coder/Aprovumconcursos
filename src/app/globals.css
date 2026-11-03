@@ -2567,7 +2567,11 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   color: rgba(255,255,255,0.8); background: rgba(20,20,22,0.85); border: 1px solid rgba(255,255,255,0.14);
 }
 .av-genero button.is-on, .av-chips button.is-on { color: #fff; border-color: #e50914; box-shadow: 0 0 0 1px #e50914, 0 0 18px rgba(229,9,20,0.35); }
-.av-palco, .av-producao { width: 100%; height: clamp(320px, 52vh, 520px); border-radius: 20px; }
+.av-palco, .av-producao { width: 100%; height: clamp(360px, 60vh, 600px); border-radius: 20px; }
+.av-palco-col::before {
+  content: ""; position: absolute; inset: 0 0 auto auto; width: min(70%, 420px); aspect-ratio: 1; pointer-events: none;
+  background: url("/icons/aprovum-mark.png") center / contain no-repeat; opacity: 0.07; filter: grayscale(0.3);
+}
 .av-canvas { display: block; cursor: grab; }
 .av-canvas:active { cursor: grabbing; }
 .av-producao {
