@@ -2561,7 +2561,13 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 @media (min-width: 1280px) {
   .av-bloco:has(.av-editor) .av-palco-col { grid-template-columns: minmax(0, 1fr) 190px; }
 }
-.av-genero { position: absolute; z-index: 2; top: 4px; left: 4px; display: flex; gap: 6px; }
+/* Celular: seletor pequeno numa linha própria, acima do personagem (não cobre o rosto). */
+.av-genero { position: static; z-index: 2; display: flex; justify-content: center; gap: 6px; }
+.av-genero button { padding: 4px 11px !important; font-size: 11.5px !important; }
+@media (min-width: 640px) {
+  .av-genero { position: absolute; top: 4px; left: 4px; justify-content: flex-start; }
+  .av-genero button { padding: 7px 14px !important; font-size: 13px !important; }
+}
 .av-genero button, .av-chips button {
   padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 700;
   color: rgba(255,255,255,0.8); background: rgba(20,20,22,0.85); border: 1px solid rgba(255,255,255,0.14);
