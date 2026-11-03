@@ -628,6 +628,18 @@ export async function getStudyStats(): Promise<StudyStats> {
   };
 }
 
+/** Nível pelo XP real (mesma função do banco usada na Home); null se não der para ler agora. */
+async function myXpLevel(db: Awaited<ReturnType<typeof createUserClient>>, me: string): Promise<number | null> {
+  const [tx, cfg] = await Promise.all([
+    db.from("gamification_xp_transactions").select("amount").eq("user_id", me).limit(20000),
+    db.from("gamification_settings").select("config").eq("id", 1).maybeSingle(),
+  ]);
+  if (tx.error || cfg.error || !cfg.data) return null;
+  const xp = (tx.data ?? []).reduce((a, r) => a + Number(r.amount), 0);
+  const { data, error } = await db.rpc("gamification_level_info", { p_xp: xp, p_cfg: cfg.data.config });
+  return error ? null : Number((data as { level: number }).level);
+}
+
 export interface ShellSummary {
   name: string | null;
   email: string | null;
@@ -655,6 +667,7 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
     db.from("question_notebooks").select("id", { count: "exact", head: true }).eq("user_id", me),
   ]);
   const g = computeGamification(stats);
+  const xpLevel = await myXpLevel(db, me);
   const lessonCount = new Map<string, number>();
   for (const l of (myLessons.data ?? []) as Array<{ trail_id: string }>) lessonCount.set(l.trail_id, (lessonCount.get(l.trail_id) ?? 0) + 1);
   const progressBy = new Map<string, Array<{ state: string; levels_passed: number; reading_completed_at: string | null }>>();
@@ -677,7 +690,7 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
     name: (profile.data?.display_name as string | null | undefined)?.split(" ")[0] ?? null,
     email,
     streak: { current: g.streak.current, last7: g.streak.last7, message: streakMessage(g.streak) },
-    level: g.level.level,
+    level: xpLevel ?? g.level.level,
     counts: { trails: trails.count ?? 0, questions, notebooks: notebooks.count ?? 0, dueReviews: reviews.count ?? 0, answered: stats.answered },
     subjects: buildSubjectsMenu({
       trails: mineRows,

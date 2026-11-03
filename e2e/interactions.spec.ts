@@ -845,7 +845,7 @@ test.describe("modo jogo", () => {
 });
 
 test("banners: arte e animações aparecem juntas, mesmo com a imagem demorando", async ({ page }) => {
-  for (const [path, id, img] of [["painel", "painel-banner", /aprovum-login-hero-mobile\.webp/], ["quiz", "jogo-banner-marca", /jogo-hero-arte(-sm)?\.webp/]] as const) {
+  for (const [path, id, img] of [["banner-aprovacoes", "painel-banner", /aprovum-login-hero-mobile\.webp/], ["quiz", "jogo-banner-marca", /jogo-hero-arte(-sm)?\.webp/]] as const) {
     let release: () => void = () => {};
     const gate = new Promise<void>((r) => (release = r));
     await page.route(img, async (route) => {
@@ -906,8 +906,8 @@ test.describe("página de estudos", () => {
   });
 });
 
-test("painel: banner de saudação reveza com os banners de aprovação a cada 3 s", async ({ page }) => {
-  await page.goto(`${G}/painel`);
+test("banner das aprovações: saudação reveza com os banners de aprovação a cada 3 s", async ({ page }) => {
+  await page.goto(`${G}/banner-aprovacoes`);
   const rot = page.getByTestId("banner-rotator");
   await expect(rot).toHaveAttribute("data-slide", "0");
   await expect(rot).toHaveAttribute("data-slide", "1", { timeout: 5000 });

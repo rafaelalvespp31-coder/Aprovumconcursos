@@ -2,17 +2,18 @@ import { redirect } from "next/navigation";
 import { getDashboard, listTrails } from "@/server/queries";
 import { requireUser } from "@/server/auth";
 import { getMyAvatarRequest, loadMyAvatar } from "@/server/services/avatar";
-import { PainelAvatar } from "@/components/avatar/painel-avatar";
-import { HeroBanner } from "./hero-banner";
-import { requestAvatarAction, saveAvatarAction } from "./avatar-actions";
+import { loadHome } from "@/server/services/gamification";
+import { HomeOperacao } from "@/components/home/home-operacao";
+import { ackLevelUpsAction, requestAvatarAction } from "./avatar-actions";
 import { logEvent } from "@/server/observability";
 
 export const metadata = { title: "Painel" };
+export const dynamic = "force-dynamic";
 
-/** Painel: banner com as aprovações, card do avatar e "Solicitar meu avatar". */
+/** Painel (Home): avatar no centro e a gamificação real do aluno ao redor. */
 export default async function DashboardPage() {
   const me = await requireUser("/painel");
-  const [trails, dash, avatar, request] = await Promise.all([
+  const [trails, dash, avatar, request, home] = await Promise.all([
     listTrails(),
     getDashboard(),
     loadMyAvatar(me.id).catch(async (e) => {
@@ -20,19 +21,17 @@ export default async function DashboardPage() {
       return null;
     }),
     getMyAvatarRequest(me.id).catch(() => null),
+    loadHome(me.id),
   ]);
   if (trails.length === 0 && !dash.profile?.onboarding_completed) redirect("/nova-trilha");
-  const name = dash.profile?.display_name ?? null;
   return (
-    <>
-      <HeroBanner name={name?.split(" ")[0] ?? null} />
-      {avatar ? (
-        <PainelAvatar name={name} initial={avatar.config} saved={avatar.saved} items={avatar.items} progress={avatar.progress} save={saveAvatarAction} request={request} requestAction={requestAvatarAction} />
-      ) : (
-        <p role="alert" className="text-white/80">
-          Não foi possível carregar seu avatar agora. Recarregue a página.
-        </p>
-      )}
-    </>
+    <HomeOperacao
+      name={dash.profile?.display_name ?? null}
+      data={home}
+      avatar={avatar ? { config: avatar.config, items: avatar.items } : null}
+      request={request}
+      requestAction={requestAvatarAction}
+      ackLevels={ackLevelUpsAction}
+    />
   );
 }

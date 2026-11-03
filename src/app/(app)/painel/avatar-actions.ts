@@ -5,6 +5,7 @@ import { requireUser } from "@/server/auth";
 import { saveMyAvatar, submitAvatarRequest, type AvatarRequest } from "@/server/services/avatar";
 import { UserFacingError, enforceRateLimit } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
+import { ackLevelUps } from "@/server/services/gamification";
 import type { AvatarSaveResult } from "@/components/avatar/painel-avatar";
 
 /** Salva o avatar do aluno logado (o id vem da sessão, nunca do navegador). */
@@ -39,4 +40,10 @@ export async function requestAvatarAction(form: FormData): Promise<AvatarRequest
     await logEvent("avatar.request_failed", { error: (e as Error).message });
     return { ok: false, error: "Não foi possível enviar a foto agora. Tente novamente." };
   }
+}
+
+/** Fecha o aviso de LEVEL UP do aluno logado (não mexe em XP nem nível). */
+export async function ackLevelUpsAction(): Promise<void> {
+  const user = await requireUser("/painel");
+  await ackLevelUps(user.id);
 }

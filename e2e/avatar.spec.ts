@@ -1,18 +1,45 @@
 import { expect, test } from "@playwright/test";
 
-/** Painel: banner das aprovações + card do avatar + "Solicitar meu avatar" (galeria). */
+/** Painel (Home de operações): avatar no centro, cards de gamificação e "Solicitar meu avatar" (galeria). */
 const URL = "/dev/galeria/painel";
 
 test.describe("painel (avatar)", () => {
-  test("banner no topo e só o card do avatar (sem editor e sem os cards antigos)", async ({ page }) => {
+  test("operador, missões, disciplina, desempenho, conquistas, ranking e concursos ao redor do avatar", async ({ page }) => {
     await page.goto(URL);
-    await expect(page.getByTestId("painel-banner")).toBeVisible();
     await expect(page.getByTestId("painel-avatar")).toBeVisible();
-    await expect(page.getByTestId("avatar-info")).toContainText("Rafael Silva");
-    await expect(page.getByTestId("avatar-xp")).toHaveText("1.250");
-    await expect(page.getByTestId("avatar-ranking")).toHaveText(/#12\.487/);
-    await expect(page.getByText(/PERSONALIZE SEU/)).toHaveCount(0);
-    await expect(page.getByText(/Seu progresso|Acesso rápido|Seu desempenho/)).toHaveCount(0);
+    await expect(page.getByTestId("operador-nome")).toHaveText("Rafael Alves");
+    await expect(page.getByTestId("operador-nivel")).toHaveText("1");
+    await expect(page.getByTestId("avatar-xp")).toHaveText("1.000");
+    await expect(page.getByTestId("avatar-ranking")).toContainText("#3");
+    await expect(page.getByTestId("missao-estudar")).toHaveAttribute("data-done", "true");
+    await expect(page.getByTestId("missao-revisar")).toContainText("6/15");
+    await expect(page.getByTestId("xp-hoje")).toContainText("200 XP");
+    await expect(page.getByTestId("streak-atual")).toHaveText("12");
+    await expect(page.getByTestId("retomar-missao")).toHaveAttribute("href", /\/aula\//);
+    await expect(page.getByTestId("perf-taxa")).toHaveText("82%");
+    await expect(page.getByTestId("conquista-primeiro_combate")).toHaveAttribute("data-unlocked", "true");
+    await expect(page.getByTestId("conquista-caveira_elite")).toHaveAttribute("data-unlocked", "false");
+    await expect(page.getByTestId("contagem-regressiva")).toBeVisible();
+    // Sem rolagem horizontal.
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
+  test("aluno sem histórico: estados vazios, nada inventado", async ({ page }) => {
+    await page.goto(`${URL}?dados=vazio`);
+    await expect(page.getByTestId("avatar-xp")).toHaveText("0");
+    await expect(page.getByTestId("avatar-ranking")).toContainText("Em formação");
+    await expect(page.getByTestId("seu-desempenho")).toContainText("Ainda não existem dados suficientes para gerar sua análise.");
+    await expect(page.getByTestId("comecar-missao")).toBeVisible();
+    await expect(page.getByTestId("proximos-concursos")).toContainText("Nenhum concurso cadastrado");
+    await expect(page.getByTestId("contagem-regressiva")).toHaveCount(0);
+    await expect(page.locator('[data-unlocked="true"]')).toHaveCount(0);
+  });
+
+  test("LEVEL UP aparece e fecha", async ({ page }) => {
+    await page.goto(`${URL}?levelup=1`);
+    await expect(page.getByTestId("level-up")).toContainText("LEVEL UP");
+    await page.getByRole("button", { name: "Continuar" }).click();
+    await expect(page.getByTestId("level-up")).toHaveCount(0);
   });
 
   test("personagem respira, pisca e mexe a cabeça (arte oficial animada)", async ({ page }) => {
@@ -49,11 +76,11 @@ test.describe("painel (avatar)", () => {
   test("sem botões de gênero; patente no card (Aluno → Recruta → Policial)", async ({ page }) => {
     await page.goto(URL);
     await expect(page.getByTestId("avatar-genero-m")).toHaveCount(0);
-    await expect(page.getByTestId("avatar-patente")).toHaveText("Aluno");
+    await expect(page.getByTestId("avatar-patente")).toHaveText("ALUNO");
     await page.goto(`${URL}?nivel=12`);
-    await expect(page.getByTestId("avatar-patente")).toHaveText("Recruta");
+    await expect(page.getByTestId("avatar-patente")).toHaveText("RECRUTA");
     await page.goto(`${URL}?nivel=27`);
-    await expect(page.getByTestId("avatar-patente")).toHaveText("Policial");
+    await expect(page.getByTestId("avatar-patente")).toHaveText("POLICIAL");
   });
 
   test("avatar feminino (definido no cadastro) também é a arte oficial animada", async ({ page }) => {

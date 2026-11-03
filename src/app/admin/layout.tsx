@@ -72,6 +72,12 @@ export default async function AdminLayout({
                 Avatares
               </Link>
               <Link
+                href="/admin/concursos"
+                className="text-destaque underline-offset-2 hover:underline"
+              >
+                Concursos
+              </Link>
+              <Link
                 href="/admin/socio"
                 className="text-destaque underline-offset-2 hover:underline"
               >
