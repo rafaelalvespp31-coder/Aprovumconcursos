@@ -78,6 +78,12 @@ export default async function AdminLayout({
                 Concursos
               </Link>
               <Link
+                href="/admin/aprovados"
+                className="text-destaque underline-offset-2 hover:underline"
+              >
+                Aprovados
+              </Link>
+              <Link
                 href="/admin/socio"
                 className="text-destaque underline-offset-2 hover:underline"
               >

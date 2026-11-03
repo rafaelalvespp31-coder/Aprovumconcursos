@@ -6,11 +6,13 @@
  */
 import { BannerGate } from "@/components/banner-gate";
 import { BannerRotator } from "./banner-rotator";
+import { APPROVAL_BANNERS, type ApprovalBanner } from "./approval-banners";
 
-export function HeroBanner({ name }: { name: string | null }) {
+/** `extra`: banners de aprovados enviados pela equipe no admin (entram depois das artes fixas). */
+export function HeroBanner({ name, extra = [] }: { name: string | null; extra?: ApprovalBanner[] }) {
   return (
     <BannerGate className="painel-hero mb-4 lg:mb-5" testId="painel-banner" assets={["/images/aprovum-login-logo.png"]}>
-      <BannerRotator className="banner-rotator--saudacao">
+      <BannerRotator className="banner-rotator--saudacao" banners={[...APPROVAL_BANNERS, ...extra]}>
         <div className="ph-palco">
           {/* Arte tática da marca (original do projeto) */}
           {/* eslint-disable-next-line @next/next/no-img-element */}
