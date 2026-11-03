@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/server/auth";
 import { createUserClient } from "@/server/supabase";
+import { setMyAvatarGender } from "@/server/services/avatar";
 
 export interface ProfileState { ok?: boolean; error?: string }
 
@@ -28,6 +29,14 @@ export async function updateProfileAction(_: ProfileState, form: FormData): Prom
   const db = await createUserClient();
   const { error } = await db.from("profiles").update(parsed.data).eq("id", user.id);
   if (error) return { error: "Não foi possível salvar agora." };
+  const gender = form.get("avatar_gender");
+  if (gender === "m" || gender === "f") {
+    try {
+      await setMyAvatarGender(user.id, gender);
+    } catch {
+      return { error: "Perfil salvo, mas não foi possível trocar o avatar agora." };
+    }
+  }
   revalidatePath("/perfil");
   revalidatePath("/painel");
   return { ok: true };

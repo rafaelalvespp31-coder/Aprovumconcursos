@@ -3,6 +3,7 @@ import { requireUser } from "@/server/auth";
 import { computeGamification } from "@/domain/progress/gamification";
 import Link from "next/link";
 import { getPartnerStatus } from "@/server/services/partner";
+import { getMyAvatarGender } from "@/server/services/avatar";
 import { PastelCard } from "@/components/pastel/card";
 import { getBankRoles } from "@/server/services/bank";
 import { signOut } from "../../(auth)/actions";
@@ -16,7 +17,7 @@ export const metadata = { title: "Perfil" };
 
 export default async function ProfilePage() {
   const user = await requireUser();
-  const [{ profile, subscription }, stats, dash, roles, usage, partner] = await Promise.all([getProfile(), getStudyStats(), getDashboard(), getBankRoles(user.id), getPlanUsage(user.id), getPartnerStatus(user.id)]);
+  const [{ profile, subscription }, stats, dash, roles, usage, partner, avatarGender] = await Promise.all([getProfile(), getStudyStats(), getDashboard(), getBankRoles(user.id), getPlanUsage(user.id), getPartnerStatus(user.id), getMyAvatarGender(user.id).catch(() => null)]);
   const staff = roles.admin || roles.autor || roles.revisor;
   const sub = subscription as unknown as { plan_id: string; status: string; current_period_end?: string | null; billing_period?: string | null } | null;
   const eff = effectivePlan(sub ? { planId: sub.plan_id, status: sub.status, currentPeriodEnd: sub.current_period_end ?? null } : null);
@@ -55,7 +56,7 @@ export default async function ProfilePage() {
       )}
       <PastelCard noTilt className="p-6">
         <h2 className="mb-4 text-[13px] font-bold">Dados e metas</h2>
-        <ProfileForm displayName={profile?.display_name ?? ""} dailyQuestions={profile?.daily_questions_goal ?? null} weeklyLessons={profile?.weekly_lessons_goal ?? null} />
+        <ProfileForm avatarGender={avatarGender} displayName={profile?.display_name ?? ""} dailyQuestions={profile?.daily_questions_goal ?? null} weeklyLessons={profile?.weekly_lessons_goal ?? null} />
       </PastelCard>
       <PastelCard noTilt className="p-6" testId="plano">
         <h2 id="plano" className="mb-3 text-[13px] font-bold">Plano</h2>

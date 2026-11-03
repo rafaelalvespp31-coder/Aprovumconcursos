@@ -68,6 +68,27 @@ export function SignUpForm() {
       <Field id="name" label="Nome" error={err(state, "name")}>
         <input id="name" name="name" autoComplete="name" required maxLength={80} className={inputClass} aria-invalid={!!err(state, "name")} />
       </Field>
+      <fieldset className="flex flex-col gap-1">
+        <legend className="mb-1 t-small font-semibold">Gênero (define o seu avatar)</legend>
+        <div className="grid grid-cols-2 gap-2" data-testid="cadastro-genero">
+          {(
+            [
+              ["m", "Masculino"],
+              ["f", "Feminino"],
+            ] as const
+          ).map(([v, l]) => (
+            <label key={v} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-linha-forte px-3 t-small font-semibold has-[:checked]:border-azul has-[:checked]:ring-2 has-[:checked]:ring-azul/20">
+              <input type="radio" name="gender" value={v} required className="size-4 accent-azul" />
+              {l}
+            </label>
+          ))}
+        </div>
+        {err(state, "gender") && (
+          <p className="t-tiny text-erro" role="alert">
+            {err(state, "gender")}
+          </p>
+        )}
+      </fieldset>
       <Field id="email" label="E-mail" error={err(state, "email")}>
         <input id="email" name="email" type="email" autoComplete="email" inputMode="email" required className={inputClass} aria-invalid={!!err(state, "email")} />
       </Field>

@@ -5,12 +5,12 @@ import { defaultAvatar, validateAvatar } from "@/domain/avatar/catalog";
 import { demoAvatarItems } from "../avatar-fixtures";
 
 /** Galeria: painel (card do avatar) com dados de exemplo; nada é gravado. */
-export function DemoAvatar({ mannequin }: { mannequin: boolean }) {
-  const progress = { level: 27, xp: 1250, levelProgress: 0.62, xpNext: 2000, rank: { position: 12487, total: 40000 } };
+export function DemoAvatar({ mannequin, gender = "m", level = 4 }: { mannequin: boolean; gender?: "m" | "f"; level?: number }) {
+  const progress = { level, xp: 1250, levelProgress: 0.62, xpNext: 2000, rank: { position: 12487, total: 40000 } };
   return (
     <PainelAvatar
       name="Rafael Silva"
-      initial={{ ...defaultAvatar("m", demoAvatarItems), skin: "muito_clara" }}
+      initial={defaultAvatar(gender, demoAvatarItems)}
       saved
       items={demoAvatarItems}
       progress={progress}

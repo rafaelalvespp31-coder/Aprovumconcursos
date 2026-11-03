@@ -57,3 +57,15 @@ describe("avatar", () => {
     expect(bodyFactor(500)).toBeCloseTo(1.06);
   });
 });
+
+describe("patentes", () => {
+  it("Aluno → Recruta → Policial pelo nível", async () => {
+    const { rankFor, nextRank } = await import("./catalog");
+    expect(rankFor(1).label).toBe("Aluno");
+    expect(rankFor(9).label).toBe("Aluno");
+    expect(rankFor(10).label).toBe("Recruta");
+    expect(rankFor(27).label).toBe("Policial");
+    expect(nextRank(4)?.label).toBe("Recruta");
+    expect(nextRank(20)).toBeNull();
+  });
+});

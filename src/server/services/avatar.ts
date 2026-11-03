@@ -3,7 +3,7 @@ import { createAdminClient, createUserClient } from "../supabase";
 import { publicEnv } from "@/lib/env";
 import { getStudyStats } from "../queries";
 import { computeLevel, type StudyStats } from "@/domain/progress/gamification";
-import { XP_RULES, defaultAvatar, validateAvatar, xpFromStats, type AvatarConfig, type AvatarItem, type Gender } from "@/domain/avatar/catalog";
+import { XP_RULES, defaultAvatar, parseGender, switchGender, validateAvatar, xpFromStats, type AvatarConfig, type AvatarItem, type Gender } from "@/domain/avatar/catalog";
 import { UserFacingError } from "./trails";
 
 export interface AvatarProgress {
@@ -75,7 +75,11 @@ export async function loadMyAvatar(userId: string): Promise<AvatarState> {
     myRank(),
   ]);
   const progress = progressFrom(stats, rank);
-  if (!row.data) return { config: defaultAvatar("m", items), saved: false, items, progress };
+  if (!row.data) {
+    // Sem avatar gravado: usa o gênero informado no cadastro.
+    const meta = (await db.auth.getUser()).data.user?.user_metadata as Record<string, unknown> | undefined;
+    return { config: defaultAvatar(parseGender(meta?.avatar_gender) ?? "m", items), saved: false, items, progress };
+  }
   const r = row.data as { gender: string; skin: string; hair_color: string; face: unknown; body: unknown; equipped: unknown };
   // Valida de novo o que está gravado (peça que saiu do catálogo volta ao padrão).
   const v = validateAvatar({ gender: r.gender, skin: r.skin, hairColor: r.hair_color, face: r.face, body: r.body, equipped: r.equipped }, items, { level: 999, xp: Number.MAX_SAFE_INTEGER });
@@ -170,4 +174,47 @@ export async function setAvatarRequestStatus(id: string, status: AvatarRequestSt
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new UserFacingError("Solicitação inválida.", "validation");
   const { error } = await createAdminClient().from("avatar_requests").update({ status, note: note?.trim().slice(0, 500) || null, updated_at: new Date().toISOString() }).eq("id", id);
   if (error) throw new Error(error.message);
+}
+
+/** Catálogo lido com a chave do servidor (no cadastro ainda pode não haver sessão). */
+async function loadItemsAdmin(): Promise<AvatarItem[]> {
+  const { data, error } = await createAdminClient().from("avatar_items").select("id, slot, name, genders, min_level, min_xp, is_default, preview_path, model_path, meta, sort").eq("active", true);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as ItemRow[]).map(toItem);
+}
+
+async function writeConfig(userId: string, c: AvatarConfig) {
+  const { error } = await createAdminClient()
+    .from("avatar_profiles")
+    .upsert({ user_id: userId, gender: c.gender, skin: c.skin, hair_color: c.hairColor, face: c.face, body: c.body, equipped: c.equipped, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  if (error) throw new Error(error.message);
+}
+
+/** Cadastro: cria o avatar do gênero escolhido pelo aluno. */
+export async function initAvatarForNewUser(userId: string, gender: Gender) {
+  const items = await loadItemsAdmin();
+  await writeConfig(userId, defaultAvatar(gender, items));
+}
+
+/** Editar perfil: troca o gênero do avatar do próprio aluno, mantendo o que for compatível. */
+export async function setMyAvatarGender(userId: string, genderInput: unknown) {
+  const gender = parseGender(genderInput);
+  if (!gender) throw new UserFacingError("Escolha masculino ou feminino.", "validation");
+  const items = await loadItemsAdmin();
+  const { data } = await createAdminClient().from("avatar_profiles").select("gender, skin, hair_color, face, body, equipped").eq("user_id", userId).maybeSingle();
+  let current = defaultAvatar(gender, items);
+  if (data) {
+    const v = validateAvatar({ gender: data.gender, skin: data.skin, hairColor: data.hair_color, face: data.face, body: data.body, equipped: data.equipped }, items, { level: 999, xp: Number.MAX_SAFE_INTEGER });
+    if (v.ok) current = switchGender(v.config, gender, items);
+  }
+  await writeConfig(userId, current);
+  await createAdminClient().auth.admin.updateUserById(userId, { user_metadata: { avatar_gender: gender } });
+}
+
+/** Gênero atual do avatar (para o formulário do perfil). */
+export async function getMyAvatarGender(userId: string): Promise<Gender | null> {
+  const { data } = await (await createUserClient()).from("avatar_profiles").select("gender").eq("user_id", userId).maybeSingle();
+  if (data) return parseGender(data.gender);
+  const meta = (await (await createUserClient()).auth.getUser()).data.user?.user_metadata as Record<string, unknown> | undefined;
+  return parseGender(meta?.avatar_gender);
 }

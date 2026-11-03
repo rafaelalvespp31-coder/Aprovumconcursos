@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { AvatarConfig, AvatarItem } from "@/domain/avatar/catalog";
 import { SKIN_TONES, HAIR_COLORS } from "@/domain/avatar/catalog";
 import type { EngineDebug } from "./engine";
-import { PORTRAITS } from "./portraits";
+import { portraitFor } from "./portraits";
+import type { RankId } from "@/domain/avatar/catalog";
 
 type Engine = { setConfig: (c: AvatarConfig, items: readonly AvatarItem[]) => Promise<void> | void; resize: () => void; dispose: () => void };
 
@@ -20,7 +21,9 @@ export function AvatarStage({
   className = "",
   mannequin = false,
   testId = "avatar-palco",
+  rank = "aluno",
 }: {
+  rank?: RankId;
   config: AvatarConfig;
   items: readonly AvatarItem[];
   interactive?: boolean;
@@ -33,7 +36,7 @@ export function AvatarStage({
   const engineRef = useRef<Engine | null>(null);
   const [failed, setFailed] = useState(false);
   const has3d = mannequin || items.some((i) => i.slot === "base" && i.genders.includes(config.gender) && i.modelUrl);
-  const portrait = !has3d ? PORTRAITS[config.gender] : undefined;
+  const portrait = !has3d ? portraitFor(config.gender, rank) : undefined;
   const hasModel = has3d || !!portrait;
 
   useEffect(() => {
@@ -78,7 +81,7 @@ export function AvatarStage({
     };
     // o motor é criado uma vez por gênero/modo; as trocas de roupa entram pelo efeito abaixo
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hasModel, mannequin, config.gender, interactive]);
+  }, [hasModel, mannequin, config.gender, interactive, portrait]);
 
   useEffect(() => {
     Promise.resolve(engineRef.current?.setConfig(config, items)).catch(() => setFailed(true));

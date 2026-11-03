@@ -46,9 +46,27 @@ test.describe("painel (avatar)", () => {
     await expect(page.getByTestId("avatar-solicitar-botao")).toHaveText(/Enviar outra foto/);
   });
 
-  test("trocar para feminino mostra o aviso de produção", async ({ page }) => {
+  test("sem botões de gênero; patente no card (Aluno → Recruta → Policial)", async ({ page }) => {
     await page.goto(URL);
-    await page.getByTestId("avatar-genero-f").click();
-    await expect(page.getByTestId("avatar-palco-producao")).toContainText("Personagem 3D em produção");
+    await expect(page.getByTestId("avatar-genero-m")).toHaveCount(0);
+    await expect(page.getByTestId("avatar-patente")).toHaveText("Aluno");
+    await page.goto(`${URL}?nivel=12`);
+    await expect(page.getByTestId("avatar-patente")).toHaveText("Recruta");
+    await page.goto(`${URL}?nivel=27`);
+    await expect(page.getByTestId("avatar-patente")).toHaveText("Policial");
   });
+
+  test("avatar feminino (definido no cadastro) também é a arte oficial animada", async ({ page }) => {
+    await page.goto(`${URL}?genero=f`);
+    const palco = page.getByTestId("avatar-palco");
+    await expect(palco).toHaveAttribute("data-mode", "arte-2d");
+    await expect(palco).toHaveAttribute("data-ready", "true");
+  });
+});
+
+test("cadastro pede o gênero que define o avatar", async ({ page }) => {
+  await page.goto("/cadastro");
+  const g = page.getByTestId("cadastro-genero");
+  await expect(g.getByLabel("Masculino")).toBeVisible();
+  await expect(g.getByLabel("Feminino")).toBeVisible();
 });

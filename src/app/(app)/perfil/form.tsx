@@ -4,7 +4,7 @@ import { useActionState } from "react";
 import { Button, Field, Notice, inputClass } from "@/components/ui";
 import { updateProfileAction, type ProfileState } from "./actions";
 
-export function ProfileForm({ displayName, dailyQuestions, weeklyLessons }: { displayName: string; dailyQuestions: number | null; weeklyLessons: number | null }) {
+export function ProfileForm({ displayName, dailyQuestions, weeklyLessons, avatarGender }: { displayName: string; dailyQuestions: number | null; weeklyLessons: number | null; avatarGender?: "m" | "f" | null }) {
   const [state, action, pending] = useActionState<ProfileState, FormData>(updateProfileAction, {});
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -12,6 +12,12 @@ export function ProfileForm({ displayName, dailyQuestions, weeklyLessons }: { di
       {state.error && <Notice tone="erro">{state.error}</Notice>}
       <Field id="display_name" label="Nome">
         <input id="display_name" name="display_name" defaultValue={displayName} maxLength={80} className={inputClass} />
+      </Field>
+      <Field id="avatar_gender" label="Gênero do avatar" hint="Define o personagem que aparece no painel.">
+        <select id="avatar_gender" name="avatar_gender" defaultValue={avatarGender ?? "m"} className={inputClass} data-testid="perfil-genero">
+          <option value="m">Masculino</option>
+          <option value="f">Feminino</option>
+        </select>
       </Field>
       <div id="metas" className="grid scroll-mt-6 gap-4 sm:grid-cols-2">
         <Field id="daily_questions_goal" label="Meta diária de questões" hint="Opcional. Aparece no painel.">

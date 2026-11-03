@@ -7,6 +7,7 @@ import { createUserClient, createAdminClient, SESSION_ONLY_COOKIE } from "@/serv
 import { publicEnv } from "@/lib/env";
 import { CANONICAL_URL, nameMatches } from "@/domain/auth/identity";
 import { getPartnerStatus } from "@/server/services/partner";
+import { initAvatarForNewUser } from "@/server/services/avatar";
 
 export interface AuthState {
   error?: string;
@@ -90,12 +91,14 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
   const parsed = z
     .object({
       name: z.string().trim().min(2, "Informe seu nome.").max(80),
+      gender: z.enum(["m", "f"], { error: "Escolha o gênero do seu avatar." }),
       email,
       password,
       consent: z.literal("on", { error: "É preciso aceitar os termos e a política de privacidade." }),
     })
     .safeParse({
       name: form.get("name"),
+      gender: form.get("gender"),
       email: form.get("email"),
       password: form.get("password"),
       consent: form.get("consent"),
@@ -108,7 +111,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      data: { display_name: parsed.data.name },
+      data: { display_name: parsed.data.name, avatar_gender: parsed.data.gender },
       emailRedirectTo: `${authBaseUrl()}/auth/callback?next=/nova-trilha`,
     },
   });
@@ -116,6 +119,8 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     if (/password/i.test(error.message)) return { fieldErrors: { password: "Essa senha não é aceita. Escolha uma senha mais forte." } };
     return { error: GENERIC };
   }
+  // Avatar do gênero escolhido (falha aqui não impede o cadastro: o painel usa o gênero do cadastro).
+  if (data.user?.id) await initAvatarForNewUser(data.user.id, parsed.data.gender).catch((e) => console.error("avatar.init", (e as Error).message));
   // Sem confirmação de e-mail habilitada, a sessão já vem criada.
   if (data.session) redirect("/nova-trilha");
   return { message: "Enviamos um link de confirmação para o seu e-mail. Abra-o para ativar a conta." };

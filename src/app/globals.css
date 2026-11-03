@@ -2799,3 +2799,4 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .avr-erro { font-size: 14px; font-weight: 600; color: #ff8a80; }
 .avr-acoes { display: flex; gap: 10px; }
 .avr-acoes .avr-btn { flex: 1; }
+.avc-card-patente b { margin-left: 0 !important; font-size: 1.25em !important; letter-spacing: 0.01em; }

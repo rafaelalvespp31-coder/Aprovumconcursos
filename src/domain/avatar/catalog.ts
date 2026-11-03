@@ -206,3 +206,27 @@ export function validateAvatar(input: unknown, items: readonly AvatarItem[], pro
   if (equipped.uniforme) for (const s of UNIFORM_REPLACES) if (OPTIONAL_SLOTS.has(s)) delete equipped[s];
   return { ok: true, config: { gender, skin, hairColor, face: face as Face, body, equipped } };
 }
+
+/**
+ * Patentes do aluno (aparecem no card do avatar no lugar do número do nível). A cada patente,
+ * o personagem troca de visual (skin). Faixas pelo nível de estudo (3 temas aprovados por nível).
+ */
+export const RANKS = [
+  { id: "aluno", label: "Aluno", minLevel: 1 },
+  { id: "recruta", label: "Recruta", minLevel: 10 },
+  { id: "policial", label: "Policial", minLevel: 20 },
+] as const;
+export type RankId = (typeof RANKS)[number]["id"];
+
+export function rankFor(level: number): (typeof RANKS)[number] {
+  let r: (typeof RANKS)[number] = RANKS[0];
+  for (const x of RANKS) if (level >= x.minLevel) r = x;
+  return r;
+}
+export function nextRank(level: number): (typeof RANKS)[number] | null {
+  return RANKS.find((x) => x.minLevel > level) ?? null;
+}
+
+export function parseGender(v: unknown): Gender | null {
+  return v === "m" || v === "f" ? v : null;
+}
