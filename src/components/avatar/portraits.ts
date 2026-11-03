@@ -13,6 +13,8 @@ export interface Portrait {
   chestY: number;
   waistY: number;
   eyes: Array<{ x0: number; y0: number; x1: number; y1: number }>;
+  /** Cenário do layout (o personagem é desenhado por cima, no mesmo lugar da arte original). */
+  backdrop?: { src: string; w: number; h: number; figure: { x: number; y: number; w: number; h: number } };
 }
 
 export const PORTRAITS: Partial<Record<"m" | "f", Portrait>> = {
@@ -25,6 +27,7 @@ export const PORTRAITS: Partial<Record<"m" | "f", Portrait>> = {
     shoulderY: 0.1856,
     chestY: 0.2778,
     waistY: 0.4697,
+    backdrop: { src: "/avatar/ui/palco-fundo.webp", w: 562, h: 840, figure: { x: 147, y: 3, w: 289, h: 792 } },
     eyes: [
       { x0: 0.3893, y0: 0.0764, x1: 0.4464, y1: 0.0865 },
       { x0: 0.4862, y0: 0.0764, x1: 0.5433, y1: 0.0865 },

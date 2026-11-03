@@ -3,7 +3,7 @@ import { createAdminClient, createUserClient } from "../supabase";
 import { publicEnv } from "@/lib/env";
 import { getStudyStats } from "../queries";
 import { computeLevel, type StudyStats } from "@/domain/progress/gamification";
-import { defaultAvatar, validateAvatar, xpFromStats, type AvatarConfig, type AvatarItem, type Gender } from "@/domain/avatar/catalog";
+import { XP_RULES, defaultAvatar, validateAvatar, xpFromStats, type AvatarConfig, type AvatarItem, type Gender } from "@/domain/avatar/catalog";
 import { UserFacingError } from "./trails";
 
 export interface AvatarProgress {
@@ -11,6 +11,10 @@ export interface AvatarProgress {
   xp: number;
   /** 0–1 até o próximo nível. */
   levelProgress: number;
+  /** XP ao chegar no próximo nível (cada tema aprovado que falta vale 100 XP). */
+  xpNext: number;
+  /** Posição no ranking (atividade real) e total de alunos. */
+  rank: { position: number | null; total: number } | null;
 }
 export interface AvatarState {
   config: AvatarConfig;
@@ -21,7 +25,7 @@ export interface AvatarState {
 
 const assetUrl = (path: string | null) => {
   if (!path) return null;
-  if (/^https?:\/\//.test(path)) return path;
+  if (/^https?:\/\//.test(path) || path.startsWith("/")) return path;
   const base = publicEnv().supabaseUrl.replace(/\/$/, "");
   return base ? `${base}/storage/v1/object/public/avatar-assets/${path.replace(/^\/+/, "")}` : null;
 };
@@ -41,9 +45,17 @@ const toItem = (r: ItemRow): AvatarItem => ({
   sort: r.sort,
 });
 
-export function progressFrom(stats: StudyStats): AvatarProgress {
+export function progressFrom(stats: StudyStats, rank: AvatarProgress["rank"] = null): AvatarProgress {
   const lv = computeLevel(stats.themesPassed);
-  return { level: lv.level, xp: xpFromStats(stats), levelProgress: lv.progress };
+  const xp = xpFromStats(stats);
+  return { level: lv.level, xp, levelProgress: lv.progress, xpNext: xp + lv.remaining * XP_RULES.themePassed, rank };
+}
+
+async function myRank(): Promise<AvatarProgress["rank"]> {
+  const { data, error } = await (await createUserClient()).rpc("my_ranking_position");
+  if (error || !data) return null;
+  const d = data as { posicao: number | null; total: number };
+  return { position: d.posicao === null ? null : Number(d.posicao), total: Number(d.total) };
 }
 
 async function loadItems(): Promise<AvatarItem[]> {
@@ -56,12 +68,13 @@ async function loadItems(): Promise<AvatarItem[]> {
 /** Avatar do aluno logado (ou o padrão, se ainda não personalizou), catálogo e progresso real. */
 export async function loadMyAvatar(userId: string): Promise<AvatarState> {
   const db = await createUserClient();
-  const [items, stats, row] = await Promise.all([
+  const [items, stats, row, rank] = await Promise.all([
     loadItems(),
     getStudyStats(),
     db.from("avatar_profiles").select("gender, skin, hair_color, face, body, equipped").eq("user_id", userId).maybeSingle(),
+    myRank(),
   ]);
-  const progress = progressFrom(stats);
+  const progress = progressFrom(stats, rank);
   if (!row.data) return { config: defaultAvatar("m", items), saved: false, items, progress };
   const r = row.data as { gender: string; skin: string; hair_color: string; face: unknown; body: unknown; equipped: unknown };
   // Valida de novo o que está gravado (peça que saiu do catálogo volta ao padrão).

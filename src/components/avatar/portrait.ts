@@ -10,7 +10,7 @@
  * tela e em segundo plano; prefers-reduced-motion deixa o personagem parado.
  */
 import * as THREE from "three";
-import { SKIN_TONES, type AvatarConfig } from "@/domain/avatar/catalog";
+import { HAIR_COLORS, SKIN_TONES, type AvatarConfig } from "@/domain/avatar/catalog";
 import type { Portrait } from "./portraits";
 import type { EngineDebug } from "./engine";
 
@@ -41,7 +41,8 @@ void main() {
 const FRAG = /* glsl */ `
 uniform sampler2D uTex, uLids;
 uniform float uBlink;
-uniform vec3 uSkinRatio;
+uniform vec3 uSkinRatio, uHair;
+uniform float uHairOn, uNeckF;
 uniform vec4 uEyeL, uEyeR;
 varying vec2 vUv;
 float lidMask(vec4 e, float iy) {
@@ -59,6 +60,11 @@ void main() {
   float l = dot(col, vec3(0.299, 0.587, 0.114));
   float skin = smoothstep(0.03, 0.08, col.r - col.g) * smoothstep(0.015, 0.05, col.g - col.b) * smoothstep(0.14, 0.24, l);
   col = mix(col, clamp(col * uSkinRatio, 0.0, 1.0), skin);
+  // cor do cabelo/barba: tons escuros da cabeça (fora dos olhos), mantendo a luz da arte
+  float inEyes = max(step(uEyeL.x - 0.01, vUv.x) * step(vUv.x, uEyeL.z + 0.01), step(uEyeR.x - 0.01, vUv.x) * step(vUv.x, uEyeR.z + 0.01)) * step(uEyeL.y - 0.004, iy) * step(iy, uEyeL.w + 0.004);
+  float sat = max(col.r, max(col.g, col.b)) - min(col.r, min(col.g, col.b));
+  float hair = (1.0 - smoothstep(0.2, 0.34, l)) * (1.0 - skin) * (1.0 - step(0.25, sat)) * (1.0 - smoothstep(uNeckF - 0.02, uNeckF - 0.005, iy)) * (1.0 - inEyes) * uHairOn;
+  col = mix(col, clamp(uHair * (l / 0.11), 0.0, 1.0), hair);
   gl_FragColor = vec4(col, c.a);
   #include <colorspace_fragment>
 }`;
@@ -105,7 +111,7 @@ export class PortraitEngine {
       this.sync();
     });
     this.io.observe(canvas);
-    this.addBase();
+    if (!portrait.backdrop) this.addBase();
     this.resize();
   }
 
@@ -152,11 +158,27 @@ export class PortraitEngine {
         uEyeL: { value: e(0) },
         uEyeR: { value: e(1) },
         uSkinRatio: { value: new THREE.Vector3(1, 1, 1) },
+        uHair: { value: new THREE.Color(0x151110) },
+        uHairOn: { value: 0 },
+        uNeckF: { value: p.neckY },
       },
     });
     const geo = new THREE.PlaneGeometry(p.aspect, 1, 60, 160);
     geo.translate(0, 0.5, 0);
-    this.scene.add(new THREE.Mesh(geo, this.mat));
+    const figure = new THREE.Mesh(geo, this.mat);
+    if (p.backdrop) {
+      const b = p.backdrop;
+      const bw = b.w / b.h;
+      const bg = await loader.loadAsync(b.src);
+      bg.colorSpace = THREE.SRGBColorSpace;
+      const back = new THREE.Mesh(new THREE.PlaneGeometry(bw, 1), new THREE.MeshBasicMaterial({ map: bg }));
+      back.position.set(0, 0.5, -1);
+      this.scene.add(back);
+      const s = b.figure.h / b.h;
+      figure.scale.set(s, s, 1);
+      figure.position.set(-bw / 2 + (b.figure.x + b.figure.w / 2) / b.h, 1 - (b.figure.y + b.figure.h) / b.h, 0);
+    }
+    this.scene.add(figure);
     this.setConfig(config);
     this.debug.ready = true;
     this.sync();
@@ -167,6 +189,9 @@ export class PortraitEngine {
     if (!this.mat) return;
     const target = new THREE.Color(SKIN_TONES.find((s) => s.id === config.skin)?.hex ?? "#D3A27E");
     (this.mat.uniforms.uSkinRatio!.value as THREE.Vector3).set(target.r / BASE_SKIN.r, target.g / BASE_SKIN.g, target.b / BASE_SKIN.b);
+    // "preto" é a cor da arte original: sem recolorir
+    this.mat.uniforms.uHairOn!.value = config.hairColor === "preto" ? 0 : 1;
+    (this.mat.uniforms.uHair!.value as THREE.Color).set(HAIR_COLORS.find((h) => h.id === config.hairColor)?.hex ?? "#151110");
     if (this.reduced || !this.raf) this.renderOnce();
   }
 
@@ -174,13 +199,26 @@ export class PortraitEngine {
     const w = this.canvas.clientWidth || 300;
     const h = this.canvas.clientHeight || 500;
     this.renderer.setSize(w, h, false);
-    const viewH = 1.05;
-    const viewW = Math.max(viewH * (w / h), this.portrait.aspect * 1.15);
-    const vh = viewW / (w / h);
-    this.camera.left = -viewW / 2;
-    this.camera.right = viewW / 2;
-    this.camera.top = vh - 0.06;
-    this.camera.bottom = -0.06;
+    const A = w / h;
+    const b = this.portrait.backdrop;
+    if (b) {
+      // cenário cobre o quadro inteiro (como object-fit: cover), centralizado
+      const bw = b.w / b.h;
+      const vw = A > bw ? bw : A;
+      const vh = A > bw ? bw / A : 1;
+      this.camera.left = -vw / 2;
+      this.camera.right = vw / 2;
+      this.camera.top = 0.5 + vh / 2;
+      this.camera.bottom = 0.5 - vh / 2;
+    } else {
+      const viewH = 1.05;
+      const viewW = Math.max(viewH * A, this.portrait.aspect * 1.15);
+      const vh = viewW / A;
+      this.camera.left = -viewW / 2;
+      this.camera.right = viewW / 2;
+      this.camera.top = vh - 0.06;
+      this.camera.bottom = -0.06;
+    }
     this.camera.updateProjectionMatrix();
     this.renderOnce();
   }

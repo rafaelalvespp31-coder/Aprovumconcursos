@@ -11,25 +11,25 @@ export const GENDERS: ReadonlyArray<{ id: Gender; label: string }> = [
   { id: "f", label: "Feminino" },
 ];
 
+/** Tons de pele (as amostras do editor são as do layout oficial; `hex` é o tom aplicado ao personagem). */
 export const SKIN_TONES = [
-  { id: "muito_clara", label: "Muito clara", hex: "#F6E2D3" },
-  { id: "clara", label: "Clara", hex: "#EBC6A8" },
-  { id: "morena_clara", label: "Morena clara", hex: "#D3A27E" },
-  { id: "morena", label: "Morena", hex: "#B97E58" },
-  { id: "morena_media", label: "Morena média", hex: "#9C6542" },
-  { id: "morena_escura", label: "Morena escura", hex: "#7A4A2E" },
-  { id: "negra", label: "Negra", hex: "#4E2E1D" },
+  { id: "muito_clara", label: "Muito clara", hex: "#F3D9C6", swatch: "/avatar/ui/pele-muito_clara.png" },
+  { id: "clara", label: "Clara", hex: "#E3B898", swatch: "/avatar/ui/pele-clara.png" },
+  { id: "morena_clara", label: "Morena clara", hex: "#D3A27E", swatch: "/avatar/ui/pele-morena_clara.png" },
+  { id: "morena", label: "Morena", hex: "#B47A55", swatch: "/avatar/ui/pele-morena.png" },
+  { id: "morena_media", label: "Morena média", hex: "#9A6442", swatch: "/avatar/ui/pele-morena_media.png" },
+  { id: "morena_escura", label: "Morena escura", hex: "#7A4A2E", swatch: "/avatar/ui/pele-morena_escura.png" },
+  { id: "negra", label: "Negra", hex: "#4E2E1D", swatch: "/avatar/ui/pele-negra.png" },
 ] as const;
 export type SkinTone = (typeof SKIN_TONES)[number]["id"];
 
 export const HAIR_COLORS = [
-  { id: "preto", label: "Preto", hex: "#141110" },
-  { id: "castanho_escuro", label: "Castanho escuro", hex: "#3B2417" },
-  { id: "castanho", label: "Castanho", hex: "#6A4128" },
-  { id: "ruivo", label: "Ruivo", hex: "#8E3B1C" },
-  { id: "loiro", label: "Loiro", hex: "#C9A15E" },
-  { id: "loiro_claro", label: "Loiro claro", hex: "#E3CB94" },
-  { id: "grisalho", label: "Grisalho", hex: "#B9B6B1" },
+  { id: "preto", label: "Preto", hex: "#151110", swatch: "/avatar/ui/cor-cabelo-preto.png" },
+  { id: "castanho_escuro", label: "Castanho avermelhado", hex: "#4A2417", swatch: "/avatar/ui/cor-cabelo-castanho_escuro.png" },
+  { id: "castanho", label: "Castanho", hex: "#5A3322", swatch: "/avatar/ui/cor-cabelo-castanho.png" },
+  { id: "loiro", label: "Loiro escuro", hex: "#8E5C29", swatch: "/avatar/ui/cor-cabelo-loiro.png" },
+  { id: "loiro_claro", label: "Loiro claro", hex: "#A88B66", swatch: "/avatar/ui/cor-cabelo-loiro_claro.png" },
+  { id: "grisalho", label: "Grisalho", hex: "#9A989A", swatch: "/avatar/ui/cor-cabelo-grisalho.png" },
 ] as const;
 export type HairColor = (typeof HAIR_COLORS)[number]["id"];
 

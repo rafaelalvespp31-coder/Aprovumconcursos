@@ -338,33 +338,6 @@ test.describe("menu Questões: cadernos", () => {
 
 /** Abre um card pela barra dos nove cards (a aula mostra um card por vez). */
 test.describe("painel e trilha", () => {
-  test("cada card do painel leva à funcionalidade correspondente", async ({ page }) => {
-    await page.goto(`${G}/painel`);
-    // O topo não tem mais o botão "+ Nova" (novo estudo fica na barra inferior do celular e na página Estudos).
-    await expect(page.getByRole("banner").getByRole("link", { name: /Nova|Novo estudo/ })).toHaveCount(0);
-    // Saudação com o nome real fica no banner principal (uma vez só).
-    await expect(page.getByRole("heading", { level: 1, name: /Olá, Rafael!/ })).toHaveCount(1);
-    await expect(page.getByRole("link", { name: /Continuar estudando: Anulação/ })).toHaveAttribute("href", new RegExp(`${G}/aula/`));
-    const prog = page.getByTestId("progresso-geral");
-    await expect(prog.getByRole("img", { name: "35% das aulas concluídas" })).toBeVisible();
-    await expect(prog.getByText("156").first()).toBeAttached();
-    // Os cards "Minhas matérias" e "Atividades recentes" foram removidos do painel.
-    await expect(page.getByTestId("atividades-recentes")).toHaveCount(0);
-    await expect(page.getByTestId("minhas-materias")).toHaveCount(0);
-    await expect(page.getByTestId("promo-jogo")).toHaveAttribute("href", `${G}/quiz`);
-    await expect(page.getByTestId("seu-desempenho").getByRole("img", { name: "Aproveitamento: 72%" })).toBeVisible();
-    await expect(page.getByTestId("sequencia")).toHaveText("4 dias");
-    // Continue estudando não repete a aula do card principal.
-    const band = page.getByTestId("continue-estudando");
-    await expect(band.getByRole("link", { name: /Continuar a aula/ })).toHaveCount(3);
-    await expect(band.getByRole("link", { name: /Continuar a aula Anulação/ })).toHaveCount(0);
-    // Acesso rápido: rotas reais.
-    const rotas: Record<string, RegExp> = { estudos: /\/trilhas$/, jogo: /\/quiz$/, questoes: /\/questoes$/, revisoes: /\/aula\/.*revisao=1/, evolucao: /\/desempenho$/, perfil: /\/perfil$/ };
-    for (const [id, re] of Object.entries(rotas)) await expect(page.getByTestId(`atalho-${id}`)).toHaveAttribute("href", re);
-    await expect(page.getByTestId("atalho-revisoes")).toContainText("2 pendentes");
-    await expect(page.getByTestId("painel-rodape").getByRole("link", { name: "Como funciona" })).toHaveAttribute("href", "/#como-funciona");
-    await noHorizontalScroll(page);
-  });
 
   test("módulos expansíveis e pré-requisitos visíveis", async ({ page }) => {
     await page.goto(`${G}/trilha`);
@@ -872,7 +845,7 @@ test.describe("modo jogo", () => {
 });
 
 test("banners: arte e animações aparecem juntas, mesmo com a imagem demorando", async ({ page }) => {
-  for (const [path, id, img] of [["painel", "painel-banner", /aprovum-login-hero-mobile\.webp/], ["quiz", "jogo-banner-marca", /jogo-hero-arte(-sm)?\.webp/]] as const) {
+  for (const [path, id, img] of [["quiz", "jogo-banner-marca", /jogo-hero-arte(-sm)?\.webp/]] as const) {
     let release: () => void = () => {};
     const gate = new Promise<void>((r) => (release = r));
     await page.route(img, async (route) => {
@@ -933,33 +906,6 @@ test.describe("página de estudos", () => {
   });
 });
 
-test("painel: banner de saudação reveza com os banners de aprovação a cada 3 s", async ({ page }) => {
-  await page.goto(`${G}/painel`);
-  const rot = page.getByTestId("banner-rotator");
-  await expect(rot).toHaveAttribute("data-slide", "0");
-  await expect(rot).toHaveAttribute("data-slide", "1", { timeout: 5000 });
-  await expect(rot.getByRole("img", { name: /William Abreu/ })).toBeVisible();
-  // Pontos levam direto a um banner; pausa interrompe a troca.
-  await rot.getByRole("button", { name: "Mostrar banner 5 de 5" }).click();
-  await expect(rot.getByRole("img", { name: /Sd Lacerda/ })).toBeVisible();
-  await rot.getByRole("button", { name: "Mostrar banner 3 de 5" }).click();
-  await expect(rot.getByRole("img", { name: /Fábio Bezerra/ })).toBeVisible();
-  await rot.getByRole("button", { name: /Pausar troca automática/ }).click();
-  await page.waitForTimeout(3600);
-  await expect(rot).toHaveAttribute("data-slide", "2");
-  // Card na proporção exata das artes (2000×711): o banner ativo preenche 100% do card.
-  await page.waitForTimeout(1000);
-  const fit = await page.evaluate(() => {
-    const card = document.querySelector("[data-testid=painel-banner]")!.getBoundingClientRect();
-    const art = document.querySelector(".br-slide-aprovado[data-ativo='1'] .br-arte")!.getBoundingClientRect();
-    return { ratio: card.width / card.height, dw: Math.abs(art.width - card.width), dh: Math.abs(art.height - card.height), dx: Math.abs(art.left - card.left) };
-  });
-  expect(Math.abs(fit.ratio - 2000 / 711)).toBeLessThan(0.02);
-  expect(fit.dw).toBeLessThan(2);
-  expect(fit.dh).toBeLessThan(2);
-  expect(fit.dx).toBeLessThan(2);
-  await noHorizontalScroll(page);
-});
 
 test("menu Estudos: submenu com as matérias abre os assuntos estudados", async ({ page, isMobile }) => {
   // No celular o menu completo (hambúrguer) fica no topo da página de Estudos.

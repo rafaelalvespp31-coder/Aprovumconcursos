@@ -53,3 +53,16 @@ describe("avatar (RLS)", () => {
     await expect(t.db.query("update avatar_profiles set gender = 'x' where user_id = $1", [A])).rejects.toThrow(/check/);
   });
 });
+
+describe("ranking do avatar", () => {
+  itDb("posição no ranking pela atividade real, sem expor outros alunos", async () => {
+    const r = await as(A, () => t.db.query("select public.my_ranking_position() as r"));
+    expect(r.rows[0].r).toMatchObject({ posicao: 1 });
+    expect(Number(r.rows[0].r.total)).toBeGreaterThanOrEqual(2);
+  });
+  itDb("miniaturas do layout no catálogo e camiseta oficial como padrão", async () => {
+    const r = await as(A, () => t.db.query("select id, preview_path from avatar_items where (meta->>'roupas') is not null order by (meta->>'roupas')::int"));
+    expect(r.rows).toHaveLength(10);
+    expect(r.rows[0]).toEqual({ id: "camiseta_oficial", preview_path: "/avatar/ui/roupa-camiseta_oficial.webp" });
+  });
+});
