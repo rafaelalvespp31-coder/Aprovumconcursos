@@ -4,6 +4,7 @@ import { Bell, Check, Clock, Lock, Settings, TrendingDown, TrendingUp, UserRound
 import { AvatarStage } from "@/components/avatar/avatar-stage";
 import type { AvatarRequestInfo, RequestAction } from "@/components/avatar/avatar-request";
 import { rankFor, type AvatarConfig, type AvatarItem } from "@/domain/avatar/catalog";
+import type { Portrait } from "@/components/avatar/portraits";
 import { CONTEST_STATUS, MISSION_ORDER, accuracy, daysUntil, formatStudyTime, levelPct, missionXp, nextMilestone, rankTrend, weeklyEvolution, type MissionKey } from "@/domain/gamification/home";
 import type { HomeData } from "@/server/services/gamification";
 import { LevelUp } from "./level-up";
@@ -37,7 +38,7 @@ const medalSrc = (id: string) => `/home/medalhas/${id.startsWith("disciplina_") 
 export interface HomeOperacaoProps {
   name: string | null;
   data: HomeData;
-  avatar: { config: AvatarConfig; items: AvatarItem[] } | null;
+  avatar: { config: AvatarConfig; items: AvatarItem[]; portrait?: Portrait | null } | null;
   request: AvatarRequestInfo | null;
   requestAction: RequestAction;
   ackLevels: () => Promise<void>;
@@ -94,7 +95,7 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, ackLe
 
           {avatar ? (
             <div className="cl-palco" style={at(220, 145, 482, 721)}>
-              <AvatarStage config={avatar.config} items={avatar.items} interactive className="cl-palco-arte" mannequin={mannequin} rank={rank.id} transparent />
+              <AvatarStage config={avatar.config} items={avatar.items} interactive className="cl-palco-arte" mannequin={mannequin} rank={rank.id} portrait={avatar.portrait} transparent />
             </div>
           ) : (
             <p role="alert" className="cl-t cl-c" style={at(350, 420, 240, 80, fs(18))}>Não foi possível carregar seu avatar agora. Recarregue a página.</p>

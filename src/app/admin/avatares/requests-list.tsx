@@ -3,10 +3,14 @@
 import { useState, useTransition } from "react";
 import { Button, inputClass } from "@/components/ui";
 import type { AvatarRequestAdminRow } from "@/server/services/avatar";
+import { CustomAvatar } from "./custom-avatar";
+
+type Res = { ok: boolean; error?: string };
+export interface CustomActions { save: (id: string, f: FormData) => Promise<Res>; remove: (id: string) => Promise<Res> }
 
 const LABEL = { enviada: "Recebida", em_producao: "Em produção", concluida: "Concluída", recusada: "Recusada" } as const;
 
-function Row({ r, action }: { r: AvatarRequestAdminRow; action: (id: string, s: string, n: string) => Promise<{ ok: boolean; error?: string }> }) {
+function Row({ r, action, custom }: { r: AvatarRequestAdminRow; action: (id: string, s: string, n: string) => Promise<{ ok: boolean; error?: string }>; custom: CustomActions }) {
   const [status, setStatus] = useState<string>(r.status);
   const [note, setNote] = useState(r.note ?? "");
   const [msg, setMsg] = useState<string | null>(null);
@@ -45,17 +49,25 @@ function Row({ r, action }: { r: AvatarRequestAdminRow; action: (id: string, s: 
           </Button>
           {msg && <span className="t-small">{msg}</span>}
         </div>
+        {r.customArtUrl && (
+          <div className="flex items-center gap-2 t-small">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={r.customArtUrl} alt="Avatar personalizado atual" className="h-28 w-auto rounded bg-[#111] p-1" />
+            <span>Avatar personalizado em uso</span>
+          </div>
+        )}
+        <CustomAvatar requestId={r.id} hasCustom={!!r.customArtUrl} save={custom.save} remove={custom.remove} />
       </div>
     </li>
   );
 }
 
-export function RequestsList({ rows, action }: { rows: AvatarRequestAdminRow[]; action: (id: string, s: string, n: string) => Promise<{ ok: boolean; error?: string }> }) {
+export function RequestsList({ rows, action, custom }: { rows: AvatarRequestAdminRow[]; action: (id: string, s: string, n: string) => Promise<{ ok: boolean; error?: string }>; custom: CustomActions }) {
   if (!rows.length) return <p className="mt-4 t-small text-tinta-suave">Nenhuma solicitação ainda.</p>;
   return (
     <ul className="mt-4 flex flex-col gap-3">
       {rows.map((r) => (
-        <Row key={r.id} r={r} action={action} />
+        <Row key={r.id} r={r} action={action} custom={custom} />
       ))}
     </ul>
   );

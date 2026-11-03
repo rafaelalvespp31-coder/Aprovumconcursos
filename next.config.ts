@@ -15,7 +15,8 @@ const csp = [
   // Next.js injeta scripts inline de hidratação; 'unsafe-eval' só em dev (React Refresh).
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob:",
+  // Imagens do Storage do Supabase (concursos, aprovados, fotos e avatares com link temporário).
+  `img-src 'self' data: blob: ${supabaseOrigin}`.trim(),
   "font-src 'self' data:",
   `connect-src 'self' ${supabaseOrigin} ${supabaseWs}`.trim(),
   "worker-src 'self'",

@@ -34,7 +34,7 @@ export default async function DashboardPage() {
       <HomeOperacao
         name={name}
         data={home}
-        avatar={avatar ? { config: avatar.config, items: avatar.items } : null}
+        avatar={avatar ? { config: avatar.config, items: avatar.items, portrait: avatar.portrait } : null}
         request={request}
         requestAction={requestAvatarAction}
         ackLevels={ackLevelUpsAction}

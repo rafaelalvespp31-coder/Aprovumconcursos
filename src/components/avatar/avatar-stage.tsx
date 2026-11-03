@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { AvatarConfig, AvatarItem } from "@/domain/avatar/catalog";
 import { SKIN_TONES, HAIR_COLORS } from "@/domain/avatar/catalog";
 import type { EngineDebug } from "./engine";
-import { portraitFor } from "./portraits";
+import { portraitFor, type Portrait } from "./portraits";
 import type { RankId } from "@/domain/avatar/catalog";
 
 type Engine = { setConfig: (c: AvatarConfig, items: readonly AvatarItem[]) => Promise<void> | void; resize: () => void; dispose: () => void };
@@ -23,7 +23,10 @@ export function AvatarStage({
   testId = "avatar-palco",
   rank = "aluno",
   transparent = false,
+  portrait: custom,
 }: {
+  /** Avatar personalizado do aluno (arte anexada pela equipe): mesma animação da arte padrão. */
+  portrait?: Portrait | null;
   /** Só o personagem, sem o cenário da arte (a página desenha o cenário por trás). */
   transparent?: boolean;
   rank?: RankId;
@@ -39,7 +42,7 @@ export function AvatarStage({
   const engineRef = useRef<Engine | null>(null);
   const [failed, setFailed] = useState(false);
   const has3d = mannequin || items.some((i) => i.slot === "base" && i.genders.includes(config.gender) && i.modelUrl);
-  const portrait = !has3d ? portraitFor(config.gender, rank) : undefined;
+  const portrait = !has3d ? (custom ?? portraitFor(config.gender, rank)) : undefined;
   const hasModel = has3d || !!portrait;
 
   useEffect(() => {

@@ -102,3 +102,25 @@ test("cadastro pede o gênero que define o avatar", async ({ page }) => {
   await expect(g.getByLabel("Masculino")).toBeVisible();
   await expect(g.getByLabel("Feminino")).toBeVisible();
 });
+
+test("equipe anexa a arte do aluno: recorte do fundo, olhos marcados e avatar animado com a nova arte", async ({ page }) => {
+  test.setTimeout(90_000);
+  await page.goto("/dev/galeria/avatar-personalizado");
+  await page.getByTestId("avatar-arte-arquivo").setInputFiles("tests/fixtures/avatar-arte-fundo-liso.jpg");
+  const head = page.getByTestId("avatar-arte-cabeca");
+  await expect(head).toBeVisible({ timeout: 30_000 });
+  const box = (await head.boundingBox())!;
+  // Olhos da arte feminina (coordenadas da arte recortada, parte de cima = 24% da altura).
+  await head.click({ position: { x: box.width * 0.4228, y: box.height * (0.0918 / 0.24) } });
+  await head.click({ position: { x: box.width * 0.5417, y: box.height * (0.0918 / 0.24) } });
+  await page.getByRole("button", { name: "Salvar como avatar do aluno" }).click();
+  await expect(page.getByRole("status")).toContainText("Avatar do aluno atualizado", { timeout: 30_000 });
+  const palco = page.getByTestId("demo-palco-personalizado").getByTestId("avatar-palco");
+  await expect(palco).toHaveAttribute("data-ready", "true", { timeout: 20_000 });
+  await expect(palco).toHaveAttribute("data-mode", "arte-2d");
+  // Respira e pisca com a arte nova.
+  const b1 = Number(await palco.getAttribute("data-breath"));
+  await page.waitForTimeout(1500);
+  expect(Number(await palco.getAttribute("data-breath"))).not.toBe(b1);
+  await expect.poll(async () => Number(await palco.getAttribute("data-blinks")), { timeout: 15_000 }).toBeGreaterThan(0);
+});
