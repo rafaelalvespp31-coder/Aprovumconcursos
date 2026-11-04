@@ -33,6 +33,34 @@ test.describe("painel (avatar)", () => {
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 
+  test("cards interativos: nível, ranking, disciplina, missões, Foco e mentor respondem ao clique", async ({ page }) => {
+    await page.goto(URL);
+    await expect(page.getByTestId("painel-avatar")).toBeVisible();
+    // Nível/XP abre o detalhe.
+    await page.getByLabel("Ver nível e XP").click();
+    await expect(page.getByTestId("nivel-detalhe")).toContainText("1.000 de 1.100 XP");
+    await page.getByLabel("Ver nível e XP").click({ position: { x: 4, y: 4 } });
+    await expect(page.getByTestId("nivel-detalhe")).toBeHidden();
+    // Ranking abre a lista.
+    await page.getByLabel("Ver ranking APROVUM").click();
+    await expect(page.getByTestId("ranking-aprovum")).toBeVisible();
+    await page.getByLabel("Ver ranking APROVUM").click({ position: { x: 4, y: 4 } });
+    await expect(page.getByTestId("ranking-aprovum")).toBeHidden();
+    // Disciplina abre as metas.
+    await page.getByLabel("Ver detalhes da sua disciplina").click();
+    await expect(page.getByTestId("disciplina-detalhe")).toContainText("Recorde: 45 dias");
+    // Navegação: missões, Foco/mentor, perfil, desempenho.
+    await expect(page.getByTestId("missao-combater")).toHaveAttribute("href", "/questoes");
+    await expect(page.getByTestId("missao-revisar")).toHaveAttribute("href", "/revisoes");
+    await expect(page.getByLabel(/Foco, disciplina, aprovação/)).toHaveAttribute("href", "/mentor");
+    await expect(page.getByLabel(/abrir perfil/)).toHaveAttribute("href", "/perfil");
+    await expect(page.getByTestId("home-sino")).toHaveAttribute("href", "/mentor");
+    await expect(page.getByTestId("seu-desempenho").getByRole("link", { name: "Ver análise completa" })).toHaveAttribute("href", "/desempenho");
+    // A barra escura abre o envio da foto.
+    await page.getByTestId("avatar-convite").click();
+    await expect(page.getByTestId("avatar-solicitar-caixa")).toBeVisible();
+  });
+
   test("aluno sem histórico: estados vazios, nada inventado", async ({ page }) => {
     await page.goto(`${URL}?dados=vazio`);
     await expect(page.getByTestId("avatar-xp")).toHaveText("0");
