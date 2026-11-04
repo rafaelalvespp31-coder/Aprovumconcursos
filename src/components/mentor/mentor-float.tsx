@@ -5,12 +5,14 @@ import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { Compass, GripHorizontal, Maximize2, Minus, RotateCcw } from "lucide-react";
 import { mentorPanelAction } from "@/app/(app)/mentor/actions";
-import { MentorChat } from "./mentor-chat";
 import { MentorPriorities } from "./mentor-priorities";
 import { MentorVoz } from "./mentor-voz";
+import { MentorIcone } from "./mentor-icone";
+import { VozView } from "./voz-view";
+import { SILENCE } from "./voz-orbe";
 import type { MentorPanelState } from "./types";
 
-const BUBBLE = 58;
+const BUBBLE = 64;
 const MARGIN = 8;
 const STALE_MS = 60_000;
 const KEY_POS = "aprovum_mentor_pos";
@@ -18,7 +20,7 @@ const KEY_OPEN = "aprovum_mentor_aberto";
 const KEY_TAB = "aprovum_mentor_aba";
 
 type Pos = { dx: number; dy: number };
-type Tab = "prioridades" | "conversa" | "voz";
+type Tab = "prioridades" | "voz";
 
 const read = <T,>(k: string, fallback: T): T => {
   try {
@@ -67,7 +69,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
   const [refreshing, setRefreshing] = useState(false);
   // Lembrados no navegador (lidos só no cliente; no servidor nada é desenhado).
   const [open, setOpen] = useState(() => (typeof window === "undefined" ? false : read<boolean>(KEY_OPEN, false)));
-  const [tab, setTab] = useState<Tab>(() => (typeof window === "undefined" ? "prioridades" : read<Tab>(KEY_TAB, "prioridades")));
+  const [tab, setTab] = useState<Tab>(() => (typeof window === "undefined" ? "prioridades" : read<string>(KEY_TAB, "prioridades") === "voz" ? "voz" : "prioridades"));
   const [savedPos, setPos] = useState<Pos | null>(() => (typeof window === "undefined" ? null : read<Pos | null>(KEY_POS, null)));
   const pos = clamp(savedPos ?? defaultPos(vw), vw, vh);
   const [teaser, setTeaser] = useState(false);
@@ -238,7 +240,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
             }}
             data-testid="mentor-bolha"
           >
-            <Compass className="h-6 w-6" aria-hidden />
+            <MentorIcone size={BUBBLE} />
             {pending > 0 && (
               <span className="mentor-badge" aria-hidden>
                 {pending}
@@ -256,7 +258,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
           role="dialog"
           aria-modal="false"
           aria-labelledby="mentor-flut-titulo"
-          className={`mentor-painel ${mobile ? "is-folha" : ""} ${dragging ? "is-arrastando" : ""} ${tab === "voz" && data?.state === "ok" ? "is-voz" : ""}`}
+          className={`mentor-painel ${mobile ? "is-folha" : ""} ${dragging ? "is-arrastando" : ""} is-escuro`}
           style={panelStyle}
           data-testid="mentor-painel"
           data-estado={data?.state ?? "carregando"}
@@ -285,9 +287,9 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
 
           {data?.state === "ok" && (
             <div className="mentor-abas" role="tablist" aria-label="Seções do Mentor">
-              {(["prioridades", "conversa", "voz"] as const).map((t) => (
+              {(["prioridades", "voz"] as const).map((t) => (
                 <button key={t} type="button" role="tab" id={`mentor-aba-${t}`} aria-selected={tab === t} aria-controls={`mentor-sec-${t}`} onClick={() => setTabSaved(t)} className={tab === t ? "is-on" : ""}>
-                  {t === "prioridades" ? `Prioridades${pending ? ` (${pending})` : ""}` : t === "conversa" ? "Conversar" : "Voz"}
+                  {t === "prioridades" ? `Prioridades${pending ? ` (${pending})` : ""}` : "Voz"}
                 </button>
               ))}
               {refreshing && <span className="ml-auto self-center pr-1 text-[11px] text-[#64666D]">Atualizando…</span>}
@@ -333,11 +335,8 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
                     onExpired={() => setData({ state: "sessao" })}
                   />
                 </section>
-                <section id="mentor-sec-conversa" role="tabpanel" aria-labelledby="mentor-aba-conversa" hidden={tab !== "conversa"} className="flex h-full min-h-0 flex-col">
-                  <MentorChat result={data.result} visible={data.visible} lessons={data.lessons} base={base} compact onNavigate={afterNav} />
-                </section>
                 <section id="mentor-sec-voz" role="tabpanel" aria-labelledby="mentor-aba-voz" hidden={tab !== "voz"} className="h-full min-h-0">
-                  {tab === "voz" && !demo && <MentorVoz base={base} />}
+                  {tab === "voz" && (demo ? <VozView fase="pronto" left={110} limit={180} speaking={false} msg={null} level={() => SILENCE} base={base} onStart={() => {}} onStop={() => {}} /> : <MentorVoz base={base} />)}
                 </section>
               </>
             )}

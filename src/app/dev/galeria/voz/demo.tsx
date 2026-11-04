@@ -14,14 +14,13 @@ export function VozDemo({ modo, fase }: { modo: string; fase: Fase }) {
     return { vol: fala * j, low: fala * (0.4 + 0.5 * Math.abs(Math.sin(t * 5))), mid: fala * j, high: fala * 0.6 * Math.abs(Math.sin(t * 11)) };
   };
   return (
-    <div className="mentor-painel is-voz" style={{ position: "relative", width: 390, minHeight: 560, margin: "24px auto" }}>
+    <div className="mentor-painel is-escuro" style={{ position: "relative", width: 390, minHeight: 560, margin: "24px auto" }}>
       <div className="mentor-painel-topo">
         <span className="pc-ico" aria-hidden />
         <h2 id="mentor-flut-titulo" className="min-w-0 flex-1 text-white font-bold">Mentor APROVUM</h2>
       </div>
       <div className="mentor-abas">
-        <button className="">Prioridades (3)</button>
-        <button>Conversar</button>
+        <button>Prioridades (3)</button>
         <button className="is-on">Voz</button>
       </div>
       <div className="mentor-painel-corpo">

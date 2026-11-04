@@ -27,21 +27,21 @@ test.describe("Mentor flutuante (em todas as telas)", () => {
     await expect(page.getByTestId("mentor-painel")).toBeHidden();
   });
 
-  test("acompanha a navegação e lembra se estava aberto (com a conversa)", async ({ page, isMobile }) => {
+  test("acompanha a navegação e lembra se estava aberto (na aba Voz)", async ({ page, isMobile }) => {
     await page.goto(`${G}/painel?mentor=ok`);
     await page.getByTestId("mentor-bolha").click();
-    await page.getByRole("tab", { name: "Conversar" }).click();
-    await page.getByRole("button", { name: "O que estudar hoje?" }).click();
-    await expect(page.getByTestId("mentor-resposta").last()).toHaveAttribute("data-intencao", "hoje");
-    // Navegação dentro do app: o Mentor continua aberto e a conversa continua lá.
+    await expect(page.getByRole("tab", { name: "Conversar" })).toHaveCount(0);
+    await page.getByRole("tab", { name: "Voz" }).click();
+    await expect(page.getByTestId("mentor-voz")).toBeVisible();
+    // Navegação dentro do app: o Mentor continua aberto na mesma aba.
     await (isMobile ? page.locator(".bn-wrap") : page.getByRole("navigation", { name: "Principal", exact: true })).getByRole("link", { name: /Questões/ }).first().click();
     await expect(page).toHaveURL(/\/questoes/);
     await expect(page.getByTestId("mentor-painel")).toBeVisible();
-    await expect(page.getByTestId("mentor-resposta")).toHaveCount(1);
+    await expect(page.getByRole("tab", { name: "Voz" })).toHaveAttribute("aria-selected", "true");
     // Recarregar a página: continua aberto na mesma aba.
     await page.reload();
     await expect(page.getByTestId("mentor-painel")).toBeVisible();
-    await expect(page.getByRole("tab", { name: "Conversar" })).toHaveAttribute("aria-selected", "true");
+    await expect(page.getByRole("tab", { name: "Voz" })).toHaveAttribute("aria-selected", "true");
   });
 
   test("arrastar a bolha muda a posição (e não abre); a posição é lembrada", async ({ page, isMobile }) => {
@@ -67,7 +67,7 @@ test.describe("Mentor flutuante (em todas as telas)", () => {
     await expect(page.getByTestId("mentor-painel")).toBeHidden();
     await page.reload();
     const c = (await page.getByTestId("mentor-bolha").boundingBox())!;
-    expect(Math.abs(c.x - b.x)).toBeLessThan(3);
+    expect(Math.abs(c.x - b.x)).toBeLessThan(6); // a bolha cresce um pouco sob o mouse
   });
 
   test("dispensar tira a recomendação e avisa", async ({ page }) => {
