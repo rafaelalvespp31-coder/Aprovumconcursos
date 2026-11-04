@@ -196,8 +196,11 @@ export class OpenAICompatProvider implements AIProvider {
         const ra = Number(res.headers.get("retry-after"));
         throw new AIError("Limite gratuito do provedor de IA atingido. Aguarde alguns instantes e tente novamente.", "rate_limited", true, usage, Number.isFinite(ra) && ra > 0 ? Math.min(ra, 120) : undefined);
       }
-      if (res.status !== 400) throw this.classify(res.status, usage);
       const text = await res.text().catch(() => "");
+      if (res.status !== 400) {
+        if (res.status === 404) console.error(JSON.stringify({ event: "ai.provider_404", provider: this.name, model: this.model, url: this.endpoint(), detail: redact(text).slice(0, 400) }));
+        throw this.classify(res.status, usage, text);
+      }
       const adjust = diagnose400(text, { reasoning: !!this.reasoningEffort, schema: this.jsonMode === "schema" });
       if (adjust === "drop_reasoning") { this.reasoningEffort = null; continue; }
       if (adjust === "json_object") { this.jsonMode = "object"; continue; }
@@ -213,6 +216,10 @@ export class OpenAICompatProvider implements AIProvider {
   /** Google: o endpoint compatível aceita a chave em Authorization (Bearer) ou x-goog-api-key, conforme o formato da chave. */
   private authMode: "bearer" | "x-goog-api-key" | null = null;
 
+  private endpoint(): string {
+    return `${this.config.baseUrl.replace(/\/$/, "")}/chat/completions`;
+  }
+
   private authHeaders(mode: "bearer" | "x-goog-api-key"): Record<string, string> {
     if (!this.config.apiKey) return {};
     return mode === "x-goog-api-key" ? { "x-goog-api-key": this.config.apiKey } : { Authorization: `Bearer ${this.config.apiKey}` };
@@ -224,7 +231,7 @@ export class OpenAICompatProvider implements AIProvider {
       const ctrl = new AbortController();
       const timer = setTimeout(() => ctrl.abort(), timeoutMs ?? 120_000);
       try {
-        return await fetch(`${this.config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+        return await fetch(this.endpoint(), {
           method: "POST",
           headers: { "Content-Type": "application/json", ...this.authHeaders(mode), ...this.config.headers },
           body: JSON.stringify(body),
@@ -258,7 +265,7 @@ export class OpenAICompatProvider implements AIProvider {
     return (u.inputTokens * i + u.outputTokens * o) / 1_000_000;
   }
 
-  private classify(status: number, usage: AIUsage): AIError {
+  private classify(status: number, usage: AIUsage, text = ""): AIError {
     if (status === 429) {
       return new AIError("Limite gratuito do provedor de IA atingido. Aguarde alguns minutos e tente novamente.", "rate_limited", true, usage);
     }
@@ -266,7 +273,7 @@ export class OpenAICompatProvider implements AIProvider {
       return new AIError("Pedido grande demais para o limite gratuito por minuto do provedor de IA. Gere menos questões por vez ou use um texto-base menor.", "rate_limited", false, usage);
     }
     if (status === 401 || status === 403) return new AIError(`Credencial do provedor de IA inválida. Confira a variável ${this.config.keyVar ?? "da chave"} no servidor.`, "not_configured", false, usage);
-    if (status === 404) return new AIError(`Modelo ou endereço da IA não encontrado (HTTP 404). Confira AI_MODEL ("${this.model}") e, se definida, AI_BASE_URL no servidor. Para o Gemini use, por exemplo, gemini-2.5-flash.`, "not_configured", false, usage);
+    if (status === 404) return new AIError(`Modelo ou endereço da IA não encontrado (HTTP 404). Confira AI_MODEL ("${this.model}") e, se definida, AI_BASE_URL no servidor. Endereço usado: ${this.endpoint()}${providerReason(text)}`, "not_configured", false, usage);
     // Não propaga o corpo do erro do provedor (pode conter detalhes internos).
     return new AIError(`Erro do provedor de IA (HTTP ${status}).`, "provider_error", status >= 500, usage);
   }
