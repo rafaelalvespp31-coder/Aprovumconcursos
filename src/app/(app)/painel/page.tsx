@@ -1,5 +1,4 @@
-import { redirect } from "next/navigation";
-import { getDashboard, listTrails } from "@/server/queries";
+import { getDashboard } from "@/server/queries";
 import { requireUser } from "@/server/auth";
 import { getMyAvatarRequest, loadMyAvatar } from "@/server/services/avatar";
 import { loadHome } from "@/server/services/gamification";
@@ -16,8 +15,7 @@ export const dynamic = "force-dynamic";
 /** Painel (Home): avatar no centro e a gamificação real do aluno ao redor. */
 export default async function DashboardPage() {
   const me = await requireUser("/painel");
-  const [trails, dash, avatar, request, home, approved, plan] = await Promise.all([
-    listTrails(),
+  const [dash, avatar, request, home, approved, plan] = await Promise.all([
     getDashboard(),
     loadMyAvatar(me.id).catch(async (e) => {
       await logEvent("avatar.load_failed", { error: (e as Error).message });
@@ -28,8 +26,6 @@ export default async function DashboardPage() {
     listActiveApprovedBanners().catch(() => []),
     getMyPlan(me.id).catch(() => null),
   ]);
-  if (trails.length === 0 && !dash.profile?.onboarding_completed)
-    redirect("/nova-trilha");
   const name = dash.profile?.display_name ?? null;
   return (
     <>

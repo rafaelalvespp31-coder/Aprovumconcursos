@@ -112,7 +112,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     password: parsed.data.password,
     options: {
       data: { display_name: parsed.data.name, avatar_gender: parsed.data.gender },
-      emailRedirectTo: `${authBaseUrl()}/auth/callback?next=/nova-trilha`,
+      emailRedirectTo: `${authBaseUrl()}/auth/callback?next=/painel`,
     },
   });
   if (error) {
@@ -122,7 +122,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
   // Avatar do gênero escolhido (falha aqui não impede o cadastro: o painel usa o gênero do cadastro).
   if (data.user?.id) await initAvatarForNewUser(data.user.id, parsed.data.gender).catch((e) => console.error("avatar.init", (e as Error).message));
   // Sem confirmação de e-mail habilitada, a sessão já vem criada.
-  if (data.session) redirect("/nova-trilha");
+  if (data.session) redirect("/painel");
   return { message: "Enviamos um link de confirmação para o seu e-mail. Abra-o para ativar a conta." };
 }
 
