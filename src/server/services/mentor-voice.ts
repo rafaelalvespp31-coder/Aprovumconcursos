@@ -15,8 +15,8 @@ import { VOICE_DAILY_SECONDS, VOICE_SYSTEM_PROMPT, VOICE_TOKEN_GRACE_SECONDS, se
  */
 
 const DEFAULT_MODEL = "gemini-3.8-live";
-/** Voz masculina e firme (professor). Troque pela variável GEMINI_VOICE: Orus, Charon, Alnilam, Algenib, Sadaltager… */
-const DEFAULT_VOICE = "Orus";
+/** Voz masculina e firme (professor). Troque pela variável GEMINI_VOICE: Algenib, Orus, Charon, Alnilam, Sadaltager… */
+const DEFAULT_VOICE = "Algenib";
 
 export type VoiceStatus =
   | { available: false; reason: "plano" | "indisponivel"; limit: number; left: 0 }

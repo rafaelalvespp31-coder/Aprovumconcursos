@@ -246,7 +246,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       mic.connect(node);
       mic.connect(aIn);
       try {
-        session.sendRealtimeInput({ text: "Cumprimente o aluno em uma frase curta e pergunte qual é a dúvida de estudo dele." });
+        session.sendRealtimeInput({ text: "Cumprimente o aluno logo de início com uma saudação curta e marcante, escolhendo uma destas: \"Fala, Caveira!\" ou \"Olá, futuro policial!\". Depois pergunte, em uma frase, qual é a dúvida de estudo dele." });
       } catch {
         /* sem saudação: o aluno fala primeiro */
       }
