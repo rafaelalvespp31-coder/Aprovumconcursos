@@ -2855,6 +2855,11 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .cl-dim { color: rgba(13,13,15,0.6); }
 .cl-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .cl-hit { position: absolute; display: block; border-radius: calc(14 * var(--u)); cursor: pointer; transition: background 0.15s, box-shadow 0.15s; }
+.cl-solic { position: absolute; inset: 0; display: flex; align-items: center; gap: calc(14 * var(--u)); padding-left: calc(22 * var(--u)); padding-right: calc(70 * var(--u)); color: #0b0b0c; text-align: left; pointer-events: none; }
+.cl-solic svg { flex: none; width: calc(46 * var(--u)); height: calc(40 * var(--u)); }
+.cl-solic-txt { display: flex; flex-direction: column; min-width: 0; line-height: 1.05; }
+.cl-solic-txt b { font-family: "Barlow Condensed", "Arial Narrow", Impact, sans-serif; font-weight: 600; font-size: calc(26 * var(--u)); letter-spacing: 0.01em; -webkit-text-stroke: calc(0.7 * var(--u)) #0b0b0c; white-space: nowrap; }
+.cl-solic-txt small { font-family: "Barlow Condensed", "Arial Narrow", sans-serif; font-weight: 500; font-size: calc(16 * var(--u)); white-space: nowrap; margin-top: calc(2 * var(--u)); }
 .cl-hit:hover, .cl-rank:hover, .cl-mis:hover { background: rgba(225,6,0,0.05); box-shadow: 0 0 0 calc(2 * var(--u)) rgba(225,6,0,0.35); }
 .cl-hit:focus-visible, .cl-mis:focus-visible, .cl-cta:focus-visible, .cl-rank > summary:focus-visible, .cl-todas > summary:focus-visible { outline: 3px solid #e10600; outline-offset: 2px; }
 .cl-round { border-radius: 999px; }
