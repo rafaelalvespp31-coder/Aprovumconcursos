@@ -25,7 +25,7 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sessão expirada. Entre novamente." }, { status: 401, headers: noStore });
-  let body: { action?: unknown; seconds?: unknown };
+  let body: { action?: unknown; seconds?: unknown; transcript?: { student?: unknown; mentor?: unknown } };
   try {
     body = await req.json();
   } catch {
@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
   }
   try {
     if (body.action === "start") return NextResponse.json({ session: await startVoice(user.id) }, { headers: noStore });
-    if (body.action === "end") return NextResponse.json(await endVoice(user.id, body.seconds), { headers: noStore });
+    if (body.action === "end") return NextResponse.json(await endVoice(user.id, body.seconds, body.transcript && typeof body.transcript === "object" ? body.transcript : undefined), { headers: noStore });
     return NextResponse.json({ error: "Pedido inválido." }, { status: 400, headers: noStore });
   } catch (e) {
     if (e instanceof UserFacingError) return NextResponse.json({ error: e.message, code: e.code }, { status: e.code === "rate_limited" ? 429 : e.code === "plan_limit" ? 403 : 400, headers: noStore });

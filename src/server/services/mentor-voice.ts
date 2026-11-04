@@ -7,7 +7,7 @@ import { UserFacingError, enforceRateLimit } from "./trails";
 import { brDay } from "@/domain/plans/limits";
 import { loadMentorSnapshot } from "./mentor";
 import { recommend } from "@/domain/mentor/engine";
-import { VOICE_DAILY_SECONDS, VOICE_PERSONAL_RULES, VOICE_SYSTEM_PROMPT, buildVoiceContext, VOICE_TOKEN_GRACE_SECONDS, settleSeconds, voiceLeft } from "@/domain/mentor/voice";
+import { VOICE_DAILY_SECONDS, VOICE_PERSONAL_RULES, VOICE_SYSTEM_PROMPT, buildVoiceContext, cleanTranscript, VOICE_TOKEN_GRACE_SECONDS, settleSeconds, voiceLeft } from "@/domain/mentor/voice";
 
 /**
  * Mentor por voz (Gemini Live). A chave do Google fica só aqui no servidor: o navegador recebe um
@@ -70,8 +70,10 @@ async function personalPrompt(userId: string): Promise<string> {
   try {
     const { snapshot, name } = await loadMentorSnapshot(userId);
     const r = recommend(snapshot);
+    const notes = await createAdminClient().from("mentor_voice_notes").select("day, student_text").eq("user_id", userId).order("created_at", { ascending: false }).limit(3);
     const ctx = buildVoiceContext({
       name,
+      memory: ((notes.data ?? []) as Array<{ day: string; student_text: string }>).map((n) => ({ day: n.day, student: n.student_text })),
       lessonsTotal: snapshot.lessons.length,
       lessonsCompleted: r.completedLessons.length,
       inProgress: snapshot.lessons
@@ -126,7 +128,7 @@ export async function startVoice(userId: string): Promise<VoiceSession> {
         uses: 1,
         expireTime: new Date(now.getTime() + (left + VOICE_TOKEN_GRACE_SECONDS) * 1000).toISOString(),
         newSessionExpireTime: new Date(now.getTime() + 60_000).toISOString(),
-        liveConnectConstraints: { model, config: { responseModalities: [Modality.AUDIO], systemInstruction: instruction, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } },
+        liveConnectConstraints: { model, config: { responseModalities: [Modality.AUDIO], inputAudioTranscription: {}, outputAudioTranscription: {}, systemInstruction: instruction, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } },
         httpOptions: { apiVersion: "v1alpha" },
       },
     });
@@ -140,8 +142,15 @@ export async function startVoice(userId: string): Promise<VoiceSession> {
 }
 
 /** Fim da conversa: cobra o tempo falado (limitado ao relógio do servidor) e devolve o saldo. */
-export async function endVoice(userId: string, reportedSeconds: unknown): Promise<{ left: number }> {
+export async function endVoice(userId: string, reportedSeconds: unknown, transcript?: { student?: unknown; mentor?: unknown }): Promise<{ left: number }> {
   const reported = typeof reportedSeconds === "number" && Number.isFinite(reportedSeconds) ? reportedSeconds : null;
   await settle(userId, reported);
+  // Memória do Mentor: guarda o que foi dito (texto), limpo e limitado, para a próxima conversa.
+  const student = cleanTranscript(transcript?.student);
+  const mentor = cleanTranscript(transcript?.mentor);
+  if (student) {
+    const ins = await createAdminClient().from("mentor_voice_notes").insert({ user_id: userId, day: brDay().day, student_text: student, mentor_text: mentor });
+    if (ins.error) await logEvent("mentor.voz.nota_error", { error: ins.error.message.slice(0, 200) });
+  }
   return { left: voiceLeft(await usedToday(userId)) };
 }

@@ -63,3 +63,17 @@ describe("buildVoiceContext", () => {
     expect(t).toContain("Ainda não há respostas suficientes");
   });
 });
+
+import { cleanTranscript } from "./voice";
+describe("memória do Mentor por voz", () => {
+  it("cleanTranscript limpa e limita", () => {
+    expect(cleanTranscript("  oi <b>\n tudo  bem `x` ")).toBe("oi b tudo bem x");
+    expect(cleanTranscript("a".repeat(5000)).length).toBe(2000);
+    expect(cleanTranscript(42)).toBe("");
+  });
+  it("contexto inclui as últimas perguntas", () => {
+    const t = buildVoiceContext({ name: "Ana", lessonsTotal: 0, lessonsCompleted: 0, inProgress: [], topics: [], recommendations: [], reviewsDue: 0, notebooks: 0, memory: [{ day: "2026-11-03", student: "o que é dolo eventual?" }] });
+    expect(t).toContain("Nas últimas conversas por voz");
+    expect(t).toContain("dolo eventual");
+  });
+});

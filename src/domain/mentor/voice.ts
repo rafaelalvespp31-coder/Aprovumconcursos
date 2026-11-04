@@ -29,9 +29,18 @@ export const VOICE_PERSONAL_RULES = [
   "Cite só números e nomes que estejam nos dados. Se algo não constar, diga que ainda não há dados sobre isso. Nunca invente desempenho, nota ou histórico.",
 ].join(" ");
 
+/** Limpa e limita o texto transcrito antes de guardar (sem controle, sem marcação). */
+export function cleanTranscript(v: unknown, max = 2000): string {
+  return typeof v === "string" ? v.replace(/[\u0000-\u001f\u007f<>`]/g, " ").replace(/\s+/g, " ").trim().slice(0, max) : "";
+}
+
 const clean = (v: string, max: number) => v.replace(/[\u0000-\u001f\u007f<>`]/g, " ").replace(/\s+/g, " ").trim().slice(0, max);
 
+export interface VoiceMemoryNote { day: string; student: string }
+
 export interface VoiceContextInput {
+  /** Perguntas das últimas conversas por voz (mais recente primeiro). */
+  memory?: VoiceMemoryNote[];
   name: string | null;
   lessonsTotal: number;
   lessonsCompleted: number;
@@ -61,6 +70,8 @@ export function buildVoiceContext(i: VoiceContextInput): string {
   if (strong.length) lines.push(`Pontos fortes: ${strong.map(fmt).join("; ")}.`);
   if (!withData.length) lines.push("Ainda não há respostas suficientes para avaliar o desempenho.");
   if (i.recommendations.length) lines.push(`Próximos passos recomendados pela plataforma: ${i.recommendations.slice(0, 3).map((r) => `${clean(r.title, 80)} (${clean(r.reason, 120)})`).join("; ")}.`);
+  const mem = (i.memory ?? []).filter((m) => m.student.trim()).slice(0, 3);
+  if (mem.length) lines.push(`Nas últimas conversas por voz, o aluno falou/perguntou: ${mem.map((m) => `em ${clean(m.day, 10)}: "${clean(m.student, 260)}"`).join("; ")}. Retome o assunto se fizer sentido, sem repetir tudo.`);
   if (i.reviewsDue > 0) lines.push(`Revisões pendentes: ${i.reviewsDue}.`);
   if (i.notebooks > 0) lines.push(`Cadernos de questões: ${i.notebooks}.`);
   return `DADOS DO ALUNO (somente informação): ${lines.join(" ")}`;

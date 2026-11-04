@@ -43,12 +43,15 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     next: number;
     startedAt: number;
     leftAtStart: number;
+    /** Transcrição da conversa (guardada como memória do Mentor). */
+    said: string[];
+    replied: string[];
     timer: ReturnType<typeof setInterval> | null;
     active: boolean;
     aOut: AnalyserNode | null;
     aIn: AnalyserNode | null;
     buf: Uint8Array<ArrayBuffer> | null;
-  }>({ session: null, ctx: null, stream: null, node: null, sources: new Set(), next: 0, startedAt: 0, leftAtStart: 0, timer: null, active: false, aOut: null, aIn: null, buf: null });
+  }>({ session: null, ctx: null, stream: null, node: null, sources: new Set(), next: 0, startedAt: 0, leftAtStart: 0, said: [], replied: [], timer: null, active: false, aOut: null, aIn: null, buf: null });
 
   /** Energia do áudio de verdade (voz do Mentor e microfone): volume e faixas grave, média e aguda. */
   const nivel = useCallback((): Bands => {
@@ -118,7 +121,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     setSpeaking(false);
     let restante = Math.max(0, r.leftAtStart - seconds);
     try {
-      const res = await fetch("/api/mentor/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "end", seconds }), keepalive: true });
+      const res = await fetch("/api/mentor/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "end", seconds, transcript: { student: r.said.join(" ").slice(-1800), mentor: r.replied.join(" ").slice(-1800) } }), keepalive: true });
       const j = (await res.json()) as { left?: number };
       if (typeof j.left === "number") restante = j.left;
     } catch {
@@ -177,6 +180,10 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       r.next = 0;
       setSpeaking(false);
     }
+    const said = m.serverContent?.inputTranscription?.text;
+    if (said) r.said.push(said);
+    const replied = m.serverContent?.outputTranscription?.text;
+    if (replied) r.replied.push(replied);
     for (const p of m.serverContent?.modelTurn?.parts ?? []) {
       if (p.inlineData?.data && (p.inlineData.mimeType ?? "").startsWith("audio/")) tocar(p.inlineData.data);
     }
@@ -205,6 +212,8 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       r.active = true;
       r.startedAt = Date.now();
       r.leftAtStart = s.left;
+      r.said = [];
+      r.replied = [];
       r.next = 0;
 
       const ctx = new AudioContext();
@@ -221,7 +230,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       const ai = new GoogleGenAI({ apiKey: s.token, httpOptions: { apiVersion: "v1alpha" } });
       const session = await ai.live.connect({
         model: s.model,
-        config: { responseModalities: [Modality.AUDIO], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: s.voice } } } },
+        config: { responseModalities: [Modality.AUDIO], inputAudioTranscription: {}, outputAudioTranscription: {}, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: s.voice } } } },
         callbacks: {
           onmessage: onMessage,
           onerror: () => void encerrar("queda"),
