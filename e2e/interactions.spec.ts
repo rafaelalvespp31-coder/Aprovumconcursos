@@ -510,10 +510,9 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await up.getByLabel("Cole aqui a parte 2 da resposta (continuação ou questões)").fill("```\n" + full.slice(cut) + "\n```");
     await up.getByRole("button", { name: "3. Conferir aula" }).click();
     await expect(up.locator("section[aria-labelledby=previa]").getByText("Fácil: 2", { exact: true })).toBeVisible();
-    // Comando completo em 2 partes já abre com os dois campos.
-    await up.getByRole("radio", { name: "Em 2 comandos (aula grande)" }).click();
-    await expect(up.getByRole("button", { name: "Copiar comando 2" })).toBeVisible();
-    await expect(up.getByRole("textbox")).toHaveCount(2);
+    // Um comando só: não existe mais a opção de 2 comandos.
+    await expect(up.getByRole("radio", { name: "Em 2 comandos (aula grande)" })).toHaveCount(0);
+    await expect(up.getByRole("button", { name: "Copiar comando 2" })).toHaveCount(0);
   });
 
   test("aula sem questões completas: campo para adicionar questões, com comando e conferência", async ({ page }) => {
@@ -568,7 +567,7 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await expect(slot.getByRole("button", { name: "Anexar banner" })).toBeVisible();
   });
 
-  test("conferência ao vivo: destaca a linha do erro e corrige com um clique", async ({ page }) => {
+  test("conferência ao vivo: gabarito inválido não trava; a questão é ignorada com aviso na linha certa", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");
     await up.getByRole("radio", { name: "Completo", exact: true }).click();
@@ -577,26 +576,19 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     const broken = full.replace(/Gabarito:\s*[A-E]\b/, "Gabarito: Z");
     await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").fill(broken);
     const live = page.getByTestId("conferencia-ao-vivo");
-    await expect(live.getByText(/1 erro\(s\) no texto/)).toBeVisible();
-    const issue = live.locator("li[data-severidade=erro]").first();
-    await expect(issue.getByText(/Gabarito:” precisa ser a letra/)).toBeVisible();
-    await expect(up.locator("[data-l].bg-erro\\/15")).toHaveCount(1);
-    await issue.getByRole("button", { name: "Ver no texto" }).click();
-    await issue.getByRole("button", { name: /^(✓ )?Gabarito A$/ }).click();
     await expect(live.getByText("Nenhum erro de formato no texto. Clique em “Conferir aula”.")).toBeVisible();
-    await expect(up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)")).toHaveValue(/Gabarito: A/);
+    await expect(live.locator("li[data-severidade=aviso]").filter({ hasText: /Gabarito:.*Questão ignorada/ })).toBeVisible();
   });
 
-  test("corrigir tudo automaticamente com um clique", async ({ page }) => {
+  test("texto com defeitos comuns é corrigido sozinho na conferência, sem nenhum erro", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");
     await up.getByRole("radio", { name: "Completo", exact: true }).click();
     const full = readFileSync("public/modelos/modelo-aula.txt", "utf8");
     const broken = full.replace(/--- SEÇÃO: ([^|\n]+)\|/, "--- SEÇÃO: explicaçao detalhada |").replace(/Gabarito:\s*Certo/, "Gabarito: talvez");
     await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").fill(broken);
-    await expect(page.getByTestId("conferencia-ao-vivo").getByText(/2 erro\(s\) no texto/)).toBeVisible();
-    await page.getByTestId("autocorrigir").first().click();
-    await expect(page.getByText(/correção\(ões\) feita\(s\) no texto/)).toBeVisible();
+    await expect(page.getByTestId("conferencia-ao-vivo").getByText("Nenhum erro de formato no texto. Clique em “Conferir aula”.")).toBeVisible();
+    await up.getByRole("button", { name: "3. Conferir aula" }).click();
     await expect(up.locator("section[aria-labelledby=previa]").getByText(/Pronto para (salvar|publicar)/)).toBeVisible();
   });
 
@@ -1311,8 +1303,8 @@ test("mapa: aulas em tópicos do edital viram pastas, com estudo do tópico inte
   await pasta.locator("summary").click();
   await expect(pasta.locator("summary")).toHaveAttribute("aria-expanded", "true");
   if (await outras.count()) await expect(outras.locator("summary")).toHaveAttribute("aria-expanded", "false");
-  await expect(pasta.getByRole("button", { name: /4\.1.*Causas de exclusão/ })).toBeVisible();
-  await expect(pasta.getByRole("button", { name: /4\.2.*Excesso punível/ })).toBeVisible();
+  await expect(pasta.getByRole("button", { name: /Causas de exclusão/ })).toBeVisible();
+  await expect(pasta.getByRole("button", { name: /Excesso punível/ })).toBeVisible();
   await pasta.getByTestId("estudar-topico").click();
   const dialog = page.getByTestId("comecar-estudo");
   await expect(dialog).toContainText("Ilicitude");

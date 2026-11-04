@@ -237,12 +237,11 @@ export function LessonUploadForm({
             <ul className="list-disc pl-5">{model.selfCheck.slice(0, 5).map((e) => <li key={e}>{e}</li>)}</ul>
           </Notice>
         )}
-        {(parts || compact) && (
+        {compact && (
           <div className="mt-3 inline-flex flex-wrap rounded-md border border-linha-forte p-0.5 t-small" role="radiogroup" aria-label="Como enviar o comando">
             {(
               [
                 ["compacto", "Compacto (recomendado)", !!compact],
-                ["partes", "Em 2 comandos (aula grande)", !!parts],
                 ["inteiro", "Completo", true],
               ] as const
             )

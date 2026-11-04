@@ -29,8 +29,7 @@ export default async function UploadLessonPage({ searchParams }: { searchParams:
         <div className="rounded-md border border-azul/25 bg-nevoa px-4 py-3 t-small" data-testid="comando-subtopico">
           <p className="font-semibold">Comando do subtópico {plan.label}</p>
           <p className="mt-1 text-tinta-suave">
-            Do plano “{plan.planTitle}”. Copie o comando abaixo, cole no ChatGPT e cole a resposta aqui: a aula entra no tópico automaticamente.
-            {plan.big ? " Aula grande: já deixei em 2 comandos — envie o comando 1, depois o comando 2 na mesma conversa, e cole cada resposta no seu campo." : ""}{" "}
+            Do plano “{plan.planTitle}”. É um comando só, completo (aula e questões): copie, cole no ChatGPT e cole a resposta aqui. A aula cresce conforme o assunto (mais módulos quando for grande) e entra no tópico automaticamente.{" "}
             <Link href="/admin/catalogo/enviar" className="font-semibold text-destaque underline underline-offset-2">Usar o comando-mestre</Link>
           </p>
         </div>
@@ -39,8 +38,7 @@ export default async function UploadLessonPage({ searchParams }: { searchParams:
         actions={{ preview: previewLessonUploadAction, save: importLessonUploadAction }}
         bannerActions={{ save: saveBannerAction, remove: removeBannerAction }}
         prompt={plan ? plan.prompt : mp?.prompt}
-        parts={plan ? plan.parts : (mp?.parts ?? null)}
-        initialMode={plan ? (plan.big ? "partes" : "inteiro") : undefined}
+        initialMode={plan ? "inteiro" : undefined}
         compact={plan ? null : (mp?.compact ?? null)}
         model={!plan && mp ? { title: mp.title, slug: mp.slug, stats: mp.stats, options, selfCheck: mp.selfCheck } : null}
       />

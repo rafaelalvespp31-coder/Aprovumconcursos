@@ -14,7 +14,7 @@ FORMATO OBRIGATÓRIO
 - Responda SOMENTE com o texto no formato abaixo, dentro de UM único bloco de código, sem nada antes ou depois.
 - Mantenha exatamente os marcadores (=== … === e --- … ---) e os nomes dos campos (Título:, Matéria:, Itens:, Enunciado:, Gabarito: etc.).
 - Conteúdo das seções em Markdown: parágrafos curtos, **negrito** nos termos-chave, listas com "-", listas numeradas, tabelas com "|". Caixas de destaque com ">" no começo da linha, ex.: "> **Pegadinha:** …", "> **Por que isso importa na prova:** …", "> **A campeã de prova:** …".
-- Não use os marcadores === ou --- dentro do conteúdo. Cada seção com no máximo 10.000 caracteres.
+- Não use os marcadores === ou --- dentro do conteúdo. Cada seção com uns 6.000 caracteres; se o assunto for grande, crie mais seções e mais módulos (não há limite de módulos nem de seções).
 - Se a resposta for cortada por tamanho, eu vou pedir "continue": continue exatamente de onde parou, sem repetir nada e sem abrir explicações.
 
 ${visualRules()}

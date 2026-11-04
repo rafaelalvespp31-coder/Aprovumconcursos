@@ -5,16 +5,17 @@
  * edital, aprofundamento, combinações e crimes/temas próximos, casos e pegadinhas, doutrina,
  * jurisprudência e bancas, revisão final e questões em três níveis.
  * Inclui a regra de atualização até 2026 e a revisão do próprio comando e da resposta antes de
- * entregar. Cada comando tem no máximo {@link SUBTOPIC_PROMPT_MAX} caracteres. Puro.
+ * entregar. É UM comando só, completo (aula, referências e questões), e a aula cresce junto com o
+ * assunto: um módulo por item do edital e mais módulos/seções quando o conteúdo for extenso. Puro.
  */
 import { disciplineLabel, isLegalMode, type DisciplineMode } from "@/ai/pedagogy";
 import { visualRulesCompact } from "./export";
 import { groupHeaderLines, type OutlineItem, type OutlineSubtopic } from "./topic-group";
 
-/** Limite de tamanho de cada comando (caracteres). */
-export const SUBTOPIC_PROMPT_MAX = 12_000;
-/** O painel aceita até 30 seções por aula. */
-const MAX_SECTIONS = 30;
+/** Tamanho máximo do comando (caracteres); acima disso o esqueleto de cada item é enxugado. */
+export const SUBTOPIC_PROMPT_MAX = 40_000;
+/** O painel aceita até 150 seções por aula; o comando usa até 120 e deixa folga para as partes extras. */
+const MAX_SECTIONS = 120;
 
 const label = (x: OutlineItem) => `${x.code ? `${x.code} ` : ""}${x.title}`;
 
@@ -73,7 +74,7 @@ function pieces(input: SubtopicInput) {
   const allKeysLine = items.length <= 14 ? `\nItens: ${items.map((it) => it.key).join("; ")}` : "";
 
   // Seções fixas (mesma lógica da aula de Homicídio). Com muitos itens, as opcionais saem para caber em 30.
-  const full = items.length <= 14;
+  const full = true;
   const base = legal ? "texto legal | Lei seca vigente" : "conceitos fundamentais | Regras e definições-base";
   const fixedTop = `=== MÓDULO: Visão geral e ${legal ? "lei seca" : "base"} ===
 --- SEÇÃO: introdução | Visão geral: ${sub.title} ---${allKeysLine}
@@ -163,7 +164,8 @@ Não ensine os outros subtópicos do tópico (terão aulas próprias); cite-os s
 
 FORMATO OBRIGATÓRIO
 - SOMENTE o texto no formato abaixo, em UM bloco de código, nada antes ou depois; marcadores (=== / ---) e campos exatamente iguais.
-- Markdown: parágrafos curtos, **negrito**, listas "-", tabelas "|", caixas ">". Sem === ou --- no conteúdo; até 10.000 caracteres por seção.
+- Markdown: parágrafos curtos, **negrito**, listas "-", tabelas "|", caixas ">". Sem === ou --- no conteúdo.
+- TAMANHO DA AULA: não há limite de módulos nem de seções. Cada seção deve ter no máximo uns 6.000 caracteres; se um item ou assunto for extenso, abra MAIS seções do mesmo tipo (ex.: "Furto simples — parte 2") ou um módulo novo, em vez de escrever uma seção gigante ou resumir. Quanto maior o assunto, mais módulos.
 - Cortou? Eu peço "continue": siga de onde parou, sem repetir.`;
 
   const lesson = (mods: string) => `=== AULA ===
@@ -196,39 +198,6 @@ export function buildSubtopicPrompt(input: SubtopicInput): string {
 }
 
 /**
- * O mesmo comando em DUAS PARTES, para aulas grandes: o comando 1 pede só a aula (teoria,
- * referências e pontos a conferir); o comando 2, na MESMA conversa, pede só as questões dos três
- * níveis. As duas respostas são coladas nos dois campos de "Catalogar aula" e viram uma aula só.
- * Cada parte tem no máximo {@link SUBTOPIC_PROMPT_MAX} caracteres.
- */
-export function buildSubtopicPromptParts(input: SubtopicInput): { part1: string; part2: string } {
-  const p = pieces(input);
-  const intro = `VAMOS FAZER EM DUAS PARTES, NESTA MESMA CONVERSA: agora o COMANDO 1 (só a aula: teoria, referências e pontos a conferir, SEM questões). Depois eu envio o COMANDO 2, que pede as questões.`;
-  const stop = `NÃO escreva questões agora: termine em "=== A CONFERIR ===". As questões vêm no comando 2.`;
-  const part1 = fitPrompt(
-    p.items.length,
-    p.slots,
-    (mods, vis) => [intro, p.head, p.updates, p.review, vis, p.sectionRules, p.lesson(mods), p.refs, stop].join("\n\n"),
-    itemModules(p.items, p.slots),
-  );
-  const keys = p.items.map((it) => `${it.key} ${it.title}`).join("\n");
-  const part2Text = `COMANDO 2: agora escreva SOMENTE as QUESTÕES DE FIXAÇÃO da aula que você acabou de escrever no comando 1 (subtópico ${label(p.sub)}), no PADRÃO APROVUM.
-
-FORMATO DA RESPOSTA
-- SOMENTE as questões, em UM bloco de código, nada antes ou depois. Comece exatamente em "=== QUESTÕES: FÁCIL ===" e não repita a aula, as referências nem o "=== AULA ===".
-- Marcadores e campos exatamente iguais aos do modelo abaixo. Cortou? Eu peço "continue": siga de onde parou, sem repetir.
-
-"Item:" DE CADA QUESTÃO = um destes itens do TEXTO-BASE (use o número):
-${keys}
-
-${p.qs}
-
-REVISÃO (em silêncio, antes de responder): cada questão com uma só resposta certa; gabarito igual à justificativa; nada que contradiga a aula do comando 1${p.legal ? " nem a lei e a jurisprudência vigentes" : ""}; quantidades certas em cada nível; todos os itens cobrados ao longo dos três níveis.`;
-  const part2 = part2Text.length <= SUBTOPIC_PROMPT_MAX ? part2Text : part2Text.replace(keys, keys.split("\n").map((l) => l.split(" ")[0]).join("; "));
-  return { part1, part2 };
-}
-
-/**
  * Monta o comando e, se passar de {@link SUBTOPIC_PROMPT_MAX}, enxuga: primeiro o esqueleto de cada
  * item vira uma regra só; depois, as regras visuais ficam sem o bloco de exemplo.
  */
@@ -238,7 +207,7 @@ function fitPrompt(itemCount: number, slots: number, build: (mods: string, vis: 
   let out = build(full, visual);
   if (out.length <= SUBTOPIC_PROMPT_MAX) return out;
   const per = Math.max(1, Math.ceil(itemCount / slots));
-  const rule = `(Um módulo por item${per > 1 ? ` — ou por grupo de ${per} itens seguidos, para caber em 30 seções` : ""}, na ordem do TEXTO-BASE, assim:
+  const rule = `(Um módulo por item${per > 1 ? ` — ou por grupo de ${per} itens seguidos` : ""}, na ordem do TEXTO-BASE, assim:
 === MÓDULO: <número> <nome do item> ===
 --- SEÇÃO: explicação | <nome do item> ---
 Itens: <número>)`;

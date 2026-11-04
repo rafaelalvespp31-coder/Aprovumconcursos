@@ -31,6 +31,10 @@ export default async function DashboardPage() {
   const name = dash.profile?.display_name ?? null;
   return (
     <>
+      {/* Banner dos aprovados: no topo da página; o palco do avatar vem logo abaixo */}
+      <div className="cl-banner">
+        <HeroBanner name={name?.split(" ")[0] ?? null} extra={approved} />
+      </div>
       <HomeOperacao
         name={name}
         data={home}
@@ -39,10 +43,6 @@ export default async function DashboardPage() {
         requestAction={requestAvatarAction}
         ackLevels={ackLevelUpsAction}
       />
-      {/* Banner das aprovações: no fim da página */}
-      <div className="cl-banner">
-        <HeroBanner name={name?.split(" ")[0] ?? null} extra={approved} />
-      </div>
     </>
   );
 }

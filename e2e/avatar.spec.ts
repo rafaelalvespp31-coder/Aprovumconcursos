@@ -20,11 +20,15 @@ test.describe("painel (avatar)", () => {
     await expect(page.getByTestId("conquista-primeiro_combate")).toHaveAttribute("data-unlocked", "true");
     await expect(page.getByTestId("conquista-caveira_elite")).toHaveAttribute("data-unlocked", "false");
     await expect(page.getByTestId("contagem-regressiva")).toBeVisible();
-    // Banner das aprovações volta, no fim da página (abaixo dos concursos).
+    // Banner dos aprovados no topo da página; o palco do avatar fica logo abaixo.
     const banner = page.getByTestId("painel-banner");
     await expect(banner).toBeVisible();
-    const [conc, ban] = await Promise.all([page.getByTestId("home-operacao").boundingBox(), banner.boundingBox()]);
-    expect(ban!.y).toBeGreaterThan(conc!.y + conc!.height - 2);
+    await page.waitForTimeout(800);
+    const r = await page.evaluate(() => ({
+      ban: document.querySelector('[data-testid="painel-banner"]')!.getBoundingClientRect().bottom + window.scrollY,
+      conc: document.querySelector('[data-testid="home-operacao"]')!.getBoundingClientRect().top + window.scrollY,
+    }));
+    expect(r.ban).toBeLessThanOrEqual(r.conc + 2);
     // Sem rolagem horizontal.
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });

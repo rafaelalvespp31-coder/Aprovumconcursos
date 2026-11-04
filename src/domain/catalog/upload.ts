@@ -11,7 +11,7 @@
  *   --- QUESTÃO ---          enunciado, alternativas, gabarito e justificativa
  * O resultado tem exatamente a forma das aulas já catalogadas (lesson + nodes + questões).
  */
-import { customDisciplines, disciplineLabel, disciplineSlugs, LESSON_SECTION_KINDS, type DisciplineMode, type LessonSectionKind } from "@/ai/pedagogy";
+import { customDisciplines, disciplineLabel, disciplineSlugs, LESSON_SECTION_KINDS, SECTION_LABELS, type DisciplineMode, type LessonSectionKind } from "@/ai/pedagogy";
 import type { ExtractedNode } from "@/domain/content/extract";
 import { LAWS, articleId } from "./match";
 import { codeBelongs, parseCodedTitle } from "./topic-group";
@@ -147,6 +147,72 @@ export function sectionKind(raw: string): LessonSectionKind | null {
   return KIND_ALIASES[k] ?? null;
 }
 
+/** Tipo de seção tolerante: nome exato, apelido ou nome parecido ("Explicação do item 2" → explicação). */
+function sectionKindLoose(raw: string): LessonSectionKind | null {
+  const exact = sectionKind(raw);
+  if (exact) return exact;
+  const k = fold(raw).replace(/_/g, " ");
+  const names = [...Object.keys(KIND_ALIASES), ...LESSON_SECTION_KINDS.map((x) => x.replace(/_/g, " "))].sort((a, b) => b.length - a.length);
+  const hit = names.find((n) => n.length >= 5 && k.includes(n));
+  return hit ? sectionKind(hit) : null;
+}
+
+/** Limite de uma seção ao gravar; acima disso o texto é dividido em partes (nunca vira erro). */
+export const SECTION_SPLIT_AT = 10_000;
+
+/** Divide um Markdown longo em partes de até `max` caracteres, em limites de bloco (sem cortar tabela, lista ou cerca de código). */
+export function splitMarkdown(body: string, max = SECTION_SPLIT_AT): string[] {
+  if (body.length <= max) return [body];
+  const blocks: string[] = [];
+  let cur: string[] = [];
+  let fence = false;
+  const push = () => {
+    const t = cur.join("\n").replace(/^\n+|\s+$/g, "");
+    if (t) blocks.push(t);
+    cur = [];
+  };
+  for (const line of body.split("\n")) {
+    if (/^\s*```/.test(line)) fence = !fence;
+    if (!fence && !line.trim()) push();
+    else cur.push(line);
+  }
+  push();
+  // Bloco sozinho maior que o limite: quebra por linha (e, se for uma linha só, por frase).
+  const pieces = blocks.flatMap((b) => {
+    if (b.length <= max) return [b];
+    const out: string[] = [];
+    let acc = "";
+    for (const unit of b.split("\n").flatMap((l) => (l.length > max ? l.split(/(?<=[.!?;])\s+/) : [l]))) {
+      if (acc && acc.length + unit.length + 1 > max) {
+        out.push(acc);
+        acc = "";
+      }
+      acc += (acc ? "\n" : "") + unit.slice(0, max);
+    }
+    if (acc) out.push(acc);
+    return out;
+  });
+  const parts: string[] = [];
+  let acc = "";
+  for (const b of pieces) {
+    if (acc && acc.length + b.length + 2 > max) {
+      parts.push(acc);
+      acc = "";
+    }
+    acc += (acc ? "\n\n" : "") + b;
+  }
+  if (acc) parts.push(acc);
+  return parts.length ? parts : [body.slice(0, max)];
+}
+
+/** Corta no fim de uma frase, sem passar de `max`. */
+function clip(s: string, max: number): string {
+  if (s.length <= max) return s;
+  const cut = s.slice(0, max);
+  const dot = Math.max(cut.lastIndexOf(". "), cut.lastIndexOf("\n"), cut.lastIndexOf("? "), cut.lastIndexOf("! "));
+  return (dot > max * 0.6 ? cut.slice(0, dot + 1) : cut).trim();
+}
+
 const LAW_DISCIPLINE: Record<string, DisciplineMode> = {
   CP: "direito_penal",
   CPP: "direito_processual_penal",
@@ -155,6 +221,21 @@ const LAW_DISCIPLINE: Record<string, DisciplineMode> = {
   CTB: "legislacao_especial",
   ECA: "legislacao_especial",
 };
+
+function editDistance(a: string, b: string): number {
+  if (!a || !b) return 99;
+  const row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = row[0]!;
+    row[0] = i;
+    for (let j = 1; j <= b.length; j++) {
+      const tmp = row[j]!;
+      row[j] = Math.min(row[j]! + 1, row[j - 1]! + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev = tmp;
+    }
+  }
+  return row[b.length]!;
+}
 
 /** Matéria pelo nome ("Direito Penal", "Português"…); sem matéria, pela lei. */
 export function disciplineFrom(subject: string, lawCode: string | null): string | null {
@@ -172,6 +253,13 @@ export function disciplineFrom(subject: string, lawCode: string | null): string 
     if (/raciocinio|logica/.test(s)) return "raciocinio_logico";
     if (/matematica/.test(s)) return "matematica";
     if (/informatica/.test(s)) return "informatica";
+    // Erro de digitação ("Lingua Portugesa"): o nome mais parecido, a até 2 letras de distância.
+    let best: { slug: string; d: number } | null = null;
+    for (const m of disciplineSlugs()) {
+      const d = editDistance(fold(disciplineLabel(m) ?? ""), s);
+      if (d <= 2 && (!best || d < best.d)) best = { slug: m, d };
+    }
+    if (best) return best.slug;
   }
   if (lawCode) return LAW_DISCIPLINE[lawCode] ?? (lawCode.startsWith("L") ? "legislacao_especial" : null);
   return null;
@@ -271,6 +359,7 @@ export function parseLessonUpload(raw: string): ParsedLesson {
   let qLines: Array<{ text: string; n: number }> | null = null;
   let qStart = 0;
   let lastMetaKey: string | null = null;
+  let implicit = false;
 
   const flushSection = () => {
     if (!section) return;
@@ -281,8 +370,8 @@ export function parseLessonUpload(raw: string): ParsedLesson {
       else body.push(l);
     }
     section.bodyMarkdown = body.join("\n").replace(/^\n+|\s+$/g, "");
-    if (!section.bodyMarkdown) errors.push(`Linha ${section.line}: a seção “${section.title}” está vazia.`);
-    sections.push(section);
+    if (!section.bodyMarkdown) warnings.push(`Linha ${section.line}: a seção “${section.title}” veio vazia e foi ignorada.`);
+    else sections.push(section);
     section = null;
   };
   const flushQuestion = () => {
@@ -294,7 +383,7 @@ export function parseLessonUpload(raw: string): ParsedLesson {
       qLines = null;
       return; // bloco de questão vazio (modelo) é ignorado
     }
-    const q = parseQuestion(qLines, level, qStart, errors);
+    const q = parseQuestion(qLines, level, qStart, warnings);
     if (q) questions.push(q);
     qLines = null;
   };
@@ -318,7 +407,10 @@ export function parseLessonUpload(raw: string): ParsedLesson {
         mode = "questoes";
         const lv = name.replace(/^questoes?\s*[:\-–—]?\s*/, "");
         level = /^facil/.test(lv) ? "facil" : /^medio/.test(lv) ? "medio" : /^dificil/.test(lv) ? "dificil" : null;
-        if (!level) errors.push(`Linha ${n}: informe o nível do bloco de questões (FÁCIL, MÉDIO ou DIFÍCIL).`);
+        if (!level) {
+          level = "medio";
+          warnings.push(`Linha ${n}: o bloco de questões não tinha nível (FÁCIL, MÉDIO ou DIFÍCIL); usei MÉDIO.`);
+        }
       } else {
         warnings.push(`Linha ${n}: bloco “${b[1]}” não reconhecido; o conteúdo dele foi ignorado.`);
         mode = "none";
@@ -328,15 +420,17 @@ export function parseLessonUpload(raw: string): ParsedLesson {
     const it = line.match(ITEM);
     if (it) {
       const head = it[1]!;
-      if (mode === "modulo" && /^se[çc][ãa]o\b/i.test(head)) {
+      if (mode !== "questoes" && /^se[çc][ãa]o\b/i.test(head)) {
         flushSection();
+        mode = "modulo";
+        implicit = false;
         const rest = head.replace(/^se[çc][ãa]o\s*[:\-–—]?\s*/i, "");
         const [kindRaw, ...titleParts] = rest.split("|");
-        const kind = sectionKind(kindRaw ?? "");
-        const title = titleParts.join("|").trim();
-        if (!kind) errors.push(`Linha ${n}: tipo de seção “${(kindRaw ?? "").trim()}” não existe. Use um destes: ${LESSON_SECTION_KINDS.join(", ")}.`);
-        if (!title) errors.push(`Linha ${n}: a seção precisa de título (formato: --- SEÇÃO: tipo | Título ---).`);
-        section = { kind: kind ?? "explicacao", title: title || "Sem título", module: currentModule, bodyMarkdown: "", items: [], line: n };
+        const kind = sectionKindLoose(kindRaw ?? "");
+        let title = titleParts.join("|").trim();
+        if (!kind) warnings.push(`Linha ${n}: tipo de seção “${(kindRaw ?? "").trim()}” não reconhecido; tratei como explicação.`);
+        if (!title) title = kind ? (kindRaw ?? "").trim() || SECTION_LABELS[kind] || "Seção" : (kindRaw ?? "").trim() || "Seção";
+        section = { kind: kind ?? "explicacao", title: title.replace(/\s*-{2,}\s*$/, "").trim() || "Seção", module: currentModule ?? "Aula", bodyMarkdown: "", items: [], line: n };
         return;
       }
       if (mode === "questoes" && /^quest[ãa]o\b/i.test(head)) {
@@ -358,10 +452,23 @@ export function parseLessonUpload(raw: string): ParsedLesson {
       case "texto":
         sourceLines.push(line);
         break;
-      case "modulo":
-        if (section) section.bodyMarkdown += `${line}\n`;
-        else if (line.trim()) warnings.push(`Linha ${n}: texto fora de uma seção foi ignorado (comece com --- SEÇÃO: tipo | Título ---).`);
+      case "modulo": {
+        // Título solto ("## Título" ou "**Título**" sozinho) abre uma seção; texto solto vira uma seção do módulo.
+        const head = line.match(/^\s*(?:#{1,6}\s+(.+?)|\*\*([^*\n]{2,120})\*\*)\s*:?\s*$/);
+        const headTitle = head ? (head[1] ?? head[2] ?? "").replace(/[*_#]+/g, "").trim() : "";
+        if (headTitle && (!section || implicit)) {
+          flushSection();
+          section = { kind: "explicacao", title: headTitle.slice(0, 160), module: currentModule ?? "Aula", bodyMarkdown: "", items: [], line: n };
+          implicit = true;
+          warnings.push(`Linha ${n}: o título “${headTitle}” estava sem “--- SEÇÃO: tipo | Título ---”; virou uma seção de explicação.`);
+        } else if (section) section.bodyMarkdown += `${line}\n`;
+        else if (line.trim()) {
+          section = { kind: "explicacao", title: (currentModule ?? "Conteúdo").slice(0, 160), module: currentModule ?? "Aula", bodyMarkdown: `${line}\n`, items: [], line: n };
+          implicit = true;
+          warnings.push(`Linha ${n}: havia texto fora de uma seção; ele virou uma seção de explicação.`);
+        }
         break;
+      }
       case "refs": {
         const t = line.replace(/^\s*[-•*]\s*/, "").trim();
         if (!t) break;
@@ -419,26 +526,57 @@ export function parseLessonUpload(raw: string): ParsedLesson {
     subtopicCode: sub?.code ?? null,
   };
 
-  if (!Object.keys(metaLines).length) errors.push("Não encontrei o bloco === AULA ===. Use o comando do ChatGPT desta página para gerar a aula no formato certo.");
-  if (meta.title.length < 2) errors.push("Informe o “Título:” no bloco === AULA ===.");
-  if (meta.objective.length < 5) errors.push("Informe o “Objetivo:” no bloco === AULA ===.");
-  if (!meta.disciplineMode) errors.push(`Não reconheci a matéria “${subject || "(vazia)"}”. Use uma destas: ${disciplineSlugs().filter((m) => m !== "outra").map((m) => disciplineLabel(m)).join(", ")}.`);
+  // Tudo o que dá para corrigir sozinho é corrigido (com aviso); erro só quando não há o que aproveitar.
+  if (!Object.keys(metaLines).length) warnings.push("Não encontrei o bloco === AULA ===; montei os dados da aula a partir do conteúdo.");
+  if (meta.title.length < 2) {
+    meta.title = (sections.find((s) => s.module && s.module !== "Aula")?.module ?? sections[0]?.title ?? "Aula").slice(0, 200);
+    warnings.push(`Faltou o “Título:”; usei “${meta.title}”.`);
+  }
+  if (meta.objective.length < 5) {
+    const first = (meta.summary ?? "").split(/(?<=[.!?])\s/)[0]?.trim() ?? "";
+    meta.objective = first.length >= 5 ? first : `Dominar ${meta.title.toLowerCase()}.`;
+    warnings.push("Faltou o “Objetivo:”; gerei um a partir do resumo/título.");
+  }
+  if (!meta.disciplineMode) {
+    meta.disciplineMode = disciplineSlugs().includes("outra") ? "outra" : (disciplineSlugs()[0] ?? null);
+    warnings.push(`Não reconheci a matéria “${subject || "(vazia)"}”; a aula ficou em “Outra” (troque em Editar dados da aula).`);
+  }
   if (sub && !group) warnings.push("Informe também o “Tópico:” (ex.: 4. Ilicitude): sem ele o subtópico fica como aula avulsa.");
   if (group && sub?.code && meta.topicGroupCode && !codeBelongs(sub.code, meta.topicGroupCode)) warnings.push(`O subtópico ${sub.code} não começa com o número do tópico (${meta.topicGroupCode}).`);
-  if (kind === "dispositivo" && (!meta.lawCode || !meta.articles.length)) errors.push("Tipo dispositivo: informe “Lei:” (ex.: CP) e “Artigos:” (ex.: 155).");
+  if (kind === "dispositivo" && (!meta.lawCode || !meta.articles.length)) {
+    meta.kind = "tema";
+    meta.lawCode = null;
+    meta.articles = [];
+    warnings.push("Tipo dispositivo sem “Lei:” e “Artigos:”: a aula foi catalogada como tema.");
+  }
   const sourceText = sourceLines.join("\n").trim();
-  if (!sourceText) errors.push("O bloco === TEXTO-BASE === está vazio: coloque a lei seca ou o sumário numerado (1, 1.1, 1.2…).");
-  if (sections.length < 2) errors.push("A aula precisa de pelo menos 2 seções.");
-  if (sections.length > 30) errors.push(`A aula tem ${sections.length} seções; o máximo é 30. Divida em duas aulas (partes).`);
-  if (!sections.some((s) => s.module)) warnings.push("Nenhuma seção está dentro de um === MÓDULO: … ===; os módulos organizam a aula para o aluno.");
-  for (const s of sections) if (s.bodyMarkdown.length > 12000) errors.push(`Seção “${s.title}”: ${s.bodyMarkdown.length} caracteres (máximo 12.000). Divida em duas.`);
-  if (references.length > 20) errors.push("Máximo de 20 referências.");
-  if (pending.length > 20) errors.push("Máximo de 20 itens em === A CONFERIR ===.");
+  if (!sourceText) warnings.push("O bloco === TEXTO-BASE === veio vazio; gerei a lista de itens a partir das seções.");
+  if (!sections.length) errors.push("Não encontrei nenhuma seção. Cada seção começa com --- SEÇÃO: tipo | Título ---.");
+  else if (sections.length < 2) warnings.push("A aula tem só 1 seção.");
+  if (!sections.some((s) => s.module && s.module !== "Aula")) warnings.push("Nenhuma seção está dentro de um === MÓDULO: … ===; os módulos organizam a aula para o aluno.");
+  // Seção grande demais é dividida em partes, no mesmo módulo, em vez de virar erro.
+  for (let i = 0; i < sections.length; i++) {
+    const s = sections[i]!;
+    if (s.bodyMarkdown.length <= SECTION_SPLIT_AT) continue;
+    const parts = splitMarkdown(s.bodyMarkdown);
+    sections.splice(i, 1, ...parts.map((body, k) => ({ ...s, title: k === 0 ? s.title : `${s.title} (parte ${k + 1})`, bodyMarkdown: body, items: k === 0 ? s.items : [] })));
+    warnings.push(`Seção “${s.title}”: ${s.bodyMarkdown.length.toLocaleString("pt-BR")} caracteres; dividi em ${parts.length} partes.`);
+    i += parts.length - 1;
+  }
+  for (const s of sections) s.title = s.title.slice(0, 160);
+  if (references.length > 20) {
+    warnings.push(`${references.length} referências: guardei as 20 primeiras.`);
+    references.length = 20;
+  }
+  if (pending.length > 20) {
+    warnings.push(`${pending.length} itens em A CONFERIR: guardei os 20 primeiros.`);
+    pending.length = 20;
+  }
 
   return { meta, sourceText, sections, references, pending, questions, errors, warnings };
 }
 
-function parseQuestion(lines: Array<{ text: string; n: number }>, level: UploadLevel, start: number, errors: string[]): UploadQuestion | null {
+function parseQuestion(lines: Array<{ text: string; n: number }>, level: UploadLevel, start: number, warnings: string[]): UploadQuestion | null {
   let type: UploadQuestion["type"] = "multipla_escolha";
   let item: string | null = null;
   let essential = false;
@@ -504,29 +642,49 @@ function parseQuestion(lines: Array<{ text: string; n: number }>, level: UploadL
     difficulty,
     line: start,
   };
+  // Corrige o que dá para corrigir; a questão só é descartada (com aviso) quando não há como aproveitá-la.
   const where = `Questão da linha ${start}`;
-  let ok = true;
-  const fail = (m: string) => {
-    errors.push(`${where}: ${m}`);
-    ok = false;
+  const skip = (m: string) => {
+    warnings.push(`${where}: ${m} Questão ignorada.`);
+    return null;
   };
-  if (q.statement.length < 10) fail(`enunciado vazio ou curto demais.`);
-  if (q.justification.length < 10) fail(`falta a “Justificativa:” (mínimo de 10 caracteres).`);
-  if (q.statement.length > 4000) fail(`enunciado com mais de 4.000 caracteres.`);
-  if (q.justification.length > 3000) fail(`justificativa com mais de 3.000 caracteres.`);
+  if (q.statement.length < 10) return skip("enunciado vazio ou curto demais.");
+  if (q.justification.length < 10) return skip("falta a “Justificativa:”.");
+  if (q.statement.length > 4000) {
+    q.statement = clip(q.statement, 4000);
+    warnings.push(`${where}: enunciado passou de 4.000 caracteres e foi encurtado.`);
+  }
+  if (q.justification.length > 3000) {
+    q.justification = clip(q.justification, 3000);
+    warnings.push(`${where}: justificativa passou de 3.000 caracteres e foi encurtada.`);
+  }
   if (type === "multipla_escolha") {
-    if (q.options.length < 2 || q.options.length > 5) fail(`use de 2 a 5 alternativas (A) … E)).`);
+    const ans = (answer ?? "").toUpperCase().match(/^[A-E]/)?.[0] ?? null;
+    // Letras repetidas ou fora de ordem: renumera A, B, C… e acompanha o gabarito.
     const labels = q.options.map((o) => o.label);
-    if (new Set(labels).size !== labels.length) fail(`há alternativas com a mesma letra.`);
-    const a = (answer ?? "").toUpperCase().match(/^[A-E]/)?.[0] ?? null;
-    if (!a || !labels.includes(a)) fail(`“Gabarito:” precisa ser a letra de uma das alternativas.`);
-    else q.answer = a;
+    if (new Set(labels).size !== labels.length) {
+      const idx = ans ? labels.indexOf(ans) : -1;
+      q.options = q.options.map((o, i) => ({ ...o, label: "ABCDE"[i] ?? o.label }));
+      if (idx >= 0) q.answer = "ABCDE"[idx] ?? null;
+      warnings.push(`${where}: havia alternativas com a mesma letra; renumerei de A a E.`);
+    }
+    if (q.options.length < 2) return skip("tem menos de 2 alternativas.");
+    if (q.options.length > 5) {
+      const keep = q.options.slice(0, 5);
+      const a2 = (q.answer ?? ans ?? "").toUpperCase();
+      if (!keep.some((o) => o.label === a2)) return skip("tem mais de 5 alternativas e o gabarito não está nas 5 primeiras.");
+      q.options = keep;
+      warnings.push(`${where}: tinha mais de 5 alternativas; mantive as 5 primeiras.`);
+    }
+    const final = (q.answer ?? ans ?? "").toUpperCase().match(/^[A-E]/)?.[0] ?? null;
+    if (!final || !q.options.some((o) => o.label === final)) return skip("o “Gabarito:” não é a letra de uma das alternativas.");
+    q.answer = final;
   } else {
     const a = fold(answer ?? "");
-    if (!/^(c|certo|e|errado)$/.test(a)) fail(`“Gabarito:” deve ser Certo ou Errado.`);
-    else q.answer = a.startsWith("c") ? "certo" : "errado";
+    if (!/^(c|certo|e|errado)$/.test(a)) return skip("o “Gabarito:” deve ser Certo ou Errado.");
+    q.answer = a.startsWith("c") ? "certo" : "errado";
   }
-  return ok ? q : null;
+  return q;
 }
 
 // ---------------------------------------------------------------------------
@@ -585,7 +743,6 @@ export function buildLesson(p: ParsedLesson, nodes: readonly ExtractedNode[]): B
   const warnings: string[] = [];
   const teach = nodes.filter((n) => n.requiresDirectCoverage);
   if (!teach.length) errors.push("O texto-base não gerou itens a ensinar. Use “Art. …” para lei ou um sumário numerado (1, 1.1, 1.2…).");
-  if (teach.length > 100) errors.push(`O texto-base tem ${teach.length} itens a ensinar (máximo 100). Divida a matéria em partes.`);
 
   const sectionKeys: string[][] = p.sections.map((s) => {
     const keys = new Set<string>();
@@ -671,7 +828,7 @@ export function buildLesson(p: ParsedLesson, nodes: readonly ExtractedNode[]): B
       title: p.meta.title,
       objective: p.meta.objective.slice(0, 500),
       sections: p.sections.map((s, i) => ({ kind: s.kind, title: s.title.slice(0, 160), bodyMarkdown: s.bodyMarkdown, nodeKeys: sectionKeys[i]!.slice(0, 40), ...(s.module ? { module: s.module } : {}) })),
-      taughtNodeKeys: teach.map((n) => n.key).slice(0, 100),
+      taughtNodeKeys: teach.map((n) => n.key).slice(0, 300),
       references: p.references.slice(0, 20),
       unverifiedClaims: p.pending.filter((x) => x.length >= 5).slice(0, 20),
       verificationPending: p.pending.length > 0,
@@ -692,8 +849,8 @@ export function buildLesson(p: ParsedLesson, nodes: readonly ExtractedNode[]): B
  */
 /** Erros de questão ("Questão da linha …") e de nível; os da aula (título, matéria…) não importam aqui. */
 function questionErrorsOf(p: ParsedLesson): string[] {
-  const errors = p.errors.filter((e) => /^Questão da linha|informe o nível do bloco de questões/.test(e));
-  if (!p.questions.length && !errors.length) errors.push("Não encontrei questões. Use os blocos === QUESTÕES: FÁCIL === / MÉDIO / DIFÍCIL e cada questão começando com --- QUESTÃO ---.");
+  const errors: string[] = [];
+  if (!p.questions.length) errors.push("Não encontrei questões. Use os blocos === QUESTÕES: FÁCIL === / MÉDIO / DIFÍCIL e cada questão começando com --- QUESTÃO ---.");
   return errors;
 }
 

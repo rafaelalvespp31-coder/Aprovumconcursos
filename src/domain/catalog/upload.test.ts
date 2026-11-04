@@ -1,3 +1,4 @@
+import { prepareLessonUpload } from "./upload-preview";
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { lessonSchema } from "@/ai/schemas";
@@ -92,7 +93,7 @@ describe("modelo de aula (upload)", () => {
     expect(lessonSchema.safeParse(b.lesson).success).toBe(true);
   });
 
-  it("aponta erros com a linha e não aceita gabarito inválido", () => {
+  it("corrige sozinho o que dá (sem erro) e descarta só a questão sem gabarito válido", () => {
     const txt = [
       "=== AULA ===",
       "Título: X",
@@ -109,13 +110,50 @@ describe("modelo de aula (upload)", () => {
       "Justificativa: Porque sim, conforme o texto.",
     ].join("\n");
     const p = parseLessonUpload(txt);
-    const all = p.errors.join("\n");
-    expect(all).toMatch(/Objetivo/);
-    expect(all).toMatch(/matéria “Astronomia”/);
-    expect(all).toMatch(/TEXTO-BASE/);
-    expect(all).toMatch(/Linha 5: tipo de seção “inventada”/);
-    expect(all).toMatch(/Questão da linha 8: “Gabarito:”/);
+    const w = p.warnings.join("\n");
+    expect(p.errors).toEqual([]);
+    expect(w).toMatch(/Faltou o “Objetivo:”/);
+    expect(w).toMatch(/matéria “Astronomia”/);
+    expect(w).toMatch(/TEXTO-BASE/);
+    expect(w).toMatch(/Linha 5: tipo de seção “inventada”/);
+    expect(w).toMatch(/Questão da linha 8: .*Gabarito.*Questão ignorada/);
+    expect(p.meta.objective.length).toBeGreaterThan(5);
+    expect(p.sections[0]).toMatchObject({ kind: "explicacao", title: "Seção" });
     expect(p.questions).toHaveLength(0);
+  });
+
+  it("seção gigante é dividida em partes (nunca vira erro) e o gabarito não pode ser inventado", () => {
+    const para = "Parágrafo de teste com algum conteúdo para encher a seção.\n\n";
+    const txt = ["=== AULA ===", "Título: Grande", "Matéria: Direito Penal", "Objetivo: Dominar o tema grande.", "=== TEXTO-BASE ===", "1 Tema", "=== MÓDULO: M ===", "--- SEÇÃO: explicação | Tudo ---", para.repeat(450), "--- SEÇÃO: resumo | Fim ---", "Resumo."].join("\n");
+    const p = parseLessonUpload(txt);
+    expect(p.errors).toEqual([]);
+    const parts = p.sections.filter((s) => s.title.startsWith("Tudo"));
+    expect(parts.length).toBeGreaterThanOrEqual(3);
+    expect(parts.every((s) => s.bodyMarkdown.length <= 10_000)).toBe(true);
+    expect(parts[1]!.title).toBe("Tudo (parte 2)");
+    expect(p.warnings.join("\n")).toMatch(/dividi em \d+ partes/);
+  });
+
+  it("aceita mais de 30 seções, mais de 100 itens e questões longas (cortadas na frase)", () => {
+    const secs = Array.from({ length: 45 }, (_, i) => `--- SEÇÃO: explicação | Item ${i + 1} ---\nItens: ${i + 1}\nConteúdo do item ${i + 1}.`).join("\n");
+    const base = Array.from({ length: 120 }, (_, i) => `${i + 1} Assunto ${i + 1}`).join("\n");
+    const longQ = `Enunciado: ${"Frase longa de enunciado. ".repeat(250)}\nA) um\nB) dois\nGabarito: A\nJustificativa: ${"Justificativa longa. ".repeat(200)}`;
+    const txt = ["=== AULA ===", "Título: Enorme", "Matéria: Direito Penal", "Objetivo: Dominar tudo isto.", "=== TEXTO-BASE ===", base, "=== MÓDULO: M ===", secs, "=== QUESTÕES: FÁCIL ===", "--- QUESTÃO ---", longQ].join("\n");
+    const p = prepareLessonUpload(txt);
+    expect(p.errors).toEqual([]);
+    expect(p.built.lesson.sections).toHaveLength(45);
+    expect(p.built.lesson.taughtNodeKeys.length).toBeGreaterThan(100);
+    expect(p.built.questions[0]!.statement.length).toBeLessThanOrEqual(4000);
+    expect(p.built.questions[0]!.justification.length).toBeLessThanOrEqual(3000);
+  });
+
+  it("sem === AULA ===, sem texto-base e com seção fora do módulo: monta tudo a partir das seções", () => {
+    const txt = ["--- SEÇÃO: explicação | Conceito ---", "Texto do conceito.", "--- SEÇÃO: resumo | Resumo ---", "Resumo curto."].join("\n");
+    const p = prepareLessonUpload(txt);
+    expect(p.errors).toEqual([]);
+    expect(p.built.lesson.sections).toHaveLength(2);
+    expect(p.built.lesson.taughtNodeKeys.length).toBeGreaterThan(0);
+    expect(p.warnings.join("\n")).toMatch(/AULA/);
   });
 });
 

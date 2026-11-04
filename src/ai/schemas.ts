@@ -92,9 +92,9 @@ export const lessonSchema = z.object({
         sourceKey: nodeKey.optional().describe("Para texto_legal: o nó cujo texto foi transcrito."),
       }),
     )
-    .min(2)
-    .max(30),
-  taughtNodeKeys: z.array(nodeKey).min(1).max(100),
+    .min(1)
+    .max(150),
+  taughtNodeKeys: z.array(nodeKey).min(1).max(300),
   references: z
     .array(
       z.object({

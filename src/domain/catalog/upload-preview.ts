@@ -56,16 +56,24 @@ export interface LessonUploadPreview {
 }
 
 export function prepareLessonUpload(text: string) {
-  const parsed = parseLessonUpload(text);
-  const source = parsed.sourceText ? normalizeContent(parsed.sourceText).normalized : "";
-  const nodes = source ? extractStructure(source).nodes : [];
+  let parsed = parseLessonUpload(text);
+  const read = (src: string) => {
+    const source = src ? normalizeContent(src).normalized : "";
+    return { source, nodes: source ? extractStructure(source).nodes : [] };
+  };
+  let { source, nodes } = read(parsed.sourceText);
+  // Sem texto-base utilizável (vazio ou sem itens numerados): a lista de itens sai das próprias seções.
+  if (!nodes.some((n) => n.requiresDirectCoverage) && parsed.sections.length) {
+    const synth = parsed.sections.map((s, i) => `${i + 1} ${s.title}`).join("\n");
+    ({ source, nodes } = read(synth));
+    parsed = { ...parsed, sourceText: synth, warnings: [...parsed.warnings, "O texto-base não tinha itens numerados; montei a lista de itens a partir das seções."] };
+  }
   const built = buildLesson(parsed, nodes);
   const errors = [...parsed.errors, ...(parsed.errors.length ? [] : built.errors)];
   if (!errors.length) {
     const v = lessonSchema.safeParse(built.lesson);
     if (!v.success) errors.push(`A aula não passou na validação: ${v.error.issues[0]?.path.join(".")} — ${v.error.issues[0]?.message}`);
   }
-  if (source.length > 60000) errors.push("O TEXTO-BASE passa de 60.000 caracteres. Divida a matéria em partes.");
   const m = parsed.meta;
   // Subtópico: o nome do tópico entra no endereço (dois tópicos podem ter um subtópico "Conceito").
   const slug = lessonSlug(m);

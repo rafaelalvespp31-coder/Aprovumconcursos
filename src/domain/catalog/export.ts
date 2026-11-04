@@ -222,7 +222,7 @@ REGRAS DE CONTEÚDO
 FORMATO DA RESPOSTA
 - Responda SOMENTE com a nova aula, dentro de UM único bloco de código, sem nada antes ou depois.
 - Use exatamente os mesmos marcadores do modelo (=== … === e --- … ---) e os mesmos nomes de campos.
-- Não use === nem --- dentro do conteúdo. Cada seção com no máximo 10.000 caracteres.
+- Não use === nem --- dentro do conteúdo. Cada seção com uns 6.000 caracteres; se o assunto for grande, crie mais seções e mais módulos (não há limite de módulos nem de seções).
 - Se a resposta for cortada por tamanho, eu vou pedir "continue": continue exatamente de onde parou, sem repetir nada e sem explicações.
 
 <<<INÍCIO DO MODELO OFICIAL: ${t.title}>>>
@@ -268,7 +268,7 @@ REGRAS DE CONTEÚDO
 FORMATO DA RESPOSTA
 - Responda SOMENTE com a parte 1 da nova aula, dentro de UM único bloco de código, sem nada antes ou depois.
 - Use exatamente os mesmos marcadores do modelo (=== … === e --- … ---) e os mesmos nomes de campos.
-- Não use === nem --- dentro do conteúdo. Cada seção com no máximo 10.000 caracteres.
+- Não use === nem --- dentro do conteúdo. Cada seção com uns 6.000 caracteres; se o assunto for grande, crie mais seções e mais módulos (não há limite de módulos nem de seções).
 - Se a resposta for cortada por tamanho, eu vou pedir "continue": continue exatamente de onde parou, sem repetir nada.
 
 <<<INÍCIO DO MODELO OFICIAL (PARTE 1): ${t.title}>>>

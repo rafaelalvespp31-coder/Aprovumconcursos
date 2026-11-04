@@ -16,6 +16,9 @@ export default async function Page({
   const sp = await searchParams;
   return (
     <>
+      <div className="cl-banner">
+        <HeroBanner name="Rafael" />
+      </div>
       <DemoHome
         mannequin={sp.avatar === "manequim"}
         gender={sp.genero === "f" ? "f" : "m"}
@@ -23,9 +26,6 @@ export default async function Page({
         empty={sp.dados === "vazio"}
         levelUp={sp.levelup === "1"}
       />
-      <div className="cl-banner">
-        <HeroBanner name="Rafael" />
-      </div>
     </>
   );
 }

@@ -328,7 +328,7 @@ export const topicInputSchema = z
     aliases: z.string().max(2000).optional().transform((v) => (v ? v.split("\n").map((a) => a.trim()).filter(Boolean).slice(0, 30) : [])),
     disciplineMode: z.string().refine((v) => isDisciplineSlug(v), "Escolha uma matéria válida."),
     summary: z.string().trim().max(2000).optional().transform((v) => v || null),
-    sourceText: z.string().max(60000).optional().transform((v) => v ?? ""),
+    sourceText: z.string().max(400_000).optional().transform((v) => v ?? ""),
     estimatedMinutes: z.coerce.number().int().min(5).max(600).default(40),
   })
   .superRefine((v, ctx) => {

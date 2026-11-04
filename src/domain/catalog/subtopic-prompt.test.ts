@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSubtopicPrompt, buildSubtopicPromptParts, SUBTOPIC_PROMPT_MAX } from "./subtopic-prompt";
+import { buildSubtopicPrompt, SUBTOPIC_PROMPT_MAX } from "./subtopic-prompt";
 import { lessonSlug } from "./upload-preview";
 import { existingForUpload, slugMatchIsSameLesson } from "./topic-group";
 import { parseOutline } from "./topic-group";
@@ -75,12 +75,12 @@ describe("comando do subtópico", () => {
     expect(p).toContain("Novo Acordo Ortográfico");
   });
 
-  it("todo comando tem no máximo 12 mil caracteres e no máximo 30 seções", () => {
+  it("todo comando cabe no limite de tamanho e nas 120 seções que o painel aceita com folga", () => {
     for (const mode of ["direito_penal", "direito_constitucional", "lingua_portuguesa", "informatica"])
       for (const n of [0, 1, 3, 5, 7, 8, 10, 14, 15, 20, 30, 45]) {
         const p = buildSubtopicPrompt({ disciplineMode: mode, group, sub: many(n) as never });
         expect(p.length, `${mode} com ${n} itens`).toBeLessThanOrEqual(SUBTOPIC_PROMPT_MAX);
-        expect((p.match(/^--- SEÇÃO:/gm) ?? []).length).toBeLessThanOrEqual(30);
+        expect((p.match(/^--- SEÇÃO:/gm) ?? []).length).toBeLessThanOrEqual(120);
       }
   });
 
@@ -101,7 +101,7 @@ describe("comando do subtópico", () => {
       "Doutrina, jurisprudência e bancas",
       "Revisão final",
     ]);
-    expect(p.built.lesson.sections.length).toBeLessThanOrEqual(30);
+    expect(p.built.lesson.sections.length).toBeGreaterThan(0);
     expect(p.built.lesson.taughtNodeKeys).toHaveLength(3);
     expect(p.built.questions).toHaveLength(30);
   });
@@ -113,27 +113,25 @@ describe("comando do subtópico", () => {
   });
 });
 
-describe("comando dividido em 2 (comando 1 = aula, comando 2 = questões)", () => {
-  it("cada parte cabe no limite, a 1 sem questões e a 2 só com questões", () => {
+describe("um comando só, completo, que cresce com o assunto", () => {
+  it("traz aula, referências e as questões dos três níveis, e cabe no limite com 3 a 45 itens", () => {
     for (const n of [3, 10, 19, 30, 45]) {
-      const { part1, part2 } = buildSubtopicPromptParts({ disciplineMode: "informatica", group, sub: many(n) as never });
-      expect(part1.length, `parte 1 com ${n} itens`).toBeLessThanOrEqual(SUBTOPIC_PROMPT_MAX);
-      expect(part2.length, `parte 2 com ${n} itens`).toBeLessThanOrEqual(SUBTOPIC_PROMPT_MAX);
-      expect(part1).toContain("=== AULA ===");
-      expect(part1).not.toContain("=== QUESTÕES: FÁCIL ===");
-      expect(part1).toContain("COMANDO 2");
-      expect(part2).toContain("=== QUESTÕES: FÁCIL ===");
-      expect(part2).not.toContain("=== TEXTO-BASE ===");
-      expect(part2).not.toContain("--- SEÇÃO:");
+      const out = buildSubtopicPrompt({ disciplineMode: "informatica", group, sub: many(n) as never });
+      expect(out.length, `${n} itens`).toBeLessThanOrEqual(SUBTOPIC_PROMPT_MAX);
+      expect(out).toContain("=== AULA ===");
+      expect(out).toContain("=== QUESTÕES: FÁCIL ===");
+      expect(out).toContain("=== QUESTÕES: DIFÍCIL ===");
+      expect(out).not.toContain("COMANDO 2");
     }
   });
 
-  it("as duas respostas coladas juntas viram uma aula só, sem erros", () => {
-    const { part1 } = buildSubtopicPromptParts({ disciplineMode: "direito_penal", group, sub });
-    const whole = fakeAnswer(part1.replace(/NÃO escreva questões agora[\s\S]*$/, "=== REFERÊNCIAS ==="));
-    const p = prepareLessonUpload(whole);
-    expect(p.errors).toEqual([]);
-    expect(p.built.questions).toHaveLength(30);
+  it("mais itens, mais módulos: cada item ganha o seu e o comando não limita seções", () => {
+    const mods = (n: number) => (buildSubtopicPrompt({ disciplineMode: "informatica", group, sub: many(n) as never }).match(/^=== MÓDULO:/gm) ?? []).length;
+    expect(mods(30)).toBeGreaterThan(mods(10));
+    expect(mods(10)).toBeGreaterThan(mods(3));
+    const out = buildSubtopicPrompt({ disciplineMode: "informatica", group, sub: many(30) as never });
+    expect(out).toContain("não há limite de módulos nem de seções");
+    expect(out).not.toMatch(/até 30 seções|caber em 30/);
   });
 });
 
