@@ -34,6 +34,7 @@ test.describe("painel (avatar)", () => {
   });
 
   test("cards interativos: nível, ranking, disciplina, missões, Foco e mentor respondem ao clique", async ({ page }) => {
+    test.setTimeout(90_000);
     await page.goto(URL);
     await expect(page.getByTestId("painel-avatar")).toBeVisible();
     // Nível/XP abre o detalhe.

@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useTransition, type CSSProperties } from "react";
+import { useRouter } from "next/navigation";
+import { useCallback, useState, useTransition, type CSSProperties } from "react";
 import { OFFERS, type OfferKey } from "@/domain/plans/offers";
 import type { ChoosePlanResult } from "./actions";
+import { PayBox } from "./pay";
 
 /**
  * "Meu Plano": a arte oficial (1212 × 1298) fica exatamente como foi enviada; as áreas clicáveis
@@ -22,7 +24,9 @@ const CARDS: Card[] = [
   { id: "vitalicio", x: 955, y: 478, w: 235, h: 527, label: "Assinar Plano Vitalício — R$ 697,00, acesso para sempre" },
 ];
 
-export function PlanoView({ current, choose }: { current: "gratuito" | OfferKey; choose: (plan: string) => Promise<ChoosePlanResult> }) {
+export function PlanoView({ current, choose, mp = null }: { current: "gratuito" | OfferKey; choose: (plan: string) => Promise<ChoosePlanResult>; mp?: { publicKey: string; email: string | null } | null }) {
+  const router = useRouter();
+  const paid = useCallback(() => router.refresh(), [router]);
   const [sel, setSel] = useState<OfferKey | null>(null);
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,8 +38,7 @@ export function PlanoView({ current, choose }: { current: "gratuito" | OfferKey;
       if (!sel) return;
       const r = await choose(sel);
       if (!r.ok) return setError(r.error);
-      if (r.url) window.location.assign(r.url);
-      else setDone(true);
+      setDone(true);
     });
 
   return (
@@ -57,8 +60,10 @@ export function PlanoView({ current, choose }: { current: "gratuito" | OfferKey;
 
       {sel && (
         <div className="plano-fundo" role="dialog" aria-modal="true" aria-label={OFFERS[sel].label} data-testid="plano-dialogo" onClick={(e) => e.target === e.currentTarget && close()}>
-          <div className="plano-caixa">
-            {done ? (
+          <div className={`plano-caixa ${mp ? "plano-caixa-pg" : ""}`}>
+            {mp ? (
+              <PayBox offer={sel} publicKey={mp.publicKey} email={mp.email} onClose={close} onPaid={paid} />
+            ) : done ? (
               <>
                 <p className="plano-k">PEDIDO ENVIADO</p>
                 <p className="plano-t">{OFFERS[sel].label}</p>

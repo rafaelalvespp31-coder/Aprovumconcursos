@@ -4,9 +4,9 @@ import { PlanoView } from "@/app/(app)/plano/view";
 export default async function Page({ searchParams }: { searchParams: Promise<{ atual?: string }> }) {
   const sp = await searchParams;
   const atual = (["mensal", "semestral", "anual", "vitalicio"] as const).find((k) => k === sp.atual) ?? "gratuito";
-  async function choose(plan: string) {
+  async function choose() {
     "use server";
-    return { ok: true as const, url: null, plan };
+    return { ok: true as const };
   }
   return <div style={{ background: "#070707", padding: 12 }}><PlanoView current={atual} choose={choose} /></div>;
 }

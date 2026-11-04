@@ -3,20 +3,12 @@ import { createAdminClient } from "../supabase";
 import { UserFacingError, enforceRateLimit } from "./trails";
 import { OFFER_KEYS, isOfferKey, type OfferKey } from "@/domain/plans/offers";
 
-/** Link de pagamento do plano (opcional): PLAN_CHECKOUT_MENSAL, _SEMESTRAL, _ANUAL, _VITALICIO. */
-function checkoutUrl(plan: OfferKey): string | null {
-  const raw = process.env[`PLAN_CHECKOUT_${plan.toUpperCase()}`]?.trim();
-  return raw && /^https:\/\//.test(raw) ? raw : null;
-}
-
-/** O aluno escolheu um plano: vai ao pagamento (se houver link) ou registra o pedido para a equipe. */
-export async function requestPlan(userId: string, planRaw: unknown): Promise<{ url: string | null }> {
+/** O aluno escolheu um plano: registra o pedido para a equipe (usado quando o pagamento online não está configurado). */
+export async function requestPlan(userId: string, planRaw: unknown): Promise<void> {
   if (!isOfferKey(planRaw)) throw new UserFacingError("Plano inválido.", "invalid_plan");
   await enforceRateLimit(userId, "plan_request", 10);
-  const url = checkoutUrl(planRaw);
   const { error } = await createAdminClient().from("plan_requests").insert({ user_id: userId, plan: planRaw });
   if (error && error.code !== "23505") throw new Error(error.message);
-  return { url };
 }
 
 export interface OpenPlanRequest {
