@@ -4,20 +4,21 @@ import Image from "next/image";
 import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useMemo, useState, useTransition } from "react";
-import { Bell, BellRing, CalendarDays, ExternalLink, FolderSearch, GraduationCap, MapPin, SlidersHorizontal, Star, Users, Wallet, X, Activity, Landmark, Lock, FileText } from "lucide-react";
-import { CONTEST_STATUS, daysUntil } from "@/domain/gamification/home";
+import { ArrowRight, Bell, BellRing, ChartNoAxesColumn, CheckCircle2, Clock, Crosshair, Megaphone, MapPin, Rocket, X, Zap, ShieldCheck } from "lucide-react";
+import { CONTEST_STATUS } from "@/domain/gamification/home";
 import { BUCKETS, UFS, UF_NAME, bucketOf, byUf, countBuckets, type Bucket } from "@/domain/concursos";
 import type { Contest } from "@/server/services/gamification";
+import { ContestList, DOT } from "./contest-list";
 
-const BrazilMap = dynamic(() => import("./brazil-map"), { ssr: false, loading: () => <div className="cn-mapa cn-mapa-carrega" aria-busy>Carregando o mapa…</div> });
-
-const dateBR = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
+const BrazilMap = dynamic(() => import("./brazil-map"), { ssr: false, loading: () => <div className="cn2-mapa cn2-mapa-carrega" aria-busy>Carregando o mapa…</div> });
 type Toggle = (key: string, on: boolean) => Promise<{ ok: boolean }>;
 
-const CARD_ICON: Record<Bucket, typeof Landmark> = { abertos: FolderSearch, andamento: Activity, concluidos: FileText, embreve: Lock };
-const DOT: Record<Bucket, string> = { abertos: "#16a34a", andamento: "#2563eb", concluidos: "#6b7280", embreve: "#e50914" };
+const PILL: Record<Bucket, string> = { abertos: "Aberto", andamento: "Em Andamento", concluidos: "Concluído", embreve: "Em Breve" };
 
-/** Página Concursos: hero, quatro grupos, mapa interativo do Brasil por estado, destaques e “Em breve”. */
+/**
+ * Página Concursos, clonada da referência: topo (arte), quatro cards com contagens reais, mapa do Brasil
+ * interativo + destaques, banner final e rodapé. No celular a mesma arte e os mesmos blocos, reorganizados na vertical.
+ */
 export function ConcursosView({
   contests,
   today,
@@ -43,9 +44,16 @@ export function ConcursosView({
   const totals = useMemo(() => countBuckets(contests), [contests]);
   const perUf = useMemo(() => byUf(contests), [contests]);
   const counts = useMemo(() => Object.fromEntries([...perUf].map(([k, v]) => [k, v.length])), [perUf]);
+  // Cor de cada estado: o grupo mais "quente" entre os concursos dele (aberto > em andamento > em breve > concluído).
+  const tone = useMemo(() => {
+    const order: Bucket[] = ["abertos", "andamento", "embreve", "concluidos"];
+    const out: Record<string, Bucket> = {};
+    for (const [k, list] of perUf) out[k] = order.find((b) => list.some((c) => bucketOf(c.status) === b))!;
+    return out;
+  }, [perUf]);
   const featured = useMemo(() => {
     const f = contests.filter((c) => c.featured);
-    return (f.length ? f : contests.filter((c) => c.uf)).slice(0, 6);
+    return (f.length ? f : contests).slice(0, 5);
   }, [contests]);
 
   const flip = (set: Set<string>, setter: (s: Set<string>) => void, key: string, fn?: Toggle) => {
@@ -61,48 +69,39 @@ export function ConcursosView({
 
   const pickBucket = (b: Bucket) => {
     setBucket((cur) => (cur === b ? null : b));
-    setShowAll(false);
     window.setTimeout(() => document.getElementById("cn-resultados")?.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
   };
-
   const stateList = uf ? (perUf.get(uf) ?? []) : [];
   const listed = bucket && bucket !== "embreve" ? contests.filter((c) => bucketOf(c.status) === bucket) : [];
+  const shown = showAll ? contests : featured;
 
   return (
-    <div className="cn" data-testid="concursos">
-      {/* ===== Hero ===== */}
-      <section className="cn-hero" aria-labelledby="cn-titulo">
-        <div className="cn-hero-txt">
-          <p className="cn-chip"><Landmark className="size-4" aria-hidden /> CONCURSOS PÚBLICOS</p>
-          <h1 id="cn-titulo" className="cn-h1"><span>CONQUISTE</span> <b>SEU FUTURO!</b></h1>
-          <p className="cn-lead">Acompanhe editais, inscrições e provas de todo o Brasil em um só lugar — com informações cadastradas e conferidas pela equipe APROVUM.</p>
-          <ul className="cn-feats">
-            <li><Activity className="size-5" aria-hidden /><b>Atualização</b> em tempo real</li>
-            <li><SlidersHorizontal className="size-5" aria-hidden /><b>Filtros</b> avançados</li>
-            <li><Bell className="size-5" aria-hidden /><b>Alertas</b> personalizados</li>
-            <li><Star className="size-5" aria-hidden /><b>Acompanhe</b> seus favoritos</li>
+    <div className="cn2" data-testid="concursos">
+      {/* ===== Topo (arte da referência) ===== */}
+      <section className="cn2-hero" aria-labelledby="cn-titulo">
+        <h1 id="cn-titulo" className="sr-only">Concursos públicos: conquiste seu futuro</h1>
+        <Image src="/concursos/hero-d.webp" alt="" width={1024} height={370} priority className="cn2-hero-d" sizes="(min-width: 1100px) 1000px, 100vw" />
+        {/* Celular: texto nativo + a arte do soldado e da caveira */}
+        <div className="cn2-hero-m">
+          <p className="cn2-chip">CONCURSOS PÚBLICOS <i /><i /><i /></p>
+          <p className="cn2-h1" aria-hidden><span>CONQUISTE</span><b>SEU FUTURO!</b></p>
+          <p className="cn2-lead">Aqui você encontra todos os concursos do Brasil, em um só lugar, com informações atualizadas, inteligência e foco total na sua aprovação.</p>
+          <ul className="cn2-feats">
+            <li><Zap aria-hidden /><span>Atualização<br />em tempo real</span></li>
+            <li><Crosshair aria-hidden /><span>Filtros<br />avançados</span></li>
+            <li><Bell aria-hidden /><span>Alertas<br />personalizados</span></li>
+            <li><ChartNoAxesColumn aria-hidden /><span>Acompanhe<br />sua jornada</span></li>
           </ul>
-        </div>
-        <div className="cn-hero-arte" aria-hidden>
-          <Image src="/icons/operador.webp" alt="" width={450} height={724} priority className="cn-soldado" />
-          <Image src="/icons/instrutor-caveira.png" alt="" width={320} height={320} className="cn-caveira" />
-          <p className="cn-lema">FOQUE.<br />ESTUDE.<br /><b>CONQUISTE.</b></p>
+          <Image src="/concursos/hero-arte-m.webp" alt="" width={484} height={374} className="cn2-hero-arte" />
         </div>
       </section>
 
-      {/* ===== Quatro grupos ===== */}
-      <section className="cn-cards" aria-label="Concursos por situação">
-        {BUCKETS.map((b) => {
-          const Ic = CARD_ICON[b.id];
-          return (
-            <button key={b.id} type="button" className={`cn-card cn-card-${b.id} ${bucket === b.id ? "on" : ""}`} onClick={() => pickBucket(b.id)} aria-pressed={bucket === b.id} data-testid={`grupo-${b.id}`}>
-              <span className="cn-card-ico"><Ic className="size-7" aria-hidden /></span>
-              <span className="cn-card-nome">{b.label.toUpperCase()}</span>
-              <span className="cn-card-n" data-testid={`grupo-${b.id}-n`}>{totals[b.id]}</span>
-              <span className="cn-card-bt">{b.id === "embreve" ? "VER PREVISÕES" : "VER CONCURSOS"}</span>
-            </button>
-          );
-        })}
+      {/* ===== Quatro cards ===== */}
+      <section className="cn2-cards" aria-label="Concursos por situação">
+        <Card id="abertos" Icon={Megaphone} title={<>Concursos<br />Abertos</>} n={totals.abertos} cta="Ver Concursos" on={bucket === "abertos"} onClick={() => pickBucket("abertos")} />
+        <Card id="andamento" Icon={Clock} title={<>Concursos<br />Em Andamento</>} n={totals.andamento} cta="Ver Concursos" on={bucket === "andamento"} onClick={() => pickBucket("andamento")} />
+        <Card id="concluidos" Icon={CheckCircle2} title={<>Concursos<br />Concluídos</>} n={totals.concluidos} cta="Ver Histórico" on={bucket === "concluidos"} onClick={() => pickBucket("concluidos")} />
+        <Card id="embreve" Icon={Rocket} title={<>Em Breve</>} n={totals.embreve} sub="Novos concursos chegando em breve!" cta="Fique por dentro" on={bucket === "embreve"} onClick={() => pickBucket("embreve")} />
       </section>
 
       {/* ===== Resultado do grupo ===== */}
@@ -115,7 +114,6 @@ export function ConcursosView({
           <ContestList list={listed} today={today} favs={favs} onFav={onFav} empty="Ainda não há concursos nesta situação." />
         </section>
       )}
-
       {bucket === "embreve" && (
         <section id="cn-resultados" className="cn-painel cn-painel-breve" aria-label="Em breve" data-testid="painel-embreve">
           <header className="cn-painel-topo">
@@ -140,11 +138,22 @@ export function ConcursosView({
         </section>
       )}
 
-      {/* ===== Mapa + painel lateral ===== */}
-      <section className="cn-mapa-sec" aria-label="Concursos por estado">
-        <div className="cn-mapa-col">
-          <h2 className="cn-h2">Explore por <b>estado</b></h2>
-          <BrazilMap selected={uf} counts={counts} onSelect={setUf} />
+      {/* ===== Mapa + destaques ===== */}
+      <section className="cn2-mapa-sec" aria-label="Concursos por estado">
+        <div className="cn2-lado">
+          <Image src="/concursos/titulo-brasil.webp" alt="Mapa do concurso: Brasil" width={232} height={108} className="cn2-titulo" />
+          <p className="cn2-explore">Explore o mapa e descubra os concursos disponíveis em cada estado e no DF.</p>
+          <ul className="cn2-legenda" aria-label="Legenda do mapa">
+            <li><i className="l-abertos" />Concursos Abertos</li>
+            <li><i className="l-andamento" />Concursos em Andamento</li>
+            <li><i className="l-concluidos" />Concursos Concluídos</li>
+            <li><i className="l-embreve" />Em Breve</li>
+          </ul>
+          <button type="button" className="cn2-todos-estados" onClick={() => setUf(null)} data-testid="ver-todos-estados"><MapPin className="size-4" aria-hidden /> Ver todos os estados <ArrowRight className="size-4" aria-hidden /></button>
+        </div>
+
+        <div className="cn2-mapa-col">
+          <BrazilMap selected={uf} counts={counts} tone={tone} onSelect={setUf} />
           <ul className="cn-ufs" aria-label="Estados">
             {UFS.map(([u, n]) => (
               <li key={u}>
@@ -156,7 +165,7 @@ export function ConcursosView({
           </ul>
         </div>
 
-        <aside className="cn-lateral" aria-live="polite">
+        <aside className="cn2-dest" aria-live="polite">
           {uf ? (
             <div data-testid="painel-estado">
               <header className="cn-painel-topo">
@@ -186,93 +195,77 @@ export function ConcursosView({
             </div>
           ) : (
             <div data-testid="painel-destaques">
-              <header className="cn-painel-topo"><h2>DESTAQUES POR ESTADO</h2></header>
-              {featured.length === 0 ? (
+              <header className="cn2-dest-topo">
+                <h2><ChartNoAxesColumn className="size-4" aria-hidden /> DESTAQUES POR ESTADO</h2>
+                {contests.length > featured.length && (
+                  <button type="button" onClick={() => setShowAll((v) => !v)} data-testid="ver-todos">{showAll ? "Ver menos" : "Ver todos"} <ArrowRight className="size-3" aria-hidden /></button>
+                )}
+              </header>
+              {contests.length === 0 ? (
                 <p className="cn-vazio" data-testid="destaques-vazio">Nenhum concurso cadastrado no momento. Assim que a equipe publicar, ele aparece aqui.</p>
               ) : (
-                <ul className="cn-dest">
-                  {(showAll ? contests : featured).map((c) => (
+                <ul className="cn2-dest-lista">
+                  {shown.map((c) => (
                     <li key={c.id}>
-                      <button type="button" className="cn-dest-item" onClick={() => (c.uf ? setUf(c.uf) : setBucket(bucketOf(c.status)))} data-testid="destaque">
-                        <span className="cn-bandeira">{c.uf ?? "BR"}</span>
-                        <span className="cn-dest-txt">
-                          <b>{c.name}</b>
-                          <small>{c.orgao ?? c.institution}{c.vacancies != null ? ` · ${c.vacancies.toLocaleString("pt-BR")} vagas` : ""}</small>
+                      <button type="button" className="cn2-dest-item" onClick={() => (c.uf ? setUf(c.uf) : setBucket(bucketOf(c.status)))} data-testid="destaque">
+                        <span className="cn2-bandeira">{c.uf ?? "BR"}</span>
+                        <span className="cn2-dest-nome"><b>{c.name}</b><small>{c.uf ? UF_NAME[c.uf] : "Nacional"}</small></span>
+                        <span className="cn2-dest-dir">
+                          <span className="cn2-dest-vagas">{c.vacancies != null ? `+${c.vacancies.toLocaleString("pt-BR")} vagas` : CONTEST_STATUS[c.status] ?? ""}</span>
+                          <span className={`cn2-pill p-${bucketOf(c.status)}`}>{PILL[bucketOf(c.status)]}</span>
                         </span>
-                        <span className="cn-sit"><i style={{ background: DOT[bucketOf(c.status)] }} />{CONTEST_STATUS[c.status] ?? c.status}</span>
                       </button>
                     </li>
                   ))}
                 </ul>
-              )}
-              {contests.length > featured.length && !showAll && (
-                <button type="button" className="cn-todos" onClick={() => setShowAll(true)} data-testid="ver-todos">VER TODOS</button>
               )}
             </div>
           )}
         </aside>
       </section>
 
-      {/* ===== Banner final ===== */}
-      <section className="cn-banner" aria-label="Chamada APROVUM">
-        <Image src="/icons/instrutor-caveira.png" alt="" width={320} height={320} className="cn-banner-caveira" aria-hidden />
-        <div>
-          <p className="cn-banner-k">SEMPRE UM PASSO À FRENTE</p>
-          <p className="cn-banner-t">A APROVUM transforma o seu estudo em aprovação: trilhas, questões, revisões e Mentor com IA.</p>
-          <ul className="cn-banner-lista"><li>Trilhas por edital</li><li>Banco de questões</li><li>Revisão inteligente</li><li>Mentor Aprovum</li></ul>
+      {/* ===== Banner "Sempre um passo à frente" ===== */}
+      <section className="cn2-banner" aria-label="Sempre um passo à frente">
+        <Image src="/concursos/banner-d.webp" alt="" width={1024} height={246} className="cn2-banner-d" />
+        <Link href="/trilhas" className="cn2-banner-hit" aria-label="Comece agora mesmo" data-testid="banner-comece" />
+        <div className="cn2-banner-m">
+          <Image src="/concursos/banner-rosto.webp" alt="" width={285} height={246} className="cn2-banner-rosto" />
+          <div className="cn2-banner-txt">
+            <p className="cn2-banner-k">SEMPRE UM PASSO <b>À FRENTE</b></p>
+            <p className="cn2-banner-t">Com o Aprovum, você fica por dentro de todos os concursos, recebe alertas, acompanha editais e se prepara com o melhor conteúdo, do jeito certo.</p>
+            <Link href="/trilhas" className="cn2-banner-bt">COMECE AGORA MESMO <ArrowRight className="size-4" aria-hidden /></Link>
+            <ul className="cn2-banner-lista">
+              <li><ShieldCheck aria-hidden />26 Estados + DF</li>
+              <li><ShieldCheck aria-hidden />Notificações em tempo real</li>
+              <li><ShieldCheck aria-hidden />Conteúdo de alta performance</li>
+              <li><ShieldCheck aria-hidden />Sua aprovação mais perto</li>
+            </ul>
+          </div>
         </div>
-        <Link href="/trilhas" className="cn-banner-bt">COMECE AGORA MESMO</Link>
       </section>
+
+      {/* ===== Rodapé ===== */}
+      <footer className="cn2-rodape">
+        <Image src="/concursos/rodape-d.webp" alt="APROVUM — Sua preparação. Seu próximo cargo. Estude, evolua, conquiste." width={1024} height={153} className="cn2-rodape-d" />
+        <div className="cn2-rodape-m">
+          <Image src="/concursos/rodape-logo.webp" alt="APROVUM — Sua preparação. Seu próximo cargo." width={294} height={100} />
+          <Image src="/concursos/rodape-selos.webp" alt="" width={280} height={60} aria-hidden />
+          <p>ESTUDE <i>•</i> <b>EVOLUA</b> <i>•</i> CONQUISTE</p>
+        </div>
+      </footer>
     </div>
   );
 }
 
-function ContestList({ list, today, favs, onFav, empty, showForecast }: { list: Contest[]; today: string; favs: Set<string>; onFav: (id: string) => void; empty: string; showForecast?: boolean }) {
-  if (!list.length) return empty ? <p className="cn-vazio">{empty}</p> : null;
+function Card({ id, Icon, title, n, sub, cta, on, onClick }: { id: Bucket; Icon: typeof Megaphone; title: React.ReactNode; n: number; sub?: string; cta: string; on: boolean; onClick: () => void }) {
   return (
-    <ul className="cn-lista" data-testid="concursos-lista">
-      {list.map((c) => {
-        const days = daysUntil(c.examDate, c.examDateConfirmed, today);
-        return (
-          <li key={c.id} className="cn-item" data-testid="concurso">
-            {c.imageUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={c.imageUrl} alt="" loading="lazy" className="cn-item-img" />
-            )}
-            <div className="cn-item-corpo">
-              <div className="cn-item-topo">
-                <span className="cn-status"><i style={{ background: DOT[bucketOf(c.status)] }} />{CONTEST_STATUS[c.status] ?? c.status}</span>
-                {(showForecast || c.forecast) && <span className="cn-prev">Previsão</span>}
-                <button type="button" className={`cn-fav ${favs.has(c.id) ? "on" : ""}`} onClick={() => onFav(c.id)} aria-pressed={favs.has(c.id)} aria-label={favs.has(c.id) ? `Remover ${c.name} dos favoritos` : `Favoritar ${c.name}`}>
-                  <Star className="size-4" aria-hidden />
-                </button>
-              </div>
-              <h3 className="cn-item-nome">{c.name}</h3>
-              <p className="cn-item-inst">{[c.orgao, c.institution, c.roleName].filter(Boolean).join(" · ")}</p>
-              <dl className="cn-dados">
-                {c.uf && <div><dt><MapPin className="size-4" aria-hidden /> Local</dt><dd>{[c.city, UF_NAME[c.uf]].filter(Boolean).join(" / ")}{c.location ? ` — ${c.location}` : ""}</dd></div>}
-                {c.vacancies != null && <div><dt><Users className="size-4" aria-hidden /> Vagas</dt><dd>{c.vacancies.toLocaleString("pt-BR")}</dd></div>}
-                {c.salary && <div><dt><Wallet className="size-4" aria-hidden /> Remuneração</dt><dd>{c.salary}</dd></div>}
-                {c.education && <div><dt><GraduationCap className="size-4" aria-hidden /> Escolaridade</dt><dd>{c.education}</dd></div>}
-                {c.banca && <div><dt><Landmark className="size-4" aria-hidden /> Banca</dt><dd>{c.banca}</dd></div>}
-                {(c.registrationStart || c.registrationEnd) && (
-                  <div><dt><CalendarDays className="size-4" aria-hidden /> Inscrições</dt><dd>{[c.registrationStart && dateBR(c.registrationStart), c.registrationEnd && dateBR(c.registrationEnd)].filter(Boolean).join(" a ")}</dd></div>
-                )}
-                <div><dt><CalendarDays className="size-4" aria-hidden /> Prova</dt><dd>{c.examDate ? `${dateBR(c.examDate)}${c.examDateConfirmed ? "" : " (a confirmar)"}` : "Data a definir"}</dd></div>
-              </dl>
-              {c.description && <p className="cn-item-desc">{c.description}</p>}
-              {days != null && <p className="cn-dias"><b>{days}</b> {days === 1 ? "dia" : "dias"} para a prova</p>}
-              <p className="cn-fonte">
-                {c.infoConfirmed ? "Informações confirmadas" : "Informações não confirmadas"} · Fonte:{" "}
-                {c.sourceUrl ? <a href={c.sourceUrl} target="_blank" rel="noopener noreferrer">{c.sourceName}</a> : c.sourceName}
-              </p>
-              {c.detailUrl && (
-                <a className="cn-detalhes" href={c.detailUrl} target="_blank" rel="noopener noreferrer">Ver detalhes <ExternalLink className="size-3.5" aria-hidden /></a>
-              )}
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+    <button type="button" className={`cn2-card cn2-card-${id} ${on ? "on" : ""}`} onClick={onClick} aria-pressed={on} data-testid={`grupo-${id}`}>
+      <span className="cn2-card-fundo" style={{ backgroundImage: `url(/concursos/card-${{ abertos: "c1", andamento: "c2", concluidos: "c3", embreve: "c4" }[id]}.webp)` }} aria-hidden />
+      <span className="cn2-card-topo"><Icon className="cn2-card-ico" aria-hidden /><span className="cn2-card-nome">{title}</span></span>
+      <span className="cn2-card-n" data-testid={`grupo-${id}-n`}>{id === "embreve" && n > 0 ? `+${n}` : n}</span>
+      {sub && <span className="cn2-card-sub">{sub}</span>}
+      <span className="cn2-card-bt">{cta} <ArrowRight aria-hidden /></span>
+      {id === "embreve" && <span className="cn2-sino" aria-hidden><Bell /></span>}
+    </button>
   );
 }

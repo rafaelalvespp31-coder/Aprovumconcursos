@@ -13,12 +13,24 @@ const [VW, VH] = (brazil.viewBox as string).split(" ").slice(2).map(Number) as [
  * Mapa SVG interativo do Brasil (27 UFs, geometrias individuais). Clique/toque seleciona o estado
  * (brilho vermelho + zoom suave); arrastar move o mapa quando ampliado; + / − / “Mapa completo” controlam o zoom.
  */
-export default function BrazilMap({ selected, counts, onSelect }: { selected: string | null; counts: Record<string, number>; onSelect: (uf: string | null) => void }) {
+export default function BrazilMap({ selected, counts, tone = {}, onSelect }: { selected: string | null; counts: Record<string, number>; tone?: Record<string, string>; onSelect: (uf: string | null) => void }) {
+  const [centers, setCenters] = useState<Record<string, { x: number; y: number; w: number }>>({});
   const [view, setView] = useState<View>(HOME);
   const [hover, setHover] = useState<string | null>(null);
   const gRef = useRef<SVGGElement>(null);
   const drag = useRef<{ x: number; y: number; vx: number; vy: number; moved: boolean } | null>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+
+  // Centro de cada estado (rótulos com a sigla).
+  useEffect(() => {
+    const out: Record<string, { x: number; y: number; w: number }> = {};
+    gRef.current?.querySelectorAll<SVGPathElement>("path[data-uf]").forEach((p) => {
+      const b = p.getBBox();
+      out[p.dataset.uf!] = { x: b.x + b.width / 2, y: b.y + b.height / 2, w: b.width };
+    });
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setCenters(out);
+  }, []);
 
   // Estado escolhido: aproxima do centro dele.
   useEffect(() => {
@@ -63,7 +75,7 @@ export default function BrazilMap({ selected, counts, onSelect }: { selected: st
   );
 
   return (
-    <div className="cn-mapa" data-testid="mapa-brasil">
+    <div className="cn2-mapa" data-testid="mapa-brasil">
       <svg
         ref={svgRef}
         viewBox={brazil.viewBox as string}
@@ -76,6 +88,10 @@ export default function BrazilMap({ selected, counts, onSelect }: { selected: st
         onPointerCancel={onUp}
       >
         <defs>
+          <pattern id="cn-hachura" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+            <rect width="6" height="6" fill="#111214" />
+            <rect width="3" height="6" fill="#e50914" />
+          </pattern>
           <filter id="cn-brilho" x="-20%" y="-20%" width="140%" height="140%">
             <feDropShadow dx="0" dy="0" stdDeviation="5" floodColor="#ff1a1a" floodOpacity="0.95" />
           </filter>
@@ -95,7 +111,7 @@ export default function BrazilMap({ selected, counts, onSelect }: { selected: st
                 tabIndex={0}
                 aria-label={`${l.name}${n ? `: ${n} ${n === 1 ? "concurso" : "concursos"}` : ""}`}
                 aria-pressed={on}
-                className={`cn-uf ${n ? "tem" : ""} ${on ? "on" : ""} ${hover === uf ? "hover" : ""}`}
+                className={`cn-uf ${n ? "tem" : ""} ${tone[uf] ? `t-${tone[uf]}` : ""} ${on ? "on" : ""} ${hover === uf ? "hover" : ""}`}
                 filter={on ? "url(#cn-brilho)" : undefined}
                 onClick={() => pick(uf)}
                 onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && (e.preventDefault(), pick(uf))}
@@ -104,6 +120,9 @@ export default function BrazilMap({ selected, counts, onSelect }: { selected: st
               />
             );
           })}
+          {Object.entries(centers).map(([uf, c]) => (
+            <text key={uf} x={c.x} y={c.y} className={`cn-uf-rot ${uf === "DF" ? "df" : ""}`} textAnchor="middle" dominantBaseline="central" style={{ fontSize: c.w < 26 ? 9 : 13 }} aria-hidden>{uf}</text>
+          ))}
         </g>
       </svg>
       <div className="cn-mapa-ctl" role="group" aria-label="Zoom do mapa">

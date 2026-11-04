@@ -1428,18 +1428,28 @@ test.describe("Concursos, Área do Aluno e Meu Plano (neon)", () => {
   test("Concursos: quatro grupos, 27 estados no mapa e painel do estado", async ({ page }) => {
     await page.goto(`${G}/concursos`);
     for (const g of ["abertos", "andamento", "concluidos", "embreve"]) await expect(page.getByTestId(`grupo-${g}`)).toBeVisible();
-    await expect(page.getByTestId("grupo-embreve-n")).toHaveText("1");
+    await expect(page.getByTestId("grupo-embreve-n")).toHaveText("+1");
     await expect(page.getByTestId("mapa-brasil").locator("path[data-uf]")).toHaveCount(27);
     await expect(page.getByTestId("painel-destaques")).toBeVisible();
     // Estado com concurso cadastrado
-    await page.getByTestId("uf-MG").click();
+    await page.getByTestId("uf-MG").dispatchEvent("click");
     await expect(page.getByTestId("estado-nome")).toHaveText("MINAS GERAIS");
     await expect(page.getByTestId("painel-estado").getByTestId("concurso")).toHaveCount(1);
     // Estado sem concurso: mensagem elegante
-    await page.getByTestId("chip-AC").click();
+    await page.getByTestId("uf-AC").dispatchEvent("click");
     await expect(page.getByTestId("estado-vazio")).toContainText("Ainda não existem concursos disponíveis para Acre");
     await page.getByRole("button", { name: "Voltar ao mapa completo" }).click();
     await expect(page.getByTestId("painel-destaques")).toBeVisible();
+  });
+
+  test("Concursos: os 26 estados e o DF respondem ao clique", async ({ page }) => {
+    await page.goto(`${G}/concursos`);
+    const ufs = ["AC","AL","AP","AM","BA","CE","DF","ES","GO","MA","MT","MS","MG","PA","PB","PR","PE","PI","RJ","RN","RS","RO","RR","SC","SP","SE","TO"];
+    for (const u of ufs) {
+      await page.getByTestId(`uf-${u}`).dispatchEvent("click");
+      await expect(page.getByTestId("painel-estado")).toBeVisible();
+      await expect(page.getByTestId(`uf-${u}`)).toHaveAttribute("aria-pressed", "true");
+    }
   });
 
   test("Concursos: cada card abre a sua lista; Em breve tem painel exclusivo com alerta", async ({ page }) => {
