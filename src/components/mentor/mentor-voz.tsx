@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
-import { Lock, Mic, PhoneOff } from "lucide-react";
+import { Mic, PhoneOff } from "lucide-react";
+import { VozOrbe } from "./voz-orbe";
 import { formatClock } from "@/domain/mentor/voice";
 
 type Fase = "carregando" | "plano" | "indisponivel" | "esgotado" | "pronto" | "conectando" | "ao-vivo" | "encerrada" | "erro";
@@ -47,7 +48,27 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     leftAtStart: number;
     timer: ReturnType<typeof setInterval> | null;
     active: boolean;
-  }>({ session: null, ctx: null, stream: null, node: null, sources: new Set(), next: 0, startedAt: 0, leftAtStart: 0, timer: null, active: false });
+    aOut: AnalyserNode | null;
+    aIn: AnalyserNode | null;
+    buf: Uint8Array<ArrayBuffer> | null;
+  }>({ session: null, ctx: null, stream: null, node: null, sources: new Set(), next: 0, startedAt: 0, leftAtStart: 0, timer: null, active: false, aOut: null, aIn: null, buf: null });
+
+  /** Volume atual (0 a 1) da voz do Mentor e do microfone, lido do áudio de verdade. */
+  const nivel = useCallback(() => {
+    const r = ref.current;
+    const rms = (a: AnalyserNode | null) => {
+      if (!a) return 0;
+      if (!r.buf || r.buf.length !== a.fftSize) r.buf = new Uint8Array(a.fftSize);
+      a.getByteTimeDomainData(r.buf);
+      let sum = 0;
+      for (let i = 0; i < r.buf.length; i++) {
+        const v = (r.buf[i]! - 128) / 128;
+        sum += v * v;
+      }
+      return Math.sqrt(sum / r.buf.length);
+    };
+    return Math.min(1, Math.max(rms(r.aOut) * 4.5, rms(r.aIn) * 2.2));
+  }, []);
 
   const carregar = useCallback(async () => {
     try {
@@ -93,7 +114,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     });
     r.sources.clear();
     void r.ctx?.close().catch(() => {});
-    r.session = r.ctx = r.stream = r.node = null;
+    r.session = r.ctx = r.stream = r.node = r.aOut = r.aIn = null;
     setSpeaking(false);
     let restante = Math.max(0, r.leftAtStart - seconds);
     try {
@@ -130,7 +151,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     buf.copyToChannel(f, 0);
     const src = ctx.createBufferSource();
     src.buffer = buf;
-    src.connect(ctx.destination);
+    src.connect(r.aOut ?? ctx.destination);
     const at = Math.max(r.next, ctx.currentTime + 0.02);
     src.start(at);
     r.next = at + buf.duration;
@@ -188,6 +209,13 @@ export function MentorVoz({ base = "" }: { base?: string }) {
 
       const ctx = new AudioContext();
       r.ctx = ctx;
+      const aOut = ctx.createAnalyser();
+      aOut.fftSize = 512;
+      aOut.connect(ctx.destination);
+      r.aOut = aOut;
+      const aIn = ctx.createAnalyser();
+      aIn.fftSize = 512;
+      r.aIn = aIn;
       await ctx.audioWorklet.addModule("/voz-worklet.js");
       const ai = new GoogleGenAI({ apiKey: s.token, httpOptions: { apiVersion: "v1alpha" } });
       const session = await ai.live.connect({
@@ -214,7 +242,9 @@ export function MentorVoz({ base = "" }: { base?: string }) {
           /* conexão fechando */
         }
       };
-      ctx.createMediaStreamSource(stream).connect(node);
+      const mic = ctx.createMediaStreamSource(stream);
+      mic.connect(node);
+      mic.connect(aIn);
       try {
         session.sendRealtimeInput({ text: "Cumprimente o aluno em uma frase curta e pergunte qual é a dúvida de estudo dele." });
       } catch {
@@ -246,13 +276,11 @@ export function MentorVoz({ base = "" }: { base?: string }) {
 
   return (
     <div className="voz" data-testid="mentor-voz" data-fase={fase}>
-      {fase === "carregando" && <p className="text-[13px] text-[#64666D]">Carregando…</p>}
+      {fase === "carregando" && <p className="text-[13px] text-white/60">Carregando…</p>}
 
       {fase === "plano" && (
         <div className="voz-bloco">
-          <span className="voz-orbe is-trava" aria-hidden>
-            <Lock className="h-7 w-7" />
-          </span>
+          <VozOrbe level={() => 0} active={false} dim />
           <p className="voz-titulo">Mentor por voz</p>
           <p className="voz-texto">Tire dúvidas de estudo falando, em tempo real, com o Mentor. Disponível nos planos pagos: 3 minutos por dia.</p>
           <Link href={`${base}/plano`} className="pc-botao" data-testid="voz-ver-planos">
@@ -277,9 +305,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
 
       {(fase === "pronto" || fase === "encerrada" || fase === "erro" || fase === "conectando" || ao_vivo) && (
         <div className="voz-bloco">
-          <span className={`voz-orbe ${ao_vivo ? (speaking ? "is-fala" : "is-escuta") : ""}`} aria-hidden>
-            <Mic className="h-8 w-8" />
-          </span>
+          <VozOrbe level={nivel} active={ao_vivo || fase === "conectando"} />
           <p className="voz-titulo" aria-live="polite">
             {fase === "conectando" ? "Conectando…" : ao_vivo ? (speaking ? "Mentor falando…" : "Pode falar, estou ouvindo") : "Fale com o Mentor"}
           </p>
