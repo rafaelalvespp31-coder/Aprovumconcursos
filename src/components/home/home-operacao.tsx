@@ -94,7 +94,7 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, ackLe
           <Link href="/perfil" aria-label="Configurações" className="cl-hit cl-round" style={at(836, 72, 76, 76)}><Settings className="cl-sr" /></Link>
 
           {avatar ? (
-            <div className="cl-palco" style={at(220, 145, 482, 721)}>
+            <div className="cl-palco" style={at(227, 137, 501, 749)}>
               <AvatarStage config={avatar.config} items={avatar.items} interactive className="cl-palco-arte" mannequin={mannequin} rank={rank.id} portrait={avatar.portrait} transparent />
             </div>
           ) : (
