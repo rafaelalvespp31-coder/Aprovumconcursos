@@ -3779,3 +3779,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 }
 @media (min-width: 820px) { .dp-banner-m { display: none; } }
 @media (max-width: 819px) { .dp-hero-arte { -webkit-mask-image: linear-gradient(90deg, transparent 8%, #000 22%); mask-image: linear-gradient(90deg, transparent 8%, #000 22%); } }
+
+/* Banner enviado pelo admin já traz os nomes: as placas sobrepostas ficam ocultas naquele tamanho de tela. */
+@media (min-width: 820px) { .dp-hero.has-d .dp-placa { display: none; } }
+@media (max-width: 819px) { .dp-hero.has-m .dp-placa { display: none; } }

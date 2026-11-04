@@ -81,7 +81,7 @@ export function DepoimentosView({ items, stories }: { items: Testimonial[]; stor
   return (
     <div className="dp" ref={root} data-testid="depoimentos">
       {/* ===== Topo ===== */}
-      <section className="dp-hero" aria-labelledby="dp-titulo">
+      <section className={`dp-hero${stories.hero?.desktop ? " has-d" : ""}${stories.hero?.mobile ? " has-m" : ""}`} aria-labelledby="dp-titulo">
         <h1 id="dp-titulo" className="sr-only">Histórias que inspiram. Propósitos que transformam.</h1>
         <div className="dp-hero-d">
           {stories.hero?.desktop ? (
