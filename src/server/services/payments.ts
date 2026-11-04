@@ -139,9 +139,17 @@ export async function createPayment(userId: string, input: CreateInput): Promise
     }
     mp = (await payments().create({ body: body as never, requestOptions: { idempotencyKey: row.id } })) as MpPayment;
   } catch (e) {
-    await db.from("mp_payments").update({ status: "recusado", mp_status: "error", updated_at: new Date().toISOString() }).eq("id", row.id);
-    const err = e as { message?: string; cause?: unknown };
-    await logEvent("payments.create.failed", { error: String(err?.message ?? e).slice(0, 300) });
+    const err = e as { message?: string; error?: string; status?: number; cause?: unknown };
+    // Motivo devolvido pelo Mercado Pago (sem dados sensíveis): ajuda a diagnosticar no banco.
+    let why = String(err?.message ?? e);
+    try {
+      const c = Array.isArray(err?.cause) ? (err.cause as Array<{ code?: unknown; description?: unknown }>).map((x) => `${x?.code ?? ""}:${x?.description ?? ""}`).join(" | ") : "";
+      why = `${err?.status ?? ""} ${why} ${c}`.trim();
+    } catch {
+      /* mantém a mensagem simples */
+    }
+    await db.from("mp_payments").update({ status: "recusado", mp_status: "error", mp_status_detail: why.slice(0, 280), updated_at: new Date().toISOString() }).eq("id", row.id);
+    await logEvent("payments.create.failed", { error: why.slice(0, 300) });
     if (e instanceof UserFacingError) throw e;
     throw new UserFacingError("Não foi possível processar o pagamento. Confira os dados e tente novamente.", "payment_failed");
   }
