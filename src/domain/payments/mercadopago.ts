@@ -60,3 +60,28 @@ export function accessEnd(offer: OfferKey, current: { end: string | null; paid: 
 
 /** Valor do Mercado Pago (reais, decimal) em centavos inteiros. */
 export const toCents = (v: unknown): number | null => (typeof v === "number" && Number.isFinite(v) ? Math.round(v * 100) : null);
+
+/** Só os dígitos do CPF (11) ou null se o tamanho não bate. */
+export function cleanCpf(v: unknown): string | null {
+  const d = typeof v === "string" ? v.replace(/\D/g, "") : "";
+  return d.length === 11 ? d : null;
+}
+
+/** CPF válido (dígitos verificadores). Rejeita sequências repetidas (111.111.111-11 etc.). */
+export function isValidCpf(v: unknown): boolean {
+  const d = cleanCpf(v);
+  if (!d || /^(\d)\1{10}$/.test(d)) return false;
+  const dv = (len: number) => {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += Number(d[i]) * (len + 1 - i);
+    const r = (sum * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  return dv(9) === Number(d[9]) && dv(10) === Number(d[10]);
+}
+
+/** Máscara 000.000.000-00 enquanto digita. */
+export function maskCpf(v: string): string {
+  const d = v.replace(/\D/g, "").slice(0, 11);
+  return d.replace(/^(\d{3})(\d)/, "$1.$2").replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d)/, ".$1-$2");
+}

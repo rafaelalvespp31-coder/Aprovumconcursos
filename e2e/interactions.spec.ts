@@ -376,7 +376,7 @@ test.describe("casco pastel", () => {
     await expect(page).toHaveURL(new RegExp(`${G}/desempenho`));
   });
 
-  test("navegação lateral, atalhos 1–7 e recolher persistente", async ({ page, isMobile }) => {
+  test("navegação lateral, Novo Estudo, atalhos 1–9 e recolher persistente", async ({ page, isMobile }) => {
     test.skip(isMobile, "barra lateral só no desktop");
     await page.setViewportSize({ width: 1280, height: 800 });
     await page.goto(`${G}/painel`);
@@ -384,7 +384,8 @@ test.describe("casco pastel", () => {
     await expect(nav.getByRole("link", { name: /Painel/ })).toHaveAttribute("aria-current", "page");
     await expect(page.getByTestId("nav-desc-revisoes")).toHaveText("2 pendentes");
     await expect(nav.getByRole("link", { name: /Modo Jogo/ })).toHaveAttribute("href", `${G}/quiz`);
-    await page.keyboard.press("7");
+    await expect(nav.getByRole("link", { name: /Novo Estudo/ })).toHaveAttribute("href", `${G}/nova-trilha`);
+    await page.keyboard.press("8");
     await expect(page).toHaveURL(new RegExp(`${G}/perfil`));
     await expect(page.getByTestId("nivel")).toHaveText("Nível 5");
     await page.getByRole("button", { name: "Recolher", exact: true }).click();
@@ -433,38 +434,35 @@ test.describe("casco pastel", () => {
     await noHorizontalScroll(page);
   });
 
-  test("menu inferior no computador: centralizado no conteúdo e navegável pelo teclado", async ({ page, isMobile }) => {
-    test.skip(isMobile, "teclado físico");
-    await page.setViewportSize({ width: 1440, height: 900 });
-    await page.goto(`${G}/painel`);
-    const bar = page.getByTestId("menu-inferior");
-    await expect(bar).toBeVisible();
-    await bar.getByRole("link", { name: "Painel" }).focus();
-    await page.keyboard.press("ArrowRight");
-    await expect(bar.getByRole("link", { name: "Estudos" })).toBeFocused();
-    await page.keyboard.press("ArrowLeft");
-    await page.keyboard.press("ArrowLeft");
-    await expect(bar.getByRole("link", { name: "Novo estudo" })).toBeFocused();
-    await page.keyboard.press("Home");
-    await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(new RegExp(`${G}/painel`));
-    await page.keyboard.press("End");
-    await expect(bar.getByRole("link", { name: "Novo estudo" })).toBeFocused();
-  });
-
-  test("menu inferior no computador: compacto e recolhível como o menu lateral", async ({ page, isMobile }) => {
+  test("computador: sem menu inferior, só a barra lateral (com Novo Estudo)", async ({ page, isMobile }) => {
     test.skip(isMobile, "só no computador");
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${G}/painel`);
-    const bar = page.getByTestId("menu-inferior");
-    const h = await bar.evaluate((el) => el.getBoundingClientRect().height);
-    expect(h).toBeLessThanOrEqual(90);
-    await page.getByTestId("recolher-menu-inferior").click();
-    await expect(bar).toBeHidden();
-    await page.reload();
     await expect(page.getByTestId("menu-inferior")).toBeHidden();
-    await page.getByTestId("abrir-menu-inferior").click();
-    await expect(page.getByTestId("menu-inferior")).toBeVisible();
+    const nav = page.getByRole("navigation", { name: "Principal", exact: true });
+    await expect(nav.getByRole("link", { name: /Novo Estudo/ })).toBeVisible();
+  });
+
+  test("barra lateral recolhida: ícones centralizados, dentro da barra e sem estourar", async ({ page, isMobile }) => {
+    test.skip(isMobile, "só no computador");
+    await page.setViewportSize({ width: 1440, height: 900 });
+    await page.goto(`${G}/painel`);
+    await page.getByRole("button", { name: "Recolher", exact: true }).click();
+    const rail = page.locator(".barra-lateral.is-rec");
+    await expect(rail).toBeVisible();
+    await page.waitForTimeout(900);
+    const box = (await rail.boundingBox())!;
+    expect(box.width).toBeLessThanOrEqual(70);
+    const links = page.getByRole("navigation", { name: "Principal", exact: true }).getByRole("link");
+    expect(await links.count()).toBeGreaterThanOrEqual(9);
+    for (const i of [0, 2, 8]) {
+      const b = (await links.nth(i).boundingBox())!;
+      expect(b.x).toBeGreaterThanOrEqual(box.x);
+      expect(b.x + b.width).toBeLessThanOrEqual(box.x + box.width + 0.5);
+      expect(b.width).toBeLessThanOrEqual(box.width);
+    }
+    const over = await rail.evaluate((el) => el.scrollWidth > el.clientWidth + 1 || [...el.querySelectorAll<HTMLElement>("*")].some((n) => n.getBoundingClientRect().right > el.getBoundingClientRect().right + 1));
+    expect(over).toBe(false);
   });
 
   test("perfil mostra conquistas com regras e progresso", async ({ page }) => {

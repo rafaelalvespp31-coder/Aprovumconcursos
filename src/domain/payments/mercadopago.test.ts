@@ -1,6 +1,6 @@
 import { createHmac } from "node:crypto";
 import { describe, expect, it } from "vitest";
-import { accessEnd, mapStatus, toCents, verifySignature } from "./mercadopago";
+import { accessEnd, isValidCpf, mapStatus, maskCpf, toCents, verifySignature } from "./mercadopago";
 
 const sign = (secret: string, id: string, req: string, ts: string) => createHmac("sha256", secret).update(`id:${id};request-id:${req};ts:${ts};`).digest("hex");
 
@@ -59,5 +59,22 @@ describe("toCents", () => {
     expect(toCents(37.0)).toBe(3700);
     expect(toCents(0.1 + 0.2)).toBe(30);
     expect(toCents("1")).toBeNull();
+  });
+});
+
+describe("CPF", () => {
+  it("valida dígitos verificadores e recusa repetidos ou curtos", () => {
+    expect(isValidCpf("529.982.247-25")).toBe(true);
+    expect(isValidCpf("52998224725")).toBe(true);
+    expect(isValidCpf("529.982.247-24")).toBe(false);
+    expect(isValidCpf("111.111.111-11")).toBe(false);
+    expect(isValidCpf("123")).toBe(false);
+    expect(isValidCpf(null)).toBe(false);
+  });
+  it("aplica a máscara enquanto digita", () => {
+    expect(maskCpf("52998224725")).toBe("529.982.247-25");
+    expect(maskCpf("5299")).toBe("529.9");
+    expect(maskCpf("529982")).toBe("529.982");
+    expect(maskCpf("5299822")).toBe("529.982.2");
   });
 });

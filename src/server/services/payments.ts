@@ -4,7 +4,7 @@ import { createAdminClient } from "../supabase";
 import { logEvent } from "../observability";
 import { UserFacingError, enforceRateLimit } from "./trails";
 import { OFFERS, isOfferKey, type OfferKey } from "@/domain/plans/offers";
-import { accessEnd, mapStatus, toCents, type PayStatus } from "@/domain/payments/mercadopago";
+import { accessEnd, isValidCpf, mapStatus, toCents, type PayStatus } from "@/domain/payments/mercadopago";
 import { effectivePlan } from "@/domain/plans/limits";
 
 /** Configuração do Mercado Pago (o Access Token fica só no servidor). */
@@ -111,6 +111,9 @@ export async function createPayment(userId: string, input: CreateInput): Promise
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) throw new UserFacingError("Informe um e-mail válido para o pagamento.", "invalid_input");
   const idIn = (payerIn.identification && typeof payerIn.identification === "object" ? payerIn.identification : null) as Record<string, unknown> | null;
   const identification = idIn && str(idIn.number, 20) ? { type: str(idIn.type, 10) || "CPF", number: str(idIn.number, 20).replace(/\D/g, "") } : undefined;
+
+  // PIX: o CPF do pagador é obrigatório (o antifraude do Mercado Pago recusa PIX sem ele).
+  if (isPix && !isValidCpf(identification?.number)) throw new UserFacingError("Informe um CPF válido para gerar o PIX.", "invalid_input");
 
   await enforceRateLimit(userId, "pay_create", 8);
   const price = OFFERS[offer];

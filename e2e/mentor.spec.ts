@@ -27,14 +27,14 @@ test.describe("Mentor flutuante (em todas as telas)", () => {
     await expect(page.getByTestId("mentor-painel")).toBeHidden();
   });
 
-  test("acompanha a navegação e lembra se estava aberto (com a conversa)", async ({ page }) => {
+  test("acompanha a navegação e lembra se estava aberto (com a conversa)", async ({ page, isMobile }) => {
     await page.goto(`${G}/painel?mentor=ok`);
     await page.getByTestId("mentor-bolha").click();
     await page.getByRole("tab", { name: "Conversar" }).click();
     await page.getByRole("button", { name: "O que estudar hoje?" }).click();
     await expect(page.getByTestId("mentor-resposta").last()).toHaveAttribute("data-intencao", "hoje");
     // Navegação dentro do app: o Mentor continua aberto e a conversa continua lá.
-    await page.locator(".bn-wrap").getByRole("link", { name: /Questões/ }).first().click();
+    await (isMobile ? page.locator(".bn-wrap") : page.getByRole("navigation", { name: "Principal", exact: true })).getByRole("link", { name: /Questões/ }).first().click();
     await expect(page).toHaveURL(/\/questoes/);
     await expect(page.getByTestId("mentor-painel")).toBeVisible();
     await expect(page.getByTestId("mentor-resposta")).toHaveCount(1);

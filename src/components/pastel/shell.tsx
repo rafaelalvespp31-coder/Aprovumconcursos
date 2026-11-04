@@ -61,13 +61,14 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 function navItems(s: ShellSummary, base: string): NavItem[] {
   return [
     { id: "painel", href: `${base}/painel`, label: "Painel", icon: House, num: "1", desc: "Visão geral", title: "" },
-    { id: "trilhas", href: `${base}/trilhas`, label: "Estudos", icon: MapIcon, num: "2", desc: plural(s.counts.trails, "conteúdo", "conteúdos"), also: [`${base}/trilha`, `${base}/aula`, `${base}/nova-trilha`], title: "Seus estudos" },
-    { id: "quiz", href: `${base}/quiz`, label: "Modo Jogo", short: "Jogo", icon: Gamepad2, num: "3", desc: "Complete a lei", title: "Modo Jogo" },
-    { id: "questoes", href: `${base}/questoes`, label: "Questões", icon: CircleHelp, num: "4", desc: plural(s.counts.notebooks, "caderno", "cadernos"), title: "Cadernos de Questões", subtitle: "Organize, acesse e continue sua jornada rumo à aprovação." },
-    { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "5", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
-    { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "6", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
-    { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "7", desc: `Nível ${s.level}`, title: "Perfil & conquistas" },
-    { id: "plano", href: `${base}/plano`, label: "Meu Plano", icon: Crown, num: "8", desc: "Escolha seu plano", title: "Meu Plano", subtitle: "Conquiste mais. Estude sem limites." },
+    { id: "trilhas", href: `${base}/trilhas`, label: "Estudos", icon: MapIcon, num: "2", desc: plural(s.counts.trails, "conteúdo", "conteúdos"), also: [`${base}/trilha`, `${base}/aula`], title: "Seus estudos" },
+    { id: "novo", href: `${base}/nova-trilha`, label: "Novo Estudo", icon: Plus, num: "3", desc: "Mapa do conhecimento", title: "Novo estudo", subtitle: "Escolha a matéria e a aula no mapa." },
+    { id: "quiz", href: `${base}/quiz`, label: "Modo Jogo", short: "Jogo", icon: Gamepad2, num: "4", desc: "Complete a lei", title: "Modo Jogo" },
+    { id: "questoes", href: `${base}/questoes`, label: "Questões", icon: CircleHelp, num: "5", desc: plural(s.counts.notebooks, "caderno", "cadernos"), title: "Cadernos de Questões", subtitle: "Organize, acesse e continue sua jornada rumo à aprovação." },
+    { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "6", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
+    { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "7", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
+    { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "8", desc: `Nível ${s.level}`, title: "Perfil & conquistas" },
+    { id: "plano", href: `${base}/plano`, label: "Meu Plano", icon: Crown, num: "9", desc: "Escolha seu plano", title: "Meu Plano", subtitle: "Conquiste mais. Estude sem limites." },
   ];
 }
 
@@ -144,7 +145,7 @@ export function PastelShell({
         return;
       }
       if (!shortcutsOn || typing || e.metaKey || e.ctrlKey || e.altKey) return;
-      if (e.key >= "1" && e.key <= "7") {
+      if (e.key >= "1" && e.key <= "9") {
         const item = items[Number(e.key) - 1];
         if (item) router.push(item.href);
       }
@@ -190,10 +191,10 @@ export function PastelShell({
         <div className="relative flex min-h-screen w-full max-w-[100vw]">
           {/* Barra lateral (desktop) */}
           <aside
-            className={`sticky top-0 z-30 hidden h-screen shrink-0 flex-col transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:flex ${collapsed ? "w-[100px]" : "w-[272px] xl:w-[292px]"}`}
+            className={`sticky top-0 z-30 hidden h-screen shrink-0 flex-col transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:flex ${collapsed ? "w-[92px]" : "w-[272px] xl:w-[292px]"}`}
             style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
           >
-            <div className="barra-lateral m-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[32px] border border-[#1F1F1F] bg-[#0A0A0A] text-white shadow-[0_16px_48px_rgba(225,6,0,0.10),inset_0_1px_0_rgba(255,255,255,0.05)]">
+            <div className={`barra-lateral ${collapsed ? "is-rec" : ""} m-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[32px] border border-[#1F1F1F] bg-[#0A0A0A] text-white shadow-[0_16px_48px_rgba(225,6,0,0.10),inset_0_1px_0_rgba(255,255,255,0.05)]`}>
               <div className="barra-topo flex items-center gap-3.5 p-[22px]">
                 <Link
                   href={`${basePath}/painel`}
@@ -213,7 +214,7 @@ export function PastelShell({
                 )}
               </div>
 
-              <div className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 [scrollbar-width:none]">
+              <div className="barra-rolagem relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 [scrollbar-width:none]">
                 {activeIndex >= 0 && (
                   <div
                     aria-hidden
@@ -235,6 +236,7 @@ export function PastelShell({
                         href={s.href}
                         aria-current={on ? "page" : undefined}
                         aria-label={collapsed ? s.label : undefined}
+                        title={collapsed ? s.label : undefined}
                         onClick={() => {
                           if (path === s.href) setToast(`${s.label} já está aberto ✨`);
                         }}
@@ -255,11 +257,6 @@ export function PastelShell({
                           </span>
                         )}
                         {!collapsed && on && <ChevronRight className="h-4 w-4 text-white/70 transition-transform group-hover:translate-x-0.5" aria-hidden />}
-                        {collapsed && (
-                          <span className="pointer-events-none absolute left-[84px] top-1/2 z-50 -translate-y-1/2 whitespace-nowrap rounded-[12px] border border-[#333] bg-[#1C1C1C] px-3 py-2 text-[12px] font-medium text-white opacity-0 shadow-xl transition-all duration-300 group-hover:translate-x-1 group-hover:opacity-100">
-                            {s.label} <span className="text-white/50">[{s.num}]</span>
-                          </span>
-                        )}
                       </Link>
                       {s.id === "trilhas" && !collapsed && summary.subjects.length > 0 && (
                         <div ref={subRef}>
@@ -374,7 +371,7 @@ export function PastelShell({
                         <Target className="h-3.5 w-3.5 text-[#FF1E1E]" />
                       </span>
                       <span className="truncate">
-                        {isPainel ? (notice ?? "Um conteúdo por vez: aula completa e três níveis — fácil, médio e difícil.") : `${heading?.subtitle ?? active?.subtitle ?? active?.desc ?? ""}${shortcutsOn ? " • atalhos 1-7" : ""}`}
+                        {isPainel ? (notice ?? "Um conteúdo por vez: aula completa e três níveis — fácil, médio e difícil.") : `${heading?.subtitle ?? active?.subtitle ?? active?.desc ?? ""}${shortcutsOn ? " • atalhos 1-9" : ""}`}
                       </span>
                     </div>
                   </div>
@@ -414,8 +411,10 @@ export function PastelShell({
               <div key={active?.id ?? path} className="animate-[enter_0.5s_cubic-bezier(0.34,1.56,0.64,1)]">{children}</div>
             </main>
 
-            {/* Menu inferior (celular: fixo no rodapé; computador: centralizado no rodapé do conteúdo) */}
-            <BottomNavigation activeId={bottomActive} basePath={basePath} />
+            {/* Menu inferior: só no celular. No computador, o menu é o da barra lateral. */}
+            <div className="lg:hidden">
+              <BottomNavigation activeId={bottomActive} basePath={basePath} />
+            </div>
           </div>
         </div>
 
@@ -447,8 +446,8 @@ function QuickSearch({ inputRef, basePath, items, dark = false }: { inputRef: Re
   const toast = usePastelToast();
 
   const pages: SearchItem[] = useMemo(
-    () => items.map((i) => ({ type: "Página" as const, name: i.label, href: i.href })).concat([{ type: "Página" as const, name: "Novo estudo", href: `${basePath}/nova-trilha` }]),
-    [items, basePath],
+    () => items.map((i) => ({ type: "Página" as const, name: i.label, href: i.href })),
+    [items],
   );
 
   const term = q.trim().toLowerCase();
@@ -621,7 +620,7 @@ function EstudosHeader({ summary, basePath, items, searchRef, mobileOnly = false
             </button>
           </div>
           <ul className="mt-6 flex flex-col gap-1.5">
-            {items.map((s) => {
+            {items.filter((s) => s.id !== "novo").map((s) => {
               const on = path === s.href || (s.also ?? []).some((a) => path.startsWith(a));
               return (
                 <li key={s.id}>

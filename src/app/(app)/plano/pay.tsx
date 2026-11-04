@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Payment, initMercadoPago } from "@mercadopago/sdk-react";
 import { OFFERS, type OfferKey } from "@/domain/plans/offers";
+import { isValidCpf, maskCpf } from "@/domain/payments/mercadopago";
 
 interface PayResult {
   id: string;
@@ -33,6 +34,7 @@ const REASON: Record<string, string> = {
   cc_rejected_bad_filled_date: "Data de validade inválida.",
   cc_rejected_bad_filled_other: "Confira os dados do cartão.",
   cc_rejected_call_for_authorize: "Autorize o pagamento com o seu banco e tente de novo.",
+  rejected_high_risk: "O pagamento foi recusado pela análise de segurança. Confira o CPF, aguarde alguns minutos e tente de novo, ou pague com cartão.",
   cc_rejected_high_risk: "Pagamento não autorizado por segurança. Tente outro meio de pagamento.",
 };
 
@@ -43,13 +45,26 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(false);
   const [pixBusy, setPixBusy] = useState(false);
+  const [cpf, setCpf] = useState(() => {
+    try {
+      return typeof window === "undefined" ? "" : maskCpf(window.localStorage.getItem("na:cpf-pix") ?? "");
+    } catch {
+      return "";
+    }
+  });
 
   // PIX direto: sem pedir e-mail. O servidor usa o e-mail da conta do aluno.
   const payPix = async () => {
     setError(null);
+    if (!isValidCpf(cpf)) return setError("Informe um CPF válido para gerar o PIX.");
     setPixBusy(true);
     try {
-      const r = await fetch("/api/payments/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, formData: { payment_method_id: "pix" }, deviceId: deviceId() }) });
+      window.localStorage.setItem("na:cpf-pix", cpf.replace(/\D/g, ""));
+    } catch {
+      /* sem armazenamento: só não lembra o CPF */
+    }
+    try {
+      const r = await fetch("/api/payments/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, formData: { payment_method_id: "pix", payer: { identification: { type: "CPF", number: cpf.replace(/\D/g, "") } } }, deviceId: deviceId() }) });
       const j = (await r.json().catch(() => ({}))) as { payment?: PayResult; error?: string };
       if (!r.ok || !j.payment) setError(j.error ?? "Não foi possível gerar o PIX agora. Tente novamente.");
       else setResult(j.payment);
@@ -132,8 +147,12 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
       <p className="plano-p">{o.price}</p>
       <p className="plano-s">{o.per} · PIX ou cartão em até 12x</p>
       {error && <p role="alert" className="plano-e">{error}</p>}
+      <label className="plano-cpf">
+        <span>CPF do pagador (para o PIX)</span>
+        <input inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" value={cpf} onChange={(e) => setCpf(maskCpf(e.target.value))} data-testid="plano-cpf" maxLength={14} />
+      </label>
       <button type="button" className="plano-b" disabled={pixBusy} onClick={payPix} data-testid="plano-pix-pagar">
-        {pixBusy ? "Gerando PIX…" : "Pagar com PIX"}
+        {pixBusy ? "Gerando QR Code…" : "Gerar QR Code PIX"}
       </button>
       <p className="plano-s">ou pague com cartão de crédito em até 12x</p>
       {!ready && <p className="plano-s">Carregando pagamento seguro…</p>}
