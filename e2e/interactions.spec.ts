@@ -383,10 +383,10 @@ test.describe("casco pastel", () => {
     const nav = page.getByRole("navigation", { name: "Principal", exact: true });
     await expect(nav.getByRole("link", { name: /Painel/ })).toHaveAttribute("aria-current", "page");
     await page.getByTestId("evolucao-toggle").click();
-    await expect(page.getByTestId("nav-desc-revisoes")).toHaveText("2 pendentes");
+    await expect(nav.getByRole("link", { name: "Revisões" })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Modo Jogo/ })).toHaveAttribute("href", `${G}/quiz`);
     await expect(nav.getByRole("link", { name: /Novo Estudo/ })).toHaveAttribute("href", `${G}/nova-trilha`);
-    await page.keyboard.press("8");
+    await page.keyboard.press("9");
     await expect(page).toHaveURL(new RegExp(`${G}/perfil`));
     await expect(page.getByTestId("nivel")).toHaveText("Nível 5");
     await page.getByRole("button", { name: "Recolher", exact: true }).click();
@@ -944,11 +944,12 @@ test("banner das aprovações: saudação reveza com os banners de aprovação a
   const rot = page.getByTestId("banner-rotator");
   await expect(rot).toHaveAttribute("data-slide", "0");
   await expect(rot).toHaveAttribute("data-slide", "1", { timeout: 5000 });
-  await expect(rot.getByRole("img", { name: /William Abreu/ })).toBeVisible();
+  await expect(rot.getByRole("img", { name: /Fábio Bezerra/ })).toBeVisible();
+  await expect(rot.getByRole("img", { name: /William Abreu|Rafael Alves/ })).toHaveCount(0);
   // Pontos levam direto a um banner; pausa interrompe a troca.
-  await rot.getByRole("button", { name: "Mostrar banner 5 de 5" }).click();
+  await rot.getByRole("button", { name: "Mostrar banner 3 de 3" }).click();
   await expect(rot.getByRole("img", { name: /Sd Lacerda/ })).toBeVisible();
-  await rot.getByRole("button", { name: "Mostrar banner 3 de 5" }).click();
+  await rot.getByRole("button", { name: "Mostrar banner 2 de 3" }).click();
   await expect(rot.getByRole("img", { name: /Fábio Bezerra/ })).toBeVisible();
   await rot.getByRole("button", { name: /Pausar troca automática/ }).click();
   // pausado: o slide atual não muda mais (lê depois do clique, sem depender do relógio da máquina de teste)
@@ -1394,4 +1395,32 @@ test("aula: busca leva direto a outro subtópico do mesmo tópico", async ({ pag
   await expect(box.getByTestId("comecar-subtopico")).toContainText("Corrupção passiva");
   await input.fill("xyz");
   await expect(box).toContainText("Nenhum subtópico");
+});
+
+test.describe("menu lateral: Depoimentos, Evolução e plano", () => {
+  test("Depoimentos mostra os tutores; sem numeração nos menus; Evolução limpo", async ({ page, isMobile }) => {
+    test.skip(isMobile, "barra lateral só no computador");
+    await page.setViewportSize({ width: 1366, height: 768 });
+    await page.goto(`${G}/depoimentos`);
+    await expect(page.getByTestId("tutor-william")).toBeVisible();
+    await expect(page.getByTestId("tutor-rafael")).toBeVisible();
+    await expect(page.getByTestId("depoimento")).toHaveCount(1);
+    const nav = page.getByRole("navigation", { name: "Principal", exact: true });
+    await expect(nav.getByRole("link", { name: /Depoimentos/ })).toHaveAttribute("aria-current", "page");
+    await expect(nav.locator("[aria-label^='atalho']")).toHaveCount(0);
+    await page.getByTestId("evolucao-toggle").click();
+    await expect(nav.getByRole("link", { name: "Desempenho", exact: true })).toBeVisible();
+    await expect(nav.getByText(/respostas/)).toHaveCount(0);
+    // o card do plano cabe e todos os menus ficam alcançáveis
+    const plano = page.getByTestId("plano-card");
+    await expect(plano).toContainText("Recruta");
+    const box = (await plano.boundingBox())!;
+    expect(box.y + box.height).toBeLessThanOrEqual(768);
+  });
+
+  test("cronômetro de estudo aparece na aula", async ({ page }) => {
+    await page.goto(`${G}/aula/l-ext`);
+    await expect(page.getByTestId("estudo-relogio")).toBeVisible();
+    await expect(page.getByTestId("estudo-relogio")).toContainText(/\d\d:\d\d:\d\d/);
+  });
 });

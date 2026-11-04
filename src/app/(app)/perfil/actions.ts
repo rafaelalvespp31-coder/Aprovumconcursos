@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireUser } from "@/server/auth";
 import { createUserClient } from "@/server/supabase";
+import { normalizeWhatsapp } from "@/domain/contact/whatsapp";
 import { setMyAvatarGender } from "@/server/services/avatar";
 
 export interface ProfileState { ok?: boolean; error?: string }
@@ -19,13 +20,18 @@ export async function updateProfileAction(_: ProfileState, form: FormData): Prom
       display_name: z.string().trim().min(1, "Informe seu nome.").max(80),
       daily_questions_goal: optionalInt(1, 500, "Meta diária entre 1 e 500 questões."),
       weekly_lessons_goal: optionalInt(1, 100, "Meta semanal entre 1 e 100 aulas."),
+      whatsapp: z.string().trim().max(25).transform((v) => (v === "" ? null : normalizeWhatsapp(v) ?? "invalid")),
+      motto: z.string().trim().max(60, "A frase do ranking tem no máximo 60 caracteres.").transform((v) => (v === "" ? null : v)),
     })
     .safeParse({
       display_name: form.get("display_name"),
       daily_questions_goal: form.get("daily_questions_goal") ?? "",
       weekly_lessons_goal: form.get("weekly_lessons_goal") ?? "",
+      whatsapp: form.get("whatsapp") ?? "",
+      motto: form.get("motto") ?? "",
     });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
+  if (parsed.data.whatsapp === "invalid") return { error: "WhatsApp inválido. Use o DDD e o número (ex.: (31) 99999-9999)." };
   const db = await createUserClient();
   const { error } = await db.from("profiles").update(parsed.data).eq("id", user.id);
   if (error) return { error: "Não foi possível salvar agora." };

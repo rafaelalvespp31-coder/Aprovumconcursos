@@ -16,7 +16,7 @@ test.describe("Meu Plano", () => {
     await page.goto(URL);
     await page.getByTestId("plano-anual").click();
     const d = page.getByTestId("plano-dialogo");
-    await expect(d).toContainText("Plano Anual");
+    await expect(d).toContainText("Elite Tática");
     await expect(d).toContainText("R$ 347,00");
     await page.getByTestId("plano-confirmar").click();
     await expect(page.getByTestId("plano-enviado")).toContainText("A equipe APROVUM libera o plano");

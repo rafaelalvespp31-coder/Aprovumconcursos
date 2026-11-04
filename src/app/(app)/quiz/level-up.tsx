@@ -159,6 +159,7 @@ export function LevelUpDialog({
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-[15px] font-bold">{r.name}{r.isMe ? " (você)" : ""}</span>
                     <span className={`block text-[12px] ${r.isMe ? "text-white/80" : "text-white/50"}`}>{r.patente} • {r.answered} questões</span>
+                    {r.motto && <span className={`block truncate text-[11.5px] italic ${r.isMe ? "text-white/90" : "text-white/60"}`} data-testid="ranking-frase">“{r.motto}”</span>}
                   </span>
                   <span className="shrink-0 text-right">
                     <span className="block text-[17px] font-bold tabular-nums">{r.xp}</span>

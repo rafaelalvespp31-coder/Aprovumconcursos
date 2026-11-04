@@ -51,6 +51,7 @@ export interface RankingRow {
   name: string;
   level: number;
   xp: number;
+  motto?: string | null;
 }
 
 export interface HomeData {
@@ -81,7 +82,7 @@ async function loadPerformance(userId: string): Promise<PerformanceState> {
 export async function loadTop(limit = 5): Promise<RankingRow[]> {
   const { data, error } = await createAdminClient().rpc("gamification_top", { p_limit: limit });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as Array<{ pos: number; name: string; level: number; xp: number | string }>).map((r) => ({ ...r, xp: Number(r.xp) }));
+  return ((data ?? []) as Array<{ pos: number; name: string; level: number; xp: number | string; motto: string | null }>).map((r) => ({ ...r, xp: Number(r.xp) }));
 }
 
 /** Última aula realmente em andamento do aluno (nada inventado: sem progresso → null). */

@@ -47,7 +47,7 @@ export function DemoHome({ mannequin, gender, level, empty, levelUp, canCustomiz
       ? []
       : [{ id: "c1", name: "Concurso Exemplo", institution: "Órgão de exemplo (galeria)", roleName: "Agente", status: "edital_publicado", vacancies: 5000, salary: null, examDate: "2027-07-27", examDateConfirmed: true, infoConfirmed: false, sourceName: "Exemplo da galeria", sourceUrl: null, infoUpdatedAt: "2026-11-01", imageUrl: null }],
     insights: empty ? [] : [{ title: "Reforce Processo Penal: Inquérito Policial.", reason: "Você acertou 55% das 120 questões desse assunto.", href: "/questoes", actionLabel: "Resolver 15 questões" }],
-    top: empty ? [] : [{ pos: 1, name: "Ana P.", level: 6, xp: 7200 }, { pos: 2, name: "João S.", level: 5, xp: 5600 }, { pos: 3, name: "Rafael A.", level: 1, xp: 1000 }],
+    top: empty ? [] : [{ pos: 1, name: "Ana P.", level: 6, xp: 7200, motto: "Disciplina vence talento." }, { pos: 2, name: "João S.", level: 5, xp: 5600 }, { pos: 3, name: "Rafael A.", level: 1, xp: 1000 }],
   };
   return (
     <HomeOperacao

@@ -89,6 +89,9 @@ export function SignUpForm() {
           </p>
         )}
       </fieldset>
+      <Field id="whatsapp" label="WhatsApp" hint="Com DDD. Usaremos para te adicionar ao grupo VIP dos alunos." error={err(state, "whatsapp")}>
+        <input id="whatsapp" name="whatsapp" type="tel" autoComplete="tel" inputMode="tel" placeholder="(31) 99999-9999" required maxLength={20} className={inputClass} aria-invalid={!!err(state, "whatsapp")} data-testid="cadastro-whatsapp" />
+      </Field>
       <Field id="email" label="E-mail" error={err(state, "email")}>
         <input id="email" name="email" type="email" autoComplete="email" inputMode="email" required className={inputClass} aria-invalid={!!err(state, "email")} />
       </Field>

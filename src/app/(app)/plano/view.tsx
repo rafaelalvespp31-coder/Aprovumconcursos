@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useSyncExternalStore, useTransition, type CSSProperties, type ReactNode } from "react";
-import { OFFERS, type OfferKey } from "@/domain/plans/offers";
+import { OFFERS, PLAN_NAMES, type OfferKey } from "@/domain/plans/offers";
 import type { ChoosePlanResult } from "./actions";
 import { PayBox } from "./pay";
 
@@ -37,11 +37,11 @@ const CARD_Y = 432;
 const CARD_H = 604;
 type Card = { id: "gratuito" | OfferKey; x: number; w: number; label: string };
 const CARDS: Card[] = [
-  { id: "gratuito", x: 0, w: 267, label: "Plano Gratuito — acesso gratuito" },
-  { id: "mensal", x: 267, w: 224, label: "Assinar Plano Mensal — R$ 37,00 por mês" },
-  { id: "semestral", x: 491, w: 231, label: "Assinar Plano Semestral — R$ 197,00 por 6 meses" },
-  { id: "anual", x: 722, w: 226, label: "Assinar Plano Anual — R$ 347,00 por 12 meses" },
-  { id: "vitalicio", x: 948, w: 264, label: "Assinar Plano Vitalício — R$ 697,00, acesso para sempre" },
+  { id: "gratuito", x: 0, w: 267, label: "Recruta — acesso gratuito" },
+  { id: "mensal", x: 267, w: 224, label: "Assinar Combatente — R$ 37,00 por mês" },
+  { id: "semestral", x: 491, w: 231, label: "Assinar Operador — R$ 197,00 por 6 meses" },
+  { id: "anual", x: 722, w: 226, label: "Assinar Elite Tática — R$ 347,00 por 12 meses" },
+  { id: "vitalicio", x: 948, w: 264, label: "Assinar Comando Supremo — R$ 697,00, acesso para sempre" },
 ];
 const PERKS = [
   { x: 0, w: 300 },
@@ -70,7 +70,7 @@ const ICON: Record<Card["id"], { x: number; y: number; w: number; h: number }> =
   anual: { x: 795, y: 450, w: 100, h: 80 },
   vitalicio: { x: 1020, y: 445, w: 110, h: 65 },
 };
-const NAME: Record<Card["id"], string> = { gratuito: "GRATUITO", mensal: "MENSAL", semestral: "SEMESTRAL", anual: "ANUAL", vitalicio: "VITALÍCIO" };
+const NAME: Record<Card["id"], string> = { gratuito: "RECRUTA", mensal: "COMBATENTE", semestral: "OPERADOR", anual: "ELITE TÁTICA", vitalicio: "COMANDO SUPREMO" };
 
 function MobileCard({ id, current, onPick }: { id: Card["id"]; current: boolean; onPick: (k: OfferKey) => void }) {
   const free = id === "gratuito";
@@ -84,7 +84,7 @@ function MobileCard({ id, current, onPick }: { id: Card["id"]; current: boolean;
       <h2 className="pm-n">{NAME[id]}</h2>
       {free ? (
         <>
-          <p className="pm-tag">DEGUSTAÇÃO</p>
+          <p className="pm-tag">{PLAN_NAMES.gratuito.tagline.toUpperCase()}</p>
           <p className="pm-sub">Conheça a plataforma e experimente a qualidade APROVUM.</p>
         </>
       ) : (
@@ -99,7 +99,7 @@ function MobileCard({ id, current, onPick }: { id: Card["id"]; current: boolean;
         ))}
       </ul>
       {free ? (
-        <Link href="/painel" className="pm-btn pm-btn-free" aria-label="Plano Gratuito — acesso gratuito" data-testid="plano-gratuito">
+        <Link href="/painel" className="pm-btn pm-btn-free" aria-label="Recruta — acesso gratuito" data-testid="plano-gratuito">
           ACESSO GRATUITO
         </Link>
       ) : (
@@ -107,6 +107,7 @@ function MobileCard({ id, current, onPick }: { id: Card["id"]; current: boolean;
           ASSINAR AGORA
         </button>
       )}
+      {!free && <p className="pm-sub">{PLAN_NAMES[id].tagline}</p>}
       {id === "vitalicio" && <p className="pm-nota">INVESTIMENTO PARA TODA A VIDA!</p>}
       {free && <p className="pm-nota pm-nota-free">Ideal para você conhecer todo o poder da APROVUM.</p>}
       {current && (

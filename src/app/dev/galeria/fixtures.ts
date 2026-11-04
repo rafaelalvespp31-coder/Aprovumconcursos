@@ -246,7 +246,7 @@ export const shellSummary: ShellSummary = {
   level: g.level.level,
   counts: { trails: 2, questions: 84, notebooks: 5, dueReviews: 2, answered: 136 },
   plan: "gratuito",
-  planInfo: { label: "Plano Gratuito", until: null },
+  planInfo: { label: "Recruta", tagline: "O primeiro passo da missão", until: null },
   subjects: [
     { name: "Direito Administrativo", studies: [{ id: id(10), title: "Polícia Penal MG — Direito Administrativo", status: "andamento" }] },
     { name: "Direito Penal", studies: [{ id: id(12), title: "Teoria do crime: fato típico", status: "concluido" }, { id: id(13), title: "Homicídio (CP, art. 121)", status: "nao_iniciado" }] },

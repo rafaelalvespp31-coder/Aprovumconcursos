@@ -528,7 +528,7 @@ export function QuizView({
                   </div>
 
                   {/* Frase da lei com as lacunas */}
-                  <div className="jogo-frase relative mt-2.5 overflow-y-auto overscroll-contain rounded-[18px] border border-white/10 bg-black/40 px-3 pb-3 pt-4 sm:mt-3 sm:px-5">
+                  <div className={`jogo-frase relative mt-2.5 overflow-y-auto overscroll-contain rounded-[18px] border bg-black/40 px-3 pb-3 pt-4 sm:mt-3 sm:px-5 ${check ? (check.correct ? "jogo-acerto" : "jogo-erro") : "border-white/10"}`}>
                     <span
                       className="absolute left-3 top-1 font-serif text-[46px] font-black leading-none text-[#FF1E12]"
                       aria-hidden
@@ -656,23 +656,18 @@ export function QuizView({
                   <div className="jogo-acoes mt-3" data-testid="jogo-acoes">
                     {check && (
                       <div
-                        className={`entrar mb-2 flex items-start gap-3 rounded-[16px] px-4 py-2.5 ring-1 ${check.correct ? "bg-[#0F2A18] ring-[#22C55E]/50" : "bg-[#1A0505] ring-[#E10600]/40"}`}
+                        className={`entrar jogo-res mb-2 flex items-center gap-3 rounded-[16px] px-4 py-3 ${check.correct ? "jogo-res-ok" : "jogo-res-erro"}`}
                         role="status"
+                        data-testid={check.correct ? "resultado-acerto" : "resultado-erro"}
                       >
-                        <img
-                          src={MASCOT}
-                          alt=""
-                          className="h-10 w-10 shrink-0 rounded-full bg-black object-contain p-0.5"
-                        />
-                        <div>
-                          <p
-                            className={`text-[15px] font-black ${check.correct ? "text-[#4ADE80]" : "text-white"}`}
-                          >
+                        <span className="jogo-res-ico" aria-hidden>{check.correct ? "✓" : "✕"}</span>
+                        <div className="min-w-0">
+                          <p className="text-[18px] font-black uppercase leading-tight tracking-wide text-white sm:text-[20px]">
                             {check.correct
-                              ? `Na mosca! +${check.xp} XP`
-                              : `${timedOut ? "Tempo esgotado!" : "Errou."} ${hearts > 0 ? "Menos uma vida." : "Acabaram as vidas."}`}
+                              ? `Acertou! +${check.xp} XP`
+                              : `${timedOut ? "Tempo esgotado!" : "Errou!"} ${hearts > 0 ? "Menos uma vida." : "Acabaram as vidas."}`}
                           </p>
-                          <p className="text-[13.5px] text-white/75">
+                          <p className="text-[13.5px] font-semibold text-white/90">
                             {check.correct
                               ? "Literalidade em dia. É assim que se vence a banca."
                               : `Texto certo: ${check.answers.join(" · ")}. Leia a explicação abaixo.`}

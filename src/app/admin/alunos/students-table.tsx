@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Button, inputClass, Tag } from "@/components/ui";
 import { BILLING_PERIODS, PERIOD_LABELS, PLAN_IDS, PLAN_LABELS, type BillingPeriod, type PlanId, type PlanState } from "@/domain/plans/limits";
+import { formatWhatsapp } from "@/domain/contact/whatsapp";
 import type { StudentActionResult } from "./actions";
 
 export interface StudentItem {
@@ -12,6 +13,7 @@ export interface StudentItem {
   email: string | null;
   createdAt: string;
   lastSignInAt: string | null;
+  whatsapp?: string | null;
   confirmed: boolean;
   isAdmin: boolean;
   planId: string;
@@ -128,6 +130,9 @@ function StudentRowView({ s, open, onToggle, actions }: { s: StudentItem; open: 
           <p className="t-tiny text-tinta-fraca">
             {s.email ?? "—"}
             {!s.confirmed && " · e-mail não confirmado"}
+          </p>
+          <p className="t-tiny text-tinta-fraca" data-testid="aluno-whatsapp">
+            WhatsApp: {s.whatsapp ? <a href={`https://wa.me/${s.whatsapp}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-azul underline">{formatWhatsapp(s.whatsapp)}</a> : "não informado"}
           </p>
           <p className="t-tiny text-tinta-fraca">Último acesso: {dateTime(s.lastSignInAt)}</p>
         </td>

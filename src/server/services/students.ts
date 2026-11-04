@@ -13,6 +13,7 @@ export interface StudentRow {
   email: string | null;
   createdAt: string;
   lastSignInAt: string | null;
+  whatsapp: string | null;
   confirmed: boolean;
   isAdmin: boolean;
   /** Plano gravado (o que foi adquirido/definido). */
@@ -37,12 +38,13 @@ export async function listStudents(): Promise<StudentRow[]> {
     if (data.users.length < 1000) break;
   }
   const [profiles, subs, payments, admins] = await Promise.all([
-    db.from("profiles").select("id, display_name").limit(20000),
+    db.from("profiles").select("id, display_name, whatsapp").limit(20000),
     db.from("subscriptions").select("user_id, plan_id, status, current_period_end, billing_period, paid_at").limit(20000),
     db.from("subscription_payments").select("user_id, plan_id, period, amount_cents, paid_at").order("paid_at", { ascending: false }).limit(20000),
     db.from("admin_roles").select("user_id").eq("role", "admin"),
   ]);
   const name = new Map((profiles.data ?? []).map((p) => [p.id as string, (p.display_name as string | null) || null]));
+  const wpp = new Map((profiles.data ?? []).map((p) => [p.id as string, (p.whatsapp as string | null) || null]));
   const sub = new Map((subs.data ?? []).map((s) => [s.user_id as string, s]));
   const lastPay = new Map<string, { period: string; amountCents: number | null; paidAt: string; planId: string }>();
   for (const p of payments.data ?? []) if (!lastPay.has(p.user_id as string)) lastPay.set(p.user_id as string, { period: p.period as string, amountCents: p.amount_cents as number | null, paidAt: p.paid_at as string, planId: p.plan_id as string });
@@ -57,6 +59,7 @@ export async function listStudents(): Promise<StudentRow[]> {
         email: u.email ?? null,
         createdAt: u.created_at,
         lastSignInAt: u.last_sign_in_at ?? null,
+        whatsapp: wpp.get(u.id) ?? null,
         confirmed: !!u.email_confirmed_at,
         isAdmin: adminIds.has(u.id),
         planId: (s?.plan_id as string) ?? "free",

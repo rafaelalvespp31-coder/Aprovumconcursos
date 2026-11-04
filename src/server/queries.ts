@@ -11,7 +11,7 @@ import type { AuditReport } from "@/domain/content/audit";
 import type { UnitState } from "@/domain/progress/state-machine";
 import type { RulerState } from "@/components/coverage-ruler";
 import { effectivePlan } from "@/domain/plans/limits";
-import { currentOffer, OFFERS, planTier, type PlanTier } from "@/domain/plans/offers";
+import { currentOffer, PLAN_NAMES, planTier, type PlanTier } from "@/domain/plans/offers";
 import type { SavedAnswer } from "@/components/question-card";
 import type { AnswerFeedback } from "./services/study";
 import { summarizePerformance, type AttemptRecord } from "@/domain/progress/performance";
@@ -334,7 +334,7 @@ export async function getProfile() {
   const db = await createUserClient();
   const me = (await getSessionUser())?.id ?? "00000000-0000-0000-0000-000000000000";
   const [p, s] = await Promise.all([
-    db.from("profiles").select("display_name, daily_questions_goal, weekly_lessons_goal, onboarding_completed, created_at").eq("id", me).maybeSingle(),
+    db.from("profiles").select("display_name, daily_questions_goal, weekly_lessons_goal, onboarding_completed, created_at, whatsapp, motto").eq("id", me).maybeSingle(),
     db.from("subscriptions").select("status, plan_id, current_period_end, billing_period, plans(name, max_active_trails, max_trail_builds_per_month, max_lesson_generations_per_month)").eq("user_id", me).maybeSingle(),
   ]);
   return { profile: p.data, subscription: s.data };
@@ -653,7 +653,7 @@ export interface ShellSummary {
   /** Cor do "Meu Plano": prata (gratuito), vermelho neon (pago) ou dourado neon (vitalício). */
   plan: PlanTier;
   /** Nome do plano em vigor e, nos planos por período, até quando vale (ISO). */
-  planInfo: { label: string; until: string | null };
+  planInfo: { label: string; tagline: string; until: string | null };
 }
 
 export async function getShellSummary(email: string | null): Promise<ShellSummary> {
@@ -703,7 +703,7 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
     plan: planTier(eff.paid, subRow?.billing_period ?? null, !!subRow?.current_period_end),
     planInfo: (() => {
       const o = currentOffer(eff.paid, subRow?.billing_period ?? null, !!subRow?.current_period_end);
-      return { label: o === "gratuito" ? "Plano Gratuito" : OFFERS[o].label, until: o === "gratuito" || o === "vitalicio" ? null : (subRow?.current_period_end ?? null) };
+      return { label: PLAN_NAMES[o].name, tagline: PLAN_NAMES[o].tagline, until: o === "gratuito" || o === "vitalicio" ? null : (subRow?.current_period_end ?? null) };
     })(),
     counts: { trails: trails.count ?? 0, questions, notebooks: notebooks.count ?? 0, dueReviews: reviews.count ?? 0, answered: stats.answered },
     subjects: buildSubjectsMenu({

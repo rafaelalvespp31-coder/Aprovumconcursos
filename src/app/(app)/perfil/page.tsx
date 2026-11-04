@@ -56,7 +56,7 @@ export default async function ProfilePage() {
       )}
       <PastelCard noTilt className="p-6">
         <h2 className="mb-4 text-[13px] font-bold">Dados e metas</h2>
-        <ProfileForm avatarGender={avatarGender} displayName={profile?.display_name ?? ""} dailyQuestions={profile?.daily_questions_goal ?? null} weeklyLessons={profile?.weekly_lessons_goal ?? null} />
+        <ProfileForm whatsapp={(profile as { whatsapp?: string | null } | null)?.whatsapp ?? null} motto={(profile as { motto?: string | null } | null)?.motto ?? null} avatarGender={avatarGender} displayName={profile?.display_name ?? ""} dailyQuestions={profile?.daily_questions_goal ?? null} weeklyLessons={profile?.weekly_lessons_goal ?? null} />
       </PastelCard>
       <PastelCard noTilt className="p-6" testId="plano">
         <h2 id="plano" className="mb-3 text-[13px] font-bold">Plano</h2>

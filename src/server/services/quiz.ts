@@ -233,6 +233,7 @@ export interface RankingRow {
   answered: number;
   isMe: boolean;
   patente: string;
+  motto?: string | null;
 }
 
 /** Ranking de todos os alunos (posição, primeiro nome + inicial, XP). */
@@ -241,12 +242,13 @@ export async function getRanking(limit = 20): Promise<RankingRow[]> {
   const db = await createUserClient();
   const { data, error } = await db.rpc("quiz_ranking", { p_limit: limit });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as Array<{ pos: number; name: string; xp: number; answered: number; is_me: boolean }>).map((r) => ({
+  return ((data ?? []) as Array<{ pos: number; name: string; xp: number; answered: number; is_me: boolean; motto: string | null }>).map((r) => ({
     pos: r.pos,
     name: r.name,
     xp: r.xp,
     answered: r.answered,
     isMe: r.is_me,
+    motto: r.motto,
     patente: patente(levelFor(r.answered)),
   }));
 }

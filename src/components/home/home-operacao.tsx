@@ -7,6 +7,7 @@ import { rankFor, type AvatarConfig, type AvatarItem } from "@/domain/avatar/cat
 import type { Portrait } from "@/components/avatar/portraits";
 import { CONTEST_STATUS, MISSION_ORDER, accuracy, daysUntil, formatStudyTime, levelPct, missionXp, nextMilestone, rankTrend, weeklyEvolution, type MissionKey } from "@/domain/gamification/home";
 import type { HomeData } from "@/server/services/gamification";
+import { shortName } from "@/domain/avatar/short-name";
 import { LevelUp } from "./level-up";
 import { RequestSlot, RequestTrigger } from "./request-slot";
 import { SkinsPanel, type SelectSkin } from "./skins-panel";
@@ -77,7 +78,7 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, canCu
   const trend = rankTrend(game.ranking);
   const goal = nextMilestone(game.streak.current, game.streak.milestones);
   const rankReady = game.ranking.position != null && game.ranking.total >= 2;
-  const nm = name?.trim() || "Operador APROVUM";
+  const nm = shortName(name?.trim() || "Operador APROVUM");
   const nameSize = Math.min(50, Math.max(15, 560 / Math.max(10, nm.length)));
   const rankLabel = rank.label.toUpperCase();
   const rankSize = rankLabel.length <= 7 ? 25 : Math.max(14, 170 / rankLabel.length);
@@ -163,7 +164,7 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, canCu
                 ) : (
                   <ol>
                     {top.map((r) => (
-                      <li key={r.pos} className={r.pos === game.ranking.position ? "is-me" : ""}><b>#{r.pos}</b><span>{r.name}</span><small>Nv {r.level}</small><em>{fmt(r.xp)} XP</em></li>
+                      <li key={r.pos} className={r.pos === game.ranking.position ? "is-me" : ""}><b>#{r.pos}</b><span className="cl-rk-nome">{r.name}{r.motto && <i className="cl-motto">“{r.motto}”</i>}</span><small>Nv {r.level}</small><em>{fmt(r.xp)} XP</em></li>
                     ))}
                     {game.ranking.position != null && game.ranking.position > top.length && (
                       <li className="is-me"><b>#{game.ranking.position}</b><span>Você</span><small>Nv {game.level}</small><em>{fmt(game.xp)} XP</em></li>

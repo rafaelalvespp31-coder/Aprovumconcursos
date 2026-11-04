@@ -16,6 +16,7 @@ import {
   TrendingUp,
   CircleHelp,
   Clock3,
+  Video,
   Crown,
   House,
   Map as MapIcon,
@@ -33,6 +34,7 @@ import { useStudyApi } from "@/components/study-api";
 import type { SearchItem } from "@/app/(app)/study-actions";
 import type { ShellSummary } from "@/server/queries";
 import { useStored } from "@/components/use-stored";
+import { StudyClock } from "./study-clock";
 import { SubjectsSubmenu } from "./subjects-submenu";
 import { BottomNavigation, type BottomNavId } from "./bottom-navigation";
 
@@ -68,8 +70,9 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
     { id: "questoes", href: `${base}/questoes`, label: "Questões", icon: CircleHelp, num: "5", desc: plural(s.counts.notebooks, "caderno", "cadernos"), title: "Cadernos de Questões", subtitle: "Organize, acesse e continue sua jornada rumo à aprovação." },
     { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "6", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
     { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "7", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
-    { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "8", desc: `Nível ${s.level}`, title: "Perfil & conquistas" },
-    { id: "plano", href: `${base}/plano`, label: "Meu Plano", icon: Crown, num: "9", desc: "Escolha seu plano", title: "Meu Plano", subtitle: "Conquiste mais. Estude sem limites." },
+    { id: "depoimentos", href: `${base}/depoimentos`, label: "Depoimentos", icon: Video, num: "8", desc: "Histórias de aprovados", title: "Depoimentos", subtitle: "Quem chegou lá conta como foi a trajetória até a aprovação." },
+    { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "9", desc: `Nível ${s.level}`, title: "Perfil & conquistas" },
+    { id: "plano", href: `${base}/plano`, label: "Meu Plano", icon: Crown, num: "0", desc: "Escolha seu plano", title: "Meu Plano", subtitle: "Conquiste mais. Estude sem limites." },
   ];
 }
 
@@ -124,7 +127,7 @@ function EvolucaoGrupo({
         </span>
         <span className="min-w-0 flex-1">
           <span className="block font-semibold tracking-tight">Evolução</span>
-          <span className="mt-0.5 block text-[11px] leading-none text-[#A3A3A3]">Desempenho e revisões</span>
+          <span className="mt-0.5 block text-[11px] leading-none text-[#A3A3A3]">Seu progresso</span>
         </span>
         <ChevronDown className={`size-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
       </button>
@@ -146,7 +149,6 @@ function EvolucaoGrupo({
                     <f.icon className="h-4 w-4" aria-hidden />
                   </span>
                   <span className="min-w-0 flex-1 truncate">{f.label}</span>
-                  <span className={`text-[11px] font-medium ${on ? "text-white/80" : "text-[#A3A3A3]"}`} data-testid={`nav-desc-${f.id}`}>{f.desc}</span>
                 </Link>
               </li>
             );
@@ -261,6 +263,8 @@ export function PastelShell({
   const isEstudos = path === `${basePath}/trilhas`;
   // Aula: no celular, cabeçalho com menu (árvore de aulas no menu); no desktop, árvore na barra lateral.
   const isAula = path.startsWith(`${basePath}/aula`);
+  // Telas de estudo (aula e assunto): mostram o cronômetro de estudo do dia.
+  const isStudy = isAula || path.startsWith(`${basePath}/trilhas/`) || path === `${basePath}/trilha`;
   // Páginas internas com cabeçalho próprio (título e linha de apoio).
   const heading =
     PAGE_HEADINGS.find((h) => path === `${basePath}${h.path}`) ??
@@ -276,6 +280,7 @@ export function PastelShell({
 
   return (
     <ToastCtx.Provider value={setToast}>
+      {isStudy && <StudyClock />}
       <div className="pastel relative min-h-screen w-full overflow-x-clip font-[Inter,system-ui,sans-serif] text-[#0A0A0A] antialiased selection:bg-[#E10600]/25">
         <div className={`pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden ${dark ? "bg-[#070707]" : "bg-white"}`} />
         <div className="pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden" aria-hidden>
@@ -343,9 +348,6 @@ export function PastelShell({
                           <span className="mp-txt min-w-0 flex-1">
                             <span className="flex items-center gap-2">
                               <span className={`font-semibold tracking-tight ${on ? "text-white" : ""}`}>{s.label}</span>
-                              {!on && shortcutsOn && (
-                                <span className="rounded-full border border-[#2E2E2E] bg-[#1A1A1A] px-1.5 py-0.5 text-[10px]" aria-label={`atalho ${s.num}`}>{s.num}</span>
-                              )}
                             </span>
                             <span className={`mt-0.5 block text-[11px] leading-none ${on ? "text-white/80" : "text-[#A3A3A3]"}`} data-testid={`nav-desc-${s.id}`}>{s.desc}</span>
                           </span>
@@ -395,19 +397,13 @@ export function PastelShell({
                       data-tier={summary.plan}
                       data-testid="plano-card"
                       aria-label={`${summary.planInfo.label} — ver meu plano`}
-                      className={`plano-card barra-streak ${isAula ? "!hidden" : ""}`}
+                      className={`sb-plano barra-streak ${isAula ? "!hidden" : ""}`}
                     >
-                      <span className="plano-card-ico" aria-hidden><Crown className="h-5 w-5" /></span>
-                      <span className="plano-card-txt">
-                        <span className="plano-card-rotulo">Seu plano</span>
-                        <span className="plano-card-nome">{summary.planInfo.label.replace(/^Plano /, "")}</span>
-                        <span className="plano-card-sub">
-                          {summary.plan === "gratuito"
-                            ? "Faça upgrade e estude sem limites"
-                            : summary.planInfo.until
-                              ? `Válido até ${new Date(summary.planInfo.until).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}`
-                              : "Acesso para sempre"}
-                        </span>
+                      <span className="sb-plano-ico" aria-hidden><Crown className="h-5 w-5" /></span>
+                      <span className="sb-plano-txt">
+                        <span className="sb-plano-rotulo">Seu plano</span>
+                        <span className="sb-plano-nome">{summary.planInfo.label}</span>
+                        <span className="sb-plano-sub">{summary.planInfo.tagline}</span>
                       </span>
                       <ChevronRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
                     </Link>
@@ -433,7 +429,7 @@ export function PastelShell({
                     <button type="button" onClick={toggleCollapsed} aria-label="Expandir barra lateral" className="flex h-12 w-full items-center justify-center rounded-[16px] border border-[#2A2A2A] bg-[#161616] transition hover:bg-[#1A1A1A]">
                       <PanelLeftOpen className="h-5 w-5" aria-hidden />
                     </button>
-                    <Link href={`${basePath}/plano`} data-tier={summary.plan} className="plano-card plano-card-rail" aria-label={`${summary.planInfo.label} — ver meu plano`} title={summary.planInfo.label}>
+                    <Link href={`${basePath}/plano`} data-tier={summary.plan} className="sb-plano sb-plano-rail" aria-label={`${summary.planInfo.label} — ver meu plano`} title={summary.planInfo.label}>
                       <Crown className="h-5 w-5" aria-hidden />
                     </Link>
                   </div>
@@ -484,7 +480,7 @@ export function PastelShell({
                         <Target className="h-3.5 w-3.5 text-[#FF1E1E]" />
                       </span>
                       <span className="truncate">
-                        {isPainel ? (notice ?? "Um conteúdo por vez: aula completa e três níveis — fácil, médio e difícil.") : `${heading?.subtitle ?? active?.subtitle ?? active?.desc ?? ""}${shortcutsOn ? " • atalhos 1-9" : ""}`}
+                        {isPainel ? (notice ?? "Um conteúdo por vez: aula completa e três níveis — fácil, médio e difícil.") : `${heading?.subtitle ?? active?.subtitle ?? active?.desc ?? ""}`}
                       </span>
                     </div>
                   </div>
