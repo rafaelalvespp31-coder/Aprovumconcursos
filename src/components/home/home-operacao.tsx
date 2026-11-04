@@ -49,6 +49,8 @@ export interface HomeOperacaoProps {
   avatar: { config: AvatarConfig; items: AvatarItem[]; portrait?: Portrait | null } | null;
   request: AvatarRequestInfo | null;
   requestAction: RequestAction;
+  /** Conta gratuita: avatar padrão APROVUM, sem editar nem solicitar avatar novo. */
+  canCustomize: boolean;
   ackLevels: () => Promise<void>;
   /** Só galeria/testes. */
   mannequin?: boolean;
@@ -62,7 +64,7 @@ function T({ box, className = "", children, testId, title }: { box: CSSPropertie
   );
 }
 
-export function HomeOperacao({ name, data, avatar, request, requestAction, ackLevels, mannequin }: HomeOperacaoProps) {
+export function HomeOperacao({ name, data, avatar, request, requestAction, canCustomize, ackLevels, mannequin }: HomeOperacaoProps) {
   const { game, performance: perf, continueLesson: cont, contests, insights, top } = data;
   const rank = rankFor(game.level);
   const pct = levelPct(game);
@@ -216,10 +218,10 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, ackLe
           {/* Foco, disciplina, aprovação */}
           <Link href="/mentor" className="cl-hit cl-card-hit" style={A(678, 1046, 240, 224)} aria-label="Foco, disciplina, aprovação — abrir o Mentor APROVUM" />
 
-          <RequestTrigger box={A(325, 1248, 340, 76)} />
+          <RequestTrigger box={A(325, 1248, 340, 76)} locked={!canCustomize} />
         </section>
 
-        <RequestSlot initial={request} action={requestAction} />
+        {canCustomize && <RequestSlot initial={request} action={requestAction} />}
         </div>
 
         {/* ============================ Estudos, conquistas e concursos */}

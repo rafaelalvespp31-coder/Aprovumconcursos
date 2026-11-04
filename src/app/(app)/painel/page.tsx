@@ -7,6 +7,7 @@ import { HomeOperacao } from "@/components/home/home-operacao";
 import { HeroBanner } from "./hero-banner";
 import { listActiveApprovedBanners } from "@/server/services/approved-banners";
 import { ackLevelUpsAction, requestAvatarAction } from "./avatar-actions";
+import { getMyPlan } from "@/server/services/plans";
 import { logEvent } from "@/server/observability";
 
 export const metadata = { title: "Painel" };
@@ -15,7 +16,7 @@ export const dynamic = "force-dynamic";
 /** Painel (Home): avatar no centro e a gamificação real do aluno ao redor. */
 export default async function DashboardPage() {
   const me = await requireUser("/painel");
-  const [trails, dash, avatar, request, home, approved] = await Promise.all([
+  const [trails, dash, avatar, request, home, approved, plan] = await Promise.all([
     listTrails(),
     getDashboard(),
     loadMyAvatar(me.id).catch(async (e) => {
@@ -25,6 +26,7 @@ export default async function DashboardPage() {
     getMyAvatarRequest(me.id).catch(() => null),
     loadHome(me.id),
     listActiveApprovedBanners().catch(() => []),
+    getMyPlan(me.id).catch(() => null),
   ]);
   if (trails.length === 0 && !dash.profile?.onboarding_completed)
     redirect("/nova-trilha");
@@ -40,6 +42,7 @@ export default async function DashboardPage() {
         data={home}
         avatar={avatar ? { config: avatar.config, items: avatar.items, portrait: avatar.portrait } : null}
         request={request}
+        canCustomize={!!plan?.unlimited}
         requestAction={requestAvatarAction}
         ackLevels={ackLevelUpsAction}
       />

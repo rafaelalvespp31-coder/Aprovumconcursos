@@ -6,7 +6,7 @@ import type { HomeData } from "@/server/services/gamification";
 import { demoAvatarItems } from "../avatar-fixtures";
 
 /** Galeria: Home com dados de EXEMPLO (só aqui; nada é gravado). `vazio` = aluno novo, sem histórico. */
-export function DemoHome({ mannequin, gender, level, empty, levelUp }: { mannequin: boolean; gender: "m" | "f"; level: number; empty: boolean; levelUp: boolean }) {
+export function DemoHome({ mannequin, gender, level, empty, levelUp, canCustomize = true }: { canCustomize?: boolean; mannequin: boolean; gender: "m" | "f"; level: number; empty: boolean; levelUp: boolean }) {
   const achievements = [
     ["primeiro_combate", "Primeiro Combate", "caveira", "Responder 1 questão válida"],
     ["atirador_elite", "Atirador de Elite", "estrela", "≥ 90% em um simulado"],
@@ -56,6 +56,7 @@ export function DemoHome({ mannequin, gender, level, empty, levelUp }: { mannequ
       avatar={{ config: defaultAvatar(gender, demoAvatarItems), items: demoAvatarItems }}
       mannequin={mannequin}
       request={null}
+      canCustomize={canCustomize}
       ackLevels={async () => {}}
       requestAction={async (fd) => {
         const f = fd.get("foto");

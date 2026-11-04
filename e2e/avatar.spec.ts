@@ -127,6 +127,15 @@ test.describe("painel (avatar)", () => {
     await expect(page.getByTestId("avatar-solicitar-botao")).toHaveText(/Enviar outra foto/);
   });
 
+  test("conta gratuita: avatar padrão, sem solicitar nem editar; o botão leva ao Meu Plano", async ({ page }) => {
+    await page.goto(`${URL}?plano=gratis`);
+    await expect(page.getByTestId("avatar-patente")).toBeVisible();
+    await expect(page.getByTestId("avatar-solicitar-botao")).toHaveCount(0);
+    await expect(page.getByTestId("solicitar-avatar")).toHaveCount(0);
+    const link = page.getByTestId("solicitar-avatar-plano");
+    await expect(link).toHaveAttribute("href", "/plano");
+  });
+
   test("sem botões de gênero; patente no card (Aluno → Recruta → Policial)", async ({ page }) => {
     await page.goto(URL);
     await expect(page.getByTestId("avatar-genero-m")).toHaveCount(0);

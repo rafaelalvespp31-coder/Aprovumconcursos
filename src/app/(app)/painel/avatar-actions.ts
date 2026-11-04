@@ -5,13 +5,20 @@ import { requireUser } from "@/server/auth";
 import { saveMyAvatar, submitAvatarRequest, type AvatarRequest } from "@/server/services/avatar";
 import { UserFacingError, enforceRateLimit } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
+import { getMyPlan } from "@/server/services/plans";
 import { ackLevelUps } from "@/server/services/gamification";
 import type { AvatarSaveResult } from "@/components/avatar/painel-avatar";
+
+/** Conta gratuita usa o avatar padrão APROVUM: sem editar nem solicitar avatar novo. */
+async function assertCanCustomize(userId: string): Promise<void> {
+  if (!(await getMyPlan(userId)).unlimited) throw new UserFacingError("O avatar personalizado é exclusivo dos planos pagos. Veja Meu Plano.", "plan_required");
+}
 
 /** Salva o avatar do aluno logado (o id vem da sessão, nunca do navegador). */
 export async function saveAvatarAction(input: unknown): Promise<AvatarSaveResult> {
   const user = await requireUser("/painel");
   try {
+    await assertCanCustomize(user.id);
     await enforceRateLimit(user.id, "avatar_save", 30);
     const config = await saveMyAvatar(user.id, input);
     revalidatePath("/painel");
@@ -29,6 +36,7 @@ export type AvatarRequestResult = { ok: true; request: AvatarRequest } | { ok: f
 export async function requestAvatarAction(form: FormData): Promise<AvatarRequestResult> {
   const user = await requireUser("/painel");
   try {
+    await assertCanCustomize(user.id);
     await enforceRateLimit(user.id, "avatar_request", 3, 3600);
     const file = form.get("foto");
     if (!(file instanceof File) || !file.size) return { ok: false, error: "Escolha uma foto de corpo inteiro." };
