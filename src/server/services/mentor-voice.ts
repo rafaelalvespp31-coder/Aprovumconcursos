@@ -5,7 +5,9 @@ import { logEvent } from "../observability";
 import { getMyPlan } from "./plans";
 import { UserFacingError, enforceRateLimit } from "./trails";
 import { brDay } from "@/domain/plans/limits";
-import { VOICE_DAILY_SECONDS, VOICE_SYSTEM_PROMPT, VOICE_TOKEN_GRACE_SECONDS, settleSeconds, voiceLeft } from "@/domain/mentor/voice";
+import { loadMentorSnapshot } from "./mentor";
+import { recommend } from "@/domain/mentor/engine";
+import { VOICE_DAILY_SECONDS, VOICE_PERSONAL_RULES, VOICE_SYSTEM_PROMPT, buildVoiceContext, VOICE_TOKEN_GRACE_SECONDS, settleSeconds, voiceLeft } from "@/domain/mentor/voice";
 
 /**
  * Mentor por voz (Gemini Live). A chave do Google fica só aqui no servidor: o navegador recebe um
@@ -63,6 +65,30 @@ export async function getVoiceStatus(userId: string): Promise<VoiceStatus> {
   return { available: true, limit: VOICE_DAILY_SECONDS, left: voiceLeft(await usedToday(userId)) };
 }
 
+/** Instrução do Mentor para este aluno: regras fixas + nome e desempenho reais (nunca falha a conversa). */
+async function personalPrompt(userId: string): Promise<string> {
+  try {
+    const { snapshot, name } = await loadMentorSnapshot(userId);
+    const r = recommend(snapshot);
+    const ctx = buildVoiceContext({
+      name,
+      lessonsTotal: snapshot.lessons.length,
+      lessonsCompleted: r.completedLessons.length,
+      inProgress: snapshot.lessons
+        .filter((l) => (l.readingDone || l.levelsPassed > 0) && !(l.readingDone && l.levelsPassed >= 3))
+        .map((l) => ({ title: l.title, subject: l.subject, pct: Math.round((((l.readingDone ? 1 : 0) + l.levelsPassed) / 4) * 100) })),
+      topics: r.topics.map((t) => ({ label: t.label, subject: t.subject, pct: t.pct, valid: t.valid, band: t.band })),
+      recommendations: r.top.map((x) => ({ title: x.title, reason: x.reason })),
+      reviewsDue: snapshot.reviews.filter((x) => x.dueAt && new Date(x.dueAt) <= new Date(snapshot.now)).length,
+      notebooks: snapshot.notebooks.length,
+    });
+    return `${VOICE_SYSTEM_PROMPT} ${VOICE_PERSONAL_RULES} ${ctx}`;
+  } catch (e) {
+    await logEvent("mentor.voz.contexto_error", { error: (e as Error).message.slice(0, 200) });
+    return VOICE_SYSTEM_PROMPT;
+  }
+}
+
 export interface VoiceSession {
   token: string;
   model: string;
@@ -79,6 +105,7 @@ export async function startVoice(userId: string): Promise<VoiceSession> {
   if (!apiKey) throw new UserFacingError("O Mentor por voz está indisponível no momento. Tente mais tarde.", "voice_unavailable");
   await enforceRateLimit(userId, "mentor_voz", 6, 60);
 
+  const instruction = await personalPrompt(userId); // antes de reservar o tempo: a leitura dos dados não gasta os 3 minutos
   await settle(userId); // conversa anterior que não foi encerrada direito
   const left = voiceLeft(await usedToday(userId));
   if (left <= 0) throw new UserFacingError("Seus 3 minutos de voz de hoje acabaram. Eles voltam amanhã!", "plan_limit");
@@ -99,7 +126,7 @@ export async function startVoice(userId: string): Promise<VoiceSession> {
         uses: 1,
         expireTime: new Date(now.getTime() + (left + VOICE_TOKEN_GRACE_SECONDS) * 1000).toISOString(),
         newSessionExpireTime: new Date(now.getTime() + 60_000).toISOString(),
-        liveConnectConstraints: { model, config: { responseModalities: [Modality.AUDIO], systemInstruction: VOICE_SYSTEM_PROMPT, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } },
+        liveConnectConstraints: { model, config: { responseModalities: [Modality.AUDIO], systemInstruction: instruction, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } },
         httpOptions: { apiVersion: "v1alpha" },
       },
     });
