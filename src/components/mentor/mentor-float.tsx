@@ -247,7 +247,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
               </span>
             )}
             {data === null && <span className="mentor-bolha-carregando" aria-hidden />}
-            <span className="mentor-minicard" data-testid="mentor-minicard">Mentor Aprovum</span>
+            <span className="mentor-minicard" data-testid="mentor-minicard">Mentor</span>
           </button>
         </div>
       )}
