@@ -6,8 +6,8 @@
 
 create table if not exists public.approved_banners (
   id          uuid primary key default gen_random_uuid(),
-  image_path  text not null check (image_path ~ '^[a-z0-9/_.-]{5,300}$'),
-  image_sm    text not null check (image_sm ~ '^[a-z0-9/_.-]{5,300}$'),
+  image_path  text not null check (image_path ~ '^[a-z0-9/_.-]{5,255}$'),
+  image_sm    text not null check (image_sm ~ '^[a-z0-9/_.-]{5,255}$'),
   alt         text not null check (length(alt) between 3 and 400),
   sort_order  integer not null default 0,
   active      boolean not null default true,
