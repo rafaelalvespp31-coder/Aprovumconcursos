@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { requireUser } from "@/server/auth";
+import { isAdmin, requireUser } from "@/server/auth";
 import { requestLessonGeneration, UserFacingError } from "@/server/services/trails";
 import { completeReading, evaluateLessonQuiz, startLesson } from "@/server/services/study";
 import { logEvent } from "@/server/observability";
@@ -180,7 +180,10 @@ export async function explainSelectionAction(input: { lessonId: string; selectio
     return { ok: true, meaning };
   } catch (e) {
     if (e instanceof UserFacingError) return { ok: false, error: e.message };
-    if (!(e instanceof AIError)) await logEvent("lesson.explain_failed", { lessonId: input.lessonId, error: (e as Error).message });
+    await logEvent("lesson.explain_failed", { lessonId: input.lessonId, kind: e instanceof AIError ? e.kind : "unexpected", error: (e as Error).message });
+    // A equipe vê o motivo real (chave, modelo, cota…); o aluno vê uma mensagem simples.
+    if (e instanceof AIError && (await isAdmin().catch(() => false))) return { ok: false, error: `[Equipe] ${e.message}` };
+    if (e instanceof AIError && e.kind === "rate_limited") return { ok: false, error: "Muitas explicações em pouco tempo. Aguarde alguns instantes e tente de novo." };
     return { ok: false, error: "Não consegui explicar agora. Tente de novo em instantes." };
   }
 }
