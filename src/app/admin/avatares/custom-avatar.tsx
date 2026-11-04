@@ -235,7 +235,7 @@ function buildLids(art: HTMLCanvasElement, eyes: [EyeBox, EyeBox]): HTMLCanvasEl
 const toBlob = (c: HTMLCanvasElement, type: string, q?: number) => new Promise<Blob>((ok, fail) => c.toBlob((b) => (b ? ok(b) : fail(new Error("falha ao gerar imagem"))), type, q));
 
 /** Anexar a arte pronta do aluno: recorte, pontos do corpo, olhos (2 cliques) e prévia da piscada. */
-export function CustomAvatar({ requestId, hasCustom, save, remove }: { requestId: string; hasCustom: boolean; save: (id: string, f: FormData) => Promise<Result>; remove: (id: string) => Promise<Result> }) {
+export function CustomAvatar({ requestId, hasCustom, save, remove, slot = 0 }: { requestId: string; hasCustom: boolean; save: (id: string, f: FormData) => Promise<Result>; remove: (id: string, slot: number) => Promise<Result>; slot?: number }) {
   const [img, setImg] = useState<HTMLImageElement | null>(null);
   const [tol, setTol] = useState(30);
   const [eyes, setEyes] = useState<Array<{ x: number; y: number }>>([]);
@@ -314,6 +314,7 @@ export function CustomAvatar({ requestId, hasCustom, save, remove }: { requestId
         fd.set("arte", new File([art], "arte.webp", { type: "image/webp" }));
         fd.set("palpebras", new File([lidBlob], "palpebras.png", { type: "image/png" }));
         fd.set("params", JSON.stringify({ aspect: prep.art.width / prep.art.height, ...prep.lm, eyes: boxes }));
+        fd.set("slot", String(slot));
         const r = await save(requestId, fd);
         setMsg(r.ok ? "Avatar do aluno atualizado. Ele já aparece no painel dele, com piscadas e respiração." : r.error ?? "Erro.");
       } catch (e) {
@@ -368,11 +369,11 @@ export function CustomAvatar({ requestId, hasCustom, save, remove }: { requestId
         </>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" disabled={pending || !lids} onClick={submit}>{pending ? "Enviando…" : "Salvar como avatar do aluno"}</Button>
+        <Button type="button" disabled={pending || !lids} onClick={submit}>{pending ? "Enviando…" : "Salvar como skin {slot + 1} do aluno"}</Button>
         {hasCustom && (
           <button type="button" className="t-small underline" disabled={pending}
-            onClick={() => start(async () => { const r = await remove(requestId); setMsg(r.ok ? "O aluno voltou para o avatar padrão." : r.error ?? "Erro."); })}>
-            Voltar ao avatar padrão
+            onClick={() => start(async () => { const r = await remove(requestId, slot); setMsg(r.ok ? "Skin removida." : r.error ?? "Erro."); })}>
+            Remover esta skin
           </button>
         )}
         {(prepared.error ?? msg) && <span role="status" className="t-small">{prepared.error ?? msg}</span>}

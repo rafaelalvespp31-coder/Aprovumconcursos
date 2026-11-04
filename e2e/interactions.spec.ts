@@ -386,9 +386,8 @@ test.describe("casco pastel", () => {
     await expect(nav.getByRole("link", { name: "Revisões" })).toBeVisible();
     await expect(nav.getByRole("link", { name: /Modo Jogo/ })).toHaveAttribute("href", `${G}/quiz`);
     await expect(nav.getByRole("link", { name: /Novo Estudo/ })).toHaveAttribute("href", `${G}/nova-trilha`);
-    await page.keyboard.press("9");
-    await expect(page).toHaveURL(new RegExp(`${G}/perfil`));
-    await expect(page.getByTestId("nivel")).toHaveText("Nível 5");
+    await page.keyboard.press("8");
+    await expect(page).toHaveURL(new RegExp(`${G}/concursos`));
     await page.getByRole("button", { name: "Recolher", exact: true }).click();
     await page.reload();
     await expect(page.getByRole("button", { name: "Expandir barra lateral" })).toBeVisible();
@@ -406,15 +405,15 @@ test.describe("casco pastel", () => {
     await expect(page).toHaveURL(/\/questoes\/cadernos\/11111111-/);
   });
 
-  test("menu inferior (celular): seis opções com Meu Plano, rota ativa e navegação real", async ({ page }) => {
+  test("menu inferior (celular): sete opções com Meu Plano e Área do Aluno, rota ativa e navegação real", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
     await page.goto(`${G}/painel`);
     const bar = page.getByTestId("menu-inferior");
     const links = bar.getByRole("link");
-    await expect(links).toHaveCount(6);
-    const names = ["Painel", "Estudos", "Modo Jogo", "Questões", "Meu Plano", "Novo estudo"];
+    await expect(links).toHaveCount(7);
+    const names = ["Painel", "Estudos", "Modo Jogo", "Questões", "Meu Plano", "Área do Aluno", "Novo estudo"];
     for (const [k, n] of names.entries()) await expect(links.nth(k)).toHaveAccessibleName(n);
-    await expect(bar.locator(".bn-cel:visible .bn-txt")).toHaveText(["Painel", "Estudos", "Jogo", "Questões", "Meu Plano", "Novo"]);
+    await expect(bar.locator(".bn-cel:visible .bn-txt")).toHaveText(["Painel", "Estudos", "Jogo", "Questões", "Meu Plano", "Área", "Novo"]);
     await expect(bar.getByRole("link", { name: "Painel" })).toHaveAttribute("aria-current", "page");
     await expect(bar.getByRole("link", { name: "Revisões" })).toHaveCount(0);
     await expect(bar.getByRole("link", { name: /Evolução/ })).toHaveCount(0);
@@ -1422,5 +1421,34 @@ test.describe("menu lateral: Depoimentos, Evolução e plano", () => {
     await page.goto(`${G}/aula/l-ext`);
     await expect(page.getByTestId("estudo-relogio")).toBeVisible();
     await expect(page.getByTestId("estudo-relogio")).toContainText(/\d\d:\d\d:\d\d/);
+  });
+});
+
+test.describe("Concursos, Área do Aluno e Meu Plano (neon)", () => {
+  test("Concursos lista os concursos", async ({ page }) => {
+    await page.goto(`${G}/concursos`);
+    await expect(page.getByTestId("concurso")).toHaveCount(2);
+    await expect(page.getByTestId("concursos-lista")).toContainText("edital publicado".replace("edital", "Edital"));
+  });
+
+  test("Área do Aluno (celular) reúne os menus que não estão no menu inferior", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 800 });
+    await page.goto(`${G}/painel`);
+    await page.getByTestId("menu-inferior").getByRole("link", { name: "Área do Aluno" }).click();
+    await expect(page).toHaveURL(new RegExp(`${G}/area-do-aluno`));
+    for (const id of ["revisoes", "desempenho", "concursos", "depoimentos", "perfil"]) await expect(page.getByTestId(`area-${id}`)).toBeVisible();
+    await expect(page.getByTestId("menu-inferior").getByRole("link", { name: "Área do Aluno" })).toHaveAttribute("aria-current", "page");
+  });
+
+  test("Meu Plano: cada cartão tem a linha neon na cor do plano", async ({ page }) => {
+    await page.goto(`${G}/plano`);
+    const svgs = page.locator(".neon-border-svg");
+    await expect(svgs).toHaveCount(5);
+    const tiers = await svgs.evaluateAll((els) => els.map((e) => e.getAttribute("data-tier")));
+    expect(tiers).toEqual(["white", "red", "red-strong", "red", "gold"]);
+    const colors = await svgs.evaluateAll((els) => els.map((e) => getComputedStyle(e.querySelector(".neon-run")!).stroke));
+    expect(colors[0]).toContain("229, 231, 235");
+    expect(colors[2]).toContain("255, 0, 0");
+    expect(colors[4]).toContain("255, 215, 0");
   });
 });

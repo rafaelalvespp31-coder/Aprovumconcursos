@@ -108,9 +108,9 @@ export async function loadMyAvatar(userId: string): Promise<AvatarState> {
 // Avatar personalizado (arte pronta anexada pela equipe)
 // ---------------------------------------------------------------------------
 const CUSTOM_BUCKET = "avatar-personalizado";
-type StoredCustom = CustomParams & { art: string; lids: string; requestId?: string; at?: string };
+type StoredCustom = CustomParams & { art: string; lids: string; id?: string; requestId?: string; at?: string };
 
-const skinId = (c: StoredCustom) => c.requestId ?? c.art;
+const skinId = (c: StoredCustom) => c.id ?? c.requestId ?? c.art;
 
 async function skinThumbs(list: StoredCustom[], active: StoredCustom | null): Promise<SkinInfo[]> {
   const skins = list.slice(0, MAX_SKINS);
@@ -168,8 +168,9 @@ async function checkLayer(file: File | null, label: string): Promise<{ buf: Buff
  * Equipe: grava a arte pronta como avatar do aluno da solicitação (piscadas e respiração com os
  * parâmetros calculados no painel) e conclui a solicitação.
  */
-export async function saveCustomAvatar(requestIdInput: unknown, artFile: File | null, lidsFile: File | null, paramsJson: unknown) {
+export async function saveCustomAvatar(requestIdInput: unknown, artFile: File | null, lidsFile: File | null, paramsJson: unknown, slotInput: unknown = 0) {
   const requestId = z.uuid().parse(requestIdInput);
+  const slot = z.coerce.number().int().min(0).max(MAX_SKINS - 1).parse(slotInput);
   let params: CustomParams;
   try {
     params = customParamsSchema.parse(JSON.parse(String(paramsJson)));
@@ -196,13 +197,15 @@ export async function saveCustomAvatar(requestIdInput: unknown, artFile: File | 
     const meta = (await db.auth.admin.getUserById(userId)).data.user?.user_metadata as Record<string, unknown> | undefined;
     await writeConfig(userId, defaultAvatar(parseGender(meta?.avatar_gender) ?? "m", await loadItemsAdmin()));
   }
-  const stored: StoredCustom = { ...params, ...paths, requestId, at: new Date().toISOString() };
   const prev = cur.data?.custom_portrait as StoredCustom | null | undefined;
-  // Até 3 skins: a nova entra como ativa; passando de 3, sai a mais antiga (e os arquivos dela).
-  let skins = ((cur.data?.custom_skins ?? []) as StoredCustom[]).filter((c) => skinId(c) !== requestId);
-  if (prev && !skins.some((c) => skinId(c) === skinId(prev))) skins = [prev, ...skins];
-  skins.push(stored);
-  const dropped = skins.splice(0, Math.max(0, skins.length - MAX_SKINS));
+  // Até 3 skins por aluno, uma por vaga (0–2): a vaga escolhida é criada ou substituída e fica ativa.
+  const skins = [...((cur.data?.custom_skins ?? []) as StoredCustom[])];
+  if (prev && !skins.some((c) => skinId(c) === skinId(prev))) skins.unshift(prev);
+  if (slot > skins.length) throw new UserFacingError(`Preencha a skin ${skins.length + 1} antes da skin ${slot + 1}.`, "validation");
+  const old = skins[slot];
+  const stored: StoredCustom = { ...params, ...paths, id: old ? skinId(old) : crypto.randomUUID(), requestId, at: new Date().toISOString() };
+  const dropped = old ? [old] : [];
+  skins[slot] = stored;
   const upd = await db.from("avatar_profiles").update({ custom_portrait: stored, custom_skins: skins, updated_at: new Date().toISOString() }).eq("user_id", userId);
   if (upd.error) {
     await db.storage.from(CUSTOM_BUCKET).remove([paths.art, paths.lids]);
@@ -213,23 +216,25 @@ export async function saveCustomAvatar(requestIdInput: unknown, artFile: File | 
   await db.from("avatar_requests").update({ status: "concluida", note: "Seu avatar personalizado está pronto!", updated_at: new Date().toISOString() }).eq("id", requestId);
 }
 
-/** Equipe: volta o aluno para a arte padrão. */
-export async function removeCustomAvatar(requestIdInput: unknown) {
+/** Equipe: remove uma skin do aluno (vaga 0–2); se era a ativa, ele volta à arte padrão. */
+export async function removeCustomAvatar(requestIdInput: unknown, slotInput: unknown = 0) {
   const requestId = z.uuid().parse(requestIdInput);
+  const slot = z.coerce.number().int().min(0).max(MAX_SKINS - 1).parse(slotInput);
   const db = createAdminClient();
   const req = await db.from("avatar_requests").select("user_id").eq("id", requestId).maybeSingle();
   if (!req.data) throw new UserFacingError("Solicitação não encontrada.", "validation");
   const userId = req.data.user_id as string;
   const cur = await db.from("avatar_profiles").select("custom_portrait, custom_skins").eq("user_id", userId).maybeSingle();
   const active = cur.data?.custom_portrait as StoredCustom | null | undefined;
-  const all = (cur.data?.custom_skins ?? []) as StoredCustom[];
-  // Remove a skin desta solicitação; se era a ativa (ou não há skins registradas), volta à arte padrão.
-  const target = all.find((c) => c.requestId === requestId) ?? active ?? null;
-  const skins = target ? all.filter((c) => skinId(c) !== skinId(target)) : all;
-  const nextActive = active && target && skinId(active) === skinId(target) ? null : (active ?? null);
+  const skins = [...((cur.data?.custom_skins ?? []) as StoredCustom[])];
+  if (active && !skins.some((c) => skinId(c) === skinId(active))) skins.unshift(active);
+  const target = skins[slot];
+  if (!target) return;
+  skins.splice(slot, 1);
+  const nextActive = active && skinId(active) === skinId(target) ? null : (active ?? null);
   const upd = await db.from("avatar_profiles").update({ custom_portrait: nextActive, custom_skins: skins, updated_at: new Date().toISOString() }).eq("user_id", userId);
   if (upd.error) throw new Error(upd.error.message);
-  if (target) await db.storage.from(CUSTOM_BUCKET).remove([target.art, target.lids]);
+  await db.storage.from(CUSTOM_BUCKET).remove([target.art, target.lids]);
 }
 
 /** Grava o avatar do PRÓPRIO aluno, depois de validar contra o catálogo e o progresso real. */
@@ -288,8 +293,8 @@ export interface AvatarRequestAdminRow extends AvatarRequest {
   name: string | null;
   email: string | null;
   photoUrl: string | null;
-  /** Arte personalizada atual do aluno (link temporário), se houver. */
-  customArtUrl: string | null;
+  /** Skins do aluno (até 3, na ordem das vagas), com miniatura temporária. */
+  skins: Array<{ id: string; thumb: string; active: boolean }>;
 }
 
 /** Equipe: solicitações com link temporário da foto (quem chama confere que é administrador). */
@@ -305,9 +310,18 @@ export async function listAvatarRequests(limit = 100): Promise<AvatarRequestAdmi
   await Promise.all(ids.map(async (id) => emails.set(id, (await db.auth.admin.getUserById(id)).data.user?.email ?? null)));
   const signed = rows.length ? await db.storage.from("avatar-solicitacoes").createSignedUrls(rows.map((r) => r.photo_path as string), 3600) : { data: [] };
   const urlBy = new Map((signed.data ?? []).map((s) => [s.path, s.signedUrl]));
-  const customs = ids.length ? ((await db.from("avatar_profiles").select("user_id, custom_portrait").in("user_id", ids)).data ?? []) : [];
-  const artPath = new Map(customs.filter((c) => c.custom_portrait).map((c) => [c.user_id as string, (c.custom_portrait as StoredCustom).art]));
-  const artSigned = artPath.size ? await db.storage.from(CUSTOM_BUCKET).createSignedUrls([...artPath.values()], 3600) : { data: [] };
+  const customs = ids.length ? ((await db.from("avatar_profiles").select("user_id, custom_portrait, custom_skins").in("user_id", ids)).data ?? []) : [];
+  const skinsBy = new Map<string, StoredCustom[]>();
+  const activeBy = new Map<string, StoredCustom | null>();
+  for (const c of customs) {
+    const act = (c.custom_portrait as StoredCustom | null) ?? null;
+    const list = [...((c.custom_skins ?? []) as StoredCustom[])];
+    if (act && !list.some((s) => skinId(s) === skinId(act))) list.unshift(act);
+    skinsBy.set(c.user_id as string, list.slice(0, MAX_SKINS));
+    activeBy.set(c.user_id as string, act);
+  }
+  const allArts = [...skinsBy.values()].flat().map((s) => s.art);
+  const artSigned = allArts.length ? await db.storage.from(CUSTOM_BUCKET).createSignedUrls(allArts, 3600) : { data: [] };
   const artUrl = new Map((artSigned.data ?? []).map((s) => [s.path, s.signedUrl]));
   return rows.map((r) => ({
     id: r.id as string,
@@ -318,7 +332,7 @@ export async function listAvatarRequests(limit = 100): Promise<AvatarRequestAdmi
     note: (r.note as string | null) ?? null,
     createdAt: r.created_at as string,
     photoUrl: urlBy.get(r.photo_path as string) ?? null,
-    customArtUrl: artPath.has(r.user_id as string) ? (artUrl.get(artPath.get(r.user_id as string)!) ?? null) : null,
+    skins: (skinsBy.get(r.user_id as string) ?? []).map((s) => ({ id: skinId(s), thumb: artUrl.get(s.art) ?? "", active: !!activeBy.get(r.user_id as string) && skinId(activeBy.get(r.user_id as string)!) === skinId(s) })),
   }));
 }
 

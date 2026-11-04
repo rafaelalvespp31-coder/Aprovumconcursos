@@ -17,6 +17,8 @@ import {
   CircleHelp,
   Clock3,
   Video,
+  Landmark,
+  LayoutGrid,
   Crown,
   House,
   Map as MapIcon,
@@ -57,6 +59,8 @@ interface NavItem {
   title: string;
   /** Linha de apoio do cabeçalho (quando difere do `desc` da barra lateral). */
   subtitle?: string;
+  /** Rota sem item na barra lateral (ex.: Área do Aluno, do celular). */
+  hidden?: boolean;
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -70,9 +74,11 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
     { id: "questoes", href: `${base}/questoes`, label: "Questões", icon: CircleHelp, num: "5", desc: plural(s.counts.notebooks, "caderno", "cadernos"), title: "Cadernos de Questões", subtitle: "Organize, acesse e continue sua jornada rumo à aprovação." },
     { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "6", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
     { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "7", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
-    { id: "depoimentos", href: `${base}/depoimentos`, label: "Depoimentos", icon: Video, num: "8", desc: "Histórias de aprovados", title: "Depoimentos", subtitle: "Quem chegou lá conta como foi a trajetória até a aprovação." },
-    { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "9", desc: `Nível ${s.level}`, title: "Perfil & conquistas" },
-    { id: "plano", href: `${base}/plano`, label: "Meu Plano", icon: Crown, num: "0", desc: "Escolha seu plano", title: "Meu Plano", subtitle: "Conquiste mais. Estude sem limites." },
+    { id: "concursos", href: `${base}/concursos`, label: "Concursos", icon: Landmark, num: "8", desc: "Editais e provas", title: "Concursos", subtitle: "Concursos cadastrados, vagas e datas de prova." },
+    { id: "depoimentos", href: `${base}/depoimentos`, label: "Depoimentos", icon: Video, num: "9", desc: "Histórias de aprovados", title: "Depoimentos", subtitle: "Quem chegou lá conta como foi a trajetória até a aprovação." },
+    { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "0", desc: `Nível ${s.level}`, title: "Perfil & conquistas" },
+    { id: "plano", href: `${base}/plano`, label: "Meu Plano", icon: Crown, num: "", desc: "Escolha seu plano", title: "Meu Plano", subtitle: "Conquiste mais. Estude sem limites." },
+    { id: "area", href: `${base}/area-do-aluno`, label: "Área do Aluno", icon: LayoutGrid, num: "", desc: "Todos os menus", title: "Área do Aluno", subtitle: "Todos os menus do seu painel num só lugar.", hidden: true },
   ];
 }
 
@@ -256,9 +262,11 @@ export function PastelShell({
   const isPainel = active?.id === "painel";
   const bottomActive: BottomNavId | null = path.startsWith(`${basePath}/nova-trilha`)
     ? "novo"
-    : active && ["painel", "trilhas", "quiz", "questoes", "revisoes", "desempenho", "plano"].includes(active.id)
+    : active && ["painel", "trilhas", "quiz", "questoes", "plano"].includes(active.id)
       ? (active.id as BottomNavId)
-      : null;
+      : active && ["area", "revisoes", "desempenho", "concursos", "depoimentos", "perfil"].includes(active.id)
+        ? "area"
+        : null;
   // Página de Estudos: cabeçalho com saudação (desktop) e logo + menu (celular).
   const isEstudos = path === `${basePath}/trilhas`;
   // Aula: no celular, cabeçalho com menu (árvore de aulas no menu); no desktop, árvore na barra lateral.
@@ -326,7 +334,7 @@ export function PastelShell({
                   />
                 )}
                 <nav ref={navRef} aria-label="Principal" className="barra-nav relative flex flex-col">
-                  {items.filter((s) => s.id !== "revisoes" && s.id !== "desempenho").map((s) => {
+                  {items.filter((s) => s.id !== "revisoes" && s.id !== "desempenho" && !s.hidden).map((s) => {
                     const on = active?.id === s.id;
                     return (
                       <Fragment key={s.id}>
@@ -729,7 +737,7 @@ function EstudosHeader({ summary, basePath, items, searchRef, mobileOnly = false
             </button>
           </div>
           <ul className="mt-6 flex flex-col gap-1.5">
-            {items.filter((s) => s.id !== "novo").map((s) => {
+            {items.filter((s) => s.id !== "novo" && !s.hidden).map((s) => {
               const on = path === s.href || (s.also ?? []).some((a) => path.startsWith(a));
               return (
                 <li key={s.id}>

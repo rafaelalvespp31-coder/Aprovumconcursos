@@ -3,7 +3,8 @@ export interface Testimonial {
   id: string;
   name: string;
   headline: string | null;
-  videoUrl: string;
+  videoUrl: string | null;
+  photoUrl?: string | null;
 }
 
 export type VideoSource = { kind: "iframe"; src: string } | { kind: "file"; src: string };

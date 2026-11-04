@@ -22,7 +22,7 @@ export async function saveCustomAvatarAction(id: string, form: FormData): Promis
   try {
     const art = form.get("arte");
     const lids = form.get("palpebras");
-    await saveCustomAvatar(id, art instanceof File ? art : null, lids instanceof File ? lids : null, form.get("params"));
+    await saveCustomAvatar(id, art instanceof File ? art : null, lids instanceof File ? lids : null, form.get("params"), form.get("slot"));
     revalidatePath("/admin/avatares");
     revalidatePath("/painel");
     return { ok: true };
@@ -31,10 +31,10 @@ export async function saveCustomAvatarAction(id: string, form: FormData): Promis
   }
 }
 
-export async function removeCustomAvatarAction(id: string): Promise<{ ok: boolean; error?: string }> {
+export async function removeCustomAvatarAction(id: string, slot = 0): Promise<{ ok: boolean; error?: string }> {
   await requireAdmin();
   try {
-    await removeCustomAvatar(id);
+    await removeCustomAvatar(id, slot);
     revalidatePath("/admin/avatares");
     revalidatePath("/painel");
     return { ok: true };

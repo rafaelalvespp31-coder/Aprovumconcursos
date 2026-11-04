@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRef, type KeyboardEvent } from "react";
-import { BookOpen, ChartNoAxesColumnIncreasing, ChevronDown, ChevronUp, Clock3, Crown, Gamepad2, House, Plus, Target, type LucideIcon } from "lucide-react";
+import { BookOpen, ChartNoAxesColumnIncreasing, ChevronDown, ChevronUp, Clock3, Crown, Gamepad2, House, LayoutGrid, Plus, Target, type LucideIcon } from "lucide-react";
 import { useStored } from "@/components/use-stored";
 
-export type BottomNavId = "painel" | "trilhas" | "quiz" | "questoes" | "revisoes" | "desempenho" | "plano" | "novo";
+export type BottomNavId = "painel" | "trilhas" | "quiz" | "questoes" | "revisoes" | "desempenho" | "plano" | "novo" | "area";
 
 interface Item {
   id: BottomNavId;
@@ -29,6 +29,7 @@ export const BOTTOM_NAV_ITEMS: readonly Item[] = [
   { id: "revisoes", label: "Revisões", sub: "Fixe o que já estudou", icon: Clock3, path: "/revisoes", only: "desktop" },
   { id: "desempenho", label: "Evolução", sub: "Acompanhe seu progresso", aria: "Evolução (desempenho)", icon: ChartNoAxesColumnIncreasing, path: "/desempenho", only: "desktop" },
   { id: "plano", label: "Meu Plano", sub: "Escolha seu plano", icon: Crown, path: "/plano", only: "mobile" },
+  { id: "area", label: "Área", sub: "Todos os menus", aria: "Área do Aluno", icon: LayoutGrid, path: "/area-do-aluno", only: "mobile" },
   { id: "novo", label: "Novo", sub: "Crie novos estudos", aria: "Novo estudo", icon: Plus, path: "/nova-trilha" },
 ];
 

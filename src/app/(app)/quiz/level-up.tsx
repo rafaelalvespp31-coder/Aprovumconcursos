@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight, Crown, Medal, Trophy, X } from "lucide-react";
 import type { QuizLevel, RankingRow } from "@/server/services/quiz";
-import { rankingAction } from "./actions";
+import { rankingAction, saveMottoAction } from "./actions";
 
 const MASCOT = "/icons/instrutor-caveira.png";
 
@@ -52,6 +52,21 @@ export function LevelUpDialog({
   const [fetched, setFetched] = useState<RankingRow[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const rows = previewRows ?? fetched;
+  const [motto, setMotto] = useState<string | null>(null);
+  const [mottoMsg, setMottoMsg] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const myMotto = rows?.find((r) => r.isMe)?.motto ?? "";
+  const draft = motto ?? myMotto;
+  const saveMotto = async () => {
+    setSaving(true);
+    setMottoMsg(null);
+    const r = previewRows ? { ok: true as const, motto: draft.trim() || null } : await saveMottoAction(draft);
+    setSaving(false);
+    if (!r.ok) return setMottoMsg(r.error);
+    setFetched((cur) => cur && cur.map((x) => (x.isMe ? { ...x, motto: r.motto } : x)));
+    setMotto(null);
+    setMottoMsg(r.motto ? "Frase salva! Ela já aparece ao lado do seu nome." : "Frase removida.");
+  };
 
   useEffect(() => {
     const d = ref.current;
@@ -133,6 +148,18 @@ export function LevelUpDialog({
               <h2 className="font-stencil mt-2 text-[40px] leading-none">RANKING</h2>
               <p className="font-hud mt-1 text-[14px] text-white/60">Todos os alunos do APROVUM no Modo Jogo</p>
             </div>
+          )}
+
+          {!to && me && (
+            <form className="mx-4 mb-4 rounded-[18px] border border-white/10 bg-[#141414] p-3 sm:mx-6" data-testid="ranking-frase-form" onSubmit={(e) => (e.preventDefault(), void saveMotto())}>
+              <label htmlFor="ranking-frase" className="font-hud text-[12px] font-bold uppercase tracking-[0.16em] text-white/70">Sua frase no ranking</label>
+              <div className="mt-2 flex gap-2">
+                <input id="ranking-frase" value={draft} maxLength={60} onChange={(e) => setMotto(e.target.value)} placeholder="Ex.: Disciplina vence talento." className="min-w-0 flex-1 rounded-[12px] border border-white/15 bg-black px-3 py-2 text-[14px] text-white placeholder:text-white/35 focus:border-[#FF3B30] focus:outline-none" data-testid="ranking-frase-input" />
+                <button type="submit" disabled={saving || draft === myMotto} className="font-hud rounded-[12px] bg-[#E10600] px-4 text-[13px] font-bold uppercase tracking-wide disabled:opacity-50" data-testid="ranking-frase-salvar">{saving ? "…" : "Salvar"}</button>
+              </div>
+              <p className="font-hud mt-1 text-[11.5px] text-white/45">Curta e livre, até 60 caracteres. Só você edita a sua.</p>
+              {mottoMsg && <p role="status" className="font-hud mt-1 text-[12px] text-[#4ADE80]">{mottoMsg}</p>}
+            </form>
           )}
 
           {/* Ranking */}

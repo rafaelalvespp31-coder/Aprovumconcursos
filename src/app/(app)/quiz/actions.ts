@@ -2,6 +2,8 @@
 
 import { checkAnswer, getRanking, startRound, type QuizCheck, type QuizRound, type RankingRow } from "@/server/services/quiz";
 import { UserFacingError } from "@/server/services/trails";
+import { requireUser } from "@/server/auth";
+import { createUserClient } from "@/server/supabase";
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
@@ -28,5 +30,19 @@ export async function rankingAction(): Promise<{ ok: true; rows: RankingRow[] } 
     return { ok: true, rows: await getRanking(20) };
   } catch {
     return { ok: false, error: "Não foi possível carregar o ranking agora." };
+  }
+}
+
+/** Frase motivacional do próprio aluno (aparece ao lado do nome nos rankings). Só altera o perfil de quem está logado. */
+export async function saveMottoAction(text: string): Promise<{ ok: true; motto: string | null } | { ok: false; error: string }> {
+  const motto = typeof text === "string" ? text.trim().replace(/\s+/g, " ") : "";
+  if (motto.length > 60) return { ok: false, error: "Use no máximo 60 caracteres." };
+  try {
+    const user = await requireUser("/quiz");
+    const { error } = await (await createUserClient()).from("profiles").update({ motto: motto || null }).eq("id", user.id);
+    if (error) throw new Error(error.message);
+    return { ok: true, motto: motto || null };
+  } catch {
+    return { ok: false, error: "Não foi possível salvar agora. Tente de novo." };
   }
 }

@@ -31,14 +31,17 @@ export function DepoimentosView({ items }: { items: Testimonial[] }) {
         ) : (
           <ul className="dep-grade">
             {items.map((d) => {
-              const v = videoSource(d.videoUrl);
+              const v = d.videoUrl ? videoSource(d.videoUrl) : null;
               return (
                 <li key={d.id} className="dep-card" data-testid="depoimento">
                   <div className="dep-video">
                     {v?.kind === "iframe" ? (
                       <iframe src={v.src} title={`Depoimento de ${d.name}`} loading="lazy" allow="accelerometer; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
                     ) : v?.kind === "file" ? (
-                      <video src={v.src} controls preload="metadata" playsInline aria-label={`Depoimento de ${d.name}`} />
+                      <video src={v.src} controls preload="metadata" playsInline poster={d.photoUrl ?? undefined} aria-label={`Depoimento de ${d.name}`} />
+                    ) : d.photoUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={d.photoUrl} alt={`Foto de ${d.name}`} loading="lazy" />
                     ) : (
                       <p>Vídeo indisponível</p>
                     )}

@@ -2019,7 +2019,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .bn-moldura::after { right: 14px; background: linear-gradient(270deg, #FF2A2A, rgba(242,13,24,0)); box-shadow: 0 0 10px rgba(242,13,24,0.8); }
 .bn {
   --oct: polygon(var(--c) 0, calc(100% - var(--c)) 0, 100% var(--c), 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, var(--c) 100%, 0 calc(100% - var(--c)), 0 var(--c));
-  position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; padding: 5px;
+  position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; padding: 5px;
 }
 .bn-fundo { position: absolute; inset: 0; z-index: -1; clip-path: var(--oct); background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.05) 40%, rgba(242,13,24,0.45)); }
 .bn-fundo::before { content: ""; position: absolute; inset: 1px; clip-path: var(--oct); background: radial-gradient(60% 120% at 50% 0%, rgba(242,13,24,0.10), transparent 70%), linear-gradient(180deg, #121316, #08090B); }
@@ -3271,6 +3271,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .dep-grade { list-style: none; margin: 16px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 18px; }
 .dep-card { border-radius: 18px; overflow: hidden; background: #fff; border: 1px solid #e5e7eb; box-shadow: 0 6px 18px rgba(0,0,0,0.08); padding-bottom: 14px; }
 .dep-video { position: relative; aspect-ratio: 16 / 9; background: #000; display: grid; place-items: center; color: #9ca3af; }
+.dep-video img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .dep-video iframe, .dep-video video { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
 .dep-nome { font-weight: 800; padding: 12px 14px 0; }
 .dep-frase { color: #6b7280; font-size: 13px; padding: 2px 14px 0; }
@@ -3315,3 +3316,43 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   .sb-plano-nome { font-size: 14px; }
   .barra-base .mt-3 { margin-top: 8px; }
 }
+
+/* ---- Meu Plano: linha neon correndo no contorno dos cartões ---- */
+.neon-border-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; z-index: 3; }
+.neon-border-svg rect { x: 1px; y: 1px; width: calc(100% - 2px); height: calc(100% - 2px); rx: 16px; ry: 16px; fill: none; stroke: var(--neon-color); }
+.neon-base { stroke-width: 1; opacity: 0.35; }
+.neon-run { stroke-width: 2.5; stroke-linecap: round; filter: drop-shadow(0 0 4px var(--neon-color)) drop-shadow(0 0 10px var(--neon-color)) drop-shadow(0 0 18px var(--neon-color)); animation: neonTrace 3s linear infinite; }
+.neon-border-svg[data-tier="red-strong"] .neon-run { stroke-width: 3.2; filter: drop-shadow(0 0 5px #FF0000) drop-shadow(0 0 14px #FF0000) drop-shadow(0 0 28px #FF0000) drop-shadow(0 0 40px rgba(255,0,0,0.8)); animation-duration: 2.4s; }
+.neon-border-svg[data-tier="red-strong"] .neon-base { opacity: 0.6; stroke-width: 1.5; }
+.neon-border-svg[data-tier="gold"] .neon-run { animation-duration: 3.4s; }
+.neon-border-svg[data-tier="white"] .neon-run { animation-duration: 3.8s; }
+@keyframes neonTrace { 0% { stroke-dashoffset: 0; } 100% { stroke-dashoffset: -100; } }
+.neon-coroa { position: absolute; z-index: 4; left: 50%; top: -14px; width: 30px; height: 30px; translate: -50% 0; pointer-events: none; filter: drop-shadow(0 0 6px #FFD700) drop-shadow(0 0 12px rgba(255,215,0,0.7)); }
+.pm { overflow: visible; }
+@media (prefers-reduced-motion: reduce) { .neon-run { animation: none; stroke-dasharray: 100 0; opacity: .8; } }
+
+/* ---- Concursos ---- */
+.conc-grade { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 18px; max-width: 1200px; }
+.conc-card { border-radius: 18px; overflow: hidden; background: #fff; border: 1px solid #e5e7eb; box-shadow: 0 6px 18px rgba(0,0,0,0.08); display: flex; flex-direction: column; }
+.conc-topo { position: relative; min-height: 54px; background: linear-gradient(135deg, #0a0a0a, #3a0000); }
+.conc-topo img { display: block; width: 100%; height: 130px; object-fit: cover; }
+.conc-status { position: absolute; left: 12px; bottom: 10px; padding: 4px 10px; border-radius: 999px; background: #e10600; color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.conc-corpo { padding: 14px 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+.conc-nome { font-size: 18px; font-weight: 800; line-height: 1.2; }
+.conc-inst { color: #6b7280; font-size: 13px; }
+.conc-dados { display: flex; flex-direction: column; gap: 6px; margin: 4px 0 0; }
+.conc-dados > div { display: flex; justify-content: space-between; gap: 10px; font-size: 14px; }
+.conc-dados dt { display: flex; align-items: center; gap: 6px; color: #6b7280; }
+.conc-dados dd { margin: 0; font-weight: 700; text-align: right; }
+.conc-dias { padding: 8px 12px; border-radius: 12px; background: #fff1f0; color: #b30400; font-size: 14px; } .conc-dias b { font-size: 20px; }
+.conc-fonte { font-size: 11.5px; color: #6b7280; } .conc-fonte a { color: #b30400; text-decoration: underline; }
+
+/* ---- Área do Aluno (celular) ---- */
+.area { max-width: 640px; margin: 0 auto; }
+.area-intro { color: #6b7280; margin-bottom: 14px; }
+.area-grade { list-style: none; margin: 0; padding: 0; display: grid; gap: 12px; }
+.area-card { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 18px; background: linear-gradient(135deg, #131313, #0a0a0a); color: #fff; border: 1px solid #2a2a2a; box-shadow: 0 8px 22px rgba(0,0,0,0.25); min-height: 68px; }
+.area-card:active { transform: scale(0.99); }
+.area-ico { display: grid; place-items: center; width: 48px; height: 48px; border-radius: 14px; background: linear-gradient(180deg, #ff2a1f, #b30400); box-shadow: 0 0 14px rgba(255,30,30,0.5); flex: none; }
+.area-txt { display: flex; flex-direction: column; min-width: 0; } .area-txt b { font-size: 16px; } .area-txt small { color: #a3a3a3; font-size: 12.5px; }
+.pm .neon-coroa { top: -44px; }

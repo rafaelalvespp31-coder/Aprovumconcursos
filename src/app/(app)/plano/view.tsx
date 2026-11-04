@@ -33,6 +33,33 @@ function Crop({ x, y, w, h, className = "", children, label, grow }: { x: number
   );
 }
 
+/** Cor do neon de cada plano (gratuito prata, pagos vermelho, semestral vermelho intenso, vitalício dourado). */
+const NEON: Record<"gratuito" | OfferKey, { color: string; tier: "white" | "red" | "red-strong" | "gold" }> = {
+  gratuito: { color: "#E5E7EB", tier: "white" },
+  mensal: { color: "#FF1A1A", tier: "red" },
+  semestral: { color: "#FF0000", tier: "red-strong" },
+  anual: { color: "#FF1A1A", tier: "red" },
+  vitalicio: { color: "#FFD700", tier: "gold" },
+};
+
+/** Linha neon que corre pelo contorno do cartão (SVG com traço curto animado). */
+function NeonTrace({ id }: { id: "gratuito" | OfferKey }) {
+  const n = NEON[id];
+  return (
+    <>
+      <svg className="neon-border-svg" aria-hidden focusable="false" data-tier={n.tier} style={{ "--neon-color": n.color } as CSSProperties}>
+        <rect className="neon-base" pathLength={100} />
+        <rect className="neon-run" pathLength={100} strokeDasharray="20 80" />
+      </svg>
+      {id === "semestral" && (
+        <svg className="neon-coroa" viewBox="0 0 24 24" aria-hidden focusable="false">
+          <path d="M3 18h18l1.5-10-5.2 4.2L12 4 6.7 12.2 1.5 8 3 18Zm0 2h18v2H3z" fill="#FFD700" stroke="#B8860B" strokeWidth=".6" strokeLinejoin="round" />
+        </svg>
+      )}
+    </>
+  );
+}
+
 const CARD_Y = 432;
 const CARD_H = 604;
 type Card = { id: "gratuito" | OfferKey; x: number; w: number; label: string };
@@ -79,6 +106,7 @@ function MobileCard({ id, current, onPick }: { id: Card["id"]; current: boolean;
   return (
     <article className={`pm pm-${id}`} data-testid={`plano-cartao-${id}`}>
       {id === "semestral" && <p className="pm-fita">MAIS ESCOLHIDO</p>}
+      <NeonTrace id={id} />
       <Crop x={ic.x} y={ic.y} w={ic.w} h={ic.h} className="pm-ico" grow={ic.w} />
       <p className="pm-k">PLANO</p>
       <h2 className="pm-n">{NAME[id]}</h2>
@@ -156,6 +184,7 @@ export function PlanoView({ current, choose, mp = null }: { current: "gratuito" 
                 ) : (
                   <button type="button" className="pl-hit" aria-label={c.label} onClick={() => setSel(c.id as OfferKey)} data-testid={`plano-${c.id}`} />
                 )}
+                <NeonTrace id={c.id} />
                 {c.id === current && (
                   <span className="pl-atual" data-testid="plano-atual">SEU PLANO ATUAL</span>
                 )}
