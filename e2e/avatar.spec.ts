@@ -64,6 +64,20 @@ test.describe("painel (avatar)", () => {
     await expect(page.getByTestId("avatar-solicitar-caixa")).toBeVisible();
   });
 
+  test("card de concursos: contagem ao vivo e detalhes ao clicar", async ({ page }) => {
+    await page.goto(URL);
+    const count = page.getByTestId("contagem-regressiva");
+    await expect(count).toContainText("SEG");
+    const s1 = await count.innerText();
+    await expect.poll(async () => count.innerText(), { timeout: 5000 }).not.toBe(s1);
+    const det = page.getByTestId("proximos-concursos").locator(".cc-det");
+    await expect(det).not.toHaveClass(/is-open/);
+    await page.getByTestId("proximos-concursos").getByRole("button", { name: /ver detalhes/ }).click();
+    await expect(det).toHaveClass(/is-open/);
+    await expect(det).toContainText("Situação");
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+
   test("aluno sem histórico: estados vazios, nada inventado", async ({ page }) => {
     await page.goto(`${URL}?dados=vazio`);
     await expect(page.getByTestId("avatar-xp")).toHaveText("0");

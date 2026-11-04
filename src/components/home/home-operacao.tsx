@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
-import { Check, Clock, Lock, TrendingDown, TrendingUp } from "lucide-react";
+import { Check, Lock, TrendingDown, TrendingUp } from "lucide-react";
 import { AvatarStage } from "@/components/avatar/avatar-stage";
 import type { AvatarRequestInfo, RequestAction } from "@/components/avatar/avatar-request";
 import { rankFor, type AvatarConfig, type AvatarItem } from "@/domain/avatar/catalog";
@@ -9,6 +9,7 @@ import { CONTEST_STATUS, MISSION_ORDER, accuracy, daysUntil, formatStudyTime, le
 import type { HomeData } from "@/server/services/gamification";
 import { LevelUp } from "./level-up";
 import { RequestSlot, RequestTrigger } from "./request-slot";
+import { ContestCard } from "./contest-card";
 
 /**
  * Home "Painel de operações" — réplica do layout oficial (941 px de largura de referência).
@@ -70,7 +71,7 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, ackLe
   const goal = nextMilestone(game.streak.current, game.streak.milestones);
   const rankReady = game.ranking.position != null && game.ranking.total >= 2;
   const nm = name?.trim() || "Operador APROVUM";
-  const nameSize = Math.min(52, Math.max(22, 620 / Math.max(10, nm.length)));
+  const nameSize = Math.min(50, Math.max(15, 560 / Math.max(10, nm.length)));
   const rankLabel = rank.label.toUpperCase();
   const rankSize = rankLabel.length <= 7 ? 25 : Math.max(14, 170 / rankLabel.length);
   const active = new Set(game.streak.week);
@@ -84,8 +85,6 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, ackLe
   const hours = perf ? formatStudyTime(perf.seconds) : null;
   const byId = new Map(game.achievements.map((a) => [a.id, a]));
   const unlocked = game.achievements.filter((a) => a.unlockedAt).length;
-  const contest = contests[0] ?? null;
-  const left = contest ? daysUntil(contest.examDate, contest.examDateConfirmed, game.today) : null;
   const missionHref: Record<MissionKey, string> = { estudar: cont ? `/aula/${cont.lessonId}` : "/trilhas", combater: "/questoes", revisar: "/revisoes" };
   const alerts = insights?.length ?? 0;
   const numSize = String(game.streak.current).length >= 3 ? 48 : String(game.streak.current).length === 2 ? 58 : 66;
@@ -295,34 +294,26 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, ackLe
             </div>
           </div>
 
-          <div className="cl-card cl-wide" data-testid="proximos-concursos">
-            <h3 className="cl-h">PRÓXIMOS CONCURSOS</h3>
-            {contest ? (
-              <div className="cl-conc" title={`Fonte: ${contest.sourceName} · atualizado em ${dateBR(contest.infoUpdatedAt)} · ${CONTEST_STATUS[contest.status] ?? contest.status}`}>
-                {contest.imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={contest.imageUrl} alt={`Imagem do concurso ${contest.name}`} className="cl-conc-img" data-testid="concurso-imagem" />
-                )}
-                <div className="cl-conc-i">
-                  <b className="cl-conc-n">{contest.name}</b>
-                  <span className={contest.vacancies != null ? "cl-ouro" : "cl-dim"}>{contest.vacancies != null ? `+${fmt(contest.vacancies)} vagas` : "Vagas não divulgadas"}</span>
-                </div>
-                <div className="cl-conc-i cl-conc-p">
-                  <span className="cl-prova"><Clock aria-hidden />{contest.examDate ? `Prova: ${dateBR(contest.examDate)}` : "Data não definida"}</span>
-                  {(!contest.infoConfirmed || (contest.examDate && !contest.examDateConfirmed)) && <span className="cl-aviso">Informação não confirmada</span>}
-                </div>
-                {left != null && (
-                  <div className="cl-dias-box" data-testid="contagem-regressiva">
-                    <b>{left}</b>
-                    <span>{left === 1 ? "DIA" : "DIAS"}</span>
-                  </div>
-                )}
-                {contest.sourceUrl && <a href={contest.sourceUrl} target="_blank" rel="noreferrer noopener" className="cl-fonte" aria-label={`Fonte: ${contest.sourceName}`}>Fonte</a>}
-              </div>
-            ) : (
-              <p className="cl-vazio">Nenhum concurso cadastrado no momento.</p>
-            )}
-          </div>
+          <ContestCard
+            contests={contests.map((c) => ({
+              id: c.id,
+              name: c.name,
+              institution: c.institution,
+              roleName: c.roleName,
+              statusLabel: CONTEST_STATUS[c.status] ?? c.status,
+              vacancies: c.vacancies,
+              salary: c.salary,
+              examDate: c.examDate,
+              examDateConfirmed: c.examDateConfirmed,
+              infoConfirmed: c.infoConfirmed,
+              sourceName: c.sourceName,
+              sourceUrl: c.sourceUrl,
+              updatedLabel: dateBR(c.infoUpdatedAt),
+              examLabel: c.examDate ? dateBR(c.examDate) : null,
+              imageUrl: c.imageUrl,
+            }))}
+            serverDays={contests.map((c) => daysUntil(c.examDate, c.examDateConfirmed, game.today))}
+          />
         </section>
       </div>
     </div>
