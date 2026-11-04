@@ -898,6 +898,30 @@ test.describe("página de estudos", () => {
   });
 });
 
+test("admin aprovados: várias fotos de uma vez, cada uma ajustada ao banner 2000×711 e publicada sozinha", async ({ page }) => {
+  await page.goto(`${G}/aprovados-envio`);
+  const png = (w: number, h: number) => page.evaluate(async ([w, h]) => {
+    const c = document.createElement("canvas"); c.width = w!; c.height = h!;
+    const x = c.getContext("2d")!; x.fillStyle = "#c00"; x.fillRect(0, 0, w!, h!); x.fillStyle = "#fff"; x.fillRect(w! / 4, h! / 4, w! / 2, h! / 2);
+    const b: Blob = await new Promise((r) => c.toBlob((bb) => r(bb!), "image/png"));
+    return Array.from(new Uint8Array(await b.arrayBuffer()));
+  }, [w, h]);
+  const [vertical, larga] = await Promise.all([png(900, 1400), png(3200, 900)]);
+  await page.getByTestId("aprovado-foto").setInputFiles([
+    { name: "joao-silva.png", mimeType: "image/png", buffer: Buffer.from(vertical) },
+    { name: "maria_souza.png", mimeType: "image/png", buffer: Buffer.from(larga) },
+    { name: "quebrada.png", mimeType: "image/png", buffer: Buffer.from(vertical) },
+  ]);
+  const fila = page.getByTestId("aprovado-fila");
+  await expect(fila.getByText("✓ Publicado: joao-silva.png")).toBeVisible();
+  await expect(fila.getByText("✓ Publicado: maria_souza.png")).toBeVisible();
+  await expect(fila.getByText(/✗ Não publicado: quebrada.png — Erro de exemplo\./)).toBeVisible();
+  const rec = page.getByTestId("recebidos").locator("li");
+  await expect(rec).toHaveCount(2);
+  await expect(rec.nth(0)).toHaveText(/joao-silva\.png\|\|2000x711\|image\/(webp|png)\|leve/);
+  await expect(rec.nth(1)).toHaveText(/maria_souza\.png\|\|2000x711\|/);
+});
+
 test("banner das aprovações: saudação reveza com os banners de aprovação a cada 3 s", async ({ page }) => {
   await page.goto(`${G}/banner-aprovacoes`);
   const rot = page.getByTestId("banner-rotator");

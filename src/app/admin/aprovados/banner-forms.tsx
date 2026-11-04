@@ -1,67 +1,131 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
+import { useRef, useState, useTransition } from "react";
 import type { ApprovedBannerRow } from "@/server/services/approved-banners";
 
 type Result = { ok: boolean; error?: string };
 const input = "mt-1 w-full rounded border border-linha bg-superficie px-2 py-1.5 text-sm";
 
-/** A hospedagem aceita até ~4,5 MB por envio: fotos grandes são reduzidas no aparelho antes. */
-async function shrink(file: File): Promise<File> {
-  if (file.size <= 3_500_000) return file;
-  try {
-    const bmp = await createImageBitmap(file);
-    const scale = Math.min(1, 2600 / Math.max(bmp.width, bmp.height));
+type Fit = { grande: Blob; pequena: Blob };
+
+/** Encaixa a foto no formato do banner sem cortar: imagem inteira no centro e, nas laterais, ela mesma ampliada e escurecida. */
+async function fit(file: File): Promise<Fit> {
+  const bmp = await createImageBitmap(file, { imageOrientation: "from-image" });
+  const render = async (w: number, h: number, q: number) => {
     const c = document.createElement("canvas");
-    c.width = Math.round(bmp.width * scale);
-    c.height = Math.round(bmp.height * scale);
-    c.getContext("2d")!.drawImage(bmp, 0, 0, c.width, c.height);
-    const blob = await new Promise<Blob | null>((r) => c.toBlob(r, "image/jpeg", 0.9));
-    return blob ? new File([blob], "aprovado.jpg", { type: "image/jpeg" }) : file;
-  } catch {
-    return file;
+    c.width = w;
+    c.height = h;
+    const ctx = c.getContext("2d")!;
+    // Fundo: a própria imagem em "cover", reduzida e ampliada (borra sem depender de ctx.filter, que o Safari não tem).
+    const tiny = document.createElement("canvas");
+    tiny.width = 40;
+    tiny.height = Math.max(8, Math.round((40 * h) / w));
+    const tctx = tiny.getContext("2d")!;
+    const cover = Math.max(tiny.width / bmp.width, tiny.height / bmp.height);
+    tctx.drawImage(bmp, (tiny.width - bmp.width * cover) / 2, (tiny.height - bmp.height * cover) / 2, bmp.width * cover, bmp.height * cover);
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(tiny, 0, 0, w, h);
+    ctx.fillStyle = "rgba(0,0,0,0.45)";
+    ctx.fillRect(0, 0, w, h);
+    const inside = Math.min(w / bmp.width, h / bmp.height);
+    const iw = bmp.width * inside;
+    const ih = bmp.height * inside;
+    ctx.drawImage(bmp, (w - iw) / 2, (h - ih) / 2, iw, ih);
+    return new Promise<Blob>((ok, no) => c.toBlob((b) => (b ? ok(b) : no(new Error("toBlob"))), "image/webp", q));
+  };
+  try {
+    return { grande: await render(2000, 711, 0.86), pequena: await render(1000, 356, 0.84) };
+  } finally {
+    bmp.close();
   }
 }
 
+type Item = { name: string; state: "ajustando" | "enviando" | "ok" | "erro"; msg?: string };
+
+/**
+ * Envio prático: escolha ou arraste várias fotos de uma vez. O navegador ajusta cada uma ao banner
+ * e já publica (o nome vem do arquivo e pode ser editado depois, na lista abaixo).
+ */
 export function NewBannerForm({ action }: { action: (f: FormData) => Promise<Result> }) {
-  const [msg, setMsg] = useState<string | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
-  const [pending, start] = useTransition();
-  return (
-    <form
-      className="grid gap-3 rounded-lg border border-linha bg-superficie p-4 sm:grid-cols-[1fr_1fr]"
-      data-testid="aprovado-form-novo"
-      action={(fd) =>
-        start(async () => {
-          const f = fd.get("foto");
-          if (f instanceof File && f.size) fd.set("foto", await shrink(f));
-          const r = await action(fd);
-          setMsg(r.ok ? "Banner publicado no painel." : r.error ?? "Erro.");
-          if (r.ok) setPreview(null);
-        })
+  const router = useRouter();
+  const [items, setItems] = useState<Item[]>([]);
+  const [drag, setDrag] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const alt = useRef<HTMLInputElement>(null);
+  const ordem = useRef<HTMLInputElement>(null);
+
+  const run = async (files: File[]) => {
+    const list = files.filter((f) => /^image\//.test(f.type) || /\.(jpe?g|png|webp)$/i.test(f.name));
+    if (!list.length) return;
+    setBusy(true);
+    const base = items.length;
+    setItems((cur) => [...cur, ...list.map((f): Item => ({ name: f.name, state: "ajustando" }))]);
+    const set = (i: number, patch: Partial<Item>) => setItems((cur) => cur.map((it, k) => (k === base + i ? { ...it, ...patch } : it)));
+    const typedAlt = list.length === 1 ? alt.current?.value.trim() ?? "" : "";
+    for (let i = 0; i < list.length; i++) {
+      const f = list[i]!;
+      try {
+        const out = await fit(f);
+        set(i, { state: "enviando" });
+        const fd = new FormData();
+        fd.set("grande", new File([out.grande], "grande.webp", { type: out.grande.type || "image/webp" }));
+        fd.set("pequena", new File([out.pequena], "pequena.webp", { type: out.pequena.type || "image/webp" }));
+        fd.set("alt", typedAlt);
+        fd.set("nome", f.name);
+        fd.set("ordem", ordem.current?.value || "0");
+        const r = await action(fd);
+        set(i, r.ok ? { state: "ok" } : { state: "erro", msg: r.error ?? "Erro." });
+      } catch {
+        set(i, { state: "erro", msg: "Não consegui ler essa imagem. Tente outro arquivo (JPG, PNG ou WEBP)." });
       }
-    >
-      <label className="text-sm">
-        Foto ou arte do aprovado* (JPG, PNG ou WEBP)
-        <input name="foto" type="file" required accept="image/jpeg,image/png,image/webp" className="mt-1 block text-sm" data-testid="aprovado-foto"
+    }
+    if (alt.current) alt.current.value = "";
+    setBusy(false);
+    router.refresh();
+  };
+
+  return (
+    <div className="grid gap-3 rounded-lg border border-linha bg-superficie p-4" data-testid="aprovado-form-novo">
+      <label
+        className={`flex cursor-pointer flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed px-4 py-8 text-center ${drag ? "border-destaque bg-nevoa" : "border-linha-forte"}`}
+        onDragOver={(e) => { e.preventDefault(); setDrag(true); }}
+        onDragLeave={() => setDrag(false)}
+        onDrop={(e) => { e.preventDefault(); setDrag(false); void run([...e.dataTransfer.files]); }}
+      >
+        <span className="font-semibold">{busy ? "Publicando…" : "Clique para escolher ou arraste as fotos dos aprovados"}</span>
+        <span className="t-small text-tinta-suave">Pode enviar várias de uma vez (JPG, PNG ou WEBP, de qualquer tamanho). Cada foto é ajustada ao banner sem cortar e já entra no painel.</span>
+        <input
+          type="file"
+          multiple
+          accept="image/jpeg,image/png,image/webp"
+          className="sr-only"
+          data-testid="aprovado-foto"
+          disabled={busy}
           onChange={(e) => {
-            const f = e.currentTarget.files?.[0];
-            setPreview(f ? URL.createObjectURL(f) : null);
-          }} />
-        <span className="mt-1 block t-small text-tinta-suave">Ideal: arte no formato do banner (2000 × 711). Foto em outro formato aparece inteira, sem cortes, com laterais desfocadas.</span>
+            const fl = [...(e.currentTarget.files ?? [])];
+            e.currentTarget.value = "";
+            void run(fl);
+          }}
+        />
       </label>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      {preview ? <img src={preview} alt="Prévia" className="h-32 w-full rounded border border-linha object-contain bg-black" /> : <div />}
-      <label className="text-sm sm:col-span-2">
-        Nome e aprovações* (também é lido por leitores de tela)
-        <input name="alt" required maxLength={400} className={input} placeholder="Nosso aluno aprovado João Silva. Aprovado em: Polícia Penal MG e PMMG." />
-      </label>
-      <label className="text-sm">Ordem no carrossel<input name="ordem" type="number" min={0} max={999} defaultValue={0} className={input} /></label>
-      <div className="flex items-end gap-3">
-        <button type="submit" disabled={pending} className="rounded bg-tinta px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{pending ? "Enviando…" : "Publicar no banner"}</button>
-        {msg && <span role="status" className="t-small">{msg}</span>}
+      <div className="grid gap-3 sm:grid-cols-[1fr_140px]">
+        <label className="text-sm">Nome e aprovações (opcional; vale para uma foto só)
+          <input ref={alt} maxLength={400} className={input} placeholder="Nosso aluno aprovado João Silva. Aprovado em: Polícia Penal MG." />
+        </label>
+        <label className="text-sm">Ordem<input ref={ordem} type="number" min={0} max={999} defaultValue={0} className={input} /></label>
       </div>
-    </form>
+      {items.length > 0 && (
+        <ul className="grid gap-1 t-small" role="status" aria-live="polite" data-testid="aprovado-fila">
+          {items.map((it, i) => (
+            <li key={`${it.name}-${i}`} className={it.state === "erro" ? "text-erro" : it.state === "ok" ? "text-acerto" : "text-tinta-suave"}>
+              {it.state === "ok" ? "✓ Publicado" : it.state === "erro" ? "✗ Não publicado" : it.state === "enviando" ? "Enviando" : "Ajustando"}: {it.name}
+              {it.msg ? ` — ${it.msg}` : ""}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

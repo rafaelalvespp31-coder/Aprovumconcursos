@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/server/services/catalog";
 import { listApprovedBannersAdmin } from "@/server/services/approved-banners";
-import { createBannerAction, deleteBannerAction, updateBannerAction } from "./actions";
+import { deleteBannerAction, publishApprovedAction, updateBannerAction } from "./actions";
 import { BannerItem, NewBannerForm } from "./banner-forms";
 
 export const metadata = { title: "Banners de aprovados" };
@@ -19,8 +19,8 @@ export default async function ApprovedBannersPage() {
         </p>
       </div>
       <section>
-        <h2 className="t-h2 mb-2">Novo aprovado</h2>
-        <NewBannerForm action={createBannerAction} />
+        <h2 className="t-h2 mb-2">Enviar fotos dos aprovados</h2>
+        <NewBannerForm action={publishApprovedAction} />
       </section>
       <section className="space-y-3">
         <h2 className="t-h2">Enviados ({rows.length})</h2>
