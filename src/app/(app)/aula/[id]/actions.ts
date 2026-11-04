@@ -15,6 +15,8 @@ import { getAIProvider, aiEnabled } from "@/ai";
 import { AIError } from "@/ai/provider";
 import { explainSelection } from "@/ai/services";
 import { enforceRateLimit } from "@/server/services/trails";
+import { createAdminClient } from "@/server/supabase";
+import { explainCacheKey } from "@/domain/study/explain-cache";
 
 export async function generateLessonAction(lessonId: string) {
   const user = await requireUser();
@@ -170,13 +172,22 @@ export async function explainSelectionAction(input: { lessonId: string; selectio
   const user = await requireUser();
   const parsed = explainInput.safeParse(input);
   if (!parsed.success) return { ok: false, error: "Selecione uma palavra, frase ou oração (até 600 caracteres)." };
-  if (!aiEnabled("estudos")) return { ok: false, error: "O explicador está temporariamente indisponível. Tente de novo mais tarde." };
   try {
-    await enforceRateLimit(user.id, "explain_selection", 20);
     const db = await createUserClient();
     const { data } = await db.from("lessons").select("title").eq("id", parsed.data.lessonId).maybeSingle();
     if (!data) return { ok: false, error: "Aula não encontrada." };
+    // Cache: o mesmo trecho no mesmo contexto já explicado volta na hora, sem gastar IA nem o limite do aluno.
+    const key = explainCacheKey(parsed.data.selection, parsed.data.around);
+    const admin = createAdminClient();
+    const hit = await admin.from("selection_explanations").select("meaning, hits").eq("key", key).maybeSingle().then((r) => r.data as { meaning: string; hits: number } | null, () => null);
+    if (hit?.meaning) {
+      void admin.from("selection_explanations").update({ hits: hit.hits + 1, last_used_at: new Date().toISOString() }).eq("key", key).then(() => undefined, () => undefined);
+      return { ok: true, meaning: hit.meaning };
+    }
+    if (!aiEnabled("estudos")) return { ok: false, error: "O explicador está temporariamente indisponível. Tente de novo mais tarde." };
+    await enforceRateLimit(user.id, "explain_selection", 20);
     const meaning = await explainSelection(getAIProvider("estudos"), { lessonTitle: (data as { title: string }).title, selection: parsed.data.selection, around: parsed.data.around });
+    await admin.from("selection_explanations").upsert({ key, selection: parsed.data.selection.slice(0, 600), meaning: meaning.slice(0, 900) }, { onConflict: "key" }).then(() => undefined, () => undefined);
     return { ok: true, meaning };
   } catch (e) {
     if (e instanceof UserFacingError) return { ok: false, error: e.message };
