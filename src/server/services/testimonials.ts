@@ -149,9 +149,10 @@ const statsSchema = z.object({
   approved: z.number().int().min(0).max(100_000_000).nullable(),
   satisfaction: z.string().trim().max(10).nullable(),
 });
+const heroSchema = z.object({ desktop: z.string().trim().url().startsWith("https://").nullable(), mobile: z.string().trim().url().startsWith("https://").nullable() });
 const quoteSchema = z.object({ text: z.string().trim().min(5).max(300), authors: z.string().trim().min(2).max(120) });
 
-export interface StoriesData { founders: Founder[]; stats: { students: number | null; approved: number | null; satisfaction: string | null; studentsReal: number; approvedReal: number }; quote: StoryQuote }
+export interface StoriesData { founders: Founder[]; stats: { students: number | null; approved: number | null; satisfaction: string | null; studentsReal: number; approvedReal: number }; quote: StoryQuote; hero: { desktop: string | null; mobile: string | null } }
 
 export async function loadStories(): Promise<StoriesData> {
   const db = createAdminClient();
@@ -164,15 +165,17 @@ export async function loadStories(): Promise<StoriesData> {
   const f = founderSchema.array().safeParse(by.get("founders"));
   const st = statsSchema.safeParse(by.get("stats"));
   const q = quoteSchema.safeParse(by.get("quote"));
+  const h = heroSchema.safeParse(by.get("hero"));
   return {
     founders: f.success && f.data.length === 2 ? f.data : DEFAULT_FOUNDERS,
     stats: { students: st.success ? st.data.students : null, approved: st.success ? st.data.approved : null, satisfaction: st.success ? st.data.satisfaction : null, studentsReal: students.count ?? 0, approvedReal: approved.count ?? 0 },
     quote: q.success ? q.data : DEFAULT_QUOTE,
+    hero: h.success ? h.data : { desktop: null, mobile: null },
   };
 }
 
-export async function saveStoriesConfig(key: "founders" | "stats" | "quote", input: unknown): Promise<void> {
-  const schema = key === "founders" ? founderSchema.array().length(2) : key === "stats" ? statsSchema : quoteSchema;
+export async function saveStoriesConfig(key: "founders" | "stats" | "quote" | "hero", input: unknown): Promise<void> {
+  const schema = key === "founders" ? founderSchema.array().length(2) : key === "stats" ? statsSchema : key === "hero" ? heroSchema : quoteSchema;
   const parsed = schema.safeParse(input);
   if (!parsed.success) throw new UserFacingError(parsed.error.issues[0]?.message ?? "Dados inválidos.", "validation");
   const { error } = await createAdminClient().from("depoimentos_config").upsert({ key, value: parsed.data, updated_at: new Date().toISOString() });

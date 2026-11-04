@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/server/services/catalog";
 import { listTestimonialsAdmin, loadStories } from "@/server/services/testimonials";
 import { createTestimonialAction, deleteTestimonialAction, prepareUploadAction, saveStoriesConfigAction, toggleTestimonialAction, updateTestimonialAction } from "./actions";
-import { StoriesEditor, TestimonialForm, TestimonialList } from "./forms";
+import { HeroEditor, StoriesEditor, TestimonialForm, TestimonialList } from "./forms";
 
 export const metadata = { title: "Depoimentos" };
 export const dynamic = "force-dynamic";
@@ -18,6 +18,7 @@ export default async function AdminTestimonialsPage() {
           Cadastre vídeos (arquivo até 50 MB ou link YouTube/Vimeo), miniatura, legendas, categoria e o selo APROVADO (só para aprovação comprovada). Nada é exibido sem cadastro: sem dados, a página mostra o estado vazio.
         </p>
       </div>
+      <HeroEditor hero={stories.hero} prepare={prepareUploadAction} saveConfig={saveStoriesConfigAction} />
       <section>
         <h2 className="t-h2 mb-2">Novo depoimento</h2>
         <TestimonialForm prepare={prepareUploadAction} save={createTestimonialAction} />

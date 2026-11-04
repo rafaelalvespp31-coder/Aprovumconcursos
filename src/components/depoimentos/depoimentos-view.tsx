@@ -11,6 +11,8 @@ export interface StoriesView {
   founders: Founder[];
   stats: { students: number | null; approved: number | null; satisfaction: string | null; studentsReal: number; approvedReal: number };
   quote: StoryQuote;
+  /** Banner dos idealizadores enviado pelo admin (nulo = arte original). */
+  hero?: { desktop: string | null; mobile: string | null };
 }
 
 type Filter = "todos" | TestimonialCategory;
@@ -82,13 +84,23 @@ export function DepoimentosView({ items, stories }: { items: Testimonial[]; stor
       <section className="dp-hero" aria-labelledby="dp-titulo">
         <h1 id="dp-titulo" className="sr-only">Histórias que inspiram. Propósitos que transformam.</h1>
         <div className="dp-hero-d">
-          <Image src="/depoimentos/hero-d.webp" alt="" width={1024} height={369} priority sizes="(min-width: 1100px) 1000px, 100vw" />
+          {stories.hero?.desktop ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={stories.hero.desktop} alt="" width={1024} height={369} data-testid="hero-personalizado" />
+          ) : (
+            <Image src="/depoimentos/hero-d.webp" alt="" width={1024} height={369} priority sizes="(min-width: 1100px) 1000px, 100vw" />
+          )}
         </div>
         <div className="dp-hero-m">
           <p className="dp-chip">DEPOIMENTOS E HISTÓRIAS <i /><i /><i /></p>
           <p className="dp-h1" aria-hidden><span>HISTÓRIAS QUE INSPIRAM.</span><b>PROPÓSITOS QUE TRANSFORMAM.</b></p>
           <p className="dp-lead">Conheça quem faz parte dessa jornada. Alunos, aprovados e pessoas reais que encontraram no APROVUM a força para conquistar seus sonhos.</p>
-          <Image className="dp-hero-arte" src="/depoimentos/hero-arte-m.webp" alt="" width={594} height={369} />
+          {stories.hero?.mobile ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img className="dp-hero-arte" src={stories.hero.mobile} alt="" width={594} height={369} />
+          ) : (
+            <Image className="dp-hero-arte" src="/depoimentos/hero-arte-m.webp" alt="" width={594} height={369} />
+          )}
         </div>
         {/* Placas dos idealizadores (dados cadastrados) sobre a arte */}
         {[rafael, william].map((f) => (

@@ -250,3 +250,68 @@ export function StoriesEditor({ founders, stats, quote, saveConfig }: { founders
     </div>
   );
 }
+
+/** Banner dos Idealizadores (topo da página Depoimentos): trocar ou voltar ao original. */
+export function HeroEditor({ hero, prepare, saveConfig }: { hero: { desktop: string | null; mobile: string | null }; prepare: Prepare; saveConfig: (k: "hero", v: unknown) => Promise<Result> }) {
+  const router = useRouter();
+  const [d, setD] = useState<File | null>(null);
+  const [m, setM] = useState<File | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const prev = (f: File | null, cur: string | null, orig: string) => (f ? URL.createObjectURL(f) : (cur ?? orig));
+  const save = (next: { desktop: string | null; mobile: string | null }, ok: string) =>
+    start(async () => {
+      setMsg(null);
+      try {
+        const r = await saveConfig("hero", next);
+        if (!r.ok) throw new Error(r.error);
+        setD(null); setM(null);
+        setMsg(ok);
+        router.refresh();
+      } catch (e) {
+        setMsg((e as Error).message);
+      }
+    });
+  const publish = () =>
+    start(async () => {
+      setMsg(null);
+      try {
+        let desktop = hero.desktop;
+        let mobile = hero.mobile;
+        if (d) { const u = await upload(d, prepare); if (u.kind !== "photo") throw new Error("O arquivo do computador não é uma imagem."); desktop = u.publicUrl; }
+        if (m) { const u = await upload(m, prepare); if (u.kind !== "photo") throw new Error("O arquivo do celular não é uma imagem."); mobile = u.publicUrl; }
+        const r = await saveConfig("hero", { desktop, mobile });
+        if (!r.ok) throw new Error(r.error);
+        setD(null); setM(null);
+        setMsg("Banner atualizado na página Depoimentos.");
+        router.refresh();
+      } catch (e) {
+        setMsg((e as Error).message);
+      }
+    });
+  return (
+    <div className="rounded-xl border-2 border-red-600 bg-superficie p-5 shadow-md" data-testid="hero-editor">
+      <h2 className="t-h2">Banner dos Idealizadores</h2>
+      <p className="mt-1 max-w-3xl t-small text-tinta-suave">Imagem do topo da página Depoimentos (Rafael e William). Envie uma nova para trocar; as placas dos nomes ficam por cima. Use JPG, PNG ou WEBP de até 8 MB.</p>
+      <div className="mt-4 grid gap-5 md:grid-cols-[2fr_1fr]">
+        <div className="space-y-2">
+          <p className="t-small font-bold">Computador — proporção 1024×369 (pode conter o título)</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={prev(d, hero.desktop, "/depoimentos/hero-d.webp")} alt="Banner atual no computador" className="w-full rounded-lg border border-linha" data-testid="hero-prev-d" />
+          <input type="file" accept="image/jpeg,image/png,image/webp" className="text-sm" onChange={(e) => setD(e.target.files?.[0] ?? null)} data-testid="hero-arq-d" />
+        </div>
+        <div className="space-y-2">
+          <p className="t-small font-bold">Celular — proporção 594×369 (só a arte, sem título)</p>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={prev(m, hero.mobile, "/depoimentos/hero-arte-m.webp")} alt="Banner atual no celular" className="w-full rounded-lg border border-linha" data-testid="hero-prev-m" />
+          <input type="file" accept="image/jpeg,image/png,image/webp" className="text-sm" onChange={(e) => setM(e.target.files?.[0] ?? null)} data-testid="hero-arq-m" />
+        </div>
+      </div>
+      <div className="mt-4 flex flex-wrap items-center gap-3">
+        <Button type="button" disabled={pending || (!d && !m)} onClick={publish} data-testid="hero-salvar">{pending ? "Enviando…" : "Trocar banner"}</Button>
+        <button type="button" disabled={pending || (!hero.desktop && !hero.mobile)} className="t-small font-semibold underline disabled:opacity-40" onClick={() => confirm("Voltar ao banner original?") && save({ desktop: null, mobile: null }, "Banner original restaurado.")} data-testid="hero-restaurar">Voltar ao original</button>
+        {msg && <span role="status" className="t-small">{msg}</span>}
+      </div>
+    </div>
+  );
+}

@@ -42,7 +42,7 @@ export async function updateTestimonialAction(id: string, input: TestimonialInpu
   }
 }
 
-export async function saveStoriesConfigAction(key: "founders" | "stats" | "quote", input: unknown): Promise<Result> {
+export async function saveStoriesConfigAction(key: "founders" | "stats" | "quote" | "hero", input: unknown): Promise<Result> {
   await requireAdmin();
   try {
     await saveStoriesConfig(key, input);

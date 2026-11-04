@@ -10,7 +10,7 @@ export default async function DepoimentosPage() {
   await requireUser("/depoimentos");
   const [items, stories] = await Promise.all([
     listTestimonials().catch(() => []),
-    loadStories().catch(() => ({ founders: DEFAULT_FOUNDERS, stats: { students: null, approved: null, satisfaction: null, studentsReal: 0, approvedReal: 0 }, quote: DEFAULT_QUOTE })),
+    loadStories().catch(() => ({ founders: DEFAULT_FOUNDERS, stats: { students: null, approved: null, satisfaction: null, studentsReal: 0, approvedReal: 0 }, quote: DEFAULT_QUOTE, hero: { desktop: null, mobile: null } })),
   ]);
   return <DepoimentosView items={items} stories={stories} />;
 }
