@@ -197,9 +197,10 @@ export function TestimonialList({ rows, prepare, save, toggle, remove }: { rows:
 }
 
 /** Idealizadores, indicadores e citação da página (só dados reais cadastrados aqui aparecem). */
-export function StoriesEditor({ founders, stats, quote, saveConfig }: { founders: Founder[]; stats: { students: number | null; approved: number | null; satisfaction: string | null; studentsReal: number; approvedReal: number }; quote: StoryQuote; saveConfig: (k: "founders" | "stats" | "quote", v: unknown) => Promise<Result> }) {
+export function StoriesEditor({ founders, stats, quote, saveConfig, prepare }: { founders: Founder[]; stats: { students: number | null; approved: number | null; satisfaction: string | null; studentsReal: number; approvedReal: number }; quote: StoryQuote; saveConfig: (k: "founders" | "stats" | "quote", v: unknown) => Promise<Result>; prepare: Prepare }) {
   const router = useRouter();
   const [fs, setFs] = useState(founders);
+  const [files, setFiles] = useState<Record<string, File | null>>({});
   const [st, setSt] = useState({ students: stats.students?.toString() ?? "", approved: stats.approved?.toString() ?? "", satisfaction: stats.satisfaction ?? "" });
   const [q, setQ] = useState(quote);
   const [msg, setMsg] = useState<string | null>(null);
@@ -213,6 +214,34 @@ export function StoriesEditor({ founders, stats, quote, saveConfig }: { founders
       setMsg(r.ok ? "Salvo." : (r.error ?? "Erro."));
       router.refresh();
     });
+  const sendPhoto = (i: number) =>
+    start(async () => {
+      const f = fs[i]!;
+      const file = files[f.slug];
+      if (!file) return;
+      setMsg(null);
+      try {
+        const u = await upload(file, prepare);
+        if (u.kind !== "photo") throw new Error("O arquivo não é uma imagem.");
+        const next = fs.map((x, j) => (j === i ? { ...x, photo: u.publicUrl } : x));
+        const r = await saveConfig("founders", next);
+        if (!r.ok) throw new Error(r.error);
+        setFs(next);
+        setFiles((p) => ({ ...p, [f.slug]: null }));
+        setMsg(`Foto de ${f.name} atualizada.`);
+        router.refresh();
+      } catch (e) {
+        setMsg((e as Error).message);
+      }
+    });
+  const resetPhoto = (i: number) =>
+    start(async () => {
+      const next = fs.map((x, j) => (j === i ? { ...x, photo: null } : x));
+      const r = await saveConfig("founders", next);
+      if (r.ok) setFs(next);
+      setMsg(r.ok ? "Foto original restaurada." : (r.error ?? "Erro."));
+      router.refresh();
+    });
   const upd = (i: number, p: Partial<Founder>) => setFs((a) => a.map((x, j) => (j === i ? { ...x, ...p } : x)));
   return (
     <div className="grid max-w-3xl gap-4" data-testid="historias-editor">
@@ -222,6 +251,18 @@ export function StoriesEditor({ founders, stats, quote, saveConfig }: { founders
         {fs.map((f, i) => (
           <fieldset key={f.slug} className="grid gap-2 sm:grid-cols-2">
             <legend className="font-semibold">{f.slug === "rafael" ? "Rafael" : "William"}</legend>
+            <div className="flex flex-wrap items-center gap-3 rounded-lg border-2 border-red-600 bg-nevoa p-3 sm:col-span-2" data-testid={`foto-editor-${f.slug}`}>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={files[f.slug] ? URL.createObjectURL(files[f.slug]!) : (f.photo ?? `/depoimentos/${f.slug}.webp`)} alt={`Foto de ${f.name}`} className="h-24 w-24 rounded-lg border border-linha object-cover" />
+              <div className="flex min-w-0 flex-1 flex-col gap-2">
+                <p className="t-small font-bold">Foto de {f.name.split(" ")[0]} (aparece em &quot;Conheça nossa história&quot;)</p>
+                <input type="file" accept="image/jpeg,image/png,image/webp" className="text-sm" onChange={(e) => setFiles((p) => ({ ...p, [f.slug]: e.target.files?.[0] ?? null }))} data-testid={`foto-arq-${f.slug}`} />
+                <div className="flex flex-wrap gap-3">
+                  <Button type="button" disabled={pending || !files[f.slug]} onClick={() => sendPhoto(i)} data-testid={`foto-enviar-${f.slug}`}>Enviar foto de {f.name.split(" ")[0]}</Button>
+                  <button type="button" disabled={pending || !f.photo} className="t-small font-semibold underline disabled:opacity-40" onClick={() => resetPhoto(i)}>Voltar à original</button>
+                </div>
+              </div>
+            </div>
             <label className={lbl}>Nome<input className={inputClass} value={f.name} onChange={(e) => upd(i, { name: e.target.value })} /></label>
             <label className={lbl}>Função<input className={inputClass} value={f.role} onChange={(e) => upd(i, { role: e.target.value })} /></label>
             <label className={lbl}>Idade<input className={inputClass} inputMode="numeric" value={f.age ?? ""} onChange={(e) => upd(i, { age: e.target.value ? Number(e.target.value.replace(/\D/g, "")) : null })} /></label>

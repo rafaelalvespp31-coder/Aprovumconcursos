@@ -1429,11 +1429,15 @@ test.describe("menu lateral: Depoimentos, Evolução e plano", () => {
     await expect(page.getByTestId("depoimento")).toHaveCount(5);
     await page.getByTestId("depoimento-play").first().click();
     await expect(page.getByTestId("player")).toBeVisible();
+    await page.getByRole("button", { name: "Fechar" }).click();
+    await expect(page.getByTestId("player")).toHaveCount(0);
+    await page.getByTestId("depoimento-play").first().click();
     await page.keyboard.press("Escape");
     await expect(page.getByTestId("player")).toHaveCount(0);
     await page.getByTestId("conheca-historia").click();
     await expect(page.getByTestId("historia-modal")).toBeVisible();
-    await page.keyboard.press("Escape");
+    await page.getByRole("button", { name: "Fechar" }).click();
+    await expect(page.getByTestId("historia-modal")).toHaveCount(0);
     await expect(page.getByTestId("indicadores")).toBeVisible();
     await expect(page.getByTestId("banner-participar").first()).toHaveAttribute("href", /.+/);
     await page.goto(`${G}/depoimentos?vazio=1`);

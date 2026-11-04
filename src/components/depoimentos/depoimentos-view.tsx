@@ -259,9 +259,9 @@ function Player({ item, onClose }: { item: Testimonial; onClose: () => void }) {
   const ref = useModal(onClose);
   const v = item.videoUrl ? videoSource(item.videoUrl) : null;
   return (
-    <div className="dp-modal" onMouseDown={(e) => e.target === e.currentTarget && close()} data-testid="player">
+    <div className="dp-modal" onMouseDown={(e) => e.target === e.currentTarget && onClose()} data-testid="player">
       <div className="dp-player" ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label={`Depoimento de ${item.name}`}>
-        <button type="button" className="dp-fechar" onClick={close} aria-label="Fechar o vídeo"><X className="size-5" aria-hidden /></button>
+        <button type="button" className="dp-fechar" onClick={onClose} aria-label="Fechar o vídeo"><X className="size-5" aria-hidden /></button>
         <div className="dp-tela">
           {v?.kind === "iframe" ? (
             <iframe src={`${v.src}${v.src.includes("?") ? "&" : "?"}autoplay=1`} title={`Depoimento de ${item.name}`} allow="autoplay; accelerometer; encrypted-media; picture-in-picture; fullscreen" allowFullScreen referrerPolicy="strict-origin-when-cross-origin" />
@@ -297,14 +297,19 @@ function HistoryModal({ which, founders, onClose }: { which: "rafael" | "william
   const ref = useModal(onClose);
   const list = which === "ambos" ? founders : [...founders].sort((a) => (a.slug === which ? -1 : 1));
   return (
-    <div className="dp-modal" onMouseDown={(e) => e.target === e.currentTarget && close()} data-testid="historia-modal">
+    <div className="dp-modal" onMouseDown={(e) => e.target === e.currentTarget && onClose()} data-testid="historia-modal">
       <div className="dp-historia" ref={ref} tabIndex={-1} role="dialog" aria-modal="true" aria-label="Nossa história">
-        <button type="button" className="dp-fechar" onClick={close} aria-label="Fechar"><X className="size-5" aria-hidden /></button>
+        <button type="button" className="dp-fechar" onClick={onClose} aria-label="Fechar"><X className="size-5" aria-hidden /></button>
         <p className="dp-k"><i /><i /><i /> NOSSA HISTÓRIA</p>
         <h2 className="dp-h2"><span>Do sonho à aprovação</span><b>Juntos, até o topo.</b></h2>
         {list.map((f) => (
           <article key={f.slug} className="dp-fundador" data-testid={`historia-${f.slug}`}>
-            <Image src={`/depoimentos/${f.slug}.webp`} alt={`${f.name}, ${f.role}`} width={272} height={273} className="dp-fundador-foto" />
+            {f.photo ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={f.photo} alt={`${f.name}, ${f.role}`} width={272} height={273} className="dp-fundador-foto" data-testid={`foto-${f.slug}`} />
+            ) : (
+              <Image src={`/depoimentos/${f.slug}.webp`} alt={`${f.name}, ${f.role}`} width={272} height={273} className="dp-fundador-foto" />
+            )}
             <div>
               <h3>{f.name}</h3>
               <p className="dp-fundador-role">{f.role}{f.age || f.city ? ` · ${[f.age ? `${f.age} anos` : null, f.city].filter(Boolean).join(" • ")}` : ""}</p>

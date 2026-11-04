@@ -29,7 +29,7 @@ export default async function AdminTestimonialsPage() {
       </section>
       <section className="space-y-3">
         <h2 className="t-h2">Idealizadores, indicadores e citação</h2>
-        <StoriesEditor founders={stories.founders} stats={stories.stats} quote={stories.quote} saveConfig={saveStoriesConfigAction} />
+        <StoriesEditor founders={stories.founders} stats={stories.stats} quote={stories.quote} saveConfig={saveStoriesConfigAction} prepare={prepareUploadAction} />
       </section>
     </div>
   );

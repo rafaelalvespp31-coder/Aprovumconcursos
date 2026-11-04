@@ -143,6 +143,7 @@ const founderSchema = z.object({
   story: z.string().trim().max(4000).nullable(),
   trajectory: z.string().trim().max(4000).nullable(),
   quote: z.string().trim().max(300).nullable(),
+  photo: z.string().trim().url().startsWith("https://").nullable().optional(),
 });
 const statsSchema = z.object({
   students: z.number().int().min(0).max(100_000_000).nullable(),

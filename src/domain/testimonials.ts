@@ -39,7 +39,7 @@ export function formatCount(n: number): string {
   return `+${String(k).replace(".", ",")} Mil`;
 }
 
-export interface Founder { slug: "rafael" | "william"; name: string; role: string; age: number | null; city: string | null; bio: string | null; story: string | null; trajectory: string | null; quote: string | null }
+export interface Founder { slug: "rafael" | "william"; name: string; role: string; age: number | null; city: string | null; bio: string | null; story: string | null; trajectory: string | null; quote: string | null; /** Foto enviada pelo admin (nulo = foto original). */ photo?: string | null }
 export interface StoryStats { students: number | null; approved: number | null; satisfaction: string | null }
 export interface StoryQuote { text: string; authors: string }
 export const DEFAULT_FOUNDERS: Founder[] = [
