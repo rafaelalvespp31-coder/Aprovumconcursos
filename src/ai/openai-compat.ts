@@ -266,6 +266,7 @@ export class OpenAICompatProvider implements AIProvider {
       return new AIError("Pedido grande demais para o limite gratuito por minuto do provedor de IA. Gere menos questões por vez ou use um texto-base menor.", "rate_limited", false, usage);
     }
     if (status === 401 || status === 403) return new AIError(`Credencial do provedor de IA inválida. Confira a variável ${this.config.keyVar ?? "da chave"} no servidor.`, "not_configured", false, usage);
+    if (status === 404) return new AIError(`Modelo ou endereço da IA não encontrado (HTTP 404). Confira AI_MODEL ("${this.model}") e, se definida, AI_BASE_URL no servidor. Para o Gemini use, por exemplo, gemini-2.5-flash.`, "not_configured", false, usage);
     // Não propaga o corpo do erro do provedor (pode conter detalhes internos).
     return new AIError(`Erro do provedor de IA (HTTP ${status}).`, "provider_error", status >= 500, usage);
   }
