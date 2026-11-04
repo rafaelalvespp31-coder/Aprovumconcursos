@@ -3127,3 +3127,24 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .bn-cel-ativa[data-tier="vitalicio"] .bn-item::before { background: linear-gradient(180deg, #FFE27A, #D49B00 55%, #8A6500); }
 .bn-cel-ativa[data-tier="vitalicio"] .bn-ico, .bn-cel-ativa[data-tier="vitalicio"] .bn-txt { color: #2A1C00; }
 @media (prefers-reduced-motion: reduce) { .mp-ico, .bn-cel[data-tier] .bn-item { animation: none; } }
+
+/* ── Mentor por voz ── */
+.voz { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100%; padding: 8px 4px; text-align: center; }
+.voz-bloco { display: flex; flex-direction: column; align-items: center; gap: 10px; width: 100%; max-width: 320px; }
+.voz-titulo { font-size: 16px; font-weight: 700; color: #08090b; }
+.voz-texto { font-size: 13px; line-height: 1.45; color: #64666d; }
+.voz-erro { font-size: 12.5px; color: #b42318; }
+.voz-orbe { display: grid; place-items: center; width: 84px; height: 84px; border-radius: 50%; color: #fff; background: radial-gradient(circle at 30% 25%, #6d8bff, #2f4fd8 70%); box-shadow: 0 8px 24px rgb(47 79 216 / 0.3); transition: transform 0.2s, box-shadow 0.2s; }
+.voz-orbe.is-trava { background: radial-gradient(circle at 30% 25%, #b9bcc4, #7d818b 70%); box-shadow: none; }
+.voz-orbe.is-escuta { animation: voz-pulso 2s ease-in-out infinite; }
+.voz-orbe.is-fala { animation: voz-fala 0.7s ease-in-out infinite; background: radial-gradient(circle at 30% 25%, #4fd1a1, #1a9b6b 70%); box-shadow: 0 8px 28px rgb(26 155 107 / 0.4); }
+@keyframes voz-pulso { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.06); } }
+@keyframes voz-fala { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.12); } }
+@media (prefers-reduced-motion: reduce) { .voz-orbe.is-escuta, .voz-orbe.is-fala { animation: none; } }
+.voz-tempo { width: 100%; display: flex; flex-direction: column; gap: 5px; }
+.voz-barra { height: 6px; border-radius: 999px; background: #ecedf0; overflow: hidden; }
+.voz-barra span { display: block; height: 100%; border-radius: inherit; background: #2f4fd8; transition: width 0.5s linear; }
+.voz-barra span[data-aviso] { background: #d92d20; }
+.voz-relogio { font-size: 12px; font-variant-numeric: tabular-nums; color: #64666d; }
+.voz-fim { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; padding: 0 18px; border-radius: 12px; font-size: 14px; font-weight: 700; color: #fff; background: #d92d20; }
+.voz-fim:hover { background: #b42318; }
