@@ -2823,7 +2823,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 @font-face { font-family: "Kaushan Script"; font-style: normal; font-weight: 400; font-display: swap; src: url("/fonts/KaushanScript-Regular.woff2") format("woff2"); }
 @font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 500; font-display: swap; src: url("/fonts/BarlowCondensed-Medium.woff2") format("woff2"); }
 @font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 600; font-display: swap; src: url("/fonts/BarlowCondensed-SemiBold.woff2") format("woff2"); }
-.clw { container-type: inline-size; width: 100%; max-width: 941px; margin: 0 auto; padding-top: env(safe-area-inset-top, 0px); background: #08080a; }
+.clw { container-type: inline-size; width: 100%; max-width: 941px; margin: 0 auto; padding-top: env(safe-area-inset-top, 0px); background: #fff; }
 .cl { --u: calc(100cqw / 941); --cut: 0; position: relative; color: #fff; font-family: "Barlow Condensed", "Barlow Semi Condensed", Inter, sans-serif; font-weight: 500; line-height: 1.15; }
 .cl-a { position: relative; height: calc((935 - var(--cut)) * var(--u)); overflow: hidden; }
 .cl-a > * { translate: 0 calc(var(--cut) * var(--u) * -1); }
@@ -2845,6 +2845,8 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .cl-round { border-radius: 999px; }
 .cl-badge { position: absolute; display: flex; align-items: center; justify-content: center; border-radius: 99px; background: #e10600; font-family: Inter, sans-serif; font-weight: 700; color: #fff; box-shadow: 0 0 0 2px #0b0b0d; }
 .cl-palco { position: absolute; mask-repeat: no-repeat; -webkit-mask-repeat: no-repeat; }
+/* Sombra suave no chão, sob os pés: o avatar "em pé" sobre o fundo branco. */
+.cl-palco::before { content: ""; position: absolute; left: 20%; right: 20%; bottom: 1.5%; height: 4.5%; border-radius: 50%; background: radial-gradient(closest-side, rgba(0,0,0,0.28), rgba(0,0,0,0) 100%); filter: blur(2px); }
 .cl-palco-arte { position: absolute; inset: 0; width: 100% !important; height: 100% !important; border-radius: 0 !important; background: transparent !important; }
 .cl-label { font-weight: 600; letter-spacing: 0.06em; }
 .cl-nome {

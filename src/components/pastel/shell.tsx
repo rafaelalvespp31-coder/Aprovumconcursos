@@ -131,8 +131,8 @@ export function PastelShell({
   // Modo Jogo: cabeçalho escuro, contínuo com o palco preto da página.
   // Resolver um caderno (/questoes/cadernos/<id>, exceto "novo"): mesmo cabeçalho escuro.
   const isNotebookRun = new RegExp(`^${basePath}/questoes/cadernos/(?!novo$)[^/]+$`).test(path);
-  // Painel (avatar): mesmo fundo escuro do layout oficial.
-  const dark = active?.id === "quiz" || active?.id === "painel" || isNotebookRun;
+  // Painel (avatar): fundo branco como as demais telas; só o Modo Jogo e a resolução de caderno são escuros.
+  const dark = active?.id === "quiz" || isNotebookRun;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
