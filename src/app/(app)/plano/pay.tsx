@@ -39,6 +39,23 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [pixBusy, setPixBusy] = useState(false);
+
+  // PIX direto: sem pedir e-mail. O servidor usa o e-mail da conta do aluno.
+  const payPix = async () => {
+    setError(null);
+    setPixBusy(true);
+    try {
+      const r = await fetch("/api/payments/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, formData: { payment_method_id: "pix" } }) });
+      const j = (await r.json().catch(() => ({}))) as { payment?: PayResult; error?: string };
+      if (!r.ok || !j.payment) setError(j.error ?? "Não foi possível gerar o PIX agora. Tente novamente.");
+      else setResult(j.payment);
+    } catch {
+      setError("Sem conexão. Tente novamente.");
+    } finally {
+      setPixBusy(false);
+    }
+  };
 
   // Enquanto pendente (PIX), pergunta ao servidor — que confirma no Mercado Pago — até aprovar.
   useEffect(() => {
@@ -112,11 +129,15 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
       <p className="plano-p">{o.price}</p>
       <p className="plano-s">{o.per} · PIX ou cartão em até 12x</p>
       {error && <p role="alert" className="plano-e">{error}</p>}
+      <button type="button" className="plano-b" disabled={pixBusy} onClick={payPix} data-testid="plano-pix-pagar">
+        {pixBusy ? "Gerando PIX…" : "Pagar com PIX"}
+      </button>
+      <p className="plano-s">ou pague com cartão de crédito em até 12x</p>
       {!ready && <p className="plano-s">Carregando pagamento seguro…</p>}
       <div className="plano-brick" data-testid="plano-brick">
         <Payment
           initialization={{ amount: o.cents / 100, ...(email ? { payer: { email } } : {}) }}
-          customization={{ paymentMethods: { creditCard: "all", bankTransfer: "all", maxInstallments: 12 }, visual: { style: { theme: "dark" } } }}
+          customization={{ paymentMethods: { creditCard: "all", maxInstallments: 12 }, visual: { style: { theme: "dark" } } }}
           locale="pt-BR"
           onReady={() => setReady(true)}
           onError={() => setError("Não foi possível carregar o pagamento. Atualize a página e tente de novo.")}
