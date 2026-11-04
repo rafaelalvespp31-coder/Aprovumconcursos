@@ -3548,7 +3548,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .cn2-hero-arte { display: block; width: 100%; height: auto; margin: 0 -2px; }
 
 /* quatro cards */
-.cn2-cards { display: grid; grid-template-columns: 226fr 217fr 218fr 236fr; gap: 1.9cqw; align-items: center; }
+.cn2-cards { display: grid; grid-template-columns: 226fr 217fr 218fr 236fr; gap: 1.9cqw; align-items: center; max-width: 1120px; width: 100%; margin-inline: auto; }
 .cn2-card { position: relative; container-type: inline-size; display: block; overflow: hidden; width: 100%; aspect-ratio: 226 / 176; border-radius: 6.5cqw; text-align: left; border: 1px solid #d9dbe0; background: linear-gradient(180deg, #fff, #ececef); box-shadow: 0 10px 22px rgba(0,0,0,0.16); transition: transform 180ms, box-shadow 180ms; isolation: isolate; }
 .cn2-card:hover { transform: translateY(-3px); box-shadow: 0 16px 30px rgba(0,0,0,0.26); }
 .cn2-card:active { transform: scale(0.98); }
@@ -3577,7 +3577,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .cn2-sino svg { width: 55%; height: 55%; }
 
 /* mapa + destaques */
-.cn2-mapa-sec { display: grid; grid-template-columns: 24% 1fr 28%; gap: 2.2cqw; align-items: center; }
+.cn2-mapa-sec { display: grid; grid-template-columns: 21% 1fr 26%; gap: 2.2cqw; align-items: center; }
 .cn2-lado { display: flex; flex-direction: column; gap: 12px; }
 .cn2-titulo { display: block; width: 100%; height: auto; }
 .cn2-explore { margin: 0; font-size: clamp(13px, 1.55cqw, 16px); line-height: 1.3; font-weight: 500; color: #1a1b1f; }
@@ -3589,7 +3589,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .cn2-mapa-col { min-width: 0; }
 .cn2-mapa { position: relative; touch-action: none; overflow: hidden; border-radius: 12px; }
 .cn2-mapa-carrega { display: grid; place-items: center; min-height: 340px; color: #6b7280; }
-.cn2-mapa svg { display: block; width: 100%; height: auto; max-height: 560px; cursor: grab; touch-action: none; }
+.cn2-mapa svg { display: block; width: 100%; height: auto; max-height: 760px; cursor: grab; touch-action: none; }
 .cn2-mapa .cn-g { filter: drop-shadow(0 0 5px rgba(229,9,20,0.95)) drop-shadow(0 6px 8px rgba(0,0,0,0.35)); }
 .cn2-mapa .cn-uf { fill: #1c1d20; stroke: #6a6b70; stroke-width: 0.9; }
 .cn2-mapa .cn-uf.t-abertos { fill: #e50914; } .cn2-mapa .cn-uf.t-andamento { fill: #000; stroke: #e50914; } .cn2-mapa .cn-uf.t-concluidos { fill: #8d8f94; } .cn2-mapa .cn-uf.t-embreve { fill: url(#cn-hachura); }
@@ -3613,7 +3613,11 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .cn2-dest-nome { display: flex; flex-direction: column; min-width: 0; } .cn2-dest-nome b { font-size: clamp(11px, 1.15cqw, 13px); line-height: 1.15; } .cn2-dest-nome small { font-size: 10px; color: #8a8c93; }
 .cn2-dest-dir { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
 .cn2-dest-vagas { font-size: clamp(10px, 1.05cqw, 12px); color: #26272b; white-space: nowrap; }
-.cn2-mapa .cn-mapa-ctl, .cn2-mapa .cn-mapa-dica { display: none; }
+.cn2-mapa .cn-mapa-dica { display: none; }
+/* Zoom ao lado do mapa (computador): coluna vertical centralizada na borda direita */
+.cn2-mapa .cn-mapa-ctl { display: flex; position: absolute; right: 12px; top: 50%; transform: translateY(-50%); flex-direction: column; gap: 10px; z-index: 3; }
+.cn2-mapa .cn-mapa-ctl button { width: 48px; height: 48px; border-radius: 14px; background: #fff; border: 1px solid #d9dbe0; box-shadow: 0 6px 14px rgba(0,0,0,0.18); transition: transform 140ms, background 140ms; }
+.cn2-mapa .cn-mapa-ctl button:hover { background: #0b0b0c; color: #fff; transform: scale(1.06); }
 .cn2-pill { padding: 3px 8px; border-radius: 99px; font-size: 9.5px; font-weight: 800; color: #fff; background: #8d8f94; white-space: nowrap; } .cn2-pill.p-abertos { background: #e50914; }
 .cn2-dest .cn-painel-topo h2 { font-size: 22px; }
 
@@ -3638,7 +3642,8 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   .cn2-lado { gap: 10px; }
   .cn2 .cn2-titulo { max-width: 250px; }
   .cn2-explore { font-size: 15px; } .cn2-legenda { font-size: 14px; }
-  .cn2-mapa .cn-mapa-ctl { display: flex; position: absolute; right: 0; top: 0; flex-direction: column; gap: 6px; }
+  .cn2-mapa .cn-mapa-ctl { display: flex; position: absolute; right: 0; top: 0; transform: none; flex-direction: column; gap: 6px; }
+  .cn2-mapa .cn-mapa-ctl button { width: 44px; height: 44px; }
   .cn2-dest { padding: 14px; }
   .cn2-dest-topo h2 { font-size: 12px; } .cn2-dest-nome b { font-size: 13px; } .cn2-dest-vagas { font-size: 11.5px; } .cn2-pill { font-size: 10px; }
 
