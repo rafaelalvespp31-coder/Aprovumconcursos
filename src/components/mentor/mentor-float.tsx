@@ -256,7 +256,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
           role="dialog"
           aria-modal="false"
           aria-labelledby="mentor-flut-titulo"
-          className={`mentor-painel ${mobile ? "is-folha" : ""} ${dragging ? "is-arrastando" : ""}`}
+          className={`mentor-painel ${mobile ? "is-folha" : ""} ${dragging ? "is-arrastando" : ""} ${tab === "voz" && data?.state === "ok" ? "is-voz" : ""}`}
           style={panelStyle}
           data-testid="mentor-painel"
           data-estado={data?.state ?? "carregando"}

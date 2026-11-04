@@ -1,13 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
-import { Mic, PhoneOff } from "lucide-react";
-import { VozOrbe } from "./voz-orbe";
-import { formatClock } from "@/domain/mentor/voice";
+import type { Bands } from "./voz-orbe";
+import { VozView, type Fase } from "./voz-view";
 
-type Fase = "carregando" | "plano" | "indisponivel" | "esgotado" | "pronto" | "conectando" | "ao-vivo" | "encerrada" | "erro";
 type Status = { available: boolean; reason?: "plano" | "indisponivel"; limit: number; left: number };
 
 const OUT_RATE = 24000;
@@ -53,21 +50,24 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     buf: Uint8Array<ArrayBuffer> | null;
   }>({ session: null, ctx: null, stream: null, node: null, sources: new Set(), next: 0, startedAt: 0, leftAtStart: 0, timer: null, active: false, aOut: null, aIn: null, buf: null });
 
-  /** Volume atual (0 a 1) da voz do Mentor e do microfone, lido do áudio de verdade. */
-  const nivel = useCallback(() => {
+  /** Energia do áudio de verdade (voz do Mentor e microfone): volume e faixas grave, média e aguda. */
+  const nivel = useCallback((): Bands => {
     const r = ref.current;
-    const rms = (a: AnalyserNode | null) => {
-      if (!a) return 0;
-      if (!r.buf || r.buf.length !== a.fftSize) r.buf = new Uint8Array(a.fftSize);
-      a.getByteTimeDomainData(r.buf);
-      let sum = 0;
-      for (let i = 0; i < r.buf.length; i++) {
-        const v = (r.buf[i]! - 128) / 128;
-        sum += v * v;
-      }
-      return Math.sqrt(sum / r.buf.length);
+    const read = (an: AnalyserNode | null, gain: number): Bands => {
+      if (!an) return { vol: 0, low: 0, mid: 0, high: 0 };
+      if (!r.buf || r.buf.length !== an.frequencyBinCount) r.buf = new Uint8Array(an.frequencyBinCount);
+      an.getByteFrequencyData(r.buf);
+      const avg = (from: number, to: number) => {
+        let sum = 0;
+        for (let i = from; i < to; i++) sum += r.buf![i]!;
+        return sum / (to - from) / 255;
+      };
+      const c = (v: number) => Math.min(1, v * gain);
+      return { vol: c(avg(0, 64) * 3.2), low: c(avg(0, 6) * 2.4), mid: c(avg(6, 24) * 3.2), high: c(avg(24, 64) * 5) };
     };
-    return Math.min(1, Math.max(rms(r.aOut) * 4.5, rms(r.aIn) * 2.2));
+    const o = read(r.aOut, 1);
+    const m = read(r.aIn, 0.55);
+    return { vol: Math.max(o.vol, m.vol), low: Math.max(o.low, m.low), mid: Math.max(o.mid, m.mid), high: Math.max(o.high, m.high) };
   }, []);
 
   const carregar = useCallback(async () => {
@@ -210,11 +210,12 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       const ctx = new AudioContext();
       r.ctx = ctx;
       const aOut = ctx.createAnalyser();
-      aOut.fftSize = 512;
+      aOut.fftSize = 256;
+      aOut.smoothingTimeConstant = 0.6;
       aOut.connect(ctx.destination);
       r.aOut = aOut;
       const aIn = ctx.createAnalyser();
-      aIn.fftSize = 512;
+      aIn.fftSize = 256;
       r.aIn = aIn;
       await ctx.audioWorklet.addModule("/voz-worklet.js");
       const ai = new GoogleGenAI({ apiKey: s.token, httpOptions: { apiVersion: "v1alpha" } });
@@ -271,69 +272,5 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     }
   };
 
-  const ao_vivo = fase === "ao-vivo";
-  const pct = Math.max(0, Math.min(100, (left / limit) * 100));
-
-  return (
-    <div className="voz" data-testid="mentor-voz" data-fase={fase}>
-      {fase === "carregando" && <p className="text-[13px] text-white/60">Carregando…</p>}
-
-      {fase === "plano" && (
-        <div className="voz-bloco">
-          <VozOrbe level={() => 0} active={false} dim />
-          <p className="voz-titulo">Mentor por voz</p>
-          <p className="voz-texto">Tire dúvidas de estudo falando, em tempo real, com o Mentor. Disponível nos planos pagos: 3 minutos por dia.</p>
-          <Link href={`${base}/plano`} className="pc-botao" data-testid="voz-ver-planos">
-            Ver planos
-          </Link>
-        </div>
-      )}
-
-      {fase === "indisponivel" && (
-        <div className="voz-bloco">
-          <p className="voz-titulo">Mentor por voz indisponível</p>
-          <p className="voz-texto">Este recurso ainda não está ativo. Tente mais tarde.</p>
-        </div>
-      )}
-
-      {fase === "esgotado" && (
-        <div className="voz-bloco">
-          <p className="voz-titulo">Seus 3 minutos de hoje acabaram</p>
-          <p className="voz-texto">{msg ?? "Eles voltam amanhã. Enquanto isso, use a aba Conversar para tirar dúvidas por texto."}</p>
-        </div>
-      )}
-
-      {(fase === "pronto" || fase === "encerrada" || fase === "erro" || fase === "conectando" || ao_vivo) && (
-        <div className="voz-bloco">
-          <VozOrbe level={nivel} active={ao_vivo || fase === "conectando"} />
-          <p className="voz-titulo" aria-live="polite">
-            {fase === "conectando" ? "Conectando…" : ao_vivo ? (speaking ? "Mentor falando…" : "Pode falar, estou ouvindo") : "Fale com o Mentor"}
-          </p>
-          <p className="voz-texto">{ao_vivo ? "Pergunte sobre qualquer matéria do seu concurso. Se quiser, interrompa o Mentor falando." : "Só dúvidas de estudo. Sua conversa é por voz e dura até 3 minutos por dia."}</p>
-
-          <div className="voz-tempo" role="timer" aria-label="Tempo de voz que resta hoje" data-testid="voz-tempo">
-            <div className="voz-barra" aria-hidden>
-              <span style={{ width: `${pct}%` }} data-aviso={ao_vivo && left <= 20 ? "1" : undefined} />
-            </div>
-            <span className="voz-relogio">{formatClock(left)} restantes hoje</span>
-          </div>
-
-          {ao_vivo ? (
-            <button type="button" onClick={() => void encerrar("usuario")} className="voz-fim" data-testid="voz-encerrar">
-              <PhoneOff className="h-4 w-4" aria-hidden /> Encerrar conversa
-            </button>
-          ) : (
-            <button type="button" onClick={() => void iniciar()} disabled={fase === "conectando"} className="pc-botao" data-testid="voz-iniciar">
-              <Mic className="h-4 w-4" aria-hidden /> {fase === "conectando" ? "Conectando…" : "Falar com o Mentor"}
-            </button>
-          )}
-          {msg && (
-            <p role="alert" className="voz-erro">
-              {msg}
-            </p>
-          )}
-        </div>
-      )}
-    </div>
-  );
+  return <VozView fase={fase} left={left} limit={limit} speaking={speaking} msg={msg} level={nivel} base={base} onStart={() => void iniciar()} onStop={() => void encerrar("usuario")} />;
 }
