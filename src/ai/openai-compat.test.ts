@@ -30,6 +30,21 @@ describe("adaptador compatível (Gemini, Groq, OpenRouter, Ollama)", () => {
     expect(JSON.stringify(body.response_format.json_schema.schema)).not.toMatch(/pattern|minLength|\$schema/);
   });
 
+  it("Google: se recusar o cabeçalho de autorização, tenta o outro formato e lembra", async () => {
+    const g = new OpenAICompatProvider({ name: "gemini", baseUrl: "https://exemplo.test/v1", apiKey: "k", model: "m", inputPricePerMTok: null, outputPricePerMTok: null, jsonMode: "schema", keyVar: "GEMINI_API_KEY", keyHeader: "x-goog-api-key" });
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('[{"error":{"code":400,"message":"Missing or invalid Authorization header."}}]', { status: 400 }))
+      .mockResolvedValueOnce(reply('{"title":"Plano","keys":["N0004"]}'))
+      .mockResolvedValueOnce(reply('{"title":"Plano","keys":["N0005"]}'));
+    vi.stubGlobal("fetch", fetchMock);
+    expect((await g.generateStructured(req)).data.keys).toEqual(["N0004"]);
+    expect(fetchMock.mock.calls[0]![1].headers["x-goog-api-key"]).toBe("k");
+    expect(fetchMock.mock.calls[1]![1].headers.Authorization).toBe("Bearer k");
+    await g.generateStructured(req);
+    expect(fetchMock.mock.calls[2]![1].headers.Authorization).toBe("Bearer k");
+  });
+
   it("cai para JSON simples quando o modelo não aceita json_schema", async () => {
     const fetchMock = vi
       .fn()

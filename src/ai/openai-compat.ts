@@ -210,30 +210,46 @@ export class OpenAICompatProvider implements AIProvider {
     throw new AIError("Erro do provedor de IA (HTTP 400).", "provider_error", false, usage);
   }
 
+  /** Google: o endpoint compatível aceita a chave em Authorization (Bearer) ou x-goog-api-key, conforme o formato da chave. */
+  private authMode: "bearer" | "x-goog-api-key" | null = null;
+
+  private authHeaders(mode: "bearer" | "x-goog-api-key"): Record<string, string> {
+    if (!this.config.apiKey) return {};
+    return mode === "x-goog-api-key" ? { "x-goog-api-key": this.config.apiKey } : { Authorization: `Bearer ${this.config.apiKey}` };
+  }
+
   private async post(body: unknown, timeoutMs: number | undefined, usage: AIUsage): Promise<Response> {
-    const ctrl = new AbortController();
-    const timer = setTimeout(() => ctrl.abort(), timeoutMs ?? 120_000);
-    try {
-      return await fetch(`${this.config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(this.config.apiKey
-            ? this.config.keyHeader === "x-goog-api-key"
-              ? { "x-goog-api-key": this.config.apiKey }
-              : { Authorization: `Bearer ${this.config.apiKey}` }
-            : {}),
-          ...this.config.headers,
-        },
-        body: JSON.stringify(body),
-        signal: ctrl.signal,
-      });
-    } catch (e) {
-      if ((e as Error).name === "AbortError") throw new AIError("Tempo limite excedido ao consultar a IA.", "timeout", true, usage);
-      throw new AIError("Falha de comunicação com o provedor de IA.", "provider_error", true, usage);
-    } finally {
-      clearTimeout(timer);
+    const first: "bearer" | "x-goog-api-key" = this.authMode ?? (this.config.keyHeader === "x-goog-api-key" ? "x-goog-api-key" : "bearer");
+    const send = async (mode: "bearer" | "x-goog-api-key"): Promise<Response> => {
+      const ctrl = new AbortController();
+      const timer = setTimeout(() => ctrl.abort(), timeoutMs ?? 120_000);
+      try {
+        return await fetch(`${this.config.baseUrl.replace(/\/$/, "")}/chat/completions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", ...this.authHeaders(mode), ...this.config.headers },
+          body: JSON.stringify(body),
+          signal: ctrl.signal,
+        });
+      } catch (e) {
+        if ((e as Error).name === "AbortError") throw new AIError("Tempo limite excedido ao consultar a IA.", "timeout", true, usage);
+        throw new AIError("Falha de comunicação com o provedor de IA.", "provider_error", true, usage);
+      } finally {
+        clearTimeout(timer);
+      }
+    };
+    const res = await send(first);
+    // Só o Google alterna: se ele reclamar do cabeçalho de autorização, tenta o outro formato uma vez e lembra o que funcionou.
+    if (this.config.keyHeader === "x-goog-api-key" && this.config.apiKey && !res.ok && [400, 401, 403].includes(res.status)) {
+      const text = await res.clone().text().catch(() => "");
+      if (/authorization header|OAuth|UNAUTHENTICATED/i.test(text)) {
+        const other = first === "bearer" ? "x-goog-api-key" : "bearer";
+        const retry = await send(other);
+        if (retry.ok) this.authMode = other;
+        return retry;
+      }
     }
+    if (res.ok && !this.authMode) this.authMode = first;
+    return res;
   }
 
   private cost(u: AIUsage): number | null {
