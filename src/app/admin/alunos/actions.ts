@@ -6,6 +6,7 @@ import { requireAdmin } from "@/server/services/catalog";
 import { markStudentPaid, resetStudentPassword, setStudentPlan } from "@/server/services/students";
 import { UserFacingError, enforceRateLimit } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
+import { resolvePlanRequest } from "@/server/services/plan-requests";
 
 export type StudentActionResult = { ok: true; message: string; password?: string } | { ok: false; error: string };
 
@@ -51,4 +52,15 @@ export async function resetPasswordAction(userId: string, typed?: string): Promi
     const { password } = await resetStudentPassword(admin, userId, str(typed));
     return { message: "Senha nova definida. Repasse ao aluno: ela não aparece de novo.", password };
   });
+}
+
+export async function resolvePlanRequestAction(id: string): Promise<StudentActionResult> {
+  const admin = await requireAdmin();
+  const r = await guard("admin.plan_request", async () => {
+    await enforceRateLimit(admin.id, "admin_students", 60);
+    await resolvePlanRequest(str(id));
+    return { message: "Pedido marcado como atendido." };
+  });
+  if (r.ok) revalidatePath("/admin/alunos");
+  return r;
 }

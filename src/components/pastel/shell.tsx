@@ -67,6 +67,7 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
     { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "5", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
     { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "6", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
     { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "7", desc: `Nível ${s.level}`, title: "Perfil & conquistas" },
+    { id: "plano", href: `${base}/plano`, label: "Meu Plano", icon: Crown, num: "8", desc: "Escolha seu plano", title: "Meu Plano", subtitle: "Conquiste mais. Estude sem limites." },
   ];
 }
 
@@ -132,7 +133,7 @@ export function PastelShell({
   // Resolver um caderno (/questoes/cadernos/<id>, exceto "novo"): mesmo cabeçalho escuro.
   const isNotebookRun = new RegExp(`^${basePath}/questoes/cadernos/(?!novo$)[^/]+$`).test(path);
   // Painel (avatar): fundo branco como as demais telas; só o Modo Jogo e a resolução de caderno são escuros.
-  const dark = active?.id === "quiz" || isNotebookRun;
+  const dark = active?.id === "quiz" || active?.id === "plano" || isNotebookRun;
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;

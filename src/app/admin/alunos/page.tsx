@@ -1,8 +1,11 @@
 import { requireAdmin } from "@/server/services/catalog";
 import { listStudents, studentSummary } from "@/server/services/students";
 import { FREE_LIMITS } from "@/domain/plans/limits";
-import { markPaidAction, resetPasswordAction, setPlanAction } from "./actions";
+import { markPaidAction, resetPasswordAction, resolvePlanRequestAction, setPlanAction } from "./actions";
 import { StudentsTable } from "./students-table";
+import { listOpenPlanRequests } from "@/server/services/plan-requests";
+import { OFFERS } from "@/domain/plans/offers";
+import { RequestsDone } from "./requests-done";
 
 export const metadata = { title: "Alunos" };
 
@@ -11,6 +14,7 @@ export default async function StudentsPage() {
   await requireAdmin();
   const students = await listStudents();
   const count = studentSummary(students);
+  const requests = await listOpenPlanRequests().catch(() => []);
   return (
     <div>
       <h1 className="t-h1">Alunos</h1>
@@ -34,6 +38,20 @@ export default async function StudentsPage() {
           </div>
         ))}
       </dl>
+      {requests.length > 0 && (
+        <section className="mt-4 rounded-lg border border-[#E10600]/40 bg-superficie p-3" data-testid="pedidos-plano">
+          <h2 className="t-small font-bold">Pedidos de plano ({requests.length})</h2>
+          <p className="t-tiny text-tinta-suave">Alunos que escolheram um plano em &ldquo;Meu Plano&rdquo;. Confirme o pagamento, registre-o abaixo na tabela e marque o pedido como atendido.</p>
+          <ul className="mt-2 divide-y divide-linha">
+            {requests.map((r) => (
+              <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 py-2 t-small">
+                <span><strong>{r.name ?? r.email ?? "Aluno"}</strong> {r.name && r.email ? <span className="text-tinta-fraca">· {r.email}</span> : null} — {OFFERS[r.plan].label} ({OFFERS[r.plan].price}) · {new Date(r.createdAt).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}</span>
+                <RequestsDone id={r.id} action={resolvePlanRequestAction} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <StudentsTable students={students} actions={{ setPlan: setPlanAction, markPaid: markPaidAction, resetPassword: resetPasswordAction }} />
     </div>
   );

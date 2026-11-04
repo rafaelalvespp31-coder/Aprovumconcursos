@@ -2962,3 +2962,22 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   .clw { margin-top: -28px; border-radius: 18px; overflow: hidden; }
   .cl-banner + .clw { margin-top: 0; }
 }
+
+/* ===== Meu Plano: arte oficial com áreas clicáveis por cima ===== */
+.plano { margin: 0 auto; max-width: 1212px; }
+.plano-arte { position: relative; width: 100%; line-height: 0; border-radius: 18px; overflow: hidden; background: #050505; }
+.plano-arte img { width: 100%; height: auto; display: block; }
+.plano-hit { position: absolute; display: block; border-radius: 3.2% / 1.6%; cursor: pointer; background: transparent; border: 0; padding: 0; transition: box-shadow 0.2s, background 0.2s; }
+.plano-hit:hover { background: rgba(255,255,255,0.04); box-shadow: 0 0 0 2px rgba(255,255,255,0.55), 0 0 24px rgba(225,6,0,0.55); }
+.plano-hit:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+.plano-atual { position: absolute; display: flex; align-items: center; justify-content: center; border-radius: 99px; background: linear-gradient(180deg, #ff2a1f, #b30400); color: #fff; font-family: Inter, sans-serif; font-weight: 800; letter-spacing: 0.04em; font-size: clamp(8px, 1.05vw, 13px); line-height: 1; pointer-events: none; box-shadow: 0 0 14px rgba(225,6,0,0.7); }
+.plano-fundo { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,0.78); }
+.plano-caixa { width: min(380px, 100%); padding: 26px 22px 20px; text-align: center; border-radius: 16px; background: radial-gradient(80% 60% at 50% 0%, rgba(225,6,0,0.4), transparent), #0b0b0c; border: 1px solid #ff4a40; box-shadow: 0 0 40px rgba(225,6,0,0.5); color: #fff; font-family: Inter, sans-serif; }
+.plano-k { font-size: 12px; letter-spacing: 0.14em; font-weight: 700; color: #f6c21a; }
+.plano-t { margin-top: 6px; font-size: 24px; font-weight: 800; }
+.plano-p { margin-top: 10px; font-size: 38px; font-weight: 800; color: #ff2a1f; }
+.plano-s { margin: 6px 0 16px; font-size: 14px; color: rgba(255,255,255,0.8); line-height: 1.4; }
+.plano-e { margin-bottom: 10px; font-size: 13px; color: #ffb4ae; }
+.plano-b { display: flex; width: 100%; min-height: 46px; align-items: center; justify-content: center; border-radius: 10px; background: linear-gradient(180deg, #ff2a1f, #b30400); border: 1px solid #ff4a40; font-weight: 800; font-size: 15px; color: #fff; }
+.plano-b:disabled { opacity: 0.6; }
+.plano-c { margin-top: 10px; min-height: 40px; font-size: 13px; color: rgba(255,255,255,0.7); }
