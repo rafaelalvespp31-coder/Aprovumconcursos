@@ -2,23 +2,27 @@ import type { NextConfig } from "next";
 
 /**
  * Cabeçalhos de segurança aplicados a todas as rotas.
- * A CSP permite apenas o próprio domínio e o Supabase configurado.
+ * A CSP permite o próprio domínio, o Supabase configurado e o Mercado Pago (pagamento).
  */
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const supabaseOrigin = supabaseUrl ? new URL(supabaseUrl).origin : "";
 const supabaseWs = supabaseOrigin.replace(/^http/, "ws");
+
+// Mercado Pago (Payment Brick): script do SDK, formulário em iframe, API, antifraude e estilos/fontes.
+const MP = "https://*.mercadopago.com https://*.mercadopago.com.br https://*.mercadolibre.com https://*.mercadolivre.com.br https://*.mlstatic.com";
 
 const isDev = process.env.NODE_ENV !== "production";
 
 const csp = [
   "default-src 'self'",
   // Next.js injeta scripts inline de hidratação; 'unsafe-eval' só em dev (React Refresh).
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
+  `script-src 'self' 'unsafe-inline' ${MP}${isDev ? " 'unsafe-eval'" : ""}`,
+  `style-src 'self' 'unsafe-inline' ${MP}`,
   // Imagens do Storage do Supabase (concursos, aprovados, fotos e avatares com link temporário).
-  `img-src 'self' data: blob: ${supabaseOrigin}`.trim(),
-  "font-src 'self' data:",
-  `connect-src 'self' ${supabaseOrigin} ${supabaseWs}`.trim(),
+  `img-src 'self' data: blob: ${supabaseOrigin} ${MP}`.trim(),
+  `font-src 'self' data: ${MP}`,
+  `connect-src 'self' ${supabaseOrigin} ${supabaseWs} ${MP}`.trim(),
+  `frame-src ${MP}`,
   "worker-src 'self'",
   "manifest-src 'self'",
   "frame-ancestors 'none'",
