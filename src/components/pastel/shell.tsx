@@ -218,6 +218,7 @@ export function PastelShell({
                 {activeIndex >= 0 && (
                   <div
                     aria-hidden
+                    data-tier={active?.id === "plano" ? summary.plan : undefined}
                     className="barra-indicador absolute left-3 right-3 rounded-[18px] bg-gradient-to-r from-[#FF1E1E] to-[#B30000] shadow-[0_10px_24px_rgba(225,6,0,0.32),inset_0_1px_0_rgba(255,255,255,0.3)] transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
                     style={{
                       transform:
@@ -240,13 +241,13 @@ export function PastelShell({
                         onClick={() => {
                           if (path === s.href) setToast(`${s.label} já está aberto ✨`);
                         }}
-                        className={`barra-item group relative flex w-full items-center gap-3.5 rounded-[18px] px-4 text-left text-[14.5px] font-medium transition-all duration-300 ${on ? "text-white" : "text-[#B3B3B3] hover:bg-white/[0.06] hover:text-white"}`}
+                        className={`barra-item ${s.id === "plano" ? `mp-brilho mp-${summary.plan}` : ""} group relative flex w-full items-center gap-3.5 rounded-[18px] px-4 text-left text-[14.5px] font-medium transition-all duration-300 ${on ? "text-white" : "text-[#B3B3B3] hover:bg-white/[0.06] hover:text-white"}`}
                       >
-                        <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-all duration-300 ${on ? "bg-white/20 text-white" : "bg-[#1A1A1A] group-hover:rotate-[-6deg] group-hover:scale-110 group-hover:bg-[#1C1C1C]"}`}>
+                        <span className={`${s.id === "plano" ? "mp-ico" : ""} flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-all duration-300 ${on ? "bg-white/20 text-white" : "bg-[#1A1A1A] group-hover:rotate-[-6deg] group-hover:scale-110 group-hover:bg-[#1C1C1C]"}`}>
                           <s.icon className="h-[18px] w-[18px]" aria-hidden />
                         </span>
                         {!collapsed && (
-                          <span className="min-w-0 flex-1">
+                          <span className="mp-txt min-w-0 flex-1">
                             <span className="flex items-center gap-2">
                               <span className={`font-semibold tracking-tight ${on ? "text-white" : ""}`}>{s.label}</span>
                               {!on && shortcutsOn && (
@@ -256,7 +257,7 @@ export function PastelShell({
                             <span className={`mt-0.5 block text-[11px] leading-none ${on ? "text-white/80" : "text-[#A3A3A3]"}`} data-testid={`nav-desc-${s.id}`}>{s.desc}</span>
                           </span>
                         )}
-                        {!collapsed && on && <ChevronRight className="h-4 w-4 text-white/70 transition-transform group-hover:translate-x-0.5" aria-hidden />}
+                        {!collapsed && on && <ChevronRight className="mp-chev h-4 w-4 text-white/70 transition-transform group-hover:translate-x-0.5" aria-hidden />}
                       </Link>
                       {s.id === "trilhas" && !collapsed && summary.subjects.length > 0 && (
                         <div ref={subRef}>
@@ -413,7 +414,7 @@ export function PastelShell({
 
             {/* Menu inferior: só no celular. No computador, o menu é o da barra lateral. */}
             <div className="lg:hidden">
-              <BottomNavigation activeId={bottomActive} basePath={basePath} />
+              <BottomNavigation activeId={bottomActive} basePath={basePath} plan={summary.plan} />
             </div>
           </div>
         </div>

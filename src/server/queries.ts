@@ -10,6 +10,8 @@ import type { PracticeCase } from "@/domain/content/practice";
 import type { AuditReport } from "@/domain/content/audit";
 import type { UnitState } from "@/domain/progress/state-machine";
 import type { RulerState } from "@/components/coverage-ruler";
+import { effectivePlan } from "@/domain/plans/limits";
+import { planTier, type PlanTier } from "@/domain/plans/offers";
 import type { SavedAnswer } from "@/components/question-card";
 import type { AnswerFeedback } from "./services/study";
 import { summarizePerformance, type AttemptRecord } from "@/domain/progress/performance";
@@ -648,13 +650,15 @@ export interface ShellSummary {
   counts: { trails: number; questions: number; notebooks: number; dueReviews: number; answered: number };
   /** Submenu "Estudos": matérias e os assuntos (estudos) de cada uma. */
   subjects: SubjectMenuItem[];
+  /** Cor do "Meu Plano": prata (gratuito), vermelho neon (pago) ou dourado neon (vitalício). */
+  plan: PlanTier;
 }
 
 export async function getShellSummary(email: string | null): Promise<ShellSummary> {
   const db = await createUserClient();
   // Sempre filtra pelo próprio aluno: contas de equipe também leem dados de outros (RLS "admin le").
   const me = (await getSessionUser())?.id ?? "00000000-0000-0000-0000-000000000000";
-  const [profile, stats, trails, questions, reviews, mine, folders, myLessons, myProgress, notebooks] = await Promise.all([
+  const [profile, stats, trails, questions, reviews, mine, folders, myLessons, myProgress, notebooks, sub] = await Promise.all([
     db.from("profiles").select("display_name").eq("id", me).maybeSingle(),
     getStudyStats(),
     db.from("study_trails").select("id", { count: "exact", head: true }).eq("user_id", me).is("archived_at", null),
@@ -665,7 +669,10 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
     db.from("lessons").select("trail_id").eq("user_id", me).limit(5000),
     db.from("learning_progress").select("trail_id, state, levels_passed, reading_completed_at").eq("user_id", me).limit(5000),
     db.from("question_notebooks").select("id", { count: "exact", head: true }).eq("user_id", me),
+    db.from("subscriptions").select("plan_id, status, current_period_end, billing_period").eq("user_id", me).maybeSingle(),
   ]);
+  const subRow = sub.data as { plan_id: string; status: string; current_period_end: string | null; billing_period: string | null } | null;
+  const eff = effectivePlan(subRow ? { planId: subRow.plan_id, status: subRow.status, currentPeriodEnd: subRow.current_period_end } : null);
   const g = computeGamification(stats);
   const xpLevel = await myXpLevel(db, me);
   const lessonCount = new Map<string, number>();
@@ -691,6 +698,7 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
     email,
     streak: { current: g.streak.current, last7: g.streak.last7, message: streakMessage(g.streak) },
     level: xpLevel ?? g.level.level,
+    plan: planTier(eff.paid, subRow?.billing_period ?? null, !!subRow?.current_period_end),
     counts: { trails: trails.count ?? 0, questions, notebooks: notebooks.count ?? 0, dueReviews: reviews.count ?? 0, answered: stats.answered },
     subjects: buildSubjectsMenu({
       trails: mineRows,

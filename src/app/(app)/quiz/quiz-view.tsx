@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -182,6 +182,51 @@ export function QuizView({
     !pending &&
     !timedOut &&
     dialog === null;
+
+  // Frase grande: a fonte e os espaços encolhem até a questão inteira (frase, palavras e Confirmar) caber
+  // na tela, sem rolar. Só se nem assim couber, a frase rola dentro do próprio quadro.
+  const filledCount = slots.filter(Boolean).length;
+  const fitKey = useRef("");
+  useLayoutEffect(() => {
+    const card = questionRef.current;
+    const fr = card?.querySelector<HTMLElement>(".jogo-frase");
+    if (!card || !fr || check) return;
+    const fit = () => {
+      const w = window.innerWidth;
+      const wide = w >= 640;
+      const max = wide ? 18.5 : 16;
+      const min = wide ? 12.5 : 11.5;
+      // Espaço da questão quando o topo do jogo está encostado sob o cabeçalho: tela - cabeçalho - o que vem antes do card - rodapé.
+      const topo = document.querySelector<HTMLElement>(".jogo-topo");
+      const before = topo ? card.getBoundingClientRect().top - topo.getBoundingClientRect().top : 0;
+      const avail = window.innerHeight - (w >= 1024 ? 96 : 94) - before - (w >= 1024 ? 16 : 104);
+      const set = (f: number) => {
+        fr.style.setProperty("--jf", `${f}px`);
+        fr.style.setProperty("--jl", String(+(1.55 + ((f - min) / (max - min)) * 0.6).toFixed(2)));
+      };
+      // Nova questão ou tela redimensionada: recomeça do tamanho cheio. Ao preencher lacunas: só encolhe mais, se precisar.
+      const key = `${roundNo}-${idx}-${w}x${window.innerHeight}`;
+      const fresh = key !== fitKey.current;
+      fitKey.current = key;
+      if (fresh) delete card.dataset.compact;
+      fr.style.maxHeight = "none";
+      let f = fresh ? max : parseFloat(fr.style.getPropertyValue("--jf")) || max;
+      set(f);
+      while (card.offsetHeight > avail && f > min) {
+        f -= 0.5;
+        set(f);
+      }
+      if (card.offsetHeight > avail) {
+        card.dataset.compact = "1";
+      }
+      if (card.offsetHeight > avail) {
+        fr.style.maxHeight = `${Math.max(96, fr.offsetHeight - (card.offsetHeight - avail))}px`;
+      }
+    };
+    fit();
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, [item, idx, roundNo, check, hint, filledCount, hasQuestion]);
 
   const place = (w: string) => {
     if (check || timedOut || used.has(w)) return;
@@ -445,7 +490,7 @@ export function QuizView({
               >
                 <div className="relative px-3.5 pb-3.5 pt-3.5 sm:px-6 sm:pb-4 sm:pt-4">
                   {/* Cabeçalho do card */}
-                  <div className="flex items-center gap-2">
+                  <div className="jogo-cab flex items-center gap-2">
                     <span className="flex items-center overflow-hidden rounded-full border border-[#E10600] bg-black/40 text-[12px] font-black uppercase tracking-[0.04em] text-[#FF3B30] sm:text-[13px]">
                       <span
                         className="flex h-8 w-8 items-center justify-center rounded-full bg-[#E10600] text-white sm:h-9 sm:w-9"
@@ -496,7 +541,7 @@ export function QuizView({
                           {item.context}
                         </p>
                       )}
-                      <p className="pl-7 text-[16px] leading-[2.05] text-white sm:text-[18.5px] sm:leading-[2.15]">
+                      <p className="jogo-frase-p pl-7 text-white">
                         {item.parts.map((p, i) =>
                           "text" in p ? (
                             <span key={i}>{p.text}</span>
@@ -608,7 +653,7 @@ export function QuizView({
                     })}
                   </div>
                   {/* Resultado e ações: presos na base da tela, sempre visíveis sem rolar */}
-                  <div className="mt-3" data-testid="jogo-acoes">
+                  <div className="jogo-acoes mt-3" data-testid="jogo-acoes">
                     {check && (
                       <div
                         className={`entrar mb-2 flex items-start gap-3 rounded-[16px] px-4 py-2.5 ring-1 ${check.correct ? "bg-[#0F2A18] ring-[#22C55E]/50" : "bg-[#1A0505] ring-[#E10600]/40"}`}
@@ -986,7 +1031,7 @@ function Blank({
 }) {
   const [over, setOver] = useState(false);
   const base =
-    "mx-1 inline-flex min-h-10 min-w-[120px] items-center justify-center rounded-[10px] border-2 px-3 align-middle text-[15px] font-black leading-tight sm:min-w-[150px]";
+    "jogo-lacuna mx-1 inline-flex min-h-[1.7em] min-w-[6.5em] items-center justify-center rounded-[10px] border-2 px-[0.7em] align-middle text-[0.92em] font-black leading-tight";
   if (state === "ok")
     return (
       <span className={`${base} border-[#22C55E] bg-[#0F2A18] text-[#4ADE80]`}>

@@ -37,7 +37,7 @@ export const BOTTOM_NAV_ITEMS: readonly Item[] = [
  * vermelho, iluminado e com barras de luz. No celular fica fixo no rodapé (área segura);
  * no computador, centralizado no rodapé da área de conteúdo. O ativo vem da rota atual.
  */
-export function BottomNavigation({ activeId, basePath = "" }: { activeId: BottomNavId | null; basePath?: string }) {
+export function BottomNavigation({ activeId, basePath = "", plan = "gratuito" }: { activeId: BottomNavId | null; basePath?: string; plan?: "gratuito" | "pago" | "vitalicio" }) {
   const refs = useRef<Array<HTMLAnchorElement | null>>([]);
   // No computador o menu pode ser recolhido (fica só um botão para abrir), como o menu lateral.
   const [collapsed, setCollapsed] = useStored("na:menu-inferior-recolhido", false);
@@ -70,7 +70,7 @@ export function BottomNavigation({ activeId, basePath = "" }: { activeId: Bottom
             const on = it.id === activeId;
             const icon = <it.icon className="bn-ico" strokeWidth={on ? 2.4 : 2.1} aria-hidden />;
             return (
-              <div key={it.id} className={`bn-cel ${on ? "bn-cel-ativa" : ""} ${it.only === "desktop" ? "bn-so-d" : it.only === "mobile" ? "bn-so-m" : ""}`}>
+              <div key={it.id} data-tier={it.id === "plano" ? plan : undefined} className={`bn-cel ${on ? "bn-cel-ativa" : ""} ${it.only === "desktop" ? "bn-so-d" : it.only === "mobile" ? "bn-so-m" : ""}`}>
                 {on && <span className="bn-luz-cima" aria-hidden />}
                 <Link
                   ref={(el) => {

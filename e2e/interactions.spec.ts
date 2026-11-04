@@ -719,6 +719,22 @@ test("flashcards viram com animação e certo/errado mostra o gabarito", async (
 
 
 test.describe("modo jogo", () => {
+  test("frase muito grande: encolhe para caber inteira na tela, sem rolar", async ({ page }) => {
+    await page.goto(`${G}/quiz?longo=1`);
+    const card = page.getByRole("region", { name: "Questão do jogo" });
+    await card.scrollIntoViewIfNeeded();
+    const confirmar = page.getByRole("button", { name: /^Confirmar$/ });
+    await expect(confirmar).toBeVisible();
+    await page.evaluate(() => document.querySelector(".jogo-card")!.scrollIntoView({ block: "start" }));
+    const r = await page.evaluate(() => {
+      const c = document.querySelector<HTMLElement>(".jogo-card")!.getBoundingClientRect();
+      const f = document.querySelector<HTMLElement>(".jogo-frase")!;
+      return { bottom: c.bottom, h: window.innerHeight, noScroll: f.scrollHeight <= f.clientHeight + 1 };
+    });
+    expect(r.noScroll).toBe(true);
+    expect(r.bottom).toBeLessThanOrEqual(r.h);
+  });
+
   test("abertura: título, progresso real, placa da marca e atalhos funcionais", async ({ page }) => {
     await page.goto(`${G}/quiz`);
     await expect(page.getByRole("heading", { name: /Conquiste\s*sua evolução/i })).toBeVisible();

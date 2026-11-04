@@ -2368,7 +2368,15 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 
 /* Modo Jogo: a questão inteira (frase, palavras e Confirmar) cabe na tela sem rolar a página;
    frase muito longa rola dentro do próprio quadro. */
-.jogo-frase { max-height: max(120px, calc(100dvh - 548px)); }
+.jogo { overflow-anchor: none; }
+.jogo-frase { --jf: 16px; --jl: 2.05; max-height: max(120px, calc(100dvh - 548px)); }
+@media (min-width: 640px) { .jogo-frase { --jf: 18.5px; --jl: 2.15; } }
+.jogo-frase-p { font-size: var(--jf); line-height: var(--jl); }
+/* Frase muito grande: palavras do banco mais compactas para tudo caber sem rolar. */
+.jogo-card[data-compact] [data-testid="palavra"] { min-height: 32px; padding: 3px 11px; font-size: 13px; }
+.jogo-card[data-compact] .jogo-cab { display: none; }
+.jogo-card[data-compact] .jogo-acoes { margin-top: 8px; }
+.jogo-card[data-compact] .jogo-acoes button { min-height: 44px; }
 @media (min-width: 1024px) { .jogo-frase { max-height: max(92px, calc(100dvh - 625px)); } }
 .jogo-topo { scroll-margin-top: 94px; }
 @media (min-width: 1024px) { .jogo-topo { scroll-margin-top: 96px; } }
@@ -3088,3 +3096,34 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 @keyframes cc-pulse { 0%, 100% { box-shadow: 0 6px 14px rgba(225,6,0,0.3); } 50% { box-shadow: 0 6px 22px rgba(225,6,0,0.6); } }
 @keyframes cc-flip { from { transform: translateY(-40%) scale(0.9); opacity: 0.2; } }
 @media (prefers-reduced-motion: reduce) { .cc, .cc::after, .cc-body, .cc-img, .cc-un, .cc-num { animation: none; } .cc-det { transition: none; } }
+
+/* "Meu Plano" brilha conforme o plano: gratuito = prata, pago = vermelho neon, vitalício = dourado neon. */
+@keyframes mpPulso { 0%, 100% { filter: brightness(1); } 50% { filter: brightness(1.28); } }
+.mp-ico { animation: mpPulso 2.6s ease-in-out infinite; }
+.barra-item.mp-gratuito:not([aria-current="page"]) { color: #E5E7EB; }
+.barra-item.mp-gratuito .mp-ico { background: linear-gradient(180deg, #F8FAFC, #9CA3AF); color: #111827; box-shadow: 0 0 10px rgba(226,232,240,0.7), 0 0 24px rgba(203,213,225,0.38); }
+.barra-item.mp-pago:not([aria-current="page"]) { color: #FF6B63; text-shadow: 0 0 10px rgba(255,30,30,0.7); }
+.barra-item.mp-pago .mp-ico { background: linear-gradient(180deg, #FF4A40, #B30000); color: #fff; box-shadow: 0 0 12px #FF1E1E, 0 0 28px rgba(255,30,30,0.65); }
+.barra-item.mp-vitalicio:not([aria-current="page"]) { color: #FFD84A; text-shadow: 0 0 10px rgba(255,200,40,0.7); }
+.barra-item.mp-vitalicio .mp-ico { background: linear-gradient(180deg, #FFE27A, #D49B00); color: #2A1C00; box-shadow: 0 0 12px rgba(255,205,50,0.9), 0 0 28px rgba(255,190,30,0.6); }
+.barra-item.mp-brilho:not([aria-current="page"]):hover { background: rgba(255,255,255,0.06); }
+.barra-indicador[data-tier="gratuito"] { background: linear-gradient(90deg, #F3F4F6, #9CA3AF); box-shadow: 0 10px 24px rgba(203,213,225,0.38), inset 0 1px 0 rgba(255,255,255,0.6); }
+.barra-indicador[data-tier="vitalicio"] { background: linear-gradient(90deg, #FFE27A, #C99700); box-shadow: 0 10px 24px rgba(255,190,30,0.45), inset 0 1px 0 rgba(255,255,255,0.5); }
+.barra-item[aria-current="page"].mp-gratuito .mp-txt *, .barra-item[aria-current="page"].mp-vitalicio .mp-txt * { color: #1F2937; }
+.barra-item[aria-current="page"].mp-gratuito .mp-chev, .barra-item[aria-current="page"].mp-vitalicio .mp-chev { color: #1F2937; }
+.barra-item[aria-current="page"].mp-gratuito .mp-ico { background: #1F2937; color: #F3F4F6; box-shadow: none; animation: none; }
+.barra-item[aria-current="page"].mp-vitalicio .mp-ico { background: #2A1C00; color: #FFD84A; box-shadow: none; animation: none; }
+/* Menu inferior (celular) */
+.bn-cel[data-tier="gratuito"] { filter: drop-shadow(0 0 7px rgba(226,232,240,0.55)); }
+.bn-cel[data-tier="pago"] { filter: drop-shadow(0 0 8px rgba(255,30,30,0.85)); }
+.bn-cel[data-tier="vitalicio"] { filter: drop-shadow(0 0 8px rgba(255,200,40,0.85)); }
+.bn-cel[data-tier="gratuito"] .bn-ico, .bn-cel[data-tier="gratuito"] .bn-txt { color: #E5E7EB; }
+.bn-cel[data-tier="pago"] .bn-ico, .bn-cel[data-tier="pago"] .bn-txt { color: #FF5A52; }
+.bn-cel[data-tier="vitalicio"] .bn-ico, .bn-cel[data-tier="vitalicio"] .bn-txt { color: #FFD84A; }
+.bn-cel[data-tier="gratuito"] .bn-item, .bn-cel[data-tier="pago"] .bn-item, .bn-cel[data-tier="vitalicio"] .bn-item { animation: mpPulso 2.6s ease-in-out infinite; }
+.bn-cel-ativa[data-tier="pago"] .bn-ico, .bn-cel-ativa[data-tier="pago"] .bn-txt { color: #fff; }
+.bn-cel-ativa[data-tier="gratuito"] .bn-item::before { background: linear-gradient(180deg, #F8FAFC, #9CA3AF 55%, #6B7280); }
+.bn-cel-ativa[data-tier="gratuito"] .bn-ico, .bn-cel-ativa[data-tier="gratuito"] .bn-txt { color: #111827; }
+.bn-cel-ativa[data-tier="vitalicio"] .bn-item::before { background: linear-gradient(180deg, #FFE27A, #D49B00 55%, #8A6500); }
+.bn-cel-ativa[data-tier="vitalicio"] .bn-ico, .bn-cel-ativa[data-tier="vitalicio"] .bn-txt { color: #2A1C00; }
+@media (prefers-reduced-motion: reduce) { .mp-ico, .bn-cel[data-tier] .bn-item { animation: none; } }

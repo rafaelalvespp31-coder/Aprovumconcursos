@@ -17,3 +17,10 @@ export function currentOffer(paid: boolean, period: string | null, hasEnd: boole
   if (period === "mensal" || period === "semestral" || period === "anual") return period;
   return hasEnd ? "mensal" : "vitalicio";
 }
+
+/** Cor do "Meu Plano" nos menus: gratuito = prata, pago (mensal/semestral/anual) = vermelho neon, vitalício = dourado neon. */
+export type PlanTier = "gratuito" | "pago" | "vitalicio";
+export function planTier(paid: boolean, period: string | null, hasEnd: boolean): PlanTier {
+  const o = currentOffer(paid, period, hasEnd);
+  return o === "gratuito" ? "gratuito" : o === "vitalicio" ? "vitalicio" : "pago";
+}
