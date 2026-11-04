@@ -2823,7 +2823,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 @font-face { font-family: "Kaushan Script"; font-style: normal; font-weight: 400; font-display: swap; src: url("/fonts/KaushanScript-Regular.woff2") format("woff2"); }
 @font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 500; font-display: swap; src: url("/fonts/BarlowCondensed-Medium.woff2") format("woff2"); }
 @font-face { font-family: "Barlow Condensed"; font-style: normal; font-weight: 600; font-display: swap; src: url("/fonts/BarlowCondensed-SemiBold.woff2") format("woff2"); }
-.clw { container-type: inline-size; width: 100%; max-width: 941px; margin: 0 auto; padding-top: env(safe-area-inset-top, 0px); background: #fff; }
+.clw { container-type: inline-size; width: 100%; max-width: 1500px; margin: 0 auto; padding-top: env(safe-area-inset-top, 0px); background: #fff; }
 .cl { --u: calc(100cqw / 941); --cut: 0; position: relative; color: #0d0d0f; font-family: "Barlow Condensed", "Barlow Semi Condensed", Inter, sans-serif; font-weight: 600; line-height: 1.15; }
 .cl-a { position: relative; height: calc((886 - var(--cut)) * var(--u)); overflow: hidden; }
 .cl-a > * { translate: 0 calc(var(--cut) * var(--u) * -1); }
@@ -2936,7 +2936,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .cl-dias-box span { font-size: max(12px, calc(26 * var(--u))); font-weight: 700; }
 .cl-fonte { font-size: 0.8em; color: #c20500; text-decoration: underline; }
 @media (max-width: 640px) { .cl-low { grid-template-columns: 1fr; } }
-.cl-banner { width: 100%; max-width: 941px; margin: 10px auto 12px; padding: 0 10px; }
+.cl-banner { width: 100%; max-width: 1500px; margin: 10px auto 12px; padding: 0 10px; }
 @media (min-width: 1024px) { .cl-banner { padding: 0; margin: 16px auto 16px; } }
 .cl-req { margin: calc(8 * var(--u)) calc(22 * var(--u)) 0; }
 .cl-req .avr { max-width: none; margin: 0; padding: 0; }
