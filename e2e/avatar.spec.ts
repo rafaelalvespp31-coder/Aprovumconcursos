@@ -49,6 +49,8 @@ test.describe("painel (avatar)", () => {
     // Disciplina abre as metas.
     await page.getByLabel("Ver detalhes da sua disciplina").click();
     await expect(page.getByTestId("disciplina-detalhe")).toContainText("Recorde: 45 dias");
+    await page.getByLabel("Ver detalhes da sua disciplina").click({ position: { x: 4, y: 4 } });
+    await expect(page.getByTestId("disciplina-detalhe")).toBeHidden();
     // Navegação: missões, Foco/mentor, perfil, desempenho.
     await expect(page.getByTestId("missao-combater")).toHaveAttribute("href", "/questoes");
     await expect(page.getByTestId("missao-revisar")).toHaveAttribute("href", "/revisoes");
