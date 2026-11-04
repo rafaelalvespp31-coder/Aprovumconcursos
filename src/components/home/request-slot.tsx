@@ -18,7 +18,7 @@ export function RequestTrigger({ box }: { box: CSSProperties }) {
 
 function openRequest() {
   document.querySelector<HTMLButtonElement>(".cl-req [data-testid=avatar-solicitar-botao]")?.click();
-  requestAnimationFrame(() => document.querySelector(".cl-req .avr-caixa")?.scrollIntoView({ behavior: "smooth", block: "nearest" }));
+  requestAnimationFrame(() => document.querySelector(".cl-req .avr-caixa")?.scrollIntoView({ block: "nearest" }));
 }
 
 /** A barra escura do layout: mostra o estado do pedido (ou o convite) e, ao clicar, abre o envio da foto. */
