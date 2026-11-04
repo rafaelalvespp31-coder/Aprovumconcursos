@@ -2970,26 +2970,47 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .plano { margin: 0 auto; width: 100%; max-width: 1600px; display: flex; flex-direction: column; gap: 10px; }
 .pl-crop { position: relative; display: block; width: 100%; background-repeat: no-repeat; background-color: #050505; }
 .pl-topo, .pl-rodape { border-radius: 14px; }
-.pl-dica { margin: 0; text-align: center; font: 600 12px/1 Inter, sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.7); }
-.pl-cards { position: relative; display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; padding: 2px 0 6px; overscroll-behavior-x: contain; }
-.pl-cards::-webkit-scrollbar { display: none; }
-.pl-card { flex: 0 0 68%; scroll-snap-align: center; border-radius: 14px; overflow: hidden; }
+.pl-cards { display: flex; }
+.pl-card { flex: var(--w) 1 0; min-width: 0; }
 .pl-hit { position: absolute; inset: 0; display: block; width: 100%; height: 100%; border: 0; padding: 0; background: transparent; cursor: pointer; border-radius: 14px; transition: box-shadow 0.2s, background 0.2s; }
 .pl-hit:hover { background: rgba(255,255,255,0.04); box-shadow: inset 0 0 0 2px rgba(255,255,255,0.5), inset 0 0 28px rgba(225,6,0,0.5); }
 .pl-hit:focus-visible { outline: 3px solid #fff; outline-offset: -3px; }
 .pl-atual { position: absolute; left: 9%; right: 9%; top: 95.4%; height: 4.3%; display: flex; align-items: center; justify-content: center; border-radius: 99px; background: linear-gradient(180deg, #ff2a1f, #b30400); color: #fff; font: 800 clamp(8px, 2.6vw, 12px)/1 Inter, sans-serif; letter-spacing: 0.04em; pointer-events: none; box-shadow: 0 0 14px rgba(225,6,0,0.7); white-space: nowrap; }
 .pl-vantagens { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
 .pl-vant { border-radius: 10px; }
+.pm-lista-planos { display: flex; flex-direction: column; gap: 14px; padding: 0 2px; }
+.pm { position: relative; display: flex; flex-direction: column; align-items: center; padding: 18px 18px 20px; border-radius: 18px; text-align: center; color: #fff; font-family: Inter, sans-serif; background: radial-gradient(90% 55% at 50% 0%, rgba(225,6,0,0.22), transparent 70%), linear-gradient(180deg, #131315, #070708); border: 1.5px solid #b30400; box-shadow: 0 0 0 1px rgba(255,255,255,0.04) inset, 0 10px 28px rgba(0,0,0,0.5); }
+.pm-gratuito { border-color: #8a8d93; background: linear-gradient(180deg, #17181a, #080809); }
+.pm-semestral { border-color: #ff2a1f; box-shadow: 0 0 22px rgba(225,6,0,0.45), 0 10px 28px rgba(0,0,0,0.5); padding-top: 34px; }
+.pm-vitalicio { border-color: #f2b705; background: radial-gradient(90% 55% at 50% 0%, rgba(242,183,5,0.2), transparent 70%), linear-gradient(180deg, #151209, #070708); box-shadow: 0 0 22px rgba(242,183,5,0.35), 0 10px 28px rgba(0,0,0,0.5); }
+.pm-fita { position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%); margin: 0; padding: 6px 16px; border-radius: 99px; background: linear-gradient(180deg, #ff2a1f, #b30400); font-weight: 800; font-size: 12px; letter-spacing: 0.08em; box-shadow: 0 0 14px rgba(225,6,0,0.6); white-space: nowrap; }
+.pm-ico { width: calc(var(--w) * 1.15px); max-width: 60%; background-color: transparent; }
+.pm-k { margin: 6px 0 0; font-size: 13px; font-weight: 800; letter-spacing: 0.3em; color: rgba(255,255,255,0.8); }
+.pm-n { margin: 0; font-size: 34px; line-height: 1.05; font-weight: 900; font-style: italic; letter-spacing: 0.01em; background: linear-gradient(180deg, #fff, #b7babf); -webkit-background-clip: text; background-clip: text; color: transparent; }
+.pm-tag { margin: 8px 0 0; padding: 4px 22px; background: linear-gradient(180deg, #ff2a1f, #b30400); font-weight: 800; font-size: 13px; letter-spacing: 0.06em; }
+.pm-sub { margin: 10px 0 0; font-size: 15px; line-height: 1.35; color: rgba(255,255,255,0.88); }
+.pm-preco { margin: 10px 0 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.pm-preco b { font-size: 44px; line-height: 1; font-weight: 900; font-style: italic; }
+.pm-preco span { font-size: 15px; font-weight: 700; font-style: italic; color: rgba(255,255,255,0.85); }
+.pm-vitalicio .pm-preco span { color: #f6c21a; }
+.pm-lista { list-style: none; margin: 14px 0 16px; padding: 0; width: 100%; max-width: 300px; display: grid; gap: 9px; text-align: left; }
+.pm-lista li { position: relative; padding-left: 30px; font-size: 15px; line-height: 1.2; }
+.pm-lista li::before { content: ""; position: absolute; left: 0; top: -2px; width: 21px; height: 21px; border-radius: 99px; background: #e10600 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='3.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E") center/70% no-repeat; }
+.pm-gratuito .pm-lista li::before { background-color: #3a3c40; }
+.pm-vitalicio .pm-lista li::before { background-color: #c99700; }
+.pm-btn { display: flex; align-items: center; justify-content: center; width: 100%; max-width: 320px; min-height: 52px; border-radius: 12px; font-weight: 900; font-size: 17px; letter-spacing: 0.03em; color: #fff; background: linear-gradient(180deg, #ff2a1f, #b30400); border: 1px solid #ff6a60; box-shadow: 0 0 16px rgba(225,6,0,0.45); }
+.pm-btn-free { background: linear-gradient(180deg, #4a4c50, #222325); border-color: #8a8d93; box-shadow: none; }
+.pm-vitalicio .pm-btn { color: #2a1c00; background: linear-gradient(180deg, #ffd84a, #d49b00); border-color: #ffe27a; box-shadow: 0 0 16px rgba(242,183,5,0.45); }
+.pm-nota { margin: 12px 0 0; font-size: 13px; font-weight: 800; letter-spacing: 0.04em; color: #f6c21a; }
+.pm-nota-free { font-weight: 500; letter-spacing: 0; color: rgba(255,255,255,0.7); }
+.pm-atual { margin-top: 12px; padding: 7px 18px; border-radius: 99px; background: linear-gradient(180deg, #ff2a1f, #b30400); font-weight: 800; font-size: 12px; letter-spacing: 0.06em; box-shadow: 0 0 14px rgba(225,6,0,0.7); }
 .pl-rodape { margin-top: 0; }
 @media (min-width: 820px) {
   .plano { gap: 0; }
   .pl-topo, .pl-rodape { border-radius: 0; }
   .pl-topo { border-radius: 18px 18px 0 0; }
   .pl-rodape { border-radius: 0 0 18px 18px; }
-  .pl-dica { display: none; }
-  .pl-cards { gap: 0; overflow: visible; padding: 0; scroll-snap-type: none; }
-  .pl-card { flex: var(--w) 1 0; min-width: 0; border-radius: 0; overflow: visible; }
-  .pl-hit, .pl-hit:hover { border-radius: 18px; }
+    .pl-hit, .pl-hit:hover { border-radius: 18px; }
   .pl-vantagens { display: flex; gap: 0; }
   .pl-vant { flex: var(--w) 1 0; min-width: 0; border-radius: 0; }
 }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useState, useSyncExternalStore, useTransition, type CSSProperties, type ReactNode } from "react";
 import { OFFERS, type OfferKey } from "@/domain/plans/offers";
 import type { ChoosePlanResult } from "./actions";
 import { PayBox } from "./pay";
@@ -52,6 +52,72 @@ const PERKS = [
 const PERK_Y = 1036;
 const PERK_H = 74;
 
+/** Celular: cartões nativos (texto nítido, um por linha, na largura da tela). Computador: a arte inteira. */
+const subscribeMobile = (cb: () => void) => {
+  const m = window.matchMedia("(max-width: 819px)");
+  m.addEventListener("change", cb);
+  return () => m.removeEventListener("change", cb);
+};
+const useMobile = () => useSyncExternalStore(subscribeMobile, () => window.matchMedia("(max-width: 819px)").matches, () => false);
+
+const PERKS_FREE = ["1 matéria por dia", "1 tema por dia", "3 questões por dia", "Aulas (demonstração)", "Mapas mentais (demo)", "Mentor IA (1 por dia)"];
+const PERKS_PAID = ["Acesso completo", "Questões ilimitadas", "Mapas mentais", "Mnemônicos", "Mentor IA avançado", "Simulados e muito mais!"];
+// Ícone de cada plano: recorte da arte oficial.
+const ICON: Record<Card["id"], { x: number; y: number; w: number; h: number }> = {
+  gratuito: { x: 85, y: 430, w: 130, h: 88 },
+  mensal: { x: 325, y: 445, w: 115, h: 85 },
+  semestral: { x: 565, y: 435, w: 85, h: 55 },
+  anual: { x: 795, y: 450, w: 100, h: 80 },
+  vitalicio: { x: 1020, y: 445, w: 110, h: 65 },
+};
+const NAME: Record<Card["id"], string> = { gratuito: "GRATUITO", mensal: "MENSAL", semestral: "SEMESTRAL", anual: "ANUAL", vitalicio: "VITALÍCIO" };
+
+function MobileCard({ id, current, onPick }: { id: Card["id"]; current: boolean; onPick: (k: OfferKey) => void }) {
+  const free = id === "gratuito";
+  const o = free ? null : OFFERS[id];
+  const ic = ICON[id];
+  return (
+    <article className={`pm pm-${id}`} data-testid={`plano-cartao-${id}`}>
+      {id === "semestral" && <p className="pm-fita">MAIS ESCOLHIDO</p>}
+      <Crop x={ic.x} y={ic.y} w={ic.w} h={ic.h} className="pm-ico" grow={ic.w} />
+      <p className="pm-k">PLANO</p>
+      <h2 className="pm-n">{NAME[id]}</h2>
+      {free ? (
+        <>
+          <p className="pm-tag">DEGUSTAÇÃO</p>
+          <p className="pm-sub">Conheça a plataforma e experimente a qualidade APROVUM.</p>
+        </>
+      ) : (
+        <p className="pm-preco">
+          <b>{o!.price}</b>
+          <span>{o!.per}</span>
+        </p>
+      )}
+      <ul className="pm-lista">
+        {(free ? PERKS_FREE : PERKS_PAID).map((t) => (
+          <li key={t}>{t}</li>
+        ))}
+      </ul>
+      {free ? (
+        <Link href="/painel" className="pm-btn pm-btn-free" aria-label="Plano Gratuito — acesso gratuito" data-testid="plano-gratuito">
+          ACESSO GRATUITO
+        </Link>
+      ) : (
+        <button type="button" className="pm-btn" aria-label={`Assinar ${o!.label} — ${o!.price} ${o!.per}`} onClick={() => onPick(id as OfferKey)} data-testid={`plano-${id}`}>
+          ASSINAR AGORA
+        </button>
+      )}
+      {id === "vitalicio" && <p className="pm-nota">INVESTIMENTO PARA TODA A VIDA!</p>}
+      {free && <p className="pm-nota pm-nota-free">Ideal para você conhecer todo o poder da APROVUM.</p>}
+      {current && (
+        <span className="pm-atual" data-testid="plano-atual">
+          SEU PLANO ATUAL
+        </span>
+      )}
+    </article>
+  );
+}
+
 export function PlanoView({ current, choose, mp = null }: { current: "gratuito" | OfferKey; choose: (plan: string) => Promise<ChoosePlanResult>; mp?: { publicKey: string; email: string | null } | null }) {
   const router = useRouter();
   const paid = useCallback(() => router.refresh(), [router]);
@@ -59,15 +125,7 @@ export function PlanoView({ current, choose, mp = null }: { current: "gratuito" 
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const track = useRef<HTMLDivElement>(null);
-
-  // No celular o carrossel abre no plano atual (ou no Semestral, o mais escolhido).
-  useEffect(() => {
-    const t = track.current;
-    if (!t || t.scrollWidth <= t.clientWidth + 2) return;
-    const el = t.querySelector<HTMLElement>(`[data-card="${current === "gratuito" ? "semestral" : current}"]`);
-    if (el) t.scrollLeft = el.offsetLeft - (t.clientWidth - el.clientWidth) / 2;
-  }, [current]);
+  const mobile = useMobile();
 
   const close = () => (setSel(null), setDone(false), setError(null));
   const confirm = () =>
@@ -81,23 +139,30 @@ export function PlanoView({ current, choose, mp = null }: { current: "gratuito" 
   return (
     <div className="plano" data-testid="meu-plano">
       <Crop x={0} y={0} w={W} h={CARD_Y} className="pl-topo" label="Escolha seu plano APROVUM: Gratuito, Mensal R$ 37, Semestral R$ 197, Anual R$ 347 e Vitalício R$ 697" />
-      <p className="pl-dica" aria-hidden>Deslize para ver todos os planos</p>
-      <div className="pl-cards" ref={track}>
-        {CARDS.map((c) => (
-          <div key={c.id} className="pl-card" data-card={c.id} style={{ "--w": c.w } as CSSProperties}>
-            <Crop x={c.x} y={CARD_Y} w={c.w} h={CARD_H}>
-              {c.id === "gratuito" ? (
-                <Link href="/painel" className="pl-hit" aria-label={c.label} data-testid="plano-gratuito" />
-              ) : (
-                <button type="button" className="pl-hit" aria-label={c.label} onClick={() => setSel(c.id as OfferKey)} data-testid={`plano-${c.id}`} />
-              )}
-              {c.id === current && (
-                <span className="pl-atual" data-testid="plano-atual">SEU PLANO ATUAL</span>
-              )}
-            </Crop>
-          </div>
-        ))}
-      </div>
+      {mobile ? (
+        <div className="pm-lista-planos">
+          {CARDS.map((c) => (
+            <MobileCard key={c.id} id={c.id} current={c.id === current} onPick={setSel} />
+          ))}
+        </div>
+      ) : (
+        <div className="pl-cards">
+          {CARDS.map((c) => (
+            <div key={c.id} className="pl-card" style={{ "--w": c.w } as CSSProperties}>
+              <Crop x={c.x} y={CARD_Y} w={c.w} h={CARD_H}>
+                {c.id === "gratuito" ? (
+                  <Link href="/painel" className="pl-hit" aria-label={c.label} data-testid="plano-gratuito" />
+                ) : (
+                  <button type="button" className="pl-hit" aria-label={c.label} onClick={() => setSel(c.id as OfferKey)} data-testid={`plano-${c.id}`} />
+                )}
+                {c.id === current && (
+                  <span className="pl-atual" data-testid="plano-atual">SEU PLANO ATUAL</span>
+                )}
+              </Crop>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="pl-vantagens">
         {PERKS.map((k) => (
           <Crop key={k.x} x={k.x} y={PERK_Y} w={k.w} h={PERK_H} grow={k.w} className="pl-vant" />
