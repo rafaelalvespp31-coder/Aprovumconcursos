@@ -9,6 +9,8 @@ import { CONTEST_STATUS, MISSION_ORDER, accuracy, daysUntil, formatStudyTime, le
 import type { HomeData } from "@/server/services/gamification";
 import { LevelUp } from "./level-up";
 import { RequestSlot, RequestTrigger } from "./request-slot";
+import { SkinsPanel, type SelectSkin } from "./skins-panel";
+import type { SkinInfo } from "@/server/services/avatar";
 import { ContestCard } from "./contest-card";
 
 /**
@@ -52,6 +54,9 @@ export interface HomeOperacaoProps {
   /** Conta gratuita: avatar padrão APROVUM, sem editar nem solicitar avatar novo. */
   canCustomize: boolean;
   ackLevels: () => Promise<void>;
+  /** Skins do avatar (máx. 3) e a ação de trocar. */
+  skins?: SkinInfo[];
+  selectSkin?: SelectSkin;
   /** Só galeria/testes. */
   mannequin?: boolean;
 }
@@ -64,7 +69,7 @@ function T({ box, className = "", children, testId, title }: { box: CSSPropertie
   );
 }
 
-export function HomeOperacao({ name, data, avatar, request, requestAction, canCustomize, ackLevels, mannequin }: HomeOperacaoProps) {
+export function HomeOperacao({ name, data, avatar, request, requestAction, canCustomize, ackLevels, mannequin, skins = [], selectSkin }: HomeOperacaoProps) {
   const { game, performance: perf, continueLesson: cont, contests, insights, top } = data;
   const rank = rankFor(game.level);
   const pct = levelPct(game);
@@ -220,6 +225,7 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, canCu
 
           <RequestTrigger box={A(325, 1248, 340, 76)} locked={!canCustomize} />
         </section>
+        {avatar && selectSkin && <SkinsPanel skins={skins} select={selectSkin} locked={!canCustomize} />}
 
         {canCustomize && <RequestSlot initial={request} action={requestAction} />}
         </div>

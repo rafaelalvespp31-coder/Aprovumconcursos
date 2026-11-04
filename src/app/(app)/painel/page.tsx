@@ -5,7 +5,7 @@ import { loadHome } from "@/server/services/gamification";
 import { HomeOperacao } from "@/components/home/home-operacao";
 import { HeroBanner } from "./hero-banner";
 import { listActiveApprovedBanners } from "@/server/services/approved-banners";
-import { ackLevelUpsAction, requestAvatarAction } from "./avatar-actions";
+import { ackLevelUpsAction, requestAvatarAction, selectSkinAction } from "./avatar-actions";
 import { getMyPlan } from "@/server/services/plans";
 import { logEvent } from "@/server/observability";
 
@@ -40,6 +40,8 @@ export default async function DashboardPage() {
         request={request}
         canCustomize={!!plan?.unlimited}
         requestAction={requestAvatarAction}
+        skins={avatar?.skins ?? []}
+        selectSkin={selectSkinAction}
         ackLevels={ackLevelUpsAction}
       />
     </>

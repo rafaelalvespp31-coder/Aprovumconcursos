@@ -11,7 +11,7 @@ import type { AuditReport } from "@/domain/content/audit";
 import type { UnitState } from "@/domain/progress/state-machine";
 import type { RulerState } from "@/components/coverage-ruler";
 import { effectivePlan } from "@/domain/plans/limits";
-import { planTier, type PlanTier } from "@/domain/plans/offers";
+import { currentOffer, OFFERS, planTier, type PlanTier } from "@/domain/plans/offers";
 import type { SavedAnswer } from "@/components/question-card";
 import type { AnswerFeedback } from "./services/study";
 import { summarizePerformance, type AttemptRecord } from "@/domain/progress/performance";
@@ -652,6 +652,8 @@ export interface ShellSummary {
   subjects: SubjectMenuItem[];
   /** Cor do "Meu Plano": prata (gratuito), vermelho neon (pago) ou dourado neon (vitalício). */
   plan: PlanTier;
+  /** Nome do plano em vigor e, nos planos por período, até quando vale (ISO). */
+  planInfo: { label: string; until: string | null };
 }
 
 export async function getShellSummary(email: string | null): Promise<ShellSummary> {
@@ -699,6 +701,10 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
     streak: { current: g.streak.current, last7: g.streak.last7, message: streakMessage(g.streak) },
     level: xpLevel ?? g.level.level,
     plan: planTier(eff.paid, subRow?.billing_period ?? null, !!subRow?.current_period_end),
+    planInfo: (() => {
+      const o = currentOffer(eff.paid, subRow?.billing_period ?? null, !!subRow?.current_period_end);
+      return { label: o === "gratuito" ? "Plano Gratuito" : OFFERS[o].label, until: o === "gratuito" || o === "vitalicio" ? null : (subRow?.current_period_end ?? null) };
+    })(),
     counts: { trails: trails.count ?? 0, questions, notebooks: notebooks.count ?? 0, dueReviews: reviews.count ?? 0, answered: stats.answered },
     subjects: buildSubjectsMenu({
       trails: mineRows,

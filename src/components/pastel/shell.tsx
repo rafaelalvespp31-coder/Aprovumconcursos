@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { RotatingQuote } from "./rotating-quote";
-import { createContext, Fragment, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   Bell,
@@ -11,7 +11,9 @@ import {
   X,
   Gamepad2,
   ChartColumn,
+  ChevronDown,
   ChevronRight,
+  TrendingUp,
   CircleHelp,
   Clock3,
   Crown,
@@ -31,7 +33,6 @@ import { useStudyApi } from "@/components/study-api";
 import type { SearchItem } from "@/app/(app)/study-actions";
 import type { ShellSummary } from "@/server/queries";
 import { useStored } from "@/components/use-stored";
-import { PastelCard } from "./card";
 import { SubjectsSubmenu } from "./subjects-submenu";
 import { BottomNavigation, type BottomNavId } from "./bottom-navigation";
 
@@ -72,6 +73,90 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
   ];
 }
 
+/** Grupo "Evolução": Desempenho e Revisões ficam dentro dele (recolhível; na barra recolhida vira um ícone). */
+function EvolucaoGrupo({
+  items,
+  collapsed,
+  open,
+  onToggle,
+  activeId,
+  basePath,
+  path,
+  onSame,
+}: {
+  items: NavItem[];
+  collapsed: boolean;
+  open: boolean;
+  onToggle: () => void;
+  activeId: string | null;
+  basePath: string;
+  path: string;
+  onSame: (label: string) => void;
+}) {
+  const filhos = ["desempenho", "revisoes"].map((id) => items.find((i) => i.id === id)).filter((i): i is NavItem => !!i);
+  const dentro = filhos.some((f) => f.id === activeId);
+  if (collapsed) {
+    return (
+      <Link
+        href={`${basePath}/desempenho`}
+        aria-label="Evolução"
+        title="Evolução"
+        aria-current={dentro ? "page" : undefined}
+        className={`barra-item group relative flex w-full items-center justify-center rounded-[18px] ${dentro ? "text-white" : "text-[#B3B3B3] hover:bg-white/[0.06] hover:text-white"}`}
+      >
+        <span className={`flex h-9 w-9 items-center justify-center rounded-[12px] ${dentro ? "bg-white/20" : "bg-[#1A1A1A]"}`}>
+          <TrendingUp className="h-[18px] w-[18px]" aria-hidden />
+        </span>
+      </Link>
+    );
+  }
+  return (
+    <>
+      <button
+        type="button"
+        aria-expanded={open}
+        data-testid="evolucao-toggle"
+        onClick={onToggle}
+        className={`barra-item group relative flex w-full items-center gap-3.5 rounded-[18px] px-4 text-left text-[14.5px] font-medium transition-colors duration-300 ${dentro ? "text-white" : "text-[#B3B3B3] hover:bg-white/[0.06] hover:text-white"}`}
+      >
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[#1A1A1A] transition-all duration-300 group-hover:rotate-[-6deg] group-hover:scale-110">
+          <TrendingUp className="h-[18px] w-[18px]" aria-hidden />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold tracking-tight">Evolução</span>
+          <span className="mt-0.5 block text-[11px] leading-none text-[#A3A3A3]">Desempenho e revisões</span>
+        </span>
+        <ChevronDown className={`size-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
+      </button>
+      {open && (
+        <ul className="barra-subgrupo" aria-label="Evolução">
+          {filhos.map((f) => {
+            const on = activeId === f.id;
+            return (
+              <li key={f.id}>
+                <Link
+                  href={f.href}
+                  aria-current={on ? "page" : undefined}
+                  onClick={() => {
+                    if (path === f.href) onSame(f.label);
+                  }}
+                  className={`barra-sub group flex items-center gap-3 rounded-[14px] px-3 text-[13.5px] font-semibold transition-colors ${on ? "text-white" : "text-[#B3B3B3] hover:bg-white/[0.06] hover:text-white"}`}
+                >
+                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] ${on ? "bg-white/20" : "bg-[#1A1A1A]"}`}>
+                    <f.icon className="h-4 w-4" aria-hidden />
+                  </span>
+                  <span className="min-w-0 flex-1 truncate">{f.label}</span>
+                  <span className={`text-[11px] font-medium ${on ? "text-white/80" : "text-[#A3A3A3]"}`} data-testid={`nav-desc-${f.id}`}>{f.desc}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </>
+  );
+}
+
 const PAGE_HEADINGS: Array<{ path: string; title: string; subtitle: string }> = [
   { path: "/questoes/cadernos/novo", title: "Questões", subtitle: "Selecione os filtros abaixo para encontrar as questões que você deseja resolver." },
 ];
@@ -106,20 +191,32 @@ export function PastelShell({
   const items = useMemo(() => navItems(summary, basePath), [summary, basePath]);
   const active = items.find((i) => [i.href, ...(i.also ?? [])].some((p) => path === p || path.startsWith(`${p}/`))) ?? null;
   const activeIndex = active ? items.indexOf(active) : -1;
-  // Submenu de matérias logo abaixo de "Estudos": o destaque deslizante dos itens
-  // seguintes desce a altura do submenu (medida no navegador).
-  const studiesIndex = items.findIndex((i) => i.id === "trilhas");
-  const subRef = useRef<HTMLDivElement>(null);
-  const [subH, setSubH] = useState(0);
-  useEffect(() => {
-    const el = subRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(() => setSubH(el.offsetHeight));
-    ro.observe(el);
-    return () => ro.disconnect();
-  });
+  // Grupos recolhíveis: "Estudos" (matérias) e "Evolução" (Desempenho e Revisões).
+  const [estudosAberto, setEstudosAberto] = useStored("na:menu-estudos-aberto", false);
+  const [evolucaoAberta, setEvolucaoAberta] = useStored("na:menu-evolucao-aberta", false);
+  const emEstudos = active?.id === "trilhas";
+  const emEvolucao = active?.id === "revisoes" || active?.id === "desempenho";
+  const estudosVisivel = estudosAberto || emEstudos;
+  const evolucaoVisivel = evolucaoAberta || emEvolucao;
+  // O destaque deslizante acompanha o item ativo medindo-o no navegador (os grupos mudam a altura).
+  const navRef = useRef<HTMLElement>(null);
+  const [ind, setInd] = useState<{ top: number; h: number } | null>(null);
   const [collapsed, setCollapsedStored] = useStored("na:sidebar-recolhida", false);
   const toggleCollapsed = () => setCollapsedStored(!collapsed);
+  useLayoutEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const measure = () => {
+      const el = nav.querySelector<HTMLElement>('[aria-current="page"]');
+      if (!el) return setInd(null);
+      const next = { top: el.offsetTop + nav.offsetTop, h: el.offsetHeight };
+      setInd((p) => (p && p.top === next.top && p.h === next.h ? p : next));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(nav);
+    return () => ro.disconnect();
+  }, [path, collapsed, estudosVisivel, evolucaoVisivel, summary.subjects, activeIndex]);
   const [toast, setToast] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
@@ -215,24 +312,20 @@ export function PastelShell({
               </div>
 
               <div className="barra-rolagem relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 [scrollbar-width:none]">
-                {activeIndex >= 0 && (
+                {ind && (
                   <div
                     aria-hidden
                     data-tier={active?.id === "plano" ? summary.plan : undefined}
                     className="barra-indicador absolute left-3 right-3 rounded-[18px] bg-gradient-to-r from-[#FF1E1E] to-[#B30000] shadow-[0_10px_24px_rgba(225,6,0,0.32),inset_0_1px_0_rgba(255,255,255,0.3)] transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-                    style={{
-                      transform:
-                        !collapsed && summary.subjects.length > 0 && subH > 0 && activeIndex > studiesIndex
-                          ? `translateY(calc(${activeIndex} * var(--passo) + ${subH}px + var(--passo) - var(--item)))`
-                          : `translateY(calc(${activeIndex} * var(--passo)))`,
-                    }}
+                    style={{ transform: `translateY(${ind.top}px)`, height: ind.h }}
                   />
                 )}
-                <nav aria-label="Principal" className="barra-nav relative flex flex-col">
-                  {items.map((s) => {
+                <nav ref={navRef} aria-label="Principal" className="barra-nav relative flex flex-col">
+                  {items.filter((s) => s.id !== "revisoes" && s.id !== "desempenho").map((s) => {
                     const on = active?.id === s.id;
                     return (
                       <Fragment key={s.id}>
+                      <div className="relative">
                       <Link
                         href={s.href}
                         aria-current={on ? "page" : undefined}
@@ -257,12 +350,35 @@ export function PastelShell({
                             <span className={`mt-0.5 block text-[11px] leading-none ${on ? "text-white/80" : "text-[#A3A3A3]"}`} data-testid={`nav-desc-${s.id}`}>{s.desc}</span>
                           </span>
                         )}
-                        {!collapsed && on && <ChevronRight className="mp-chev h-4 w-4 text-white/70 transition-transform group-hover:translate-x-0.5" aria-hidden />}
+                        {!collapsed && on && s.id !== "trilhas" && <ChevronRight className="mp-chev h-4 w-4 text-white/70 transition-transform group-hover:translate-x-0.5" aria-hidden />}
                       </Link>
                       {s.id === "trilhas" && !collapsed && summary.subjects.length > 0 && (
-                        <div ref={subRef}>
-                          <SubjectsSubmenu subjects={summary.subjects} base={basePath} path={path} />
-                        </div>
+                        <button
+                          type="button"
+                          className="barra-grupo-toggle"
+                          aria-expanded={estudosVisivel}
+                          aria-label={estudosVisivel ? "Recolher matérias" : "Mostrar matérias"}
+                          data-testid="estudos-toggle"
+                          onClick={() => setEstudosAberto(!estudosVisivel)}
+                        >
+                          <ChevronDown className={`size-4 transition-transform ${estudosVisivel ? "rotate-180" : ""}`} aria-hidden />
+                        </button>
+                      )}
+                      </div>
+                      {s.id === "trilhas" && !collapsed && summary.subjects.length > 0 && estudosVisivel && (
+                        <SubjectsSubmenu subjects={summary.subjects} base={basePath} path={path} />
+                      )}
+                      {s.id === "questoes" && (
+                        <EvolucaoGrupo
+                          items={items}
+                          collapsed={collapsed}
+                          open={evolucaoVisivel}
+                          onToggle={() => setEvolucaoAberta(!evolucaoVisivel)}
+                          activeId={active?.id ?? null}
+                          basePath={basePath}
+                          path={path}
+                          onSame={(label) => setToast(`${label} já está aberto ✨`)}
+                        />
                       )}
                       </Fragment>
                     );
@@ -274,29 +390,27 @@ export function PastelShell({
               <div className="barra-base mt-auto shrink-0 p-4">
                 {!collapsed ? (
                   <>
-                    <PastelCard delay={600} noTilt glowColor="225,6,0" className={`barra-streak ${isAula || isPainel ? "!hidden" : ""} !rounded-[20px] !shadow-none border-[#2E2E2E] bg-gradient-to-br from-[#1A1A1A] to-[#120606]`}>
-                      <div className="p-4" data-testid="streak-card">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-[#161616] text-[14px] shadow" aria-hidden>🔥</div>
-                            <div>
-                              <div className="text-[13px] font-bold leading-none">
-                                {summary.streak.current > 0 ? `Streak ${plural(summary.streak.current, "dia", "dias")}!` : "Sem sequência ainda"}
-                              </div>
-                              <div className="text-[11px] text-[#B3B3B3]">{summary.streak.message}</div>
-                            </div>
-                          </div>
-                          <div className="flex h-7 w-7 items-center justify-center rounded-full border border-[#E10600]/60 bg-black" aria-hidden>
-                            <Crown className="h-3.5 w-3.5 text-[#FF2A2A]" />
-                          </div>
-                        </div>
-                        <div className="mt-3 flex h-2 gap-1 overflow-hidden rounded-full bg-[#161616]" role="img" aria-label={`Estudou em ${summary.streak.last7.filter(Boolean).length} dos últimos 7 dias`}>
-                          {summary.streak.last7.map((on, i) => (
-                            <div key={i} className={`h-full flex-1 rounded-full ${on ? "bg-gradient-to-r from-[#FF1E1E] to-[#B30000]" : "bg-[#2A2A2A]"}`} style={{ opacity: on ? 0.4 + i * 0.09 : 1 }} />
-                          ))}
-                        </div>
-                      </div>
-                    </PastelCard>
+                    <Link
+                      href={`${basePath}/plano`}
+                      data-tier={summary.plan}
+                      data-testid="plano-card"
+                      aria-label={`${summary.planInfo.label} — ver meu plano`}
+                      className={`plano-card barra-streak ${isAula ? "!hidden" : ""}`}
+                    >
+                      <span className="plano-card-ico" aria-hidden><Crown className="h-5 w-5" /></span>
+                      <span className="plano-card-txt">
+                        <span className="plano-card-rotulo">Seu plano</span>
+                        <span className="plano-card-nome">{summary.planInfo.label.replace(/^Plano /, "")}</span>
+                        <span className="plano-card-sub">
+                          {summary.plan === "gratuito"
+                            ? "Faça upgrade e estude sem limites"
+                            : summary.planInfo.until
+                              ? `Válido até ${new Date(summary.planInfo.until).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}`
+                              : "Acesso para sempre"}
+                        </span>
+                      </span>
+                      <ChevronRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                    </Link>
                     <div className="mt-3 flex gap-2">
                       <button type="button" onClick={toggleCollapsed} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-[12px] border border-[#2A2A2A] bg-[#161616] text-[12px] font-semibold transition hover:bg-[#1A1A1A]">
                         <PanelLeftClose className="h-4 w-4" aria-hidden /> Recolher
@@ -319,11 +433,9 @@ export function PastelShell({
                     <button type="button" onClick={toggleCollapsed} aria-label="Expandir barra lateral" className="flex h-12 w-full items-center justify-center rounded-[16px] border border-[#2A2A2A] bg-[#161616] transition hover:bg-[#1A1A1A]">
                       <PanelLeftOpen className="h-5 w-5" aria-hidden />
                     </button>
-                    <div className="flex h-12 w-full items-center justify-center rounded-[16px] bg-gradient-to-br from-[#FF1E1E] to-[#B30000] text-[13px] font-bold text-white shadow-lg" title={`Sequência: ${summary.streak.current} dia(s)`}>
-                      <span aria-hidden>🔥</span>
-                      <span className="sr-only">Sequência de {summary.streak.current} dia(s)</span>
-                      <span aria-hidden className="ml-0.5">{summary.streak.current}</span>
-                    </div>
+                    <Link href={`${basePath}/plano`} data-tier={summary.plan} className="plano-card plano-card-rail" aria-label={`${summary.planInfo.label} — ver meu plano`} title={summary.planInfo.label}>
+                      <Crown className="h-5 w-5" aria-hidden />
+                    </Link>
                   </div>
                 )}
               </div>

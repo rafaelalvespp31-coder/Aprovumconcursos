@@ -57,6 +57,8 @@ export function DemoHome({ mannequin, gender, level, empty, levelUp, canCustomiz
       mannequin={mannequin}
       request={null}
       canCustomize={canCustomize}
+      skins={canCustomize ? [{ id: "d1", thumb: "/avatar/ui/palco-fundo.webp", active: true }, { id: "d2", thumb: "/mentor/caveira.webp", active: false }] : []}
+      selectSkin={async () => ({ ok: true })}
       ackLevels={async () => {}}
       requestAction={async (fd) => {
         const f = fd.get("foto");

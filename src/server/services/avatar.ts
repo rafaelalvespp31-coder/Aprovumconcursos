@@ -27,7 +27,17 @@ export interface AvatarState {
   progress: AvatarProgress;
   /** Avatar personalizado anexado pela equipe (links temporários); null = arte padrão. */
   portrait: Portrait | null;
+  /** Até 3 skins (avatares personalizados do aluno); `active` = a que está em uso. */
+  skins: SkinInfo[];
 }
+export interface SkinInfo {
+  /** Identifica a skin (id da solicitação que a gerou). */
+  id: string;
+  /** Miniatura (link temporário). */
+  thumb: string;
+  active: boolean;
+}
+export const MAX_SKINS = 3;
 
 const assetUrl = (path: string | null) => {
   if (!path) return null;
@@ -77,20 +87,21 @@ export async function loadMyAvatar(userId: string): Promise<AvatarState> {
   const [items, stats, row, rank] = await Promise.all([
     loadItems(),
     getStudyStats(),
-    db.from("avatar_profiles").select("gender, skin, hair_color, face, body, equipped, custom_portrait").eq("user_id", userId).maybeSingle(),
+    db.from("avatar_profiles").select("gender, skin, hair_color, face, body, equipped, custom_portrait, custom_skins").eq("user_id", userId).maybeSingle(),
     myRank(),
   ]);
   const progress = progressFrom(stats, rank);
   if (!row.data) {
     // Sem avatar gravado: usa o gênero informado no cadastro.
     const meta = (await db.auth.getUser()).data.user?.user_metadata as Record<string, unknown> | undefined;
-    return { config: defaultAvatar(parseGender(meta?.avatar_gender) ?? "m", items), saved: false, items, progress, portrait: null };
+    return { config: defaultAvatar(parseGender(meta?.avatar_gender) ?? "m", items), saved: false, items, progress, portrait: null, skins: [] };
   }
-  const r = row.data as { gender: string; skin: string; hair_color: string; face: unknown; body: unknown; equipped: unknown; custom_portrait: StoredCustom | null };
+  const r = row.data as { gender: string; skin: string; hair_color: string; face: unknown; body: unknown; equipped: unknown; custom_portrait: StoredCustom | null; custom_skins: StoredCustom[] | null };
   const portrait = r.custom_portrait ? await customPortrait(r.custom_portrait).catch(() => null) : null;
+  const skins = await skinThumbs(r.custom_skins ?? [], r.custom_portrait).catch(() => []);
   // Valida de novo o que está gravado (peça que saiu do catálogo volta ao padrão).
   const v = validateAvatar({ gender: r.gender, skin: r.skin, hairColor: r.hair_color, face: r.face, body: r.body, equipped: r.equipped }, items, { level: 999, xp: Number.MAX_SAFE_INTEGER });
-  return { config: v.ok ? v.config : defaultAvatar(r.gender === "f" ? "f" : "m", items), saved: true, items, progress, portrait };
+  return { config: v.ok ? v.config : defaultAvatar(r.gender === "f" ? "f" : "m", items), saved: true, items, progress, portrait, skins };
 }
 
 // ---------------------------------------------------------------------------
@@ -98,6 +109,29 @@ export async function loadMyAvatar(userId: string): Promise<AvatarState> {
 // ---------------------------------------------------------------------------
 const CUSTOM_BUCKET = "avatar-personalizado";
 type StoredCustom = CustomParams & { art: string; lids: string; requestId?: string; at?: string };
+
+const skinId = (c: StoredCustom) => c.requestId ?? c.art;
+
+async function skinThumbs(list: StoredCustom[], active: StoredCustom | null): Promise<SkinInfo[]> {
+  const skins = list.slice(0, MAX_SKINS);
+  if (!skins.length) return [];
+  const signed = await createAdminClient().storage.from(CUSTOM_BUCKET).createSignedUrls(skins.map((c) => c.art), 6 * 3600);
+  if (signed.error) throw new Error(signed.error.message);
+  return skins.map((c, i) => ({ id: skinId(c), thumb: signed.data?.[i]?.signedUrl ?? "", active: !!active && skinId(active) === skinId(c) })).filter((x) => x.thumb);
+}
+
+/** O próprio aluno troca a skin em uso (null = avatar padrão APROVUM). */
+export async function selectMySkin(userId: string, skinIdInput: unknown): Promise<void> {
+  const wanted = skinIdInput === null ? null : z.string().min(1).max(200).parse(skinIdInput);
+  const db = createAdminClient();
+  const cur = await db.from("avatar_profiles").select("custom_skins").eq("user_id", userId).maybeSingle();
+  if (cur.error) throw new Error(cur.error.message);
+  const list = (cur.data?.custom_skins ?? []) as StoredCustom[];
+  const pick = wanted === null ? null : list.find((c) => skinId(c) === wanted);
+  if (wanted !== null && !pick) throw new UserFacingError("Essa skin não está mais disponível.", "validation");
+  const upd = await db.from("avatar_profiles").update({ custom_portrait: pick ?? null, updated_at: new Date().toISOString() }).eq("user_id", userId);
+  if (upd.error) throw new Error(upd.error.message);
+}
 
 /** Posição padrão do avatar oficial (cabeça, pés e eixo do corpo nas mesmas linhas). */
 async function customPortrait(c: StoredCustom): Promise<Portrait> {
@@ -157,19 +191,25 @@ export async function saveCustomAvatar(requestIdInput: unknown, artFile: File | 
     const up = await db.storage.from(CUSTOM_BUCKET).upload(path, layer.buf, { contentType: layer.type, upsert: false });
     if (up.error) throw new Error(up.error.message);
   }
-  const cur = await db.from("avatar_profiles").select("custom_portrait").eq("user_id", userId).maybeSingle();
+  const cur = await db.from("avatar_profiles").select("custom_portrait, custom_skins").eq("user_id", userId).maybeSingle();
   if (!cur.data) {
     const meta = (await db.auth.admin.getUserById(userId)).data.user?.user_metadata as Record<string, unknown> | undefined;
     await writeConfig(userId, defaultAvatar(parseGender(meta?.avatar_gender) ?? "m", await loadItemsAdmin()));
   }
   const stored: StoredCustom = { ...params, ...paths, requestId, at: new Date().toISOString() };
-  const upd = await db.from("avatar_profiles").update({ custom_portrait: stored, updated_at: new Date().toISOString() }).eq("user_id", userId);
+  const prev = cur.data?.custom_portrait as StoredCustom | null | undefined;
+  // Até 3 skins: a nova entra como ativa; passando de 3, sai a mais antiga (e os arquivos dela).
+  let skins = ((cur.data?.custom_skins ?? []) as StoredCustom[]).filter((c) => skinId(c) !== requestId);
+  if (prev && !skins.some((c) => skinId(c) === skinId(prev))) skins = [prev, ...skins];
+  skins.push(stored);
+  const dropped = skins.splice(0, Math.max(0, skins.length - MAX_SKINS));
+  const upd = await db.from("avatar_profiles").update({ custom_portrait: stored, custom_skins: skins, updated_at: new Date().toISOString() }).eq("user_id", userId);
   if (upd.error) {
     await db.storage.from(CUSTOM_BUCKET).remove([paths.art, paths.lids]);
     throw new Error(upd.error.message);
   }
-  const prev = cur.data?.custom_portrait as StoredCustom | null | undefined;
-  if (prev) await db.storage.from(CUSTOM_BUCKET).remove([prev.art, prev.lids]);
+  const gone = dropped.flatMap((c) => [c.art, c.lids]);
+  if (gone.length) await db.storage.from(CUSTOM_BUCKET).remove(gone);
   await db.from("avatar_requests").update({ status: "concluida", note: "Seu avatar personalizado está pronto!", updated_at: new Date().toISOString() }).eq("id", requestId);
 }
 
@@ -180,11 +220,16 @@ export async function removeCustomAvatar(requestIdInput: unknown) {
   const req = await db.from("avatar_requests").select("user_id").eq("id", requestId).maybeSingle();
   if (!req.data) throw new UserFacingError("Solicitação não encontrada.", "validation");
   const userId = req.data.user_id as string;
-  const cur = await db.from("avatar_profiles").select("custom_portrait").eq("user_id", userId).maybeSingle();
-  const prev = cur.data?.custom_portrait as StoredCustom | null | undefined;
-  const upd = await db.from("avatar_profiles").update({ custom_portrait: null, updated_at: new Date().toISOString() }).eq("user_id", userId);
+  const cur = await db.from("avatar_profiles").select("custom_portrait, custom_skins").eq("user_id", userId).maybeSingle();
+  const active = cur.data?.custom_portrait as StoredCustom | null | undefined;
+  const all = (cur.data?.custom_skins ?? []) as StoredCustom[];
+  // Remove a skin desta solicitação; se era a ativa (ou não há skins registradas), volta à arte padrão.
+  const target = all.find((c) => c.requestId === requestId) ?? active ?? null;
+  const skins = target ? all.filter((c) => skinId(c) !== skinId(target)) : all;
+  const nextActive = active && target && skinId(active) === skinId(target) ? null : (active ?? null);
+  const upd = await db.from("avatar_profiles").update({ custom_portrait: nextActive, custom_skins: skins, updated_at: new Date().toISOString() }).eq("user_id", userId);
   if (upd.error) throw new Error(upd.error.message);
-  if (prev) await db.storage.from(CUSTOM_BUCKET).remove([prev.art, prev.lids]);
+  if (target) await db.storage.from(CUSTOM_BUCKET).remove([target.art, target.lids]);
 }
 
 /** Grava o avatar do PRÓPRIO aluno, depois de validar contra o catálogo e o progresso real. */

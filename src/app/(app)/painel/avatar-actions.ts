@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireUser } from "@/server/auth";
-import { saveMyAvatar, submitAvatarRequest, type AvatarRequest } from "@/server/services/avatar";
+import { saveMyAvatar, selectMySkin, submitAvatarRequest, type AvatarRequest } from "@/server/services/avatar";
 import { UserFacingError, enforceRateLimit } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
 import { getMyPlan } from "@/server/services/plans";
@@ -54,4 +54,19 @@ export async function requestAvatarAction(form: FormData): Promise<AvatarRequest
 export async function ackLevelUpsAction(): Promise<void> {
   const user = await requireUser("/painel");
   await ackLevelUps(user.id);
+}
+
+/** Troca a skin em uso (id da skin ou null = avatar padrão). */
+export async function selectSkinAction(skinId: string | null): Promise<{ ok: boolean; error?: string }> {
+  const user = await requireUser("/painel");
+  try {
+    await enforceRateLimit(user.id, "avatar_skin", 30);
+    await selectMySkin(user.id, skinId);
+    revalidatePath("/painel");
+    return { ok: true };
+  } catch (e) {
+    if (e instanceof UserFacingError) return { ok: false, error: e.message };
+    await logEvent("avatar.skin_failed", { error: (e as Error).message });
+    return { ok: false, error: "Não foi possível trocar a skin agora." };
+  }
 }

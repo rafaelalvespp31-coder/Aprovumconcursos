@@ -382,6 +382,7 @@ test.describe("casco pastel", () => {
     await page.goto(`${G}/painel`);
     const nav = page.getByRole("navigation", { name: "Principal", exact: true });
     await expect(nav.getByRole("link", { name: /Painel/ })).toHaveAttribute("aria-current", "page");
+    await page.getByTestId("evolucao-toggle").click();
     await expect(page.getByTestId("nav-desc-revisoes")).toHaveText("2 pendentes");
     await expect(nav.getByRole("link", { name: /Modo Jogo/ })).toHaveAttribute("href", `${G}/quiz`);
     await expect(nav.getByRole("link", { name: /Novo Estudo/ })).toHaveAttribute("href", `${G}/nova-trilha`);
@@ -454,8 +455,8 @@ test.describe("casco pastel", () => {
     const box = (await rail.boundingBox())!;
     expect(box.width).toBeLessThanOrEqual(70);
     const links = page.getByRole("navigation", { name: "Principal", exact: true }).getByRole("link");
-    expect(await links.count()).toBeGreaterThanOrEqual(9);
-    for (const i of [0, 2, 8]) {
+    expect(await links.count()).toBeGreaterThanOrEqual(8);
+    for (const i of [0, 2, 7]) {
       const b = (await links.nth(i).boundingBox())!;
       expect(b.x).toBeGreaterThanOrEqual(box.x);
       expect(b.x + b.width).toBeLessThanOrEqual(box.x + box.width + 0.5);
@@ -972,6 +973,11 @@ test("menu Estudos: submenu com as matérias abre os assuntos estudados", async 
   // No celular o menu completo (hambúrguer) fica no topo da página de Estudos.
   await page.goto(`${G}/${isMobile ? "trilhas" : "painel"}`);
   if (isMobile) await page.getByRole("button", { name: "Abrir menu" }).click();
+  else {
+    // Desktop: as matérias começam recolhidas; o botão do grupo abre e fecha.
+    await expect(page.getByTestId("submenu-materias-lateral")).toHaveCount(0);
+    await page.getByTestId("estudos-toggle").click();
+  }
   const sub = page.getByTestId(isMobile ? "submenu-materias-menu" : "submenu-materias-lateral");
   await expect(sub.getByRole("button", { name: /Direito Penal/ })).toBeVisible();
   await expect(sub.getByRole("link", { name: /Homicídio/ })).toHaveCount(0);
