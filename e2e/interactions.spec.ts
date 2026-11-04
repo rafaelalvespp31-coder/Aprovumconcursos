@@ -1403,7 +1403,7 @@ test.describe("menu lateral: Depoimentos, Evolução e plano", () => {
     await page.goto(`${G}/depoimentos`);
     await expect(page.getByTestId("idealizador-william")).toBeVisible();
     await expect(page.getByTestId("idealizador-rafael")).toBeVisible();
-    await expect(page.getByTestId("depoimento")).toHaveCount(5);
+    await expect(page.getByTestId("depoimento")).toHaveCount(4);
     const nav = page.getByRole("navigation", { name: "Principal", exact: true });
     await expect(nav.getByRole("link", { name: /Depoimentos/ })).toHaveAttribute("aria-current", "page");
     await expect(nav.locator("[aria-label^='atalho']")).toHaveCount(0);
@@ -1424,6 +1424,8 @@ test.describe("menu lateral: Depoimentos, Evolução e plano", () => {
     await expect(page.getByTestId("depoimento")).toHaveCount(2);
     await expect(page.getByTestId("selo-aprovado")).toHaveCount(2);
     await page.getByTestId("filtro-todos").click();
+    await expect(page.getByTestId("depoimento")).toHaveCount(4);
+    await page.getByTestId("ver-todos-videos").click();
     await expect(page.getByTestId("depoimento")).toHaveCount(5);
     await page.getByTestId("depoimento-play").first().click();
     await expect(page.getByTestId("player")).toBeVisible();
