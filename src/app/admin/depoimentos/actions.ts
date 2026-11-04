@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/server/services/catalog";
-import { createTestimonial, createTestimonialUpload, deleteTestimonial, setTestimonialActive } from "@/server/services/testimonials";
+import { createTestimonial, createTestimonialUpload, deleteTestimonial, saveStoriesConfig, setTestimonialActive, updateTestimonial } from "@/server/services/testimonials";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
 
@@ -26,7 +26,33 @@ export async function prepareUploadAction(contentType: string, size: number): Pr
   }
 }
 
-export async function createTestimonialAction(input: { name: string; headline?: string; videoUrl?: string; photoUrl?: string; paths?: string[] }): Promise<Result> {
+export type TestimonialInput = {
+  name: string; headline?: string; videoUrl?: string; photoUrl?: string; thumbUrl?: string; captionsUrl?: string;
+  category?: string; concurso?: string; cargo?: string; estado?: string; description?: string;
+  durationSeconds?: number; approved?: boolean; featured?: boolean; sort?: number; paths?: string[];
+};
+
+export async function updateTestimonialAction(id: string, input: TestimonialInput): Promise<Result> {
+  await requireAdmin();
+  try {
+    await updateTestimonial(id, input);
+    return done();
+  } catch (e) {
+    return fail(e, "update");
+  }
+}
+
+export async function saveStoriesConfigAction(key: "founders" | "stats" | "quote", input: unknown): Promise<Result> {
+  await requireAdmin();
+  try {
+    await saveStoriesConfig(key, input);
+    return done();
+  } catch (e) {
+    return fail(e, "config");
+  }
+}
+
+export async function createTestimonialAction(input: TestimonialInput): Promise<Result> {
   await requireAdmin();
   try {
     await createTestimonial(input);

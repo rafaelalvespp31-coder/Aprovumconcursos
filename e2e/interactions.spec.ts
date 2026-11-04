@@ -1397,13 +1397,13 @@ test("aula: busca leva direto a outro subtópico do mesmo tópico", async ({ pag
 });
 
 test.describe("menu lateral: Depoimentos, Evolução e plano", () => {
-  test("Depoimentos mostra os tutores; sem numeração nos menus; Evolução limpo", async ({ page, isMobile }) => {
+  test("Depoimentos mostra idealizadores e vídeos; sem numeração nos menus; Evolução limpo", async ({ page, isMobile }) => {
     test.skip(isMobile, "barra lateral só no computador");
     await page.setViewportSize({ width: 1366, height: 768 });
     await page.goto(`${G}/depoimentos`);
-    await expect(page.getByTestId("tutor-william")).toBeVisible();
-    await expect(page.getByTestId("tutor-rafael")).toBeVisible();
-    await expect(page.getByTestId("depoimento")).toHaveCount(1);
+    await expect(page.getByTestId("idealizador-william")).toBeVisible();
+    await expect(page.getByTestId("idealizador-rafael")).toBeVisible();
+    await expect(page.getByTestId("depoimento")).toHaveCount(5);
     const nav = page.getByRole("navigation", { name: "Principal", exact: true });
     await expect(nav.getByRole("link", { name: /Depoimentos/ })).toHaveAttribute("aria-current", "page");
     await expect(nav.locator("[aria-label^='atalho']")).toHaveCount(0);
@@ -1415,6 +1415,27 @@ test.describe("menu lateral: Depoimentos, Evolução e plano", () => {
     await expect(plano).toContainText("Recruta");
     const box = (await plano.boundingBox())!;
     expect(box.y + box.height).toBeLessThanOrEqual(768);
+  });
+
+  test("Depoimentos: filtros, player, história e vazio", async ({ page }) => {
+    await page.setViewportSize({ width: 1366, height: 900 });
+    await page.goto(`${G}/depoimentos`);
+    await page.getByTestId("filtro-aprovados").click();
+    await expect(page.getByTestId("depoimento")).toHaveCount(2);
+    await expect(page.getByTestId("selo-aprovado")).toHaveCount(2);
+    await page.getByTestId("filtro-todos").click();
+    await expect(page.getByTestId("depoimento")).toHaveCount(5);
+    await page.getByTestId("depoimento-play").first().click();
+    await expect(page.getByTestId("player")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("player")).toHaveCount(0);
+    await page.getByTestId("conheca-historia").click();
+    await expect(page.getByTestId("historia-modal")).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(page.getByTestId("indicadores")).toBeVisible();
+    await expect(page.getByTestId("banner-participar").first()).toHaveAttribute("href", /.+/);
+    await page.goto(`${G}/depoimentos?vazio=1`);
+    await expect(page.getByTestId("depoimentos-vazio")).toBeVisible();
   });
 
   test("cronômetro de estudo aparece na aula", async ({ page }) => {

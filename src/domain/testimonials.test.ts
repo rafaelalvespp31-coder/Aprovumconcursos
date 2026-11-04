@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { videoSource } from "./testimonials";
+import { formatCount, formatDuration } from "./testimonials";
 
-describe("videoSource", () => {
-  it("converte YouTube e Vimeo para incorporação", () => {
-    expect(videoSource("https://youtu.be/abc123")).toEqual({ kind: "iframe", src: "https://www.youtube-nocookie.com/embed/abc123" });
-    expect(videoSource("https://www.youtube.com/watch?v=xyz9")).toEqual({ kind: "iframe", src: "https://www.youtube-nocookie.com/embed/xyz9" });
-    expect(videoSource("https://vimeo.com/12345")).toEqual({ kind: "iframe", src: "https://player.vimeo.com/video/12345" });
+describe("depoimentos", () => {
+  it("formata duração", () => {
+    expect(formatDuration(205)).toBe("3:25");
+    expect(formatDuration(60)).toBe("1:00");
+    expect(formatDuration(null)).toBeNull();
   });
-  it("aceita arquivo de vídeo https e recusa o resto", () => {
-    expect(videoSource("https://x.com/a.mp4")?.kind).toBe("file");
-    expect(videoSource("http://x.com/a.mp4")).toBeNull();
-    expect(videoSource("https://x.com/pagina")).toBeNull();
-    expect(videoSource("lixo")).toBeNull();
+  it("formata contagens", () => {
+    expect(formatCount(850)).toBe("850");
+    expect(formatCount(100000)).toBe("+100 Mil");
+    expect(formatCount(1500)).toBe("+1,5 Mil");
+    expect(formatCount(50000)).toBe("+50 Mil");
   });
 });
