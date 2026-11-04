@@ -30,6 +30,7 @@
     "@react-three/fiber": "^9.8.2",
     "@supabase/ssr": "^0.12.7",
     "@supabase/supabase-js": "^2.117.3",
+    "@svg-maps/brazil": "^2.0.0",
     "@types/mdast": "^4.0.4",
     "lucide-react": "^1.55.0",
     "mdast-util-from-markdown": "^2.1.0",

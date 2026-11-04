@@ -16,6 +16,7 @@ import {
   planSchema,
   questionsSchema,
   clarificationSchema,
+  explainSelectionSchema,
   scopeSchema,
   type ScopeOutput,
   type ClarificationOutput,
@@ -49,6 +50,7 @@ export const AI_LIMITS = {
     generate_lesson: 16_000,
     generate_questions: 12_000,
     clarify: 2_500,
+    explain: 700,
   },
 } as const;
 
@@ -740,4 +742,31 @@ ${q.text}`,
     provider: res.provider,
     warnings,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Explicação de palavra, frase ou oração selecionada pelo aluno
+// ---------------------------------------------------------------------------
+
+export async function explainSelection(
+  provider: AIProvider,
+  ctx: { lessonTitle: string; selection: string; around: string },
+): Promise<string> {
+  const sel = wrapUntrusted(ctx.selection.slice(0, 600), "trecho_selecionado");
+  const around = wrapUntrusted(ctx.around.slice(0, 1500), "contexto_ao_redor");
+  const res = await provider.generateStructured({
+    task: "review_content",
+    schemaName: "registrar_significado",
+    system: `${BASE_SYSTEM}\nVocê explica ao aluno, em um balão curto, o significado de uma palavra, frase ou oração da aula, no contexto em que ela aparece.`,
+    maxOutputTokens: AI_LIMITS.maxOutputTokens.explain,
+    temperature: 0.2,
+    schema: explainSelectionSchema,
+    prompt: `Aula: "${ctx.lessonTitle}".
+Explique em linguagem simples, em até 3 frases curtas (máximo ~70 palavras), o que significa o trecho selecionado NESTE contexto. Se for um termo jurídico ou técnico, dê o sentido e, se ajudar, um exemplo de uma linha. Não invente números de artigos, súmulas ou julgados.
+
+${sel.text}
+
+${around.text}`,
+  });
+  return res.data.meaning.trim();
 }

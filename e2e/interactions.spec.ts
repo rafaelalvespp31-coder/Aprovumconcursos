@@ -1425,10 +1425,36 @@ test.describe("menu lateral: Depoimentos, Evolução e plano", () => {
 });
 
 test.describe("Concursos, Área do Aluno e Meu Plano (neon)", () => {
-  test("Concursos lista os concursos", async ({ page }) => {
+  test("Concursos: quatro grupos, 27 estados no mapa e painel do estado", async ({ page }) => {
     await page.goto(`${G}/concursos`);
-    await expect(page.getByTestId("concurso")).toHaveCount(2);
-    await expect(page.getByTestId("concursos-lista")).toContainText("edital publicado".replace("edital", "Edital"));
+    for (const g of ["abertos", "andamento", "concluidos", "embreve"]) await expect(page.getByTestId(`grupo-${g}`)).toBeVisible();
+    await expect(page.getByTestId("grupo-embreve-n")).toHaveText("1");
+    await expect(page.getByTestId("mapa-brasil").locator("path[data-uf]")).toHaveCount(27);
+    await expect(page.getByTestId("painel-destaques")).toBeVisible();
+    // Estado com concurso cadastrado
+    await page.getByTestId("uf-MG").click();
+    await expect(page.getByTestId("estado-nome")).toHaveText("MINAS GERAIS");
+    await expect(page.getByTestId("painel-estado").getByTestId("concurso")).toHaveCount(1);
+    // Estado sem concurso: mensagem elegante
+    await page.getByTestId("chip-AC").click();
+    await expect(page.getByTestId("estado-vazio")).toContainText("Ainda não existem concursos disponíveis para Acre");
+    await page.getByRole("button", { name: "Voltar ao mapa completo" }).click();
+    await expect(page.getByTestId("painel-destaques")).toBeVisible();
+  });
+
+  test("Concursos: cada card abre a sua lista; Em breve tem painel exclusivo com alerta", async ({ page }) => {
+    await page.goto(`${G}/concursos`);
+    await page.getByTestId("grupo-abertos").click();
+    await expect(page.getByTestId("painel-grupo").getByTestId("concurso")).toHaveCount(1);
+    await page.getByTestId("grupo-embreve").click();
+    await expect(page.getByTestId("painel-embreve")).toContainText("previsão");
+    await page.getByTestId("alerta-todos").click();
+    await expect(page.getByTestId("alerta-todos")).toHaveAttribute("aria-pressed", "true");
+  });
+
+  test("Concursos sem cadastro mostra mensagem vazia", async ({ page }) => {
+    await page.goto(`${G}/concursos?vazio=1`);
+    await expect(page.getByTestId("destaques-vazio")).toBeVisible();
   });
 
   test("Área do Aluno (celular) reúne os menus que não estão no menu inferior", async ({ page }) => {

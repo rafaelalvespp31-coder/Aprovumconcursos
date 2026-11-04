@@ -22,9 +22,13 @@ export async function saveContestAction(id: string | null, form: FormData): Prom
       source_name: get("source_name"),
       source_url: get("source_url"),
       active: get("active") === "on",
+      uf: get("uf"), orgao: get("orgao"), banca: get("banca"), education: get("education"), city: get("city"), location: get("location"),
+      description: get("description"), registration_start: get("registration_start"), registration_end: get("registration_end"), detail_url: get("detail_url"),
+      featured: get("featured") === "on", forecast: get("forecast") === "on",
     }, { file: get("imagem") instanceof File ? (get("imagem") as File) : null, remove: get("remover_imagem") === "on" });
     revalidatePath("/admin/concursos");
     revalidatePath("/painel");
+    revalidatePath("/concursos");
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof UserFacingError ? e.message : "Não foi possível salvar." };

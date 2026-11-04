@@ -18,6 +18,8 @@ export interface ErrorNotebookEntry {
   /** Errou de novo na última resposta (ainda não acertou). */
   stillWrong: boolean;
   wrongAttempts: number;
+  /** Resposta certa já legível ("C) texto da alternativa" ou "Certo"/"Errado"); nulo se a questão não tem gabarito. */
+  correctAnswer?: string | null;
 }
 
 export interface ErrorNotebookData {
@@ -54,4 +56,33 @@ export function groupErrors(entries: readonly ErrorNotebookEntry[]): ErrorGroup[
     p.entries.push(e);
   }
   return out;
+}
+
+/** Texto puro de um trecho de HTML limpo (sem tags nem entidades comuns). */
+export function htmlToPlain(html: string): string {
+  return html
+    .replace(/<\/(p|li|div|h\d)>/gi, ". ")
+    .replace(/<br\s*\/?>/gi, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\.\s*\.(\s|$)/g, ".$1")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/** Resumo objetivo da justificativa: frases inteiras até ~max caracteres (nunca corta no meio de uma frase). */
+export function summarizeJustification(html: string, max = 320): string {
+  const text = htmlToPlain(html);
+  if (text.length <= max) return text;
+  const sentences = text.match(/[^.!?]+[.!?]+(\s|$)/g) ?? [text];
+  let out = "";
+  for (const sentence of sentences) {
+    if ((out + sentence).length > max && out) break;
+    out += sentence;
+  }
+  out = out.trim();
+  return out.length > max + 80 ? `${out.slice(0, max).trimEnd()}…` : out;
 }

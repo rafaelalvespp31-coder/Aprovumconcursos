@@ -9,10 +9,11 @@ import { LessonReader } from "./reader";
 import { CONTENT_TYPE_OPTIONS, boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
 import { lessonBannerUrl } from "@/server/services/banners";
 import { disciplineLabel } from "@/ai/pedagogy";
-import { generateLessonAction } from "./actions";
+import { explainSelectionAction, generateLessonAction } from "./actions";
 import { getTopicSiblings } from "@/server/topic-siblings";
 import { logEvent } from "@/server/observability";
 import { SubtopicJump } from "@/components/aula/subtopic-search";
+import { SelectionExplainer } from "@/components/aula/selection-explainer";
 import { requireUser } from "@/server/auth";
 import { claimDailyLesson } from "@/server/services/plans";
 
@@ -150,6 +151,8 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
   );
 
   return (
+    <>
+    <SelectionExplainer lessonId={id} explain={explainSelectionAction} />
     <LessonReader
       lesson={{
         id,
@@ -189,5 +192,6 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       moduleTitle={lesson.learning_modules?.title ?? null}
       outline={siblings.map((s) => ({ id: s.id, title: s.title, module: s.module }))}
     />
+    </>
   );
 }

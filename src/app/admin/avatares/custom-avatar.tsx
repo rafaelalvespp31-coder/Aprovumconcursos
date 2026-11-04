@@ -369,7 +369,7 @@ export function CustomAvatar({ requestId, hasCustom, save, remove, slot = 0 }: {
         </>
       )}
       <div className="flex flex-wrap items-center gap-3">
-        <Button type="button" disabled={pending || !lids} onClick={submit}>{pending ? "Enviando…" : "Salvar como skin {slot + 1} do aluno"}</Button>
+        <Button type="button" disabled={pending || !lids} onClick={submit}>{pending ? "Enviando…" : `Salvar como skin ${slot + 1} do aluno`}</Button>
         {hasCustom && (
           <button type="button" className="t-small underline" disabled={pending}
             onClick={() => start(async () => { const r = await remove(requestId, slot); setMsg(r.ok ? "Skin removida." : r.error ?? "Erro."); })}>

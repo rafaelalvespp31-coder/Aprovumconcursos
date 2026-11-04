@@ -1,7 +1,8 @@
 import "server-only";
 import sharp from "sharp";
 import { z } from "zod";
-import { createAdminClient } from "@/server/supabase";
+import { createAdminClient, createUserClient } from "@/server/supabase";
+import { UFS } from "@/domain/concursos";
 import { computeMentor } from "@/server/services/mentor";
 import { lessonPct } from "@/domain/mentor/engine";
 import { UserFacingError } from "@/server/services/trails";
@@ -37,6 +38,18 @@ export interface Contest {
   infoUpdatedAt: string;
   /** Arte do concurso (bucket público "concursos"); null = arte padrão do layout. */
   imageUrl: string | null;
+  uf?: string | null;
+  orgao?: string | null;
+  banca?: string | null;
+  education?: string | null;
+  city?: string | null;
+  location?: string | null;
+  description?: string | null;
+  registrationStart?: string | null;
+  registrationEnd?: string | null;
+  detailUrl?: string | null;
+  featured?: boolean;
+  forecast?: boolean;
 }
 
 export interface Insight {
@@ -109,6 +122,34 @@ async function loadContinue(userId: string): Promise<ContinueLesson | null> {
   return null;
 }
 
+/** Todos os concursos ativos (todas as situações), para a página Concursos. */
+export async function loadAllContests(): Promise<Contest[]> {
+  const { data, error } = await createAdminClient().from("contest_catalog").select("*").eq("active", true).order("featured", { ascending: false }).order("exam_date", { ascending: true, nullsFirst: false }).limit(1000);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as ContestRow[]).map(toContest);
+}
+
+/** Favoritos e alertas do aluno (RLS: só o dono). */
+export async function loadContestPrefs(userId: string): Promise<{ favorites: string[]; alerts: string[] }> {
+  const db = await createUserClient();
+  const [f, a] = await Promise.all([db.from("contest_favorites").select("contest_id").eq("user_id", userId), db.from("contest_alerts").select("scope").eq("user_id", userId)]);
+  return { favorites: ((f.data ?? []) as Array<{ contest_id: string }>).map((r) => r.contest_id), alerts: ((a.data ?? []) as Array<{ scope: string }>).map((r) => r.scope) };
+}
+
+export async function toggleContestFavorite(userId: string, contestId: string, on: boolean) {
+  const id = z.uuid().parse(contestId);
+  const db = await createUserClient();
+  const r = on ? await db.from("contest_favorites").upsert({ user_id: userId, contest_id: id }) : await db.from("contest_favorites").delete().eq("user_id", userId).eq("contest_id", id);
+  if (r.error) throw new Error(r.error.message);
+}
+
+export async function toggleContestAlert(userId: string, scope: string, on: boolean) {
+  const sc = z.string().regex(/^(\*|[A-Z]{2})$/).parse(scope);
+  const db = await createUserClient();
+  const r = on ? await db.from("contest_alerts").upsert({ user_id: userId, scope: sc }) : await db.from("contest_alerts").delete().eq("user_id", userId).eq("scope", sc);
+  if (r.error) throw new Error(r.error.message);
+}
+
 /** Concursos cadastrados pela equipe, ainda não encerrados, por data de prova. */
 export async function loadContests(today: string, limit = 3): Promise<Contest[]> {
   const { data, error } = await createAdminClient()
@@ -164,14 +205,20 @@ type ContestRow = {
   id: string; name: string; institution: string; role_name: string | null; status: string; vacancies: number | null;
   salary: string | null; exam_date: string | null; exam_date_confirmed: boolean; info_confirmed: boolean;
   source_name: string; source_url: string | null; info_updated_at: string; active: boolean; image_path: string | null;
+  uf: string | null; orgao: string | null; banca: string | null; education: string | null; city: string | null; location: string | null;
+  description: string | null; registration_start: string | null; registration_end: string | null; detail_url: string | null;
+  featured: boolean; forecast: boolean;
 };
 const toContest = (c: ContestRow): Contest => ({
   id: c.id, name: c.name, institution: c.institution, roleName: c.role_name, status: c.status, vacancies: c.vacancies,
   salary: c.salary, examDate: c.exam_date, examDateConfirmed: c.exam_date_confirmed, infoConfirmed: c.info_confirmed,
   sourceName: c.source_name, sourceUrl: c.source_url, infoUpdatedAt: c.info_updated_at,
   imageUrl: c.image_path ? createAdminClient().storage.from("concursos").getPublicUrl(c.image_path).data.publicUrl : null,
+  uf: c.uf, orgao: c.orgao, banca: c.banca, education: c.education, city: c.city, location: c.location, description: c.description,
+  registrationStart: c.registration_start, registrationEnd: c.registration_end, detailUrl: c.detail_url, featured: c.featured, forecast: c.forecast,
 });
 
+const UF_CODES = UFS.map(([u]) => u) as unknown as [string, ...string[]];
 const blank = (v: unknown) => (typeof v === "string" && v.trim() === "" ? null : v);
 export const contestSchema = z.object({
   name: z.string().trim().min(2).max(120),
@@ -186,6 +233,18 @@ export const contestSchema = z.object({
   source_name: z.string().trim().min(2).max(160),
   source_url: z.preprocess(blank, z.string().trim().url().regex(/^https?:\/\//).nullable()),
   active: z.boolean(),
+  uf: z.preprocess(blank, z.enum(UF_CODES).nullable()),
+  orgao: z.preprocess(blank, z.string().trim().max(160).nullable()),
+  banca: z.preprocess(blank, z.string().trim().max(120).nullable()),
+  education: z.preprocess(blank, z.string().trim().max(80).nullable()),
+  city: z.preprocess(blank, z.string().trim().max(120).nullable()),
+  location: z.preprocess(blank, z.string().trim().max(200).nullable()),
+  description: z.preprocess(blank, z.string().trim().max(2000).nullable()),
+  registration_start: z.preprocess(blank, z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable()),
+  registration_end: z.preprocess(blank, z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable()),
+  detail_url: z.preprocess(blank, z.string().trim().url().regex(/^https?:\/\//).nullable()),
+  featured: z.boolean(),
+  forecast: z.boolean(),
 });
 
 export async function listContestsAdmin(): Promise<Array<Contest & { active: boolean }>> {

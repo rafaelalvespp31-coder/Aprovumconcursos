@@ -164,7 +164,7 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, canCu
                 ) : (
                   <ol>
                     {top.map((r) => (
-                      <li key={r.pos} className={r.pos === game.ranking.position ? "is-me" : ""}><b>#{r.pos}</b><span className="cl-rk-nome">{r.name}{r.motto && <i className="cl-motto">“{r.motto}”</i>}</span><small>Nv {r.level}</small><em>{fmt(r.xp)} XP</em></li>
+                      <li key={r.pos} className={r.pos === game.ranking.position ? "is-me" : ""}><b>#{r.pos}</b><span className="cl-rk-nome">{shortName(r.name)}{r.motto && <i className="cl-motto">“{r.motto}”</i>}</span><small>Nv {r.level}</small><em>{fmt(r.xp)} XP</em></li>
                     ))}
                     {game.ranking.position != null && game.ranking.position > top.length && (
                       <li className="is-me"><b>#{game.ranking.position}</b><span>Você</span><small>Nv {game.level}</small><em>{fmt(game.xp)} XP</em></li>

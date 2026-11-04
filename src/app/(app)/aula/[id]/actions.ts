@@ -10,6 +10,11 @@ import { generateRecovery } from "@/server/services/recovery";
 import type { LevelKey } from "@/domain/progress/levels";
 import { createUserClient } from "@/server/supabase";
 import type { ReaderQuestion } from "./reader";
+import { z } from "zod";
+import { getAIProvider, aiEnabled } from "@/ai";
+import { AIError } from "@/ai/provider";
+import { explainSelection } from "@/ai/services";
+import { enforceRateLimit } from "@/server/services/trails";
 
 export async function generateLessonAction(lessonId: string) {
   const user = await requireUser();
@@ -151,5 +156,31 @@ export async function generateRecoveryAction(lessonId: string, level?: LevelKey)
     }
     await logEvent("recovery.failed", { lessonId, error: (e as Error).message });
     return { ok: false, error: "Não foi possível gerar os exercícios de recuperação agora." };
+  }
+}
+
+const explainInput = z.object({
+  lessonId: z.uuid(),
+  selection: z.string().trim().min(2).max(600),
+  around: z.string().max(1500).default(""),
+});
+
+/** Balão "Explicar": significado do trecho que o aluno selecionou, no contexto da aula. */
+export async function explainSelectionAction(input: { lessonId: string; selection: string; around: string }): Promise<{ ok: true; meaning: string } | { ok: false; error: string }> {
+  const user = await requireUser();
+  const parsed = explainInput.safeParse(input);
+  if (!parsed.success) return { ok: false, error: "Selecione uma palavra, frase ou oração (até 600 caracteres)." };
+  if (!aiEnabled("estudos")) return { ok: false, error: "O explicador está temporariamente indisponível. Tente de novo mais tarde." };
+  try {
+    await enforceRateLimit(user.id, "explain_selection", 20);
+    const db = await createUserClient();
+    const { data } = await db.from("lessons").select("title").eq("id", parsed.data.lessonId).maybeSingle();
+    if (!data) return { ok: false, error: "Aula não encontrada." };
+    const meaning = await explainSelection(getAIProvider("estudos"), { lessonTitle: (data as { title: string }).title, selection: parsed.data.selection, around: parsed.data.around });
+    return { ok: true, meaning };
+  } catch (e) {
+    if (e instanceof UserFacingError) return { ok: false, error: e.message };
+    if (!(e instanceof AIError)) await logEvent("lesson.explain_failed", { lessonId: input.lessonId, error: (e as Error).message });
+    return { ok: false, error: "Não consegui explicar agora. Tente de novo em instantes." };
   }
 }

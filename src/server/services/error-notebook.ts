@@ -39,6 +39,23 @@ export async function loadErrorNotebook(userId: string, notebookIdInput: string)
     if (part.error) throw new Error(part.error.message);
     rows.push(...((part.data ?? []) as Q[]));
   }
+  const optionsBy = new Map<string, Array<{ label: string; text: string }>>();
+  const trueFalse = new Map<string, boolean | null>();
+  for (let i = 0; i < wrongIds.length; i += 100) {
+    const part = wrongIds.slice(i, i + 100);
+    const [opts, tf] = await Promise.all([
+      admin.from("bank_question_options").select("question_id, label, text").eq("is_correct", true).in("question_id", part),
+      admin.from("bank_questions").select("id, correct_answer_true").in("id", part),
+    ]);
+    for (const o of (opts.data ?? []) as Array<{ question_id: string; label: string; text: string }>) optionsBy.set(o.question_id, [...(optionsBy.get(o.question_id) ?? []), o]);
+    for (const q of (tf.data ?? []) as Array<{ id: string; correct_answer_true: boolean | null }>) trueFalse.set(q.id, q.correct_answer_true);
+  }
+  const correctOf = (id: string): string | null => {
+    const o = optionsBy.get(id)?.[0];
+    if (o) return `${o.label}) ${o.text}`;
+    const t = trueFalse.get(id);
+    return t == null ? null : t ? "Certo" : "Errado";
+  };
   const ids = (k: keyof Q) => [...new Set(rows.map((r) => r[k] as string | null).filter((x): x is string => !!x))];
   const [subjects, topics, boards, exams, saved] = await Promise.all([
     ids("subject_id").length ? admin.from("subjects").select("id, name").in("id", ids("subject_id")) : { data: [] },
@@ -79,6 +96,7 @@ export async function loadErrorNotebook(userId: string, notebookIdInput: string)
       updatedAt: mine?.updated_at ?? null,
       stillWrong: !list[0]!.is_correct,
       wrongAttempts: list.filter((a) => !a.is_correct).length,
+      correctAnswer: correctOf(r.id),
     };
   });
   return { notebook, entries };

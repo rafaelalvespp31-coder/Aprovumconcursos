@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState, useSyncExternalStore, useTransition, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useState, useTransition, type CSSProperties, type ReactNode } from "react";
 import { OFFERS, PLAN_NAMES, type OfferKey } from "@/domain/plans/offers";
 import type { ChoosePlanResult } from "./actions";
 import { PayBox } from "./pay";
@@ -61,7 +61,6 @@ function NeonTrace({ id }: { id: "gratuito" | OfferKey }) {
 }
 
 const CARD_Y = 432;
-const CARD_H = 604;
 type Card = { id: "gratuito" | OfferKey; x: number; w: number; label: string };
 const CARDS: Card[] = [
   { id: "gratuito", x: 0, w: 267, label: "Recruta — acesso gratuito" },
@@ -79,13 +78,6 @@ const PERKS = [
 const PERK_Y = 1036;
 const PERK_H = 74;
 
-/** Celular: cartões nativos (texto nítido, um por linha, na largura da tela). Computador: a arte inteira. */
-const subscribeMobile = (cb: () => void) => {
-  const m = window.matchMedia("(max-width: 819px)");
-  m.addEventListener("change", cb);
-  return () => m.removeEventListener("change", cb);
-};
-const useMobile = () => useSyncExternalStore(subscribeMobile, () => window.matchMedia("(max-width: 819px)").matches, () => false);
 
 const PERKS_FREE = ["1 matéria por dia", "1 tema por dia", "3 questões por dia", "Aulas (demonstração)", "Mapas mentais (demo)", "Mentor IA (1 por dia)"];
 const PERKS_PAID = ["Acesso completo", "Questões ilimitadas", "Mapas mentais", "Mnemônicos", "Mentor IA avançado", "Simulados e muito mais!"];
@@ -154,7 +146,6 @@ export function PlanoView({ current, choose, mp = null }: { current: "gratuito" 
   const [done, setDone] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const mobile = useMobile();
 
   const close = () => (setSel(null), setDone(false), setError(null));
   const confirm = () =>
@@ -168,31 +159,11 @@ export function PlanoView({ current, choose, mp = null }: { current: "gratuito" 
   return (
     <div className="plano" data-testid="meu-plano">
       <Crop x={0} y={0} w={W} h={CARD_Y} className="pl-topo" label="Escolha seu plano APROVUM: Gratuito, Mensal R$ 37, Semestral R$ 197, Anual R$ 347 e Vitalício R$ 697" />
-      {mobile ? (
-        <div className="pm-lista-planos">
-          {CARDS.map((c) => (
-            <MobileCard key={c.id} id={c.id} current={c.id === current} onPick={setSel} />
-          ))}
-        </div>
-      ) : (
-        <div className="pl-cards">
-          {CARDS.map((c) => (
-            <div key={c.id} className="pl-card" style={{ "--w": c.w } as CSSProperties}>
-              <Crop x={c.x} y={CARD_Y} w={c.w} h={CARD_H}>
-                {c.id === "gratuito" ? (
-                  <Link href="/painel" className="pl-hit" aria-label={c.label} data-testid="plano-gratuito" />
-                ) : (
-                  <button type="button" className="pl-hit" aria-label={c.label} onClick={() => setSel(c.id as OfferKey)} data-testid={`plano-${c.id}`} />
-                )}
-                <NeonTrace id={c.id} />
-                {c.id === current && (
-                  <span className="pl-atual" data-testid="plano-atual">SEU PLANO ATUAL</span>
-                )}
-              </Crop>
-            </div>
-          ))}
-        </div>
-      )}
+      <div className="pm-lista-planos" data-testid="plano-cartoes">
+        {CARDS.map((c) => (
+          <MobileCard key={c.id} id={c.id} current={c.id === current} onPick={setSel} />
+        ))}
+      </div>
       <div className="pl-vantagens">
         {PERKS.map((k) => (
           <Crop key={k.x} x={k.x} y={PERK_Y} w={k.w} h={PERK_H} grow={k.w} className="pl-vant" />

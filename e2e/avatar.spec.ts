@@ -7,7 +7,7 @@ test.describe("painel (avatar)", () => {
   test("operador, missões, disciplina, desempenho, conquistas, ranking e concursos ao redor do avatar", async ({ page }) => {
     await page.goto(URL);
     await expect(page.getByTestId("painel-avatar")).toBeVisible();
-    await expect(page.getByTestId("operador-nome")).toHaveText("Rafael Alves");
+    await expect(page.getByTestId("operador-nome")).toHaveText("R. Alves");
     await expect(page.getByTestId("operador-nivel")).toHaveText("1");
     await expect(page.getByTestId("avatar-xp")).toHaveText("1.000");
     await expect(page.getByTestId("avatar-ranking")).toContainText("#3");
@@ -171,7 +171,7 @@ test("equipe anexa a arte do aluno: recorte do fundo, olhos marcados e avatar an
   // Olhos da arte feminina (coordenadas da arte recortada, parte de cima = 24% da altura).
   await head.click({ position: { x: box.width * 0.4215, y: box.height * (0.0862 / 0.24) } });
   await head.click({ position: { x: box.width * 0.5432, y: box.height * (0.0862 / 0.24) } });
-  await page.getByRole("button", { name: "Salvar como avatar do aluno" }).click();
+  await page.getByRole("button", { name: /Salvar como skin 1 do aluno/ }).click();
   await expect(page.getByRole("status")).toContainText("Avatar do aluno atualizado", { timeout: 30_000 });
   const palco = page.getByTestId("demo-palco-personalizado").getByTestId("avatar-palco");
   await expect(palco).toHaveAttribute("data-ready", "true", { timeout: 20_000 });

@@ -22,9 +22,11 @@ export function StudyClock() {
   const [key, setKey] = useState(dayKey);
   const [state, setState] = useState<ClockState>({ seconds: 0, idleFor: 0, paused: false });
   const ref = useRef(state);
+  // eslint-disable-next-line react-hooks/refs
   ref.current = state;
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setState((s) => ({ ...s, seconds: read(key) }));
   }, [key]);
 
