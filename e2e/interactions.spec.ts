@@ -404,19 +404,21 @@ test.describe("casco pastel", () => {
     await expect(page).toHaveURL(/\/questoes\/cadernos\/11111111-/);
   });
 
-  test("menu inferior: sete opções na ordem, rota ativa e navegação real (celular)", async ({ page }) => {
+  test("menu inferior (celular): seis opções com Meu Plano, rota ativa e navegação real", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
     await page.goto(`${G}/painel`);
     const bar = page.getByTestId("menu-inferior");
     const links = bar.getByRole("link");
-    await expect(links).toHaveCount(7);
-    const names = ["Painel", "Estudos", "Modo Jogo", "Questões", "Revisões", "Evolução (desempenho)", "Novo estudo"];
+    await expect(links).toHaveCount(6);
+    const names = ["Painel", "Estudos", "Modo Jogo", "Questões", "Meu Plano", "Novo estudo"];
     for (const [k, n] of names.entries()) await expect(links.nth(k)).toHaveAccessibleName(n);
-    await expect(bar.locator(".bn-txt")).toHaveText(["Painel", "Estudos", "Jogo", "Questões", "Revisões", "Evolução", "Novo"]);
+    await expect(bar.locator(".bn-cel:visible .bn-txt")).toHaveText(["Painel", "Estudos", "Jogo", "Questões", "Meu Plano", "Novo"]);
     await expect(bar.getByRole("link", { name: "Painel" })).toHaveAttribute("aria-current", "page");
-    await bar.getByRole("link", { name: "Evolução (desempenho)" }).click();
-    await expect(page).toHaveURL(new RegExp(`${G}/desempenho`));
-    await expect(bar.getByRole("link", { name: "Evolução (desempenho)" })).toHaveAttribute("aria-current", "page");
+    await expect(bar.getByRole("link", { name: "Revisões" })).toHaveCount(0);
+    await expect(bar.getByRole("link", { name: /Evolução/ })).toHaveCount(0);
+    await bar.getByRole("link", { name: "Meu Plano" }).click();
+    await expect(page).toHaveURL(new RegExp(`${G}/plano`));
+    await expect(bar.getByRole("link", { name: "Meu Plano" })).toHaveAttribute("aria-current", "page");
     await bar.getByRole("link", { name: "Questões" }).click();
     await expect(page).toHaveURL(new RegExp(`${G}/questoes$`));
     await expect(bar.getByRole("link", { name: "Questões" })).toHaveAttribute("aria-current", "page");

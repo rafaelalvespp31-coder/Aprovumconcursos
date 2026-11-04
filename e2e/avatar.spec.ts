@@ -59,8 +59,8 @@ test.describe("painel (avatar)", () => {
     await expect(page.getByLabel(/abrir perfil/)).toHaveAttribute("href", "/perfil");
     await expect(page.getByTestId("home-sino")).toHaveAttribute("href", "/mentor");
     await expect(page.getByTestId("seu-desempenho").getByRole("link", { name: "Ver análise completa" })).toHaveAttribute("href", "/desempenho");
-    // A barra escura abre o envio da foto.
-    await page.getByTestId("avatar-convite").click();
+    // "Solicitar meu avatar" abre o envio da foto.
+    await page.getByTestId("solicitar-avatar").click();
     await expect(page.getByTestId("avatar-solicitar-caixa")).toBeVisible();
   });
 

@@ -21,15 +21,10 @@ function openRequest() {
   requestAnimationFrame(() => document.querySelector(".cl-req .avr-caixa")?.scrollIntoView({ block: "nearest" }));
 }
 
-/** A barra escura do layout: mostra o estado do pedido (ou o convite) e, ao clicar, abre o envio da foto. */
+/** O estado do pedido (pendente ou recusado) e o envio da foto. Avatar pronto não mostra mensagem. */
 export function RequestSlot({ initial, action }: { initial: AvatarRequestInfo | null; action: RequestAction }) {
   return (
-    <div className="cl-req" onClick={(e) => (e.target as HTMLElement).closest(".avr-status, .cl-fallback") && openRequest()}>
-      {!initial && (
-        <button type="button" className="cl-fallback" data-testid="avatar-convite" onClick={(e) => (e.stopPropagation(), openRequest())}>
-          Personalize seu operador — envie uma foto de corpo inteiro e receba seu avatar personalizado.
-        </button>
-      )}
+    <div className="cl-req" onClick={(e) => (e.target as HTMLElement).closest(".avr-status") && openRequest()}>
       <AvatarRequestBox initial={initial} action={action} />
     </div>
   );

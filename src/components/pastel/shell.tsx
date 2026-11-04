@@ -156,7 +156,7 @@ export function PastelShell({
   const isPainel = active?.id === "painel";
   const bottomActive: BottomNavId | null = path.startsWith(`${basePath}/nova-trilha`)
     ? "novo"
-    : active && ["painel", "trilhas", "quiz", "questoes", "revisoes", "desempenho"].includes(active.id)
+    : active && ["painel", "trilhas", "quiz", "questoes", "revisoes", "desempenho", "plano"].includes(active.id)
       ? (active.id as BottomNavId)
       : null;
   // Página de Estudos: cabeçalho com saudação (desktop) e logo + menu (celular).
