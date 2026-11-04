@@ -15,6 +15,8 @@ import { VOICE_DAILY_SECONDS, VOICE_SYSTEM_PROMPT, VOICE_TOKEN_GRACE_SECONDS, se
  */
 
 const DEFAULT_MODEL = "gemini-3.8-live";
+/** Voz masculina e firme (professor). Troque pela variável GEMINI_VOICE: Orus, Charon, Alnilam, Algenib, Sadaltager… */
+const DEFAULT_VOICE = "Orus";
 
 export type VoiceStatus =
   | { available: false; reason: "plano" | "indisponivel"; limit: number; left: 0 }
@@ -64,6 +66,7 @@ export async function getVoiceStatus(userId: string): Promise<VoiceStatus> {
 export interface VoiceSession {
   token: string;
   model: string;
+  voice: string;
   left: number;
   limit: number;
 }
@@ -88,6 +91,7 @@ export async function startVoice(userId: string): Promise<VoiceSession> {
   if (mark.error) throw new Error(mark.error.message);
 
   const model = process.env.GEMINI_LIVE_MODEL?.trim() || DEFAULT_MODEL;
+  const voice = process.env.GEMINI_VOICE?.trim() || DEFAULT_VOICE;
   try {
     const client = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: "v1alpha" } });
     const token = await client.authTokens.create({
@@ -95,12 +99,12 @@ export async function startVoice(userId: string): Promise<VoiceSession> {
         uses: 1,
         expireTime: new Date(now.getTime() + (left + VOICE_TOKEN_GRACE_SECONDS) * 1000).toISOString(),
         newSessionExpireTime: new Date(now.getTime() + 60_000).toISOString(),
-        liveConnectConstraints: { model, config: { responseModalities: [Modality.AUDIO], systemInstruction: VOICE_SYSTEM_PROMPT } },
+        liveConnectConstraints: { model, config: { responseModalities: [Modality.AUDIO], systemInstruction: VOICE_SYSTEM_PROMPT, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } },
         httpOptions: { apiVersion: "v1alpha" },
       },
     });
     if (!token.name) throw new Error("token vazio");
-    return { token: token.name, model, left, limit: VOICE_DAILY_SECONDS };
+    return { token: token.name, model, voice, left, limit: VOICE_DAILY_SECONDS };
   } catch (e) {
     await settle(userId, 0).catch(() => {}); // não houve conversa: devolve a reserva
     await logEvent("mentor.voz.token_error", { error: (e as Error).message.slice(0, 300) });

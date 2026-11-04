@@ -171,7 +171,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       r.stream = stream;
       const res = await fetch("/api/mentor/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "start" }) });
-      const j = (await res.json()) as { session?: { token: string; model: string; left: number; limit: number }; error?: string; code?: string };
+      const j = (await res.json()) as { session?: { token: string; model: string; voice: string; left: number; limit: number }; error?: string; code?: string };
       if (!res.ok || !j.session) {
         stream.getTracks().forEach((t) => t.stop());
         r.stream = null;
@@ -192,7 +192,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       const ai = new GoogleGenAI({ apiKey: s.token, httpOptions: { apiVersion: "v1alpha" } });
       const session = await ai.live.connect({
         model: s.model,
-        config: { responseModalities: [Modality.AUDIO] },
+        config: { responseModalities: [Modality.AUDIO], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: s.voice } } } },
         callbacks: {
           onmessage: onMessage,
           onerror: () => void encerrar("queda"),
