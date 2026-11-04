@@ -96,6 +96,7 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, ackLe
       <LevelUp levels={game.levelUps} ack={ackLevels} />
       <div className="cl">
         {/* ============================ Palco: cabeçalho, operador, avatar, cards */}
+        <div className="cl-stage">
         <section className="cl-a" aria-label="Seu operador" data-testid="painel-avatar">
           <div className="cl-bg cl-bg-a" aria-hidden />
 
@@ -220,6 +221,7 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, ackLe
         </section>
 
         <RequestSlot initial={request} action={requestAction} />
+        </div>
 
         {/* ============================ Estudos, conquistas e concursos */}
         <section className="cl-low" aria-label="Seus estudos">
