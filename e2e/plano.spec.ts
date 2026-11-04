@@ -5,7 +5,7 @@ const URL = "/dev/galeria/plano";
 test.describe("Meu Plano", () => {
   test("arte oficial com as cinco áreas de plano e o plano atual marcado", async ({ page }) => {
     await page.goto(`${URL}?atual=semestral`);
-    await expect(page.getByAltText(/Escolha seu plano APROVUM/)).toBeVisible();
+    await expect(page.getByRole("img", { name: /Escolha seu plano APROVUM/ })).toBeVisible();
     for (const id of ["gratuito", "mensal", "semestral", "anual", "vitalicio"]) await expect(page.getByTestId(`plano-${id}`)).toBeVisible();
     await expect(page.getByTestId("plano-atual")).toHaveText("SEU PLANO ATUAL");
     await expect(page.getByTestId("plano-gratuito")).toHaveAttribute("href", "/painel");
