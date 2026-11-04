@@ -759,6 +759,7 @@ export async function explainSelection(
     schemaName: "registrar_significado",
     system: `${BASE_SYSTEM}\nVocê explica ao aluno, em um balão curto, o significado de uma palavra, frase ou oração da aula, no contexto em que ela aparece.`,
     maxOutputTokens: AI_LIMITS.maxOutputTokens.explain,
+    timeoutMs: 25_000,
     temperature: 0.2,
     schema: explainSelectionSchema,
     prompt: `Aula: "${ctx.lessonTitle}".

@@ -45,6 +45,17 @@ describe("adaptador compatível (Gemini, Groq, OpenRouter, Ollama)", () => {
     expect(fetchMock.mock.calls[2]![1].headers.Authorization).toBe("Bearer k");
   });
 
+  it("repete automaticamente em erro 503 passageiro do provedor", async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(new Response('{"error":{"message":"high demand"}}', { status: 503 }))
+      .mockResolvedValueOnce(reply('{"title":"Plano","keys":["N0006"]}'));
+    vi.stubGlobal("fetch", fetchMock);
+    const r = await provider().generateStructured(req);
+    expect(r.data.keys).toEqual(["N0006"]);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it("cai para JSON simples quando o modelo não aceita json_schema", async () => {
     const fetchMock = vi
       .fn()

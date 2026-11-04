@@ -189,6 +189,7 @@ export class OpenAICompatProvider implements AIProvider {
       response_format: this.jsonMode === "schema" ? { type: "json_schema", json_schema: { name, strict: false, schema } } : { type: "json_object" },
     });
     // Até 3 ajustes automáticos para recursos que o modelo não aceita.
+    let transient = 0;
     for (let i = 0; i < 3; i++) {
       const res = await this.post(body(), req.timeoutMs, usage);
       if (res.ok) return (await res.json()) as ChatResponse;
@@ -197,6 +198,13 @@ export class OpenAICompatProvider implements AIProvider {
         throw new AIError("Limite gratuito do provedor de IA atingido. Aguarde alguns instantes e tente novamente.", "rate_limited", true, usage, Number.isFinite(ra) && ra > 0 ? Math.min(ra, 120) : undefined);
       }
       const text = await res.text().catch(() => "");
+      // Sobrecarga momentânea do provedor (ex.: Google 503 "alta demanda"): espera um pouco e tenta de novo.
+      if ([500, 502, 503, 504].includes(res.status) && transient < 2) {
+        transient++;
+        i--;
+        await new Promise((r) => setTimeout(r, 900 * transient));
+        continue;
+      }
       if (res.status !== 400) {
         if (res.status === 404) console.error(JSON.stringify({ event: "ai.provider_404", provider: this.name, model: this.model, url: this.endpoint(), detail: redact(text).slice(0, 400) }));
         throw this.classify(res.status, usage, text);
@@ -274,6 +282,7 @@ export class OpenAICompatProvider implements AIProvider {
     }
     if (status === 401 || status === 403) return new AIError(`Credencial do provedor de IA inválida. Confira a variável ${this.config.keyVar ?? "da chave"} no servidor.`, "not_configured", false, usage);
     if (status === 404) return new AIError(`Modelo ou endereço da IA não encontrado (HTTP 404). Confira AI_MODEL ("${this.model}") e, se definida, AI_BASE_URL no servidor. Endereço usado: ${this.endpoint()}${providerReason(text)}`, "not_configured", false, usage);
+    if (status >= 500) return new AIError(`O provedor de IA está sobrecarregado (HTTP ${status})${providerReason(text)} Tente novamente em instantes.`, "provider_error", true, usage);
     // Não propaga o corpo do erro do provedor (pode conter detalhes internos).
     return new AIError(`Erro do provedor de IA (HTTP ${status}).`, "provider_error", status >= 500, usage);
   }

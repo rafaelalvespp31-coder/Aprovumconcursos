@@ -53,7 +53,8 @@ export function SelectionExplainer({ lessonId, explain }: { lessonId: string; ex
     const at = { x: box.x, y: box.y };
     setBalloon({ ...at, text: box.text, state: "loading", body: "" });
     setBox(null);
-    const r = await explain({ lessonId, selection: box.text, around: box.around }).catch(() => ({ ok: false as const, error: "Sem conexão. Tente de novo." }));
+    const slow = new Promise<{ ok: false; error: string }>((res) => setTimeout(() => res({ ok: false, error: "Demorou demais para responder. Tente de novo." }), 45_000));
+    const r = await Promise.race([explain({ lessonId, selection: box.text, around: box.around }), slow]).catch(() => ({ ok: false as const, error: "Sem conexão. Tente de novo." }));
     if (id !== seq.current) return;
     setBalloon({ ...at, text: box.text, state: r.ok ? "ok" : "erro", body: r.ok ? r.meaning : r.error });
   };
