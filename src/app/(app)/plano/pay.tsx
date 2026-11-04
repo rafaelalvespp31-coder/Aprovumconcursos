@@ -23,6 +23,9 @@ function ensureSdk(key: string) {
   sdkKey = key;
 }
 
+/** Identificador do dispositivo que o SDK do Mercado Pago cria: o antifraude usa para aprovar o pagamento. */
+const deviceId = () => (typeof window === "undefined" ? undefined : (window as unknown as { MP_DEVICE_SESSION_ID?: string }).MP_DEVICE_SESSION_ID);
+
 const money = (c: number) => (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const REASON: Record<string, string> = {
   cc_rejected_insufficient_amount: "Saldo insuficiente no cartão.",
@@ -46,7 +49,7 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
     setError(null);
     setPixBusy(true);
     try {
-      const r = await fetch("/api/payments/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, formData: { payment_method_id: "pix" } }) });
+      const r = await fetch("/api/payments/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, formData: { payment_method_id: "pix" }, deviceId: deviceId() }) });
       const j = (await r.json().catch(() => ({}))) as { payment?: PayResult; error?: string };
       if (!r.ok || !j.payment) setError(j.error ?? "Não foi possível gerar o PIX agora. Tente novamente.");
       else setResult(j.payment);
@@ -143,7 +146,7 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
           onError={() => setError("Não foi possível carregar o pagamento. Atualize a página e tente de novo.")}
           onSubmit={async ({ formData }) => {
             setError(null);
-            const r = await fetch("/api/payments/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, formData }) });
+            const r = await fetch("/api/payments/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, formData, deviceId: deviceId() }) });
             const j = (await r.json().catch(() => ({}))) as { payment?: PayResult; error?: string };
             if (!r.ok || !j.payment) {
               setError(j.error ?? "Não foi possível processar o pagamento.");

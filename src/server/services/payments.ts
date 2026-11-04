@@ -61,6 +61,8 @@ const str = (v: unknown, max = 80) => (typeof v === "string" ? v.trim().slice(0,
 export interface CreateInput {
   offer: unknown;
   formData: unknown;
+  /** Identificador do dispositivo (antifraude do Mercado Pago). */
+  deviceId?: unknown;
   email: string | null;
 }
 
@@ -117,6 +119,13 @@ export async function createPayment(userId: string, input: CreateInput): Promise
   if (ins.error || !ins.data) throw new Error(ins.error?.message ?? "falha ao registrar o pagamento");
   const row = ins.data as unknown as Row;
 
+  // Dados que o antifraude do Mercado Pago usa para confiar no pagamento: nome do pagador e dispositivo.
+  const prof = await db.from("profiles").select("display_name").eq("id", userId).maybeSingle();
+  const fullName = str(prof.data?.display_name, 80);
+  const [firstName, ...rest] = fullName.split(/\s+/).filter(Boolean);
+  const lastName = rest.join(" ");
+  const deviceId = str(input.deviceId, 120).replace(/[^\w.\-:]/g, "");
+
   let mp: MpPayment;
   try {
     const body: Record<string, unknown> = {
@@ -124,7 +133,11 @@ export async function createPayment(userId: string, input: CreateInput): Promise
       description: `APROVUM — ${price.label}`,
       payment_method_id: methodId,
       installments,
-      payer: { email, ...(identification ? { identification } : {}) },
+      payer: { email, ...(firstName ? { first_name: firstName } : {}), ...(lastName ? { last_name: lastName } : {}), ...(identification ? { identification } : {}) },
+      additional_info: {
+        items: [{ id: offer, title: `APROVUM — ${price.label}`, description: `Acesso à plataforma APROVUM (${price.label})`, category_id: "learnings", quantity: 1, unit_price: price.cents / 100 }],
+        ...(firstName ? { payer: { first_name: firstName, ...(lastName ? { last_name: lastName } : {}) } } : {}),
+      },
       external_reference: row.id,
       notification_url: `${siteUrl()}/api/webhooks/mercadopago`,
       statement_descriptor: "APROVUM",
@@ -137,7 +150,7 @@ export async function createPayment(userId: string, input: CreateInput): Promise
     } else {
       body.date_of_expiration = new Date(Date.now() + 60 * 60 * 1000).toISOString().replace("Z", "-00:00");
     }
-    mp = (await payments().create({ body: body as never, requestOptions: { idempotencyKey: row.id } })) as MpPayment;
+    mp = (await payments().create({ body: body as never, requestOptions: { idempotencyKey: row.id, ...(deviceId ? { meliSessionId: deviceId } : {}) } })) as MpPayment;
   } catch (e) {
     const err = e as { message?: string; error?: string; status?: number; cause?: unknown };
     // Motivo devolvido pelo Mercado Pago (sem dados sensíveis): ajuda a diagnosticar no banco.
