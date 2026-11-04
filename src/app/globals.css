@@ -3748,7 +3748,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 @media (max-width: 819px) {
   .dp { gap: 24px; }
   .dp-hero-d { display: none; } .dp-hero-m { display: block; }
-  .dp-placa-rafael { left: 21%; top: 74.6%; width: 29%; height: 21%; } .dp-placa-william { left: 63%; top: 75.6%; width: 29%; height: 21%; }
+  .dp-placa-rafael { left: 21%; top: 73.5%; width: 29%; height: 24%; } .dp-placa-william { left: 63%; top: 74.5%; width: 29%; height: 24%; }
   .dp-placa { padding: 0 4px 0 9px; } .dp-placa b { font-size: 3.4cqw; } .dp-placa span, .dp-placa small { font-size: 2.5cqw; }
   .dp-hist { grid-template-columns: 1fr; gap: 20px; }
   .dp-cita { transform: none; margin: 0 6px; padding: 24px 22px 18px 48px; } .dp-cita > * { transform: none; }
@@ -3769,4 +3769,4 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   .dp-modal { padding: 0; align-items: end; } .dp-player, .dp-historia { border-radius: 16px 16px 0 0; max-height: 94dvh; width: 100%; }
 }
 @media (min-width: 820px) { .dp-banner-m { display: none; } }
-@media (max-width: 819px) { .dp-hero-arte { -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 13%); mask-image: linear-gradient(90deg, transparent 0, #000 13%); } }
+@media (max-width: 819px) { .dp-hero-arte { -webkit-mask-image: linear-gradient(90deg, transparent 8%, #000 22%); mask-image: linear-gradient(90deg, transparent 8%, #000 22%); } }
