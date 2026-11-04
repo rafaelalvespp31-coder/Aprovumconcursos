@@ -28,8 +28,8 @@ export const BOTTOM_NAV_ITEMS: readonly Item[] = [
   { id: "questoes", label: "Questões", sub: "Resolva, confira e aprenda", icon: Target, path: "/questoes" },
   { id: "revisoes", label: "Revisões", sub: "Fixe o que já estudou", icon: Clock3, path: "/revisoes", only: "desktop" },
   { id: "desempenho", label: "Evolução", sub: "Acompanhe seu progresso", aria: "Evolução (desempenho)", icon: ChartNoAxesColumnIncreasing, path: "/desempenho", only: "desktop" },
-  { id: "plano", label: "Meu Plano", sub: "Escolha seu plano", icon: Crown, path: "/plano", only: "mobile" },
   { id: "area", label: "Área", sub: "Todos os menus", aria: "Área do Aluno", icon: LayoutGrid, path: "/area-do-aluno", only: "mobile" },
+  { id: "plano", label: "Meu Plano", sub: "Escolha seu plano", icon: Crown, path: "/plano", only: "mobile" },
   { id: "novo", label: "Novo", sub: "Crie novos estudos", aria: "Novo estudo", icon: Plus, path: "/nova-trilha" },
 ];
 

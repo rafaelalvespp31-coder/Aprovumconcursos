@@ -525,6 +525,7 @@ export function PastelShell({
 
             <ConnectivityBanner />
             <main className={isPainel ? "pb-28 lg:px-10 lg:py-7 lg:pb-12" : "px-4 py-7 pb-28 sm:px-5 lg:px-10 lg:pb-12"}>
+              {isStudy && <div id="estudo-relogio-slot" className="mb-3 flex justify-center lg:hidden" />}
               <div key={active?.id ?? path} className="animate-[enter_0.5s_cubic-bezier(0.34,1.56,0.64,1)]">{children}</div>
             </main>
 

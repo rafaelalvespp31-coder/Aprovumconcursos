@@ -413,7 +413,7 @@ test.describe("casco pastel", () => {
     await expect(links).toHaveCount(7);
     const names = ["Painel", "Estudos", "Modo Jogo", "Questões", "Meu Plano", "Área do Aluno", "Novo estudo"];
     for (const [k, n] of names.entries()) await expect(links.nth(k)).toHaveAccessibleName(n);
-    await expect(bar.locator(".bn-cel:visible .bn-txt")).toHaveText(["Painel", "Estudos", "Jogo", "Questões", "Meu Plano", "Área", "Novo"]);
+    await expect(bar.locator(".bn-cel:visible .bn-txt")).toHaveText(["Painel", "Estudos", "Jogo", "Questões", "Área", "Meu Plano", "Novo"]);
     await expect(bar.getByRole("link", { name: "Painel" })).toHaveAttribute("aria-current", "page");
     await expect(bar.getByRole("link", { name: "Revisões" })).toHaveCount(0);
     await expect(bar.getByRole("link", { name: /Evolução/ })).toHaveCount(0);
