@@ -23,10 +23,10 @@ export interface Tier {
 }
 
 const TIERS: Tier[] = [
-  { tier: 1, label: "Fácil", blanks: 1, bank: 4, context: true, xp: 10, description: "1 lacuna e 4 palavras" },
-  { tier: 2, label: "Médio", blanks: 2, bank: 6, context: true, xp: 15, description: "2 lacunas e 6 palavras" },
-  { tier: 3, label: "Difícil", blanks: 3, bank: 8, context: true, xp: 20, description: "3 lacunas e 8 palavras, com mais pegadinhas" },
-  { tier: 4, label: "Elite", blanks: 3, bank: 8, context: false, xp: 25, description: "3 lacunas, 8 palavras e sem o texto de apoio" },
+  { tier: 1, label: "Fácil", blanks: 1, bank: 4, context: true, xp: 10, description: "1 lacuna e 4 blocos" },
+  { tier: 2, label: "Médio", blanks: 2, bank: 5, context: true, xp: 15, description: "2 lacunas e 5 blocos" },
+  { tier: 3, label: "Difícil", blanks: 3, bank: 6, context: true, xp: 20, description: "3 lacunas e 6 blocos, com exceções e prazos" },
+  { tier: 4, label: "Elite", blanks: 3, bank: 7, context: false, xp: 25, description: "3 lacunas, 7 blocos e sem o texto de apoio" },
 ];
 
 /** Nível a partir do total de questões já respondidas (1, 2, 3…). */

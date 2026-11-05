@@ -17,9 +17,9 @@ const LONG = N(
   "Art. 5º",
   "Art. 5º Nos crimes de ação pública o inquérito policial será iniciado de ofício, mediante requisição da autoridade judiciária ou do Ministério Público, ou a requerimento do ofendido, e a autoridade policial deverá dirigir-se ao local, apreender os objetos que tiverem relação com o fato, colher todas as provas que servirem para o esclarecimento do fato, ouvir o ofendido e o indiciado.",
 );
-const toItems = (ns: LawNode[]) => buildAll(ns, "galeria").map(({ answers, ...rest }) => ({ ...rest, blanks: answers.length }));
-const items = toItems(nodes);
-const longItems = toItems([LONG]);
+const toItems = (ns: LawNode[], tier?: 1 | 2 | 3 | 4, bank = 5) => buildAll(ns, "galeria", { blanks: 2, bank, context: true, tier }).map(({ answers, ...rest }) => ({ ...rest, blanks: answers.length }));
+const items = toItems(nodes, 2);
+const longItems = toItems([LONG], undefined, 4);
 const topics = [
   { id: "00000000-0000-4000-8000-000000000001", title: "Inquérito Policial (CPP, arts. 4º a 23)", discipline: "Direito Processual Penal", lawCode: "CPP", total: 42, mastered: 13 },
   { id: "00000000-0000-4000-8000-000000000002", title: "Homicídio (CP, art. 121)", discipline: "Direito Penal", lawCode: "CP", total: 20, mastered: 0 },

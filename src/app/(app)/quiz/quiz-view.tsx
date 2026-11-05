@@ -125,6 +125,11 @@ export function QuizView({
   const [hint, setHint] = useState(false);
   const [pageVisible, setPageVisible] = useState(true);
   const cardRef = useRef<HTMLDivElement>(null);
+  // Quando a questão apareceu (tempo de resposta registrado no servidor).
+  const shownAt = useRef(0);
+  useEffect(() => {
+    shownAt.current = Date.now();
+  }, [idx, round]);
   const questionRef = useRef<HTMLElement>(null);
   const lessonsRef = useRef<HTMLElement>(null);
 
@@ -251,6 +256,7 @@ export function QuizView({
         item.nodeKey,
         given,
         round.level.tier.tier,
+        Date.now() - (shownAt.current || Date.now()),
       );
       if (!r.ok) return setError(r.error);
       setCheck(r.check);

@@ -194,6 +194,54 @@ const SWAPS: Record<string, string[]> = {
   seguras: ["adequadas", "regulares"],
 };
 
+/**
+ * Categorias de termos: o banco de palavras só recebe "erradas" da MESMA categoria da resposta
+ * (ator com ator, prazo com prazo, princípio com princípio), para o bloco errado ser plausível e
+ * encaixar na frase. A categoria também define a dificuldade do termo (ver LEVEL_OF_CATEGORY).
+ */
+const CATEGORY_WORDS: Record<string, string[]> = {
+  ator: ["juiz", "delegado", "promotor", "Ministério Público", "ofendido", "indiciado", "investigado", "acusado", "vítima", "peritos", "defensor", "curador", "Defensoria Pública"],
+  peca: ["requisição", "requerimento", "representação", "ofício", "denúncia", "queixa", "relatório", "portaria"],
+  pena: ["reclusão", "detenção", "prisão simples", "multa"],
+  elemento: ["culposo", "doloso", "preterdoloso"],
+  qualificadora: ["torpe", "fútil", "veneno", "emboscada", "traição", "dissimulação", "asfixia", "tortura"],
+  modal: ["poderá", "deverá", "poderão", "deverão", "vedado", "permitido", "facultado"],
+  negacao: ["não", "sempre", "nunca", "somente", "também", "preferencialmente", "exclusivamente", "prioritariamente", "salvo", "exceto"],
+  tempo: ["dias", "horas", "meses", "anos", "semanas"],
+  numero_ext: ["um", "uma", "duas", "dois", "três", "quatro", "cinco", "seis", "sete", "dez", "doze", "quinze", "vinte", "trinta"],
+  fracao: ["1/2", "1/3", "2/3", "1/6", "1/4"],
+  digito: ["5", "10", "15", "24", "30", "48", "60", "72", "90"],
+  natureza: ["pública", "privada", "condicionada", "incondicionada"],
+  principio: ["legalidade", "impessoalidade", "moralidade", "publicidade", "eficiência", "razoabilidade", "finalidade", "motivação", "isonomia", "probidade", "economicidade"],
+  provimento: ["concurso", "processo seletivo", "títulos", "entrevistas", "comissão", "confiança", "efetivo"],
+  entidade: ["autarquia", "fundação", "empresa pública", "sociedade de economia mista"],
+  transito: ["CONTRAN", "CETRAN", "DENATRAN", "DETRAN", "JARI"],
+  sinalizacao: ["semáforo", "agente", "sinais", "estacionamento", "parada", "circulação"],
+  sancao: ["advertência", "suspensão", "cassação", "reciclagem", "apreensão", "repreensão", "multa"],
+  responsabilidade: ["dolo", "culpa", "regresso", "nulidade", "ressarcimento", "indisponibilidade", "improbidade", "anulabilidade", "revogação"],
+  grupo: ["brasileiros", "estrangeiros", "naturalizados"],
+};
+
+const CATEGORY_INDEX = new Map<string, string>();
+for (const [cat, words] of Object.entries(CATEGORY_WORDS)) for (const w of words) if (!CATEGORY_INDEX.has(norm(w))) CATEGORY_INDEX.set(norm(w), cat);
+
+export function categoryOf(word: string): string | null {
+  if (/^\d+\/\d+$/.test(word)) return "fracao";
+  if (/^\d+$/.test(word)) return "digito";
+  return CATEGORY_INDEX.get(norm(word)) ?? null;
+}
+
+/** Dificuldade do termo: 1 = conceito/definição, 2 = aplicação e distinção, 3 = exceção, prazo e requisito. */
+const LEVEL_OF_CATEGORY: Record<string, 1 | 2 | 3> = {
+  principio: 1, provimento: 1, entidade: 1, transito: 1, peca: 1, pena: 1, natureza: 1, qualificadora: 1, sinalizacao: 1, grupo: 1,
+  ator: 2, tempo: 2, modal: 2, elemento: 2, sancao: 2, responsabilidade: 2,
+  negacao: 3, digito: 3, fracao: 3, numero_ext: 3,
+};
+export function levelOfTerm(word: string): 1 | 2 | 3 {
+  const c = categoryOf(word);
+  return (c && LEVEL_OF_CATEGORY[c]) || 2;
+}
+
 /** Gerador pseudoaleatório determinístico (mulberry32) a partir de uma string. */
 export function seeded(seed: string): () => number {
   let h = 1779033703 ^ seed.length;
@@ -273,7 +321,12 @@ export interface ClozeOptions {
   bank?: number;
   /** Mostrar o caput acima do inciso/alínea (padrão sim). */
   context?: boolean;
+  /** Nível do jogo (1 Fácil, 2 Médio, 3 Difícil, 4 Elite): decide que tipo de termo vira lacuna. */
+  tier?: 1 | 2 | 3 | 4;
 }
+
+/** Mínimo de blocos errados no banco: sem isso a lacuna seria "de graça". */
+const MIN_DISTRACTORS = 2;
 
 export function buildCloze(node: LawNode, all: LawNode[], topicSeed: string, opts: ClozeOptions = {}): ClozeItem | null {
   const maxBlanks = Math.max(1, Math.min(4, opts.blanks ?? 2));
@@ -284,14 +337,20 @@ export function buildCloze(node: LawNode, all: LawNode[], topicSeed: string, opt
   const { marker, body } = stripMarker(clean);
   if (body.length < 12) return null;
 
-  const rnd = seeded(opts.blanks || opts.bank ? `${topicSeed}:${node.key}:${maxBlanks}-${bankSize}` : `${topicSeed}:${node.key}`);
+  const rnd = seeded(opts.blanks || opts.bank ? `${topicSeed}:${node.key}:${maxBlanks}-${bankSize}${opts.tier ? `:t${opts.tier}` : ""}` : `${topicSeed}:${node.key}`);
+  const wanted: 1 | 2 | 3 = opts.tier ? (Math.min(3, opts.tier) as 1 | 2 | 3) : 2;
   const cands = candidates(body);
   if (!cands.length) return null;
   // Melhores termos primeiro (empate decidido pela semente), no máximo 2 lacunas, sem palavras coladas.
-  const ranked = shuffle(cands, rnd).sort((a, b) => b.score - a.score);
+  // O termo do nível pedido (conceito no Fácil, aplicação no Médio, exceção/prazo no Difícil) passa na frente.
+  const bonus = (t: Token) => (opts.tier && levelOfTerm(t.text) === wanted ? 10 : 0);
+  const ranked = shuffle(cands, rnd).sort((a, b) => b.score + bonus(b) - (a.score + bonus(a)));
+  const countOf = (t: Token) => cands.filter((x) => norm(x.text) === norm(t.text)).length + (body.toLowerCase().split(t.text.toLowerCase()).length - 1 > 1 ? 1 : 0);
   const chosen: Token[] = [];
   for (const c of ranked) {
     if (chosen.length >= maxBlanks) break;
+    // A palavra que aparece em outro ponto da frase entregaria a resposta.
+    if (countOf(c) > 1) continue;
     if (chosen.some((x) => Math.abs(x.start - c.start) < 12 || norm(x.text) === norm(c.text))) continue;
     if (c.score < 3 && chosen.length) continue;
     chosen.push(c);
@@ -309,29 +368,60 @@ export function buildCloze(node: LawNode, all: LawNode[], topicSeed: string, opt
   if (pos < body.length) parts.push({ text: body.slice(pos) });
   const answers = chosen.map((c) => c.text);
 
-  // Banco: respostas + trocas típicas + palavras-chave de outros dispositivos do tema.
+  // Banco: respostas + erradas plausíveis. Prioridade: trocas típicas de banca; depois termos do mesmo
+  // tema e da MESMA categoria da resposta; depois a lista geral da categoria. Nunca palavra aleatória.
   const lowerAnswers = new Set(answers.map(norm));
-  const pool: string[] = [];
-  for (const a of answers) for (const s of SWAPS[a.toLowerCase()] ?? SWAPS[a] ?? []) pool.push(matchCase(s, a));
-  const others = shuffle(
-    all.filter((n) => n.key !== node.key && LEGAL_KINDS.has(n.kind)).flatMap((n) => candidates(stripMarker(cleanLegalText(n.sourceText)).body).filter((c) => c.score >= 4 && !/\d/.test(c.text)).map((c) => c.text)),
+  const cats = answers.map((a) => categoryOf(a));
+  const swaps: string[] = [];
+  for (const a of answers) for (const sw of SWAPS[a.toLowerCase()] ?? SWAPS[a] ?? []) swaps.push(matchCase(sw, a));
+  const topicSame = shuffle(
+    all.filter((n) => n.key !== node.key && LEGAL_KINDS.has(n.kind)).flatMap((n) => candidates(stripMarker(cleanLegalText(n.sourceText)).body).map((c) => c.text)),
     rnd,
-  );
-  pool.push(...others);
+  ).filter((w) => cats.includes(categoryOf(w)));
+  const globalSame = answers.flatMap((a, i) => (cats[i] ? shuffle(CATEGORY_WORDS[cats[i]!] ?? [], rnd).map((w) => matchCase(w, a)) : []));
+  // Blocos do mesmo "tamanho" da resposta (mesmo número de palavras) vêm primeiro: o tamanho não denuncia a certa.
+  const wc = (w: string) => w.trim().split(/\s+/).length;
+  const sizes = new Set(answers.map(wc));
+  const ordered = [...swaps, ...topicSame, ...globalSame];
+  const pool = [...ordered.filter((w) => sizes.has(wc(w))), ...ordered.filter((w) => !sizes.has(wc(w)))];
+  const bodyNorm = ` ${norm(body)} `;
   const distractors: string[] = [];
   for (const w of pool) {
     if (distractors.length >= bankSize - answers.length) break;
     const k = norm(w);
-    if (lowerAnswers.has(k) || distractors.some((d) => norm(d) === k) || body.toLowerCase().includes(` ${w.toLowerCase()} `)) continue;
+    if (lowerAnswers.has(k) || distractors.some((d) => norm(d) === k) || bodyNorm.includes(` ${k} `)) continue;
     distractors.push(w);
   }
+  if (distractors.length < MIN_DISTRACTORS) return null;
   const bank = shuffle([...answers, ...distractors], rnd);
 
   // Contexto: o caput a que o inciso/alínea pertence; a linha "Pena - ..." pertence ao artigo ou parágrafo.
   const parent = node.kind === "item" ? legalAnchor(node, all) : node.parentKey ? all.find((n) => n.key === node.parentKey) : undefined;
   const context = opts.context !== false && (node.kind === "inciso" || node.kind === "alinea" || node.kind === "item") && parent ? cleanLegalText(parent.sourceText) : null;
   const ref = node.kind === "item" && parent ? refOf(parent, all) : refOf(node, all, marker);
-  return { nodeKey: node.key, context, parts, answers, bank, ref };
+  const item: ClozeItem = { nodeKey: node.key, context, parts, answers, bank, ref };
+  return validateCloze(item) ? item : null;
+}
+
+/**
+ * Validação interna antes de exibir (se falhar, a atividade é descartada e outra é usada):
+ * a frase mantém sentido sem as lacunas, há resposta única e os blocos permitem montá-la.
+ */
+export function validateCloze(item: ClozeItem): boolean {
+  const blanks = item.parts.filter((p): p is { blank: number } => "blank" in p);
+  if (!item.answers.length || blanks.length !== item.answers.length) return false;
+  if (item.answers.some((a) => !a.trim() || a.length > 40)) return false;
+  // Cada resposta está no banco, uma única vez, e o banco não repete bloco.
+  const bankKeys = item.bank.map(norm);
+  if (new Set(bankKeys).size !== bankKeys.length) return false;
+  if (item.answers.some((a) => bankKeys.filter((k) => k === norm(a)).length !== 1)) return false;
+  if (item.bank.length - item.answers.length < MIN_DISTRACTORS) return false;
+  // Sobra contexto suficiente na frase para o aluno raciocinar.
+  const visible = item.parts.map((p) => ("text" in p ? p.text : " ")).join("");
+  if (`${item.context ?? ""} ${visible}`.split(/\s+/).filter((w) => w.length > 2).length < 4) return false;
+  // Nenhum bloco errado (nem resposta) aparece já escrito na frase.
+  const vis = ` ${norm(visible)} `;
+  return item.bank.every((w) => !vis.includes(` ${norm(w)} `));
 }
 
 function matchCase(word: string, like: string): string {
@@ -357,5 +447,15 @@ export function checkCloze(item: ClozeItem, given: string[]): boolean[] {
 
 /** Todos os itens possíveis de um tema. */
 export function buildAll(nodes: LawNode[], topicSeed: string, opts: ClozeOptions = {}): ClozeItem[] {
-  return nodes.map((n) => buildCloze(n, nodes, topicSeed, opts)).filter((x): x is ClozeItem => !!x);
+  // Sem repetir a mesma frase (dispositivos de texto igual, mudando só a ordem ou a pontuação).
+  const seen = new Set<string>();
+  return nodes
+    .map((n) => buildCloze(n, nodes, topicSeed, opts))
+    .filter((x): x is ClozeItem => {
+      if (!x) return false;
+      const key = norm(x.parts.map((p) => ("text" in p ? p.text : x.answers[p.blank]!)).join("")).replace(/[^a-z0-9]+/g, " ").trim().split(" ").sort().join(" ");
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
 }

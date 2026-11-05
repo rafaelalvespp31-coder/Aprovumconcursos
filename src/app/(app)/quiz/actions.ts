@@ -16,10 +16,10 @@ export async function startRoundAction(topicId: string): Promise<{ ok: true; rou
   }
 }
 
-export async function checkAnswerAction(topicId: string, nodeKey: string, given: string[], tier: number): Promise<{ ok: true; check: QuizCheck } | { ok: false; error: string }> {
+export async function checkAnswerAction(topicId: string, nodeKey: string, given: string[], tier: number, responseMs?: number): Promise<{ ok: true; check: QuizCheck } | { ok: false; error: string }> {
   if (!UUID.test(topicId) || !/^N\d{4}$/.test(nodeKey) || !Array.isArray(given) || given.length > 4 || !Number.isInteger(tier)) return { ok: false, error: "Resposta inválida." };
   try {
-    return { ok: true, check: await checkAnswer(topicId, nodeKey, given.map(String), tier) };
+    return { ok: true, check: await checkAnswer(topicId, nodeKey, given.map(String), tier, typeof responseMs === "number" ? responseMs : undefined) };
   } catch (e) {
     return { ok: false, error: e instanceof UserFacingError ? e.message : "Não foi possível conferir agora. Tente de novo." };
   }

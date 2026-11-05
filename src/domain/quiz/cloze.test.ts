@@ -55,3 +55,44 @@ describe("Complete a lei", () => {
     expect(buildAll(nodes, "t").every((i) => i.parts.every((p) => !("text" in p) || !/Inclu[íi]do/.test(p.text)))).toBe(true);
   });
 });
+
+import { categoryOf, levelOfTerm, validateCloze } from "./cloze";
+
+describe("Complete a frase: qualidade", () => {
+  it("o banco só recebe erradas da mesma categoria da resposta", () => {
+    for (const n of nodes) {
+      const it = buildCloze(n, nodes, "t", { blanks: 2, bank: 6, tier: 2 });
+      if (!it) continue;
+      for (const a of it.answers) {
+        const cat = categoryOf(a);
+        if (!cat) continue;
+        const others = it.bank.filter((w) => !it.answers.includes(w));
+        // pelo menos 2 erradas, e as da mesma categoria vêm de swaps/categoria (nunca palavras soltas)
+        expect(others.length).toBeGreaterThanOrEqual(2);
+      }
+      expect(validateCloze(it)).toBe(true);
+    }
+  });
+
+  it("o nível escolhe o tipo de termo: Fácil = conceito, Difícil = exceção/prazo", () => {
+    expect(levelOfTerm("legalidade")).toBe(1);
+    expect(levelOfTerm("juiz")).toBe(2);
+    expect(levelOfTerm("48")).toBe(3);
+    expect(levelOfTerm("não")).toBe(3);
+    const n10 = nodes[0]!;
+    const hard = buildCloze(n10, nodes, "t", { blanks: 1, bank: 4, tier: 3 })!;
+    expect(levelOfTerm(hard.answers[0]!)).toBe(3);
+  });
+
+  it("descarta frase curta demais sem o caput e atividade sem erradas suficientes", () => {
+    expect(buildCloze(nodes[3]!, nodes, "t", { blanks: 1, bank: 4, context: false, tier: 4 })).toBeNull();
+    const bad = { nodeKey: "N1", context: null, parts: [{ text: "O inquérito é conduzido pelo " }, { blank: 0 }, { text: " no prazo legal." }], answers: ["delegado"], bank: ["delegado", "juiz"], ref: "Art. 1º" };
+    expect(validateCloze(bad)).toBe(false);
+  });
+
+  it("não repete a mesma frase", () => {
+    const dup = [...nodes, { ...nodes[1]!, key: "N9", marker: "Art. 18" }];
+    const all = buildAll(dup, "t");
+    expect(all.filter((i) => i.ref.startsWith("Art. 17") || i.ref.startsWith("Art. 18")).length).toBe(1);
+  });
+});

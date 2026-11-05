@@ -61,7 +61,7 @@ function itemsFor(topic: QuizTopic, tier: Tier): ClozeItem[] {
   const k = `${topic.id}:${tier.tier}`;
   let items = tierCache.get(k);
   if (!items) {
-    items = buildAll(topic.nodes, topic.id, { blanks: tier.blanks, bank: tier.bank, context: tier.context });
+    items = buildAll(topic.nodes, topic.id, { blanks: tier.blanks, bank: tier.bank, context: tier.context, tier: tier.tier });
     tierCache.set(k, items);
   }
   return items;
@@ -194,7 +194,7 @@ export interface QuizCheck {
   help: QuizHelp;
 }
 
-export async function checkAnswer(topicId: string, nodeKey: string, given: string[], tierN: number): Promise<QuizCheck> {
+export async function checkAnswer(topicId: string, nodeKey: string, given: string[], tierN: number, responseMs?: number): Promise<QuizCheck> {
   const user = await requireUser("/quiz");
   await enforceRateLimit(user.id, "quiz_check", 120);
   await assertQuota(user.id, "jogo");
@@ -209,7 +209,7 @@ export async function checkAnswer(topicId: string, nodeKey: string, given: strin
   const correct = results.every(Boolean);
   const xp = correct ? tier.xp : 0;
   // Grava só pelo servidor, depois de conferir (o aluno não grava XP direto no banco).
-  const { error } = await createAdminClient().from("quiz_attempts").insert({ user_id: user.id, topic_id: topicId, node_key: nodeKey, correct, xp });
+  const { error } = await createAdminClient().from("quiz_attempts").insert({ user_id: user.id, topic_id: topicId, node_key: nodeKey, correct, xp, tier: tier.tier, response_ms: typeof responseMs === "number" && Number.isFinite(responseMs) ? Math.min(3_600_000, Math.max(0, Math.round(responseMs))) : null });
   if (error) throw new Error(error.message);
   const after = await myAttempts();
   const s = summarize(after, topics);
@@ -277,7 +277,11 @@ function helpFor(topic: QuizTopic, item: ClozeItem): QuizHelp {
   const teach = topic.sections
     .filter((s) => TEACH.includes(s.kind) && s.nodeKeys?.includes(item.nodeKey))
     .sort((a, b) => TEACH.indexOf(a.kind) - TEACH.indexOf(b.kind));
-  const explicacao = teach.length ? firstChunk(teach[0]!.bodyMarkdown) : null;
+  const chunk = teach.length ? firstChunk(teach[0]!.bodyMarkdown) : null;
+  // Fundamento: a frase completa, como está na aula, com a referência do dispositivo.
+  const filled = item.parts.map((p) => ("text" in p ? p.text : `**${item.answers[p.blank]}**`)).join("");
+  const fundamento = `**Fundamento na aula — ${topic.title}, ${item.ref}**\n\n${item.context ? `${item.context} ` : ""}${filled}`;
+  const explicacao = chunk ? `${fundamento}\n\n${chunk}` : fundamento;
   const bancaSec = topic.sections.find((s) => s.kind === "interpretacao_banca");
   const bancaLines = bancaSec ? bancaSec.bodyMarkdown.split("\n").filter((l) => /^\s*[-*]\s/.test(l)) : [];
   const banca = bancaLines.length ? (bancaLines.find(mentions) ? [bancaLines.find(mentions)!] : bancaLines.slice(0, 2)).join("\n") : null;
