@@ -34,3 +34,14 @@ describe("inferUf", () => {
     expect(inferUf("Consórcio SP e MG")).toBeNull();
   });
 });
+
+import { formatDescription } from "./concursos";
+describe("formatDescription", () => {
+  it("separa texto, tabela de cargos e lista", () => {
+    const b = formatDescription("Edital previsto até Dezembro de 2026\r\nDelegado - Bacharel em Direito: 15.737,00\r\nEscrivão - Qualquer curso superior: 5.620,00\r\n- Prova objetiva\r\n- Prova física");
+    expect(b[0]).toEqual({ kind: "text", text: "Edital previsto até Dezembro de 2026" });
+    expect(b[1]).toEqual({ kind: "cargos", rows: [{ cargo: "Delegado", requisito: "Bacharel em Direito", valor: "R$ 15.737,00" }, { cargo: "Escrivão", requisito: "Qualquer curso superior", valor: "R$ 5.620,00" }] });
+    expect(b[2]).toEqual({ kind: "list", items: ["Prova objetiva", "Prova física"] });
+  });
+  it("aceita vazio", () => expect(formatDescription(null)).toEqual([]));
+});

@@ -61,3 +61,32 @@ export function byUf<T extends { uf?: string | null }>(list: readonly T[]): Map<
   for (const c of list) if (c.uf) m.set(c.uf, [...(m.get(c.uf) ?? []), c]);
   return m;
 }
+
+export type DescBlock =
+  | { kind: "text"; text: string }
+  | { kind: "list"; items: string[] }
+  | { kind: "cargos"; rows: Array<{ cargo: string; requisito: string | null; valor: string | null }> };
+
+const money = (v: string) => (/^\d{1,3}(\.\d{3})*(,\d{1,2})?$|^\d+(,\d{1,2})?$/.test(v) ? `R$ ${v}` : v);
+
+/**
+ * Organiza a descrição digitada pelo admin (uma informação por linha): linhas "Cargo - requisito: valor"
+ * viram uma tabela de cargos, linhas com "-" ou "•" viram lista e o resto vira parágrafo.
+ */
+export function formatDescription(raw: string | null | undefined): DescBlock[] {
+  const lines = (raw ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
+  const blocks: DescBlock[] = [];
+  const push = (b: DescBlock) => {
+    const last = blocks[blocks.length - 1];
+    if (last && last.kind === "cargos" && b.kind === "cargos") last.rows.push(...b.rows);
+    else if (last && last.kind === "list" && b.kind === "list") last.items.push(...b.items);
+    else blocks.push(b);
+  };
+  for (const l of lines) {
+    const cargo = /^(.{2,60}?)\s+[-–—]\s+(.+?):\s*(R\$\s*)?([\d.]+(?:,\d{1,2})?)(\s*(?:até|a)\s*(?:R\$\s*)?[\d.]+(?:,\d{1,2})?)?\s*$/.exec(l);
+    if (cargo) push({ kind: "cargos", rows: [{ cargo: cargo[1]!.trim(), requisito: cargo[2]!.trim(), valor: money(`${cargo[4]}${cargo[5] ?? ""}`) }] });
+    else if (/^[-•*]\s+/.test(l)) push({ kind: "list", items: [l.replace(/^[-•*]\s+/, "")] });
+    else push({ kind: "text", text: l });
+  }
+  return blocks;
+}

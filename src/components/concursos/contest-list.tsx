@@ -1,6 +1,6 @@
 import { CalendarDays, ExternalLink, GraduationCap, Landmark, MapPin, Star, Users, Wallet } from "lucide-react";
 import { CONTEST_STATUS, daysUntil } from "@/domain/gamification/home";
-import { UF_NAME, bucketOf, type Bucket } from "@/domain/concursos";
+import { UF_NAME, bucketOf, formatDescription, type Bucket } from "@/domain/concursos";
 import type { Contest } from "@/server/services/gamification";
 
 const dateBR = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
@@ -39,7 +39,7 @@ export function ContestList({ list, today, favs, onFav, empty, showForecast }: {
                 )}
                 <div><dt><CalendarDays className="size-4" aria-hidden /> Prova</dt><dd>{c.examDate ? `${dateBR(c.examDate)}${c.examDateConfirmed ? "" : " (a confirmar)"}` : "Data a definir"}</dd></div>
               </dl>
-              {c.description && <p className="cn-item-desc">{c.description}</p>}
+              {c.description && <Descricao text={c.description} />}
               {days != null && <p className="cn-dias"><b>{days}</b> {days === 1 ? "dia" : "dias"} para a prova</p>}
               <p className="cn-fonte">
                 {c.infoConfirmed ? "Informações confirmadas" : "Informações não confirmadas"} · Fonte:{" "}
@@ -53,5 +53,30 @@ export function ContestList({ list, today, favs, onFav, empty, showForecast }: {
         );
       })}
     </ul>
+  );
+}
+
+/** Descrição organizada: parágrafos, cargos com requisito e salário, e listas. */
+function Descricao({ text }: { text: string }) {
+  const blocks = formatDescription(text);
+  return (
+    <div className="cn-item-desc" data-testid="descricao-concurso">
+      {blocks.map((b, i) =>
+        b.kind === "text" ? (
+          <p key={i} className="cn-desc-txt">{b.text}</p>
+        ) : b.kind === "list" ? (
+          <ul key={i} className="cn-desc-lista">{b.items.map((t, j) => <li key={j}>{t}</li>)}</ul>
+        ) : (
+          <ul key={i} className="cn-desc-cargos">
+            {b.rows.map((r, j) => (
+              <li key={j}>
+                <span><b>{r.cargo}</b>{r.requisito && <small>{r.requisito}</small>}</span>
+                {r.valor && <em>{r.valor}</em>}
+              </li>
+            ))}
+          </ul>
+        ),
+      )}
+    </div>
   );
 }
