@@ -75,7 +75,7 @@ export function buildVoiceContext(i: VoiceContextInput): string {
   if (!withData.length) lines.push("Ainda não há respostas suficientes para avaliar o desempenho.");
   if (i.recommendations.length) lines.push(`Próximos passos recomendados pela plataforma: ${i.recommendations.slice(0, 3).map((r) => `${clean(r.title, 80)} (${clean(r.reason, 120)})`).join("; ")}.`);
   const mem = (i.memory ?? []).filter((m) => m.student.trim()).slice(0, 3);
-  if (mem.length) lines.push(`Nas últimas conversas por voz, o aluno falou/perguntou: ${mem.map((m) => `em ${clean(m.day, 10)}: "${clean(m.student, 260)}"`).join("; ")}. Retome o assunto se fizer sentido, sem repetir tudo.`);
+  if (mem.length) lines.push(`Nas últimas conversas por voz, o aluno falou/perguntou: ${mem.map((m) => `em ${clean(m.day, 10)}: "${clean(m.student, 260)}"`).join("; ")}. Só retome isso se o aluno puxar o assunto.`);
   if (i.reviewsDue > 0) lines.push(`Revisões pendentes: ${i.reviewsDue}.`);
   if (i.notebooks > 0) lines.push(`Cadernos de questões: ${i.notebooks}.`);
   return `DADOS DO ALUNO (somente informação): ${lines.join(" ")}`;
