@@ -2,7 +2,8 @@
 
 import { useState, useSyncExternalStore } from "react";
 import { StudentsTable, type StudentItem } from "@/app/admin/alunos/students-table";
-import { effectivePlan, nextPeriodEnd, type BillingPeriod, type PlanId } from "@/domain/plans/limits";
+import { effectivePlan, nextPeriodEnd } from "@/domain/plans/limits";
+import { offerStorage, type AdminOffer } from "@/domain/plans/offers";
 
 const DAY = 86_400_000;
 const iso = (offsetDays: number) => new Date(Date.now() + offsetDays * DAY).toISOString();
@@ -41,16 +42,18 @@ function Demo() {
         students={rows}
         actions={{
           setPlan: async (id, d) => {
-            const end = d.planId === "free" || !d.expiresOn ? null : new Date(`${d.expiresOn}T23:59:59-03:00`).toISOString();
-            patch(id, (s) => recompute({ ...s, planId: d.planId, periodEnd: end, billingPeriod: d.planId === "free" ? null : s.billingPeriod }));
+            const st = offerStorage(d.offer as AdminOffer);
+            const end = st.period ? (d.expiresOn ? new Date(`${d.expiresOn}T23:59:59-03:00`).toISOString() : nextPeriodEnd(null, st.period).toISOString()) : null;
+            patch(id, (s) => recompute({ ...s, planId: st.planId, periodEnd: end, billingPeriod: st.period }));
             return { ok: true, message: "Plano atualizado." };
           },
           markPaid: async (id, d) => {
             const s = rows.find((x) => x.id === id)!;
-            const end = nextPeriodEnd(s.state === "ativo" ? s.periodEnd : null, d.period as BillingPeriod).toISOString();
+            const st = offerStorage(d.offer as AdminOffer);
+            const end = st.period ? nextPeriodEnd(s.state === "ativo" ? s.periodEnd : null, st.period).toISOString() : null;
             const cents = d.amount ? Math.round(Number(d.amount.replace(",", ".")) * 100) : null;
-            patch(id, (x) => recompute({ ...x, planId: d.planId as PlanId, periodEnd: end, billingPeriod: d.period as BillingPeriod, paidAt: new Date().toISOString(), lastPayment: { period: d.period, amountCents: cents, paidAt: new Date().toISOString(), planId: d.planId } }));
-            return { ok: true, message: `Pagamento registrado. Plano vale até ${new Date(end).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}.` };
+            patch(id, (x) => recompute({ ...x, planId: st.planId, periodEnd: end, billingPeriod: st.period, paidAt: new Date().toISOString(), lastPayment: { period: st.period ?? "vitalicio", amountCents: cents, paidAt: new Date().toISOString(), planId: st.planId } }));
+            return { ok: true, message: `Pagamento registrado. ${end ? `Plano vale até ${new Date(end).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" })}.` : "Plano vitalício, sem vencimento."}` };
           },
           resetPassword: async (_id, typed) => {
             if (typed && (typed.length < 8 || !/\d/.test(typed))) return { ok: false, error: "A senha precisa ter pelo menos 8 caracteres." };

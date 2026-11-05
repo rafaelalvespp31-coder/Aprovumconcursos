@@ -33,3 +33,24 @@ export const PLAN_NAMES: Record<"gratuito" | OfferKey, { name: string; tagline: 
   anual: { name: "Elite Tática", tagline: "Preparação avançada para a aprovação" },
   vitalicio: { name: "Comando Supremo", tagline: "Acesso definitivo à missão APROVUM" },
 };
+
+/** Opções que o admin escolhe em "Alunos": as mesmas da tela "Meu Plano" (Recruta + os 4 planos pagos). */
+export const ADMIN_OFFERS = ["gratuito", ...OFFER_KEYS] as const;
+export type AdminOffer = (typeof ADMIN_OFFERS)[number];
+export const isAdminOffer = (v: unknown): v is AdminOffer => typeof v === "string" && (ADMIN_OFFERS as readonly string[]).includes(v);
+export const offerName = (o: AdminOffer) => PLAN_NAMES[o].name;
+
+/** Como cada plano da tela "Meu Plano" fica gravado na assinatura (vitalício = pago, sem período e sem vencimento). */
+export function offerStorage(o: AdminOffer): { planId: "free" | "premium"; period: "mensal" | "semestral" | "anual" | null } {
+  if (o === "gratuito") return { planId: "free", period: null };
+  if (o === "vitalicio") return { planId: "premium", period: null };
+  return { planId: "premium", period: o };
+}
+
+/** Data de "vencimento" gravada no histórico de pagamentos do vitalício (a coluna não aceita vazio). */
+export const LIFETIME_PAYMENT_END = "2999-12-31T23:59:59-03:00";
+
+/** Plano que a tela "Meu Plano" mostra para a assinatura gravada (mesmo vencida: o estado é mostrado à parte). */
+export function storedOffer(planId: string, period: string | null, hasEnd: boolean): AdminOffer {
+  return planId === "free" ? "gratuito" : currentOffer(true, period, hasEnd);
+}

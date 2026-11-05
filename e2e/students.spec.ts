@@ -23,11 +23,11 @@ test.describe("admin: alunos e planos", () => {
     const ana = page.getByTestId("aluno-linha").filter({ hasText: "Ana Souza" });
     await ana.getByTestId("gerenciar-aluno").click();
     const painel = page.getByTestId("painel-aluno");
-    await painel.getByLabel("Semestral").check();
+    await painel.getByRole("radio", { name: /Operador/ }).check();
     await painel.getByLabel("Valor pago (opcional)").fill("149,90");
     await painel.getByTestId("marcar-pago").click();
     await expect(painel.getByTestId("aluno-aviso")).toContainText("Pagamento registrado. Plano vale até");
-    await expect(ana).toContainText("Premium · Semestral");
+    await expect(ana).toContainText("Operador · Semestral");
     await expect(ana).toContainText("Pago · ativo");
     await expect(ana).toContainText("R$ 149,90");
   });
@@ -36,10 +36,10 @@ test.describe("admin: alunos e planos", () => {
     await page.goto(URL);
     const bruno = page.getByTestId("aluno-linha").filter({ hasText: "Bruno Lima" });
     await bruno.getByTestId("gerenciar-aluno").click();
-    await page.getByTestId("mudar-plano-select").selectOption("free");
+    await page.getByTestId("mudar-plano-select").selectOption("gratuito");
     await page.getByTestId("salvar-plano").click();
     await expect(page.getByTestId("aluno-aviso")).toHaveText("Plano atualizado.");
-    await expect(bruno).toContainText("Gratuito");
+    await expect(bruno).toContainText("Recruta");
   });
 
   test("senha nova: pede confirmação e mostra a senha uma vez", async ({ page }) => {

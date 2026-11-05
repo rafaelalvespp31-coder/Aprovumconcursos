@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { Button, inputClass, Tag } from "@/components/ui";
-import { BILLING_PERIODS, PERIOD_LABELS, PLAN_IDS, PLAN_LABELS, type BillingPeriod, type PlanId, type PlanState } from "@/domain/plans/limits";
+import { PERIOD_LABELS, type BillingPeriod, type PlanId, type PlanState } from "@/domain/plans/limits";
+import { ADMIN_OFFERS, OFFERS, OFFER_KEYS, offerName, offerStorage, storedOffer, type AdminOffer, type OfferKey } from "@/domain/plans/offers";
 import { formatWhatsapp } from "@/domain/contact/whatsapp";
 import type { StudentActionResult } from "./actions";
 
@@ -26,8 +27,8 @@ export interface StudentItem {
 }
 
 export interface StudentActions {
-  setPlan: (id: string, data: { planId: string; expiresOn?: string }) => Promise<StudentActionResult>;
-  markPaid: (id: string, data: { planId: string; period: string; amount?: string; note?: string }) => Promise<StudentActionResult>;
+  setPlan: (id: string, data: { offer: string; expiresOn?: string }) => Promise<StudentActionResult>;
+  markPaid: (id: string, data: { offer: string; amount?: string; note?: string }) => Promise<StudentActionResult>;
   resetPassword: (id: string, typed?: string) => Promise<StudentActionResult>;
 }
 
@@ -36,7 +37,9 @@ const date = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString("pt
 const dateTime = (iso: string | null) => (iso ? new Date(iso).toLocaleString("pt-BR", { ...TZ, dateStyle: "short", timeStyle: "short" }) : "nunca");
 const money = (c: number | null) => (c === null ? "" : (c / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" }));
 const daysLeft = (iso: string | null) => (iso ? Math.ceil((new Date(iso).getTime() - Date.now()) / 86_400_000) : null);
-const planLabel = (id: string) => PLAN_LABELS[id as PlanId] ?? id;
+const studentOffer = (s: StudentItem): AdminOffer => storedOffer(s.planId, s.billingPeriod, !!s.periodEnd);
+const paymentOffer = (p: { period: string; planId: string }): AdminOffer => (p.period === "vitalicio" ? "vitalicio" : p.planId === "free" ? "gratuito" : (p.period as OfferKey));
+const offerOption = (o: AdminOffer) => (o === "gratuito" ? `${offerName(o)} (1 aula e 5 questões por dia)` : `${offerName(o)} · ${OFFERS[o].price} ${OFFERS[o].per}`);
 
 function StatusTag({ s }: { s: StudentItem }) {
   if (s.state === "ativo") {
@@ -138,7 +141,7 @@ function StudentRowView({ s, open, onToggle, actions }: { s: StudentItem; open: 
         </td>
         <td className="px-3 py-2 tabular-nums">{date(s.createdAt)}</td>
         <td className="px-3 py-2">
-          <span className="font-semibold">{planLabel(s.planId)}</span>
+          <span className="font-semibold">{offerName(studentOffer(s))}</span>
           {s.billingPeriod && s.planId !== "free" && <span className="text-tinta-fraca"> · {PERIOD_LABELS[s.billingPeriod]}</span>}
         </td>
         <td className="px-3 py-2">
@@ -150,7 +153,7 @@ function StudentRowView({ s, open, onToggle, actions }: { s: StudentItem; open: 
             <>
               <span className="tabular-nums">{date(s.lastPayment.paidAt)}</span>
               <span className="block t-tiny text-tinta-fraca">
-                {planLabel(s.lastPayment.planId)} {PERIOD_LABELS[s.lastPayment.period as BillingPeriod]?.toLowerCase()} {money(s.lastPayment.amountCents)}
+                {offerName(paymentOffer(s.lastPayment))} {money(s.lastPayment.amountCents)}
               </span>
             </>
           ) : (
@@ -178,10 +181,9 @@ function ManagePanel({ s, actions }: { s: StudentItem; actions: StudentActions }
   const router = useRouter();
   const [pending, start] = useTransition();
   const [res, setRes] = useState<StudentActionResult | null>(null);
-  const [planId, setPlanId] = useState<string>(s.planId);
+  const [offer, setOffer] = useState<AdminOffer>(studentOffer(s));
   const [expires, setExpires] = useState(s.periodEnd ? new Date(s.periodEnd).toLocaleDateString("en-CA", TZ) : "");
-  const [paidPlan, setPaidPlan] = useState<string>(s.planId === "pro" ? "pro" : "premium");
-  const [period, setPeriod] = useState<BillingPeriod>(s.billingPeriod ?? "mensal");
+  const [paidOffer, setPaidOffer] = useState<OfferKey>(studentOffer(s) === "gratuito" ? "mensal" : (studentOffer(s) as OfferKey));
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [typed, setTyped] = useState("");
@@ -201,36 +203,29 @@ function ManagePanel({ s, actions }: { s: StudentItem; actions: StudentActions }
         aria-label="Marcar como pago"
         onSubmit={(e) => {
           e.preventDefault();
-          run(() => actions.markPaid(s.id, { planId: paidPlan, period, amount, note }));
+          run(() => actions.markPaid(s.id, { offer: paidOffer, amount, note }));
         }}
       >
         <p className="font-bold">Marcar como PAGO</p>
-        <label className="flex flex-col gap-1 t-small font-semibold">
-          Plano pago
-          <select value={paidPlan} onChange={(e) => setPaidPlan(e.target.value)} className={inputClass}>
-            <option value="premium">Premium</option>
-            <option value="pro">Pro</option>
-          </select>
-        </label>
         <fieldset className="flex flex-col gap-1">
-          <legend className="t-small font-semibold">Período</legend>
-          <div className="flex flex-wrap gap-3 t-small">
-            {BILLING_PERIODS.map((p) => (
-              <label key={p} className="flex items-center gap-1.5">
-                <input type="radio" name={`periodo-${s.id}`} value={p} checked={period === p} onChange={() => setPeriod(p)} /> {PERIOD_LABELS[p]}
+          <legend className="t-small font-semibold">Plano pago</legend>
+          <div className="flex flex-col gap-1 t-small">
+            {OFFER_KEYS.map((o) => (
+              <label key={o} className="flex items-center gap-1.5">
+                <input type="radio" name={`plano-pago-${s.id}`} value={o} checked={paidOffer === o} onChange={() => setPaidOffer(o)} /> {offerName(o)} · {OFFERS[o].price} <span className="text-tinta-fraca">({OFFERS[o].per})</span>
               </label>
             ))}
           </div>
         </fieldset>
         <label className="flex flex-col gap-1 t-small font-semibold">
           Valor pago (opcional)
-          <input value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} placeholder="ex.: 29,90" inputMode="decimal" />
+          <input value={amount} onChange={(e) => setAmount(e.target.value)} className={inputClass} placeholder={`ex.: ${(OFFERS[paidOffer].cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`} inputMode="decimal" />
         </label>
         <label className="flex flex-col gap-1 t-small font-semibold">
           Observação (opcional)
           <input value={note} onChange={(e) => setNote(e.target.value)} className={inputClass} placeholder="ex.: Pix em 29/10" maxLength={300} />
         </label>
-        <p className="t-tiny text-tinta-fraca">O vencimento soma o período ao vencimento atual (se ainda vigente) ou começa hoje.</p>
+        <p className="t-tiny text-tinta-fraca">O vencimento soma o período ao vencimento atual (se ainda vigente) ou começa hoje. O Comando Supremo é vitalício, sem vencimento.</p>
         <Button type="submit" disabled={pending} data-testid="marcar-pago">
           Marcar como PAGO
         </Button>
@@ -241,28 +236,27 @@ function ManagePanel({ s, actions }: { s: StudentItem; actions: StudentActions }
         aria-label="Mudar plano"
         onSubmit={(e) => {
           e.preventDefault();
-          run(() => actions.setPlan(s.id, { planId, expiresOn: planId === "free" ? "" : expires }));
+          run(() => actions.setPlan(s.id, { offer, expiresOn: offerStorage(offer).period ? expires : "" }));
         }}
       >
         <p className="font-bold">Mudar plano</p>
         <label className="flex flex-col gap-1 t-small font-semibold">
           Plano
-          <select value={planId} onChange={(e) => setPlanId(e.target.value)} className={inputClass} data-testid="mudar-plano-select">
-            {PLAN_IDS.map((p) => (
-              <option key={p} value={p}>
-                {PLAN_LABELS[p]}
-                {p === "free" ? " (1 aula e 5 questões por dia)" : " (ilimitado)"}
+          <select value={offer} onChange={(e) => setOffer(e.target.value as AdminOffer)} className={inputClass} data-testid="mudar-plano-select">
+            {ADMIN_OFFERS.map((o) => (
+              <option key={o} value={o}>
+                {offerOption(o)}
               </option>
             ))}
           </select>
         </label>
-        {planId !== "free" && (
+        {offerStorage(offer).period && (
           <label className="flex flex-col gap-1 t-small font-semibold">
-            Vence em (vazio = sem vencimento)
+            Vence em (vazio = soma o período a partir de hoje)
             <input type="date" value={expires} onChange={(e) => setExpires(e.target.value)} className={inputClass} />
           </label>
         )}
-        <p className="t-tiny text-tinta-fraca">Muda o plano sem registrar pagamento (cortesia, correção ou volta ao gratuito).</p>
+        <p className="t-tiny text-tinta-fraca">Muda o plano sem registrar pagamento (cortesia, correção ou volta ao Recruta).</p>
         <Button type="submit" variant="secundario" disabled={pending} data-testid="salvar-plano">
           Salvar plano
         </Button>

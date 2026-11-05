@@ -5,7 +5,8 @@ import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
 import { auditLog } from "../observability";
 import { UserFacingError } from "./trails";
-import { BILLING_PERIODS, PLAN_IDS, effectivePlan, nextPeriodEnd, type BillingPeriod, type PlanId, type PlanState } from "@/domain/plans/limits";
+import { ADMIN_OFFERS, LIFETIME_PAYMENT_END, OFFER_KEYS, offerStorage, type AdminOffer, type OfferKey } from "@/domain/plans/offers";
+import { effectivePlan, nextPeriodEnd, type BillingPeriod, type PlanId, type PlanState } from "@/domain/plans/limits";
 
 export interface StudentRow {
   id: string;
@@ -83,32 +84,33 @@ async function assertStudent(userId: string) {
 const idSchema = z.uuid("Aluno inválido.");
 
 const planSchema = z.object({
-  planId: z.enum(PLAN_IDS, { error: "Escolha um plano válido." }),
-  /** AAAA-MM-DD; vazio = sem vencimento (só para planos pagos). */
+  offer: z.enum(ADMIN_OFFERS, { error: "Escolha um plano válido." }),
+  /** AAAA-MM-DD; vazio = a data é calculada pelo período do plano (vitalício e Recruta não têm vencimento). */
   expiresOn: z
     .string()
     .regex(/^(\d{4}-\d{2}-\d{2})?$/, "Data de vencimento inválida.")
     .optional()
-    .transform((v) => v || null),
+    .transform((v) => v || ""),
 });
 
-/** Muda o plano do aluno pelo painel (sem registrar pagamento). Gratuito limpa vencimento e período. */
-export async function setStudentPlan(admin: SessionUser, userIdInput: string, input: { planId: string; expiresOn?: string }) {
+/** Muda o plano sem registrar pagamento (cortesia, correção ou volta ao Recruta). Usa os mesmos planos de "Meu Plano". */
+export async function setStudentPlan(admin: SessionUser, userIdInput: string, input: { offer: string; expiresOn?: string }) {
   const userId = idSchema.parse(userIdInput);
   const v = planSchema.parse(input);
   await assertStudent(userId);
-  const end = v.planId === "free" || !v.expiresOn ? null : new Date(`${v.expiresOn}T23:59:59-03:00`).toISOString();
+  const st = offerStorage(v.offer);
+  let end: string | null = null;
+  if (st.period) end = v.expiresOn ? new Date(`${v.expiresOn}T23:59:59-03:00`).toISOString() : nextPeriodEnd(null, st.period).toISOString();
   if (end && new Date(end).getTime() < Date.now()) throw new UserFacingError("O vencimento precisa ser hoje ou depois.", "invalid_input");
   const db = createAdminClient();
-  const row = { user_id: userId, plan_id: v.planId, status: "active", current_period_end: end, ...(v.planId === "free" ? { billing_period: null } : {}), updated_at: new Date().toISOString() };
+  const row = { user_id: userId, plan_id: st.planId, status: "active", current_period_end: end, billing_period: st.period, updated_at: new Date().toISOString() };
   const { error } = await db.from("subscriptions").upsert(row, { onConflict: "user_id" });
   if (error) throw new Error(error.message);
-  await auditLog(db, { actorId: admin.id, userId, action: "admin.plan_changed", entity: "subscriptions", entityId: userId, meta: { planId: v.planId, end } });
+  await auditLog(db, { actorId: admin.id, userId, action: "admin.plan_changed", entity: "subscriptions", entityId: userId, meta: { offer: v.offer, planId: st.planId, period: st.period, end } });
 }
 
 const paidSchema = z.object({
-  planId: z.enum(["pro", "premium"], { error: "Escolha o plano pago." }),
-  period: z.enum(BILLING_PERIODS, { error: "Escolha mensal, semestral ou anual." }),
+  offer: z.enum(OFFER_KEYS, { error: "Escolha o plano pago." }),
   /** Valor em reais (texto do formulário), opcional. */
   amount: z
     .string()
@@ -127,25 +129,27 @@ const paidSchema = z.object({
 });
 
 /**
- * Marca como PAGO: o plano pago passa a valer e o vencimento soma o período (1, 6 ou 12 meses) ao
- * vencimento atual, se ainda vigente, ou a partir de hoje. Fica no histórico de pagamentos.
+ * Marca como PAGO: o plano escolhido (Combatente, Operador, Elite Tática ou Comando Supremo) passa a
+ * valer. Nos planos por período o vencimento soma o período ao vencimento atual, se ainda vigente, ou
+ * a partir de hoje; o Comando Supremo (vitalício) não vence. Fica no histórico de pagamentos.
  */
-export async function markStudentPaid(admin: SessionUser, userIdInput: string, input: { planId: string; period: string; amount?: string; note?: string }): Promise<{ periodEnd: string }> {
+export async function markStudentPaid(admin: SessionUser, userIdInput: string, input: { offer: string; amount?: string; note?: string }): Promise<{ periodEnd: string | null }> {
   const userId = idSchema.parse(userIdInput);
   const v = paidSchema.parse(input);
   await assertStudent(userId);
+  const st = offerStorage(v.offer as OfferKey);
   const db = createAdminClient();
   const { data: cur } = await db.from("subscriptions").select("plan_id, status, current_period_end").eq("user_id", userId).maybeSingle();
   const stillPaid = cur && cur.plan_id !== "free" && cur.status === "active";
-  const end = nextPeriodEnd(stillPaid ? (cur.current_period_end as string | null) : null, v.period).toISOString();
+  const end = st.period ? nextPeriodEnd(stillPaid ? (cur.current_period_end as string | null) : null, st.period).toISOString() : null;
   const now = new Date().toISOString();
   const up = await db
     .from("subscriptions")
-    .upsert({ user_id: userId, plan_id: v.planId, status: "active", current_period_end: end, billing_period: v.period, paid_at: now, updated_at: now }, { onConflict: "user_id" });
+    .upsert({ user_id: userId, plan_id: st.planId, status: "active", current_period_end: end, billing_period: st.period, paid_at: now, updated_at: now }, { onConflict: "user_id" });
   if (up.error) throw new Error(up.error.message);
-  const pay = await db.from("subscription_payments").insert({ user_id: userId, plan_id: v.planId, period: v.period, amount_cents: v.amount, paid_at: now, period_end: end, note: v.note, recorded_by: admin.id });
+  const pay = await db.from("subscription_payments").insert({ user_id: userId, plan_id: st.planId, period: st.period ?? "vitalicio", amount_cents: v.amount, paid_at: now, period_end: end ?? new Date(LIFETIME_PAYMENT_END).toISOString(), note: v.note, recorded_by: admin.id });
   if (pay.error) throw new Error(pay.error.message);
-  await auditLog(db, { actorId: admin.id, userId, action: "admin.plan_paid", entity: "subscriptions", entityId: userId, meta: { planId: v.planId, period: v.period, amountCents: v.amount, end } });
+  await auditLog(db, { actorId: admin.id, userId, action: "admin.plan_paid", entity: "subscriptions", entityId: userId, meta: { offer: v.offer, planId: st.planId, period: st.period, amountCents: v.amount, end } });
   return { periodEnd: end };
 }
 
