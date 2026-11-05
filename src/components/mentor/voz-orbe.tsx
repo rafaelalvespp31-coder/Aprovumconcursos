@@ -3,7 +3,7 @@
 import { useEffect, useRef } from "react";
 
 /** Energia do áudio (0 a 1): volume geral e três faixas de frequência. */
-export type Bands = { vol: number; low: number; mid: number; high: number };
+export type Bands = { vol: number; low: number; mid: number; high: number; /** Só a voz do Mentor e só o microfone do aluno (0 a 1), para o orbe distinguir falar de ouvir. */ me?: number; mic?: number };
 export const SILENCE: Bands = { vol: 0, low: 0, mid: 0, high: 0 };
 
 const CORE = 3200; // nuvem do orbe
@@ -97,7 +97,10 @@ export function VozOrbe({ level, dim = false, size = 280 }: { level: () => Bands
     const ps = new Float32Array(N);
     const pa = new Float32Array(N);
     const front = new Uint8Array(N);
-    const cur: Bands = { vol: 0, low: 0, mid: 0, high: 0 };
+    type Four = "vol" | "low" | "mid" | "high";
+    const cur: Record<Four, number> = { vol: 0, low: 0, mid: 0, high: 0 };
+    let me = 0;
+    let mic = 0;
     let hot = 0;
     let rot = 0;
     let t = 0;
@@ -126,11 +129,16 @@ export function VozOrbe({ level, dim = false, size = 280 }: { level: () => Bands
       const f60 = dt * 60;
       const tg = read.current();
       // Sobe rápido (acompanha a sílaba) e volta ao repouso aos poucos (lerp 0.05).
-      (Object.keys(cur) as Array<keyof Bands>).forEach((key) => {
+      (Object.keys(cur) as Four[]).forEach((key) => {
         const to = Math.min(1, Math.max(0, tg[key]));
-        const rate = to > cur[key] ? 0.4 : 0.05;
+        const rate = to > cur[key] ? 0.55 : 0.07;
         cur[key] += (to - cur[key]) * (1 - Math.pow(1 - rate, f60));
       });
+      // Quem está falando: o Mentor (vermelho, expande) ou o aluno (o orbe "escuta": recolhe e clareia).
+      const tgMe = Math.min(1, tg.me ?? tg.vol);
+      me += (tgMe - me) * (1 - Math.pow(1 - (tgMe > me ? 0.5 : 0.08), f60));
+      mic += (Math.min(1, tg.mic ?? 0) - mic) * (1 - Math.pow(1 - ((tg.mic ?? 0) > mic ? 0.5 : 0.1), f60));
+      const listen = Math.max(0, Math.min(1, mic * 1.6 - me * 2));
       hot += ((cur.vol > 0.2 ? 1 : 0) - hot) * (1 - Math.pow(1 - 0.1, f60));
       rot += dt * 0.06 * (1 + cur.vol * 3) * (reduce ? 0.4 : 1);
 
@@ -138,12 +146,12 @@ export function VozOrbe({ level, dim = false, size = 280 }: { level: () => Bands
       const cx = W / 2;
       const cy = size * 0.5 + 4;
       const breath = 1 + 0.02 * Math.sin((t / 3) * Math.PI * 2);
-      const sphere = breath * (1 + cur.low * 0.22);
+      const sphere = breath * (1 + cur.low * 0.22) * (1 - listen * 0.07);
       const A = (2.2 + cur.vol * 9 + cur.high * 6) * calm;
       const cos = Math.cos(rot);
       const sin = Math.sin(rot);
       const F = R * 3.2;
-      const pull = cur.vol * 0.1;
+      const pull = cur.vol * 0.1 + listen * 0.06;
 
       for (let i = 0; i < N; i++) {
         const sd = cloud.seed[i]!;
@@ -193,8 +201,10 @@ export function VozOrbe({ level, dim = false, size = 280 }: { level: () => Bands
       ctx.globalCompositeOperation = "lighter";
       const gr = size * (0.5 + cur.vol * 0.1);
       const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, gr);
-      g.addColorStop(0, `rgba(255,26,26,${glow})`);
-      g.addColorStop(0.45, `rgba(225,6,0,${glow * 0.3})`);
+      // Escutando o aluno, o brilho clareia (branco-rosado); falando, volta ao vermelho do Mentor.
+      const gc = Math.round(26 + listen * 150);
+      g.addColorStop(0, `rgba(255,${gc},${gc},${glow})`);
+      g.addColorStop(0.45, `rgba(225,${Math.round(6 + listen * 90)},${Math.round(listen * 80)},${glow * 0.3})`);
       g.addColorStop(1, "rgba(225,6,0,0)");
       ctx.fillStyle = g;
       ctx.fillRect(cx - gr, cy - gr, gr * 2, gr * 2);

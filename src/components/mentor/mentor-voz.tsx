@@ -70,7 +70,9 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     };
     const o = read(r.aOut, 1);
     const m = read(r.aIn, 0.55);
-    return { vol: Math.max(o.vol, m.vol), low: Math.max(o.low, m.low), mid: Math.max(o.mid, m.mid), high: Math.max(o.high, m.high) };
+    // Porta de ruído: silêncio de verdade deixa o orbe em repouso.
+    const gate = (v: number) => (v < 0.035 ? 0 : v);
+    return { vol: gate(Math.max(o.vol, m.vol)), low: gate(Math.max(o.low, m.low)), mid: gate(Math.max(o.mid, m.mid)), high: gate(Math.max(o.high, m.high)), me: gate(o.vol), mic: gate(m.vol) };
   }, []);
 
   const carregar = useCallback(async () => {
@@ -220,11 +222,12 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       r.ctx = ctx;
       const aOut = ctx.createAnalyser();
       aOut.fftSize = 256;
-      aOut.smoothingTimeConstant = 0.6;
+      aOut.smoothingTimeConstant = 0.25; // acompanha a sílaba, sem atraso
       aOut.connect(ctx.destination);
       r.aOut = aOut;
       const aIn = ctx.createAnalyser();
       aIn.fftSize = 256;
+      aIn.smoothingTimeConstant = 0.4;
       r.aIn = aIn;
       await ctx.audioWorklet.addModule("/voz-worklet.js");
       const ai = new GoogleGenAI({ apiKey: s.token, httpOptions: { apiVersion: "v1alpha" } });
