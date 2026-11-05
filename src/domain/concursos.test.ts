@@ -21,3 +21,16 @@ describe("concursos", () => {
     expect(byUf(l).has("RJ")).toBe(false);
   });
 });
+
+import { inferUf } from "./concursos";
+describe("inferUf", () => {
+  it("acha o estado pelo nome ou pela sigla", () => {
+    expect(inferUf("PC MG", "Policia Civil do Estado de Minas Gerais")).toBe("MG");
+    expect(inferUf("Prefeitura de Natal", "Rio Grande do Norte")).toBe("RN");
+    expect(inferUf("Polícia Penal do Mato Grosso do Sul")).toBe("MS");
+  });
+  it("não chuta quando é nacional ou ambíguo", () => {
+    expect(inferUf("PRF 2027", "Polícia Rodoviária Federal")).toBeNull();
+    expect(inferUf("Consórcio SP e MG")).toBeNull();
+  });
+});

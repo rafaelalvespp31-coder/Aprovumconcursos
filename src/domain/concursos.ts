@@ -5,6 +5,24 @@ export const UFS = [
   ["PA", "Pará"], ["PB", "Paraíba"], ["PR", "Paraná"], ["PE", "Pernambuco"], ["PI", "Piauí"], ["RJ", "Rio de Janeiro"], ["RN", "Rio Grande do Norte"],
   ["RS", "Rio Grande do Sul"], ["RO", "Rondônia"], ["RR", "Roraima"], ["SC", "Santa Catarina"], ["SP", "São Paulo"], ["SE", "Sergipe"], ["TO", "Tocantins"],
 ] as const;
+const plain = (t: string) => t.normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase();
+
+/** Estado citado no texto (nome por extenso ou sigla em maiúsculas, ex.: "PC MG"); null se nenhum ou se houver mais de um. */
+export function inferUf(...texts: Array<string | null | undefined>): string | null {
+  const found = new Set<string>();
+  for (const t of texts) {
+    if (!t) continue;
+    const p = plain(t);
+    for (const [u, n] of UFS) {
+      // "Rio Grande do Sul/Norte" e "Mato Grosso (do Sul)" contêm outros nomes: confere a palavra inteira.
+      if (new RegExp(`(^|[^a-z])${plain(n)}([^a-z]|$)`).test(p)) found.add(u);
+      if (new RegExp(`(^|[^A-Za-z])${u}([^A-Za-z]|$)`).test(t)) found.add(u);
+    }
+  }
+  // "Mato Grosso do Sul" também contém "Mato Grosso": o nome mais longo vence.
+  for (const u of [...found]) for (const o of found) if (u !== o && plain(UF_NAME[o]!).startsWith(plain(UF_NAME[u]!))) found.delete(u);
+  return found.size === 1 ? [...found][0]! : null;
+}
 export type Uf = (typeof UFS)[number][0];
 export const UF_NAME: Record<string, string> = Object.fromEntries(UFS);
 

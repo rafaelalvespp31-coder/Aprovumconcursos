@@ -44,7 +44,7 @@ export function ContestForm({ contest, action }: { contest: (Contest & { active:
       <p className="t-small font-semibold sm:col-span-2">Onde aparece no mapa e nos filtros</p>
       <label className="text-sm">Estado (UF)
         <select name="uf" defaultValue={c?.uf ?? ""} className={input}>
-          <option value="">Nacional / sem estado (não aparece no mapa)</option>
+          <option value="">Nacional / sem estado (NÃO aparece no mapa nem em “Minas Gerais” etc.)</option>
           {UFS.map(([u, n]) => <option key={u} value={u}>{u} — {n}</option>)}
         </select>
       </label>

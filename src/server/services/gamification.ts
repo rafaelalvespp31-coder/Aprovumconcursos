@@ -2,7 +2,7 @@ import "server-only";
 import sharp from "sharp";
 import { z } from "zod";
 import { createAdminClient, createUserClient } from "@/server/supabase";
-import { UFS } from "@/domain/concursos";
+import { UFS, inferUf } from "@/domain/concursos";
 import { computeMentor } from "@/server/services/mentor";
 import { lessonPct } from "@/domain/mentor/engine";
 import { UserFacingError } from "@/server/services/trails";
@@ -262,6 +262,8 @@ export async function saveContest(adminId: string, id: string | null, input: unk
   const parsed = contestSchema.safeParse(input);
   if (!parsed.success) throw new UserFacingError("Confira os campos: nome, órgão e fonte são obrigatórios; datas no formato AAAA-MM-DD; link começando com http.", "invalid_input");
   const v = parsed.data;
+  // Sem estado escolhido, o concurso não aparece no mapa: se o texto cita um único estado, usa ele.
+  if (!v.uf) v.uf = inferUf(v.name, v.institution, v.orgao, v.city, v.location) as typeof v.uf;
   if (v.exam_date_confirmed && !v.exam_date) throw new UserFacingError("Para marcar a data como confirmada, informe a data da prova.", "invalid_input");
   const db = createAdminClient();
   const contestId = id ? z.uuid().parse(id) : crypto.randomUUID();
