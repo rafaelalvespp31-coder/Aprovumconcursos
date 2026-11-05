@@ -166,13 +166,13 @@ export async function startRound(topicId: string): Promise<QuizRound> {
   const lv = levelInfo(attempts.length);
   const pool = itemsFor(topic, lv.tier);
   const rnd = seeded(`${topicId}:${Date.now()}:${Math.random()}`);
-  const order = (list: ClozeItem[]) => {
-    const sh = shuffle(list, rnd);
-    return lv.tier.tier >= 3 ? sh.sort((a, b) => b.answers.length - a.answers.length) : sh;
-  };
-  const fresh = order(pool.filter((i) => !s.hit.has(`${topicId}:${i.nodeKey}`)));
-  const done = order(pool.filter((i) => s.hit.has(`${topicId}:${i.nodeKey}`)));
-  const items = [...fresh, ...done].slice(0, lv.toNext).map(({ answers, ...rest }) => ({ ...rest, blanks: answers.length }));
+  // Já respondida (certa ou errada) não volta: só aparece de novo quando o aluno esgota o tema,
+  // e então as mais antigas vêm primeiro. A ordem é sempre aleatória.
+  const lastSeen = new Map<string, string>();
+  for (const a of attempts) if (a.topic_id === topicId && !lastSeen.has(a.node_key)) lastSeen.set(a.node_key, a.created_at);
+  const fresh = shuffle(pool.filter((i) => !lastSeen.has(i.nodeKey)), rnd);
+  const seen = pool.filter((i) => lastSeen.has(i.nodeKey)).sort((x, y) => lastSeen.get(x.nodeKey)!.localeCompare(lastSeen.get(y.nodeKey)!));
+  const items = [...fresh, ...seen].slice(0, lv.toNext).map(({ answers, ...rest }) => ({ ...rest, blanks: answers.length }));
   return { topic: s.topics[0]!, items, level: lv };
 }
 
