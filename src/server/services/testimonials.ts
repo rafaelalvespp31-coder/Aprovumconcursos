@@ -150,10 +150,11 @@ const statsSchema = z.object({
   approved: z.number().int().min(0).max(100_000_000).nullable(),
   satisfaction: z.string().trim().max(10).nullable(),
 });
-const heroSchema = z.object({ desktop: z.string().trim().url().startsWith("https://").nullable(), mobile: z.string().trim().url().startsWith("https://").nullable() });
+const trim = z.number().min(0).max(40).nullable().optional();
+const heroSchema = z.object({ desktop: z.string().trim().url().startsWith("https://").nullable(), mobile: z.string().trim().url().startsWith("https://").nullable(), desktopTrim: trim, mobileTrim: trim });
 const quoteSchema = z.object({ text: z.string().trim().min(5).max(300), authors: z.string().trim().min(2).max(120) });
 
-export interface StoriesData { founders: Founder[]; stats: { students: number | null; approved: number | null; satisfaction: string | null; studentsReal: number; approvedReal: number }; quote: StoryQuote; hero: { desktop: string | null; mobile: string | null } }
+export interface StoriesData { founders: Founder[]; stats: { students: number | null; approved: number | null; satisfaction: string | null; studentsReal: number; approvedReal: number }; quote: StoryQuote; hero: { desktop: string | null; mobile: string | null; desktopTrim?: number | null; mobileTrim?: number | null } }
 
 export async function loadStories(): Promise<StoriesData> {
   const db = createAdminClient();

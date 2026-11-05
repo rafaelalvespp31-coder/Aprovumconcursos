@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowRight, Check, CheckCircle2, Play, Star, Trophy, X, Heart, Sparkles, Quote } from "lucide-react";
 import { TESTIMONIAL_CATEGORIES, formatCount, formatDuration, videoSource, type Founder, type StoryQuote, type Testimonial, type TestimonialCategory } from "@/domain/testimonials";
+import { TrimmedImg } from "./trimmed-img";
 import { UF_NAME } from "@/domain/concursos";
 
 export interface StoriesView {
@@ -12,7 +13,7 @@ export interface StoriesView {
   stats: { students: number | null; approved: number | null; satisfaction: string | null; studentsReal: number; approvedReal: number };
   quote: StoryQuote;
   /** Banner dos idealizadores enviado pelo admin (nulo = arte original). */
-  hero?: { desktop: string | null; mobile: string | null };
+  hero?: { desktop: string | null; mobile: string | null; desktopTrim?: number | null; mobileTrim?: number | null };
 }
 
 type Filter = "todos" | TestimonialCategory;
@@ -85,8 +86,7 @@ export function DepoimentosView({ items, stories }: { items: Testimonial[]; stor
         <h1 id="dp-titulo" className="sr-only">Histórias que inspiram. Propósitos que transformam.</h1>
         <div className="dp-hero-d">
           {stories.hero?.desktop ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={stories.hero.desktop} alt="" width={1024} height={369} data-testid="hero-personalizado" />
+            <TrimmedImg src={stories.hero.desktop} trim={stories.hero.desktopTrim} width={1024} height={369} testId="hero-personalizado" />
           ) : (
             <Image src="/depoimentos/hero-d.webp" alt="" width={1024} height={369} priority sizes="(min-width: 1100px) 1000px, 100vw" />
           )}
@@ -96,8 +96,7 @@ export function DepoimentosView({ items, stories }: { items: Testimonial[]; stor
           <p className="dp-h1" aria-hidden><span>HISTÓRIAS QUE INSPIRAM.</span><b>PROPÓSITOS QUE TRANSFORMAM.</b></p>
           <p className="dp-lead">Conheça quem faz parte dessa jornada. Alunos, aprovados e pessoas reais que encontraram no APROVUM a força para conquistar seus sonhos.</p>
           {stories.hero?.mobile ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img className="dp-hero-arte" src={stories.hero.mobile} alt="" width={594} height={369} />
+            <TrimmedImg className="dp-hero-arte dp-hero-custom" src={stories.hero.mobile} trim={stories.hero.mobileTrim} width={594} height={369} />
           ) : (
             <Image className="dp-hero-arte" src="/depoimentos/hero-arte-m.webp" alt="" width={594} height={369} />
           )}

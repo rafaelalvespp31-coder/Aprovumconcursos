@@ -3784,7 +3784,8 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   .dp-modal { padding: 0; align-items: end; } .dp-player, .dp-historia { border-radius: 16px 16px 0 0; max-height: 94dvh; width: 100%; }
 }
 @media (min-width: 820px) { .dp-banner-m { display: none; } }
-@media (max-width: 819px) { .dp-hero-arte { -webkit-mask-image: linear-gradient(90deg, transparent 8%, #000 22%); mask-image: linear-gradient(90deg, transparent 8%, #000 22%); } }
+@media (max-width: 819px) { .dp-hero-arte { -webkit-mask-image: linear-gradient(90deg, transparent 8%, #000 22%); mask-image: linear-gradient(90deg, transparent 8%, #000 22%); } .dp-hero-arte.dp-hero-custom { -webkit-mask-image: none; mask-image: none; } }
+.dp-trim { display: block; width: 100%; } .dp-trim > img { display: block; width: 100%; height: auto; }
 
 /* Banner enviado pelo admin já traz os nomes: as placas sobrepostas ficam ocultas naquele tamanho de tela. */
 @media (min-width: 820px) { .dp-hero.has-d .dp-placa { display: none; } }
