@@ -3,11 +3,12 @@ import { GoogleGenAI, Modality } from "@google/genai";
 import { createAdminClient } from "../supabase";
 import { logEvent } from "../observability";
 import { getMyPlan } from "./plans";
+import { isAdmin } from "../auth";
 import { UserFacingError, enforceRateLimit } from "./trails";
 import { brDay } from "@/domain/plans/limits";
 import { loadMentorSnapshot } from "./mentor";
 import { recommend } from "@/domain/mentor/engine";
-import { VOICE_DAILY_SECONDS, VOICE_PERSONAL_RULES, VOICE_SYSTEM_PROMPT, buildVoiceContext, cleanTranscript, VOICE_TOKEN_GRACE_SECONDS, settleSeconds, voiceLeft } from "@/domain/mentor/voice";
+import { ADMIN_TIME_RULE, STUDENT_TIME_RULE, VOICE_DAILY_SECONDS, VOICE_PERSONAL_RULES, VOICE_SYSTEM_PROMPT, buildVoiceContext, cleanTranscript, VOICE_TOKEN_GRACE_SECONDS, settleSeconds, voiceLeft } from "@/domain/mentor/voice";
 
 /**
  * Mentor por voz (Gemini Live). A chave do Google fica só aqui no servidor: o navegador recebe um
@@ -22,7 +23,10 @@ const DEFAULT_VOICE = "Algenib";
 
 export type VoiceStatus =
   | { available: false; reason: "plano" | "indisponivel"; limit: number; left: 0 }
-  | { available: true; limit: number; left: number };
+  | { available: true; limit: number; left: number; unlimited?: boolean };
+
+/** Admin não tem limite diário: a janela do token é só uma folga de segurança (2 h). */
+export const ADMIN_VOICE_SECONDS = 7200;
 
 interface Row {
   user_id: string;
@@ -58,6 +62,10 @@ async function usedToday(userId: string): Promise<number> {
 }
 
 export async function getVoiceStatus(userId: string): Promise<VoiceStatus> {
+  if (await isAdmin()) {
+    if (!hasKey()) return { available: false, reason: "indisponivel", limit: VOICE_DAILY_SECONDS, left: 0 };
+    return { available: true, limit: ADMIN_VOICE_SECONDS, left: ADMIN_VOICE_SECONDS, unlimited: true };
+  }
   const plan = await getMyPlan(userId);
   if (!plan.unlimited) return { available: false, reason: "plano", limit: VOICE_DAILY_SECONDS, left: 0 };
   if (!hasKey()) return { available: false, reason: "indisponivel", limit: VOICE_DAILY_SECONDS, left: 0 };
@@ -97,27 +105,31 @@ export interface VoiceSession {
   voice: string;
   left: number;
   limit: number;
+  unlimited?: boolean;
 }
 
 /** Libera uma conversa: confere plano e saldo do dia, reserva o tempo e cria o token efêmero. */
 export async function startVoice(userId: string): Promise<VoiceSession> {
+  const admin = await isAdmin();
   const plan = await getMyPlan(userId);
-  if (!plan.unlimited) throw new UserFacingError("O Mentor por voz é exclusivo dos planos pagos.", "plan_limit");
+  if (!admin && !plan.unlimited) throw new UserFacingError("O Mentor por voz é exclusivo dos planos pagos.", "plan_limit");
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new UserFacingError("O Mentor por voz está indisponível no momento. Tente mais tarde.", "voice_unavailable");
   await enforceRateLimit(userId, "mentor_voz", 6, 60);
 
-  const instruction = await personalPrompt(userId); // antes de reservar o tempo: a leitura dos dados não gasta os 3 minutos
-  await settle(userId); // conversa anterior que não foi encerrada direito
-  const left = voiceLeft(await usedToday(userId));
-  if (left <= 0) throw new UserFacingError("Seus 3 minutos de voz de hoje acabaram. Eles voltam amanhã!", "plan_limit");
-
-  const db = createAdminClient();
+  const base = await personalPrompt(userId);
+  const instruction = admin ? base.replace(STUDENT_TIME_RULE, ADMIN_TIME_RULE) : base; // antes de reservar o tempo: a leitura dos dados não gasta os 3 minutos
   const now = new Date();
-  const mark = await db
-    .from("mentor_voice_usage")
-    .upsert({ user_id: userId, day: brDay().day, used_seconds: VOICE_DAILY_SECONDS - left, active_started_at: now.toISOString(), active_reserved: left, updated_at: now.toISOString() }, { onConflict: "user_id,day" });
-  if (mark.error) throw new Error(mark.error.message);
+  let left = ADMIN_VOICE_SECONDS;
+  if (!admin) {
+    await settle(userId); // conversa anterior que não foi encerrada direito
+    left = voiceLeft(await usedToday(userId));
+    if (left <= 0) throw new UserFacingError("Seus 3 minutos de voz de hoje acabaram. Eles voltam amanhã!", "plan_limit");
+    const mark = await createAdminClient()
+      .from("mentor_voice_usage")
+      .upsert({ user_id: userId, day: brDay().day, used_seconds: VOICE_DAILY_SECONDS - left, active_started_at: now.toISOString(), active_reserved: left, updated_at: now.toISOString() }, { onConflict: "user_id,day" });
+    if (mark.error) throw new Error(mark.error.message);
+  }
 
   const model = process.env.GEMINI_LIVE_MODEL?.trim() || DEFAULT_MODEL;
   const voice = process.env.GEMINI_VOICE?.trim() || DEFAULT_VOICE;
@@ -133,18 +145,19 @@ export async function startVoice(userId: string): Promise<VoiceSession> {
       },
     });
     if (!token.name) throw new Error("token vazio");
-    return { token: token.name, model, voice, left, limit: VOICE_DAILY_SECONDS };
+    return admin ? { token: token.name, model, voice, left, limit: ADMIN_VOICE_SECONDS, unlimited: true } : { token: token.name, model, voice, left, limit: VOICE_DAILY_SECONDS };
   } catch (e) {
-    await settle(userId, 0).catch(() => {}); // não houve conversa: devolve a reserva
+    if (!admin) await settle(userId, 0).catch(() => {}); // não houve conversa: devolve a reserva
     await logEvent("mentor.voz.token_error", { error: (e as Error).message.slice(0, 300) });
     throw new UserFacingError("Não foi possível iniciar o Mentor por voz agora. Tente novamente em instantes.", "voice_error");
   }
 }
 
 /** Fim da conversa: cobra o tempo falado (limitado ao relógio do servidor) e devolve o saldo. */
-export async function endVoice(userId: string, reportedSeconds: unknown, transcript?: { student?: unknown; mentor?: unknown }): Promise<{ left: number }> {
+export async function endVoice(userId: string, reportedSeconds: unknown, transcript?: { student?: unknown; mentor?: unknown }): Promise<{ left: number; unlimited?: boolean }> {
+  const admin = await isAdmin();
   const reported = typeof reportedSeconds === "number" && Number.isFinite(reportedSeconds) ? reportedSeconds : null;
-  await settle(userId, reported);
+  if (!admin) await settle(userId, reported);
   // Memória do Mentor: guarda o que foi dito (texto), limpo e limitado, para a próxima conversa.
   const student = cleanTranscript(transcript?.student);
   const mentor = cleanTranscript(transcript?.mentor);
@@ -152,5 +165,6 @@ export async function endVoice(userId: string, reportedSeconds: unknown, transcr
     const ins = await createAdminClient().from("mentor_voice_notes").insert({ user_id: userId, day: brDay().day, student_text: student, mentor_text: mentor });
     if (ins.error) await logEvent("mentor.voz.nota_error", { error: ins.error.message.slice(0, 200) });
   }
+  if (admin) return { left: ADMIN_VOICE_SECONDS, unlimited: true };
   return { left: voiceLeft(await usedToday(userId)) };
 }

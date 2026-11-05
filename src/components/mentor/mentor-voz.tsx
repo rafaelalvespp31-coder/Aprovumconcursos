@@ -5,7 +5,7 @@ import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@go
 import type { Bands } from "./voz-orbe";
 import { VozView, type Fase } from "./voz-view";
 
-type Status = { available: boolean; reason?: "plano" | "indisponivel"; limit: number; left: number };
+type Status = { available: boolean; reason?: "plano" | "indisponivel"; limit: number; left: number; unlimited?: boolean };
 
 const OUT_RATE = 24000;
 
@@ -31,6 +31,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
   const [fase, setFase] = useState<Fase>("carregando");
   const [left, setLeft] = useState(0);
   const [limit, setLimit] = useState(180);
+  const [unlimited, setUnlimited] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
 
@@ -83,6 +84,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       const s = j.status;
       setLimit(s.limit);
       setLeft(s.left);
+      setUnlimited(!!s.unlimited);
       setFase(!s.available ? (s.reason === "plano" ? "plano" : "indisponivel") : s.left <= 0 ? "esgotado" : "pronto");
     } catch {
       setMsg("Não foi possível carregar o Mentor por voz.");
@@ -201,7 +203,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       r.stream = stream;
       const res = await fetch("/api/mentor/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "start" }) });
-      const j = (await res.json()) as { session?: { token: string; model: string; voice: string; left: number; limit: number }; error?: string; code?: string };
+      const j = (await res.json()) as { session?: { token: string; model: string; voice: string; left: number; limit: number; unlimited?: boolean }; error?: string; code?: string };
       if (!res.ok || !j.session) {
         stream.getTracks().forEach((t) => t.stop());
         r.stream = null;
@@ -266,9 +268,11 @@ export function MentorVoz({ base = "" }: { base?: string }) {
 
       setLeft(s.left);
       setLimit(s.limit);
+      setUnlimited(!!s.unlimited);
       setFase("ao-vivo");
       r.timer = setInterval(() => {
         const rest = r.leftAtStart - Math.floor((Date.now() - r.startedAt) / 1000);
+        if (s.unlimited) return; // admin: sem limite de tempo
         setLeft(Math.max(0, rest));
         if (rest <= 0) void encerrar("tempo");
       }, 500);
@@ -284,5 +288,5 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     }
   };
 
-  return <VozView fase={fase} left={left} limit={limit} speaking={speaking} msg={msg} level={nivel} base={base} onStart={() => void iniciar()} onStop={() => void encerrar("usuario")} />;
+  return <VozView fase={fase} left={left} limit={limit} unlimited={unlimited} speaking={speaking} msg={msg} level={nivel} base={base} onStart={() => void iniciar()} onStop={() => void encerrar("usuario")} />;
 }

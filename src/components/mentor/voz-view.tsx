@@ -20,6 +20,7 @@ export function VozView({
   fase,
   left,
   limit,
+  unlimited = false,
   speaking,
   msg,
   level,
@@ -30,6 +31,7 @@ export function VozView({
   fase: Fase;
   left: number;
   limit: number;
+  unlimited?: boolean;
   speaking: boolean;
   msg: string | null;
   level: () => Bands;
@@ -80,7 +82,14 @@ export function VozView({
         <p className="voz-texto">{sub}</p>
       </div>
 
-      {showTime && (
+      {showTime && unlimited && (
+        <div className="voz-tempo" data-testid="voz-tempo">
+          <p className="voz-restam" role="status">
+            <Timer className="h-[18px] w-[18px]" aria-hidden /> Sem limite de tempo (admin)
+          </p>
+        </div>
+      )}
+      {showTime && !unlimited && (
         <div className="voz-tempo" data-testid="voz-tempo">
           <p className="voz-restam" data-aviso={live && left <= 20 ? "1" : undefined} role="timer" aria-label="Tempo de voz que resta hoje">
             <Timer className="h-[18px] w-[18px]" aria-hidden /> {formatClock(left)} restantes hoje
