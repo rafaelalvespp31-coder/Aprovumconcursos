@@ -229,6 +229,7 @@ export function PastelShell({
   }, [path, collapsed, estudosVisivel, evolucaoVisivel, summary.subjects, activeIndex]);
   const [toast, setToast] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const menuRef = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
     if (!toast) return;
@@ -454,10 +455,10 @@ export function PastelShell({
               style={{ top: "env(safe-area-inset-top, 0px)" }}
             >
               {isEstudos ? (
-                <EstudosHeader summary={summary} basePath={basePath} items={items} searchRef={searchRef} />
+                <EstudosHeader summary={summary} basePath={basePath} items={items} searchRef={searchRef} menuRef={menuRef} />
               ) : (
                 <>
-                {isAula && <EstudosHeader summary={summary} basePath={basePath} items={items} searchRef={searchRef} mobileOnly />}
+                {isAula && <EstudosHeader summary={summary} basePath={basePath} items={items} searchRef={searchRef} menuRef={menuRef} mobileOnly />}
                 <div className={isAula ? "hidden lg:block" : undefined}>
               <div className="flex h-[88px] items-center justify-between gap-4 px-5 lg:px-10">
                 <div className="flex min-w-0 flex-1 items-center gap-4">
@@ -466,6 +467,7 @@ export function PastelShell({
                       {"//"}
                     </span>
                   )}
+                  <MenuButton menuRef={menuRef} dark={dark} />
                   <Link
                     href={`${basePath}/perfil`}
                     aria-label="Perfil e conquistas"
@@ -525,6 +527,12 @@ export function PastelShell({
               )}
             </header>
 
+            {isPainel && (
+              <div className="fixed left-3 z-30 lg:hidden" style={{ top: "calc(env(safe-area-inset-top, 0px) + 10px)" }}>
+                <span className="flex rounded-[12px] bg-black/55 backdrop-blur-md"><MenuButton menuRef={menuRef} dark /></span>
+              </div>
+            )}
+            <MobileMenu menuRef={menuRef} items={items} summary={summary} basePath={basePath} />
             <ConnectivityBanner />
             <main className={isPainel ? "pb-28 lg:px-10 lg:py-7 lg:pb-12" : "px-4 py-7 pb-28 sm:px-5 lg:px-10 lg:pb-12"}>
               {isStudy && <div id="estudo-relogio-slot" className="mb-3 flex justify-center lg:hidden" />}
@@ -663,12 +671,78 @@ function QuickSearch({ inputRef, basePath, items, dark = false }: { inputRef: Re
 }
 
 
+/** Menu do celular (hambúrguer): um só para todas as telas; o botão de cada cabeçalho abre este diálogo. */
+function MobileMenu({ menuRef, items, summary, basePath }: { menuRef: React.RefObject<HTMLDialogElement | null>; items: NavItem[]; summary: ShellSummary; basePath: string }) {
+  const path = usePathname();
+  return (
+    <>
+      {/* Menu do celular (hambúrguer) */}
+      <dialog
+        ref={menuRef}
+        aria-label="Menu"
+        className="m-0 h-dvh max-h-none w-[min(86vw,340px)] max-w-none bg-transparent p-0 backdrop:bg-black/50 open:animate-[enter_0.3s_ease-out]"
+        onClick={(e) => {
+          if (e.target === e.currentTarget) e.currentTarget.close();
+        }}
+      >
+        <nav aria-label="Menu principal" className="flex h-full flex-col overflow-y-auto bg-[#0A0A0A] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] text-white">
+          <div className="flex items-center justify-between gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/aprovum-login-logo.png" alt="APROVUM" width={523} height={107} className="h-auto w-[190px]" />
+            <button type="button" onClick={() => menuRef.current?.close()} aria-label="Fechar menu" className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.06] hover:bg-white/[0.12]">
+              <X className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
+          <ul className="mt-6 flex flex-col gap-1.5">
+            {items.filter((s) => s.id !== "novo" && !s.hidden).map((s) => {
+              const on = path === s.href || (s.also ?? []).some((a) => path.startsWith(a));
+              return (
+                <li key={s.id}>
+                  <Link
+                    href={s.href}
+                    onClick={() => menuRef.current?.close()}
+                    aria-current={on ? "page" : undefined}
+                    className={`flex min-h-14 items-center gap-3.5 rounded-[16px] px-3.5 ${on ? "bg-gradient-to-r from-[#FF1E1E] to-[#B30000] text-white" : "text-[#C9C9C9] hover:bg-white/[0.06]"}`}
+                  >
+                    <span className={`flex h-9 w-9 items-center justify-center rounded-[12px] ${on ? "bg-white/20" : "bg-[#1A1A1A]"}`}>
+                      <s.icon className="h-[18px] w-[18px]" aria-hidden />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold">{s.label}</span>
+                      <span className={`block text-[11.5px] ${on ? "text-white/80" : "text-[#9A9A9A]"}`}>{s.desc}</span>
+                    </span>
+                  </Link>
+                  {s.id === "trilhas" && <SubjectsSubmenu subjects={summary.subjects} base={basePath} path={path} variant="menu" onNavigate={() => menuRef.current?.close()} />}
+                </li>
+              );
+            })}
+          </ul>
+          <Link
+            href={`${basePath}/nova-trilha`}
+            onClick={() => menuRef.current?.close()}
+            className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-[16px] bg-gradient-to-br from-[#FF1E1E] to-[#B30000] font-semibold text-white"
+          >
+            <Plus className="h-5 w-5" aria-hidden /> Novo estudo
+          </Link>
+          {path.includes("/aula") && <div id="aula-arvore-movel" className="mt-5 border-t border-white/10 pt-4" />}
+        </nav>
+      </dialog>
+    </>
+  );
+}
+
+function MenuButton({ menuRef, dark = false }: { menuRef: React.RefObject<HTMLDialogElement | null>; dark?: boolean }) {
+  return (
+    <button type="button" onClick={() => menuRef.current?.showModal()} aria-label="Abrir menu" aria-haspopup="dialog" data-testid="abrir-menu" className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] lg:hidden ${dark ? "text-white hover:bg-white/10" : "text-[#0A0A0A] hover:bg-black/[0.05]"}`}>
+      <Menu className="h-6 w-6" aria-hidden />
+    </button>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Cabeçalho da página de Estudos
 // ---------------------------------------------------------------------------
-function EstudosHeader({ summary, basePath, items, searchRef, mobileOnly = false }: { summary: ShellSummary; basePath: string; items: NavItem[]; searchRef: React.RefObject<HTMLInputElement | null>; mobileOnly?: boolean }) {
-  const menuRef = useRef<HTMLDialogElement>(null);
-  const path = usePathname();
+function EstudosHeader({ summary, basePath, items, searchRef, menuRef, mobileOnly = false }: { summary: ShellSummary; basePath: string; items: NavItem[]; searchRef: React.RefObject<HTMLInputElement | null>; menuRef: React.RefObject<HTMLDialogElement | null>; mobileOnly?: boolean }) {
   const bell = (
     <Link
       href={`${basePath}/revisoes`}
@@ -722,57 +796,6 @@ function EstudosHeader({ summary, basePath, items, searchRef, mobileOnly = false
         </div>
       </div>
 
-      {/* Menu do celular (hambúrguer) */}
-      <dialog
-        ref={menuRef}
-        aria-label="Menu"
-        className="m-0 h-dvh max-h-none w-[min(86vw,340px)] max-w-none bg-transparent p-0 backdrop:bg-black/50 open:animate-[enter_0.3s_ease-out]"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) e.currentTarget.close();
-        }}
-      >
-        <nav aria-label="Menu principal" className="flex h-full flex-col overflow-y-auto bg-[#0A0A0A] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] text-white">
-          <div className="flex items-center justify-between gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/aprovum-login-logo.png" alt="APROVUM" width={523} height={107} className="h-auto w-[190px]" />
-            <button type="button" onClick={() => menuRef.current?.close()} aria-label="Fechar menu" className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.06] hover:bg-white/[0.12]">
-              <X className="h-5 w-5" aria-hidden />
-            </button>
-          </div>
-          <ul className="mt-6 flex flex-col gap-1.5">
-            {items.filter((s) => s.id !== "novo" && !s.hidden).map((s) => {
-              const on = path === s.href || (s.also ?? []).some((a) => path.startsWith(a));
-              return (
-                <li key={s.id}>
-                  <Link
-                    href={s.href}
-                    onClick={() => menuRef.current?.close()}
-                    aria-current={on ? "page" : undefined}
-                    className={`flex min-h-14 items-center gap-3.5 rounded-[16px] px-3.5 ${on ? "bg-gradient-to-r from-[#FF1E1E] to-[#B30000] text-white" : "text-[#C9C9C9] hover:bg-white/[0.06]"}`}
-                  >
-                    <span className={`flex h-9 w-9 items-center justify-center rounded-[12px] ${on ? "bg-white/20" : "bg-[#1A1A1A]"}`}>
-                      <s.icon className="h-[18px] w-[18px]" aria-hidden />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block font-semibold">{s.label}</span>
-                      <span className={`block text-[11.5px] ${on ? "text-white/80" : "text-[#9A9A9A]"}`}>{s.desc}</span>
-                    </span>
-                  </Link>
-                  {s.id === "trilhas" && <SubjectsSubmenu subjects={summary.subjects} base={basePath} path={path} variant="menu" onNavigate={() => menuRef.current?.close()} />}
-                </li>
-              );
-            })}
-          </ul>
-          <Link
-            href={`${basePath}/nova-trilha`}
-            onClick={() => menuRef.current?.close()}
-            className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-[16px] bg-gradient-to-br from-[#FF1E1E] to-[#B30000] font-semibold text-white"
-          >
-            <Plus className="h-5 w-5" aria-hidden /> Novo estudo
-          </Link>
-          {path.includes("/aula") && <div id="aula-arvore-movel" className="mt-5 border-t border-white/10 pt-4" />}
-        </nav>
-      </dialog>
     </>
   );
 }
