@@ -6,11 +6,11 @@ import type { ThemeCard } from "@/domain/studies/home";
 import { StartStudyDialog, type StartTheme } from "./start-dialog";
 
 /** Novo estudo no Mapa do Conhecimento: escolher o assunto no mapa e confirmar o estudo. */
-export function MapStart({ themes, name, base = "" }: { themes: ThemeCard[]; name: string | null; base?: string }) {
+export function MapStart({ themes, name, base = "", disciplines }: { themes: ThemeCard[]; name: string | null; base?: string; disciplines?: Array<{ slug: string; label: string }> }) {
   const [theme, setTheme] = useState<StartTheme | null>(null);
   return (
     <>
-      <KnowledgeOps themes={themes} name={name} base={base} onStart={setTheme} />
+      <KnowledgeOps themes={themes} disciplines={disciplines} name={name} base={base} onStart={setTheme} />
       <StartStudyDialog theme={theme} onClose={() => setTheme(null)} />
     </>
   );

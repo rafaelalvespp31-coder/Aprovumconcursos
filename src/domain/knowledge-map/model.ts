@@ -84,7 +84,14 @@ export function emptyTerritory(id: string, pos: [number, number] = [0, 0]): Terr
 }
 
 /** Matéria (fixa ou cadastrada pela equipe) pelo nome mostrado no card. */
-const modeOfLabel = (label: string): string | undefined => disciplineSlugs().find((m) => m !== "outra" && disciplineLabel(m) === label);
+const modeOfLabel = (label: string, extra: readonly RegisteredDiscipline[] = []): string | undefined =>
+  disciplineSlugs().find((m) => m !== "outra" && disciplineLabel(m) === label) ?? extra.find((d) => d.label === label)?.slug;
+
+/** Matéria cadastrada pelo admin (vem do servidor: no navegador o registro de matérias está vazio). */
+export interface RegisteredDiscipline {
+  slug: string;
+  label: string;
+}
 /** Ordem de destaque: Direito Penal fica à frente do núcleo, como na referência. */
 const ORDER = ["direito_penal", "lingua_portuguesa", "direito_constitucional", "informatica", "direito_administrativo", "matematica", "direito_processual_penal", "raciocinio_logico", "legislacao_especial", "conhecimentos_especificos"];
 
@@ -151,10 +158,12 @@ function foldersOf(topics: MapTopic[]): TopicFolder[] {
   });
 }
 
-export function buildKnowledgeMap(themes: readonly ThemeCard[]): KnowledgeMap {
+export function buildKnowledgeMap(themes: readonly ThemeCard[], registered: readonly RegisteredDiscipline[] = []): KnowledgeMap {
   const groups = new Map<string, ThemeCard[]>();
+  // Toda matéria cadastrada no admin ganha o seu território, mesmo antes de ter aulas.
+  for (const d of registered) groups.set(d.slug, []);
   for (const t of themes) {
-    const mode = modeOfLabel(t.discipline) ?? "outras";
+    const mode = modeOfLabel(t.discipline, registered) ?? "outras";
     const g = groups.get(mode) ?? [];
     g.push(t);
     groups.set(mode, g);
@@ -175,7 +184,7 @@ export function buildKnowledgeMap(themes: readonly ThemeCard[]): KnowledgeMap {
     const topics: MapTopic[] = list.map((t, k) => ({ id: t.id, title: t.title, questions: t.questions, minutes: t.minutes, study: t.study, pos: tp[k]!, group: t.group ?? null }));
     return {
       id,
-      label: id === "outras" ? "Outras matérias" : disciplineLabel(id) ?? list[0]!.discipline,
+      label: id === "outras" ? "Outras matérias" : disciplineLabel(id) ?? registered.find((d) => d.slug === id)?.label ?? list[0]!.discipline,
       color: st.color,
       icon: st.icon,
       pos,

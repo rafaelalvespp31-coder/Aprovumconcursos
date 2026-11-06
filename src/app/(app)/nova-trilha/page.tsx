@@ -1,4 +1,5 @@
 import { EmptyState } from "@/components/ui";
+import { customDisciplines } from "@/ai/pedagogy";
 import { getStudiesHome } from "@/server/studies-home";
 import { StartPicker } from "./start-picker";
 import { MapStart } from "./map-start";
@@ -13,7 +14,7 @@ export default async function NewTrailPage({ searchParams }: { searchParams: Pro
   const sp = await searchParams;
   const home = await getStudiesHome().catch(() => null);
   const themes = home?.themes ?? [];
-  if (sp.modo !== "lista") return <MapStart themes={themes} name={home?.name ?? null} />;
+  if (sp.modo !== "lista") return <MapStart themes={themes} name={home?.name ?? null} disciplines={customDisciplines().map((d) => ({ slug: d.slug, label: d.label }))} />;
   return (
     <div className="mx-auto max-w-5xl">
       <h1 className="sr-only">Novo estudo</h1>

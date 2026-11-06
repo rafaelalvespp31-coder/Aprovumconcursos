@@ -84,8 +84,23 @@ export const ART_ORDER_DRAWN = ["direito_penal", "lingua_portuguesa", "raciocini
 /** Cruzamento das rotas vermelhas no centro do campo (núcleo clicável). */
 const CORE = d(948, 522);
 
+/** Posições livres do campo para matérias cadastradas pelo admin (que não existem na arte). */
+const EXTRA_PLATES: Array<[number, number]> = [d(260, 800), d(700, 830), d(1150, 880), d(1500, 850), d(1850, 810), d(1400, 480), d(300, 320), d(1000, 150)];
+const extraSlots = new Map<string, ArtSlot>();
+/** Dá a cada matéria nova (fora da arte) o seu lugar no campo, sempre o mesmo para o mesmo conjunto. */
+export function registerExtraSlots(ids: readonly string[]) {
+  const novos = ids.filter((id) => !ART_SLOTS[id]).sort();
+  extraSlots.clear();
+  novos.forEach((id, i) => {
+    const k = i % EXTRA_PLATES.length;
+    const off = Math.floor(i / EXTRA_PLATES.length) * 90;
+    const [x, y] = EXTRA_PLATES[k]!;
+    extraSlots.set(id, { plate: [x + off, y], base: [x + off - 30, y + 90], drawn: false });
+  });
+}
+
 export function slotFor(id: string): ArtSlot {
-  return ART_SLOTS[id] ?? ART_SLOTS.outras!;
+  return ART_SLOTS[id] ?? extraSlots.get(id) ?? ART_SLOTS.outras!;
 }
 
 /** Instalações (px da arte): centro para onde a câmera olha no celular em pé e largura enquadrada. */

@@ -21,6 +21,17 @@ describe("mapa do conhecimento", () => {
     expect(m.totals).toEqual({ disciplines: 3, topics: 4, questions: 86, started: 2, done: 1 });
   });
 
+  it("matéria cadastrada no admin aparece no mapa, com ou sem aulas", () => {
+    const reg = [{ slug: "criminologia", label: "Criminologia" }, { slug: "etica", label: "Ética" }];
+    const m = buildKnowledgeMap([...themes, { id: "e", title: "Teorias", discipline: "Criminologia", questions: 5, minutes: 20, study: null }], reg);
+    const crim = m.territories.find((t) => t.id === "criminologia")!;
+    expect(crim.label).toBe("Criminologia");
+    expect(crim.topics.map((t) => t.id)).toEqual(["e"]);
+    const etica = m.territories.find((t) => t.id === "etica")!;
+    expect(etica).toMatchObject({ label: "Ética", topics: [], questions: 0, progress: null });
+    expect(m.territories.map((t) => t.id)).not.toContain("outras_criminologia");
+  });
+
   it("catálogo vazio vira mapa vazio (sem dados inventados)", () => {
     expect(buildKnowledgeMap([])).toEqual({ territories: [], totals: { disciplines: 0, topics: 0, questions: 0, started: 0, done: 0 } });
   });

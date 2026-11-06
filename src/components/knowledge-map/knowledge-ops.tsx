@@ -40,14 +40,14 @@ import {
   X,
   type LucideIcon,
 } from "lucide-react";
-import { buildKnowledgeMap, emptyTerritory, radarPoint, searchMap, type KnowledgeMap, type MapTopic, type SearchHit, type Territory, type TerritoryIcon } from "@/domain/knowledge-map/model";
+import { buildKnowledgeMap, emptyTerritory, radarPoint, searchMap, type KnowledgeMap, type MapTopic, type RegisteredDiscipline, type SearchHit, type Territory, type TerritoryIcon } from "@/domain/knowledge-map/model";
 import type { ThemeCard } from "@/domain/studies/home";
 import { groupKey } from "@/domain/catalog/topic-group";
 import { CameraRig, viewYawFor } from "./scene/rig";
 import type { Anchor } from "./scene/scene";
 import { terrainHeight } from "./scene/textures";
 import "./knowledge-ops.css";
-import { ART, ART_ORDER_DRAWN, ImageStage, PlateCamera, slotFor } from "./image-stage";
+import { ART, ART_ORDER_DRAWN, ImageStage, PlateCamera, registerExtraSlots, slotFor } from "./image-stage";
 import { SoldierAudio } from "./soldier-audio";
 
 const Scene = dynamic(() => import("./scene/scene"), { ssr: false, loading: () => <div className={"km-loading"}>Carregando o território…</div> });
@@ -98,6 +98,8 @@ function hasWebGL(): boolean {
 
 export interface KnowledgeOpsProps {
   themes: ThemeCard[];
+  /** Matérias cadastradas no admin (todas aparecem no mapa, mesmo sem aulas). */
+  disciplines?: RegisteredDiscipline[];
   /** Prefixo das rotas (galeria de desenvolvimento usa "/dev/galeria"). */
   base?: string;
   name?: string | null;
@@ -110,8 +112,12 @@ export interface KnowledgeOpsProps {
  * Camada A: cena 3D (carregada sob demanda). Camada B: HUD em HTML acessível, que também
  * funciona sozinha (lista) quando o WebGL não está disponível.
  */
-export function KnowledgeOps({ themes, base = "", name, onStart }: KnowledgeOpsProps) {
-  const full = useMemo(() => buildKnowledgeMap(themes), [themes]);
+export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: KnowledgeOpsProps) {
+  const full = useMemo(() => {
+    const m = buildKnowledgeMap(themes, disciplines);
+    registerExtraSlots(m.territories.map((t) => t.id));
+    return m;
+  }, [themes, disciplines]);
   const [filterDisc, setFilterDisc] = useState<Set<string>>(new Set());
   const [sit, setSit] = useState<Situacao>("todos");
   const map: KnowledgeMap = useMemo(() => {
