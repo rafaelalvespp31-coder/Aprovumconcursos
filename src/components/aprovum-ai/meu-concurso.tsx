@@ -15,7 +15,10 @@ const ST: Record<TreeTopic["status"], string> = {
   pendente: "Aguardando análise",
 };
 
-export function MeuConcurso({ tree, save }: { tree: PreparationTree; save: (f: FormData) => Promise<void> }) {
+export type PrepTab = "visao" | "aulas" | "raiox" | "questoes" | "desempenho";
+const TABS: Array<[PrepTab, string]> = [["visao", "VISÃO GERAL"], ["aulas", "AULAS DO EDITAL"], ["raiox", "RAIO-X DO EDITAL"], ["questoes", "QUESTÕES"], ["desempenho", "DESEMPENHO"]];
+
+export function MeuConcurso({ tree, save, tab, children }: { tree: PreparationTree; save: (f: FormData) => Promise<void>; tab: PrepTab; children?: React.ReactNode }) {
   const { prep, disciplines, totals } = tree;
   const [theme, setTheme] = useState<StartTheme | null>(null);
   const [edit, setEdit] = useState(false);
@@ -44,7 +47,15 @@ export function MeuConcurso({ tree, save }: { tree: PreparationTree; save: (f: F
             <button className="ai-go" type="submit">SALVAR</button>
           </form>
         )}
-        <div className="ai-ind">
+      </header>
+
+      <nav className="ai-tabs" aria-label="Seções da preparação">
+        {TABS.map(([k, label]) => <Link key={k} href={`/meu-concurso/${prep.id}?aba=${k}`} replace aria-current={tab === k ? "page" : undefined}>{label}</Link>)}
+      </nav>
+
+      {tab === "visao" && (
+        <section className="grid gap-3" aria-label="Visão geral">
+        <div className="ai-ind" style={{ marginTop: 0 }}>
           <div className="ai-kpi"><b>{totals.pct}%</b><span>Progresso no edital</span></div>
           <div className="ai-kpi"><b>{disciplines.length}</b><span>Disciplinas</span></div>
           <div className="ai-kpi"><b>{totals.lessonsAvailable}</b><span>Aulas disponíveis</span></div>
@@ -52,8 +63,44 @@ export function MeuConcurso({ tree, save }: { tree: PreparationTree; save: (f: F
           <div className="ai-kpi"><b>{totals.pending}</b><span>Tópicos pendentes</span></div>
           <div className="ai-kpi"><b>{totals.questionsAnswered}</b><span>Questões respondidas</span></div>
         </div>
-      </header>
+          <div className="ai-list" style={{ marginTop: 0 }}>
+            <h2>PROGRESSO POR DISCIPLINA</h2>
+            {disciplines.map((d) => (
+              <Link key={d.id} href={`/meu-concurso/${prep.id}?aba=aulas`} className="ai-item">
+                <div><b>{d.name}</b><small>{d.topics.length} tópicos · {d.doneCount} concluídos</small></div>
+                <span className="ai-meter" style={{ marginLeft: "auto" }} aria-label={`${d.pct}% concluído`}><i style={{ width: `${d.pct}%` }} /></span>
+              </Link>
+            ))}
+          </div>
+          <Link href={`/meu-concurso/${prep.id}/relatorio`} className="ai-go" style={{ textAlign: "center", lineHeight: "48px", display: "block" }}>VER RELATÓRIO COMPLETO DO EDITAL</Link>
+        </section>
+      )}
 
+      {tab === "questoes" && (
+        <section className="ai-rx" aria-label="Questões">
+          <h3>Questões</h3>
+          <p className="ai-sub">Você respondeu <b>{totals.questionsAnswered}</b> questões nas aulas desta preparação (Modo Jogo).</p>
+          <Link href="/questoes" className="ai-go" style={{ textAlign: "center", lineHeight: "48px", display: "block" }}>ABRIR CADERNOS DE QUESTÕES</Link>
+          <Link href="/quiz" className="ai-ghost" style={{ textAlign: "center", lineHeight: "44px" }}>Modo Jogo</Link>
+        </section>
+      )}
+
+      {tab === "desempenho" && (
+        <section className="ai-rx" aria-label="Desempenho">
+          <h3>Desempenho nesta preparação</h3>
+          <p className="ai-sub">{totals.done} de {totals.topics} tópicos concluídos ({totals.pct}%) · {totals.lessonsDone} de {totals.lessonsAvailable} aulas concluídas. Só conta o que você realmente estudou.</p>
+          <div className="ai-list" style={{ marginTop: 0 }}>
+            {disciplines.map((d) => (
+              <div key={d.id} className="ai-item"><div><b>{d.name}</b><small>{d.doneCount} de {d.topics.length} tópicos</small></div><span className="ai-pill">{d.pct}%</span></div>
+            ))}
+          </div>
+          <Link href="/desempenho" className="ai-ghost" style={{ textAlign: "center", lineHeight: "44px" }}>Ver desempenho geral</Link>
+        </section>
+      )}
+
+      {tab === "raiox" && children}
+
+      {tab === "aulas" && (<>
       <section className="ai-list" style={{ marginTop: 0 }} aria-label="Disciplinas">
         <h2>DISCIPLINAS DO EDITAL</h2>
         {disciplines.map((d) => (
@@ -113,6 +160,8 @@ export function MeuConcurso({ tree, save }: { tree: PreparationTree; save: (f: F
         <Link href={`/meu-concurso/${prep.id}/relatorio`} className="ai-go" style={{ textAlign: "center", lineHeight: "48px", display: "block" }}>VER RELATÓRIO COMPLETO DO EDITAL</Link>
         <Link href="/aprovum-ai" className="ai-ghost" style={{ textAlign: "center", lineHeight: "44px" }}>Enviar outro edital</Link>
       </section>
+
+      </>)}
 
       <StartStudyDialog theme={theme} onClose={() => setTheme(null)} />
     </div>

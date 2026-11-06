@@ -153,7 +153,7 @@ export async function createPreparation(userId: string, raw: unknown): Promise<{
 // Etapas
 // ---------------------------------------------------------------------------
 
-async function loadCatalog(): Promise<CatalogEntry[]> {
+export async function loadCatalog(): Promise<CatalogEntry[]> {
   const { data, error } = await createAdminClient().from("catalog_topics").select("id, title, aliases, discipline_mode, topic_group, law_code, articles").eq("status", "publicado").limit(5000);
   if (error) throw new Error(error.message);
   return ((data ?? []) as Row[]).map((r) => ({

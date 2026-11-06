@@ -61,6 +61,32 @@ const summaryOf = (r: Row): PrepSummary => ({
   createdAt: r.created_at as string,
 });
 
+/** Títulos das aulas do catálogo e o quanto o aluno realmente estudou de cada uma (0–100: leitura + níveis). */
+export async function loadStudy(userId: string, catalogIds: string[]): Promise<{ titles: Map<string, string>; studied: Map<string, number> }> {
+  const db = createAdminClient();
+  const titles = new Map<string, string>();
+  const studied = new Map<string, number>();
+  for (let o = 0; o < catalogIds.length; o += 150) {
+    const part = catalogIds.slice(o, o + 150);
+    const [c, ls] = await Promise.all([
+      db.from("catalog_topics").select("id, title").in("id", part),
+      db.from("lessons").select("id, catalog_topic_id").eq("user_id", userId).in("catalog_topic_id", part),
+    ]);
+    for (const t of (c.data ?? []) as Row[]) titles.set(t.id as string, t.title as string);
+    const lessonRows = (ls.data ?? []) as Row[];
+    if (!lessonRows.length) continue;
+    const pr = await db.from("learning_progress").select("lesson_id, levels_passed, reading_completed_at").eq("user_id", userId).in("lesson_id", lessonRows.map((l) => l.id as string));
+    const byLesson = new Map(((pr.data ?? []) as Row[]).map((p) => [p.lesson_id as string, p]));
+    for (const l of lessonRows) {
+      const p = byLesson.get(l.id as string);
+      const pct = p ? Math.round((((p.reading_completed_at ? 1 : 0) + Math.min(3, (p.levels_passed as number | null) ?? 0)) / 4) * 100) : 0;
+      const cid = l.catalog_topic_id as string;
+      studied.set(cid, Math.max(studied.get(cid) ?? 0, pct));
+    }
+  }
+  return { titles, studied };
+}
+
 /** Preparação completa do aluno (disciplinas › tópicos › aulas do catálogo) com o progresso real dele. */
 export async function getPreparationTree(userId: string, id: string): Promise<PreparationTree> {
   if (!UUID.test(id)) throw new UserFacingError("Preparação não encontrada.", "not_found");
@@ -82,26 +108,7 @@ export async function getPreparationTree(userId: string, id: string): Promise<Pr
     links.push(...((r.data ?? []) as Row[]));
   }
   const catalogIds = [...new Set(links.map((l) => l.catalog_topic_id as string))];
-  const titles = new Map<string, string>();
-  const studied = new Map<string, number>(); // catalog_topic_id → pct (0–100)
-  for (let o = 0; o < catalogIds.length; o += 150) {
-    const part = catalogIds.slice(o, o + 150);
-    const [c, ls] = await Promise.all([
-      db.from("catalog_topics").select("id, title").in("id", part),
-      db.from("lessons").select("id, catalog_topic_id").eq("user_id", userId).in("catalog_topic_id", part),
-    ]);
-    for (const t of (c.data ?? []) as Row[]) titles.set(t.id as string, t.title as string);
-    const lessonRows = (ls.data ?? []) as Row[];
-    if (!lessonRows.length) continue;
-    const pr = await db.from("learning_progress").select("lesson_id, levels_passed, reading_completed_at").eq("user_id", userId).in("lesson_id", lessonRows.map((l) => l.id as string));
-    const byLesson = new Map(((pr.data ?? []) as Row[]).map((p) => [p.lesson_id as string, p]));
-    for (const l of lessonRows) {
-      const p = byLesson.get(l.id as string);
-      const pct = p ? Math.round((((p.reading_completed_at ? 1 : 0) + Math.min(3, (p.levels_passed as number | null) ?? 0)) / 4) * 100) : 0;
-      const cid = l.catalog_topic_id as string;
-      studied.set(cid, Math.max(studied.get(cid) ?? 0, pct));
-    }
-  }
+  const { titles, studied } = await loadStudy(userId, catalogIds);
   const linksByTopic = new Map<string, LinkedLesson[]>();
   for (const l of links) {
     const cid = l.catalog_topic_id as string;

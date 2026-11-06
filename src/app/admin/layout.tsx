@@ -78,6 +78,12 @@ export default async function AdminLayout({
                 Concursos
               </Link>
               <Link
+                href="/admin/estrategico"
+                className="text-destaque underline-offset-2 hover:underline"
+              >
+                Estratégico
+              </Link>
+              <Link
                 href="/admin/editais"
                 className="text-destaque underline-offset-2 hover:underline"
               >
