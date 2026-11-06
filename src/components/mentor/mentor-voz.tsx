@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
+import { isFarewell } from "@/domain/mentor/voice";
 import { VozView, type Fase } from "./voz-view";
 
 type Status = { available: boolean; reason?: "plano" | "indisponivel"; limit: number; left: number; unlimited?: boolean };
@@ -52,7 +53,11 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     aOut: AnalyserNode | null;
     aIn: AnalyserNode | null;
     buf: Uint8Array<ArrayBuffer> | null;
-  }>({ session: null, ctx: null, stream: null, node: null, sources: new Set(), next: 0, startedAt: 0, leftAtStart: 0, said: [], replied: [], timer: null, active: false, aOut: null, aIn: null, buf: null });
+    /** Fala do aluno neste turno e despedida detectada (encerra depois que o Mentor responder). */
+    turn: string;
+    bye: boolean;
+    byeTimer: ReturnType<typeof setTimeout> | null;
+  }>({ session: null, ctx: null, stream: null, node: null, sources: new Set(), next: 0, startedAt: 0, leftAtStart: 0, said: [], replied: [], timer: null, active: false, aOut: null, aIn: null, buf: null, turn: "", bye: false, byeTimer: null });
 
   /** Energia do áudio de verdade (voz do Mentor e microfone): volume e faixas grave, média e aguda. */
   const nivel = useCallback((): Bands => {
@@ -102,6 +107,10 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     const r = ref.current;
     if (!r.active) return;
     r.active = false;
+    if (r.byeTimer) clearTimeout(r.byeTimer);
+    r.byeTimer = null;
+    r.bye = false;
+    r.turn = "";
     if (r.timer) clearInterval(r.timer);
     r.timer = null;
     const seconds = Math.ceil((Date.now() - r.startedAt) / 1000);
@@ -185,9 +194,27 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       setSpeaking(false);
     }
     const said = m.serverContent?.inputTranscription?.text;
-    if (said) r.said.push(said);
+    if (said) {
+      r.said.push(said);
+      r.turn = `${r.turn}${said}`;
+    }
     const replied = m.serverContent?.outputTranscription?.text;
+    // Despedida: quando o Mentor começa a responder, a fala do aluno já terminou; se ela for uma
+    // despedida, deixa o Mentor se despedir e encerra a conversa em seguida.
+    const starts = !!replied || (m.serverContent?.modelTurn?.parts ?? []).some((p) => p.inlineData?.data);
+    if (starts && !r.bye && isFarewell(r.turn)) {
+      r.bye = true;
+      r.byeTimer = setTimeout(() => void encerrar("usuario"), 15000); // rede de segurança
+    }
     if (replied) r.replied.push(replied);
+    if (m.serverContent?.turnComplete) {
+      if (r.bye) {
+        const falta = r.ctx ? Math.max(0, r.next - r.ctx.currentTime) : 0;
+        if (r.byeTimer) clearTimeout(r.byeTimer);
+        r.byeTimer = setTimeout(() => void encerrar("usuario"), Math.min(8000, falta * 1000 + 500));
+      }
+      r.turn = r.bye ? r.turn : "";
+    }
     for (const p of m.serverContent?.modelTurn?.parts ?? []) {
       if (p.inlineData?.data && (p.inlineData.mimeType ?? "").startsWith("audio/")) tocar(p.inlineData.data);
     }
@@ -218,6 +245,8 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       r.leftAtStart = s.left;
       r.said = [];
       r.replied = [];
+      r.turn = "";
+      r.bye = false;
       r.next = 0;
 
       const ctx = new AudioContext();

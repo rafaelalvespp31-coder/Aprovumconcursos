@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildContestContext, VOICE_DAILY_SECONDS, formatClock, settleSeconds, voiceLeft } from "./voice";
+import { buildContestContext, isFarewell, VOICE_DAILY_SECONDS, formatClock, settleSeconds, voiceLeft } from "./voice";
 
 describe("Mentor por voz: limite diário", () => {
   it("são 3 minutos por dia", () => expect(VOICE_DAILY_SECONDS).toBe(180));
@@ -90,4 +90,9 @@ describe("buildContestContext", () => {
   it("sem concursos manda usar a busca", () => {
     expect(buildContestContext([])).toContain("site oficial");
   });
+});
+
+describe("isFarewell", () => {
+  it.each(["Obrigado!", "Muito obrigado, Chat.", "Valeu", "Vamos encerrar essa conversa", "Estou desligando agora", "Depois a gente estuda mais", "Tá bom, até mais!", "Por hoje é só", "Tchau"])("encerra: %s", (t) => expect(isFarewell(t)).toBe(true));
+  it.each(["Obrigado, agora me explica o artigo quinto da Constituição", "O que é habeas corpus?", "Você acha que estou preparado para a PRF?", "", "Explica crase pra mim, depois eu faço questões"])("não encerra: %s", (t) => expect(isFarewell(t)).toBe(false));
 });

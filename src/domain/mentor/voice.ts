@@ -144,3 +144,29 @@ export function formatClock(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
+
+
+const norm = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+
+const FAREWELL = [
+  /\b(vamos|vou|quero|pode|podemos) (encerrar|terminar|finalizar|parar)\b/,
+  /\bencerr(ar|a|e|ando) (a |essa |esta )?(conversa|chat|sessao|ligacao)\b/,
+  /\b(estou|to|tou|vou) (desligando|desligar|saindo|sair|indo embora)\b/,
+  /\bdepois (a gente|nos|eu) (estuda|estudamos|volto|conversa|fala|se fala)\b/,
+  /\bdepois a gente (se )?(fala|conversa|estuda|ve)\b/,
+  /\b(ate mais|ate logo|ate amanha|ate a proxima|ate depois|tchau|falou|fui nessa|boa noite|tenho que ir|preciso ir)\b/,
+  /\b(por hoje (e|eh) (so|isso)|era so isso|e so isso|e isso por hoje|chega por hoje|por hoje chega)\b/,
+];
+const THANKS_ONLY = /^(chat |mentor )?(muito |valeu |brigado |obrigado |obrigada |valeu |ta bom |beleza |ok |entendi |show )*(obrigado|obrigada|brigado|valeu)( (chat|mentor|caveira))?$/;
+
+/**
+ * O aluno se despediu e quer encerrar a conversa? ("obrigado", "vamos encerrar", "estou desligando",
+ * "depois a gente estuda mais", "até mais"...). Só "obrigado" vale quando é a fala inteira (até ~4 palavras),
+ * para um agradecimento no meio de uma pergunta não derrubar a conversa.
+ */
+export function isFarewell(text: string): boolean {
+  const t = norm(text);
+  if (!t) return false;
+  if (FAREWELL.some((re) => re.test(t))) return true;
+  return t.split(" ").length <= 4 && THANKS_ONLY.test(t);
+}
