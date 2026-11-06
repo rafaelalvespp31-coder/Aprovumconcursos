@@ -3306,12 +3306,12 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .cl img { image-rendering: -webkit-optimize-contrast; }
 
 /* Cronômetro de estudo do dia (topo das telas de estudo) */
-.estudo-relogio { position: fixed; z-index: 45; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: rgba(10,10,10,0.92); color: #fff; border: 1px solid rgba(225,6,0,0.7); box-shadow: 0 6px 18px rgba(0,0,0,0.3), 0 0 14px rgba(225,6,0,0.35); font-family: Inter, sans-serif; pointer-events: none; }
+.estudo-relogio { position: fixed; z-index: 45; top: calc(env(safe-area-inset-top, 0px) + 8px); left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 999px; background: transparent; color: #080808; border: 1px solid rgba(225,6,0,0.45); box-shadow: none; text-shadow: 0 0 6px rgba(255,255,255,0.9); font-family: Inter, sans-serif; pointer-events: none; }
 .estudo-relogio.is-inline { position: static; transform: none; z-index: auto; pointer-events: none; }
 .estudo-relogio-t { font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: .02em; font-size: 15px; }
-.estudo-relogio-l { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #fca5a5; }
-.estudo-relogio.is-pausa { border-color: #f5b301; box-shadow: 0 6px 18px rgba(0,0,0,0.3), 0 0 14px rgba(245,179,1,0.45); }
-.estudo-relogio.is-pausa .estudo-relogio-l { color: #fcd34d; }
+.estudo-relogio-l { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: #C81018; }
+.estudo-relogio.is-pausa { border-color: #f5b301; box-shadow: none; }
+.estudo-relogio.is-pausa .estudo-relogio-l { color: #9a6b00; }
 @media (max-width: 420px) { .estudo-relogio-l { display: none; } }
 
 /* Telas baixas: o menu lateral inteiro cabe (sem descrições, itens mais compactos) */
