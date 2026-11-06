@@ -23,3 +23,9 @@ describe("títulos", () => {
     expect(displayTitle("Polícia Civil de Minas Gerais", "x.pdf")).toBe("Polícia Civil de Minas Gerais");
   });
 });
+
+it("Polícia Penal do Espírito Santo", () => {
+  const i = detectContestInfo(["Página 1\nPOLÍCIA PENAL DO ESTADO DO ESPÍRITO SANTO\nCONCURSO PÚBLICO Nº 001/2025\nANEXO III – CONTEÚDO PROGRAMÁTICO"]);
+  expect(i.contestName).toBe("Polícia Penal do Estado do Espírito Santo");
+  expect(i.year).toBe(2025);
+});

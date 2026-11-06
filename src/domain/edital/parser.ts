@@ -37,6 +37,7 @@ interface Line {
 const START_RE = /(conte[úu]dos? program[áa]ticos?|programas? (das|de) (provas?|mat[ée]rias|conte[úu]dos?)|conhecimentos? (b[áa]sicos|gerais|espec[íi]ficos|profissionais)|anexo\s+[ivxl\d]+.{0,60}(conte[úu]do|programa|mat[ée]rias))/i;
 const END_RE = /^(cronograma|dos recursos|das disposi[çc][õo]es (finais|gerais)|disposi[çc][õo]es (finais|gerais)|quadro de vagas|modelo de|formul[áa]rio|anexo\s+[ivxl\d]+\s*[-–—:.]?\s*(?!.*(conte[úu]do|programa|mat[ée]rias))\S|da (convoca[çc][ãa]o|nomea[çc][ãa]o|posse)|dos? (resultados?|crit[ée]rios de desempate))/i;
 const GROUP_RE = /^(conhecimentos? (b[áa]sicos|gerais|espec[íi]ficos|profissionais)|bloco\s+[ivx\d]+|parte\s+[ivx\d]+|etapa\s+[ivx\d]+|prova\s+(objetiva|discursiva|escrita)|(para|cargo)\b.*|nível\s+\w+)\s*[:.]?$/i;
+const KNOW_GROUP = /^conhecimentos? (b[áa]sicos|gerais|espec[íi]ficos|especiais|profissionais|especializados)\s*[:.]?$/i;
 const NOISE_RE = /^(\d{1,3}|p[áa]gina\s+\d+(\s+de\s+\d+)?|\d+\s*\/\s*\d+|-\s*\d+\s*-)$/i;
 const ITEM_START = /^(\d{1,2}(?:\.\d{1,2}){0,3})[.)]?\s+(?=\S)/;
 const LETTER_START = /^([a-z])[).]\s+(?=\S)/;
@@ -65,7 +66,7 @@ function toLines(pages: readonly string[]): Line[] {
     s.add(l.page);
     count.set(k, s);
   }
-  return out.filter((l) => !NOISE_RE.test(l.text) && !((count.get(fold(l.text))?.size ?? 0) >= 4 && !ITEM_START.test(l.text)));
+  return out.filter((l) => !NOISE_RE.test(l.text) && !((count.get(fold(l.text))?.size ?? 0) >= (pages.length <= 6 ? 2 : 4) && !ITEM_START.test(l.text)));
 }
 
 /** A linha abre uma disciplina? Devolve o nome e o resto da linha (itens inline). */
@@ -131,6 +132,35 @@ function itemsOf(lines: Line[]): ParsedTopic[] {
   return out;
 }
 
+/**
+ * "CONHECIMENTOS ESPECÍFICOS:" sem matéria própria: os itens de 1º nível ("2. Direito Constitucional 2.1 …")
+ * são as disciplinas, e os subitens, os tópicos. Sem esse padrão, o bloco vira uma disciplina só.
+ */
+function disciplinesOfGroup(name: string, body: Line[]): ParsedDiscipline[] {
+  const cut = /\s(?=\d{1,2}(?:\.\d{1,2})+[.)]?\s+\S)/;
+  const parts: Array<{ title: string; page: number; lines: Line[] }> = [];
+  for (const l of body) {
+    const m = l.text.match(/^(\d{1,2})[.)]?\s+(?=\S)/);
+    const rest = m ? l.text.slice(m[0].length) : "";
+    if (m && !/^\d/.test(rest)) {
+      const at = rest.search(cut);
+      const title = (at >= 0 ? rest.slice(0, at) : rest).replace(/[\s:.;]+$/, "").trim();
+      if (title.length >= 3 && title.length <= 90 && !/[;]/.test(title) && (at >= 0 || title.split(" ").length <= 9)) {
+        parts.push({ title, page: l.page, lines: at >= 0 ? [{ text: rest.slice(at + 1), page: l.page }] : [] });
+        continue;
+      }
+    }
+    parts.at(-1)?.lines.push(l);
+  }
+  if (parts.length >= 2) {
+    return parts
+      .map((x) => ({ name: x.title, mode: modeOfDiscipline(x.title), page: x.page, topics: itemsOf(x.lines) }))
+      .filter((d) => d.topics.length);
+  }
+  const topics = itemsOf(body);
+  return topics.length ? [{ name: name.replace(/[:.]+$/, "").trim(), mode: modeOfDiscipline(name), page: body[0]?.page ?? 1, topics }] : [];
+}
+
 export function parseEdital(pages: readonly string[]): ParsedEdital {
   const lines = toLines(pages);
   const warnings: string[] = [];
@@ -169,15 +199,27 @@ export function parseEdital(pages: readonly string[]): ParsedEdital {
     if (topics.length) disciplines.push({ name: cur.name.replace(/\s+/g, " "), mode: modeOfDiscipline(cur.name), page: cur.page, topics });
     cur = null;
   };
+  let group: { name: string; body: Line[] } | null = null;
+  const flushGroup = () => {
+    if (group) disciplines.push(...disciplinesOfGroup(group.name, group.body));
+    group = null;
+  };
   for (let j = b.idx + 1; j < end; j++) {
     const l = lines[j]!;
     const h = headingOf(l.text, lines[j + 1]?.text);
     if (h) {
       flush();
+      flushGroup();
       cur = { name: h.name, page: l.page, body: h.rest ? [{ text: h.rest, page: l.page }] : [] };
-    } else if (cur) cur.body.push(l);
+    } else if (KNOW_GROUP.test(l.text)) {
+      flush();
+      flushGroup();
+      group = { name: l.text, body: [] };
+    } else if (group) (group as { body: Line[] }).body.push(l);
+    else if (cur) cur.body.push(l);
   }
   flush();
+  flushGroup();
 
   if (!disciplines.length) return fail("Encontrei o título do conteúdo programático, mas não consegui separar as disciplinas.");
   const total = disciplines.reduce((n, d) => n + d.topics.length, 0);

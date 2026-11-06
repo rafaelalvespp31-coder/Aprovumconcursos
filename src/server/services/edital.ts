@@ -20,6 +20,7 @@ export const MAX_EDITAL_BYTES = 25 * 1024 * 1024;
 const MAX_PAGES = 600;
 
 export type PrepStatus = "recebendo" | "lendo" | "identificando" | "mapeando" | "organizando" | "concluido" | "conferencia" | "erro";
+export const PARSER_V = 2;
 const STEP_OF: Record<PrepStatus, number> = { recebendo: 1, lendo: 2, identificando: 3, mapeando: 4, organizando: 5, concluido: 6, conferencia: 3, erro: 0 };
 
 export const createInput = z.object({
@@ -48,6 +49,8 @@ export interface PrepStats {
   conferencia?: number;
   pendentes?: number;
   coveragePct?: number;
+  /** Versão do leitor que montou a estrutura; versões antigas são reanalisadas sem novo envio. */
+  parserV?: number;
   failedAt?: PrepStatus;
   errorCode?: string;
   confidence?: number;
@@ -235,7 +238,7 @@ async function persistParsed(p: Row, parsed: ParsedEdital, manual: boolean) {
     }
     nTopics += rows.length;
   }
-  const stats = { ...((p.stats as PrepStats) ?? {}), disciplines: parsed.disciplines.length, topics: nTopics, confidence: Math.round(parsed.confidence * 100) / 100, warnings: parsed.warnings.slice(0, 6) };
+  const stats = { ...((p.stats as PrepStats) ?? {}), parserV: PARSER_V, disciplines: parsed.disciplines.length, topics: nTopics, confidence: Math.round(parsed.confidence * 100) / 100, warnings: parsed.warnings.slice(0, 6) };
   const range = parsed.sectionPages ? `[${parsed.sectionPages[0]},${parsed.sectionPages[1] + 1})` : null;
   await setStatus(id, "mapeando", { stats, section_pages: range, error: null });
   await event(id, userId, 3, manual ? "Conteúdo programático recebido na conferência manual." : `Conteúdo programático localizado${parsed.sectionPages ? ` (págs. ${parsed.sectionPages[0]}–${parsed.sectionPages[1]})` : ""}.`, "ok");
@@ -424,4 +427,16 @@ export async function deletePreparation(userId: string, id: string) {
   if (del.error) throw new Error(del.error.message);
   const others = await db.from("edital_preparations").select("id", { count: "exact", head: true }).eq("file_path", p.file_path as string);
   if (!others.count) await db.storage.from(EDITAL_BUCKET).remove([p.file_path as string]).catch(() => {});
+}
+
+/** Preparação feita por uma versão antiga do leitor: refaz a análise com o texto já guardado (sem reenviar o PDF). */
+export async function reanalyzeIfStale(userId: string, id: string): Promise<boolean> {
+  const p = await own(userId, id);
+  const st = (p.stats as PrepStats) ?? {};
+  if (p.status !== "concluido" || (st.parserV ?? 1) >= PARSER_V) return false;
+  const ex = await createAdminClient().from("edital_extractions").select("file_hash").eq("file_hash", p.file_hash as string).maybeSingle();
+  if (!ex.data) return false;
+  await setStatus(id, "identificando", { error: null, stats: { ...st, parserV: PARSER_V } });
+  await event(id, userId, 3, "Atualizando a leitura do edital com o leitor mais recente.", "info");
+  return true;
 }

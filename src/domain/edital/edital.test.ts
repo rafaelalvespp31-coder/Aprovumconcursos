@@ -112,3 +112,21 @@ describe("modeOfDiscipline", () => {
     ["Geografia de Minas Gerais", null],
   ])("%s → %s", (n, m) => expect(modeOfDiscipline(n)).toBe(m));
 });
+
+describe("blocos 'Conhecimentos específicos' sem matéria própria", () => {
+  const pages = [
+    "POLÍCIA PENAL DO ESTADO DO ESPÍRITO SANTO\nCONCURSO PÚBLICO Nº 001/2025\nANEXO III – CONTEÚDO PROGRAMÁTICO\nÉTICA NO SERVIÇO PÚBLICO:\n1. Ética e função pública 1.1 Conceitos de ética. 2. Improbidade Administrativa 4.1 Lei nº 8.429/1992.",
+    "POLÍCIA PENAL DO ESTADO DO ESPÍRITO SANTO\nCONCURSO PÚBLICO Nº 001/2025\nCONHECIMENTOS ESPECÍFICOS:\n1. Direitos Humanos 1.1. Conceito e evolução. 1.2. Declaração Universal.\n2. Direito Constitucional\n2.1. Princípios fundamentais. 2.2. Direitos e garantias.\n4. Direito Penal\n4.1. Aplicação da lei penal. 4.2. Teoria do crime.\n5. Direito Processual Penal\n5.1. Princípios do processo penal.",
+  ];
+  it("separa cada matéria do bloco e não mistura com a anterior", () => {
+    const r = parseEdital(pages);
+    const names = r.disciplines.map((d) => d.name);
+    expect(names).toEqual(expect.arrayContaining(["Direitos Humanos", "Direito Constitucional", "Direito Penal", "Direito Processual Penal"]));
+    const ethics = r.disciplines.find((d) => /ÉTICA/.test(d.name))!;
+    expect(ethics.topics.every((t) => !/Penal|Constitucional/.test(t.title))).toBe(true);
+    const penal = r.disciplines.find((d) => d.name === "Direito Penal")!;
+    expect(penal.mode).toBe("direito_penal");
+    expect(ethics.topics.at(-1)!.title).not.toMatch(/POLÍCIA/);
+    expect(penal.topics.map((t) => t.code)).toEqual(["4.1", "4.2"]);
+  });
+});
