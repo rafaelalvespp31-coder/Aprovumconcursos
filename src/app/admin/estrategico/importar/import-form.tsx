@@ -52,7 +52,7 @@ export function ImportForm({ example }: { example: string }) {
           {!pv.ok && <p className="mt-3 t-small font-semibold text-[#C81018]">Corrija os erros e confira novamente. Nada foi salvo.</p>}
         </section>
       )}
-      {done && <p role="status" className="rounded-lg bg-[#E8F7EE] p-3 t-small text-[#1d7a46]">{done.updated ? "Registros atualizados" : "Importado como rascunho"}. <Link className="font-semibold underline" href={`/admin/estrategico/${done.examId}`}>Revisar e publicar</Link></p>}
+      {done && <p role="status" className="rounded-lg bg-[#E8F7EE] p-3 t-small text-[#1d7a46]">{done.updated ? "Registros atualizados" : "Importado como rascunho"}. <Link className="font-semibold underline" href={`/admin/estrategico/${done.examId}`}>Abrir e publicar análise</Link></p>}
     </div>
   );
 }

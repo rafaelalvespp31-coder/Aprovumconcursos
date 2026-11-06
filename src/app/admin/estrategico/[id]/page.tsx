@@ -19,11 +19,11 @@ export default async function ExamAdminPage({ params }: { params: Promise<{ id: 
       <div>
         <Link href="/admin/estrategico" className="t-small text-tinta-suave hover:underline">← Catálogo estratégico</Link>
         <h1 className="mt-2 t-h2 font-bold">{exam.name}</h1>
-        <p className="t-small text-tinta-suave">{exam.organ ?? "—"} · Estado: <b>{STATUS_LABEL[exam.status]}</b>{exam.positions.length ? ` · Cargos: ${exam.positions.join(", ")}` : ""}</p>
+        <p className="t-small text-tinta-suave">{exam.organ ?? "—"} · Estado: <b className={exam.status === "publicado" ? "text-[#1d7a46]" : undefined}>{STATUS_LABEL[exam.status]}{exam.status === "publicado" ? " ✓ visível para os alunos no Raio-X" : ""}</b>{exam.positions.length ? ` · Cargos: ${exam.positions.join(", ")}` : ""}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {nextStatuses(exam.status).map((to: ExamStatus) => (
             <form key={to} action={async () => { "use server"; await setStatusAction(id, to); }}>
-              <button className={`rounded-full px-4 py-2 t-small font-semibold ${to === "publicado" ? "bg-destaque text-white" : "border border-linha"}`}>{to === "publicado" ? "Publicar para os alunos" : `Mover para ${STATUS_LABEL[to]}`}</button>
+              <button className={`rounded-full px-4 py-2 t-small font-semibold ${to === "publicado" ? "bg-destaque text-white" : "border border-linha"}`}>{to === "publicado" ? "Publicar análise" : `Mover para ${STATUS_LABEL[to]}`}</button>
             </form>
           ))}
           <form action={async () => { "use server"; await deleteExamAction(id); redirect("/admin/estrategico"); }}>

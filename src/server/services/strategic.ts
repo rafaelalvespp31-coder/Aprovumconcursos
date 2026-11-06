@@ -145,12 +145,13 @@ export async function listExams(): Promise<ExamListItem[]> {
   return ((ex.data ?? []) as Row[]).map((r) => ({ id: r.id as string, name: r.name as string, organ: (r.organ as string | null) ?? null, status: r.status as ExamStatus, editions: (years.get(r.id as string) ?? []).length, years: (years.get(r.id as string) ?? []).sort((a, b) => b - a), updatedAt: r.updated_at as string }));
 }
 
+// "Publicado" sai direto de qualquer estado: o admin publica a análise sem passar pela revisão.
 const FLOW: Record<ExamStatus, ExamStatus[]> = {
-  rascunho: ["em_revisao", "arquivado"],
-  em_revisao: ["rascunho", "aprovado", "arquivado"],
-  aprovado: ["em_revisao", "publicado", "arquivado"],
+  rascunho: ["publicado", "em_revisao", "arquivado"],
+  em_revisao: ["publicado", "rascunho", "aprovado", "arquivado"],
+  aprovado: ["publicado", "em_revisao", "arquivado"],
   publicado: ["em_revisao", "arquivado"],
-  arquivado: ["rascunho"],
+  arquivado: ["publicado", "rascunho"],
 };
 export const nextStatuses = (s: ExamStatus) => FLOW[s];
 
