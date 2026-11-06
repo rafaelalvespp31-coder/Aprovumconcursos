@@ -5,6 +5,7 @@ import { createAdminClient } from "../supabase";
 import { auditLog, logEvent } from "../observability";
 import { UserFacingError, enforceRateLimit } from "./trails";
 import { parseEdital, parseProgrammaticText, type ParsedEdital } from "@/domain/edital/parser";
+import { detectContestInfo, displayTitle } from "@/domain/edital/info";
 import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match";
 
 /**
@@ -74,7 +75,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 type Row = Record<string, unknown>;
 const toSummary = (r: Row): PrepSummary => ({
   id: r.id as string,
-  title: ((r.contest_name as string | null) || (r.file_name as string)).replace(/\.pdf$/i, ""),
+  title: displayTitle((r.contest_name as string | null) ?? null, r.file_name as string),
   contestName: (r.contest_name as string | null) ?? null,
   roleName: (r.role_name as string | null) ?? null,
   board: (r.board as string | null) ?? null,
@@ -242,12 +243,39 @@ async function persistParsed(p: Row, parsed: ParsedEdital, manual: boolean) {
   await event(id, userId, 3, `${nTopics} tópicos encontrados.`, "ok");
 }
 
+/** Preenche nome do concurso, banca e ano pelo texto do edital, sem sobrescrever o que o aluno informou. */
+async function fillInfo(p: Row, pages: string[]) {
+  try {
+    const info = detectContestInfo(pages);
+    const patch: Record<string, unknown> = {};
+    if (!p.contest_name && info.contestName) patch.contest_name = info.contestName;
+    if (!p.board && info.board) patch.board = info.board;
+    if (!p.contest_year && info.year) patch.contest_year = info.year;
+    if (!Object.keys(patch).length) return;
+    await createAdminClient().from("edital_preparations").update(patch).eq("id", p.id as string);
+    Object.assign(p, patch);
+    if (patch.contest_name) await event(p.id as string, p.user_id as string, 3, `Concurso identificado: ${patch.contest_name as string}.`, "ok");
+  } catch {
+    /* identificar o nome é um extra: nunca derruba o processamento */
+  }
+}
+
+/** Preparações antigas sem nome: tenta identificar pelo texto já extraído (reaproveitado pelo hash). */
+export async function backfillInfo(rows: Row[]): Promise<void> {
+  for (const r of rows) {
+    if (r.contest_name || r.status === "erro" || r.status === "recebendo") continue;
+    const ex = await createAdminClient().from("edital_extractions").select("pages").eq("file_hash", r.file_hash as string).maybeSingle();
+    if (ex.data) await fillInfo(r, ex.data.pages as string[]);
+  }
+}
+
 async function stageIdentify(p: Row) {
   const userId = p.user_id as string;
   const id = p.id as string;
   const db = createAdminClient();
   const ex = await db.from("edital_extractions").select("pages").eq("file_hash", p.file_hash as string).maybeSingle();
   if (ex.error || !ex.data) throw new UserFacingError("A leitura do edital não foi encontrada. Retome o processamento.", "extraction_missing");
+  await fillInfo(p, ex.data.pages as string[]);
   const parsed = parseEdital(ex.data.pages as string[]);
   if (!parsed.found || parsed.confidence < 0.4 || !parsed.disciplines.length) {
     await event(id, userId, 3, parsed.warnings[0] ?? "Não localizei o conteúdo programático com segurança.", "warn");
@@ -370,7 +398,9 @@ export async function submitManualContent(userId: string, id: string, text: unkn
 export async function listPreparations(userId: string): Promise<PrepSummary[]> {
   const { data, error } = await createAdminClient().from("edital_preparations").select("*").eq("user_id", userId).order("created_at", { ascending: false }).limit(50);
   if (error) throw new Error(error.message);
-  return ((data ?? []) as Row[]).map(toSummary);
+  const rows = (data ?? []) as Row[];
+  await backfillInfo(rows);
+  return rows.map(toSummary);
 }
 
 export async function updatePreparationInfo(userId: string, id: string, patch: { contestName?: string; roleName?: string; board?: string; year?: number | null }) {

@@ -2,6 +2,8 @@ import "server-only";
 import { createAdminClient } from "../supabase";
 import { disciplineLabel } from "@/ai/pedagogy";
 import { UserFacingError } from "./trails";
+import { displayTitle } from "@/domain/edital/info";
+import { backfillInfo } from "./edital";
 import type { PrepStats, PrepStatus, PrepSummary } from "./edital";
 
 type Row = Record<string, unknown>;
@@ -44,7 +46,7 @@ export interface PreparationTree {
 
 const summaryOf = (r: Row): PrepSummary => ({
   id: r.id as string,
-  title: ((r.contest_name as string | null) || (r.file_name as string)).replace(/\.pdf$/i, ""),
+  title: displayTitle((r.contest_name as string | null) ?? null, r.file_name as string),
   contestName: (r.contest_name as string | null) ?? null,
   roleName: (r.role_name as string | null) ?? null,
   board: (r.board as string | null) ?? null,
@@ -65,6 +67,7 @@ export async function getPreparationTree(userId: string, id: string): Promise<Pr
   const db = createAdminClient();
   const prep = await db.from("edital_preparations").select("*").eq("id", id).eq("user_id", userId).maybeSingle();
   if (!prep.data) throw new UserFacingError("Preparação não encontrada.", "not_found");
+  await backfillInfo([prep.data as Row]);
   const [discs, tops] = await Promise.all([
     db.from("edital_disciplines").select("id, name, position, discipline_mode, source_page").eq("preparation_id", id).order("position"),
     db.from("edital_topics").select("id, discipline_id, position, code, depth, title, source_page, match_status").eq("preparation_id", id).order("position").limit(5000),
