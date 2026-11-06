@@ -179,3 +179,30 @@ describe("looksLikeEdital", () => {
     expect(looksLikeEdital([ed])).toBe(true);
   });
 });
+
+describe("edital de Guarda Municipal: bloco compacto seguido de anexos", () => {
+  const page = [
+    "avaliação para o cargo. Todos os temas englobam também a legislação.",
+    "ANEXO II – DO CONTEÚDO PROGRAMÁTICO",
+    "ENSINO MÉDIO COMPLETO",
+    "CONHECIMENTOS GERAIS",
+    "Língua Portuguesa: Leitura e interpretação de textos. Sinônimos e antônimos. Pontuação. Crase. Matemática e Raciocínio Lógico: Situações-problema",
+    "envolvendo: adição, subtração e divisão. Porcentagem. Razão e proporção. Regra de três.",
+    "CONHECIMENTOS ESPECÍFICOS",
+    "Conhecimentos Específicos: Constituição Federal/1988 (arts. 1º ao 6º, 12 ao 14, 37 e 144). Código Penal (Decreto-Lei nº 2.848/1940 – arts. 1º ao 6º, 13 ao 19). Estatuto Geral das Guardas Municipais (Lei Federal nº 13.022/2014). Noções de Primeiros Socorros.",
+    "ANEXO III – DO REQUERIMENTO DE INCLUSÃO E USO DO NOME SOCIAL",
+  ].join("\n");
+  const anexos = "ANEXO V – DO PERFIL PSICOLÓGICO\nCARACTERÍSTICAS/DIMENSÕES:\n1) ADAPTAÇÃO – ADEQUADA\n2) ATENÇÃO - BOA\nDEFINIÇÕES\n1 ADAPTAÇÃO – ADEQUADA Capacidade de adaptar-se às novas situações.\n2 ATENÇÃO - BOA Trata-se da capacidade.";
+  it("separa Português e Matemática, mantém lista de leis e ignora o perfil psicológico", () => {
+    const r = parseEdital([page, anexos]);
+    expect(r.found).toBe(true);
+    const names = r.disciplines.map((d) => d.name);
+    expect(names).toContain("Língua Portuguesa");
+    expect(names).toContain("Matemática e Raciocínio Lógico");
+    expect(names).toContain("CONHECIMENTOS ESPECÍFICOS");
+    expect(names.join("|")).not.toMatch(/CARACTER|DEFINI/);
+    const esp = r.disciplines.find((d) => d.name === "CONHECIMENTOS ESPECÍFICOS")!;
+    expect(esp.topics.length).toBe(4);
+    expect(esp.topics[1]!.title).toMatch(/^Código Penal \(Decreto-Lei nº 2\.848\/1940/);
+  });
+});

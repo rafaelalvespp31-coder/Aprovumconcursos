@@ -20,7 +20,7 @@ export const MAX_EDITAL_BYTES = 25 * 1024 * 1024;
 const MAX_PAGES = 600;
 
 export type PrepStatus = "recebendo" | "lendo" | "identificando" | "mapeando" | "organizando" | "concluido" | "conferencia" | "erro";
-export const PARSER_V = 4;
+export const PARSER_V = 5;
 const STEP_OF: Record<PrepStatus, number> = { recebendo: 1, lendo: 2, identificando: 3, mapeando: 4, organizando: 5, concluido: 6, conferencia: 3, erro: 0 };
 
 export const createInput = z.object({
@@ -448,10 +448,15 @@ export async function reanalyzeIfStale(userId: string, id: string): Promise<bool
   const p = await own(userId, id);
   const st = (p.stats as PrepStats) ?? {};
   if (p.status !== "concluido" || (st.parserV ?? 1) >= PARSER_V) return false;
-  // Leituras antigas podem ter guardado só parte do texto: descarta o cache e relê o PDF guardado (sem novo upload).
   const db = createAdminClient();
-  await db.from("edital_extractions").delete().eq("file_hash", p.file_hash as string);
-  await setStatus(id, "lendo", { error: null, stats: { ...st, parserV: PARSER_V } });
-  await event(id, userId, 2, "Atualizando a leitura do edital com o leitor mais recente.", "info");
+  if ((st.parserV ?? 1) < 4) {
+    // Leituras antigas guardaram só parte do texto: descarta o cache e relê o PDF guardado (sem novo upload).
+    await db.from("edital_extractions").delete().eq("file_hash", p.file_hash as string);
+    await setStatus(id, "lendo", { error: null, stats: { ...st, parserV: PARSER_V } });
+  } else {
+    // O texto completo já está guardado: só refaz a identificação.
+    await setStatus(id, "identificando", { error: null, stats: { ...st, parserV: PARSER_V } });
+  }
+  await event(id, userId, 3, "Atualizando a leitura do edital com o leitor mais recente.", "info");
   return true;
 }

@@ -99,6 +99,24 @@ function headingRaw(line: string, next: string | undefined): { name: string; res
 /** Capítulos do corpo do edital ("DA PROVA OBJETIVA", "DO EXAME MÉDICO"…) nunca são matérias de estudo. */
 const CHAPTER_RE = /^(d[aeo]s?|das?|dos?)\s+(.*\b)?(prova|provas|exame|exames|teste|testes|avaliacao|avaliacoes|investigacao|inscricao|inscricoes|curso|formacao|recurso|recursos|selecao|concurso|candidato|candidatos|vagas?|cargo|cargos|nomeacao|posse|resultado|resultados|habilitacao|titulos|disposicoes|etapas?|fase|fases|aptidao|heteroidentificacao|pessoas com deficiencia|remuneracao|atribuicoes|requisitos|convocacao|validade|cronograma)\b/;
 
+/** Divide em frases ("Código Penal (arts. 1º ao 6º). Código de Processo Penal …") sem cortar dentro de parênteses. */
+function splitSentences(text: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let start = 0;
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]!;
+    if (c === "(") depth++;
+    else if (c === ")") depth = Math.max(0, depth - 1);
+    else if (depth === 0 && /[.!?]/.test(c) && /\s/.test(text[i + 1] ?? "") && /[A-ZÀ-Ú]/.test(text.slice(i + 1).trimStart()[0] ?? "")) {
+      out.push(text.slice(start, i + 1));
+      start = i + 1;
+    }
+  }
+  out.push(text.slice(start));
+  return out;
+}
+
 const clean = (s: string) => s.replace(/\s+/g, " ").replace(/^[\s•*\-–—]+/, "").replace(/[\s;,.]+$/, "").trim();
 
 /** Divide o texto corrido de uma disciplina em itens numerados (ou, sem numeração, por ponto e vírgula/marcadores). */
@@ -145,7 +163,7 @@ function itemsOf(lines: Line[]): ParsedTopic[] {
     const chunks = bySemi
       ? title.split(/\s*;\s*/).map(clean).filter((c) => c.length >= 3)
       : bySentence
-        ? title.split(/(?<=[.!?])\s+(?=[A-ZÀ-Ú])/).map(clean).filter((c) => c.length >= 3)
+        ? splitSentences(title).map(clean).filter((c) => c.length >= 3)
         : [title];
     for (const c of chunks) out.push({ code: it.code, depth: it.depth, title: c.slice(0, 400), titleKey: titleKey(c), page: it.page });
   }
@@ -153,10 +171,47 @@ function itemsOf(lines: Line[]): ParsedTopic[] {
 }
 
 /**
+ * Bloco corrido com rótulos de matéria no meio do texto ("Língua Portuguesa: Leitura… Matemática e Raciocínio Lógico: …").
+ * Cada rótulo reconhecido abre uma disciplina; o rótulo igual ao nome do bloco só é removido.
+ */
+function splitByLabels(groupName: string, body: Line[]): ParsedDiscipline[] | null {
+  if (!body.length) return null;
+  const text = body.map((l) => l.text).join(" ").replace(/\s+/g, " ").trim();
+  const page = body[0]!.page;
+  const re = /(^|[.;]\s+)([A-ZÀ-Ú][A-Za-zÀ-ÿ ,/()ºª-]{2,70}?):\s+(?=\S)/g;
+  const marks: Array<{ name: string; from: number; to: number }> = [];
+  for (let m = re.exec(text); m; m = re.exec(text)) {
+    const label = m[2]!.trim();
+    if (label.split(" ").length > 8 || !DISCIPLINE_HINT.test(fold(label))) continue;
+    marks.push({ name: label, from: m.index + m[1]!.length, to: m.index + m[0].length });
+  }
+  if (!marks.length) return null;
+  const sameAsGroup = (n: string) => fold(n) === fold(groupName.replace(/[:.]+$/, ""));
+  const segs: Array<{ name: string; txt: string }> = [];
+  const head = text.slice(0, marks[0]!.from).trim();
+  if (head.length >= 20) segs.push({ name: groupName.replace(/[:.]+$/, "").trim(), txt: head });
+  marks.forEach((mk, i) => segs.push({ name: mk.name, txt: text.slice(mk.to, marks[i + 1]?.from ?? text.length).trim() }));
+  const out: ParsedDiscipline[] = [];
+  for (const sg of segs) {
+    const topics = itemsOf([{ text: sg.txt, page }]);
+    if (!topics.length) continue;
+    const nm = sameAsGroup(sg.name) ? groupName.replace(/[:.]+$/, "").trim() : sg.name;
+    const prev = out.find((d) => fold(d.name) === fold(nm));
+    if (prev) prev.topics.push(...topics);
+    else out.push({ name: nm, mode: modeOfDiscipline(nm), page, topics });
+  }
+  const labelled = out.filter((d) => !sameAsGroup(d.name)).length;
+  // Um único rótulo igual ao próprio bloco ("Conhecimentos Específicos: …") vira uma disciplina só.
+  return labelled >= 1 || out.length ? out : null;
+}
+
+/**
  * "CONHECIMENTOS ESPECÍFICOS:" sem matéria própria: os itens de 1º nível ("2. Direito Constitucional 2.1 …")
  * são as disciplinas, e os subitens, os tópicos. Sem esse padrão, o bloco vira uma disciplina só.
  */
 function disciplinesOfGroup(name: string, body: Line[]): ParsedDiscipline[] {
+  const byLabel = splitByLabels(name, body);
+  if (byLabel) return byLabel;
   const cut = /\s(?=\d{1,2}(?:\.\d{1,2})+[.)]?\s+\S)/;
   const parts: Array<{ title: string; page: number; lines: Line[] }> = [];
   for (const l of body) {
@@ -211,7 +266,7 @@ export function parseEdital(pages: readonly string[]): ParsedEdital {
       end = j;
       break;
     }
-    if (headingOf(lines[j]!.text, lines[j + 1]?.text)) seen++;
+    if (headingOf(lines[j]!.text, lines[j + 1]?.text) || KNOW_GROUP.test(lines[j]!.text)) seen++;
   }
 
   const disciplines: ParsedDiscipline[] = [];
