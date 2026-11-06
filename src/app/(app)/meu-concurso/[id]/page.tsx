@@ -5,7 +5,7 @@ import { getPreparationTree } from "@/server/services/edital-view";
 import { getRaioX } from "@/server/services/strategic";
 import { MeuConcurso, type PrepTab } from "@/components/aprovum-ai/meu-concurso";
 import { RaioXView } from "@/components/aprovum-ai/raiox-view";
-import { updateInfoAction } from "./actions";
+import { startStudyAction, updateInfoAction } from "./actions";
 
 export const metadata = { title: "Meu Concurso" };
 export const dynamic = "force-dynamic";
@@ -22,7 +22,7 @@ export default async function MeuConcursoPage({ params, searchParams }: { params
   if (!tree) notFound();
   const rx = tab === "raiox" ? await getRaioX(user.id, id).catch(() => null) : null;
   return (
-    <MeuConcurso tree={tree} save={updateInfoAction.bind(null, id)} tab={tab}>
+    <MeuConcurso tree={tree} save={updateInfoAction.bind(null, id)} start={startStudyAction.bind(null, id)} tab={tab}>
       {tab === "raiox" && (
         <>
           {rx?.raiox ? <RaioXView data={rx.raiox} /> : (

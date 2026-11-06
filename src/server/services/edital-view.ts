@@ -135,10 +135,11 @@ export async function getPreparationTree(userId: string, id: string): Promise<Pr
   const all = disciplines.flatMap((d) => d.topics);
   const lessonIds = new Set(all.flatMap((t) => t.lessons.map((l) => l.catalogId)));
   const lessonsDone = [...lessonIds].filter((cid) => (studied.get(cid) ?? 0) >= 100).length;
-  // Questões (Modo Jogo) respondidas nas aulas do catálogo que fazem parte desta preparação.
+  // Questões (Modo Jogo) respondidas nas aulas do catálogo desta preparação, a partir da criação dela.
   let questionsAnswered = 0;
   if (lessonIds.size) {
-    const att = await db.from("quiz_attempts").select("id", { count: "exact", head: true }).eq("user_id", userId).in("topic_id", [...lessonIds].slice(0, 300));
+    // Só o que foi respondido depois de criar esta preparação (o histórico de antes não é deste edital).
+    const att = await db.from("quiz_attempts").select("id", { count: "exact", head: true }).eq("user_id", userId).gte("created_at", (prep.data as Row).created_at as string).in("topic_id", [...lessonIds].slice(0, 300));
     questionsAnswered = att.count ?? 0;
   }
   const done = all.filter((t) => t.done).length;

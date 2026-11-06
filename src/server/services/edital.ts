@@ -56,6 +56,8 @@ export interface PrepStats {
   notEdital?: boolean;
   confidence?: number;
   warnings?: string[];
+  /** Pasta em "Meus estudos" criada pelo botão Começar estudo. */
+  studyFolderId?: string;
 }
 export interface PrepSummary {
   id: string;

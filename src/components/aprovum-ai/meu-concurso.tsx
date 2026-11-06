@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useActionState, useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { StartStudyDialog, type StartTheme } from "@/app/(app)/nova-trilha/start-dialog";
 import type { PreparationTree, TreeTopic } from "@/server/services/edital-view";
@@ -19,7 +19,9 @@ const ST: Record<TreeTopic["status"], string> = {
 export type PrepTab = "visao" | "aulas" | "raiox" | "questoes" | "desempenho";
 const TABS: Array<[PrepTab, string]> = [["visao", "VISÃO GERAL"], ["aulas", "AULAS DO EDITAL"], ["raiox", "RAIO-X DO EDITAL"], ["questoes", "QUESTÕES"], ["desempenho", "DESEMPENHO"]];
 
-export function MeuConcurso({ tree, save, tab, children }: { tree: PreparationTree; save: (f: FormData) => Promise<void>; tab: PrepTab; children?: React.ReactNode }) {
+export function MeuConcurso({ tree, save, start, tab, children }: { tree: PreparationTree; save: (f: FormData) => Promise<void>; start: (s: { error?: string }) => Promise<{ error?: string }>; tab: PrepTab; children?: React.ReactNode }) {
+  const [startState, startAction, starting] = useActionState(start, {});
+  const started = !!(tree.prep.stats as { studyFolderId?: string }).studyFolderId;
   const { prep, disciplines, totals } = tree;
   const [theme, setTheme] = useState<StartTheme | null>(null);
   const [edit, setEdit] = useState(false);
@@ -36,6 +38,19 @@ export function MeuConcurso({ tree, save, tab, children }: { tree: PreparationTr
           {prep.year && <span>Ano: <b>{prep.year}</b></span>}
           <span>Criada em <b>{created}</b></span>
         </div>
+        <form action={startAction} style={{ marginTop: 12 }}>
+          <button type="submit" className="ai-go" disabled={starting || totals.lessonsAvailable === 0} data-testid="comecar-estudo" style={{ width: "100%" }}>
+            {starting ? "MONTANDO SEUS ESTUDOS…" : started ? "ABRIR MEUS ESTUDOS DESTE CONCURSO" : "COMEÇAR ESTUDO"}
+          </button>
+          <p className="ai-sub" style={{ marginTop: 6 }}>
+            {totals.lessonsAvailable === 0
+              ? "Ainda não há aulas no catálogo para este edital."
+              : started
+                ? "Suas aulas deste edital estão numa pasta em Meus estudos, separadas por matéria."
+                : `Reúne as ${totals.lessonsAvailable} aulas deste edital numa pasta em Meus estudos, separadas por matéria.`}
+          </p>
+          {startState.error && <p role="alert" className="ai-sub" style={{ color: "#ff6b6b" }}>{startState.error}</p>}
+        </form>
         <button type="button" className="ai-ghost" style={{ marginTop: 10, padding: "0 14px", minHeight: 36 }} onClick={() => setEdit((v) => !v)} aria-expanded={edit}>
           {edit ? "Fechar edição" : "Corrigir informações"}
         </button>

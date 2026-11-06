@@ -189,7 +189,7 @@ function FolderCard({
   const [menu, setMenu] = useState<null | "renomear" | "excluir">(null);
   const [name, setName] = useState(folder.name);
   return (
-    <section className="overflow-hidden rounded-lg border border-linha bg-superficie" style={{ borderLeft: `5px solid ${COLORS[folder.color] ?? COLORS.vermelho}` }} aria-label={`Pasta ${folder.name}`}>
+    <section id={`pasta-${folder.id}`} className="scroll-mt-24 overflow-hidden rounded-lg border border-linha bg-superficie" style={{ borderLeft: `5px solid ${COLORS[folder.color] ?? COLORS.vermelho}` }} aria-label={`Pasta ${folder.name}`}>
       <div className="flex items-center gap-2 px-4 py-3">
         <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex min-h-10 flex-1 items-center gap-2 text-left">
           <Icon name="chevronRight" className={`size-4 shrink-0 transition-transform ${open ? "rotate-90" : ""}`} />
