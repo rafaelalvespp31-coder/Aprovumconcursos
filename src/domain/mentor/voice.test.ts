@@ -88,6 +88,6 @@ describe("buildContestContext", () => {
     expect(t).toContain("prova: 2026-12-01 (prevista)");
   });
   it("sem concursos manda usar a busca", () => {
-    expect(buildContestContext([])).toContain("busca na internet");
+    expect(buildContestContext([])).toContain("site oficial");
   });
 });

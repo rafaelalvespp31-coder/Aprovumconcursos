@@ -101,8 +101,11 @@ async function personalPrompt(userId: string): Promise<string> {
   }
 }
 
-/** Busca na internet (Google Search do próprio Gemini Live) para editais; desligue com GEMINI_VOICE_SEARCH=0. */
-const voiceTools = () => (process.env.GEMINI_VOICE_SEARCH === "0" ? undefined : [{ googleSearch: {} }]);
+/**
+ * Busca na internet (Google Search do Gemini Live): DESLIGADA por padrão, porque nem todo modelo de voz
+ * aceita a ferramenta e, quando recusa, a conversa cai. Ligue com GEMINI_VOICE_SEARCH=1 só depois de testar.
+ */
+const voiceTools = () => (process.env.GEMINI_VOICE_SEARCH === "1" ? [{ googleSearch: {} }] : undefined);
 
 export interface VoiceSession {
   token: string;
