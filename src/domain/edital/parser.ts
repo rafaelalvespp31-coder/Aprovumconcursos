@@ -71,6 +71,12 @@ function toLines(pages: readonly string[]): Line[] {
 
 /** A linha abre uma disciplina? Devolve o nome e o resto da linha (itens inline). */
 function headingOf(line: string, next: string | undefined): { name: string; rest: string } | null {
+  const r = headingRaw(line, next);
+  if (r && CHAPTER_RE.test(fold(r.name))) return null;
+  return r;
+}
+
+function headingRaw(line: string, next: string | undefined): { name: string; rest: string } | null {
   const explicit = line.match(/^(?:disciplina|mat[ée]ria)\s*[:\-–]\s*(.{3,90})$/i);
   if (explicit) return { name: explicit[1]!.replace(/[:.]+$/, "").trim(), rest: "" };
   const inline = line.match(/^([A-ZÀ-ÝÇ][A-ZÀ-ÝÇ0-9 ,/\-–()ºª.]{3,85}?)\s*:\s*(\S.*)$/);
@@ -84,6 +90,9 @@ function headingOf(line: string, next: string | undefined): { name: string; rest
   if ((caps && (nextIsItem || line.endsWith(":") || known)) || (known && nextIsItem)) return { name: bare, rest: "" };
   return null;
 }
+
+/** Capítulos do corpo do edital ("DA PROVA OBJETIVA", "DO EXAME MÉDICO"…) nunca são matérias de estudo. */
+const CHAPTER_RE = /^(d[aeo]s?|das?|dos?)\s+(.*\b)?(prova|provas|exame|exames|teste|testes|avaliacao|avaliacoes|investigacao|inscricao|inscricoes|curso|formacao|recurso|recursos|selecao|concurso|candidato|candidatos|vagas?|cargo|cargos|nomeacao|posse|resultado|resultados|habilitacao|titulos|disposicoes|etapas?|fase|fases|aptidao|heteroidentificacao|pessoas com deficiencia|remuneracao|atribuicoes|requisitos|convocacao|validade|cronograma)\b/;
 
 const clean = (s: string) => s.replace(/\s+/g, " ").replace(/^[\s•*\-–—]+/, "").replace(/[\s;,.]+$/, "").trim();
 
@@ -174,7 +183,8 @@ export function parseEdital(pages: readonly string[]): ParsedEdital {
     let score = 0;
     for (let j = idx + 1; j < Math.min(lines.length, idx + 500); j++) {
       if (END_RE.test(lines[j]!.text) && score > 0) break;
-      if (headingOf(lines[j]!.text, lines[j + 1]?.text)) score++;
+      const h = headingOf(lines[j]!.text, lines[j + 1]?.text);
+      if (h) score += modeOfDiscipline(h.name) ? 3 : 1;
     }
     if (!best || score > best.score) best = { idx, score };
   });

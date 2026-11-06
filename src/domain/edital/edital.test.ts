@@ -141,3 +141,15 @@ describe("só o conteúdo programático", () => {
     expect(r.disciplines.map((d) => d.name)).toEqual(["LÍNGUA PORTUGUESA", "MATEMÁTICA"]);
   });
 });
+
+describe("capítulos do edital não viram disciplinas", () => {
+  it("ignora DA PROVA OBJETIVA / DO EXAME MÉDICO e usa o anexo de conteúdo programático", () => {
+    const pages = [
+      "DA PROVA OBJETIVA\n10.1 A prova objetiva terá 60 questões.\n10.2 Cada questão vale 1 ponto.\nDO TESTE DE APTIDÃO FÍSICA\n11.1 O teste é eliminatório.\nDO EXAME MÉDICO\n12.1 Exame de saúde.",
+      "ANEXO II - CONTEÚDO PROGRAMÁTICO\nLÍNGUA PORTUGUESA\n1 Compreensão de textos. 2 Ortografia.\nDIREITO PENAL\n1 Princípios. 2 Crimes contra a pessoa.",
+    ];
+    const r = parseEdital(pages);
+    const names = r.disciplines.map((d) => d.name);
+    expect(names).toEqual(["LÍNGUA PORTUGUESA", "DIREITO PENAL"]);
+  });
+});
