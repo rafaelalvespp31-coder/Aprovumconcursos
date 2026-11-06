@@ -3004,7 +3004,9 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .pm-semestral { border-color: #ff2a1f; box-shadow: 0 0 22px rgba(225,6,0,0.45), 0 10px 28px rgba(0,0,0,0.5); padding-top: 34px; }
 .pm-vitalicio { border-color: #f2b705; background: radial-gradient(90% 55% at 50% 0%, rgba(242,183,5,0.2), transparent 70%), linear-gradient(180deg, #151209, #070708); box-shadow: 0 0 22px rgba(242,183,5,0.35), 0 10px 28px rgba(0,0,0,0.5); }
 .pm-fita { position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%); margin: 0; padding: 6px 16px; border-radius: 99px; background: linear-gradient(180deg, #ff2a1f, #b30400); font-weight: 800; font-size: 12px; letter-spacing: 0.08em; box-shadow: 0 0 14px rgba(225,6,0,0.6); white-space: nowrap; }
-.pm-ico { width: calc(var(--w) * 1.15px); max-width: 60%; background-color: transparent; }
+.pm-ico { display: block; width: 118px; max-width: 62%; height: auto; overflow: visible; filter: drop-shadow(0 0 7px rgba(225, 6, 0, 0.55)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6)); }
+.pm-ico-gratuito { filter: drop-shadow(0 0 6px rgba(229, 231, 235, 0.3)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6)); }
+.pm-ico-semestral, .pm-ico-vitalicio { filter: drop-shadow(0 0 9px rgba(246, 194, 26, 0.6)) drop-shadow(0 3px 4px rgba(0, 0, 0, 0.6)); }
 .pm-k { margin: 6px 0 0; font-size: 13px; font-weight: 800; letter-spacing: 0.3em; color: rgba(255,255,255,0.8); }
 .pm-n { margin: 0; font-size: 34px; line-height: 1.05; font-weight: 900; font-style: italic; letter-spacing: 0.01em; background: linear-gradient(180deg, #fff, #b7babf); -webkit-background-clip: text; background-clip: text; color: transparent; }
 .pm-tag { margin: 8px 0 0; padding: 4px 22px; background: linear-gradient(180deg, #ff2a1f, #b30400); font-weight: 800; font-size: 13px; letter-spacing: 0.06em; }

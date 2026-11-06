@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition, type CSSProperties, type ReactNode } from "react";
+import { PlanIcon } from "./plan-icons";
 import { OFFERS, PLAN_NAMES, installmentOf, type OfferKey } from "@/domain/plans/offers";
 import type { ChoosePlanResult } from "./actions";
 import { PayBox } from "./pay";
@@ -82,25 +83,17 @@ const PERK_H = 74;
 const PERKS_FREE = ["1 matéria por dia", "1 tema por dia", "3 questões por dia", "Aulas (demonstração)", "Mapas mentais (demo)", "Mentor IA (1 por dia)"];
 const PERKS_PAID = ["Acesso completo", "Questões ilimitadas", "Mapas mentais", "Mnemônicos", "Mentor IA avançado", "Simulados e muito mais!"];
 // Ícone de cada plano: recorte da arte oficial.
-const ICON: Record<Card["id"], { x: number; y: number; w: number; h: number }> = {
-  gratuito: { x: 85, y: 430, w: 130, h: 88 },
-  mensal: { x: 325, y: 445, w: 115, h: 85 },
-  semestral: { x: 565, y: 435, w: 85, h: 55 },
-  anual: { x: 795, y: 450, w: 100, h: 80 },
-  vitalicio: { x: 1020, y: 445, w: 110, h: 65 },
-};
 const NAME: Record<Card["id"], string> = { gratuito: "RECRUTA", mensal: "COMBATENTE", semestral: "OPERADOR", anual: "ELITE TÁTICA", vitalicio: "COMANDO SUPREMO" };
 
 function MobileCard({ id, current, onPick }: { id: Card["id"]; current: boolean; onPick: (k: OfferKey) => void }) {
   const free = id === "gratuito";
   const o = free ? null : OFFERS[id];
-  const ic = ICON[id];
   const inst = free ? null : installmentOf(id as OfferKey);
   return (
     <article className={`pm pm-${id}`} data-testid={`plano-cartao-${id}`}>
       {id === "semestral" && <p className="pm-fita">MAIS ESCOLHIDO</p>}
       <NeonTrace id={id} />
-      <Crop x={ic.x} y={ic.y} w={ic.w} h={ic.h} className="pm-ico" grow={ic.w} />
+      <PlanIcon id={id} />
       <p className="pm-k">PLANO</p>
       <h2 className="pm-n">{NAME[id]}</h2>
       {free ? (
