@@ -3011,6 +3011,10 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .pm-sub { margin: 10px 0 0; font-size: 15px; line-height: 1.35; color: rgba(255,255,255,0.88); }
 .pm-preco { margin: 10px 0 0; display: flex; flex-direction: column; align-items: center; gap: 2px; }
 .pm-preco b { font-size: 44px; line-height: 1; font-weight: 900; font-style: italic; }
+.pm-preco b.pm-parc { white-space: nowrap; font-size: 36px; }
+.pm-preco b i { font-size: 0.5em; font-style: italic; font-weight: 800; margin-right: 2px; }
+.pm-preco .pm-avista { margin-top: 2px; font-size: 11px; font-weight: 600; font-style: normal; letter-spacing: 0.02em; color: rgba(255,255,255,0.7); }
+.pm-vitalicio .pm-preco .pm-avista { color: rgba(246,194,26,0.85); }
 .pm-preco span { font-size: 15px; font-weight: 700; font-style: italic; color: rgba(255,255,255,0.85); }
 .pm-vitalicio .pm-preco span { color: #f6c21a; }
 .pm-lista { list-style: none; margin: 14px 0 16px; padding: 0; width: 100%; max-width: 300px; display: grid; gap: 9px; text-align: left; }
@@ -3394,6 +3398,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   .pm-tag { padding: 4px 8px; font-size: 10.5px; }
   .pm-sub { font-size: 12px; }
   .pm-preco b { font-size: clamp(24px, 2.8vw, 38px); }
+  .pm-preco b.pm-parc { font-size: clamp(18px, 2vw, 28px); }
   .pm-preco span { font-size: 12px; }
   .pm-lista { margin: 10px 0 12px; gap: 7px; }
   .pm-lista li { font-size: 12.5px; padding-left: 25px; }

@@ -20,3 +20,14 @@ describe("planos do admin (iguais ao Meu Plano)", () => {
     }
   });
 });
+
+import { installmentOf } from "./offers";
+describe("parcelamento em 12x", () => {
+  it("parcela = à vista ÷ 12; o mensal não parcela", () => {
+    const nbsp = (s: string) => s.replace(/\s/g, " ");
+    expect(nbsp(installmentOf("semestral")!.value)).toBe("R$ 16,42");
+    expect(nbsp(installmentOf("anual")!.value)).toBe("R$ 28,92");
+    expect(nbsp(installmentOf("vitalicio")!.value)).toBe("R$ 58,08");
+    expect(installmentOf("mensal")).toBeNull();
+  });
+});

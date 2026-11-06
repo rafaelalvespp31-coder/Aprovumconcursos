@@ -9,6 +9,16 @@ export const OFFERS: Record<OfferKey, { label: string; price: string; per: strin
   vitalicio: { label: "Comando Supremo", price: "R$ 697,00", per: "acesso para sempre", cents: 69700 },
 };
 
+/** Planos que podem ser parcelados em 12x (o mensal já é cobrado todo mês). */
+export const INSTALLMENT_OFFERS: readonly OfferKey[] = ["semestral", "anual", "vitalicio"];
+export const INSTALLMENTS = 12;
+const brl = (cents: number) => `R$ ${(cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+/** Parcela = valor à vista ÷ 12 (arredondada ao centavo). null quando o plano não é parcelado. */
+export function installmentOf(o: OfferKey): { count: number; value: string; cash: string } | null {
+  if (!INSTALLMENT_OFFERS.includes(o)) return null;
+  return { count: INSTALLMENTS, value: brl(Math.round(OFFERS[o].cents / INSTALLMENTS)), cash: OFFERS[o].price };
+}
+
 export const isOfferKey = (v: unknown): v is OfferKey => typeof v === "string" && (OFFER_KEYS as readonly string[]).includes(v);
 
 /** Qual cartão da arte é o plano em vigor do aluno. */

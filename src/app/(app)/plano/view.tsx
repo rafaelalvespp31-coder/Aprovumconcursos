@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition, type CSSProperties, type ReactNode } from "react";
-import { OFFERS, PLAN_NAMES, type OfferKey } from "@/domain/plans/offers";
+import { OFFERS, PLAN_NAMES, installmentOf, type OfferKey } from "@/domain/plans/offers";
 import type { ChoosePlanResult } from "./actions";
 import { PayBox } from "./pay";
 
@@ -95,6 +95,7 @@ function MobileCard({ id, current, onPick }: { id: Card["id"]; current: boolean;
   const free = id === "gratuito";
   const o = free ? null : OFFERS[id];
   const ic = ICON[id];
+  const inst = free ? null : installmentOf(id as OfferKey);
   return (
     <article className={`pm pm-${id}`} data-testid={`plano-cartao-${id}`}>
       {id === "semestral" && <p className="pm-fita">MAIS ESCOLHIDO</p>}
@@ -109,8 +110,18 @@ function MobileCard({ id, current, onPick }: { id: Card["id"]; current: boolean;
         </>
       ) : (
         <p className="pm-preco">
-          <b>{o!.price}</b>
-          <span>{o!.per}</span>
+          {inst ? (
+            <>
+              <b className="pm-parc" data-testid={`plano-parcela-${id}`}><i>{inst.count}x</i> {inst.value}</b>
+              <span>{o!.per}</span>
+              <small className="pm-avista" data-testid={`plano-avista-${id}`}>ou {inst.cash} à vista</small>
+            </>
+          ) : (
+            <>
+              <b>{o!.price}</b>
+              <span>{o!.per}</span>
+            </>
+          )}
         </p>
       )}
       <ul className="pm-lista">
@@ -123,7 +134,7 @@ function MobileCard({ id, current, onPick }: { id: Card["id"]; current: boolean;
           ACESSO GRATUITO
         </Link>
       ) : (
-        <button type="button" className="pm-btn" aria-label={`Assinar ${o!.label} — ${o!.price} ${o!.per}`} onClick={() => onPick(id as OfferKey)} data-testid={`plano-${id}`}>
+        <button type="button" className="pm-btn" aria-label={`Assinar ${o!.label} — ${inst ? `${inst.count}x ${inst.value} ou ${inst.cash} à vista` : `${o!.price} ${o!.per}`}`} onClick={() => onPick(id as OfferKey)} data-testid={`plano-${id}`}>
           ASSINAR AGORA
         </button>
       )}
