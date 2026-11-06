@@ -130,3 +130,14 @@ describe("blocos 'Conhecimentos específicos' sem matéria própria", () => {
     expect(penal.topics.map((t) => t.code)).toEqual(["4.1", "4.2"]);
   });
 });
+
+describe("só o conteúdo programático", () => {
+  it("não deixa o texto depois da seção entrar na última disciplina", () => {
+    const r = parseEdital([
+      "ANEXO II – CONTEÚDO PROGRAMÁTICO\nLÍNGUA PORTUGUESA:\n1. Interpretação de textos. 2. Ortografia.\nMATEMÁTICA:\n1. Porcentagem. 2. Razão e proporção.\nDAS INSCRIÇÕES\n5.1 O candidato pagará taxa de R$ 120,00 até o dia 10.",
+    ]);
+    const all = r.disciplines.flatMap((d) => d.topics.map((t) => t.title)).join(" ");
+    expect(all).not.toMatch(/taxa|candidato|inscri/i);
+    expect(r.disciplines.map((d) => d.name)).toEqual(["LÍNGUA PORTUGUESA", "MATEMÁTICA"]);
+  });
+});

@@ -35,7 +35,7 @@ interface Line {
 }
 
 const START_RE = /(conte[úu]dos? program[áa]ticos?|programas? (das|de) (provas?|mat[ée]rias|conte[úu]dos?)|conhecimentos? (b[áa]sicos|gerais|espec[íi]ficos|profissionais)|anexo\s+[ivxl\d]+.{0,60}(conte[úu]do|programa|mat[ée]rias))/i;
-const END_RE = /^(cronograma|dos recursos|das disposi[çc][õo]es (finais|gerais)|disposi[çc][õo]es (finais|gerais)|quadro de vagas|modelo de|formul[áa]rio|anexo\s+[ivxl\d]+\s*[-–—:.]?\s*(?!.*(conte[úu]do|programa|mat[ée]rias))\S|da (convoca[çc][ãa]o|nomea[çc][ãa]o|posse)|dos? (resultados?|crit[ée]rios de desempate))/i;
+const END_RE = /^(cronograma|das? inscri[çc][õo]es|das? atribui[çc][õo]es|da remunera[çc][ãa]o|dos? requisitos|das etapas|da prova (objetiva|discursiva|pr[aá]tica|de t[íi]tulos)|dos recursos|das disposi[çc][õo]es (finais|gerais)|disposi[çc][õo]es (finais|gerais)|quadro de vagas|modelo de|formul[áa]rio|anexo\s+[ivxl\d]+\s*[-–—:.]?\s*(?!.*(conte[úu]do|programa|mat[ée]rias))\S|da (convoca[çc][ãa]o|nomea[çc][ãa]o|posse)|dos? (resultados?|crit[ée]rios de desempate))/i;
 const GROUP_RE = /^(conhecimentos? (b[áa]sicos|gerais|espec[íi]ficos|profissionais)|bloco\s+[ivx\d]+|parte\s+[ivx\d]+|etapa\s+[ivx\d]+|prova\s+(objetiva|discursiva|escrita)|(para|cargo)\b.*|nível\s+\w+)\s*[:.]?$/i;
 const KNOW_GROUP = /^conhecimentos? (b[áa]sicos|gerais|espec[íi]ficos|especiais|profissionais|especializados)\s*[:.]?$/i;
 const NOISE_RE = /^(\d{1,3}|p[áa]gina\s+\d+(\s+de\s+\d+)?|\d+\s*\/\s*\d+|-\s*\d+\s*-)$/i;
@@ -184,11 +184,11 @@ export function parseEdital(pages: readonly string[]): ParsedEdital {
   let end = lines.length;
   let seen = 0;
   for (let j = b.idx + 1; j < lines.length; j++) {
-    if (headingOf(lines[j]!.text, lines[j + 1]?.text)) seen++;
-    else if (seen > 0 && END_RE.test(lines[j]!.text)) {
+    if (seen > 0 && END_RE.test(lines[j]!.text)) {
       end = j;
       break;
     }
+    if (headingOf(lines[j]!.text, lines[j + 1]?.text)) seen++;
   }
 
   const disciplines: ParsedDiscipline[] = [];

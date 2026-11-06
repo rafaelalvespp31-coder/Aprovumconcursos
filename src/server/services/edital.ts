@@ -216,9 +216,22 @@ async function stageRead(p: Row) {
     await event(id, userId, 2, "O PDF não tem texto selecionável (parece digitalizado).", "error");
     throw new UserFacingError("Este PDF parece digitalizado (imagem) e não tem texto para leitura. Use a conferência manual para colar o conteúdo programático.", "no_text");
   }
-  const ins = await db.from("edital_extractions").upsert({ file_hash: hash, page_count: pages.length, pages, chars }, { onConflict: "file_hash" });
+  // Só o conteúdo programático interessa: localiza a seção e descarta o resto (salários, inscrições, cronograma…).
+  // As páginas descartadas ficam vazias (a numeração original é preservada); sem seção segura, guarda tudo p/ conferência.
+  let kept = pages;
+  const found = parseEdital(pages);
+  if (found.found && found.sectionPages) {
+    const from = found.sectionPages[0] - 1;
+    const to = Math.min(pages.length - 1, found.sectionPages[1]); // +1 página de margem
+    kept = pages.map((t, i) => (i >= from && i <= to ? t : ""));
+    await event(id, userId, 2, `Conteúdo programático localizado (págs. ${from + 1}–${to + 1}). O restante do edital não será analisado.`, "ok");
+  } else {
+    await event(id, userId, 2, "Não localizei o conteúdo programático com segurança; ele será conferido na próxima etapa.", "warn");
+  }
+  const keptChars = kept.reduce((n, t) => n + t.length, 0);
+  const ins = await db.from("edital_extractions").upsert({ file_hash: hash, page_count: pages.length, pages: kept, chars: keptChars }, { onConflict: "file_hash" });
   if (ins.error) throw new Error(ins.error.message);
-  await event(id, userId, 2, `Estrutura documental analisada (${chars.toLocaleString("pt-BR")} caracteres).`, "ok");
+  await event(id, userId, 2, `${kept.filter(Boolean).length} páginas de conteúdo mantidas para análise.`, "ok");
   await setStatus(id, "identificando", { page_count: pages.length });
 }
 
