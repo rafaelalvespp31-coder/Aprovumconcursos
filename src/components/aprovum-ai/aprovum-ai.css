@@ -226,3 +226,7 @@
 .ai-disc h3, .ai-item b { overflow-wrap: anywhere; }
 .ai-more { border: 1px solid #23262e; border-radius: 12px; padding: 10px 12px; display: grid; gap: 10px; }
 .ai-more > summary { cursor: pointer; font-size: 13px; color: #c4c8cf; min-height: 32px; display: flex; align-items: center; }
+/* Visão geral do Meu Concurso (fundo claro): números e legendas em preto. */
+.ai-ind .ai-kpi { color: #0d0d0f; background: #fff; }
+.ai-ind .ai-kpi b { color: #0d0d0f; }
+.ai-ind .ai-kpi span { color: #0d0d0f; font-weight: 600; }
