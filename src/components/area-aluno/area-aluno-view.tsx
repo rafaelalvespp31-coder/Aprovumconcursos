@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { ChartColumn, Clock3, Landmark, Settings, Video, type LucideIcon } from "lucide-react";
+import { BrainCircuit, ChartColumn, Clock3, Landmark, Settings, Video, type LucideIcon } from "lucide-react";
 
 const ITEMS: Array<{ id: string; path: string; label: string; desc: string; icon: LucideIcon }> = [
   { id: "revisoes", path: "/revisoes", label: "Revisões", desc: "Fixe o que já estudou", icon: Clock3 },
   { id: "desempenho", path: "/desempenho", label: "Desempenho", desc: "Acompanhe seu progresso", icon: ChartColumn },
+  { id: "aprovum-ai", path: "/aprovum-ai", label: "APROVUM AI", desc: "Transforme seu edital em preparação", icon: BrainCircuit },
   { id: "concursos", path: "/concursos", label: "Concursos", desc: "Editais, vagas e datas de prova", icon: Landmark },
   { id: "depoimentos", path: "/depoimentos", label: "Depoimentos", desc: "Histórias de alunos aprovados", icon: Video },
   { id: "perfil", path: "/perfil", label: "Perfil", desc: "Seus dados, metas e conquistas", icon: Settings },
