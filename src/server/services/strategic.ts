@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "../supabase";
 import { auditLog } from "../observability";
 import { UserFacingError } from "./trails";
+import { parseStrategicText } from "@/domain/strategic/text";
 import { checkImport, examKey, importSchema, type ImportIssue, type StrategicImport } from "@/domain/strategic/import";
 import { compareLastTwo, heatmap, subjectIncidence, type Edition } from "@/domain/strategic/analysis";
 import { modeOfDiscipline } from "@/domain/edital/disciplines";
@@ -35,10 +36,20 @@ export interface ImportPreview {
 function parseRaw(raw: unknown): { data: StrategicImport | null; issues: ImportIssue[] } {
   let obj: unknown = raw;
   if (typeof raw === "string") {
-    try {
-      obj = JSON.parse(raw);
-    } catch (e) {
-      return { data: null, issues: [{ level: "erro", path: "json", message: `JSON inválido: ${(e as Error).message}` }] };
+    if (/^\s*[{[]/.test(raw)) {
+      try {
+        obj = JSON.parse(raw);
+      } catch (e) {
+        return { data: null, issues: [{ level: "erro", path: "json", message: `JSON inválido: ${(e as Error).message}` }] };
+      }
+    } else {
+      // Texto colado do ChatGPT (formato de linhas CONCURSO / PROVA / NOTA / DISCIPLINA / ASSUNTO / FOCO).
+      const t = parseStrategicText(raw);
+      const textIssues: ImportIssue[] = t.issues.map((i) => ({ level: "erro" as const, path: i.line ? `linha ${i.line}` : "texto", message: i.message }));
+      if (!t.data) return { data: null, issues: textIssues };
+      const r = importSchema.safeParse(t.data);
+      if (!r.success) return { data: null, issues: [...textIssues, ...r.error.issues.slice(0, 40).map((i) => ({ level: "erro" as const, path: i.path.join(".") || "raiz", message: i.message }))] };
+      return { data: r.data, issues: [...textIssues, ...checkImport(r.data)] };
     }
   }
   const r = importSchema.safeParse(obj);
