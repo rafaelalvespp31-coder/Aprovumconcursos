@@ -57,12 +57,17 @@ function parseRaw(raw: unknown): { data: StrategicImport | null; issues: ImportI
   return { data: r.data, issues: [...repairImport(r.data), ...checkImport(r.data)] };
 }
 
-export async function previewImport(raw: unknown): Promise<ImportPreview> {
+/** targetId: grava a análise no concurso aberto pelo admin (vindo do edital do aluno), mesmo que o ChatGPT escreva o nome diferente. */
+export async function previewImport(raw: unknown, targetId?: string | null): Promise<ImportPreview> {
   const { data, issues } = parseRaw(raw);
   if (!data) return { ok: false, issues, data: null, summary: null, existing: null };
-  const ex = await createAdminClient().from("strategic_exams").select("id, name, status").eq("name_key", examKey(data.exam.name)).maybeSingle();
+  const db = createAdminClient();
+  const ex = targetId && UUID.test(targetId)
+    ? await db.from("strategic_exams").select("id, name, status").eq("id", targetId).maybeSingle()
+    : await db.from("strategic_exams").select("id, name, status").eq("name_key", examKey(data.exam.name)).maybeSingle();
   const existing = ex.data ? { id: ex.data.id as string, status: ex.data.status as ExamStatus, name: ex.data.name as string } : null;
-  if (existing) issues.push({ level: "aviso", path: "exam", message: `Já existe "${existing.name}" (${STATUS_LABEL[existing.status]}). Aplicar vai ATUALIZAR os dados e devolver o concurso para "Em revisão".` });
+  if (existing && targetId) issues.push({ level: "aviso", path: "exam", message: `A análise será gravada em "${existing.name}" (o concurso do edital dos alunos).` });
+  else if (existing) issues.push({ level: "aviso", path: "exam", message: `Já existe "${existing.name}" (${STATUS_LABEL[existing.status]}). Aplicar vai ATUALIZAR os dados e devolver o concurso para "Em revisão".` });
   const subjects = data.editions.flatMap((e) => e.subjects);
   return {
     ok: !issues.some((i) => i.level === "erro"),
@@ -74,15 +79,17 @@ export async function previewImport(raw: unknown): Promise<ImportPreview> {
 }
 
 /** Grava a análise importada. Nunca publica: novo = Rascunho; existente = Em revisão. */
-export async function applyImport(adminId: string, raw: unknown): Promise<{ examId: string; updated: boolean }> {
-  const pv = await previewImport(raw);
+export async function applyImport(adminId: string, raw: unknown, targetId?: string | null): Promise<{ examId: string; updated: boolean }> {
+  const pv = await previewImport(raw, targetId);
   if (!pv.ok || !pv.data) throw new UserFacingError("A importação tem erros. Corrija o JSON e confira a prévia.", "invalid_import");
   const d = pv.data;
   const db = createAdminClient();
   const key = examKey(d.exam.name);
   let examId = pv.existing?.id;
   if (examId) {
-    const up = await db.from("strategic_exams").update({ name: d.exam.name, organ: d.exam.organ, limitations: d.limitations, status: "em_revisao", published_at: null, updated_at: new Date().toISOString() }).eq("id", examId);
+    // Concurso-alvo (do edital dos alunos): o nome fica o do edital, para os alunos continuarem ligados a ele.
+    const naming = targetId ? {} : { name: d.exam.name };
+    const up = await db.from("strategic_exams").update({ ...naming, organ: d.exam.organ, limitations: d.limitations, status: "em_revisao", published_at: null, updated_at: new Date().toISOString() }).eq("id", examId);
     if (up.error) throw new Error(up.error.message);
     for (const t of ["strategic_recommendations", "strategic_cutoffs", "strategic_topics", "strategic_subjects", "strategic_editions", "strategic_sources", "strategic_positions"]) {
       const del = await db.from(t).delete().eq("exam_id", examId);
@@ -131,7 +138,7 @@ export async function applyImport(adminId: string, raw: unknown): Promise<{ exam
 // Administração
 // ---------------------------------------------------------------------------
 
-export interface ExamListItem { id: string; name: string; organ: string | null; status: ExamStatus; editions: number; years: number[]; updatedAt: string }
+export interface ExamListItem { id: string; name: string; organ: string | null; status: ExamStatus; editions: number; years: number[]; updatedAt: string; requests: number }
 
 export async function listExams(): Promise<ExamListItem[]> {
   const db = createAdminClient();
@@ -139,10 +146,80 @@ export async function listExams(): Promise<ExamListItem[]> {
     db.from("strategic_exams").select("id, name, organ, status, updated_at").order("updated_at", { ascending: false }).limit(300),
     db.from("strategic_editions").select("exam_id, year").limit(3000),
   ]);
+  const reqs = await db.from("edital_preparations").select("strategic_exam_id").not("strategic_exam_id", "is", null).limit(20000);
+  const req = new Map<string, number>();
+  for (const r of (reqs.data ?? []) as Row[]) req.set(r.strategic_exam_id as string, (req.get(r.strategic_exam_id as string) ?? 0) + 1);
   if (ex.error) throw new Error(ex.error.message);
   const years = new Map<string, number[]>();
   for (const e of (eds.data ?? []) as Row[]) years.set(e.exam_id as string, [...(years.get(e.exam_id as string) ?? []), e.year as number]);
-  return ((ex.data ?? []) as Row[]).map((r) => ({ id: r.id as string, name: r.name as string, organ: (r.organ as string | null) ?? null, status: r.status as ExamStatus, editions: (years.get(r.id as string) ?? []).length, years: (years.get(r.id as string) ?? []).sort((a, b) => b - a), updatedAt: r.updated_at as string }));
+  return ((ex.data ?? []) as Row[]).map((r) => ({ id: r.id as string, name: r.name as string, organ: (r.organ as string | null) ?? null, status: r.status as ExamStatus, editions: (years.get(r.id as string) ?? []).length, years: (years.get(r.id as string) ?? []).sort((a, b) => b - a), updatedAt: r.updated_at as string, requests: req.get(r.id as string) ?? 0 }));
+}
+
+/** Editais concluídos antes da ligação automática: liga ao abrir o catálogo do admin (lote pequeno). */
+export async function backfillExamLinks(limit = 100): Promise<number> {
+  const db = createAdminClient();
+  const r = await db.from("edital_preparations").select("id").eq("status", "concluido").is("strategic_exam_id", null).not("contest_name", "is", null).limit(limit);
+  let n = 0;
+  for (const p of (r.data ?? []) as Row[]) if (await linkPreparationToExam(p.id as string).catch(() => null)) n++;
+  return n;
+}
+
+/** Concurso aguardando análise: criado pelo edital de um aluno e ainda sem nenhuma prova catalogada. */
+export const isAwaiting = (e: { editions: number | unknown[] }) => (typeof e.editions === "number" ? e.editions : e.editions.length) === 0;
+
+/** Pedido do aluno visto pelo admin: dados do edital extraído e o conteúdo programático (para o comando do ChatGPT). */
+export interface ExamRequestInfo { requests: number; contest: string | null; role: string | null; board: string | null; year: number | null; program: string }
+export async function examRequestInfo(examId: string): Promise<ExamRequestInfo | null> {
+  if (!UUID.test(examId)) return null;
+  const db = createAdminClient();
+  const preps = await db.from("edital_preparations").select("id, contest_name, role_name, board, contest_year, status, updated_at").eq("strategic_exam_id", examId).order("updated_at", { ascending: false }).limit(200);
+  const rows = (preps.data ?? []) as Row[];
+  if (!rows.length) return null;
+  const best = rows.find((r) => r.status === "concluido") ?? rows[0]!;
+  const [disc, top] = await Promise.all([
+    db.from("edital_disciplines").select("id, name, position").eq("preparation_id", best.id as string).order("position"),
+    db.from("edital_topics").select("discipline_id, title, depth, position").eq("preparation_id", best.id as string).order("position").limit(3000),
+  ]);
+  const byDisc = new Map<string, string[]>();
+  for (const t of (top.data ?? []) as Row[]) if ((t.depth as number) <= 1) byDisc.set(t.discipline_id as string, [...(byDisc.get(t.discipline_id as string) ?? []), t.title as string]);
+  let program = ((disc.data ?? []) as Row[]).map((d) => `${d.name as string}: ${(byDisc.get(d.id as string) ?? []).join("; ")}`).join("\n");
+  if (program.length > 14000) program = `${program.slice(0, 14000)}\n(...)`;
+  return { requests: rows.length, contest: (best.contest_name as string | null) ?? null, role: (best.role_name as string | null) ?? null, board: (best.board as string | null) ?? null, year: (best.contest_year as number | null) ?? null, program };
+}
+
+/**
+ * Liga o edital extraído do aluno ao concurso do catálogo estratégico — automático, sem o aluno escolher.
+ * Procura um concurso já cadastrado com o mesmo nome (ou cujos termos aparecem todos no edital);
+ * se não houver, cria um "aguardando análise" para o admin catalogar o Raio-X dele.
+ */
+export async function linkPreparationToExam(prepId: string, opts: { force?: boolean } = {}): Promise<string | null> {
+  const db = createAdminClient();
+  const prep = await db.from("edital_preparations").select("id, contest_name, role_name, board, contest_year, strategic_exam_id").eq("id", prepId).maybeSingle();
+  if (!prep.data) return null;
+  const cur = (prep.data.strategic_exam_id as string | null) ?? null;
+  if (cur && !opts.force) return cur;
+  const contest = ((prep.data.contest_name as string | null) ?? "").replace(/\s+/g, " ").trim();
+  if (!contest) return null;
+  const year = (prep.data.contest_year as number | null) ?? null;
+  const name = (year && !contest.includes(String(year)) ? `${contest} ${year}` : contest).slice(0, 200);
+  const key = examKey(name);
+  const all = await db.from("strategic_exams").select("id, name, name_key, status").neq("status", "arquivado").limit(1000);
+  const exams = (all.data ?? []) as Row[];
+  const text = `${contest} ${year ?? ""} ${(prep.data.role_name as string | null) ?? ""} ${(prep.data.board as string | null) ?? ""}`;
+  const rank = (r: Row) => (r.status === "publicado" ? 1000 : 0) + toks(r.name as string).length;
+  let found = exams.find((r) => r.name_key === key) ?? exams.filter((r) => matchesExam(text, r.name as string)).sort((a, b) => rank(b) - rank(a))[0];
+  if (!found) {
+    const ins = await db.from("strategic_exams").insert({ name, name_key: key, status: "rascunho" }).select("id, name").single();
+    if (ins.data) found = ins.data as Row;
+    else {
+      const again = await db.from("strategic_exams").select("id, name").eq("name_key", key).maybeSingle(); // criado ao mesmo tempo por outro aluno
+      if (!again.data) return null;
+      found = again.data as Row;
+    }
+  }
+  const id = found.id as string;
+  if (id !== cur) await db.from("edital_preparations").update({ strategic_exam_id: id }).eq("id", prepId);
+  return id;
 }
 
 // "Publicado" sai direto de qualquer estado: o admin publica a análise sem passar pela revisão.
@@ -250,23 +327,20 @@ export interface RaioX {
   /** título do assunto (chave) → aulas do catálogo */
   lessons: Record<string, LessonRef[]>;
 }
-export interface RaioXResult { status: "ok" | "sem_catalogo"; raiox: RaioX | null; choices: Array<{ id: string; name: string }>; chosenId: string | null }
+export interface RaioXResult { status: "ok" | "aguardando" | "sem_nome"; raiox: RaioX | null; examName: string | null }
 
+/** Raio-X só do concurso do edital extraído (ligação automática; o aluno não escolhe). */
 export async function getRaioX(userId: string, prepId: string): Promise<RaioXResult> {
   const db = createAdminClient();
-  const prep = await db.from("edital_preparations").select("id, contest_name, role_name, file_name, strategic_exam_id").eq("id", prepId).eq("user_id", userId).maybeSingle();
+  const prep = await db.from("edital_preparations").select("id").eq("id", prepId).eq("user_id", userId).maybeSingle();
   if (!prep.data) throw new UserFacingError("Preparação não encontrada.", "not_found");
-  const pub = await db.from("strategic_exams").select("id, name").eq("status", "publicado").order("name").limit(300);
-  const choices = ((pub.data ?? []) as Row[]).map((r) => ({ id: r.id as string, name: r.name as string }));
-  let chosen = (prep.data.strategic_exam_id as string | null) ?? null;
-  if (chosen && !choices.some((c) => c.id === chosen)) chosen = null; // deixou de estar publicado
-  if (!chosen) {
-    const text = `${(prep.data.contest_name as string | null) ?? ""} ${(prep.data.role_name as string | null) ?? ""}`;
-    chosen = choices.find((c) => matchesExam(text, c.name))?.id ?? null;
+  const examId = await linkPreparationToExam(prepId);
+  if (!examId) return { status: "sem_nome", raiox: null, examName: null };
+  const exam = await loadExam(examId, { onlyPublished: true });
+  if (!exam) {
+    const n = await db.from("strategic_exams").select("name").eq("id", examId).maybeSingle();
+    return { status: "aguardando", raiox: null, examName: (n.data?.name as string | undefined) ?? null };
   }
-  if (!chosen) return { status: "sem_catalogo", raiox: null, choices, chosenId: null };
-  const exam = await loadExam(chosen, { onlyPublished: true });
-  if (!exam) return { status: "sem_catalogo", raiox: null, choices, chosenId: null };
 
   const incidence = [...exam.editions].sort((a, b) => b.year - a.year).map((e) => ({ year: e.year, board: e.board, countingRule: e.countingRule, ...subjectIncidence(e) }));
   const comparison = compareLastTwo(exam.editions);
@@ -288,16 +362,6 @@ export async function getRaioX(userId: string, prepId: string): Promise<RaioXRes
   for (const [key, ls] of links) lessons[key] = ls.map((l) => ({ catalogId: l.catalogId, title: titles.get(l.catalogId) ?? "Aula", pct: studied.get(l.catalogId) ?? 0, done: (studied.get(l.catalogId) ?? 0) >= 100, coverage: l.coverage }));
 
   // Lacuna registrada (assunto do Raio-X sem aula), sem duplicar linhas.
-  return { status: "ok", raiox: { exam, incidence, comparison, heat, lessons }, choices, chosenId: chosen };
+  return { status: "ok", raiox: { exam, incidence, comparison, heat, lessons }, examName: exam.name };
 }
 
-export async function chooseExam(userId: string, prepId: string, examId: string | null) {
-  if (examId && !UUID.test(examId)) throw new UserFacingError("Concurso inválido.", "bad_request");
-  const db = createAdminClient();
-  if (examId) {
-    const ok = await db.from("strategic_exams").select("id").eq("id", examId).eq("status", "publicado").maybeSingle();
-    if (!ok.data) throw new UserFacingError("Concurso indisponível.", "not_found");
-  }
-  const up = await db.from("edital_preparations").update({ strategic_exam_id: examId }).eq("id", prepId).eq("user_id", userId);
-  if (up.error) throw new Error(up.error.message);
-}

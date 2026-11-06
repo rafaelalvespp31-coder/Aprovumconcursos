@@ -360,6 +360,8 @@ async function stageOrganize(p: Row) {
   const stats = { ...((p.stats as PrepStats) ?? {}), coveragePct: total ? Math.round(((full + (covered - full) * 0.5) / total) * 100) : 0 };
   await setStatus(id, "concluido", { stats });
   await event(id, userId, 6, "Preparação estruturada com sucesso.", "ok");
+  // Raio-X: liga ao concurso do catálogo estratégico (ou cria "aguardando análise" para o admin).
+  await import("./strategic").then((m) => m.linkPreparationToExam(id)).catch(() => null);
   await auditLog(db, { actorId: userId, userId, action: "edital.concluido", entity: "edital_preparations", entityId: id, meta: stats as Record<string, unknown> }).catch(() => {});
 }
 
@@ -421,6 +423,8 @@ export async function updatePreparationInfo(userId: string, id: string, patch: {
   const clean = (v?: string) => (v ?? "").replace(/\s+/g, " ").trim().slice(0, 160) || null;
   const { error } = await createAdminClient().from("edital_preparations").update({ contest_name: clean(patch.contestName), role_name: clean(patch.roleName), board: clean(patch.board), contest_year: patch.year ?? null, updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", userId);
   if (error) throw new Error(error.message);
+  // Nome/ano do concurso mudou: refaz a ligação automática do Raio-X.
+  await import("./strategic").then((m) => m.linkPreparationToExam(id, { force: true })).catch(() => null);
 }
 
 export async function listEvents(userId: string, id: string, after = 0): Promise<PrepEvent[]> {

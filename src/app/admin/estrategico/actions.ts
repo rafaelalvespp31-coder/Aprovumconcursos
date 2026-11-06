@@ -7,16 +7,16 @@ import { applyImport, deleteExam, previewImport, setExamStatus, type ExamStatus,
 
 const MAX = 1_500_000;
 
-export async function previewImportAction(json: string): Promise<ImportPreview> {
+export async function previewImportAction(json: string, examId?: string | null): Promise<ImportPreview> {
   await requireAdmin();
   if (json.length > MAX) return { ok: false, issues: [{ level: "erro", path: "json", message: "JSON grande demais (limite ~1,5 MB)." }], data: null, summary: null, existing: null };
-  return previewImport(json);
+  return previewImport(json, examId);
 }
 
-export async function applyImportAction(json: string): Promise<{ ok: true; examId: string; updated: boolean } | { ok: false; error: string }> {
+export async function applyImportAction(json: string, examId?: string | null): Promise<{ ok: true; examId: string; updated: boolean } | { ok: false; error: string }> {
   const admin = await requireAdmin();
   try {
-    const r = await applyImport(admin.id, json);
+    const r = await applyImport(admin.id, json, examId);
     revalidatePath("/admin/estrategico");
     return { ok: true, ...r };
   } catch (e) {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { loadExam, nextStatuses, STATUS_LABEL, type ExamStatus } from "@/server/services/strategic";
+import { examRequestInfo, loadExam, nextStatuses, STATUS_LABEL, type ExamStatus } from "@/server/services/strategic";
 import { denominator } from "@/domain/strategic/analysis";
 import { deleteExamAction, setStatusAction } from "../actions";
 import { redirect } from "next/navigation";
@@ -14,6 +14,8 @@ export default async function ExamAdminPage({ params }: { params: Promise<{ id: 
   const { id } = await params;
   const exam = await loadExam(id, { onlyPublished: false });
   if (!exam) notFound();
+  const req = await examRequestInfo(id).catch(() => null);
+  const awaiting = exam.editions.length === 0;
   return (
     <div className="grid gap-6">
       <div>
@@ -21,15 +23,23 @@ export default async function ExamAdminPage({ params }: { params: Promise<{ id: 
         <h1 className="mt-2 t-h2 font-bold">{exam.name}</h1>
         <p className="t-small text-tinta-suave">{exam.organ ?? "—"} · Estado: <b className={exam.status === "publicado" ? "text-[#1d7a46]" : undefined}>{STATUS_LABEL[exam.status]}{exam.status === "publicado" ? " ✓ visível para os alunos no Raio-X" : ""}</b>{exam.positions.length ? ` · Cargos: ${exam.positions.join(", ")}` : ""}</p>
         <div className="mt-3 flex flex-wrap gap-2">
-          {nextStatuses(exam.status).map((to: ExamStatus) => (
+          {nextStatuses(exam.status).filter((to) => !(awaiting && to === "publicado")).map((to: ExamStatus) => (
             <form key={to} action={async () => { "use server"; await setStatusAction(id, to); }}>
               <button className={`rounded-full px-4 py-2 t-small font-semibold ${to === "publicado" ? "bg-destaque text-white" : "border border-linha"}`}>{to === "publicado" ? "Publicar análise" : `Mover para ${STATUS_LABEL[to]}`}</button>
             </form>
           ))}
+          <Link href={`/admin/estrategico/importar?exam=${id}`} className={`rounded-full px-4 py-2 t-small font-semibold ${awaiting ? "bg-destaque text-white" : "border border-linha"}`}>{awaiting ? "Catalogar Raio-X deste concurso" : "Atualizar análise (reimportar)"}</Link>
           <form action={async () => { "use server"; await deleteExamAction(id); redirect("/admin/estrategico"); }}>
             <button className="rounded-full border border-[#C81018] px-4 py-2 t-small font-semibold text-[#C81018]">Excluir</button>
           </form>
         </div>
+        {req && <p className="mt-3 rounded-lg bg-superficie p-3 t-small"><b>Edital enviado por {req.requests} {req.requests === 1 ? "aluno" : "alunos"}</b>{[req.role, req.board, req.year].filter(Boolean).length ? ` · ${[req.role, req.board, req.year].filter(Boolean).join(" · ")}` : ""}.{awaiting ? " Ainda sem análise: os alunos veem “Raio-X em preparação”." : ""}</p>}
+        {req?.program && (
+          <details className="mt-2 rounded-lg border border-linha p-3 t-small">
+            <summary className="cursor-pointer font-semibold">Conteúdo programático extraído do edital</summary>
+            <pre className="mt-2 whitespace-pre-wrap font-sans">{req.program}</pre>
+          </details>
+        )}
         {exam.limitations && <p className="mt-3 rounded-lg bg-superficie p-3 t-small"><b>Limitações da análise:</b> {exam.limitations}</p>}
       </div>
 

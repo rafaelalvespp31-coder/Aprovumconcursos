@@ -5,7 +5,7 @@ import { getPreparationTree } from "@/server/services/edital-view";
 import { getRaioX } from "@/server/services/strategic";
 import { MeuConcurso, type PrepTab } from "@/components/aprovum-ai/meu-concurso";
 import { RaioXView } from "@/components/aprovum-ai/raiox-view";
-import { chooseExamAction, updateInfoAction } from "./actions";
+import { updateInfoAction } from "./actions";
 
 export const metadata = { title: "Meu Concurso" };
 export const dynamic = "force-dynamic";
@@ -28,19 +28,12 @@ export default async function MeuConcursoPage({ params, searchParams }: { params
           {rx?.raiox ? <RaioXView data={rx.raiox} /> : (
             <section className="ai-rx" aria-label="Raio-X">
               <h3>RAIO-X DO EDITAL</h3>
-              <p className="ai-sub">O diagnóstico estratégico deste concurso ainda não foi catalogado pela equipe APROVUM. Sua preparação continua completa: estude pelas aulas do edital.</p>
+              {rx?.status === "sem_nome" ? (
+                <p className="ai-sub">Não identificamos o nome do concurso neste edital. Informe o nome e o ano na aba Visão geral para o Raio-X ser preparado.</p>
+              ) : (
+                <p className="ai-sub">O diagnóstico estratégico{rx?.examName ? <> de <b>{rx.examName}</b></> : " deste concurso"} já foi enviado para a equipe APROVUM e está sendo preparado. Ele aparece aqui automaticamente assim que for publicado. Enquanto isso, sua preparação continua completa: estude pelas aulas do edital.</p>
+              )}
             </section>
-          )}
-          {rx && rx.choices.length > 0 && (
-            <form action={chooseExamAction.bind(null, id)} className="ai-rx" aria-label="Escolher concurso do Raio-X">
-              <label className="ai-rx-sel">O Raio-X não é o do seu concurso? Escolha outro catalogado
-                <select name="exam" defaultValue={rx.chosenId ?? ""}>
-                  <option value="">Automático (pelo nome do concurso)</option>
-                  {rx.choices.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
-                </select>
-              </label>
-              <button className="ai-ghost" style={{ minHeight: 40 }}>Aplicar</button>
-            </form>
           )}
         </>
       )}

@@ -65,3 +65,14 @@ FOCO: Muito alta | Legislação | - | Cai sempre`;
     expect(d.recommendations[0]).toMatchObject({ priority: "maxima", topic: "Legislação" });
   });
 });
+
+import { buildStrategicPrompt } from "./text";
+describe("comando do ChatGPT preenchido pelo edital do aluno", () => {
+  it("leva nome, ano e conteúdo programático", () => {
+    const p = buildStrategicPrompt({ name: "PMERJ 2026", year: 2026, program: "Direito Penal: Crimes contra a pessoa" });
+    expect(p).toContain("CONCURSO: PMERJ 2026 (use exatamente este nome");
+    expect(p).toContain("CONTEÚDO PROGRAMÁTICO EXTRAÍDO");
+    expect(p).toContain("Direito Penal: Crimes contra a pessoa");
+    expect(buildStrategicPrompt()).toContain("[nome do concurso]");
+  });
+});

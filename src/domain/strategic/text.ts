@@ -170,13 +170,23 @@ ASSUNTO: Teoria do crime | 2 | 0
 
 FOCO: MAXIMA | Direito Penal | Crimes contra a Administração Pública | Cobrado em todas as provas analisadas.`;
 
-/** Comando para colar no ChatGPT: gera a análise exatamente no formato que parseStrategicText entende. */
-export const CHATGPT_STRATEGIC_PROMPT = `Você é um analista de concursos públicos. Faça a ANÁLISE ESTRATÉGICA do concurso abaixo para eu importar no meu sistema.
+export interface PromptInfo { name?: string | null; organ?: string | null; role?: string | null; board?: string | null; year?: number | null; program?: string | null }
 
-CONCURSO: [nome do concurso]
-ÓRGÃO: [órgão]
-CARGO(S): [cargo]
-PROVAS A ANALISAR: [ex.: as 2 ou 3 últimas provas objetivas]
+/** Comando para colar no ChatGPT: gera a análise exatamente no formato que parseStrategicText entende. Com info, já vem preenchido com o concurso do edital do aluno. */
+export function buildStrategicPrompt(info: PromptInfo = {}): string {
+  const v = (x: string | number | null | undefined, ph: string) => (x === null || x === undefined || x === "" ? ph : String(x));
+  const head = `CONCURSO: ${v(info.name, "[nome do concurso]")}${info.name ? " (use exatamente este nome na linha CONCURSO)" : ""}
+ÓRGÃO: ${v(info.organ, "[órgão]")}
+CARGO(S): ${v(info.role, "[cargo]")}
+BANCA DO EDITAL ATUAL: ${v(info.board, "[banca, se souber]")}
+ANO DO EDITAL ATUAL: ${v(info.year, "[ano]")}
+PROVAS A ANALISAR: [ex.: as 2 ou 3 últimas provas objetivas]${info.program ? `
+
+CONTEÚDO PROGRAMÁTICO EXTRAÍDO DO EDITAL ATUAL (use estes nomes de disciplinas e assuntos sempre que corresponderem):
+${info.program}` : ""}`;
+  return `Você é um analista de concursos públicos. Faça a ANÁLISE ESTRATÉGICA do concurso abaixo para eu importar no meu sistema.
+
+${head}
 
 REGRAS OBRIGATÓRIAS
 1. NUNCA invente números. Questões por disciplina/assunto e notas de corte só com base em fonte que você consiga indicar (edital, resultado, prova, gabarito).
@@ -207,3 +217,6 @@ FOCO: MAXIMA, ALTA ou COMPLEMENTAR | disciplina | assunto | justificativa curta 
 
 EXEMPLO DE SAÍDA
 ${IMPORT_EXAMPLE_TEXT}`;
+}
+
+export const CHATGPT_STRATEGIC_PROMPT = buildStrategicPrompt();

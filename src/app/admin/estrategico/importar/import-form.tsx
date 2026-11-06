@@ -5,16 +5,16 @@ import { useState, useTransition } from "react";
 import { applyImportAction, previewImportAction } from "../actions";
 import type { ImportPreview } from "@/server/services/strategic";
 
-export function ImportForm({ example }: { example: string }) {
+export function ImportForm({ example, examId = null }: { example: string; examId?: string | null }) {
   const [json, setJson] = useState("");
   const [pv, setPv] = useState<ImportPreview | null>(null);
   const [done, setDone] = useState<{ examId: string; updated: boolean } | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [pending, start] = useTransition();
 
-  const check = () => start(async () => { setErr(null); setDone(null); setPv(await previewImportAction(json)); });
+  const check = () => start(async () => { setErr(null); setDone(null); setPv(await previewImportAction(json, examId)); });
   const apply = () => start(async () => {
-    const r = await applyImportAction(json);
+    const r = await applyImportAction(json, examId);
     if (r.ok) setDone({ examId: r.examId, updated: r.updated });
     else setErr(r.error);
   });
