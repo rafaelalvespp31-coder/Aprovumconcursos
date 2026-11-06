@@ -141,3 +141,38 @@ ASSUNTO: Crimes contra a Administração Pública | 3 | 0
 ASSUNTO: Teoria do crime | 2 | 0
 
 FOCO: MAXIMA | Direito Penal | Crimes contra a Administração Pública | Cobrado em todas as provas analisadas.`;
+
+/** Comando para colar no ChatGPT: gera a análise exatamente no formato que parseStrategicText entende. */
+export const CHATGPT_STRATEGIC_PROMPT = `Você é um analista de concursos públicos. Faça a ANÁLISE ESTRATÉGICA do concurso abaixo para eu importar no meu sistema.
+
+CONCURSO: [nome do concurso]
+ÓRGÃO: [órgão]
+CARGO(S): [cargo]
+PROVAS A ANALISAR: [ex.: as 2 ou 3 últimas provas objetivas]
+
+REGRAS OBRIGATÓRIAS
+1. NUNCA invente números. Questões por disciplina/assunto e notas de corte só com base em fonte que você consiga indicar (edital, resultado, prova, gabarito). Se não localizar, escreva "-" no campo ou omita a linha.
+2. A classificação das questões por assunto é análise própria: registre como FONTE do tipo PROPRIA.
+3. Toda linha NOTA precisa apontar a chave de uma FONTE que exista.
+4. A soma das DISCIPLINAS não pode passar do total de questões da PROVA, e a soma dos ASSUNTOS não pode passar das questões da DISCIPLINA.
+5. Datas em DD/MM/AAAA. Separe campos com " | " (barra vertical).
+6. Responda SOMENTE com as linhas no formato abaixo, em texto puro: sem markdown, sem tabelas, sem comentários antes ou depois.
+
+FORMATO (uma linha por registro, nesta ordem)
+CONCURSO: nome | órgão
+CARGOS: cargo 1; cargo 2
+LIMITAÇÕES: o que a análise não cobre ou não conseguiu confirmar
+FONTE: chave | OFICIAL, EXTRAIDO ou PROPRIA | nome do documento | url | página | órgão/banca | data de publicação | data de consulta | conferido por
+
+Para CADA prova, repita o bloco:
+PROVA: ano | banca | total de questões | regra de contagem (ex.: anuladas pontuam para todos)
+NOTA: cargo | AMPLA, PCD ou NEGROS | etapa | MINIMA_APROVACAO, CORTE_1FASE, ULTIMO_CLASSIFICADO, ULTIMO_CONVOCADO ou ULTIMO_DENTRO_VAGAS | nota | nota máxima | nº de candidatos | critério | chave da fonte | página | data da verificação
+DISCIPLINA: nome | nº de questões | nº de anuladas
+ASSUNTO: título do assunto | nº de questões | nº de anuladas
+(cada DISCIPLINA seguida dos seus ASSUNTOS)
+
+No final, as recomendações de estudo:
+FOCO: MAXIMA, ALTA ou COMPLEMENTAR | disciplina | assunto | justificativa curta baseada na incidência
+
+EXEMPLO DE SAÍDA
+${IMPORT_EXAMPLE_TEXT}`;
