@@ -49,6 +49,7 @@ const summaryOf = (r: Row): PrepSummary => ({
   title: displayTitle((r.contest_name as string | null) ?? null, r.file_name as string),
   contestName: (r.contest_name as string | null) ?? null,
   roleName: (r.role_name as string | null) ?? null,
+  orgLogo: (r.org_logo as string | null) ?? null,
   board: (r.board as string | null) ?? null,
   year: (r.contest_year as number | null) ?? null,
   fileName: r.file_name as string,

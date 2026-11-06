@@ -6,6 +6,7 @@ import { ChevronDown } from "lucide-react";
 import { StartStudyDialog, type StartTheme } from "@/app/(app)/nova-trilha/start-dialog";
 import type { PreparationTree, TreeTopic } from "@/server/services/edital-view";
 import { DeletePrep } from "./delete-prep";
+import { OrgEmblem } from "./org-emblem";
 import "./aprovum-ai.css";
 
 const ST: Record<TreeTopic["status"], string> = {
@@ -19,19 +20,22 @@ const ST: Record<TreeTopic["status"], string> = {
 export type PrepTab = "visao" | "aulas" | "raiox" | "questoes" | "desempenho";
 const TABS: Array<[PrepTab, string]> = [["visao", "VISÃO GERAL"], ["aulas", "AULAS DO EDITAL"], ["raiox", "RAIO-X DO EDITAL"], ["questoes", "QUESTÕES"], ["desempenho", "DESEMPENHO"]];
 
-export function MeuConcurso({ tree, save, start, tab, children }: { tree: PreparationTree; save: (f: FormData) => Promise<void>; start: (s: { error?: string }) => Promise<{ error?: string }>; tab: PrepTab; children?: React.ReactNode }) {
+export function MeuConcurso({ tree, save, start, tab, editing = false, children }: { tree: PreparationTree; save: (f: FormData) => Promise<void>; start: (s: { error?: string }) => Promise<{ error?: string }>; tab: PrepTab; editing?: boolean; children?: React.ReactNode }) {
   const [startState, startAction, starting] = useActionState(start, {});
   const started = !!(tree.prep.stats as { studyFolderId?: string }).studyFolderId;
   const { prep, disciplines, totals } = tree;
   const [theme, setTheme] = useState<StartTheme | null>(null);
-  const [edit, setEdit] = useState(false);
+  const [edit, setEdit] = useState(editing);
   const pend = disciplines.flatMap((d) => d.topics.filter((t) => t.status === "nao_encontrado" || t.status === "conferencia").map((t) => ({ d, t })));
   const created = new Date(prep.createdAt).toLocaleDateString("pt-BR");
 
   return (
     <div className="ai-root mx-auto grid w-full max-w-4xl gap-4" data-testid="meu-concurso">
       <header className="ai-head">
-        <h1>{prep.title}</h1>
+        <div className="ai-head-top">
+          <OrgEmblem logo={prep.orgLogo} name={prep.contestName ?? prep.title} size={60} />
+          <h1>{prep.title}</h1>
+        </div>
         <div className="ai-meta">
           {prep.roleName && <span>Cargo: <b>{prep.roleName}</b></span>}
           {prep.board && <span>Banca: <b>{prep.board}</b></span>}
@@ -58,7 +62,7 @@ export function MeuConcurso({ tree, save, start, tab, children }: { tree: Prepar
         {edit && (
           <form action={async (f) => { await save(f); setEdit(false); }} className="ai-fields" style={{ marginTop: 10 }}>
             <label className="ai-field"><span>Nome do concurso</span><input name="contestName" defaultValue={prep.contestName ?? ""} maxLength={160} /></label>
-            <label className="ai-field"><span>Cargo</span><input name="roleName" defaultValue={prep.roleName ?? ""} maxLength={160} /></label>
+            <label className="ai-field"><span>Cargo pretendido</span><input name="roleName" defaultValue={prep.roleName ?? ""} maxLength={160} placeholder="Ex: Guarda Civil Municipal" autoFocus={editing && !prep.roleName} /></label>
             <label className="ai-field"><span>Banca</span><input name="board" defaultValue={prep.board ?? ""} maxLength={80} /></label>
             <label className="ai-field"><span>Ano</span><input name="year" defaultValue={prep.year ?? ""} inputMode="numeric" maxLength={4} /></label>
             <button className="ai-go" type="submit">SALVAR</button>

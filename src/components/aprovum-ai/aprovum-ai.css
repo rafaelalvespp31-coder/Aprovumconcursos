@@ -230,3 +230,15 @@
 .ai-ind .ai-kpi { color: #0d0d0f; background: #fff; }
 .ai-ind .ai-kpi b { color: #0d0d0f; }
 .ai-ind .ai-kpi span { color: #0d0d0f; font-weight: 600; }
+
+/* Símbolo do órgão + cargo nos cards de Meu Concurso */
+.ai-emblem { flex: none; display: grid; place-items: center; border-radius: 12px; background: #fff; border: 1px solid #2a2d36; overflow: hidden; }
+.ai-emblem img { width: 86%; height: 86%; object-fit: contain; }
+.ai-emblem:not([data-logo]) { background: radial-gradient(circle at 30% 25%, #3a0d10, #12080a 70%); border-color: var(--red2); }
+.ai-emblem b { font: 700 15px/1 "Chakra Petch", sans-serif; letter-spacing: .04em; color: #fff; }
+.ai-item .ai-item-txt { min-width: 0; display: grid; gap: 3px; }
+.ai-item .ai-role { display: block; font-size: 13px; color: #e4e6ea; font-weight: 600; overflow-wrap: anywhere; }
+.ai-item .ai-role i { font-style: normal; font-weight: 700; font-size: 10.5px; letter-spacing: .12em; color: #ff6b6b; margin-right: 6px; }
+.ai-item .ai-role[data-missing="1"] { color: #f5c26b; font-weight: 600; }
+.ai-head-top { display: flex; align-items: center; gap: 14px; }
+.ai-head-top h1 { min-width: 0; }

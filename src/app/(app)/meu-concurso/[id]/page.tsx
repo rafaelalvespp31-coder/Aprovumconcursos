@@ -12,9 +12,9 @@ export const dynamic = "force-dynamic";
 
 const TABS = new Set<PrepTab>(["visao", "aulas", "raiox", "questoes", "desempenho"]);
 
-export default async function MeuConcursoPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ aba?: string }> }) {
+export default async function MeuConcursoPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ aba?: string; editar?: string }> }) {
   const { id } = await params;
-  const { aba } = await searchParams;
+  const { aba, editar } = await searchParams;
   const tab: PrepTab = TABS.has(aba as PrepTab) ? (aba as PrepTab) : "visao";
   const user = await requireUser(`/meu-concurso/${id}`);
   if (await reanalyzeIfStale(user.id, id).catch(() => false)) redirect(`/aprovum-ai/${id}`);
@@ -22,7 +22,7 @@ export default async function MeuConcursoPage({ params, searchParams }: { params
   if (!tree) notFound();
   const rx = tab === "raiox" ? await getRaioX(user.id, id).catch(() => null) : null;
   return (
-    <MeuConcurso tree={tree} save={updateInfoAction.bind(null, id)} start={startStudyAction.bind(null, id)} tab={tab}>
+    <MeuConcurso tree={tree} save={updateInfoAction.bind(null, id)} start={startStudyAction.bind(null, id)} tab={tab} editing={editar === "1"}>
       {tab === "raiox" && (
         <>
           {rx?.raiox ? <RaioXView data={rx.raiox} /> : (

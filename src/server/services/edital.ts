@@ -5,7 +5,8 @@ import { createAdminClient } from "../supabase";
 import { auditLog, logEvent } from "../observability";
 import { UserFacingError, enforceRateLimit } from "./trails";
 import { looksLikeEdital, parseEdital, parseProgrammaticText, type ParsedEdital } from "@/domain/edital/parser";
-import { detectContestInfo, displayTitle } from "@/domain/edital/info";
+import { detectContestInfo, detectRole, displayTitle } from "@/domain/edital/info";
+import { extractOrgLogo } from "./edital-logo";
 import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match";
 
 /**
@@ -64,6 +65,8 @@ export interface PrepSummary {
   title: string;
   contestName: string | null;
   roleName: string | null;
+  /** Símbolo do órgão tirado do cabeçalho do edital (data URL PNG) — null quando o PDF não traz. */
+  orgLogo: string | null;
   board: string | null;
   year: number | null;
   fileName: string;
@@ -84,6 +87,7 @@ const toSummary = (r: Row): PrepSummary => ({
   title: displayTitle((r.contest_name as string | null) ?? null, r.file_name as string),
   contestName: (r.contest_name as string | null) ?? null,
   roleName: (r.role_name as string | null) ?? null,
+  orgLogo: (r.org_logo as string | null) ?? null,
   board: (r.board as string | null) ?? null,
   year: (r.contest_year as number | null) ?? null,
   fileName: r.file_name as string,
@@ -264,10 +268,15 @@ async function fillInfo(p: Row, pages: string[]) {
     if (!p.contest_name && info.contestName) patch.contest_name = info.contestName;
     if (!p.board && info.board) patch.board = info.board;
     if (!p.contest_year && info.year) patch.contest_year = info.year;
+    if (!p.role_name) {
+      const role = detectRole(pages);
+      if (role) patch.role_name = role;
+    }
     if (!Object.keys(patch).length) return;
     await createAdminClient().from("edital_preparations").update(patch).eq("id", p.id as string);
     Object.assign(p, patch);
     if (patch.contest_name) await event(p.id as string, p.user_id as string, 3, `Concurso identificado: ${patch.contest_name as string}.`, "ok");
+    if (patch.role_name) await event(p.id as string, p.user_id as string, 3, `Cargo identificado: ${patch.role_name as string}.`, "ok");
   } catch {
     /* identificar o nome é um extra: nunca derruba o processamento */
   }
@@ -276,9 +285,29 @@ async function fillInfo(p: Row, pages: string[]) {
 /** Preparações antigas sem nome: tenta identificar pelo texto já extraído (reaproveitado pelo hash). */
 export async function backfillInfo(rows: Row[]): Promise<void> {
   for (const r of rows) {
-    if (r.contest_name || r.status === "erro" || r.status === "recebendo") continue;
+    if (r.status === "erro" || r.status === "recebendo") continue;
+    if (r.contest_name && r.role_name) continue;
+    if (r.contest_name && r.extras_checked) continue; // cargo já procurado uma vez e não havia um só
     const ex = await createAdminClient().from("edital_extractions").select("pages").eq("file_hash", r.file_hash as string).maybeSingle();
     if (ex.data) await fillInfo(r, ex.data.pages as string[]);
+  }
+  // Símbolo do órgão: procurado uma única vez por preparação (inclusive nas antigas).
+  await Promise.all(rows.filter((r) => !r.extras_checked && r.status !== "recebendo").slice(0, 6).map((r) => fillLogo(r)));
+}
+
+/** Tira o brasão/logo do cabeçalho do PDF e grava (uma vez). Nunca derruba o processamento. */
+async function fillLogo(p: Row): Promise<void> {
+  try {
+    const db = createAdminClient();
+    let logo: string | null = null;
+    const dl = await db.storage.from(EDITAL_BUCKET).download(p.file_path as string);
+    if (!dl.error && dl.data) logo = await extractOrgLogo(new Uint8Array(await dl.data.arrayBuffer()));
+    const patch: Record<string, unknown> = { extras_checked: true };
+    if (logo && !p.org_logo) patch.org_logo = logo;
+    const up = await db.from("edital_preparations").update(patch).eq("id", p.id as string);
+    if (!up.error) Object.assign(p, patch);
+  } catch {
+    /* símbolo é um extra */
   }
 }
 
@@ -289,6 +318,7 @@ async function stageIdentify(p: Row) {
   const ex = await db.from("edital_extractions").select("pages").eq("file_hash", p.file_hash as string).maybeSingle();
   if (ex.error || !ex.data) throw new UserFacingError("A leitura do edital não foi encontrada. Retome o processamento.", "extraction_missing");
   await fillInfo(p, ex.data.pages as string[]);
+  if (!p.extras_checked) await fillLogo(p);
   const parsed = parseEdital(ex.data.pages as string[]);
   if (!parsed.found || parsed.confidence < 0.4 || !parsed.disciplines.length) {
     const notEdital = !looksLikeEdital(ex.data.pages as string[]);

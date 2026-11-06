@@ -103,3 +103,35 @@ export function displayTitle(contestName: string | null, fileName: string): stri
   if (!base || /^[0-9a-f]{8}\b/i.test(base) || /^\d[\d\s]{12,}$/.test(base) || base.replace(/[0-9a-f\s]/gi, "").length < 3) return "Edital enviado";
   return base;
 }
+
+const ROLE_STOP = /\s*(?:[,;:()\[\]]|\.\s|\s[-–—]\s|\bdo quadro\b|\bda carreira\b|\bn[ií]vel\b|\bcom\b|\bpara\b|\bconforme\b|\bsob\b|\blotad|\bc[oó]digo\b|\bvagas?\b|\bjornada\b|\bcarga hor|\bremunera|\bvencimento|\bsal[aá]rio|\bescolaridade|\brequisito|\bregime\b|\bmediante\b|\bem\s+(?:car[aá]ter|regime)|\bdo munic[ií]pio|\bdo estado|\bda prefeitura|\bdeste\b|\bdesta\b|\bnos termos|\be (?:forma[cç][aã]o|cadastro)|\bpor meio|\bconstantes?\b|\bprevist|\ba que\b|\bque\b|\bse\b|\s[eé]\s+de\b|\bser[aá]\b|\bna forma\b|\bdever)/i;
+const ROLE_GENERIC = /^(?:efetivos?|p[uú]blicos?|de provimento efetivo|provimento efetivo|n[ií]vel (?:superior|m[eé]dio|fundamental|t[eé]cnico)|diversos|v[aá]rios|abaixo|a seguir|relacionados?|ofertados?|indicados?|vagos|e empregos?|do edital|o cargo|cargos?|pretendido|escolhido|optado|para o qual.*|que .*|em quest[aã]o|.*\bedital\b.*)$/i;
+
+/** Cargo pretendido pelo texto do edital (sem IA). Só devolve quando há UM cargo claro; com vários, o aluno escolhe. */
+export function detectRole(pages: string[]): string | null {
+  const text = pages.slice(0, 4).join("\n");
+  const found = new Map<string, string>();
+  const seen = new Map<string, number>();
+  const take = (raw: string) => {
+    let r = raw.replace(/\s+/g, " ").trim();
+    r = r.split(ROLE_STOP)[0]!.replace(/^(?:de|do|da|o|a)\s+/i, "").replace(/[.\s]+$/, "").trim();
+    // Quebra de linha no PDF deixa "INVESTIGADOR DE" / "Guarda Municipal 6ª": tira o pedaço solto do fim.
+    r = r.replace(/(?:\s+(?:de|do|da|dos|das|e|\d+[ªºa]?))+$/i, "").trim();
+    if (r.length < 4 || r.length > 70 || /\d{2,}/.test(r) || ROLE_GENERIC.test(r)) return;
+    if (r.split(" ").length > 8) return;
+    const key = fold(r);
+    if (!found.has(key)) found.set(key, titleCasePt(r));
+    seen.set(key, (seen.get(key) ?? 0) + 1);
+  };
+  // "CARGO: GUARDA CIVIL MUNICIPAL" / "CARGO – SOLDADO"
+  for (const m of text.matchAll(/(?:^|\n)\s*cargo\s*(?:[:–—-]|\bde\b)\s*([^\n]{3,90})/gi)) take(m[1]!);
+  // "... para o cargo de Agente de Polícia ..." / "provimento do cargo de ..."
+  for (const m of text.matchAll(/\bcargos?(?:\s+(?:efetivos?|p[uú]blicos?)){0,2}\s+de\s+([^\n]{3,90})/gi)) take(m[1]!);
+  // "Investigador" e "Investigador de Polícia I" são o mesmo cargo: agrupa pelo começo do nome
+  // e fica o mais citado (empate: o mais completo). Grupos diferentes = vários cargos → aluno escolhe.
+  const keys = [...found.keys()].sort((a, b) => a.length - b.length);
+  const roots = keys.filter((k) => !keys.some((o) => o !== k && k.startsWith(`${o} `)));
+  if (roots.length !== 1) return null;
+  const best = keys.sort((a, b) => (seen.get(b)! - seen.get(a)!) || b.length - a.length)[0]!;
+  return found.get(best)!;
+}
