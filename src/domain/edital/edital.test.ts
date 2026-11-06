@@ -153,3 +153,20 @@ describe("capítulos do edital não viram disciplinas", () => {
     expect(names).toEqual(["LÍNGUA PORTUGUESA", "DIREITO PENAL"]);
   });
 });
+
+describe("edital VUNESP (anexo sem numeração, capítulos numerados no corpo)", () => {
+  it("usa o anexo e não os CAPÍTULOS", () => {
+    const pages = [
+      "CAPÍTULO 10 – DA PONTUAÇÃO FINAL\n10.1 A nota final será a soma.\nCAPÍTULO 11 – DOS CRITÉRIOS DE DESEMPATE E DA CLASSIFICAÇÃO FINAL\n11.1 Critérios.\n8.90. O conteúdo programático do Curso de Formação será organizado nas seguintes áreas.\nCAPÍTULO 12 – DOS RECURSOS\n12.1 Prazo de dois dias.",
+      "ANEXO II – CONTEÚDO PROGRAMÁTICO\nLÍNGUA PORTUGUESA\nLeitura e interpretação de textos. Ortografia oficial. Acentuação gráfica. Concordância verbal e nominal.\nMATEMÁTICA\nOperações com números racionais. Razão e proporção. Regra de três.\nCONHECIMENTOS ESPECÍFICOS\nEstatuto da Guarda Civil Municipal. Lei 13.022/2014. Direitos humanos.",
+    ];
+    const r = parseEdital(pages);
+    expect(r.found).toBe(true);
+    expect(r.disciplines.map((d) => d.name)).toEqual(["LÍNGUA PORTUGUESA", "MATEMÁTICA", "CONHECIMENTOS ESPECÍFICOS"]);
+    expect(r.disciplines[0]!.topics.length).toBeGreaterThanOrEqual(3);
+  });
+  it("só capítulos = não encontrou (vai para conferência)", () => {
+    const r = parseEdital(["CAPÍTULO 10 – DA PONTUAÇÃO FINAL\n10.1 Nota.\n10.2 Soma.\nCAPÍTULO 12 – DOS RECURSOS\n12.1 Prazo."]);
+    expect(r.found).toBe(false);
+  });
+});

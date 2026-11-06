@@ -70,9 +70,14 @@ function toLines(pages: readonly string[]): Line[] {
 }
 
 /** A linha abre uma disciplina? Devolve o nome e o resto da linha (itens inline). */
+const STRUCTURAL_RE = /^(cap[ií]tulo|t[ií]tulo|se[cç][aã]o|subse[cç][aã]o|anexo|parte|livro|artigo|art\.?)\s+[\divxlc]+\b/i;
 function headingOf(line: string, next: string | undefined): { name: string; rest: string } | null {
   const r = headingRaw(line, next);
-  if (r && CHAPTER_RE.test(fold(r.name))) return null;
+  if (!r) return null;
+  const f = fold(r.name);
+  if (STRUCTURAL_RE.test(f) || CHAPTER_RE.test(f)) return null;
+  // "DA …", "DO …", "DOS …": regras do edital, a não ser que o nome seja de matéria conhecida.
+  if (/^d[aeo]s?\s/.test(f) && !modeOfDiscipline(r.name)) return null;
   return r;
 }
 
@@ -135,7 +140,13 @@ function itemsOf(lines: Line[]): ParsedTopic[] {
     const title = clean(it.text);
     if (title.length < 3) continue;
     // Sem numeração no edital: cada trecho separado por ";" vira um assunto.
-    const chunks = !numbered && !it.code && title.includes(";") ? title.split(/\s*;\s*/).map(clean).filter((c) => c.length >= 3) : [title];
+    const bySemi = !numbered && !it.code && title.includes(";");
+    const bySentence = !numbered && !it.code && !bySemi && title.length > 70 && /[.!?]\s+[A-ZÀ-Ú]/.test(title);
+    const chunks = bySemi
+      ? title.split(/\s*;\s*/).map(clean).filter((c) => c.length >= 3)
+      : bySentence
+        ? title.split(/(?<=[.!?])\s+(?=[A-ZÀ-Ú])/).map(clean).filter((c) => c.length >= 3)
+        : [title];
     for (const c of chunks) out.push({ code: it.code, depth: it.depth, title: c.slice(0, 400), titleKey: titleKey(c), page: it.page });
   }
   return out;
@@ -180,6 +191,8 @@ export function parseEdital(pages: readonly string[]): ParsedEdital {
   let best: { idx: number; score: number } | null = null;
   lines.forEach((l, idx) => {
     if (!START_RE.test(l.text) || l.text.length > 160) return;
+    // Menção no meio de um item ("8.90. O conteúdo programático do Curso…") não é o título da seção.
+    if (ITEM_START.test(l.text) || (l.text.length > 90 && upperRatio(l.text) < 0.6)) return;
     let score = 0;
     for (let j = idx + 1; j < Math.min(lines.length, idx + 500); j++) {
       if (END_RE.test(lines[j]!.text) && score > 0) break;
@@ -231,6 +244,7 @@ export function parseEdital(pages: readonly string[]): ParsedEdital {
   flush();
   flushGroup();
 
+  if (disciplines.length && !disciplines.some((d) => d.mode || DISCIPLINE_HINT.test(fold(d.name)))) return fail("As seções encontradas não parecem matérias de estudo.");
   if (!disciplines.length) return fail("Encontrei o título do conteúdo programático, mas não consegui separar as disciplinas.");
   const total = disciplines.reduce((n, d) => n + d.topics.length, 0);
   const numbered = disciplines.reduce((n, d) => n + d.topics.filter((t) => t.code).length, 0);

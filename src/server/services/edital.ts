@@ -20,7 +20,7 @@ export const MAX_EDITAL_BYTES = 25 * 1024 * 1024;
 const MAX_PAGES = 600;
 
 export type PrepStatus = "recebendo" | "lendo" | "identificando" | "mapeando" | "organizando" | "concluido" | "conferencia" | "erro";
-export const PARSER_V = 3;
+export const PARSER_V = 4;
 const STEP_OF: Record<PrepStatus, number> = { recebendo: 1, lendo: 2, identificando: 3, mapeando: 4, organizando: 5, concluido: 6, conferencia: 3, erro: 0 };
 
 export const createInput = z.object({
@@ -216,22 +216,16 @@ async function stageRead(p: Row) {
     await event(id, userId, 2, "O PDF não tem texto selecionável (parece digitalizado).", "error");
     throw new UserFacingError("Este PDF parece digitalizado (imagem) e não tem texto para leitura. Use a conferência manual para colar o conteúdo programático.", "no_text");
   }
-  // Só o conteúdo programático interessa: localiza a seção e descarta o resto (salários, inscrições, cronograma…).
-  // As páginas descartadas ficam vazias (a numeração original é preservada); sem seção segura, guarda tudo p/ conferência.
-  let kept = pages;
+  // O texto de TODAS as páginas fica guardado (cache por hash): se a seção for mal localizada, dá para reler sem novo upload.
+  // A análise, porém, só considera a seção do conteúdo programático (parseEdital isola essa parte).
   const found = parseEdital(pages);
   if (found.found && found.sectionPages) {
-    const from = found.sectionPages[0] - 1;
-    const to = Math.min(pages.length - 1, found.sectionPages[1]); // +1 página de margem
-    kept = pages.map((t, i) => (i >= from && i <= to ? t : ""));
-    await event(id, userId, 2, `Conteúdo programático localizado (págs. ${from + 1}–${to + 1}). O restante do edital não será analisado.`, "ok");
+    await event(id, userId, 2, `Conteúdo programático localizado (págs. ${found.sectionPages[0]}–${found.sectionPages[1]}). O restante do edital não será analisado.`, "ok");
   } else {
     await event(id, userId, 2, "Não localizei o conteúdo programático com segurança; ele será conferido na próxima etapa.", "warn");
   }
-  const keptChars = kept.reduce((n, t) => n + t.length, 0);
-  const ins = await db.from("edital_extractions").upsert({ file_hash: hash, page_count: pages.length, pages: kept, chars: keptChars }, { onConflict: "file_hash" });
+  const ins = await db.from("edital_extractions").upsert({ file_hash: hash, page_count: pages.length, pages, chars }, { onConflict: "file_hash" });
   if (ins.error) throw new Error(ins.error.message);
-  await event(id, userId, 2, `${kept.filter(Boolean).length} páginas de conteúdo mantidas para análise.`, "ok");
   await setStatus(id, "identificando", { page_count: pages.length });
 }
 
@@ -451,9 +445,10 @@ export async function reanalyzeIfStale(userId: string, id: string): Promise<bool
   const p = await own(userId, id);
   const st = (p.stats as PrepStats) ?? {};
   if (p.status !== "concluido" || (st.parserV ?? 1) >= PARSER_V) return false;
-  const ex = await createAdminClient().from("edital_extractions").select("file_hash").eq("file_hash", p.file_hash as string).maybeSingle();
-  if (!ex.data) return false;
-  await setStatus(id, "identificando", { error: null, stats: { ...st, parserV: PARSER_V } });
-  await event(id, userId, 3, "Atualizando a leitura do edital com o leitor mais recente.", "info");
+  // Leituras antigas podem ter guardado só parte do texto: descarta o cache e relê o PDF guardado (sem novo upload).
+  const db = createAdminClient();
+  await db.from("edital_extractions").delete().eq("file_hash", p.file_hash as string);
+  await setStatus(id, "lendo", { error: null, stats: { ...st, parserV: PARSER_V } });
+  await event(id, userId, 2, "Atualizando a leitura do edital com o leitor mais recente.", "info");
   return true;
 }
