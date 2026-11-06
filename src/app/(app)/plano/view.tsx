@@ -176,7 +176,7 @@ export function PlanoView({ current, choose, mp = null }: { current: "gratuito" 
       <Crop x={0} y={PERK_Y + PERK_H} w={W} h={H - PERK_Y - PERK_H} className="pl-rodape" />
       {sel && (
         <div className="plano-fundo" role="dialog" aria-modal="true" aria-label={OFFERS[sel].label} data-testid="plano-dialogo" onClick={(e) => e.target === e.currentTarget && close()}>
-          <div className={`plano-caixa ${mp ? "plano-caixa-pg" : ""}`}>
+          <div className={`plano-caixa ${mp ? "plano-caixa-pg ck-caixa" : ""}`}>
             {mp ? (
               <PayBox offer={sel} publicKey={mp.publicKey} email={mp.email} onClose={close} onPaid={paid} />
             ) : done ? (
