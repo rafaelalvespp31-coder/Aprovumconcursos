@@ -3,7 +3,7 @@ import { createAdminClient } from "../supabase";
 import { auditLog } from "../observability";
 import { UserFacingError } from "./trails";
 import { parseStrategicText } from "@/domain/strategic/text";
-import { checkImport, examKey, importSchema, type ImportIssue, type StrategicImport } from "@/domain/strategic/import";
+import { checkImport, examKey, importSchema, repairImport, type ImportIssue, type StrategicImport } from "@/domain/strategic/import";
 import { compareLastTwo, heatmap, subjectIncidence, type Edition } from "@/domain/strategic/analysis";
 import { modeOfDiscipline } from "@/domain/edital/disciplines";
 import { buildIndex, matchTopic } from "@/domain/edital/match";
@@ -45,16 +45,16 @@ function parseRaw(raw: unknown): { data: StrategicImport | null; issues: ImportI
     } else {
       // Texto colado do ChatGPT (formato de linhas CONCURSO / PROVA / NOTA / DISCIPLINA / ASSUNTO / FOCO).
       const t = parseStrategicText(raw);
-      const textIssues: ImportIssue[] = t.issues.map((i) => ({ level: "erro" as const, path: i.line ? `linha ${i.line}` : "texto", message: i.message }));
+      const textIssues: ImportIssue[] = t.issues.map((i) => ({ level: i.level ?? "erro", path: i.line ? `linha ${i.line}` : "texto", message: i.message }));
       if (!t.data) return { data: null, issues: textIssues };
       const r = importSchema.safeParse(t.data);
       if (!r.success) return { data: null, issues: [...textIssues, ...r.error.issues.slice(0, 40).map((i) => ({ level: "erro" as const, path: i.path.join(".") || "raiz", message: i.message }))] };
-      return { data: r.data, issues: [...textIssues, ...checkImport(r.data)] };
+      return { data: r.data, issues: [...textIssues, ...repairImport(r.data), ...checkImport(r.data)] };
     }
   }
   const r = importSchema.safeParse(obj);
   if (!r.success) return { data: null, issues: r.error.issues.slice(0, 40).map((i) => ({ level: "erro" as const, path: i.path.join(".") || "raiz", message: i.message })) };
-  return { data: r.data, issues: checkImport(r.data) };
+  return { data: r.data, issues: [...repairImport(r.data), ...checkImport(r.data)] };
 }
 
 export async function previewImport(raw: unknown): Promise<ImportPreview> {

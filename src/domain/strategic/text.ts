@@ -11,30 +11,36 @@ import { fold } from "@/domain/edital/text";
  *   FOCO: prioridade | disciplina | assunto | justificativa
  */
 
-export interface TextIssue { line: number; message: string }
+export interface TextIssue { line: number; message: string; level?: "erro" | "aviso" }
 
 const KW: Record<string, string> = {
   concurso: "concurso", orgao: "orgao", cargos: "cargos", cargo: "cargos", limitacoes: "limitacoes", limitacao: "limitacoes",
-  fonte: "fonte", prova: "prova", nota: "nota", disciplina: "disciplina", assunto: "assunto", foco: "foco",
+  fonte: "fonte", fontes: "fonte", prova: "prova", edicao: "prova", nota: "nota", disciplina: "disciplina", materia: "disciplina", assunto: "assunto", topico: "assunto", foco: "foco",
 };
 
 const nul = (v: string | undefined) => {
   const t = (v ?? "").trim();
-  return !t || /^(-|—|–|n\/?a|nao localizado|não localizado|nao informado|não informado|null)$/i.test(t) ? null : t;
+  return !t || /^(-|—|–|n\/?a|nao localizado|não localizado|nao informado|não informado|null|\?|sem dados|desconhecido)$/i.test(t) ? null : t;
 };
 const num = (v: string | undefined): number | null => {
   const t = nul(v);
   if (t === null) return null;
-  if (!/\d/.test(t)) return NaN;
-  const n = Number(t.replace(/\./g, (m, i, s) => (/,/.test(s) ? "" : m)).replace(",", ".").replace(/[^0-9.\-]/g, ""));
+  const m = t.match(/-?\d[\d.,]*/); // pega o primeiro número ("12 questões", "≈ 8", "38,5 pts")
+  if (!m) return NaN;
+  let s = m[0];
+  if (/,/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
+  else if (/^\d{1,3}(\.\d{3})+$/.test(s)) s = s.replace(/\./g, "");
+  const n = Number(s);
   return Number.isFinite(n) ? n : NaN;
 };
 const int = (v: string | undefined) => { const n = num(v); return n === null ? null : Number.isNaN(n) ? NaN : Math.round(n); };
+const ok = (n: number | null) => (n === null || Number.isNaN(n) ? null : n);
 const date = (v: string | undefined) => {
   const t = nul(v);
   if (!t) return null;
   const br = t.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
-  return br ? `${br[3]}-${br[2]!.padStart(2, "0")}-${br[1]!.padStart(2, "0")}` : t;
+  if (br) return `${br[3]}-${br[2]!.padStart(2, "0")}-${br[1]!.padStart(2, "0")}`;
+  return /^\d{4}-\d{2}-\d{2}$/.test(t) ? t : null;
 };
 const pick = <T extends string>(v: string | undefined, map: Array<[RegExp, T]>, fallback: T | null): T | null => {
   const f = fold(nul(v) ?? "");
@@ -42,25 +48,30 @@ const pick = <T extends string>(v: string | undefined, map: Array<[RegExp, T]>, 
   return fallback;
 };
 const KIND: Array<[RegExp, string]> = [
-  [/minima|aprovacao/, "minima_aprovacao"], [/1\s*fase|primeira|corte/, "corte_primeira_fase"], [/classificado/, "ultimo_classificado"],
+  [/minima|aprovacao/, "minima_aprovacao"], [/1\s*.?\s*fase|primeira|corte/, "corte_primeira_fase"], [/classificado/, "ultimo_classificado"],
   [/convocado|nomeado/, "ultimo_convocado"], [/vaga|dentro/, "ultimo_dentro_vagas"],
 ];
 const MOD: Array<[RegExp, string]> = [[/ampla|geral/, "ampla"], [/pcd|defici/, "pcd"], [/negro|preto|pardo|racia/, "negros"], [/indigen/, "indigenas"], [/quilomb/, "quilombolas"], [/outra|outro/, "outra"]];
 const SRC: Array<[RegExp, string]> = [[/oficial/, "oficial"], [/extra/, "extraido"], [/propri|analise/, "propria"]];
-const PRIO: Array<[RegExp, string]> = [[/maxim/, "maxima"], [/alta/, "alta"], [/complement/, "complementar"]];
+const PRIO: Array<[RegExp, string]> = [[/maxim|altissim|muito alta/, "maxima"], [/alta/, "alta"], [/complement|media|baixa|moderad/, "complementar"]];
 
+/**
+ * Lê o texto e CONSERTA o que for possível (cada conserto vira aviso). Só é erro a ausência de CONCURSO ou de PROVA.
+ * Quantidade não informada vira 0 (com aviso); linha fora de ordem é encaixada; nota ilegível é ignorada.
+ */
 export function parseStrategicText(text: string): { data: unknown | null; issues: TextIssue[] } {
   const issues: TextIssue[] = [];
-  const bad = (line: number, message: string) => issues.push({ line, message });
-  const out: Record<string, unknown> & { exam: { name: string; organ: string | null }; positions: string[]; sources: unknown[]; editions: Array<Record<string, unknown>>; recommendations: unknown[]; limitations: string | null } = {
+  const warn = (line: number, message: string) => issues.push({ line, message, level: "aviso" });
+  const out: Record<string, unknown> & { exam: { name: string; organ: string | null }; positions: string[]; sources: Array<Record<string, unknown>>; editions: Array<Record<string, unknown>>; recommendations: unknown[]; limitations: string | null } = {
     exam: { name: "", organ: null }, positions: [], limitations: null, sources: [], editions: [], recommendations: [],
   };
   let ed: (typeof out.editions)[number] | null = null;
-  let subj: { topics: unknown[] } | null = null;
+  let subj: { name: string; questions: number | null; annulled: number; topics: Array<{ title: string; questions: number; annulled: number }> } | null = null;
+  const subjectsOf = (e: Record<string, unknown>) => e.subjects as Array<NonNullable<typeof subj>>;
 
   text.replace(/\r/g, "").split("\n").forEach((raw, i) => {
     const ln = i + 1;
-    const line = raw.replace(/^[\s>*\-•#`]+/, "").replace(/\*\*/g, "").trim();
+    const line = raw.replace(/^[\s>*\-•#`\d.)]+(?=[A-Za-zÀ-ÿ])/, "").replace(/\*\*|`/g, "").trim();
     if (!line) return;
     const m = line.match(/^([A-Za-zÀ-ÿ]+)\s*:\s*(.*)$/);
     const key = m ? KW[fold(m[1]!)] : undefined;
@@ -69,62 +80,79 @@ export function parseStrategicText(text: string): { data: unknown | null; issues
     switch (key) {
       case "concurso": out.exam.name = f[0] ?? ""; if (f[1]) out.exam.organ = nul(f[1]); break;
       case "orgao": out.exam.organ = nul(f[0]); break;
-      case "cargos": out.positions = (m![2] ?? "").split(/[;|]/).map((x) => x.trim()).filter(Boolean); break;
+      case "cargos": out.positions = (m![2] ?? "").split(/[;|]/).map((x) => x.trim()).filter((x) => nul(x)); break;
       case "limitacoes": out.limitations = nul(m![2]); break;
       case "fonte": {
-        const s = { key: f[0] ?? "", kind: pick(f[1], SRC, "oficial"), name: f[2] ?? "", url: nul(f[3]), page: int(f[4]), organ: nul(f[5]), publishedAt: date(f[6]), consultedAt: date(f[7]), reviewer: nul(f[8]), notes: null };
-        if (!s.key || !s.name) bad(ln, "FONTE precisa de: chave | tipo | nome ...");
-        if (s.page !== null && Number.isNaN(s.page)) { bad(ln, "Página da fonte inválida."); s.page = null; }
-        out.sources.push(s);
+        let k = nul(f[0]) ?? `fonte-${out.sources.length + 1}`;
+        const name = nul(f[2]) ?? nul(f[0]) ?? k;
+        if (!nul(f[0])) warn(ln, `Fonte sem chave: usei "${k}".`);
+        if (out.sources.some((s) => s.key === k)) { k = `${k}-${out.sources.length + 1}`; warn(ln, `Chave de fonte repetida: renomeei para "${k}".`); }
+        const page = ok(int(f[4]));
+        out.sources.push({ key: k, kind: pick(f[1], SRC, "oficial"), name, url: nul(f[3]), page: page && page >= 1 ? page : null, organ: nul(f[5]), publishedAt: date(f[6]), consultedAt: date(f[7]), reviewer: nul(f[8]), notes: null });
         break;
       }
       case "prova": {
-        const year = int(f[0]);
-        if (year === null || Number.isNaN(year)) { bad(ln, "PROVA precisa começar com o ano (ex.: PROVA: 2025 | Banca | 60 | regra)."); break; }
-        const total = int(f[2]);
-        ed = { year, board: nul(f[1]), totalQuestions: total !== null && !Number.isNaN(total) ? total : null, countingRule: nul(f[3]), notes: null, cutoffs: [], subjects: [] };
+        let year = ok(int(f[0]));
+        if (year === null || year < 1990 || year > 2100) {
+          const y = (m![2] ?? "").match(/\b(19[9]\d|20\d\d)\b/);
+          if (!y) { warn(ln, "PROVA sem ano reconhecível: linha ignorada (as linhas abaixo dela também)."); ed = null; subj = null; break; }
+          year = Number(y[1]);
+          warn(ln, `Ano da PROVA ajustado para ${year}.`);
+        }
+        const total = ok(int(f[2]));
+        ed = { year, board: nul(f[1]), totalQuestions: total && total >= 1 ? total : null, countingRule: nul(f[3]), notes: null, cutoffs: [], subjects: [] };
         out.editions.push(ed);
         subj = null;
         break;
       }
       case "nota": {
-        if (!ed) { bad(ln, "NOTA deve vir depois de uma linha PROVA."); break; }
-        const kind = pick(f[3], KIND, null);
-        const score = num(f[4]);
-        if (!kind) { bad(ln, `Tipo de nota não reconhecido: "${f[3] ?? ""}".`); break; }
-        if (score === null || Number.isNaN(score)) { bad(ln, "Nota inválida ou não localizada."); break; }
-        const max = num(f[5]); const cand = int(f[6]); const pg = int(f[9]);
-        (ed.cutoffs as unknown[]).push({ position: nul(f[0]), modality: pick(f[1], MOD, "ampla"), stage: nul(f[2]), kind, score, maxScore: max === null || Number.isNaN(max) ? null : max, candidates: cand === null || Number.isNaN(cand) ? null : cand, criterion: nul(f[7]), sourceKey: nul(f[8]), sourcePage: pg === null || Number.isNaN(pg) ? null : pg, verifiedAt: date(f[10]) });
+        if (!ed) { warn(ln, "NOTA antes de qualquer PROVA: ignorada."); break; }
+        const kind = pick(f[3], KIND, "corte_primeira_fase");
+        const score = ok(num(f[4]));
+        if (score === null || score < 0) { warn(ln, "NOTA sem valor numérico: ignorada."); break; }
+        if (!pick(f[3], KIND, null)) warn(ln, `Tipo de nota "${f[3] ?? ""}" não reconhecido: gravei como corte da 1ª fase.`);
+        const max = ok(num(f[5])); const cand = ok(int(f[6])); const pg = ok(int(f[9]));
+        (ed.cutoffs as unknown[]).push({ position: nul(f[0]), modality: pick(f[1], MOD, "ampla"), stage: nul(f[2]), kind, score, maxScore: max, candidates: cand !== null && cand >= 0 ? cand : null, criterion: nul(f[7]), sourceKey: nul(f[8]), sourcePage: pg && pg >= 1 ? pg : null, verifiedAt: date(f[10]) });
         break;
       }
       case "disciplina": {
-        if (!ed) { bad(ln, "DISCIPLINA deve vir depois de uma linha PROVA."); break; }
-        const q = int(f[1]);
-        if (q === null || Number.isNaN(q)) { bad(ln, `Quantidade de questões inválida em "${f[0] ?? ""}".`); subj = null; break; }
-        const a = int(f[2]);
-        subj = { name: f[0] ?? "", questions: q, annulled: a === null || Number.isNaN(a) ? 0 : a, topics: [] } as never;
-        (ed.subjects as unknown[]).push(subj);
+        if (!ed) { warn(ln, "DISCIPLINA antes de qualquer PROVA: ignorada."); subj = null; break; }
+        const name = nul(f[0]) ?? "Disciplina sem nome";
+        const q = ok(int(f[1]));
+        if (q === null) warn(ln, `Disciplina "${name}" sem quantidade de questões: usei a soma dos assuntos (ou 0).`);
+        subj = { name, questions: q !== null && q >= 0 ? q : null, annulled: Math.max(0, ok(int(f[2])) ?? 0), topics: [] };
+        subjectsOf(ed).push(subj);
         break;
       }
       case "assunto": {
-        if (!subj) { bad(ln, "ASSUNTO deve vir depois de uma linha DISCIPLINA."); break; }
-        const q = int(f[1]);
-        if (q === null || Number.isNaN(q)) { bad(ln, `Quantidade de questões inválida no assunto "${f[0] ?? ""}".`); break; }
-        const a = int(f[2]);
-        subj.topics.push({ title: f[0] ?? "", questions: q, annulled: a === null || Number.isNaN(a) ? 0 : a });
+        if (!ed) { warn(ln, "ASSUNTO antes de qualquer PROVA: ignorado."); break; }
+        const title = nul(f[0]);
+        if (!title) { warn(ln, "ASSUNTO sem título: ignorado."); break; }
+        if (!subj) {
+          subj = { name: "Geral", questions: null, annulled: 0, topics: [] };
+          subjectsOf(ed).push(subj);
+          warn(ln, `Assunto "${title}" sem DISCIPLINA antes: coloquei em "Geral".`);
+        }
+        const q = ok(int(f[1]));
+        if (q === null) warn(ln, `Assunto "${title}" sem quantidade de questões: gravado como 0.`);
+        subj.topics.push({ title, questions: q !== null && q >= 0 ? q : 0, annulled: Math.max(0, ok(int(f[2])) ?? 0) });
         break;
       }
       case "foco": {
-        const priority = pick(f[0], PRIO, null);
-        if (!priority || !f[2] || !f[3]) { bad(ln, "FOCO precisa de: prioridade | disciplina | assunto | justificativa."); break; }
-        out.recommendations.push({ priority, subject: nul(f[1]), topic: f[2], justification: f[3] });
+        const subject = nul(f[1]);
+        const topic = nul(f[2]) ?? subject;
+        if (!topic) { warn(ln, "FOCO sem disciplina nem assunto: ignorado."); break; }
+        if (!pick(f[0], PRIO, null)) warn(ln, `Prioridade "${f[0] ?? ""}" não reconhecida: usei ALTA.`);
+        out.recommendations.push({ priority: pick(f[0], PRIO, "alta"), subject, topic, justification: nul(f.slice(3).join(" | ")) ?? "Sem justificativa informada." });
         break;
       }
     }
   });
-  if (!out.exam.name) bad(0, "Linha CONCURSO: ... não encontrada.");
-  if (!out.editions.length) bad(0, "Nenhuma linha PROVA: ... encontrada.");
-  return { data: issues.length && (!out.exam.name || !out.editions.length) ? null : out, issues };
+  // Disciplina sem quantidade: soma dos assuntos.
+  for (const e of out.editions) for (const s of subjectsOf(e)) if (s.questions === null) s.questions = s.topics.reduce((n, t) => n + t.questions, 0);
+  if (!out.exam.name) issues.push({ line: 0, message: "Linha CONCURSO: ... não encontrada.", level: "erro" });
+  if (!out.editions.length) issues.push({ line: 0, message: "Nenhuma linha PROVA: ... válida encontrada.", level: "erro" });
+  return { data: !out.exam.name || !out.editions.length ? null : out, issues };
 }
 
 export const IMPORT_EXAMPLE_TEXT = `CONCURSO: Polícia Penal do Estado do Espírito Santo | SEJUS-ES
@@ -151,7 +179,10 @@ CARGO(S): [cargo]
 PROVAS A ANALISAR: [ex.: as 2 ou 3 últimas provas objetivas]
 
 REGRAS OBRIGATÓRIAS
-1. NUNCA invente números. Questões por disciplina/assunto e notas de corte só com base em fonte que você consiga indicar (edital, resultado, prova, gabarito). Se não localizar, escreva "-" no campo ou omita a linha.
+1. NUNCA invente números. Questões por disciplina/assunto e notas de corte só com base em fonte que você consiga indicar (edital, resultado, prova, gabarito).
+   - Nas linhas DISCIPLINA e ASSUNTO o número de questões é OBRIGATÓRIO e deve ser um número inteiro (nunca "-", "?" ou texto). Se não conseguir contar as questões de um assunto, NÃO crie a linha ASSUNTO e cite isso em LIMITAÇÕES.
+   - Se não localizar uma nota de corte, NÃO crie a linha NOTA.
+   - Nos demais campos opcionais (url, página, datas, candidatos), use "-" quando não souber.
 2. A classificação das questões por assunto é análise própria: registre como FONTE do tipo PROPRIA.
 3. Toda linha NOTA precisa apontar a chave de uma FONTE que exista.
 4. A soma das DISCIPLINAS não pode passar do total de questões da PROVA, e a soma dos ASSUNTOS não pode passar das questões da DISCIPLINA.
