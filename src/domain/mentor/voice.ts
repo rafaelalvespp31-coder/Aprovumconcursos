@@ -20,8 +20,11 @@ export const VOICE_SYSTEM_PROMPT = [
   "Seja incisivo na resposta que dá: vá direto ao ponto, sem enrolar, e firme quando o aluno pedir orientação.",
   "NÃO tome a iniciativa de falar o que o aluno tem que fazer, o que está atrasado, pendente ou fraco, nem de cobrar nada. Só trate disso se o aluno perguntar (por exemplo: o que devo estudar, como estou indo, o que está atrasado, onde estou errando). Fora isso, atenda o que ele perguntou e pronto.",
   STUDENT_TIME_RULE,
-  "Sua única função é ajudar nos estudos para concursos: português, direito (constitucional, administrativo, penal, processual etc.), matemática, raciocínio lógico, informática, atualidades, legislação e afins, além de orientar a rotina e as prioridades de estudo quando o aluno pedir.",
-  "Se o aluno pedir qualquer outra coisa, diga numa frase que aqui o foco é estudo e puxe de volta pra matéria.",
+  "Sua função é ajudar nos estudos e na carreira de concursos: português, direito (constitucional, administrativo, penal, processual etc.), matemática, raciocínio lógico, informática, atualidades, legislação e afins, além de orientar a rotina e as prioridades de estudo quando o aluno pedir.",
+  "Você também tira dúvidas sobre concursos públicos em geral: carreiras (polícias, PRF, PF, PC, PM, Polícia Penal, guardas, tribunais, etc.), como funciona cada fase (prova objetiva, TAF, psicotécnico, investigação social, curso de formação), requisitos, matérias cobradas, bancas, nível de concorrência e como se preparar.",
+  "Quando o aluno perguntar se está preparado para um concurso (ex.: \"você acha que estou preparado para a PRF?\"): responda de forma honesta e firme, sem bajular e sem prometer aprovação. Compare os DADOS REAIS dele (aulas concluídas, percentuais de acerto, pontos fracos) com as matérias típicas daquele concurso, diga o que já está na linha, o que falta e a prioridade das próximas semanas. Se ainda não houver dados suficientes, diga isso com franqueza e diga o que ele precisa fazer para você conseguir avaliar. Deixe claro que é uma estimativa de estudo e não garantia.",
+  "Quando o aluno perguntar se há edital aberto, previsto ou data de prova: use PRIMEIRO a lista \"CONCURSOS CADASTRADOS NA PLATAFORMA\" abaixo e, se não bastar, use a busca na internet que você tem disponível para checar notícias e o site oficial da banca ou do órgão. Diga a situação (aberto, previsto, autorizado, suspenso), o que for confirmado (inscrições, vagas, banca, data) e a fonte. Separe sempre o que é CONFIRMADO em edital oficial do que é apenas previsão ou notícia, e nunca invente data, vaga, salário ou banca: se não achar, diga que não encontrou e que o aluno confira no site oficial do órgão ou da banca.",
+  "Se o aluno pedir qualquer outra coisa fora de estudos e concursos, diga numa frase que aqui o foco é estudo e puxe de volta pra matéria.",
   "Explique o conceito, dê um exemplo curto e, quando fizer sentido, diga como o tema costuma cair em prova.",
   "Nunca invente número de artigo, súmula, data ou jurisprudência: se não tiver certeza, diga que o aluno deve conferir no texto da lei.",
   "Não peça nem repita dados pessoais, senhas ou pagamentos.",
@@ -36,6 +39,41 @@ export const VOICE_PERSONAL_RULES = [
   "Retome algo das conversas anteriores só se o aluno puxar o assunto.",
   "Cite só números e nomes que estejam nos dados. Se algo não constar, diga que ainda não tem dado sobre isso. Nunca invente desempenho, nota ou histórico.",
 ].join(" ");
+
+export interface VoiceContest {
+  name: string;
+  institution: string;
+  roleName: string | null;
+  status: string;
+  vacancies: number | null;
+  salary: string | null;
+  examDate: string | null;
+  examDateConfirmed: boolean;
+  banca?: string | null;
+  uf?: string | null;
+  registrationStart?: string | null;
+  registrationEnd?: string | null;
+  forecast?: boolean;
+}
+
+/** Lista curta dos concursos cadastrados na plataforma, para o Mentor responder editais abertos/previstos. */
+export function buildContestContext(list: readonly VoiceContest[], max = 12): string {
+  const rows = list.slice(0, max).map((c) => {
+    const bits = [
+      `${clean(c.name, 80)} — ${clean(c.institution, 60)}${c.roleName ? ` (${clean(c.roleName, 60)})` : ""}`,
+      `situação: ${c.forecast ? "previsto" : clean(c.status.replace(/_/g, " "), 30)}`,
+      c.uf ? `UF: ${clean(c.uf, 2)}` : "",
+      c.banca ? `banca: ${clean(c.banca, 40)}` : "",
+      c.vacancies ? `vagas: ${c.vacancies}` : "",
+      c.salary ? `remuneração: ${clean(c.salary, 40)}` : "",
+      c.registrationStart || c.registrationEnd ? `inscrições: ${c.registrationStart ?? "?"} a ${c.registrationEnd ?? "?"}` : "",
+      c.examDate ? `prova: ${c.examDate}${c.examDateConfirmed ? " (confirmada)" : " (prevista)"}` : "",
+    ].filter(Boolean);
+    return bits.join("; ");
+  });
+  if (!rows.length) return "CONCURSOS CADASTRADOS NA PLATAFORMA (somente informação): nenhum cadastrado no momento; para editais use a busca na internet.";
+  return `CONCURSOS CADASTRADOS NA PLATAFORMA (somente informação, podem estar desatualizados; confira na busca quando o aluno quiser o estado atual): ${rows.join(" | ")}.`;
+}
 
 /** Limpa e limita o texto transcrito antes de guardar (sem controle, sem marcação). */
 export function cleanTranscript(v: unknown, max = 2000): string {

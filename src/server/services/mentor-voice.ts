@@ -7,8 +7,9 @@ import { isAdmin } from "../auth";
 import { UserFacingError, enforceRateLimit } from "./trails";
 import { brDay } from "@/domain/plans/limits";
 import { loadMentorSnapshot } from "./mentor";
+import { loadContests } from "./gamification";
 import { recommend } from "@/domain/mentor/engine";
-import { ADMIN_TIME_RULE, STUDENT_TIME_RULE, VOICE_DAILY_SECONDS, VOICE_PERSONAL_RULES, VOICE_SYSTEM_PROMPT, buildVoiceContext, cleanTranscript, VOICE_TOKEN_GRACE_SECONDS, settleSeconds, voiceLeft } from "@/domain/mentor/voice";
+import { ADMIN_TIME_RULE, STUDENT_TIME_RULE, VOICE_DAILY_SECONDS, VOICE_PERSONAL_RULES, VOICE_SYSTEM_PROMPT, buildVoiceContext, buildContestContext, cleanTranscript, VOICE_TOKEN_GRACE_SECONDS, settleSeconds, voiceLeft } from "@/domain/mentor/voice";
 
 /**
  * Mentor por voz (Gemini Live). A chave do Google fica só aqui no servidor: o navegador recebe um
@@ -92,12 +93,16 @@ async function personalPrompt(userId: string): Promise<string> {
       reviewsDue: snapshot.reviews.filter((x) => x.dueAt && new Date(x.dueAt) <= new Date(snapshot.now)).length,
       notebooks: snapshot.notebooks.length,
     });
-    return `${VOICE_SYSTEM_PROMPT} ${VOICE_PERSONAL_RULES} ${ctx}`;
+    const contests = await loadContests(brDay().day, 12).catch(() => []);
+    return `${VOICE_SYSTEM_PROMPT} ${VOICE_PERSONAL_RULES} ${ctx} ${buildContestContext(contests)}`;
   } catch (e) {
     await logEvent("mentor.voz.contexto_error", { error: (e as Error).message.slice(0, 200) });
     return VOICE_SYSTEM_PROMPT;
   }
 }
+
+/** Busca na internet (Google Search do próprio Gemini Live) para editais; desligue com GEMINI_VOICE_SEARCH=0. */
+const voiceTools = () => (process.env.GEMINI_VOICE_SEARCH === "0" ? undefined : [{ googleSearch: {} }]);
 
 export interface VoiceSession {
   token: string;
@@ -140,7 +145,7 @@ export async function startVoice(userId: string): Promise<VoiceSession> {
         uses: 1,
         expireTime: new Date(now.getTime() + (left + VOICE_TOKEN_GRACE_SECONDS) * 1000).toISOString(),
         newSessionExpireTime: new Date(now.getTime() + 60_000).toISOString(),
-        liveConnectConstraints: { model, config: { responseModalities: [Modality.AUDIO], inputAudioTranscription: {}, outputAudioTranscription: {}, systemInstruction: instruction, speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } },
+        liveConnectConstraints: { model, config: { responseModalities: [Modality.AUDIO], inputAudioTranscription: {}, outputAudioTranscription: {}, systemInstruction: instruction, tools: voiceTools(), speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } },
         httpOptions: { apiVersion: "v1alpha" },
       },
     });

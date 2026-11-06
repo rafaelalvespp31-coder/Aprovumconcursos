@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { VOICE_DAILY_SECONDS, formatClock, settleSeconds, voiceLeft } from "./voice";
+import { buildContestContext, VOICE_DAILY_SECONDS, formatClock, settleSeconds, voiceLeft } from "./voice";
 
 describe("Mentor por voz: limite diário", () => {
   it("são 3 minutos por dia", () => expect(VOICE_DAILY_SECONDS).toBe(180));
@@ -75,5 +75,19 @@ describe("memória do Mentor por voz", () => {
     const t = buildVoiceContext({ name: "Ana", lessonsTotal: 0, lessonsCompleted: 0, inProgress: [], topics: [], recommendations: [], reviewsDue: 0, notebooks: 0, memory: [{ day: "2026-11-03", student: "o que é dolo eventual?" }] });
     expect(t).toContain("Nas últimas conversas por voz");
     expect(t).toContain("dolo eventual");
+  });
+});
+
+describe("buildContestContext", () => {
+  it("lista concursos com situação e data, marcando previsão", () => {
+    const t = buildContestContext([
+      { name: "PRF 2026", institution: "PRF", roleName: "Policial Rodoviário", status: "previsto", vacancies: 500, salary: "R$ 9 mil", examDate: "2026-12-01", examDateConfirmed: false, forecast: true },
+    ]);
+    expect(t).toContain("PRF 2026");
+    expect(t).toContain("situação: previsto");
+    expect(t).toContain("prova: 2026-12-01 (prevista)");
+  });
+  it("sem concursos manda usar a busca", () => {
+    expect(buildContestContext([])).toContain("busca na internet");
   });
 });
