@@ -209,7 +209,7 @@ function Result({ prep }: { prep: PrepSummary }) {
         </div>
         <div className="ai-actions">
           <Link href={`/meu-concurso/${prep.id}`} className="ai-go" data-testid="ai-acessar">ACESSAR MINHA PREPARAÇÃO</Link>
-          <Link href={`/meu-concurso/${prep.id}#relatorio`} className="ai-ghost" style={{ textAlign: "center", lineHeight: "44px" }}>Ver relatório completo do edital</Link>
+          <Link href={`/meu-concurso/${prep.id}/relatorio`} className="ai-ghost" style={{ textAlign: "center", lineHeight: "44px" }}>Ver relatório completo do edital</Link>
         </div>
       </div>
     </div>

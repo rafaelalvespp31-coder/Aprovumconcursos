@@ -110,6 +110,7 @@ export function MeuConcurso({ tree, save }: { tree: PreparationTree; save: (f: F
             ))}
           </div>
         )}
+        <Link href={`/meu-concurso/${prep.id}/relatorio`} className="ai-go" style={{ textAlign: "center", lineHeight: "48px", display: "block" }}>VER RELATÓRIO COMPLETO DO EDITAL</Link>
         <Link href="/aprovum-ai" className="ai-ghost" style={{ textAlign: "center", lineHeight: "44px" }}>Enviar outro edital</Link>
       </section>
 
