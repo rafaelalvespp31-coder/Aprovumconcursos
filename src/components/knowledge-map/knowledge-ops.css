@@ -1137,6 +1137,13 @@
   transform-origin: 0 0;
   will-change: transform;
 }
+/* Celular: sem will-change o Safari não guarda uma cópia gigante da camada em alta resolução
+   a cada zoom (mira/tiro), o que estourava a memória da aba e recarregava a página. */
+@media (pointer: coarse) {
+  .km-art-layer {
+    will-change: auto;
+  }
+}
 .km-art-img {
   display: block;
   width: 100%;

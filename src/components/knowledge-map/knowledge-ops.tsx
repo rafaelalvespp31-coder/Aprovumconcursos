@@ -207,6 +207,38 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
   }, []);
   // Alvo da mira do soldado (matéria em foco ou sob o cursor), lido a cada quadro pelo palco.
   const aim = useRef<[number, number] | null>(null);
+  // Celular: enquanto o mapa está aberto, a página não rola nem faz "puxar para atualizar".
+  // No Safari o arrasto da mira chegava ao documento e recarregava a página.
+  // Só os painéis com rolagem própria (lista, busca, card, tópicos) continuam rolando.
+  useEffect(() => {
+    const html = document.documentElement;
+    const body = document.body;
+    const prev = { ho: html.style.overscrollBehavior, bo: body.style.overscrollBehavior, ov: body.style.overflow, hov: html.style.overflow };
+    html.style.overscrollBehavior = "none";
+    body.style.overscrollBehavior = "none";
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    const SCROLLERS = ".km-results, .km-list, .km-panel, .km-topicList, input, textarea, select";
+    const block = (e: TouchEvent) => {
+      const t = e.target as Element | null;
+      if (e.touches.length > 1 || !t?.closest?.(SCROLLERS)) e.preventDefault();
+    };
+    // Dois toques rápidos (mirar → atirar) não podem virar zoom da página.
+    const noGesture = (e: Event) => e.preventDefault();
+    document.addEventListener("touchmove", block, { passive: false });
+    document.addEventListener("gesturestart", noGesture, { passive: false } as AddEventListenerOptions);
+    document.addEventListener("dblclick", noGesture, { passive: false });
+    return () => {
+      document.removeEventListener("touchmove", block);
+      document.removeEventListener("gesturestart", noGesture);
+      document.removeEventListener("dblclick", noGesture);
+      html.style.overscrollBehavior = prev.ho;
+      body.style.overscrollBehavior = prev.bo;
+      html.style.overflow = prev.hov;
+      body.style.overflow = prev.ov;
+    };
+  }, []);
+
   // Disparo pedido ao palco e os tempos da sequência mirar → atirar → abrir.
   const shot = useRef<{ at: number } | null>(null);
   const fireTimers = useRef<Array<ReturnType<typeof setTimeout>>>([]);
