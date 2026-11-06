@@ -24,7 +24,6 @@ export function UploadCard() {
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState<null | "hash" | "upload" | "start">(null);
   const [err, setErr] = useState<string | null>(null);
-  const [f, setF] = useState({ contestName: "", roleName: "", board: "", year: "" });
 
   const pick = (list: FileList | null | undefined) => {
     setErr(null);
@@ -42,12 +41,10 @@ export function UploadCard() {
     try {
       setBusy("hash");
       const hash = await sha256(file);
-      const year = f.year.trim() ? Number(f.year) : undefined;
-      if (year !== undefined && !(year >= 1990 && year <= 2100)) throw new Error("Ano inválido.");
       const res = await fetch("/api/edital", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: file.name, size: file.size, hash, contestName: f.contestName || undefined, roleName: f.roleName || undefined, board: f.board || undefined, year }),
+        body: JSON.stringify({ fileName: file.name, size: file.size, hash }),
       });
       const j = (await res.json()) as { id?: string; existing?: boolean; upload?: { path: string; token: string } | null; error?: string };
       if (!res.ok || !j.id) throw new Error(j.error ?? "Não foi possível iniciar.");
@@ -69,7 +66,6 @@ export function UploadCard() {
   };
 
   const label = busy === "hash" ? "VERIFICANDO ARQUIVO…" : busy === "upload" ? "ENVIANDO EDITAL…" : busy === "start" ? "INICIANDO…" : "INICIAR PROCESSAMENTO";
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((v) => ({ ...v, [k]: e.target.value }));
 
   return (
     <div className="ai-card ai-root" data-testid="ai-upload">
@@ -103,12 +99,6 @@ export function UploadCard() {
       )}
       <input ref={input} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => pick(e.target.files)} data-testid="ai-arquivo" />
 
-      <div className="ai-fields">
-        <label className="ai-field"><span>Nome do concurso (opcional)</span><input value={f.contestName} onChange={set("contestName")} maxLength={160} placeholder="Ex.: PRF 2026" autoComplete="off" /></label>
-        <label className="ai-field"><span>Cargo pretendido (opcional)</span><input value={f.roleName} onChange={set("roleName")} maxLength={160} placeholder="Ex.: Policial Rodoviário Federal" autoComplete="off" /></label>
-        <label className="ai-field"><span>Banca organizadora (opcional)</span><input value={f.board} onChange={set("board")} maxLength={80} placeholder="Ex.: Cebraspe" autoComplete="off" /></label>
-        <label className="ai-field"><span>Ano do concurso (opcional)</span><input value={f.year} onChange={set("year")} inputMode="numeric" maxLength={4} placeholder="2026" autoComplete="off" /></label>
-      </div>
       {err && <p className="ai-msg" role="alert">{err}</p>}
       <button type="button" className="ai-go" disabled={!file || !!busy} aria-busy={!!busy} onClick={start} data-testid="ai-iniciar">{label}</button>
     </div>
