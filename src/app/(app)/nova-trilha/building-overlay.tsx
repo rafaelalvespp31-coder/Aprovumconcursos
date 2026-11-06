@@ -231,7 +231,7 @@ export function BuildingOverlay({ topic, durationMs }: { topic: string; duration
 
   return (
     <div ref={root} className="cl-root entrar" role="status" aria-live="polite" data-testid="montando-aula">
-      <div className="cl-stage" aria-hidden>
+      <div className="cl-carga-palco" aria-hidden>
         <div ref={scene} className="cl-scene" style={{ width: SCENE.w, height: SCENE.h }}>
           <picture>
             <source media="(max-width: 760px)" srcSet={SCENE.srcSm} />
