@@ -5,6 +5,8 @@ import { StartPicker } from "./start-picker";
 import { MapStart } from "./map-start";
 
 export const metadata = { title: "Novo estudo" };
+/** O mapa ocupa a tela inteira: sem zoom automático do iPhone ao tocar na busca. */
+export const viewport = { width: "device-width", initialScale: 1, maximumScale: 1, viewportFit: "cover" } as const;
 
 /**
  * Novo estudo: Mapa do Conhecimento (Knowledge Operations). A escolha em lista continua em

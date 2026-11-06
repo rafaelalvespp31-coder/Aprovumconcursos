@@ -274,7 +274,7 @@
   user-select: text;
 }
 /* iPhone: campo com fonte menor que 16px faz o Safari dar zoom ao tocar (e a tela fica ampliada, sem a barra de funções). */
-@media (pointer: coarse) {
+@media (pointer: coarse), (max-width: 900px) {
   .km-search input {
     font-size: 16px;
   }

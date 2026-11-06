@@ -76,7 +76,7 @@ export const ART_SLOTS: Record<string, ArtSlot> = {
   direito_constitucional: { plate: d(440, 622), base: d(400, 660), drawn: true },
   direito_administrativo: { plate: d(1620, 640), base: d(1600, 720), drawn: true },
   matematica: { plate: d(1180, 690), base: d(1150, 725), drawn: true },
-  legislacao_especial: { plate: d(880, 640), base: d(890, 680), drawn: false },
+  legislacao_especial: { plate: d(1040, 790), base: d(1050, 830), drawn: false },
   conhecimentos_especificos: { plate: d(190, 470), base: d(160, 520), drawn: false },
   outras: { plate: d(1000, 560), base: d(1000, 600), drawn: false },
 };
@@ -85,7 +85,7 @@ export const ART_ORDER_DRAWN = ["direito_penal", "lingua_portuguesa", "raciocini
 const CORE = d(948, 522);
 
 /** Posições livres do campo para matérias cadastradas pelo admin (que não existem na arte). */
-const EXTRA_PLATES: Array<[number, number]> = [d(260, 800), d(700, 830), d(1150, 880), d(1500, 850), d(1850, 810), d(1400, 480), d(300, 320), d(1000, 150)];
+const EXTRA_PLATES: Array<[number, number]> = [d(230, 800), d(560, 950), d(1080, 950), d(1420, 800), d(1740, 930), d(1400, 480), d(300, 330), d(1000, 150)];
 const extraSlots = new Map<string, ArtSlot>();
 /** Dá a cada matéria nova (fora da arte) o seu lugar no campo, sempre o mesmo para o mesmo conjunto. */
 export function registerExtraSlots(ids: readonly string[]) {
