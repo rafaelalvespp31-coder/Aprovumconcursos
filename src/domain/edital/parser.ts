@@ -262,3 +262,11 @@ export function parseProgrammaticText(text: string): ParsedEdital {
   const pages = [`CONTEÚDO PROGRAMÁTICO\n${text}`];
   return parseEdital(pages);
 }
+
+/** O arquivo parece ser um edital de concurso? (evita confundir material de estudo, apostila ou prova com edital) */
+export function looksLikeEdital(pages: readonly string[]): boolean {
+  const f = fold(pages.join("\n"));
+  const markers = [/\bedital\b/g, /concurso publico/g, /inscri[cç]o?es?\b|\binscricao\b/g, /\bcandidat[oa]s?\b/g, /\bvagas?\b/g, /\bbanca\b|\borganizadora\b|\bfundacao\b/g, /\bcargo\b|\bcargos\b/g, /\bnomeacao\b|\bposse\b|\bremuneracao\b|\bvencimentos?\b/g];
+  const hits = markers.map((re) => (f.match(re) ?? []).length);
+  return hits.filter((n) => n > 0).length >= 4 && hits.reduce((a, b) => a + b, 0) >= 15;
+}

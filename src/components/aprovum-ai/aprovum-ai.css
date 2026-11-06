@@ -224,3 +224,5 @@
 .ai-root.grid { grid-template-columns: minmax(0, 1fr); }
 .ai-root > *, .ai-root section, .ai-disc, .ai-disc > summary > div { min-width: 0; max-width: 100%; }
 .ai-disc h3, .ai-item b { overflow-wrap: anywhere; }
+.ai-more { border: 1px solid #23262e; border-radius: 12px; padding: 10px 12px; display: grid; gap: 10px; }
+.ai-more > summary { cursor: pointer; font-size: 13px; color: #c4c8cf; min-height: 32px; display: flex; align-items: center; }

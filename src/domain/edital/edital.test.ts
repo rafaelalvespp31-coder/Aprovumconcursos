@@ -170,3 +170,12 @@ describe("edital VUNESP (anexo sem numeração, capítulos numerados no corpo)",
     expect(r.found).toBe(false);
   });
 });
+
+describe("looksLikeEdital", () => {
+  it("rejeita material de estudo e aceita edital", async () => {
+    const { looksLikeEdital } = await import("./parser");
+    expect(looksLikeEdital(["Homicídio simples. Art. 121 do Código Penal. Questão: certo ou errado. Gabarito: B. Comentário."])).toBe(false);
+    const ed = "EDITAL Nº 01/2026 CONCURSO PÚBLICO. Das inscrições: os candidatos devem... Cargo: Guarda Civil. Vagas: 20. Banca organizadora: Fundação VUNESP. Remuneração. Nomeação e posse. ".repeat(3);
+    expect(looksLikeEdital([ed])).toBe(true);
+  });
+});

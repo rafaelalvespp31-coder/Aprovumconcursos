@@ -4,7 +4,7 @@ import { z } from "zod";
 import { createAdminClient } from "../supabase";
 import { auditLog, logEvent } from "../observability";
 import { UserFacingError, enforceRateLimit } from "./trails";
-import { parseEdital, parseProgrammaticText, type ParsedEdital } from "@/domain/edital/parser";
+import { looksLikeEdital, parseEdital, parseProgrammaticText, type ParsedEdital } from "@/domain/edital/parser";
 import { detectContestInfo, displayTitle } from "@/domain/edital/info";
 import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match";
 
@@ -53,6 +53,7 @@ export interface PrepStats {
   parserV?: number;
   failedAt?: PrepStatus;
   errorCode?: string;
+  notEdital?: boolean;
   confidence?: number;
   warnings?: string[];
 }
@@ -288,9 +289,11 @@ async function stageIdentify(p: Row) {
   await fillInfo(p, ex.data.pages as string[]);
   const parsed = parseEdital(ex.data.pages as string[]);
   if (!parsed.found || parsed.confidence < 0.4 || !parsed.disciplines.length) {
-    await event(id, userId, 3, parsed.warnings[0] ?? "Não localizei o conteúdo programático com segurança.", "warn");
-    await event(id, userId, 3, "Precisamos da sua conferência para continuar.", "warn");
-    await setStatus(id, "conferencia", { stats: { ...((p.stats as PrepStats) ?? {}), warnings: parsed.warnings } });
+    const notEdital = !looksLikeEdital(ex.data.pages as string[]);
+    const msg = notEdital ? "Este arquivo não parece ser um edital de concurso (não há inscrições, cargos, vagas ou banca)." : (parsed.warnings[0] ?? "Não localizei o conteúdo programático com segurança.");
+    await event(id, userId, 3, msg, "warn");
+    await event(id, userId, 3, notEdital ? "Envie o PDF do edital oficial." : "Precisamos da sua conferência para continuar.", "warn");
+    await setStatus(id, "conferencia", { stats: { ...((p.stats as PrepStats) ?? {}), warnings: [msg, ...parsed.warnings.slice(1)], notEdital } });
     return;
   }
   await persistParsed(p, parsed, false);

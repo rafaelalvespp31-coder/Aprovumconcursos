@@ -165,13 +165,29 @@ export function Processing({ initial, initialEvents }: { initial: PrepSummary; i
           </div>
         )}
 
-        {needsReview && (
+        {needsReview && s.notEdital && (
+          <div className="ai-actions">
+            <p style={{ fontSize: 14, color: "#e5e7eb", lineHeight: 1.5 }}>
+              <b>Este arquivo não parece ser um edital.</b> Não encontrei inscrições, cargos, vagas ou banca, então não há conteúdo programático para destrinchar. Envie o PDF do edital oficial do concurso.
+            </p>
+            <Link href="/aprovum-ai" className="ai-go" style={{ textDecoration: "none" }}>ENVIAR O EDITAL CORRETO</Link>
+            <DeletePrep id={prep.id} redirectTo="/aprovum-ai" />
+            <details className="ai-more">
+              <summary>Prefiro colar o conteúdo programático</summary>
+              <textarea className="ai-area" value={manual} onChange={(e) => setManual(e.target.value)} placeholder={"DIREITO PENAL\n1 Princípios básicos\n2 Aplicação da lei penal"} aria-label="Conteúdo programático" data-testid="ai-manual" />
+              <button type="button" className="ai-go" disabled={busy || manual.trim().length < 20} onClick={enviarManual}>{busy ? "ORGANIZANDO…" : "CONTINUAR COM ESTE CONTEÚDO"}</button>
+            </details>
+          </div>
+        )}
+
+        {needsReview && !s.notEdital && (
           <div className="ai-actions">
             <p style={{ fontSize: 13.5, color: "#c4c8cf", lineHeight: 1.5 }}>
               {prep.error ?? s.warnings?.[0] ?? "Não localizei o conteúdo programático com segurança."} Cole abaixo só o conteúdo programático do edital: o nome de cada disciplina em uma linha e, embaixo, os assuntos numerados (1, 1.1, 2…).
             </p>
             <textarea className="ai-area" value={manual} onChange={(e) => setManual(e.target.value)} placeholder={"DIREITO PENAL\n1 Princípios básicos\n2 Aplicação da lei penal\n\nLÍNGUA PORTUGUESA\n1 Compreensão e interpretação de textos"} aria-label="Conteúdo programático" data-testid="ai-manual" />
             <button type="button" className="ai-go" disabled={busy || manual.trim().length < 20} onClick={enviarManual}>{busy ? "ORGANIZANDO…" : "CONTINUAR COM ESTE CONTEÚDO"}</button>
+            <DeletePrep id={prep.id} redirectTo="/aprovum-ai" />
           </div>
         )}
       </div>
