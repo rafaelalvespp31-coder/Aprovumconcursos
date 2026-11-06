@@ -205,3 +205,16 @@
 .ai-tabs::-webkit-scrollbar { display: none; }
 .ai-tabs a { flex: none; min-height: 40px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 99px; border: 1px solid #343845; font: 600 12.5px/1 "Chakra Petch", sans-serif; letter-spacing: .06em; color: #c4c8cf; }
 .ai-tabs a[aria-current="page"] { border-color: var(--red2); background: rgba(225,29,38,.16); color: #fff; }
+
+/* Excluir preparação */
+.ai-del { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid #5a2327; color: #ffb4ae; font-size: 12.5px; font-weight: 600; background: transparent; transition: background .15s, border-color .15s; }
+.ai-del:hover { background: rgba(225,29,38,.12); border-color: var(--red2); }
+.ai-del[data-compact="1"] { width: 40px; padding: 0; justify-content: center; flex: none; }
+.ai-del-ask { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid #5a2327; border-radius: 12px; background: rgba(225,29,38,.08); font-size: 12.5px; line-height: 1.4; color: #e5e7eb; }
+.ai-del-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.ai-del-yes, .ai-del-no { min-height: 38px; padding: 0 14px; border-radius: 10px; font-size: 12.5px; font-weight: 700; }
+.ai-del-yes { background: var(--red); color: #fff; } .ai-del-yes:disabled { opacity: .6; }
+.ai-del-no { border: 1px solid #343845; color: #c4c8cf; }
+.ai-del-ask em { font-style: normal; color: #ffb4ae; }
+.ai-item-row { display: flex; align-items: stretch; gap: 8px; }
+.ai-item-row .ai-item { flex: 1; min-width: 0; }

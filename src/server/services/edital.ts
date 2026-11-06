@@ -440,6 +440,10 @@ export async function deletePreparation(userId: string, id: string) {
   if (del.error) throw new Error(del.error.message);
   const others = await db.from("edital_preparations").select("id", { count: "exact", head: true }).eq("file_path", p.file_path as string);
   if (!others.count) await db.storage.from(EDITAL_BUCKET).remove([p.file_path as string]).catch(() => {});
+  // O texto extraído (cache por hash) só some se ninguém mais usa este mesmo edital.
+  const sameHash = await db.from("edital_preparations").select("id", { count: "exact", head: true }).eq("file_hash", p.file_hash as string);
+  if (!sameHash.count) await db.from("edital_extractions").delete().eq("file_hash", p.file_hash as string);
+  await auditLog(db, { actorId: userId, userId, action: "edital.excluido", entity: "edital_preparations", entityId: id }).catch(() => {});
 }
 
 /** Preparação feita por uma versão antiga do leitor: refaz a análise com o texto já guardado (sem reenviar o PDF). */

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { PrepEvent, PrepSummary } from "@/server/services/edital";
+import { DeletePrep } from "./delete-prep";
 import "./aprovum-ai.css";
 
 /** Mensagens oficiais de cada etapa — só aparecem quando a etapa de verdade começa/termina. */
@@ -160,6 +161,7 @@ export function Processing({ initial, initialEvents }: { initial: PrepSummary; i
               <button type="button" className="ai-go" onClick={retomar} disabled={busy}>{busy ? "RETOMANDO…" : "RETOMAR DE ONDE PAROU"}</button>
             )}
             <Link href="/aprovum-ai" className="ai-ghost" style={{ textAlign: "center", lineHeight: "44px" }}>Voltar</Link>
+            <DeletePrep id={prep.id} redirectTo="/aprovum-ai" />
           </div>
         )}
 

@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireUser } from "@/server/auth";
 import { listPreparations } from "@/server/services/edital";
+import { DeletePrep } from "@/components/aprovum-ai/delete-prep";
 import "@/components/aprovum-ai/aprovum-ai.css";
 
 export const metadata = { title: "Meu Concurso" };
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 export default async function MeuConcursoList() {
   const user = await requireUser("/meu-concurso");
-  const preps = (await listPreparations(user.id).catch(() => [])).filter((p) => p.status === "concluido");
+  const preps = await listPreparations(user.id).catch(() => []);
   return (
     <div className="ai-root mx-auto w-full max-w-3xl">
       <section className="ai-hero">
@@ -21,13 +22,16 @@ export default async function MeuConcursoList() {
           <p className="ai-sub">Você ainda não tem uma preparação pronta.</p>
         ) : (
           preps.map((p) => (
-            <Link key={p.id} className="ai-item" href={`/meu-concurso/${p.id}`}>
-              <div>
-                <b>{p.title}</b>
-                <small>{p.stats.disciplines ?? 0} disciplinas · {p.stats.topics ?? 0} tópicos · {p.stats.lessons ?? 0} aulas</small>
-              </div>
-              <span className="ai-pill" data-ok={1}>{p.stats.coveragePct ?? 0}%</span>
-            </Link>
+            <div key={p.id} className="ai-item-row">
+              <Link className="ai-item" href={p.status === "concluido" ? `/meu-concurso/${p.id}` : `/aprovum-ai/${p.id}`}>
+                <div>
+                  <b>{p.title}</b>
+                  <small>{p.status === "concluido" ? `${p.stats.disciplines ?? 0} disciplinas · ${p.stats.topics ?? 0} tópicos · ${p.stats.lessons ?? 0} aulas` : p.status === "erro" ? "Processamento interrompido" : p.status === "conferencia" ? "Aguardando sua conferência" : "Em processamento"}</small>
+                </div>
+                <span className="ai-pill" data-ok={p.status === "concluido" ? 1 : undefined} data-bad={p.status === "erro" ? 1 : undefined}>{p.status === "concluido" ? `${p.stats.coveragePct ?? 0}%` : p.status === "erro" ? "ERRO" : "…"}</span>
+              </Link>
+              <DeletePrep id={p.id} compact />
+            </div>
           ))
         )}
         <Link className="ai-go" href="/aprovum-ai" style={{ textAlign: "center", lineHeight: "48px", display: "block" }}>ENVIAR NOVO EDITAL</Link>

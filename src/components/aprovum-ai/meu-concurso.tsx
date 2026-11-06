@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { StartStudyDialog, type StartTheme } from "@/app/(app)/nova-trilha/start-dialog";
 import type { PreparationTree, TreeTopic } from "@/server/services/edital-view";
+import { DeletePrep } from "./delete-prep";
 import "./aprovum-ai.css";
 
 const ST: Record<TreeTopic["status"], string> = {
@@ -38,6 +39,7 @@ export function MeuConcurso({ tree, save, tab, children }: { tree: PreparationTr
         <button type="button" className="ai-ghost" style={{ marginTop: 10, padding: "0 14px", minHeight: 36 }} onClick={() => setEdit((v) => !v)} aria-expanded={edit}>
           {edit ? "Fechar edição" : "Corrigir informações"}
         </button>
+        <div style={{ marginTop: 8 }}><DeletePrep id={prep.id} redirectTo="/aprovum-ai" /></div>
         {edit && (
           <form action={async (f) => { await save(f); setEdit(false); }} className="ai-fields" style={{ marginTop: 10 }}>
             <label className="ai-field"><span>Nome do concurso</span><input name="contestName" defaultValue={prep.contestName ?? ""} maxLength={160} /></label>
