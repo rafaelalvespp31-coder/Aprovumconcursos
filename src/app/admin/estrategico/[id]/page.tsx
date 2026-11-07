@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { examRequestInfo, loadExam, nextStatuses, STATUS_LABEL, type ExamStatus } from "@/server/services/strategic";
+import { examRequestInfo, listRaioXRequests, loadExam, studentLabel, nextStatuses, STATUS_LABEL, type ExamStatus } from "@/server/services/strategic";
 import { denominator } from "@/domain/strategic/analysis";
 import { deleteExamAction, setStatusAction } from "../actions";
 import { redirect } from "next/navigation";
@@ -15,6 +15,7 @@ export default async function ExamAdminPage({ params }: { params: Promise<{ id: 
   const exam = await loadExam(id, { onlyPublished: false });
   if (!exam) notFound();
   const req = await examRequestInfo(id).catch(() => null);
+  const pedidos = await listRaioXRequests({ examId: id }).catch(() => []);
   const awaiting = exam.editions.length === 0;
   return (
     <div className="grid gap-6">
@@ -34,6 +35,16 @@ export default async function ExamAdminPage({ params }: { params: Promise<{ id: 
           </form>
         </div>
         {req && <p className="mt-3 rounded-lg bg-superficie p-3 t-small"><b>Edital enviado por {req.requests} {req.requests === 1 ? "aluno" : "alunos"}</b>{[req.role, req.board, req.year].filter(Boolean).length ? ` · ${[req.role, req.board, req.year].filter(Boolean).join(" · ")}` : ""}.{awaiting ? " Ainda sem análise: os alunos veem “Raio-X em preparação”." : ""}</p>}
+        {pedidos.length > 0 && (
+          <section className="mt-3 rounded-lg border border-linha p-3 t-small" aria-label="Alunos que pediram a análise" data-testid="pedidos-raiox">
+            <h2 className="font-semibold">Quem pediu esta análise ({pedidos.length})</h2>
+            <ul className="mt-2 grid gap-1">
+              {pedidos.map((r) => (
+                <li key={r.prepId}><b>{studentLabel(r)}</b> · {[r.role, r.board, r.year].filter(Boolean).join(" · ") || "edital enviado"} · {new Date(r.createdAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" })}{r.pending ? " · aguardando análise" : ""}</li>
+              ))}
+            </ul>
+          </section>
+        )}
         {req?.program && (
           <details className="mt-2 rounded-lg border border-linha p-3 t-small">
             <summary className="cursor-pointer font-semibold">Conteúdo programático extraído do edital</summary>

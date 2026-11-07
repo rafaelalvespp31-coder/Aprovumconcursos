@@ -3,6 +3,7 @@ import { Logo } from "@/components/logo";
 import { requireAdmin } from "@/server/services/catalog";
 import { DisciplinesSync } from "@/components/disciplines-sync";
 import { ensureDisciplines } from "@/server/services/disciplines";
+import { listRaioXRequests } from "@/server/services/strategic";
 
 export const metadata = { title: "Administração" };
 
@@ -14,6 +15,7 @@ export default async function AdminLayout({
 }) {
   await requireAdmin();
   const disciplines = await ensureDisciplines();
+  const pendentes = (await listRaioXRequests({ onlyPending: true, limit: 200 }).catch(() => [])).length;
   return (
     <DisciplinesSync list={disciplines}>
       <div className="min-h-dvh">
@@ -81,7 +83,7 @@ export default async function AdminLayout({
                 href="/admin/estrategico"
                 className="text-destaque underline-offset-2 hover:underline"
               >
-                Estratégico
+                Estratégico{pendentes > 0 && <span className="ml-1 rounded-full bg-destaque px-1.5 py-0.5 t-tiny font-bold text-white" aria-label={`${pendentes} pedidos de Raio-X`}>{pendentes}</span>}
               </Link>
               <Link
                 href="/admin/editais"

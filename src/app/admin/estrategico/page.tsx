@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { backfillExamLinks, isAwaiting, listExams, STATUS_LABEL, type ExamListItem } from "@/server/services/strategic";
+import { backfillExamLinks, isAwaiting, listExams, listRaioXRequests, STATUS_LABEL, studentLabel, type ExamListItem, type RaioXRequest } from "@/server/services/strategic";
 
 export const metadata = { title: "Catálogo estratégico de concursos" };
 export const dynamic = "force-dynamic";
@@ -7,6 +7,9 @@ export const dynamic = "force-dynamic";
 export default async function EstrategicoPage() {
   await backfillExamLinks().catch(() => 0);
   const all = await listExams().catch(() => [] as ExamListItem[]);
+  const pedidos = await listRaioXRequests({ onlyPending: true }).catch(() => [] as RaioXRequest[]);
+  const byExam = new Map<string, RaioXRequest[]>();
+  for (const r of pedidos) byExam.set(r.examId, [...(byExam.get(r.examId) ?? []), r]);
   const awaiting = all.filter(isAwaiting).sort((a, b) => b.requests - a.requests);
   const exams = all.filter((e) => !isAwaiting(e));
   return (
@@ -28,6 +31,11 @@ export default async function EstrategicoPage() {
                 <Link className="font-semibold text-destaque hover:underline" href={`/admin/estrategico/${e.id}`}>{e.name}</Link>
                 <span className="t-tiny text-tinta-suave">{e.requests} {e.requests === 1 ? "aluno" : "alunos"} · {new Date(e.updatedAt).toLocaleDateString("pt-BR")}</span>
                 <Link href={`/admin/estrategico/importar?exam=${e.id}`} className="rounded-full bg-destaque px-3 py-1 t-tiny font-semibold text-white">Catalogar Raio-X</Link>
+                <ul className="basis-full grid gap-1 border-t border-linha pt-2 t-tiny" aria-label={`Alunos que pediram ${e.name}`}>
+                  {(byExam.get(e.id) ?? []).map((r) => (
+                    <li key={r.prepId}><b>Pedido de:</b> {studentLabel(r)} · {[r.role, r.board, r.year].filter(Boolean).join(" · ") || "edital enviado"} · {new Date(r.createdAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" })}</li>
+                  ))}
+                </ul>
               </li>
             ))}
           </ul>

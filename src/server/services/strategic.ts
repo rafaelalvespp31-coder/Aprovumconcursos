@@ -365,3 +365,42 @@ export async function getRaioX(userId: string, prepId: string): Promise<RaioXRes
   return { status: "ok", raiox: { exam, incidence, comparison, heat, lessons }, examName: exam.name };
 }
 
+
+// ---------------------------------------------------------------------------
+// Pedidos de Raio-X (quem pediu) e notificações do admin
+// ---------------------------------------------------------------------------
+
+export interface RaioXRequest {
+  prepId: string; userId: string; studentName: string | null; studentEmail: string | null;
+  examId: string; examName: string; contest: string | null; role: string | null; board: string | null; year: number | null;
+  createdAt: string; pending: boolean;
+}
+
+/** Pedidos de análise (edital enviado por aluno ligado a um concurso). `pending`: o concurso ainda não tem nenhuma prova catalogada. */
+export async function listRaioXRequests(opts: { onlyPending?: boolean; examId?: string; limit?: number } = {}): Promise<RaioXRequest[]> {
+  const db = createAdminClient();
+  let q = db.from("edital_preparations").select("id, user_id, contest_name, role_name, board, contest_year, created_at, strategic_exam_id").not("strategic_exam_id", "is", null).order("created_at", { ascending: false }).limit(opts.limit ?? 300);
+  if (opts.examId) q = q.eq("strategic_exam_id", opts.examId);
+  const preps = ((await q).data ?? []) as Row[];
+  if (!preps.length) return [];
+  const examIds = [...new Set(preps.map((p) => p.strategic_exam_id as string))];
+  const [exams, eds] = await Promise.all([
+    db.from("strategic_exams").select("id, name").in("id", examIds),
+    db.from("strategic_editions").select("exam_id").in("exam_id", examIds).limit(5000),
+  ]);
+  const name = new Map(((exams.data ?? []) as Row[]).map((e) => [e.id as string, e.name as string]));
+  const withEd = new Set(((eds.data ?? []) as Row[]).map((e) => e.exam_id as string));
+  const rows = preps.map((p) => ({ p, pending: !withEd.has(p.strategic_exam_id as string) })).filter((r) => !opts.onlyPending || r.pending);
+  const userIds = [...new Set(rows.map((r) => r.p.user_id as string))].slice(0, 120);
+  const prof = userIds.length ? await db.from("profiles").select("id, display_name").in("id", userIds) : { data: [] as Row[] };
+  const names = new Map(((prof.data ?? []) as Row[]).map((r) => [r.id as string, (r.display_name as string | null) ?? null]));
+  const emails = new Map<string, string | null>();
+  await Promise.all(userIds.map(async (id) => emails.set(id, (await db.auth.admin.getUserById(id).catch(() => null))?.data.user?.email ?? null)));
+  return rows.map(({ p, pending }) => ({
+    prepId: p.id as string, userId: p.user_id as string, studentName: names.get(p.user_id as string) ?? null, studentEmail: emails.get(p.user_id as string) ?? null,
+    examId: p.strategic_exam_id as string, examName: name.get(p.strategic_exam_id as string) ?? "Concurso", contest: (p.contest_name as string | null) ?? null, role: (p.role_name as string | null) ?? null,
+    board: (p.board as string | null) ?? null, year: (p.contest_year as number | null) ?? null, createdAt: p.created_at as string, pending,
+  }));
+}
+
+export const studentLabel = (r: Pick<RaioXRequest, "studentName" | "studentEmail">) => r.studentName ? `${r.studentName}${r.studentEmail ? ` (${r.studentEmail})` : ""}` : (r.studentEmail ?? "Aluno sem nome");

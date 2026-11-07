@@ -9,7 +9,8 @@ import { getBankRoles } from "@/server/services/bank";
 import { signOut } from "../../(auth)/actions";
 import { LogoutButton } from "../logout-button";
 import { ProfileForm } from "./form";
-import { PainelAdmin, type AdminItem } from "./painel-admin";
+import { PainelAdmin, type AdminItem, type AdminNote } from "./painel-admin";
+import { listRaioXRequests, studentLabel } from "@/server/services/strategic";
 import { PastelProfile } from "./pastel-profile";
 import { getPlanUsage } from "@/server/services/plans";
 import { FREE_LIMITS, PERIOD_LABELS, PLAN_LABELS, effectivePlan, type BillingPeriod } from "@/domain/plans/limits";
@@ -19,6 +20,12 @@ export const metadata = { title: "Perfil" };
 export default async function ProfilePage() {
   const user = await requireUser();
   const [{ profile, subscription }, stats, dash, roles, usage, partner, avatarGender] = await Promise.all([getProfile(), getStudyStats(), getDashboard(), getBankRoles(user.id), getPlanUsage(user.id), getPartnerStatus(user.id), getMyAvatarGender(user.id).catch(() => null)]);
+  const pedidos = roles.admin ? await listRaioXRequests({ onlyPending: true, limit: 50 }).catch(() => []) : [];
+  const notes: AdminNote[] = pedidos.map((r) => ({
+    id: r.prepId, title: `Novo pedido de Raio-X: ${r.examName}`,
+    detail: `Aluno: ${studentLabel(r)}${[r.role, r.board, r.year].filter(Boolean).length ? ` · ${[r.role, r.board, r.year].filter(Boolean).join(" · ")}` : ""}`,
+    when: new Date(r.createdAt).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }), href: `/admin/estrategico/importar?exam=${r.examId}`,
+  }));
   const staff = roles.admin || roles.autor || roles.revisor;
   const adminItems: AdminItem[] = [
     ...(roles.admin ? [{ href: "/admin/catalogo/enviar", label: "Catalogar aula" }] : []),
@@ -27,7 +34,7 @@ export default async function ProfilePage() {
     ...(roles.admin ? [
       { href: "/admin/catalogo", label: "Catálogo" }, { href: "/admin/catalogo/plano", label: "Plano de tópicos" }, { href: "/admin/catalogo/banners", label: "Banners" },
       { href: "/admin/fila", label: "Fila da IA" }, { href: "/admin/alunos", label: "Alunos e planos" }, { href: "/admin/avatares", label: "Avatares" },
-      { href: "/admin/concursos", label: "Concursos" }, { href: "/admin/estrategico", label: "Estratégico" }, { href: "/admin/editais", label: "Editais" },
+      { href: "/admin/concursos", label: "Concursos" }, { href: "/admin/estrategico", label: "Estratégico", badge: notes.length }, { href: "/admin/editais", label: "Editais" },
       { href: "/admin/aprovados", label: "Aprovados" }, { href: "/admin/depoimentos", label: "Depoimentos" }, { href: "/admin/socio", label: "Sócio admin" },
     ] : []),
   ];
@@ -57,7 +64,7 @@ export default async function ProfilePage() {
         <PastelCard noTilt className="p-6" testId="area-equipe">
           <h2 className="mb-1 text-[13px] font-bold">Painel do Admin</h2>
           <p className="mb-4 text-[12px] text-[#5C5C5C]">Visível só para a equipe do APROVUM.</p>
-          <PainelAdmin items={adminItems} />
+          <PainelAdmin items={adminItems} notes={notes} />
         </PastelCard>
       )}
       <PastelCard noTilt className="p-6">
