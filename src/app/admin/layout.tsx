@@ -62,6 +62,12 @@ export default async function AdminLayout({
                 Fila da IA
               </Link>
               <Link
+                href="/admin/redacao"
+                className="text-destaque underline-offset-2 hover:underline"
+              >
+                Redação
+              </Link>
+              <Link
                 href="/admin/alunos"
                 className="text-destaque underline-offset-2 hover:underline"
               >

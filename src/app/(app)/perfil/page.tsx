@@ -34,7 +34,7 @@ export default async function ProfilePage() {
     ...(roles.admin ? [
       { href: "/admin/catalogo", label: "Catálogo" }, { href: "/admin/catalogo/plano", label: "Plano de tópicos" }, { href: "/admin/catalogo/banners", label: "Banners" },
       { href: "/admin/fila", label: "Fila da IA" }, { href: "/admin/alunos", label: "Alunos e planos" }, { href: "/admin/avatares", label: "Avatares" },
-      { href: "/admin/concursos", label: "Concursos" }, { href: "/admin/estrategico", label: "Estratégico", badge: notes.length }, { href: "/admin/editais", label: "Editais" },
+      { href: "/admin/concursos", label: "Concursos" }, { href: "/admin/estrategico", label: "Estratégico", badge: notes.length }, { href: "/admin/editais", label: "Editais" }, { href: "/admin/redacao", label: "Redação Elite" },
       { href: "/admin/aprovados", label: "Aprovados" }, { href: "/admin/depoimentos", label: "Depoimentos" }, { href: "/admin/socio", label: "Sócio admin" },
     ] : []),
   ];

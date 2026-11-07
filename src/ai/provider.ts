@@ -12,7 +12,11 @@ export type AITask =
   | "generate_questions"
   | "grade_discursive"
   | "review_content"
-  | "recommend";
+  | "recommend"
+  | "writing_correction"
+  | "writing_theme"
+  | "writing_exercise"
+  | "writing_chat";
 
 export interface StructuredRequest<T> {
   task: AITask;
