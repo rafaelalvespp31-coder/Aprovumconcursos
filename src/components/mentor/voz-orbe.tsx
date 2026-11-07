@@ -1,12 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ALVOS, NODES, ease, mulberry32, pickNodes, resolveEstado, rimBolt, spawnBolt, boltSpan, type Alvo, type Bands, type Bolt, type Conexao, type NodeId, type Pt, type SkullEstado } from "./skull-orb-fx";
+import { ALVOS, NODES, ease, mulberry32, pickNodes, resolveEstado, spawnBolt, boltSpan, type Alvo, type Bands, type Bolt, type Conexao, type NodeId, type Pt, type SkullEstado } from "./skull-orb-fx";
 
 export { SILENCE, type Bands } from "./skull-orb-fx";
 
-const SRC = "/mentor/orb-esfera.webp"; // esfera de vidro com a caveira de rocha (arte de referência)
-const SRC_FENDAS = "/mentor/orb-fendas.webp"; // só as fendas vermelhas, para pulsar com a voz
+const SRC = "/mentor/orb-esfera.webp"; // arte de referência: só serve de mapa de cor e densidade das partículas
 const BASE = 280; // tamanho de referência (px) das medidas
 
 /** Pontinho suave (centro nítido, borda que se apaga). */
@@ -28,12 +27,13 @@ const clamp = (v: number, lo = 0, hi = 1) => Math.min(hi, Math.max(lo, v));
 const TAU = Math.PI * 2;
 
 /**
- * Skull Orb do Mentor: esfera de vidro com a caveira de rocha e fendas de energia (arte de
- * referência) viva em tempo real num canvas. Em volta e por cima da arte: respiração e inclinação,
- * fendas que pulsam e ondas de luz, olhos energizados, descargas elétricas (internas, pela casca de
- * vidro e saltando para fora), anel orbital, destroços, fumaça, poeira que gira sobre a esfera e
- * micropartículas em vários planos. Tudo guiado pelo áudio real (volume, grave, médio, agudo e
- * picos) e por sete estados (idle, listening, thinking, speaking, high, error, disconnected).
+ * Skull Orb do Mentor: a esfera com a caveira de rocha e fendas vermelhas (arte de referência), mas
+ * feita só de micropartículas soltas que flutuam: nada de imagem presa a um círculo. A arte é lida
+ * uma vez como mapa de densidade e cor; cada partícula nasce num ponto da esfera (com profundidade),
+ * deriva devagar e nas bordas se solta numa névoa. Por cima: descargas elétricas, olhos energizados,
+ * destroços, fumaça e micropartículas em vários planos. Tudo guiado pelo áudio real (volume, grave,
+ * médio, agudo e picos) e por sete estados (idle, listening, thinking, speaking, high, error,
+ * disconnected).
  */
 export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { level: () => Bands; dim?: boolean; size?: number; conn?: Conexao }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -56,23 +56,87 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
     const calm = reduce ? 0.3 : 1;
     const mobile = window.innerWidth < 640;
     const spr = { red: sprite(255, 26, 26), hot: sprite(255, 214, 200), smoke: sprite(200, 200, 210, 0.5) };
+    const cls = [sprite(255, 24, 20), sprite(255, 84, 60), sprite(255, 236, 226), sprite(130, 124, 132), sprite(70, 62, 66)]; // vermelho, laranja-vivo, branco, rocha clara, rocha escura
     const rnd = mulberry32((Math.random() * 2 ** 31) | 0);
 
-    let tex: HTMLImageElement | null = null;
-    let cracks: HTMLImageElement | null = null;
-    let hl: HTMLCanvasElement | null = null;
-    let hlx: CanvasRenderingContext2D | null = null;
-    const load = (src: string, set: (i: HTMLImageElement) => void) => {
-      const i = new Image();
-      i.onload = () => set(i);
-      i.onerror = () => setFallback(true);
-      i.src = src;
-      return i;
+    // Nuvem da esfera: lida do mapa da arte, ponto a ponto (mais partículas onde há luz/vermelho).
+    const NC = mobile ? 5200 : 10000;
+    const hx = new Float32Array(NC);
+    const hy = new Float32Array(NC);
+    const hz = new Float32Array(NC);
+    const cc = new Uint8Array(NC);
+    const cs = new Float32Array(NC);
+    const ca = new Float32Array(NC);
+    const cd = new Float32Array(NC);
+    const ck = new Uint8Array(NC); // 1 = partícula de fenda (acende com a voz)
+    const cpx = new Float32Array(NC);
+    const cpy = new Float32Array(NC);
+    const cpa = new Float32Array(NC);
+    const cps = new Float32Array(NC);
+    let nc = 0;
+    const buildCloud = (img: HTMLImageElement) => {
+      const S = 320;
+      const c = document.createElement("canvas");
+      c.width = c.height = S;
+      const x = c.getContext("2d", { willReadFrequently: true });
+      if (!x) return;
+      x.drawImage(img, 0, 0, S, S);
+      const d = x.getImageData(0, 0, S, S).data;
+      const cum = new Float32Array(S * S);
+      let tot = 0;
+      for (let i = 0; i < S * S; i++) {
+        const r = d[i * 4]!;
+        const g = d[i * 4 + 1]!;
+        const b = d[i * 4 + 2]!;
+        const lum = (r * 0.5 + g * 0.3 + b * 0.2) / 255;
+        const red = Math.max(0, r - Math.max(g, b)) / 255;
+        tot += (d[i * 4 + 3]! / 255) * (0.13 + Math.pow(lum, 1.4) * 0.7 + red * 2.2);
+        cum[i] = tot;
+      }
+      for (let k = 0; k < NC; k++) {
+        const u = rnd() * tot;
+        let lo = 0;
+        let hi = S * S - 1;
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          if (cum[mid]! < u) lo = mid + 1;
+          else hi = mid;
+        }
+        const r = d[lo * 4]!;
+        const g = d[lo * 4 + 1]!;
+        const b = d[lo * 4 + 2]!;
+        const px0 = ((lo % S) + rnd()) / S;
+        const py0 = (Math.floor(lo / S) + rnd()) / S;
+        const X = (px0 - 0.5) * 2;
+        const Y = (py0 - 0.5) * 2;
+        const rr = Math.hypot(X, Y);
+        const zz = Math.sqrt(Math.max(0, 1 - Math.min(1, rr) ** 2));
+        const back = rnd() < 0.3;
+        hx[k] = X;
+        hy[k] = Y;
+        hz[k] = (back ? -1 : 1) * zz * (0.55 + 0.45 * rnd());
+        const lum = (r * 0.5 + g * 0.3 + b * 0.2) / 255;
+        const red = r - Math.max(g, b);
+        cc[k] = red > 90 ? (g > 120 ? 1 : 0) : lum > 0.62 ? 2 : lum > 0.2 ? 3 : 4;
+        ck[k] = red > 60 ? 1 : 0;
+        cs[k] = 0.45 + rnd() * 0.9 + (cc[k] === 2 && rnd() < 0.08 ? 0.7 : 0);
+        ca[k] = (cc[k] === 4 ? 0.7 : cc[k] === 3 ? 0.35 + 0.4 * rnd() : 0.5 + 0.5 * rnd()) * (back ? 0.45 : 1) * ((cc[k] ?? 4) <= 1 ? 1.25 : 1);
+        cd[k] = rnd() * 1000;
+      }
+      nc = NC;
     };
-    const imgs = [load(SRC, (i) => (tex = i)), load(SRC_FENDAS, (i) => (cracks = i))];
+    const imgs = [
+      (() => {
+        const i = new Image();
+        i.onload = () => buildCloud(i);
+        i.onerror = () => setFallback(true);
+        i.src = SRC;
+        return i;
+      })(),
+    ];
 
     // Qualidade: 0 (leve) a 2 (completa). Cai sozinha se os quadros demorarem.
-    const NP = mobile ? 460 : 800;
+    const NP = mobile ? 300 : 520;
     let quality = mobile ? 1 : 2;
     let slow = 0;
     let fast = 0;
@@ -113,7 +177,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
     };
     for (let i = 0; i < NP; i++) {
       const u = rnd();
-      kind[i] = u < 0.22 ? 0 : u < 0.46 ? 1 : u < 0.6 ? 2 : u < 0.74 ? 3 : 4;
+      kind[i] = u < 0.3 ? 0 : u < 0.6 ? 1 : u < 0.8 ? 2 : 3;
       ang[i] = rnd() * TAU;
       rho[i] = kind[i] === 0 ? 1.08 + rnd() * 1.1 : kind[i] === 2 ? 1.3 + rnd() * 1.4 : kind[i] === 4 ? 0.5 + 0.5 * Math.sqrt(rnd()) : 0.5 + rnd() * 1.1;
       inc[i] = kind[i] === 4 ? (rnd() - 0.5) * 2.6 : (rnd() - 0.5) * 2.2; // latitude (poeira) ou inclinação da órbita
@@ -207,7 +271,6 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
     let W = 0;
     let H = 0;
     let dpr = 1;
-    let hs = 0;
 
     const fit = () => {
       const r = el.getBoundingClientRect();
@@ -216,10 +279,6 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
       dpr = Math.min(mobile ? 1.5 : 1.75, window.devicePixelRatio || 1);
       el.width = Math.round(W * dpr);
       el.height = Math.round(H * dpr);
-      hs = Math.min(640, Math.round(size * 0.9 * dpr));
-      hl = document.createElement("canvas");
-      hl.width = hl.height = hs;
-      hlx = hl.getContext("2d");
     };
     fit();
     const ro = new ResizeObserver(fit);
@@ -303,18 +362,14 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
           bolt = spawnBolt(rnd, a, end, t, intensity);
         } else {
           const k = rnd();
-          if (k < 0.4) {
+          if (k < 0.55) {
             const p = pickNodes(rnd, intensity); // pelas fendas da caveira
             const a = loc(p.a);
             end = loc(p.b);
             bolt = spawnBolt(rnd, a, end, t, intensity);
-          } else if (k < 0.7) {
-            const a0 = rnd() * TAU; // correndo pela casca de vidro
-            bolt = rimBolt(rnd, R, a0, 0.5 + rnd() * (0.7 + intensity), t, intensity);
-            end = bolt.pts[bolt.pts.length - 1]!;
           } else {
             const th = (rnd() < 0.7 ? (rnd() < 0.5 ? 0 : Math.PI) : rnd() * TAU) + (rnd() - 0.5) * 1.4; // saltando para fora, mais pelas laterais
-            const a = { x: Math.cos(th) * R * 0.97, y: Math.sin(th) * R * 0.97 };
+            const a = { x: Math.cos(th) * R * (0.7 + rnd() * 0.28), y: Math.sin(th) * R * (0.7 + rnd() * 0.28) };
             const l = R * (0.25 + rnd() * (0.3 + intensity * 0.45));
             end = { x: a.x + Math.cos(th + (rnd() - 0.5) * 0.7) * l, y: a.y + Math.sin(th + (rnd() - 0.5) * 0.7) * l };
             bolt = spawnBolt(rnd, a, end, t, intensity);
@@ -439,11 +494,11 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
       fg.addColorStop(1, "rgba(255,0,0,0)");
       ctx.fillStyle = fg;
       ctx.fillRect(cx - R * 0.45, fy - R * 0.2, R * 0.9, R * 0.4);
-      const hz = ctx.createLinearGradient(0, 0, W, 0);
-      hz.addColorStop(0, "rgba(255,40,30,0)");
-      hz.addColorStop(0.5, `rgba(255,50,40,${fl * 0.9})`);
-      hz.addColorStop(1, "rgba(255,40,30,0)");
-      ctx.fillStyle = hz;
+      const hzg = ctx.createLinearGradient(0, 0, W, 0);
+      hzg.addColorStop(0, "rgba(255,40,30,0)");
+      hzg.addColorStop(0.5, `rgba(255,50,40,${fl * 0.9})`);
+      hzg.addColorStop(1, "rgba(255,40,30,0)");
+      ctx.fillStyle = hzg;
       ctx.fillRect(0, fy - 0.5, W, 1);
 
       // Colchetes de HUD nas laterais, como na arte.
@@ -530,128 +585,97 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         debris(half);
       };
 
-      // Anel orbital de vidro (inclinado como na arte): a metade de cima passa atrás, a de baixo, na frente.
-      const ringRot = -0.22 + Math.sin(t * 0.21) * 0.025 * calm;
-      const ringArc = (half: "back" | "front") => {
-        const rx = R * 1.46;
-        const ry = R * 0.27;
-        const [a0, a1] = half === "back" ? [Math.PI, TAU] : [0, Math.PI];
-        const per = TAU * Math.sqrt((rx * rx + ry * ry) / 2);
-        const ri = clamp(fx.ring * 0.7 + cur.mid * 0.8 + cur.vol * 0.2) * am;
-        ctx.save();
-        ctx.translate(cx, cy - R * 0.04);
-        ctx.rotate(ringRot);
-        ctx.lineCap = "round";
-        ctx.globalCompositeOperation = "lighter";
-        const dimk = half === "back" ? 0.55 : 1;
-        ctx.strokeStyle = `rgba(255,40,30,${(0.12 + ri * 0.25) * dimk})`;
-        ctx.lineWidth = 4.5;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, rx, ry, 0, a0, a1);
-        ctx.stroke();
-        ctx.strokeStyle = `rgba(225,225,235,${(0.35 + ri * 0.25) * dimk * am})`;
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
-        ctx.setLineDash([per * 0.14, per * 0.86]);
-        ctx.lineDashOffset = -t * per * 0.1 * (0.4 + fx.speed + cur.mid * 2.5) * calm;
-        ctx.strokeStyle = `rgba(255,150,130,${0.25 + ri * 0.7})`;
-        ctx.lineWidth = 2 + cur.mid * 2.4;
-        ctx.stroke();
-        ctx.setLineDash([]);
-        ctx.restore();
-      };
-
       sprPass(0);
-      ringArc("back");
 
-      // ---- A esfera com a caveira (arte de referência) ----
-      const yaw = Math.sin(t * 0.45) * 0.06 * calm + (estado === "thinking" ? Math.sin(t * 1.3) * 0.03 * calm : 0);
-      const pitch = Math.sin(t * 0.33 + 1) * 0.04 * calm;
-      const roll = Math.sin(t * 0.27) * 0.02 * calm + Math.sin(t * 17) * cur.vol * 0.004 * calm;
-      const breath = 1 + 0.014 * Math.sin((t / 3.2) * Math.PI * 2) * (reduce ? 0.4 : 1);
-      const sc = breath * (1 + cur.low * 0.045 + impulse * 0.025) * (1 - listen * 0.03);
+      // ---- A esfera de micropartículas: a caveira nasce da arte de referência, sem borda nem imagem ----
+      const yaw = Math.sin(t * 0.35) * 0.16 * calm + (estado === "thinking" ? Math.sin(t * 1.3) * 0.06 * calm : 0);
+      const pitch = Math.sin(t * 0.27 + 1) * 0.08 * calm;
+      const cyw = Math.cos(yaw);
+      const syw = Math.sin(yaw);
+      const cp = Math.cos(pitch);
+      const sp = Math.sin(pitch);
+      const grow = (1 + 0.02 * Math.sin((t / 3.2) * TAU) * (reduce ? 0.4 : 1)) * (1 + cur.low * 0.06 + impulse * 0.1) * (1 - listen * 0.03);
       const bob = Math.sin(t * 0.8) * D * 0.008 * calm;
       const glitching = fx.glitch > 0.4 && t < glitchUntil;
       if (fx.glitch > 0.4 && t > glitchAt) {
         glitchUntil = t + 0.16;
         glitchAt = t + 1.4 + rnd() * 2.2;
       }
-      const bright = clamp(0.7 + E * 0.3) * am;
+      // Onda de energia atravessando as fendas na diagonal.
+      const ph = ((t * (0.2 + fx.speed * 0.12 + cur.mid * 0.35)) % 1.8) - 0.4;
+      const crackE = E * 0.5 + cur.mid * 0.9 + cur.low * 0.4;
+      const ncDraw = Math.min(nc, Math.round(NC * [0.5, 0.78, 1][quality]!));
+      for (let i = 0; i < ncDraw; i++) {
+        const hxi = hx[i]!;
+        const hyi = hy[i]!;
+        const r0 = Math.hypot(hxi, hyi);
+        const sdd = cd[i]!;
+        // Deriva suave; nas bordas a nuvem se solta e se espalha (por isso não há contorno de círculo).
+        const amp = (0.006 + 0.05 * r0 * r0 * r0 + cur.vol * 0.025 + cur.high * 0.015) * R * calm;
+        const push = 1 + cur.low * 0.05 + impulse * 0.2 * (0.3 + r0) + 0.05 * r0 * r0 * Math.sin(t * 0.6 + sdd);
+        const x = (hxi * R * push + Math.sin(t * 0.5 + sdd + hyi * 3) * amp) * grow;
+        const y = (hyi * R * push + Math.cos(t * 0.45 + sdd * 1.3 + hxi * 3) * amp) * grow;
+        const z = (hz[i]! * R * push + Math.sin(t * 0.4 + sdd * 0.7) * amp) * grow;
+        const xr = x * cyw + z * syw;
+        const zr = -x * syw + z * cyw;
+        const yr = y * cp - zr * sp;
+        const zr2 = y * sp + zr * cp;
+        const k = F / (F - zr2);
+        cpx[i] = cx + xr * k + (glitching && Math.sin(yr * 0.3 + t * 40) > 0.6 ? 7 : 0);
+        cpy[i] = cy + bob + yr * k;
+        let a = ca[i]! * (0.7 + E * 0.6) * (0.55 + 0.45 * ((zr2 / R + 1) / 2));
+        let sc = 1;
+        if (ck[i]) {
+          const band = Math.exp(-Math.pow(((hxi * 0.6 + hyi * 0.8) * 0.5 + 0.5 - ph) / 0.1, 2)) * (0.5 + E);
+          const boost = 0.15 + crackE * 0.6 + band * 1.4;
+          a *= 1 + boost;
+          sc = 1 + boost * 0.1;
+        }
+        if (r0 > 0.8) a *= 0.7 + 0.3 * Math.sin(t * (1.5 + (sdd % 3)) + sdd);
+        if (hot[i % NP] && cur.high > 0.05) a *= 1 + cur.high * 0.6 * Math.sin(t * 30 + sdd);
+        const e = Math.min(1, cpx[i]! / 46, (W - cpx[i]!) / 46, cpy[i]! / 46, (H - cpy[i]!) / 46);
+        cpa[i] = clamp(a) * Math.max(0, e) * am;
+        cps[i] = cs[i]! * k * k0 * 3.7 * sc * (1 + cur.vol * 0.25);
+      }
+      for (const c of [4, 3, 0, 1, 2]) {
+        ctx.globalCompositeOperation = c >= 3 ? "source-over" : "lighter";
+        const sp2 = cls[c]!;
+        for (let i = 0; i < ncDraw; i++) {
+          if (cc[i] !== c) continue;
+          const a = cpa[i]!;
+          if (a < 0.02) continue;
+          ctx.globalAlpha = a;
+          const s = cps[i]!;
+          ctx.drawImage(sp2, cpx[i]! - s / 2, cpy[i]! - s / 2, s, s);
+          if (c < 2 && a > 0.35) {
+            // brilho suave em volta das fendas (bloom barato)
+            ctx.globalAlpha = a * 0.16;
+            ctx.drawImage(sp2, cpx[i]! - s * 1.6, cpy[i]! - s * 1.6, s * 3.2, s * 3.2);
+          }
+        }
+      }
+      ctx.globalAlpha = 1;
+
+      // Plano local da caveira, para os olhos e as descargas acompanharem a nuvem.
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.translate(cx, cy + bob);
-      ctx.rotate(roll);
-      ctx.transform(Math.cos(yaw) * sc, 0, Math.sin(yaw) * 0.06, Math.cos(pitch) * sc, 0, 0);
-      if (tex) {
-        ctx.globalCompositeOperation = "screen";
-        ctx.globalAlpha = bright;
-        ctx.drawImage(tex, -R, -R, D, D);
-        if (glitching) {
-          ctx.globalCompositeOperation = "lighter";
-          ctx.globalAlpha = 0.3 * am;
-          ctx.drawImage(tex, -R + 5, -R - 1, D, D);
-          ctx.globalAlpha = 0.16 * am;
-          ctx.drawImage(tex, -R - 6, -R + 2, D, D);
-        }
-        ctx.globalAlpha = 1;
-      }
-      if (cracks) {
-        // As fendas respiram e pulsam: grave expande, médio acende, e uma onda de luz as atravessa.
-        ctx.globalCompositeOperation = "lighter";
-        const cs = 1 + cur.low * 0.012;
-        ctx.globalAlpha = clamp(0.08 + E * 0.26 + cur.low * 0.18 + cur.mid * 0.1) * am;
-        ctx.drawImage(cracks, -R * cs, -R * cs, D * cs, D * cs);
-        if (hl && hlx && quality > 0 && !reduce) {
-          hlx.setTransform(1, 0, 0, 1, 0, 0);
-          hlx.globalCompositeOperation = "source-over";
-          hlx.clearRect(0, 0, hs, hs);
-          hlx.drawImage(cracks, 0, 0, hs, hs);
-          hlx.globalCompositeOperation = "destination-in";
-          const ph = ((t * (0.13 + fx.speed * 0.1 + cur.mid * 0.3)) % 1.6) - 0.3;
-          const gx = hs * ph * 1.4 - hs * 0.2;
-          const bg = hlx.createLinearGradient(gx - hs * 0.22, hs * 0.1, gx + hs * 0.22, hs * 0.55);
-          bg.addColorStop(0, "rgba(255,255,255,0)");
-          bg.addColorStop(0.5, "rgba(255,255,255,1)");
-          bg.addColorStop(1, "rgba(255,255,255,0)");
-          hlx.fillStyle = bg;
-          hlx.fillRect(0, 0, hs, hs);
-          hlx.globalCompositeOperation = "source-over";
-          ctx.globalAlpha = clamp(0.3 + E * 0.3 + cur.mid * 0.3) * am;
-          ctx.drawImage(hl, -R, -R, D, D);
-        }
-        ctx.globalAlpha = 1;
-      }
-
-      // Reflexo de vidro na casca: arcos claros que passeiam e acendem com a voz.
+      ctx.transform(cyw * grow, 0, syw * 0.12, cp * grow, 0, 0);
       ctx.globalCompositeOperation = "lighter";
-      ctx.lineCap = "round";
-      ctx.strokeStyle = `rgba(255,90,80,${(0.1 + E * 0.22) * am})`;
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.arc(0, 0, R * 0.985, 0, TAU);
-      ctx.stroke();
-      for (const [a, sp, w] of [[-0.85, 0.9, 1], [2.35, 0.55, 0.6]] as const) {
-        const a0 = a + Math.sin(t * 0.3 + a) * 0.15 * calm;
-        ctx.strokeStyle = `rgba(255,235,230,${clamp(0.22 + cur.vol * 0.5 + cur.high * 0.3) * w * am})`;
-        ctx.lineWidth = 1.8 + cur.vol * 1.5;
-        ctx.beginPath();
-        ctx.arc(0, 0, R * 0.985, a0, a0 + sp);
-        ctx.stroke();
-      }
 
       // Cavidades oculares energizadas.
       for (const id of ["eyeL", "eyeR"] as const) {
         const ex = (NODES[id].x - 0.5) * D;
         const ey = (NODES[id].y - 0.5) * D;
-        const er = D * (0.05 + eyeI * 0.045);
+        const er = D * (0.04 + eyeI * 0.03);
         const g = ctx.createRadialGradient(ex, ey, 0, ex, ey, er);
-        g.addColorStop(0, `rgba(255,${Math.round(130 + eyeI * 80)},${Math.round(110 + eyeI * 60)},${clamp(0.2 + eyeI * 0.55) * am})`);
-        g.addColorStop(0.35, `rgba(255,40,30,${clamp(0.18 + eyeI * 0.5) * am})`);
+        g.addColorStop(0, `rgba(255,${Math.round(130 + eyeI * 80)},${Math.round(110 + eyeI * 60)},${clamp(0.1 + eyeI * 0.4) * am})`);
+        g.addColorStop(0.35, `rgba(255,40,30,${clamp(0.1 + eyeI * 0.35) * am})`);
         g.addColorStop(1, "rgba(255,0,0,0)");
         ctx.fillStyle = g;
         ctx.fillRect(ex - er, ey - er, er * 2, er * 2);
       }
 
-      // Descargas elétricas: fendas da caveira, casca de vidro e saltos para fora.
+      // Descargas elétricas: pelas fendas da caveira e saltando para fora.
       ctx.lineJoin = "round";
       const trace = (pts: Pt[], head: number, tail: number) => {
         const m = pts.length - 1;
@@ -678,8 +702,6 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         }
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-
-      ringArc("front");
 
       // Ondas de luz nos picos de voz.
       ctx.globalCompositeOperation = "lighter";
