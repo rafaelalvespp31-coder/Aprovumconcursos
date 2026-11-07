@@ -1,12 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
+import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { StartStudyDialog, type StartTheme } from "@/app/(app)/nova-trilha/start-dialog";
 import type { PreparationTree, TreeTopic } from "@/server/services/edital-view";
-import { DeletePrep } from "./delete-prep";
-import { OrgEmblem } from "./org-emblem";
+import { CardEdital } from "./card-edital";
 import { VisaoGeral } from "./visao-geral";
 import "./aprovum-ai.css";
 
@@ -22,54 +21,13 @@ export type PrepTab = "visao" | "aulas" | "raiox" | "questoes" | "desempenho";
 const TABS: Array<[PrepTab, string]> = [["visao", "VISÃO GERAL"], ["aulas", "AULAS DO EDITAL"], ["raiox", "RAIO-X DO EDITAL"], ["questoes", "QUESTÕES"], ["desempenho", "DESEMPENHO"]];
 
 export function MeuConcurso({ tree, save, start, tab, editing = false, children }: { tree: PreparationTree; save: (f: FormData) => Promise<void>; start: (s: { error?: string }) => Promise<{ error?: string }>; tab: PrepTab; editing?: boolean; children?: React.ReactNode }) {
-  const [startState, startAction, starting] = useActionState(start, {});
-  const started = !!(tree.prep.stats as { studyFolderId?: string }).studyFolderId;
   const { prep, disciplines, totals } = tree;
   const [theme, setTheme] = useState<StartTheme | null>(null);
-  const [edit, setEdit] = useState(editing);
   const pend = disciplines.flatMap((d) => d.topics.filter((t) => t.status === "nao_encontrado" || t.status === "conferencia").map((t) => ({ d, t })));
-  const created = new Date(prep.createdAt).toLocaleDateString("pt-BR");
 
   return (
     <div className="ai-root mx-auto grid w-full max-w-4xl gap-4" data-testid="meu-concurso">
-      <header className="ai-head">
-        <div className="ai-head-top">
-          <OrgEmblem logo={prep.orgLogo} name={prep.contestName ?? prep.title} size={60} />
-          <h1>{prep.title}</h1>
-        </div>
-        <div className="ai-meta">
-          {prep.roleName && <span>Cargo: <b>{prep.roleName}</b></span>}
-          {prep.board && <span>Banca: <b>{prep.board}</b></span>}
-          {prep.year && <span>Ano: <b>{prep.year}</b></span>}
-          <span>Criada em <b>{created}</b></span>
-        </div>
-        <form action={startAction} style={{ marginTop: 12 }}>
-          <button type="submit" className="ai-go" disabled={starting || totals.lessonsAvailable === 0} data-testid="comecar-estudo" style={{ width: "100%" }}>
-            {starting ? "MONTANDO SEUS ESTUDOS…" : started ? "ABRIR MEUS ESTUDOS DESTE CONCURSO" : "COMEÇAR ESTUDO"}
-          </button>
-          <p className="ai-sub" style={{ marginTop: 6 }}>
-            {totals.lessonsAvailable === 0
-              ? "Ainda não há aulas no catálogo para este edital."
-              : started
-                ? "Suas aulas deste edital estão numa pasta em Meus estudos, separadas por matéria."
-                : `Reúne as ${totals.lessonsAvailable} aulas deste edital numa pasta em Meus estudos, separadas por matéria.`}
-          </p>
-          {startState.error && <p role="alert" className="ai-sub" style={{ color: "#ff6b6b" }}>{startState.error}</p>}
-        </form>
-        <button type="button" className="ai-ghost" style={{ marginTop: 10, padding: "0 14px", minHeight: 36 }} onClick={() => setEdit((v) => !v)} aria-expanded={edit}>
-          {edit ? "Fechar edição" : "Corrigir informações"}
-        </button>
-        <div style={{ marginTop: 8 }}><DeletePrep id={prep.id} redirectTo="/aprovum-ai" /></div>
-        {edit && (
-          <form action={async (f) => { await save(f); setEdit(false); }} className="ai-fields" style={{ marginTop: 10 }}>
-            <label className="ai-field"><span>Nome do concurso</span><input name="contestName" defaultValue={prep.contestName ?? ""} maxLength={160} /></label>
-            <label className="ai-field"><span>Cargo pretendido</span><input name="roleName" defaultValue={prep.roleName ?? ""} maxLength={160} placeholder="Ex: Guarda Civil Municipal" autoFocus={editing && !prep.roleName} /></label>
-            <label className="ai-field"><span>Banca</span><input name="board" defaultValue={prep.board ?? ""} maxLength={80} /></label>
-            <label className="ai-field"><span>Ano</span><input name="year" defaultValue={prep.year ?? ""} inputMode="numeric" maxLength={4} /></label>
-            <button className="ai-go" type="submit">SALVAR</button>
-          </form>
-        )}
-      </header>
+      <CardEdital tree={tree} save={save} start={start} editing={editing} />
 
       <nav className="ai-tabs" aria-label="Seções da preparação">
         {TABS.map(([k, label]) => <Link key={k} href={`/meu-concurso/${prep.id}?aba=${k}`} replace aria-current={tab === k ? "page" : undefined}>{label}</Link>)}

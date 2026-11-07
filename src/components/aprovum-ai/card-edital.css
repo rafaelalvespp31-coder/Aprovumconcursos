@@ -1,0 +1,166 @@
+/* Card principal do edital — clone da referência. Layout proporcional: 1 u = 1/1076 da largura. */
+.vc-wrap { container-type: inline-size; width: 100%; }
+.vc { --u: calc(100cqw / 1076); --red: #e50920; position: relative; width: 100%; aspect-ratio: 1076 / 1092; color: #f1f2f5; isolation: isolate; font-family: "Chakra Petch", system-ui, sans-serif;
+  background:
+    radial-gradient(70% 45% at 22% 8%, rgba(229,9,32,.16), transparent 70%),
+    repeating-linear-gradient(45deg, rgba(255,255,255,.028) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(-45deg, rgba(0,0,0,.35) 0 2px, transparent 2px 5px),
+    linear-gradient(160deg, #15161b, #08090c 60%, #0d0e12);
+  border-radius: calc(var(--u) * 26); }
+.vc > * { position: absolute; }
+.vc-frame { inset: 0; z-index: 6; pointer-events: none; background: url(/card-edital/moldura.webp) 0 0 / 100% 100% no-repeat; }
+.vc-glow { inset: 0; z-index: 7; pointer-events: none; border-radius: calc(var(--u) * 26); box-shadow: 0 0 calc(var(--u) * 28) rgba(229,9,32,.28), inset 0 0 calc(var(--u) * 40) rgba(229,9,32,.07); animation: vc-pulso 4.5s ease-in-out infinite; }
+@keyframes vc-pulso { 50% { box-shadow: 0 0 calc(var(--u) * 44) rgba(229,9,32,.45), inset 0 0 calc(var(--u) * 52) rgba(229,9,32,.12); } }
+.vc-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+
+/* Identificação */
+.vc-id { display: contents; }
+.vc-brasao { position: absolute; left: calc(var(--u) * 50); top: calc(var(--u) * 68); width: calc(var(--u) * 190); height: calc(var(--u) * 192); background-size: 100% 100%; z-index: 3; display: grid; place-items: center; }
+.vc-brasao img { width: 62%; height: 62%; object-fit: contain; filter: drop-shadow(0 2px 6px #000); }
+.vc-brasao b { font: 700 calc(var(--u) * 60) / 1 "Chakra Petch", sans-serif; letter-spacing: .02em; color: #e9ebf0; text-shadow: 0 2px 6px #000; font-size: calc(var(--u) * min(60, 150 / var(--n))); }
+.vc-nome { position: absolute; left: calc(var(--u) * 270); top: calc(var(--u) * 84); width: calc(var(--u) * 560); z-index: 3; }
+.vc-apoio { font: 600 calc(var(--u) * 36) / 1.1 "Chakra Petch", sans-serif; letter-spacing: .01em; color: #eceef2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vc-destaque { margin-top: calc(var(--u) * 4); font: italic 800 calc(var(--u) * max(46, min(100, 1250 / var(--b)))) / 1.05 "Chakra Petch", sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: .08em;
+  background: linear-gradient(180deg, #fff 0%, #cfd2da 38%, #8a8e98 55%, #e8eaef 75%, #9a9ea8 100%); -webkit-background-clip: text; background-clip: text; color: transparent; filter: drop-shadow(0 calc(var(--u) * 3) calc(var(--u) * 4) rgba(0,0,0,.7)); }
+.vc-tag { margin-top: calc(var(--u) * 6); font: 700 calc(var(--u) * 26) / 1 "Chakra Petch", sans-serif; letter-spacing: .12em; color: var(--red); }
+.vc-inst { display: none; }
+
+/* Informações */
+.vc-info { left: calc(var(--u) * 72); top: calc(var(--u) * 292); width: calc(var(--u) * 740); z-index: 3; display: grid; grid-template-columns: 300fr 224fr 216fr; row-gap: calc(var(--u) * 24); margin: 0; }
+.vc-info > div { display: grid; grid-template-columns: auto 1fr; column-gap: calc(var(--u) * 12); align-items: center; min-width: 0; }
+.vc-info svg { grid-row: 1 / 3; width: calc(var(--u) * 34); height: calc(var(--u) * 34); color: var(--red); }
+.vc-info dt { font: 600 calc(var(--u) * 17) / 1 "Chakra Petch", sans-serif; letter-spacing: .1em; text-transform: uppercase; color: #9a9ea8; }
+.vc-info dd { margin: 0; font: 700 calc(var(--u) * 26) / 1.1 "Chakra Petch", sans-serif; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.vc-info > div:nth-child(n+2):nth-child(-n+3) { border-left: 1px solid rgba(255,255,255,.14); padding-left: calc(var(--u) * 24); }
+.vc-info dd[data-vazio] { color: #7d818c; font-weight: 500; }
+.vc-criada { grid-column: 1 / -1; }
+.vc-criada dd { font-size: calc(var(--u) * 24); }
+.vc-foco { left: calc(var(--u) * 820); top: calc(var(--u) * 339); width: calc(var(--u) * 246); height: calc(var(--u) * 136); background-size: 100% 100%; z-index: 3; -webkit-mask-image: linear-gradient(90deg, transparent, #000 22%, #000 90%, transparent); mask-image: linear-gradient(90deg, transparent, #000 22%, #000 90%, transparent); }
+
+/* CTA */
+.vc-form { left: calc(var(--u) * 28); top: calc(var(--u) * 470); width: calc(var(--u) * 1020); z-index: 4; }
+.vc-cta { position: relative; display: block; width: 100%; height: calc(var(--u) * 190); border: 0; padding: 0; cursor: pointer; background-size: 100% 100%; background-color: transparent; overflow: hidden; border-radius: calc(var(--u) * 20); transition: transform .2s, filter .2s; }
+.vc-cta::after { content: ""; position: absolute; inset: 0; background: linear-gradient(105deg, transparent 35%, rgba(255,255,255,.28) 50%, transparent 65%); transform: translateX(-120%); transition: transform .7s; }
+.vc-cta:hover:not(:disabled)::after, .vc-cta:focus-visible::after { transform: translateX(120%); }
+.vc-cta:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.08); }
+.vc-cta:active:not(:disabled) { transform: scale(.995); }
+.vc-cta:disabled { cursor: not-allowed; filter: grayscale(.6) brightness(.75); }
+.vc-cta:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.vc-cta-txt { position: absolute; left: 30%; right: 12%; top: 0; bottom: 0; display: flex; flex-direction: column; justify-content: center; text-align: left; font: italic 800 calc(var(--u) * 43) / 1.08 "Chakra Petch", sans-serif; letter-spacing: .01em; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,.45); }
+.vc-cta-txt em { font-style: inherit; }
+.vc-expl { position: absolute; left: calc(var(--u) * 42); top: calc(var(--u) * 200); width: calc(var(--u) * 940); margin: 0; padding-left: calc(var(--u) * 14); border-left: calc(var(--u) * 4) solid var(--red); font: 500 calc(var(--u) * 22) / 1.3 "Chakra Petch", sans-serif; color: #c9ccd4; }
+.vc-expl b { color: #fff; font-weight: 700; }
+.vc-erro { position: absolute; left: calc(var(--u) * 42); top: calc(var(--u) * 238); margin: 0; font-size: calc(var(--u) * 20); color: #ff7a7a; }
+
+/* Painéis */
+.vc-prog { left: calc(var(--u) * 34); top: calc(var(--u) * 740); width: calc(var(--u) * 656); height: calc(var(--u) * 180); background-size: 100% 100%; z-index: 3; }
+.vc-anel { position: absolute; left: calc(var(--u) * 44); top: calc(var(--u) * 1); width: calc(var(--u) * 178); height: calc(var(--u) * 178); display: grid; place-items: center; }
+.vc-anel svg { position: absolute; width: 100%; height: 100%; left: 0; top: 0; overflow: visible; }
+.vc-anel circle { fill: none; }
+.vc-a0 { stroke: rgba(255,255,255,.06); stroke-width: 2; }
+.vc-a1 { stroke: #2a2c33; stroke-width: 14; }
+.vc-a2 { stroke-width: 14; stroke-linecap: round; stroke-dashoffset: var(--o); animation: vc-anel 1.4s cubic-bezier(.2,.8,.2,1) both; filter: drop-shadow(0 0 6px rgba(229,9,32,.8)); }
+@keyframes vc-anel { from { stroke-dashoffset: var(--c); } }
+.vc-a3 { stroke: rgba(255,255,255,.05); stroke-width: 2; }
+.vc-anel-txt { position: relative; display: grid; justify-items: center; line-height: 1; }
+.vc-anel-txt b { font: 800 calc(var(--u) * 50) / 1 "Chakra Petch", sans-serif; color: #fff; }
+.vc-anel-txt small { font-size: .55em; margin-left: 1px; }
+.vc-anel-txt i { margin-top: calc(var(--u) * 4); font: 600 calc(var(--u) * 13) / 1 "Chakra Petch", sans-serif; font-style: normal; letter-spacing: .12em; color: #b5b8c1; }
+.vc-prog-txt { position: absolute; left: calc(var(--u) * 290); top: calc(var(--u) * 26); right: calc(var(--u) * 30); }
+.vc-prog-txt h2 { margin: 0; font: 800 calc(var(--u) * 23) / 1.1 "Chakra Petch", sans-serif; letter-spacing: .03em; color: #fff; }
+.vc-prog-txt p { margin: calc(var(--u) * 10) 0 0; font: 500 calc(var(--u) * 17) / 1.3 "Chakra Petch", sans-serif; color: #c0c3cb; }
+.vc-trilho { display: block; margin-top: calc(var(--u) * 22); height: calc(var(--u) * 12); border-radius: 99px; background: #23252b; overflow: hidden; box-shadow: inset 0 1px 2px #000; }
+.vc-trilho i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #7a0210, var(--red), #ff5a64); box-shadow: 0 0 10px rgba(229,9,32,.8); transform-origin: left; animation: vc-barra 1.2s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes vc-barra { from { transform: scaleX(0); } }
+.vc-inteligente { left: calc(var(--u) * 702); top: calc(var(--u) * 768); width: calc(var(--u) * 334); height: calc(var(--u) * 148); background-size: 100% 100%; z-index: 3; display: flex; align-items: center; gap: calc(var(--u) * 14); padding: 0 calc(var(--u) * 22); color: #fff; text-decoration: none; transition: filter .2s, transform .2s; }
+.vc-inteligente:hover { filter: brightness(1.15); transform: translateY(-2px); }
+.vc-inteligente:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.vc-inteligente img { width: calc(var(--u) * 84); height: auto; flex: none; }
+.vc-inteligente span { display: grid; gap: calc(var(--u) * 6); min-width: 0; }
+.vc-inteligente b { font: 800 calc(var(--u) * 19) / 1.05 "Chakra Petch", sans-serif; letter-spacing: .02em; }
+.vc-inteligente small { font: 500 calc(var(--u) * 15) / 1.25 "Chakra Petch", sans-serif; color: #c0c3cb; }
+
+/* Botões */
+.vc-btns { display: contents; }
+.vc-btn, .vc-del-box { position: absolute; top: calc(var(--u) * 948); height: calc(var(--u) * 90); background-size: 100% 100%; background-color: transparent; border: 0; padding: 0 calc(var(--u) * 18) 0 calc(var(--u) * 84); z-index: 4; display: flex; align-items: center; gap: calc(var(--u) * 14); color: #fff; cursor: pointer; text-decoration: none; text-align: left; font: 700 calc(var(--u) * 22) / 1.1 "Chakra Petch", sans-serif; transition: filter .2s, transform .2s; }
+.vc-corrigir { left: calc(var(--u) * 34); width: calc(var(--u) * 318); }
+.vc-del-box { left: calc(var(--u) * 370); width: calc(var(--u) * 316); padding: 0; }
+.vc-rapido { left: calc(var(--u) * 704); width: calc(var(--u) * 332); padding-left: calc(var(--u) * 84); padding-right: calc(var(--u) * 70); }
+.vc-btn:hover, .vc-del-box:hover { filter: brightness(1.18); transform: translateY(-2px); }
+.vc-btn:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.vc-btn svg { position: absolute; left: calc(var(--u) * 26); width: calc(var(--u) * 36); height: calc(var(--u) * 36); color: var(--red); }
+.vc-rapido svg:last-child { left: auto; right: calc(var(--u) * 24); color: #fff; width: calc(var(--u) * 30); height: calc(var(--u) * 30); }
+.vc-rapido svg:first-child { color: #fff; }
+.vc-rapido span { display: grid; gap: calc(var(--u) * 4); }
+.vc-rapido b { font-weight: 800; }
+.vc-rapido small { font: 500 calc(var(--u) * 15) / 1.1 "Chakra Petch", sans-serif; opacity: .9; }
+.vc-del-box .vc-btn { position: relative; inset: auto; top: 0; width: 100%; height: 100%; padding-left: calc(var(--u) * 84); background: transparent; }
+.vc-del-box .vc-btn:hover { transform: none; filter: none; }
+.vc-del-box .vc-btn svg { left: calc(var(--u) * 26); }
+
+/* Confirmação de exclusão */
+.vc-ask { position: absolute; right: 0; bottom: calc(100% + 8px); width: min(calc(var(--u) * 460), 92vw); display: grid; gap: 8px; padding: 12px; border: 1px solid var(--red); border-radius: 12px; background: #0b0c10; font: 500 14px/1.35 "Chakra Petch", sans-serif; z-index: 20; }
+.vc-ask-btns { display: flex; gap: 8px; }
+.vc-ask-btns button { min-height: 40px; padding: 0 14px; border-radius: 8px; font: 700 13px "Chakra Petch", sans-serif; cursor: pointer; }
+.vc-ask-yes { background: var(--red); color: #fff; border: 0; }
+.vc-ask-no { background: transparent; color: #fff; border: 1px solid #444; }
+.vc-ask em { color: #ff7a7a; font-style: normal; }
+
+/* Edição */
+.vc-edit { position: absolute; left: calc(var(--u) * 34); right: calc(var(--u) * 40); top: calc(var(--u) * 1050); z-index: 8; display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr); padding: 14px; border: 1px solid rgba(229,9,32,.5); border-radius: 12px; background: #0b0c10; }
+.vc-edit label { display: grid; gap: 4px; font-size: 12px; color: #9a9ea8; }
+.vc-edit input { min-height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid #2a2c33; background: #14151a; color: #fff; font-size: 15px; }
+.vc-salvar { grid-column: 1 / -1; min-height: 44px; border: 0; border-radius: 10px; background: var(--red); color: #fff; font: 800 15px "Chakra Petch", sans-serif; letter-spacing: .06em; cursor: pointer; }
+
+/* Entrada */
+.vc { animation: vc-in .5s ease-out both; }
+@keyframes vc-in { from { opacity: 0; transform: translateY(8px); } }
+
+/* Celular / estreito: empilhado, sem rolagem horizontal */
+@container (max-width: 699px) {
+  .vc { --u: 1px; aspect-ratio: auto; display: grid; gap: 14px; padding: 22px 16px 16px; border: 1px solid rgba(229,9,32,.7); box-shadow: 0 0 22px rgba(229,9,32,.25), inset 0 0 30px rgba(229,9,32,.06); border-radius: 18px; overflow: hidden; }
+  .vc { grid-template-columns: minmax(0, 1fr); }
+  .vc > *, .vc-brasao, .vc-nome { position: static; }
+  .vc-frame, .vc-glow, .vc-foco { display: none; }
+  .vc-id { display: grid; grid-template-columns: 76px 1fr; gap: 14px; align-items: center; }
+  .vc-brasao { width: 76px; height: 77px; }
+  .vc-nome { width: auto; min-width: 0; }
+  .vc-apoio { font-size: 14px; }
+  .vc-destaque { font-size: clamp(30px, 11vw, 50px); }
+  .vc-tag { font-size: 12px; }
+  .vc-info { width: auto; grid-template-columns: 1fr 1fr; row-gap: 14px; column-gap: 12px; }
+  .vc-info svg { width: 24px; height: 24px; }
+  .vc-info dt { font-size: 11px; }
+  .vc-info dd { font-size: 16px; white-space: normal; overflow-wrap: anywhere; }
+  .vc-criada dd { font-size: 15px; }
+  .vc-form { display: grid; gap: 10px; width: auto; }
+  .vc-cta { height: 64px; }
+  .vc-brasao b { font-size: 30px; }
+  .vc-form { width: auto; }
+  .vc-cta-txt { position: absolute; left: 24%; right: 10%; font-size: clamp(13px, 4vw, 20px); }
+  .vc-expl, .vc-erro { position: static; width: auto; font-size: 14px; padding-left: 10px; border-left-width: 3px; }
+  .vc-prog { width: auto; height: auto; min-height: 150px; display: grid; grid-template-columns: 120px 1fr; gap: 12px; align-items: center; padding: 14px; border: 1px solid rgba(229,9,32,.45); border-radius: 14px; background-color: #0e0f13; background-image: none !important; }
+  .vc-anel { position: relative; left: auto; top: auto; width: 120px; height: 120px; }
+  .vc-anel svg { width: 120px; height: 120px; left: 0; }
+  .vc-anel-txt b { font-size: 30px; }
+  .vc-anel-txt i { font-size: 9px; }
+  .vc-prog-txt { position: static; }
+  .vc-prog-txt h2 { font-size: 15px; }
+  .vc-prog-txt p { font-size: 13px; }
+  .vc-trilho { height: 8px; margin-top: 12px; }
+  .vc-inteligente { width: auto; height: auto; min-height: 84px; padding: 12px 14px; gap: 12px; border: 1px solid rgba(229,9,32,.45); border-radius: 14px; background-color: #0e0f13; background-image: none !important; }
+  .vc-inteligente img { width: 52px; }
+  .vc-inteligente b { font-size: 16px; }
+  .vc-inteligente small { font-size: 13px; }
+  .vc-btns { display: grid; gap: 10px; }
+  .vc-btn, .vc-del-box { position: relative; left: auto; top: auto; width: auto; height: 60px; padding: 0 14px 0 56px; font-size: 16px; background-image: none !important; background-color: #14151a; border: 1px solid rgba(229,9,32,.55); border-radius: 12px; }
+  .vc-del-box { padding: 0; }
+  .vc-rapido { background-color: var(--red); padding-right: 52px; }
+  .vc-btn svg { left: 16px; width: 26px; height: 26px; }
+  .vc-rapido svg:last-child { right: 16px; width: 22px; height: 22px; }
+  .vc-del-box .vc-btn { border: 0; padding-left: 56px; }
+  .vc-rapido small { font-size: 12px; }
+  .vc-ask { position: static; width: auto; margin: 6px; }
+  .vc-edit { position: static; grid-template-columns: 1fr; }
+}
+@media (prefers-reduced-motion: reduce) { .vc, .vc-glow, .vc-a2, .vc-trilho i, .vc-cta::after { animation: none; transition: none; } }
