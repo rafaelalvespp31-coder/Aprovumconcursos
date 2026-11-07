@@ -363,7 +363,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         into = ease(into, voiced ? pt - slowP : 0, 0.15, 0.05, f60);
         psi = clamp(psi + (dInto * 0.3 - psi * 0.9) * dt, -0.3, 0.3); // entonação subindo gira num sentido, descendo no outro
       }
-      tp += dt * (1 + sm.mid * 0.7 + sm.high * 0.4) * (1 - form * 0.7) * (reduce ? 0.4 : 1);
+      tp += dt * (1 + coord * (env * 1.6 + sm.mid * 0.9 + sm.high * 0.7 + Math.abs(dInto) * 0.5)) * (1 - form * 0.7) * (reduce ? 0.4 : 1);
       if (mic > 0.08) {
         micSeen = true;
         lastMic = t;
@@ -510,22 +510,6 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
       ctx.fillStyle = hg;
       ctx.fillRect(cx - hr, cy - hr, hr * 2, hr * 2);
 
-      // Plataforma de energia no chão, com o ponto de luz no centro e a linha do horizonte.
-      const fy = cy + R * 1.04;
-      const fl = clamp(0.15 + fx.ring * 0.3 + cur.mid * 0.25) * am;
-      ctx.lineWidth = 1.2;
-      for (let r = 0; r < 4; r++) {
-        ctx.strokeStyle = `rgba(255,40,30,${fl * (1 - r * 0.2)})`;
-        ctx.beginPath();
-        ctx.ellipse(cx, fy, R * (0.55 + r * 0.2 + cur.low * 0.05), R * (0.065 + r * 0.018), 0, 0, TAU);
-        ctx.stroke();
-      }
-      const fg = ctx.createRadialGradient(cx, fy, 0, cx, fy, R * 0.45);
-      fg.addColorStop(0, `rgba(255,70,55,${clamp(0.3 + E * 0.5) * am})`);
-      fg.addColorStop(1, "rgba(255,0,0,0)");
-      ctx.fillStyle = fg;
-      ctx.fillRect(cx - R * 0.45, fy - R * 0.2, R * 0.9, R * 0.4);
-
       // Fumaça.
       for (let i = 0; i < NF; i++) {
         fAng[i] = fAng[i]! + fW[i]! * dt * calm;
@@ -594,7 +578,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         const j = i * 6;
         // Ouvindo (formada): movimento bem lento; poucas partículas por vez se soltam e voltam, e a caveira se desfaz de leve sem perder a forma.
         const dis = Math.pow(0.5 + 0.5 * Math.sin(tp * 0.25 + wp[j + 2]! * 3), 2);
-        const A = ((0.035 + 0.09 * r0 * r0) * (1 - coord * 0.45 + sm.vol * 0.1) * (1 - form) + (0.02 + 0.09 * r0 * r0) * dis * form) * calm;
+        const A = ((0.035 + 0.09 * r0 * r0) * (1 + coord * (env * 1.9 + sm.vol * 0.8 + Math.abs(into) * 1.4)) * (1 - form) + (0.02 + 0.09 * r0 * r0) * dis * form) * calm;
         const wa = wamp[i]! * A;
         const ox2 = hxi + (Math.sin(tp * wf[j]! + wp[j]!) + 0.6 * Math.sin(tp * wf[j + 1]! + wp[j + 1]!)) * wa;
         const oy2 = hyi + (Math.sin(tp * wf[j + 2]! + wp[j + 2]!) + 0.6 * Math.sin(tp * wf[j + 3]! + wp[j + 3]!)) * wa;
