@@ -46,7 +46,7 @@ export interface Chamada<T> { task: AITask; schema: z.ZodType<T>; schemaName: st
 /** Uma chamada de IA protegida: orçamento, nova tentativa em falhas recuperáveis, registro de uso e custo. */
 export async function chamarIA<T>(userId: string | null, kind: string, c: Chamada<T>): Promise<StructuredResult<T> & { tentativas: number }> {
   await checarOrcamento();
-  const provider = getAIProvider("estudos");
+  const provider = getAIProvider("redacao");
   let ultimo: unknown;
   for (let t = 1; t <= 2; t++) {
     try {

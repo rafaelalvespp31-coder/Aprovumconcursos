@@ -23,7 +23,7 @@ function iaMsg(e: unknown): never {
   throw e;
 }
 function exigirIA() {
-  if (!aiIsConfigured("estudos")) throw new UserFacingError("O professor de redação ainda não está ativado neste ambiente (a IA precisa estar configurada).", "ia_off");
+  if (!aiIsConfigured("redacao")) throw new UserFacingError("O professor de redação ainda não está ativado neste ambiente (a IA precisa estar configurada).", "ia_off");
 }
 
 /* ───────────── rascunho e envio ───────────── */

@@ -34,7 +34,7 @@ export default async function RedacaoHome() {
           </div>
         </div>
       </section>
-      {!aiIsConfigured("estudos") && <Aviso tom="alerta">O professor de IA ainda não foi ativado neste ambiente (a equipe precisa configurar o provedor de IA). Você já pode escrever e salvar rascunhos; a correção fica disponível assim que a IA for ativada.</Aviso>}
+      {!aiIsConfigured("redacao") && <Aviso tom="alerta">O professor de IA ainda não foi ativado neste ambiente (a equipe precisa configurar o provedor de IA). Você já pode escrever e salvar rascunhos; a correção fica disponível assim que a IA for ativada.</Aviso>}
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {CARDS.map(({ href, t, d, Icon }) => (
           <Link key={href} href={href} className="pc group flex gap-3 p-4 transition-shadow hover:shadow-md">

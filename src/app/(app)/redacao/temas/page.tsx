@@ -9,5 +9,5 @@ export const dynamic = "force-dynamic";
 export default async function TemasPage() {
   const user = await requireUser("/redacao/temas");
   const [cats, temas] = await Promise.all([listCategories(), listThemes(user.id)]);
-  return <Temas categorias={cats} temas={temas} iaAtiva={aiIsConfigured("estudos")} />;
+  return <Temas categorias={cats} temas={temas} iaAtiva={aiIsConfigured("redacao")} />;
 }

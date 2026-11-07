@@ -21,7 +21,7 @@ const COMPAT_PRESETS: Record<string, { baseUrl: string; keyVar: string; keyRequi
 };
 
 /** Onde a IA é usada: estudos dos alunos (aulas) ou banco de questões (equipe). */
-export type AIScope = "estudos" | "banco";
+export type AIScope = "estudos" | "banco" | "redacao";
 
 /**
  * Modo só catálogo: a IA fica desligada até `AI_ENABLED` no servidor.
@@ -30,8 +30,9 @@ export type AIScope = "estudos" | "banco";
  * Desligada, nenhuma chamada à IA é feita.
  */
 export function aiEnabled(scope: AIScope = "estudos"): boolean {
-  const v = process.env.AI_ENABLED?.trim().toLowerCase();
-  return v === "true" || (scope === "banco" && v === "banco");
+  // Aceita lista separada por vírgula (ex.: AI_ENABLED=banco,redacao). "true" liga tudo.
+  const tokens = (process.env.AI_ENABLED ?? "").toLowerCase().split(",").map((t) => t.trim());
+  return tokens.includes("true") || (scope !== "estudos" && tokens.includes(scope));
 }
 
 export const AI_DISABLED_MESSAGE =
@@ -43,7 +44,7 @@ export const AI_DISABLED_MESSAGE =
  */
 export function getAIProvider(scope: AIScope = "estudos"): AIProvider {
   if (!aiEnabled(scope)) {
-    throw new AIError(scope === "banco" ? "A geração de questões por IA está desligada (defina AI_ENABLED=banco no servidor)." : AI_DISABLED_MESSAGE, "not_configured", false);
+    throw new AIError(scope === "banco" ? "A geração de questões por IA está desligada (defina AI_ENABLED=banco no servidor)." : scope === "redacao" ? "O professor de redação está desligado (defina AI_ENABLED=redacao no servidor)." : AI_DISABLED_MESSAGE, "not_configured", false);
   }
   if (cached) return cached;
   const provider = (process.env.AI_PROVIDER ?? "anthropic").toLowerCase();
