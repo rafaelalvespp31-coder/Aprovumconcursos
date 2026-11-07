@@ -150,7 +150,7 @@ export function spawnBolt(r: () => number, a: Pt, b: Pt, now: number, intensity:
     const l = len * (0.18 + r() * 0.22);
     branches.push(makeBolt(r, at, { x: at.x + Math.cos(ang) * l, y: at.y + Math.sin(ang) * l }, l * 0.3, 3));
   }
-  return { pts, branches, born: now, life: 0.2 + r() * 0.28 + intensity * 0.12, width: 0.8 + r() * 0.9 + intensity * 0.7 };
+  return { pts, branches, born: now, life: 0.5 + r() * 0.45 + intensity * 0.15, width: 0.7 + r() * 0.5 + intensity * 0.3 };
 }
 
 /** Fase de um raio entre 0 e 1: a ponta corre pelo crânio no começo e a cauda some depois. */
