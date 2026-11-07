@@ -5,6 +5,7 @@ import { StartStudyDialog, type StartTheme } from "@/app/(app)/nova-trilha/start
 import { HEAT_LABEL, type Heat } from "@/domain/strategic/analysis";
 import { titleKey } from "@/domain/edital/text";
 import type { RaioX } from "@/server/services/strategic";
+import { materiaOf, materiaOrder } from "@/domain/strategic/materias";
 import { Moldura, RaioXPainel } from "./raiox-painel";
 import { ChevronDown, Compass, Flame, ShieldCheck } from "lucide-react";
 import "./aprovum-ai.css";
@@ -26,8 +27,11 @@ export function RaioXView({ data }: { data: RaioX }) {
   const latest = exam.cutoffs[0];
   const subjects = useMemo(() => [...new Set(heat.cells.map((c) => c.subject))], [heat.cells]);
   const cells = heat.cells.filter((c) => (disc === "todas" || c.subject === disc) && (level === "todos" || c.heat === level));
-  const groups = [...cells.reduce((m, c) => m.set(c.subject, [...(m.get(c.subject) ?? []), c]), new Map<string, typeof cells>())]
-    .sort((x, y) => y[1].reduce((n, c) => n + c.questions, 0) - x[1].reduce((n, c) => n + c.questions, 0));
+  // Matérias: dentro de "Conhecimentos Específicos" os assuntos são separados em Código Penal, Processo Penal etc.
+  const discTotal = (subj: string) => cells.filter((c) => c.subject === subj).reduce((n, c) => n + c.questions, 0);
+  const groups = [...cells.reduce((m, c) => { const k = `${c.subject}||${materiaOf(c.subject, c.title)}`; return m.set(k, [...(m.get(k) ?? []), c]); }, new Map<string, typeof cells>())]
+    .map(([k, list]) => ({ subject: list[0]!.subject, materia: k.split("||")[1]!, list }))
+    .sort((x, y) => discTotal(y.subject) - discTotal(x.subject) || x.subject.localeCompare(y.subject) || materiaOrder(x.materia) - materiaOrder(y.materia));
   const hist = (key: string) => heat.cells.find((c) => c.key === key);
   const lessonsOf = (subject: string | null, topic: string) => lessons[`${titleKey(subject ?? "")}|${titleKey(topic)}`] ?? [];
   const recurrent = heat.cells.filter((c) => heat.editionsWithData >= 2 && c.editionsPresent === heat.editionsWithData);
@@ -88,15 +92,15 @@ export function RaioXView({ data }: { data: RaioX }) {
               <label className="ai-rx-sel">Incidência<select value={level} onChange={(e) => setLevel(e.target.value as typeof level)}><option value="todos">Todas</option>{(Object.keys(HEAT_LABEL) as Heat[]).map((h) => <option key={h} value={h}>{HEAT_LABEL[h]}</option>)}</select></label>
             </div>
             <div className="rxp-mats">
-              {groups.map(([subject, list], gi) => {
+              {groups.map(({ subject, materia, list }, gi) => {
                 const q = list.reduce((n, c) => n + c.questions, 0);
                 const comAula = list.filter((c) => lessonsOf(subject, c.title).length > 0).length;
                 return (
-                  <details key={subject} className="rxp-mat" open data-testid="raiox-materia">
+                  <details key={`${subject}|${materia}`} className="rxp-mat" open data-testid="raiox-materia">
                     <summary className="rxp-mat-h">
                       <span className="rxp-mat-n" aria-hidden>{String(gi + 1).padStart(2, "0")}</span>
-                      <span className="rxp-mat-t"><small>INÍCIO DA MATÉRIA</small><b>{subject}</b>
-                        <em>{list.length} {list.length === 1 ? "assunto" : "assuntos"} · {q} {q === 1 ? "questão" : "questões"} · {comAula} com aula</em></span>
+                      <span className="rxp-mat-t"><small>INÍCIO DA MATÉRIA</small><b>{materia}</b>
+                        <em>{materia !== subject ? `${subject} · ` : ""}{list.length} {list.length === 1 ? "assunto" : "assuntos"} · {q} {q === 1 ? "questão" : "questões"} · {comAula} com aula</em></span>
                       <ChevronDown aria-hidden />
                     </summary>
                     <ul className="ai-rx-heat">
@@ -108,7 +112,7 @@ export function RaioXView({ data }: { data: RaioX }) {
                         </li>
                       ))}
                     </ul>
-                    <p className="rxp-mat-f"><i aria-hidden />FIM DA MATÉRIA · {subject}<i aria-hidden /></p>
+                    <p className="rxp-mat-f"><i aria-hidden />FIM DA MATÉRIA · {materia}<i aria-hidden /></p>
                   </details>
                 );
               })}
