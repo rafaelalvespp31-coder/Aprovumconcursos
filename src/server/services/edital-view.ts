@@ -62,6 +62,16 @@ const summaryOf = (r: Row): PrepSummary => ({
   createdAt: r.created_at as string,
 });
 
+/** Regra oficial de estudo de uma aula (0–100): leitura concluída + até 3 níveis, cada um vale 1/4. */
+export function lessonStudyPct(p: { reading_completed_at?: unknown; levels_passed?: unknown } | null | undefined): number {
+  return p ? Math.round((((p.reading_completed_at ? 1 : 0) + Math.min(3, (p.levels_passed as number | null) ?? 0)) / 4) * 100) : 0;
+}
+
+/** Regra oficial de tópico estudado: tem aula no catálogo e todas as aulas vinculadas foram concluídas. */
+export function isTopicDone(status: string, lessonPcts: number[]): boolean {
+  return (status === "completa" || status === "parcial") && lessonPcts.length > 0 && lessonPcts.every((x) => x >= 100);
+}
+
 /** Títulos das aulas do catálogo e o quanto o aluno realmente estudou de cada uma (0–100: leitura + níveis). */
 export async function loadStudy(userId: string, catalogIds: string[]): Promise<{ titles: Map<string, string>; studied: Map<string, number> }> {
   const db = createAdminClient();
@@ -80,7 +90,7 @@ export async function loadStudy(userId: string, catalogIds: string[]): Promise<{
     const byLesson = new Map(((pr.data ?? []) as Row[]).map((p) => [p.lesson_id as string, p]));
     for (const l of lessonRows) {
       const p = byLesson.get(l.id as string);
-      const pct = p ? Math.round((((p.reading_completed_at ? 1 : 0) + Math.min(3, (p.levels_passed as number | null) ?? 0)) / 4) * 100) : 0;
+      const pct = lessonStudyPct(p);
       const cid = l.catalog_topic_id as string;
       studied.set(cid, Math.max(studied.get(cid) ?? 0, pct));
     }
@@ -122,7 +132,7 @@ export async function getPreparationTree(userId: string, id: string): Promise<Pr
   for (const t of (tops.data ?? []) as Row[]) {
     const lessons = (linksByTopic.get(t.id as string) ?? []).sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
     const status = t.match_status as TreeTopic["status"];
-    const done = (status === "completa" || status === "parcial") && lessons.length > 0 && lessons.every((l) => l.done);
+    const done = isTopicDone(status, lessons.map((l) => l.pct));
     const topic: TreeTopic = { id: t.id as string, code: (t.code as string | null) ?? null, depth: t.depth as number, title: t.title as string, page: (t.source_page as number | null) ?? null, status, lessons, done };
     const arr = byDisc.get(t.discipline_id as string) ?? [];
     arr.push(topic);
