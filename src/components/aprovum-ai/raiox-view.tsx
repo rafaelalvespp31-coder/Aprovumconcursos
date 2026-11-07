@@ -6,7 +6,7 @@ import { HEAT_LABEL, type Heat } from "@/domain/strategic/analysis";
 import { titleKey } from "@/domain/edital/text";
 import type { RaioX } from "@/server/services/strategic";
 import { Moldura, RaioXPainel } from "./raiox-painel";
-import { Compass, Flame, ShieldCheck } from "lucide-react";
+import { ChevronDown, Compass, Flame, ShieldCheck } from "lucide-react";
 import "./aprovum-ai.css";
 
 const KIND: Record<string, string> = { minima_aprovacao: "Nota mínima para aprovação", corte_primeira_fase: "Corte da 1ª fase", ultimo_classificado: "Último classificado", ultimo_convocado: "Último convocado", ultimo_dentro_vagas: "Último dentro das vagas" };
@@ -26,6 +26,8 @@ export function RaioXView({ data }: { data: RaioX }) {
   const latest = exam.cutoffs[0];
   const subjects = useMemo(() => [...new Set(heat.cells.map((c) => c.subject))], [heat.cells]);
   const cells = heat.cells.filter((c) => (disc === "todas" || c.subject === disc) && (level === "todos" || c.heat === level));
+  const groups = [...cells.reduce((m, c) => m.set(c.subject, [...(m.get(c.subject) ?? []), c]), new Map<string, typeof cells>())]
+    .sort((x, y) => y[1].reduce((n, c) => n + c.questions, 0) - x[1].reduce((n, c) => n + c.questions, 0));
   const hist = (key: string) => heat.cells.find((c) => c.key === key);
   const lessonsOf = (subject: string | null, topic: string) => lessons[`${titleKey(subject ?? "")}|${titleKey(topic)}`] ?? [];
   const recurrent = heat.cells.filter((c) => heat.editionsWithData >= 2 && c.editionsPresent === heat.editionsWithData);
@@ -85,16 +87,33 @@ export function RaioXView({ data }: { data: RaioX }) {
               <label className="ai-rx-sel">Disciplina<select value={disc} onChange={(e) => setDisc(e.target.value)}><option value="todas">Todas</option>{subjects.map((s) => <option key={s}>{s}</option>)}</select></label>
               <label className="ai-rx-sel">Incidência<select value={level} onChange={(e) => setLevel(e.target.value as typeof level)}><option value="todos">Todas</option>{(Object.keys(HEAT_LABEL) as Heat[]).map((h) => <option key={h} value={h}>{HEAT_LABEL[h]}</option>)}</select></label>
             </div>
-            <ul className="ai-rx-heat">
-              {cells.map((c) => (
-                <li key={c.key} data-h={c.heat}>
-                  <div><b>{c.title}</b><small>{c.subject} · {c.editionsPresent} de {c.editionsWithData} provas · {c.questions} questões · {HEAT_LABEL[c.heat]}</small>
-                    <small>{c.byEdition.map((b) => `${b.year}: ${b.questions ?? "—"}`).join("  ·  ")}</small></div>
-                  <div className="ai-tl"><Lessons subject={c.subject} topic={c.title} /></div>
-                </li>
-              ))}
-              {cells.length === 0 && <li className="ai-sub">Nenhum assunto neste filtro.</li>}
-            </ul>
+            <div className="rxp-mats">
+              {groups.map(([subject, list], gi) => {
+                const q = list.reduce((n, c) => n + c.questions, 0);
+                const comAula = list.filter((c) => lessonsOf(subject, c.title).length > 0).length;
+                return (
+                  <details key={subject} className="rxp-mat" open data-testid="raiox-materia">
+                    <summary className="rxp-mat-h">
+                      <span className="rxp-mat-n" aria-hidden>{String(gi + 1).padStart(2, "0")}</span>
+                      <span className="rxp-mat-t"><small>INÍCIO DA MATÉRIA</small><b>{subject}</b>
+                        <em>{list.length} {list.length === 1 ? "assunto" : "assuntos"} · {q} {q === 1 ? "questão" : "questões"} · {comAula} com aula</em></span>
+                      <ChevronDown aria-hidden />
+                    </summary>
+                    <ul className="ai-rx-heat">
+                      {list.map((c) => (
+                        <li key={c.key} data-h={c.heat}>
+                          <div><b>{c.title}</b><small>{HEAT_LABEL[c.heat]} · {c.editionsPresent} de {c.editionsWithData} provas · {c.questions} questões</small>
+                            <small>{c.byEdition.map((b) => `${b.year}: ${b.questions ?? "—"}`).join("  ·  ")}</small></div>
+                          <div className="ai-tl"><Lessons subject={c.subject} topic={c.title} /></div>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="rxp-mat-f"><i aria-hidden />FIM DA MATÉRIA · {subject}<i aria-hidden /></p>
+                  </details>
+                );
+              })}
+              {groups.length === 0 && <p className="ai-sub">Nenhum assunto neste filtro.</p>}
+            </div>
           </>
         )}
       </Moldura>
