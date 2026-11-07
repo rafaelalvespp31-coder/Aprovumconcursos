@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useActionState, useState } from "react";
 import { Button, Field, Notice, inputClass } from "@/components/ui";
-import { requestPasswordReset, signIn, signUp, updatePassword, type AuthState } from "./actions";
+import { requestPasswordReset, signIn, updatePassword, type AuthState } from "./actions";
 
 const initial: AuthState = {};
 
@@ -55,62 +55,6 @@ export function SignInForm({ next, notice }: { next?: string; notice?: string | 
         <Link href="/recuperar-senha" className="text-destaque underline underline-offset-2">Esqueci a senha</Link>
         <Link href="/cadastro" className="text-destaque underline underline-offset-2">Criar conta</Link>
       </div>
-    </form>
-  );
-}
-
-export function SignUpForm() {
-  const [state, action, pending] = useActionState(signUp, initial);
-  if (state.message) return <Notice tone="sucesso" title="Confirme seu e-mail">{state.message}</Notice>;
-  return (
-    <form action={action} className="flex flex-col gap-4" noValidate>
-      {state.error && <Notice tone="erro">{state.error}</Notice>}
-      <Field id="name" label="Nome" error={err(state, "name")}>
-        <input id="name" name="name" autoComplete="name" required maxLength={80} className={inputClass} aria-invalid={!!err(state, "name")} />
-      </Field>
-      <fieldset className="flex flex-col gap-1">
-        <legend className="mb-1 t-small font-semibold">Gênero (define o seu avatar)</legend>
-        <div className="grid grid-cols-2 gap-2" data-testid="cadastro-genero">
-          {(
-            [
-              ["m", "Masculino"],
-              ["f", "Feminino"],
-            ] as const
-          ).map(([v, l]) => (
-            <label key={v} className="flex min-h-11 cursor-pointer items-center gap-2 rounded-md border border-linha-forte px-3 t-small font-semibold has-[:checked]:border-azul has-[:checked]:ring-2 has-[:checked]:ring-azul/20">
-              <input type="radio" name="gender" value={v} required className="size-4 accent-azul" />
-              {l}
-            </label>
-          ))}
-        </div>
-        {err(state, "gender") && (
-          <p className="t-tiny text-erro" role="alert">
-            {err(state, "gender")}
-          </p>
-        )}
-      </fieldset>
-      <Field id="whatsapp" label="WhatsApp" hint="Com DDD. Usaremos para te adicionar ao grupo VIP dos alunos." error={err(state, "whatsapp")}>
-        <input id="whatsapp" name="whatsapp" type="tel" autoComplete="tel" inputMode="tel" placeholder="(31) 99999-9999" required maxLength={20} className={inputClass} aria-invalid={!!err(state, "whatsapp")} data-testid="cadastro-whatsapp" />
-      </Field>
-      <Field id="email" label="E-mail" error={err(state, "email")}>
-        <input id="email" name="email" type="email" autoComplete="email" inputMode="email" required className={inputClass} aria-invalid={!!err(state, "email")} />
-      </Field>
-      <Field id="password" label="Senha" hint="Pelo menos 8 caracteres, com letras e números." error={err(state, "password")}>
-        <PasswordInput id="password" name="password" autoComplete="new-password" invalid={!!err(state, "password")} />
-      </Field>
-      <div className="flex flex-col gap-1">
-        <label className="flex items-start gap-2 t-small">
-          <input type="checkbox" name="consent" className="mt-1 size-4 accent-azul" />
-          <span>
-            Li e aceito os termos de uso e a política de privacidade. Meus dados são usados para fornecer o serviço e posso pedir a exclusão a qualquer momento.
-          </span>
-        </label>
-        {err(state, "consent") && <p className="t-tiny text-erro" role="alert">{err(state, "consent")}</p>}
-      </div>
-      <Button type="submit" disabled={pending}>{pending ? "Criando conta…" : "Criar conta"}</Button>
-      <p className="t-small">
-        Já tem conta? <Link href="/entrar" className="text-destaque underline underline-offset-2">Entrar</Link>
-      </p>
     </form>
   );
 }
