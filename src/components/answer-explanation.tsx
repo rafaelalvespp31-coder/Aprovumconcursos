@@ -1,5 +1,6 @@
 import type { AnswerFeedback } from "@/server/services/study";
 import { Icon } from "./icons";
+import { textoSemLatex } from "@/domain/lesson/math-text";
 
 type Opt = { id: string; label: string; text: string };
 
@@ -38,7 +39,7 @@ export function AnswerExplanation({
       <section aria-labelledby={titleId} className="entrar mt-3 rounded-lg border border-linha bg-superficie p-4 sm:p-5" data-testid="gabarito-comentado">
         <Header id={titleId} gabarito={gab} picked={picked} correct={fb.correct} />
         <Block tone="ok" title={`Por que o item está ${gab}`}>
-          <p className="whitespace-pre-line">{fb.justification}</p>
+          <p className="whitespace-pre-line">{textoSemLatex(fb.justification)}</p>
         </Block>
         <Block tone="erro" title={`Por que marcar ${other} está errado`}>
           <p>
@@ -67,8 +68,8 @@ export function AnswerExplanation({
       {right && (
         <Block tone="ok" title={`Por que a alternativa ${right.label} está correta`}>
           <OptionQuote label={right.label} text={right.text} tone="ok" />
-          {rightWhy && <p className="mt-2 whitespace-pre-line">{rightWhy}</p>}
-          <p className="mt-2 whitespace-pre-line">{fb.justification}</p>
+          {rightWhy && <p className="mt-2 whitespace-pre-line">{textoSemLatex(rightWhy)}</p>}
+          <p className="mt-2 whitespace-pre-line">{textoSemLatex(fb.justification)}</p>
         </Block>
       )}
 
@@ -78,7 +79,7 @@ export function AnswerExplanation({
             {wrong.map((o) => (
               <li key={o.id} className={`rounded-md p-3 ${o.id === chosen ? "bg-erro-fundo ring-1 ring-erro/40" : "bg-nevoa"}`}>
                 <OptionQuote label={o.label} text={o.text} tone="erro" mine={o.id === chosen} />
-                <p className="mt-1.5 whitespace-pre-line">{byId.get(o.id)?.explanation?.trim() || "Não corresponde à regra explicada na alternativa correta."}</p>
+                <p className="mt-1.5 whitespace-pre-line">{textoSemLatex(byId.get(o.id)?.explanation?.trim()) || "Não corresponde à regra explicada na alternativa correta."}</p>
               </li>
             ))}
           </ul>
@@ -123,7 +124,7 @@ function OptionQuote({ label, text, tone, mine }: { label: string; text: string;
       </span>
       <span className="pt-0.5">
         <span className="sr-only">Alternativa {label}: </span>
-        <span className="font-medium">{text}</span>
+        <span className="font-medium">{textoSemLatex(text)}</span>
         {mine && <span className="ml-1.5 whitespace-nowrap t-tiny font-bold text-erro">(sua resposta)</span>}
       </span>
     </p>

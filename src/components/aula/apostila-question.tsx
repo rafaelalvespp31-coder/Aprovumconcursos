@@ -6,6 +6,7 @@ import type { AnswerFeedback } from "@/server/services/study";
 import type { AnswerOutcome, QuestionData, SavedAnswer } from "@/components/question-card";
 import { QuestionComments } from "@/components/question-comments";
 import { Icon } from "@/components/icons";
+import { textoSemLatex } from "@/domain/lesson/math-text";
 
 const LEVEL_LABEL = { facil: "Fácil", medio: "Médio", dificil: "Difícil" } as const;
 const TYPE_LABEL: Record<string, string> = { multipla_escolha: "Múltipla escolha", certo_errado: "Certo ou errado", situacional: "Situacional", discursiva: "Discursiva" };
@@ -85,7 +86,7 @@ export function ApostilaQuestion({
           {fb && <span className={`ap-q-res ${fb.correct ? "" : "ap-q-res-erro"}`}>{fb.correct ? "ACERTOU" : "ERROU"}</span>}
         </header>
         {q.topic && <p className="ap-q-trecho">{q.topic}</p>}
-        <p className="ap-q-enunciado">{q.statement}</p>
+        <p className="ap-q-enunciado">{textoSemLatex(q.statement)}</p>
 
         {ce && fb ? (
           <div className="ap-tabela ap-q-gabarito">
@@ -119,7 +120,7 @@ export function ApostilaQuestion({
                     <span className="ap-q-alt-txt">
                       <span className="sr-only">{o.label}) </span>
                       <span className={isCorrect ? "font-bold" : undefined}>
-                        {o.text}
+                        {textoSemLatex(o.text)}
                         {fb && (isCorrect || isMine) && <strong className="ap-q-marca"> {[isCorrect && "CORRETA", isMine && "SUA RESPOSTA"].filter(Boolean).join(" · ")}</strong>}
                       </span>
                       {expl && <span className="ap-q-expl">{expl}</span>}
@@ -137,7 +138,7 @@ export function ApostilaQuestion({
           <>
             <div className="ap-comentario" data-testid="gabarito-comentado">
               <p className="ap-kicker">Comentário</p>
-              <p>{fb.justification}</p>
+              <p>{textoSemLatex(fb.justification)}</p>
             </div>
             <div className="ap-q-rodape">
               <span>{fb.attempts ? `Tentativas: ${fb.attempts}` : "Resposta registrada"}</span>

@@ -7,6 +7,7 @@ import { AnswerExplanation } from "./answer-explanation";
 import { QuestionComments } from "./question-comments";
 import { Icon } from "./icons";
 import { Button, Notice, Tag } from "./ui";
+import { textoSemLatex } from "@/domain/lesson/math-text";
 
 export interface QuestionData {
   id: string;
@@ -176,7 +177,7 @@ export function QuestionCard({
         Questão original para treino{q.board_style ? `, no estilo ${q.board_style}` : ""}. Não é questão oficial de prova.
       </p>
 
-      <p className="mt-4 whitespace-pre-line font-serif text-[1.06rem] leading-relaxed">{q.statement}</p>
+      <p className="mt-4 whitespace-pre-line font-serif text-[1.06rem] leading-relaxed">{textoSemLatex(q.statement)}</p>
 
       <fieldset className="mt-4" disabled={!!fb || pending}>
         <legend className="sr-only">Alternativas</legend>
@@ -206,7 +207,7 @@ export function QuestionCard({
                 </span>
                 <span className="flex-1 pt-0.5">
                   <span className="sr-only">{o.label}) </span>
-                  {o.text}
+                  {textoSemLatex(o.text)}
                 </span>
               </label>
             );

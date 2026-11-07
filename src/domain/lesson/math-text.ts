@@ -67,3 +67,16 @@ export function limparMatematica(md: string): string {
     .replace(/\\\(([\s\S]*?)\\\)/g, (_, c: string) => formulaParaTexto(c))
     .replace(/\\begin\{array\}[\s\S]*?\\end\{array\}/g, (m) => bloco(m));
 }
+
+/** Versão para texto corrido (enunciados, alternativas, justificativas): sem blocos, só texto legível. */
+export function textoSemLatex(s: string | null | undefined): string {
+  if (!s || !/\\[([]|\\begin|\\times|\\frac|\$\$/.test(s)) return s ?? "";
+  const arr = (c: string) => {
+    const m = /\\begin\{array\}([\s\S]*?)\\end\{array\}/.exec(c);
+    return m ? arrayParaBloco(m[1] ?? "").split("\n").join("  ·  ") : formulaParaTexto(c);
+  };
+  return s
+    .replace(/\\\[([\s\S]*?)\\\]/g, (_, c: string) => arr(c))
+    .replace(/\$\$([\s\S]*?)\$\$/g, (_, c: string) => arr(c))
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, c: string) => formulaParaTexto(c));
+}

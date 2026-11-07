@@ -21,3 +21,12 @@ describe("limparMatematica", () => {
     expect(formulaParaTexto("2^{3} \\cdot 3^2 \\div 6 \\leq 10")).toBe("2³ · 3² ÷ 6 ≤ 10");
   });
 });
+
+import { textoSemLatex } from "./math-text";
+describe("textoSemLatex", () => {
+  it("limpa enunciado e deixa texto comum intacto", () => {
+    expect(textoSemLatex("Calcule \\(2^{3}\\times 5\\).")).toBe("Calcule 2³× 5.");
+    expect(textoSemLatex("Sem fórmula (a) e [b]")).toBe("Sem fórmula (a) e [b]");
+    expect(textoSemLatex(undefined)).toBe("");
+  });
+});
