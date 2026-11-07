@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALVOS, boltSpan, ease, makeBolt, mulberry32, pickNodes, resolveEstado, spawnBolt, NODES } from "./skull-orb-fx";
+import { ALVOS, boltSpan, ease, makeBolt, mulberry32, pickNodes, resolveEstado, rimBolt, spawnBolt, NODES } from "./skull-orb-fx";
 
 const base = { conn: "live", me: 0, mic: 0, peak: 0, awaiting: false } as const;
 
@@ -64,5 +64,11 @@ describe("raios", () => {
     expect(s1.tail).toBe(0);
     expect(s2.tail).toBeGreaterThan(0.5);
     expect(s2.alpha).toBeLessThan(s1.alpha);
+  });
+  it("o raio da casca fica perto do raio da esfera", () => {
+    const b = rimBolt(mulberry32(5), 100, 0.3, 1, 0, 0.5);
+    expect(b.pts).toHaveLength(17);
+    for (const p of b.pts) expect(Math.hypot(p.x, p.y)).toBeGreaterThan(90);
+    for (const p of b.pts) expect(Math.hypot(p.x, p.y)).toBeLessThan(110);
   });
 });

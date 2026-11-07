@@ -69,24 +69,25 @@ export function ease(cur: number, to: number, up: number, down: number, f60: num
   return cur + (to - cur) * (1 - Math.pow(1 - rate, f60));
 }
 
-/** Pontos de referência da caveira original (caveira.webp), de 0 a 1 na imagem. */
+/** Pontos da caveira na esfera (caveira da arte de referência), de 0 a 1 na esfera: 0,5 é o centro e 0 e 1 são as bordas. */
+const at = (rx: number, ry: number): Pt => ({ x: 0.5 + rx / 2, y: 0.5 + ry / 2 });
 export const NODES = {
-  crown: { x: 0.5, y: 0.2 },
-  forehead: { x: 0.5, y: 0.29 },
-  foreheadL: { x: 0.42, y: 0.26 },
-  foreheadR: { x: 0.59, y: 0.26 },
-  templeL: { x: 0.37, y: 0.33 },
-  templeR: { x: 0.645, y: 0.33 },
-  eyeL: { x: 0.4, y: 0.46 },
-  eyeR: { x: 0.605, y: 0.46 },
-  cheekL: { x: 0.35, y: 0.57 },
-  cheekR: { x: 0.655, y: 0.57 },
-  nose: { x: 0.5, y: 0.585 },
-  teeth: { x: 0.5, y: 0.67 },
-  jawL: { x: 0.42, y: 0.69 },
-  jawR: { x: 0.585, y: 0.69 },
-  outL: { x: 0.25, y: 0.45 },
-  outR: { x: 0.76, y: 0.46 },
+  crown: at(-0.06, -0.78),
+  forehead: at(0.03, -0.53),
+  foreheadL: at(-0.25, -0.6),
+  foreheadR: at(0.3, -0.58),
+  templeL: at(-0.53, -0.53),
+  templeR: at(0.5, -0.53),
+  eyeL: at(-0.37, -0.06),
+  eyeR: at(0.27, -0.2),
+  cheekL: at(-0.55, 0.2),
+  cheekR: at(0.6, 0.3),
+  nose: at(0.015, 0.08),
+  teeth: at(0.03, 0.47),
+  jawL: at(-0.28, 0.56),
+  jawR: at(0.37, 0.53),
+  outL: at(-0.97, -0.05),
+  outR: at(0.97, -0.1),
 } as const satisfies Record<string, Pt>;
 export type NodeId = keyof typeof NODES;
 
@@ -156,4 +157,23 @@ export function spawnBolt(r: () => number, a: Pt, b: Pt, now: number, intensity:
 export function boltSpan(age: number, life: number): { head: number; tail: number; alpha: number } {
   const t = Math.min(1, Math.max(0, age / life));
   return { head: Math.min(1, t / 0.35), tail: Math.max(0, (t - 0.45) / 0.55), alpha: Math.pow(1 - t, 1.4) };
+}
+
+/** Descarga que corre pela casca de vidro da esfera: pontos num arco de raio R (com folga aleatória) e espinhos para fora. */
+export function rimBolt(r: () => number, R: number, a0: number, span: number, now: number, intensity: number): Bolt {
+  const n = 17;
+  const pts: Pt[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = a0 + (span * i) / (n - 1);
+    const rad = R * (0.965 + (r() * 2 - 1) * 0.04);
+    pts.push({ x: Math.cos(a) * rad, y: Math.sin(a) * rad });
+  }
+  const branches: Pt[][] = [];
+  for (let k = r() < 0.5 + intensity * 0.4 ? 1 + (r() < intensity ? 1 : 0) : 0; k > 0; k--) {
+    const p = pts[2 + Math.floor(r() * (n - 5))]!;
+    const dir = Math.atan2(p.y, p.x) + (r() * 2 - 1) * 0.7;
+    const l = R * (0.1 + r() * 0.22) * (r() < 0.7 ? 1 : -0.6);
+    branches.push(makeBolt(r, p, { x: p.x + Math.cos(dir) * l, y: p.y + Math.sin(dir) * l }, Math.abs(l) * 0.3, 3));
+  }
+  return { pts, branches, born: now, life: 0.25 + r() * 0.35, width: 0.9 + r() * 0.8 + intensity * 0.7 };
 }
