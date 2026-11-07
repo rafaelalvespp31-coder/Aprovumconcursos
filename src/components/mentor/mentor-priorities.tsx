@@ -5,6 +5,7 @@ import { useState } from "react";
 import { ArrowRight, X } from "lucide-react";
 import type { MentorResult } from "@/domain/mentor/engine";
 import type { VisibleRecommendation } from "@/domain/mentor/history";
+import type { MentorNotice } from "./types";
 import { mentorStatusAction } from "@/app/(app)/mentor/actions";
 
 /**
@@ -14,6 +15,7 @@ import { mentorStatusAction } from "@/app/(app)/mentor/actions";
 export function MentorPriorities({
   result,
   visible: initialVisible,
+  notices = [],
   base = "",
   demo = false,
   compact = false,
@@ -22,6 +24,7 @@ export function MentorPriorities({
 }: {
   result: MentorResult;
   visible: VisibleRecommendation[];
+  notices?: MentorNotice[];
   base?: string;
   demo?: boolean;
   compact?: boolean;
@@ -55,9 +58,25 @@ export function MentorPriorities({
   const others = result.all.filter((r) => r.kind !== "manutencao" && !visible.some((v) => v.key === r.key)).slice(0, compact ? 4 : 8);
   const pad = compact ? "p-3" : "p-4";
 
+  const avisos = notices.length > 0 && (
+    <ul className="mb-3 flex flex-col gap-2" data-testid="mentor-avisos">
+      {notices.map((n) => (
+        <li key={n.prepId} className="rounded-[12px] border border-[#E50914]/40 bg-[#FFF5F5] p-3">
+          <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#E50914]">Novo · Raio-X publicado</p>
+          <p className="mt-1 text-[14px] font-bold leading-snug text-[#08090B]">Seu Raio-X de {n.title} está pronto.</p>
+          <p className="mt-1 text-[12.5px] text-[#64666D]">A equipe APROVUM publicou o diagnóstico estratégico do seu concurso.</p>
+          <Link href={href(n.href)} onClick={onNavigate} className={`mt-2 ${compact ? "pc-botao mentor-botao-p" : "pc-botao"}`} data-testid="mentor-aviso-raiox">
+            Ver o Raio-X <ArrowRight className="h-4 w-4" aria-hidden />
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
+
   if (result.insufficientData)
     return (
       <div data-testid="mentor-sem-dados">
+        {avisos}
         <p className="text-[14px] font-bold text-[#08090B]">Ainda não tenho dados seus suficientes.</p>
         <p className="mt-1 text-[13px] text-[#64666D]">Comece um estudo ou resolva algumas questões: eu passo a acompanhar o seu progresso real.</p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -71,8 +90,10 @@ export function MentorPriorities({
       </div>
     );
 
+
   return (
     <div>
+      {avisos}
       {!actionable.length ? (
         <div data-testid="mentor-em-dia">
           <p className="text-[14px] font-bold text-[#08090B]">Você está em dia.</p>

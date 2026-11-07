@@ -3,6 +3,7 @@
 import { Compass } from "lucide-react";
 import type { MentorLesson, MentorResult } from "@/domain/mentor/engine";
 import type { VisibleRecommendation } from "@/domain/mentor/history";
+import type { MentorNotice } from "./types";
 import { MentorChat } from "./mentor-chat";
 import { MentorPriorities } from "./mentor-priorities";
 
@@ -12,6 +13,7 @@ export function MentorView({
   result,
   visible,
   lessons,
+  notices = [],
   base = "",
   demo = false,
 }: {
@@ -19,6 +21,7 @@ export function MentorView({
   result: MentorResult;
   visible: VisibleRecommendation[];
   lessons: MentorLesson[];
+  notices?: MentorNotice[];
   base?: string;
   demo?: boolean;
 }) {
@@ -41,7 +44,7 @@ export function MentorView({
           <h2 id="mentor-prioridades" className="mb-3 text-[15px] font-bold text-[#08090B]">
             Suas prioridades
           </h2>
-          <MentorPriorities result={result} visible={visible} base={base} demo={demo} />
+          <MentorPriorities result={result} visible={visible} notices={notices} base={base} demo={demo} />
         </section>
         <section className="pc flex min-h-[420px] flex-col p-5" aria-labelledby="mentor-chat">
           <h2 id="mentor-chat" className="mb-1 text-[15px] font-bold text-[#08090B]">

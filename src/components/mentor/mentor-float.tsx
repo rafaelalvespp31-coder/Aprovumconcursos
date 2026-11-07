@@ -115,7 +115,8 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
     };
   }, [isDemo]);
 
-  const pending = data?.state === "ok" && !data.result.insufficientData ? data.visible.filter((r) => r.kind !== "manutencao").length : 0;
+  const avisos = data?.state === "ok" ? (data.notices?.length ?? 0) : 0;
+  const pending = (data?.state === "ok" && !data.result.insufficientData ? data.visible.filter((r) => r.kind !== "manutencao").length : 0) + avisos;
 
   // Um aviso discreto uma vez por sessão, quando há prioridades e o Mentor está minimizado.
   useEffect(() => {
@@ -222,7 +223,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
         <div className={`mentor-flut ${vw - pos.dx - BUBBLE / 2 < vw / 2 ? "is-esquerda" : ""}`} style={{ right: pos.dx, bottom: pos.dy }} data-testid="mentor-flutuante" data-estado={data?.state ?? "carregando"}>
           {teaser && pending > 0 && (
             <button type="button" className="mentor-aviso" onClick={() => setOpenSaved(true)} data-testid="mentor-aviso">
-              {data?.state === "ok" && data.name ? `${data.name}, ` : ""}tenho {pending === 1 ? "1 prioridade" : `${pending} prioridades`} para você.
+              {data?.state === "ok" && data.name ? `${data.name}, ` : ""}{avisos > 0 ? "seu Raio-X foi publicado! " : ""}tenho {pending === 1 ? "1 novidade" : `${pending} novidades`} para você.
             </button>
           )}
           <button
@@ -329,6 +330,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
                     key={demo ? params.get("mentor") ?? "ok" : loadId}
                     result={data.result}
                     visible={data.visible}
+                    notices={data.notices}
                     base={base}
                     demo={Boolean(demo)}
                     compact

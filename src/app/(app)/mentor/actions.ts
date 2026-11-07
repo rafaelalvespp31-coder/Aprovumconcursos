@@ -3,6 +3,7 @@
 import { ZodError } from "zod";
 import { getSessionUser } from "@/server/auth";
 import { computeMentor, setRecommendationStatus } from "@/server/services/mentor";
+import { getRaioXNotices } from "@/server/services/raiox-notice";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
 import type { MentorPanelState } from "@/components/mentor/types";
@@ -13,7 +14,8 @@ export async function mentorPanelAction(): Promise<MentorPanelState> {
   if (!user) return { state: "sessao" };
   try {
     const m = await computeMentor(user.id);
-    return { state: "ok", name: m.name, result: m.result, visible: m.visible, lessons: m.lessons };
+    const notices = await getRaioXNotices(user.id).catch(() => []);
+    return { state: "ok", name: m.name, result: m.result, visible: m.visible, lessons: m.lessons, notices: notices.map((n) => ({ prepId: n.prepId, title: n.title, href: n.href })) };
   } catch (e) {
     await logEvent("mentor.panel_failed", { error: (e as Error).message });
     return { state: "erro" };

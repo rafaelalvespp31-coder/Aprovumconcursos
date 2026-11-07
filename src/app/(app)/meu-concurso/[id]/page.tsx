@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/server/auth";
 import { reanalyzeIfStale } from "@/server/services/edital";
 import { getPreparationTree } from "@/server/services/edital-view";
+import { markRaioXSeen } from "@/server/services/raiox-notice";
 import { getRaioX } from "@/server/services/strategic";
 import { MeuConcurso, type PrepTab } from "@/components/aprovum-ai/meu-concurso";
 import { RaioXView } from "@/components/aprovum-ai/raiox-view";
@@ -21,6 +22,7 @@ export default async function MeuConcursoPage({ params, searchParams }: { params
   const tree = await getPreparationTree(user.id, id).catch(() => null);
   if (!tree) notFound();
   const rx = tab === "raiox" ? await getRaioX(user.id, id).catch(() => null) : null;
+  if (rx?.raiox) await markRaioXSeen(user.id, id).catch(() => undefined);
   return (
     <MeuConcurso tree={tree} save={updateInfoAction.bind(null, id)} start={startStudyAction.bind(null, id)} tab={tab} editing={editar === "1"}>
       {tab === "raiox" && (

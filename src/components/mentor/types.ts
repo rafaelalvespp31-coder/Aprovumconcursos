@@ -7,6 +7,14 @@ export interface MentorData {
   result: MentorResult;
   visible: VisibleRecommendation[];
   lessons: MentorLesson[];
+  /** Raio-X publicados ainda não abertos pelo aluno. */
+  notices?: MentorNotice[];
+}
+
+export interface MentorNotice {
+  prepId: string;
+  title: string;
+  href: string;
 }
 
 export type MentorPanelState = ({ state: "ok" } & MentorData) | { state: "sessao" } | { state: "erro" };
