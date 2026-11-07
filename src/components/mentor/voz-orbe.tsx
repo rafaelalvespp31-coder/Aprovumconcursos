@@ -60,7 +60,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
     const rnd = mulberry32((Math.random() * 2 ** 31) | 0);
 
     // Nuvem da esfera: lida do mapa da arte, ponto a ponto (mais partículas onde há luz/vermelho).
-    const NC = mobile ? 6000 : 12000;
+    const NC = mobile ? 8000 : 16000;
     const hx = new Float32Array(NC);
     const hy = new Float32Array(NC);
     const hz = new Float32Array(NC);
@@ -79,7 +79,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
     const cpa = new Float32Array(NC);
     const cps = new Float32Array(NC);
     let nc = 0;
-    let texImg: HTMLImageElement | null = null;
+    let texImg: HTMLCanvasElement | null = null; // arte com a borda bem esfumada (sem contorno de círculo)
     const buildCloud = (img: HTMLImageElement) => {
       const S = 320;
       const c = document.createElement("canvas");
@@ -125,7 +125,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         const red = r - Math.max(g, b);
         cc[k] = red > 90 ? (g > 120 ? 1 : 0) : red > 45 ? 5 : lum > 0.62 ? 2 : lum > 0.2 ? 3 : 4;
         ck[k] = red > 60 ? 1 : 0;
-        cs[k] = 0.45 + rnd() * 0.9 + (cc[k] === 2 && rnd() < 0.08 ? 0.7 : 0);
+        cs[k] = 0.35 + rnd() * 0.5 + (cc[k] === 2 && rnd() < 0.08 ? 0.25 : 0);
         ca[k] = (cc[k] === 4 ? 0.7 : cc[k] === 3 ? 0.35 + 0.4 * rnd() : 0.5 + 0.5 * rnd()) * (back ? 0.45 : 1) * ((cc[k] ?? 4) <= 1 ? 1.25 : 1);
         cd[k] = rnd() * 1000;
         for (let q = 0; q < 6; q++) {
@@ -140,7 +140,20 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
       (() => {
         const i = new Image();
         i.onload = () => {
-          texImg = i;
+          const c = document.createElement("canvas");
+          c.width = c.height = 512;
+          const x = c.getContext("2d");
+          if (x) {
+            x.drawImage(i, 0, 0, 512, 512);
+            x.globalCompositeOperation = "destination-in";
+            const g = x.createRadialGradient(256, 256, 0, 256, 256, 256);
+            g.addColorStop(0, "#000");
+            g.addColorStop(0.6, "#000");
+            g.addColorStop(1, "rgba(0,0,0,0)");
+            x.fillStyle = g;
+            x.fillRect(0, 0, 512, 512);
+            texImg = c;
+          }
           buildCloud(i);
         };
         i.onerror = () => setFallback(true);
@@ -200,31 +213,10 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
       bx[i] = rnd();
       by[i] = rnd();
       sd[i] = rnd() * 1000;
-      sz[i] = 0.35 + rnd() * 0.55;
+      sz[i] = 0.3 + rnd() * 0.35;
       al[i] = 0.25 + rnd() * 0.65;
       hot[i] = rnd() < (kind[i] === 4 ? 0.55 : 0.25) ? 1 : 0;
       trail[i] = 0; // sem rastros: tudo desliza devagar e junto
-    }
-
-    // Destroços de rocha que giram em volta da esfera.
-    const ND = mobile ? 9 : 16;
-    const dAng = new Float32Array(ND);
-    const dRho = new Float32Array(ND);
-    const dInc = new Float32Array(ND);
-    const dW = new Float32Array(ND);
-    const dSz = new Float32Array(ND);
-    const dRot = new Float32Array(ND);
-    const dRv = new Float32Array(ND);
-    const dShape: number[][] = [];
-    for (let i = 0; i < ND; i++) {
-      dAng[i] = rnd() * TAU;
-      dRho[i] = 1.12 + rnd() * 0.9;
-      dInc[i] = (rnd() - 0.5) * 1.6;
-      dW[i] = (0.03 + rnd() * 0.1) * (rnd() < 0.5 ? -1 : 1);
-      dSz[i] = 2 + rnd() * 4;
-      dRot[i] = rnd() * TAU;
-      dRv[i] = (rnd() - 0.5) * 0.7;
-      dShape.push(Array.from({ length: 5 }, (_, k) => (k / 5) * TAU + (rnd() - 0.5) * 0.8).flatMap((a) => [Math.cos(a) * (0.55 + rnd() * 0.6), Math.sin(a) * (0.55 + rnd() * 0.6)]));
     }
 
     // Fumaça: manchas cinzentas que derivam devagar.
@@ -346,7 +338,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         if (sum > 0.1) tone = ease(tone, clamp((sm.low * 0.1 + sm.mid * 0.5 + sm.high) / sum), 0.04, 0.04, f60);
         coord = ease(coord, clamp(me * 2.5), 0.04, 0.02, f60);
       }
-      tp += dt * (1 + sm.mid * 0.7 + sm.high * 0.4) * (reduce ? 0.4 : 1);
+      tp += dt * (1 + sm.mid * 0.7 + sm.high * 0.4) * (1 - form * 0.7) * (reduce ? 0.4 : 1);
       if (mic > 0.08) {
         micSeen = true;
         lastMic = t;
@@ -364,7 +356,6 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
 
       const spd = (0.4 + fx.speed * 0.5 + sm.vol * 0.5) * calm; // suave: usa o áudio filtrado
       const E = clamp(fx.energy + cur.vol * 0.5 + cur.low * 0.2);
-      const eyeI = clamp(fx.eye + cur.vol * 0.7 + cur.mid * 0.25 + 0.06 * Math.sin(t * 2.1));
       const k0 = size / BASE;
       const D = size * 0.9;
       const R = D / 2;
@@ -374,17 +365,11 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
       const listen = clamp(mic * 1.6 - me * 2);
       const loc = (n: NodeId): Pt => ({ x: (NODES[n].x - 0.5) * D, y: (NODES[n].y - 0.5) * D });
 
-      const newBolt = (intensity: number, eyes = false) => {
+      const newBolt = (intensity: number) => {
         if (bolts.length >= maxBolts()) return;
         let bolt: Bolt;
         let end: Pt;
-        if (eyes) {
-          const a = loc(rnd() < 0.5 ? "eyeL" : "eyeR");
-          const ag = rnd() * TAU;
-          const l = D * (0.06 + rnd() * 0.1);
-          end = { x: a.x + Math.cos(ag) * l, y: a.y + Math.sin(ag) * l - D * 0.02 };
-          bolt = spawnBolt(rnd, a, end, t, intensity);
-        } else {
+        {
           const k = rnd();
           if (k < 0.85) {
             const p = pickNodes(rnd, intensity); // pelas fendas da caveira
@@ -407,7 +392,6 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
       const I = clamp(E * 0.5 + cur.vol * 0.8);
       const rate = (fx.bolts * (reduce ? 0.35 : 1) * 0.3 * (1 - form * 0.8) + sm.vol * 1.6 + sm.high * 0.8) * dt;
       for (let n = Math.floor(rate) + (rnd() < rate % 1 ? 1 : 0); n > 0; n--) newBolt(I);
-      if (rnd() < eyeI * 0.3 * dt * (reduce ? 0.3 : 1) * (1 - form)) newBolt(0.2 + eyeI * 0.2, true);
       for (let i = bolts.length - 1; i >= 0; i--) if (t - bolts[i]!.born > bolts[i]!.life) bolts.splice(i, 1);
 
       // Partículas.
@@ -480,7 +464,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         if (hot[i]) a *= 1 + sm.high * 0.3 * Math.sin(t * 2 + s); // cintilação lenta nos agudos
         const e = Math.min(1, X / 46, (W - X) / 46, Y / 46, (H - Y) / 46);
         pa[i] = e < 1 ? a * Math.max(0, e) : a;
-        ps[i] = sz[i]! * k * k0 * 2 * (1 + sm.vol * 0.1);
+        ps[i] = sz[i]! * k * k0 * 1.8 * (1 + sm.vol * 0.1);
       }
 
       // ---- Desenho ----
@@ -546,39 +530,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
       }
       ctx.globalAlpha = 1;
 
-      // Destroços e partículas (um plano por vez: atrás e na frente da esfera).
-      const debris = (half: number) => {
-        ctx.globalCompositeOperation = "source-over";
-        for (let i = 0; i < ND; i++) {
-          dAng[i] = dAng[i]! + dW[i]! * dt * (0.5 + spd) * 0.7;
-          dRot[i] = dRot[i]! + dRv[i]! * dt * (0.5 + spd) * 0.6;
-          const r = dRho[i]! * R * (1 + sm.low * 0.03);
-          const o = Math.sin(dAng[i]!) * r;
-          const z = o * Math.sin(dInc[i]!);
-          if ((z >= 0 ? 1 : 0) !== half) continue;
-          const k = F / (F - z);
-          const X = cx + Math.cos(dAng[i]!) * r * k;
-          const Y = cy + o * Math.cos(dInc[i]!) * k;
-          if (z < 0 && Math.hypot(X - cx, Y - cy) < R * 0.95) continue; // escondido pela esfera
-          const s = dSz[i]! * k0 * k;
-          ctx.save();
-          ctx.translate(X, Y);
-          ctx.rotate(dRot[i]!);
-          const sh = dShape[i]!;
-          ctx.beginPath();
-          ctx.moveTo(sh[0]! * s, sh[1]! * s);
-          for (let q = 2; q < sh.length; q += 2) ctx.lineTo(sh[q]! * s, sh[q + 1]! * s);
-          ctx.closePath();
-          ctx.globalAlpha = clamp(0.4 + E * 0.3) * am;
-          ctx.fillStyle = "#0b0b0d";
-          ctx.fill();
-          ctx.strokeStyle = `rgba(255,${70 + Math.round(cur.vol * 80)},60,${0.45 + cur.vol * 0.4})`;
-          ctx.lineWidth = 0.9;
-          ctx.stroke();
-          ctx.restore();
-        }
-        ctx.globalAlpha = 1;
-      };
+      // Micropartículas (um plano por vez: atrás e na frente da esfera).
       const sprPass = (half: number) => {
         ctx.globalCompositeOperation = "lighter";
         ctx.strokeStyle = "rgba(255,70,55,0.22)";
@@ -602,7 +554,6 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
           ctx.drawImage(hot[i] ? spr.hot : spr.red, px[i]! - s / 2, py[i]! - s / 2, s, s);
         }
         ctx.globalAlpha = 1;
-        debris(half);
       };
 
       sprPass(0);
@@ -632,8 +583,10 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         // Flutuar aleatório: cada partícula segue o seu próprio rumo (3 eixos independentes). Ouvindo, a
         // amplitude vai a zero e ela assenta no ponto exato da imagem de referência.
         // Falando, o vagar diminui (as partículas se organizam) em vez de se espalhar.
-        const A = (0.035 + 0.09 * r0 * r0) * (1 - coord * 0.45 + sm.vol * 0.1) * (1 - form) * calm;
         const j = i * 6;
+        // Ouvindo (formada): movimento bem lento; poucas partículas por vez se soltam e voltam, e a caveira se desfaz de leve sem perder a forma.
+        const dis = Math.pow(0.5 + 0.5 * Math.sin(tp * 0.25 + wp[j + 2]! * 3), 2);
+        const A = ((0.035 + 0.09 * r0 * r0) * (1 - coord * 0.45 + sm.vol * 0.1) * (1 - form) + (0.02 + 0.09 * r0 * r0) * dis * form) * calm;
         const wa = wamp[i]! * A;
         const ox2 = hxi + (Math.sin(tp * wf[j]! + wp[j]!) + 0.6 * Math.sin(tp * wf[j + 1]! + wp[j + 1]!)) * wa;
         const oy2 = hyi + (Math.sin(tp * wf[j + 2]! + wp[j + 2]!) + 0.6 * Math.sin(tp * wf[j + 3]! + wp[j + 3]!)) * wa;
@@ -659,7 +612,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         const k = F / (F - zr2);
         cpx[i] = cx + xr * k + (glitching && Math.sin(yr * 0.3 + t * 40) > 0.6 ? 7 : 0);
         cpy[i] = cy + bob + yr * k;
-        let a = ca[i]! * (0.7 + E * 0.6 + form * 0.7) * bandLit * (0.55 + 0.45 * ((zr2 / R + 1) / 2));
+        let a = ca[i]! * (1 + E * 0.6 + form * 0.9) * bandLit * (0.55 + 0.45 * ((zr2 / R + 1) / 2));
         if (cc[i] === 2) a *= 0.75 + tone * 0.5 * (1 - form);
         else if (cc[i]! >= 3 && cc[i]! !== 5) a *= 1 + form * 0.9;
         let sc = 1;
@@ -673,7 +626,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         if (hot[i % NP] && sm.high > 0.05) a *= 1 + sm.high * 0.35 * Math.sin(t * 9 + sdd) * (1 - form);
         const e = Math.min(1, cpx[i]! / 46, (W - cpx[i]!) / 46, cpy[i]! / 46, (H - cpy[i]!) / 46);
         cpa[i] = clamp(a) * Math.max(0, e) * am;
-        cps[i] = cs[i]! * k * k0 * 3.7 * sc * (1 - form * 0.4) * (1 + sm.vol * 0.12);
+        cps[i] = cs[i]! * k * k0 * 2.9 * sc * (1 - form * 0.4) * (1 + sm.vol * 0.12);
       }
       for (const c of [4, 3, 5, 0, 1, 2]) {
         ctx.globalCompositeOperation = c === 3 || c === 4 ? "source-over" : "lighter";
@@ -687,8 +640,8 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
           ctx.drawImage(sp2, cpx[i]! - s / 2, cpy[i]! - s / 2, s, s);
           if (c < 2 && a > 0.35) {
             // brilho suave em volta das fendas (bloom barato)
-            ctx.globalAlpha = a * 0.16 * (1 - form * 0.75);
-            ctx.drawImage(sp2, cpx[i]! - s * 1.6, cpy[i]! - s * 1.6, s * 3.2, s * 3.2);
+            ctx.globalAlpha = a * 0.09 * (1 - form * 0.75);
+            ctx.drawImage(sp2, cpx[i]! - s * 1.1, cpy[i]! - s * 1.1, s * 2.2, s * 2.2);
           }
         }
       }
@@ -701,25 +654,14 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
       // Ouvindo: as partículas se aglutinam e o rosto da referência se condensa por baixo delas, fiel à arte.
       if (texImg && form > 0.02) {
         ctx.globalCompositeOperation = "screen";
-        ctx.globalAlpha = clamp(form * form * 0.95) * am;
-        const zoom = 1 + (1 - form) * 0.05;
-        ctx.drawImage(texImg, -R * zoom, -R * zoom, D * zoom, D * zoom);
+        ctx.globalAlpha = clamp(form * form * 0.62) * (0.9 + 0.1 * Math.sin(tp * 0.3)) * am;
+        const zoom = 1 + (1 - form) * 0.05 + 0.004 * form * Math.sin(tp * 0.2);
+        const ddx = Math.sin(tp * 0.17) * 1.2 * form;
+        const ddy = Math.cos(tp * 0.13) * 1.2 * form;
+        ctx.drawImage(texImg, -R * zoom + ddx, -R * zoom + ddy, D * zoom, D * zoom);
         ctx.globalAlpha = 1;
       }
       ctx.globalCompositeOperation = "lighter";
-
-      // Cavidades oculares energizadas.
-      for (const id of ["eyeL", "eyeR"] as const) {
-        const ex = (NODES[id].x - 0.5) * D;
-        const ey = (NODES[id].y - 0.5) * D;
-        const er = D * (0.04 + eyeI * 0.03) * (1 - form * 0.8);
-        const g = ctx.createRadialGradient(ex, ey, 0, ex, ey, er);
-        g.addColorStop(0, `rgba(255,${Math.round(130 + eyeI * 80)},${Math.round(110 + eyeI * 60)},${clamp(0.1 + eyeI * 0.4) * am})`);
-        g.addColorStop(0.35, `rgba(255,40,30,${clamp(0.1 + eyeI * 0.35) * am})`);
-        g.addColorStop(1, "rgba(255,0,0,0)");
-        ctx.fillStyle = g;
-        ctx.fillRect(ex - er, ey - er, er * 2, er * 2);
-      }
 
       // Descargas elétricas: pelas fendas da caveira e saltando para fora.
       ctx.lineJoin = "round";
@@ -759,7 +701,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         sy[i] = sy[i]! + svy[i]! * dt;
         svx[i] = svx[i]! * Math.pow(0.96, f60);
         svy[i] = svy[i]! * Math.pow(0.96, f60) + 14 * dt;
-        const s = 1.8 * k0 * Math.min(1, sl[i]! * 2.5);
+        const s = 1.2 * k0 * Math.min(1, sl[i]! * 2.5);
         ctx.globalAlpha = Math.min(0.6, sl[i]! * 1.2) * am;
         ctx.drawImage(spr.hot, sx[i]! - s, sy[i]! - s, s * 2, s * 2);
       }
