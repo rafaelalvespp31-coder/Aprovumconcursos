@@ -64,18 +64,6 @@ export function MeusEditaisView({ data }: { data: EditaisOverview | null }) {
         })}
       </section>
 
-      <div className="me-secao me-in" style={{ ["--d" as string]: ".3s" }}>
-        <h2><span className="me-riscos" aria-hidden><i /><i /><i /></span>PROGRESSO POR EDITAL</h2>
-        <Link href="/desempenho" className="me-detalhes">VER DETALHES <ArrowRight aria-hidden /></Link>
-      </div>
-      {t && (
-        <p className="me-resumo me-in" style={{ ["--d" as string]: ".32s" }}>
-          <span><b>{fmt(t.analyzed)}</b> {t.analyzed === 1 ? "edital analisado" : "editais analisados"}</span>
-          <span>Média de conclusão: <b>{t.avgPct === null ? "sem dados suficientes" : `${t.avgPct}%`}</b></span>
-          <span>Evolução (7 dias): <b>{t.evolution7d === null ? "sem dados suficientes" : `${t.evolution7d > 0 ? "+" : ""}${t.evolution7d}%`}</b></span>
-        </p>
-      )}
-
       {(!data || data.progressError) && (
         <p className="me-aviso" role="alert">
           <CircleAlert aria-hidden />
