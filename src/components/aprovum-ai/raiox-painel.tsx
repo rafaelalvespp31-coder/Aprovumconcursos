@@ -35,7 +35,7 @@ function Tooltip({ tip, w, h }: { tip: Tip; w: number; h: number }) {
   );
 }
 
-function Moldura({ id, label, icon, title, sub, filtro, children }: { id: string; label: string; icon: ReactNode; title: string; sub: string; filtro?: ReactNode; children: ReactNode }) {
+export function Moldura({ id, label, icon, title, sub, filtro, children }: { id: string; label: string; icon: ReactNode; title: string; sub: string; filtro?: ReactNode; children: ReactNode }) {
   return (
     <section className="rxp-card" aria-label={label} data-testid={id}>
       <div className="rxp-in">
@@ -293,14 +293,15 @@ function Comparativo({ cmp, detalhes }: { cmp: Comparison | null; detalhes: Reac
   );
 }
 
-export function RaioXPainel({ cutoffs, modalities, incidence, comparison, detalhesCortes, detalhesComparativo }: {
-  cutoffs: CutoffView[]; modalities: Array<[string, string]>; incidence: IncEdition[]; comparison: Comparison | null; detalhesCortes: ReactNode; detalhesComparativo: ReactNode;
+export function RaioXPainel({ cutoffs, modalities, incidence, comparison, detalhesCortes, detalhesComparativo, extra }: {
+  cutoffs: CutoffView[]; modalities: Array<[string, string]>; incidence: IncEdition[]; comparison: Comparison | null; detalhesCortes: ReactNode; detalhesComparativo: ReactNode; extra?: ReactNode;
 }) {
   return (
     <div className="rxp" data-testid="raiox-painel">
       <Cortes cutoffs={cutoffs} modalities={modalities} detalhes={detalhesCortes} />
       <Incidencia eds={incidence} />
       <Comparativo cmp={comparison} detalhes={detalhesComparativo} />
+      {extra}
     </div>
   );
 }

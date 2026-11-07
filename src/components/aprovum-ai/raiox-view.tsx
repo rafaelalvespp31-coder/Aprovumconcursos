@@ -5,7 +5,8 @@ import { StartStudyDialog, type StartTheme } from "@/app/(app)/nova-trilha/start
 import { HEAT_LABEL, type Heat } from "@/domain/strategic/analysis";
 import { titleKey } from "@/domain/edital/text";
 import type { RaioX } from "@/server/services/strategic";
-import { RaioXPainel } from "./raiox-painel";
+import { Moldura, RaioXPainel } from "./raiox-painel";
+import { Compass, Flame, ShieldCheck } from "lucide-react";
 import "./aprovum-ai.css";
 
 const KIND: Record<string, string> = { minima_aprovacao: "Nota mínima para aprovação", corte_primeira_fase: "Corte da 1ª fase", ultimo_classificado: "Último classificado", ultimo_convocado: "Último convocado", ultimo_dentro_vagas: "Último dentro das vagas" };
@@ -75,11 +76,8 @@ export function RaioXView({ data }: { data: RaioX }) {
               </div>
             ) : <p className="ai-sub">Os assuntos de uma das provas ainda não foram classificados: a comparação por assunto fica indisponível.</p>}
         </>}
-      />
-
-      {/* E — mapa de calor + C — assuntos */}
-      <section className="ai-rx" aria-label="Mapa de calor e assuntos">
-        <h3>Mapa de calor e incidência de assuntos</h3>
+        extra={<>
+          <Moldura id="rxp-calor" label="Mapa de calor e assuntos" icon={<Flame />} title="MAPA DE CALOR E INCIDÊNCIA DE ASSUNTOS" sub="Veja quais assuntos mais aparecem e já estude pelas aulas.">
         {heat.cells.length === 0 ? <p className="ai-sub">Assuntos ainda não classificados para este concurso.</p> : (
           <>
             <p className="ai-sub">Critério: participação média do assunto no total de questões, nas {heat.editionsWithData} provas com assuntos catalogados. Muito alta ≥ {heat.criteria.muitoAlta}% · Alta ≥ {heat.criteria.alta}% · Moderada ≥ {heat.criteria.moderada}% · Baixa abaixo disso. Com menos de {heat.criteria.minEditions} provas, nada é classificado.</p>
@@ -99,11 +97,8 @@ export function RaioXView({ data }: { data: RaioX }) {
             </ul>
           </>
         )}
-      </section>
-
-      {/* F, G, H — direcionamento */}
-      <section className="ai-rx" aria-label="Direcionamento estratégico">
-        <h3>Direcionamento estratégico APROVUM</h3>
+      </Moldura>
+          <Moldura id="rxp-direcao" label="Direcionamento estratégico" icon={<Compass />} title="DIRECIONAMENTO ESTRATÉGICO APROVUM" sub="Onde concentrar a preparação, sem abandonar o edital.">
         {exam.recommendations.length === 0 ? <p className="ai-sub">Recomendações ainda não cadastradas para este concurso. Siga o conteúdo programático do edital por completo.</p> : (
           (["maxima", "alta", "complementar"] as const).map((p) => {
             const list = exam.recommendations.filter((r) => r.priority === p);
@@ -119,16 +114,16 @@ export function RaioXView({ data }: { data: RaioX }) {
         <p className="ai-sub">Os demais conteúdos do edital continuam fazendo parte da sua preparação (prioridade complementar).</p>
         {recurrent.length > 0 && <div className="ai-rx-chips"><h4>Assuntos recorrentes (em todas as provas catalogadas)</h4><ul>{recurrent.map((c) => <li key={c.key}>{c.title}</li>)}</ul></div>}
         {attention.length > 0 && <div className="ai-rx-chips"><h4>Assuntos que merecem atenção (novos ou em alta na prova mais recente)</h4><ul>{attention.map((t) => <li key={t.subject + t.title}>{t.title}</li>)}</ul></div>}
-      </section>
-
-      {/* Fontes */}
-      <section className="ai-rx" aria-label="Fontes e limitações">
-        <h3>Fontes e confiabilidade</h3>
+      </Moldura>
+          <Moldura id="rxp-fontes" label="Fontes e limitações" icon={<ShieldCheck />} title="FONTES E CONFIABILIDADE" sub="De onde vêm os dados e o que eles não garantem.">
         {exam.limitations && <p className="ai-sub"><b>Limitações da análise:</b> {exam.limitations}</p>}
         {exam.sources.length === 0 ? <p className="ai-sub">Nenhuma fonte cadastrada.</p> : (
           <ul className="ai-rx-src">{exam.sources.map((s) => <li key={s.id}><b>{s.kind === "oficial" ? "Dado oficial" : s.kind === "extraido" ? "Extraído das provas" : "Análise própria"}</b> · {s.url ? <a href={s.url} target="_blank" rel="noopener noreferrer">{s.name}</a> : s.name}{s.page ? `, p. ${s.page}` : ""}{s.organ ? ` · ${s.organ}` : ""}{s.publishedAt ? ` · publicado em ${date(s.publishedAt)}` : ""}{s.consultedAt ? ` · consultado em ${date(s.consultedAt)}` : ""}{s.reviewer ? ` · conferido por ${s.reviewer}` : ""}</li>)}</ul>
         )}
-      </section>
+      </Moldura>
+        </>}
+      />
+
       <StartStudyDialog theme={theme} onClose={() => setTheme(null)} />
     </div>
   );
