@@ -5,6 +5,7 @@ import { useSyncExternalStore } from "react";
 import { Mic, PhoneOff, Timer } from "lucide-react";
 import { formatClock } from "@/domain/mentor/voice";
 import { VozOrbe, type Bands } from "./voz-orbe";
+import type { Conexao } from "./skull-orb-fx";
 
 export type Fase = "carregando" | "plano" | "indisponivel" | "esgotado" | "pronto" | "conectando" | "ao-vivo" | "encerrada" | "erro";
 
@@ -42,6 +43,7 @@ export function VozView({
   const size = useSyncExternalStore(subscribeResize, orbSize, () => 280);
   const live = fase === "ao-vivo";
   const used = Math.max(0, limit - left);
+  const conn: Conexao = fase === "ao-vivo" ? "live" : fase === "conectando" ? "connecting" : fase === "erro" ? "error" : "off";
   const pct = Math.round(Math.min(100, (used / limit) * 100));
   const showTime = fase === "pronto" || fase === "conectando" || live || fase === "encerrada" || fase === "erro" || fase === "esgotado";
 
@@ -74,8 +76,8 @@ export function VozView({
 
   return (
     <div className="voz" data-testid="mentor-voz" data-fase={fase}>
-      <div className="voz-hero" style={{ paddingTop: Math.round(size * 0.86) }}>
-        <VozOrbe level={level} dim={fase === "plano" || fase === "indisponivel" || fase === "carregando"} size={size} />
+      <div className="voz-hero" style={{ paddingTop: Math.round(size * 0.92) }}>
+        <VozOrbe level={level} dim={fase === "plano" || fase === "indisponivel" || fase === "carregando"} size={size} conn={conn} />
         <h3 className="voz-titulo" aria-live="polite">
           {title}
         </h3>
