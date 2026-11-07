@@ -3875,3 +3875,11 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .ck-trust b { font-size: 10px; font-weight: 800; letter-spacing: 0.06em; line-height: 1.3; color: #c7c9cc; }
 @media (max-width: 380px) { .ck { padding-inline: 12px; } .ck-aba { padding: 6px; gap: 6px; } .ck-aba .ck-mark { display: none; } .ck-faixa { margin-inline: -12px; font-size: 11px; } }
 @media (prefers-reduced-motion: reduce) { .ck, .ck-painel, .ck-pulso, .ck-spin { animation: none; } }
+
+/* Feedback pós-aula */
+@keyframes fb-in-k { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
+@keyframes fb-pop-k { 0% { transform: scale(1); } 50% { transform: scale(1.22); } 100% { transform: scale(1); } }
+dialog[open][data-testid="feedback-aula"] { animation: fb-in-k 0.28s ease-out; }
+dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5); }
+.fb-star-on { animation: fb-pop-k 0.25s ease-out; }
+@media (prefers-reduced-motion: reduce) { dialog[open][data-testid="feedback-aula"], .fb-star-on { animation: none; } }

@@ -1,20 +1,41 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Notice } from "@/components/ui";
 import { Icon } from "@/components/icons";
 import type { StudyPdfItem } from "@/server/queries";
 import { createPdfAction, deletePdfAction, type PdfState } from "./actions";
+import { FEEDBACK_EVENTO, FeedbackModal } from "@/components/aula/feedback-modal";
+import { dispensarFeedbackAction, enviarFeedbackAction } from "@/app/(app)/aula/[id]/feedback-actions";
 
 /**
  * PDF individual do conteúdo: liberado quando todas as unidades passaram nos três
  * níveis. Cada geração cria uma nova versão; as anteriores continuam disponíveis até o
  * aluno excluí-las (com confirmação).
  */
-export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs, mindMapHref }: { trailId: string; ready: boolean; unitsDone: number; unitsTotal: number; pdfs: StudyPdfItem[]; mindMapHref?: string }) {
+export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs, mindMapHref, feedback }: { trailId: string; ready: boolean; unitsDone: number; unitsTotal: number; pdfs: StudyPdfItem[]; mindMapHref?: string; feedback?: { lessonId: string } }) {
   const [state, action, pending] = useActionState<PdfState, FormData>(createPdfAction.bind(null, trailId), {});
   const router = useRouter();
+  // Avaliação da aula (antes de gerar PDF/mapa mental). Pular não bloqueia nada.
+  const pendRef = useRef(!!feedback);
+  const depoisRef = useRef<(() => void) | null>(null);
+  const formRef = useRef<HTMLFormElement>(null);
+  const mapaRef = useRef<HTMLAnchorElement>(null);
+  const [fbAberto, setFbAberto] = useState(false);
+  useEffect(() => {
+    const on = (e: Event) => {
+      if ((e as CustomEvent).detail?.lessonId === feedback?.lessonId) pendRef.current = false;
+    };
+    window.addEventListener(FEEDBACK_EVENTO, on);
+    return () => window.removeEventListener(FEEDBACK_EVENTO, on);
+  }, [feedback?.lessonId]);
+  const interceptar = (e: { preventDefault: () => void }, seguir: () => void) => {
+    if (!pendRef.current || !feedback) return;
+    e.preventDefault();
+    depoisRef.current = seguir;
+    setFbAberto(true);
+  };
   const [confirming, setConfirming] = useState<string | null>(null);
   const [deleted, setDeleted] = useState<{ version: number } | null>(null);
   const [delError, setDelError] = useState<string | null>(null);
@@ -38,7 +59,7 @@ export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs, mindMapH
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <form action={action}>
+          <form ref={formRef} action={action} onSubmit={(e) => interceptar(e, () => formRef.current?.requestSubmit())}>
             <Button type="submit" disabled={!ready || pending}>
               <Icon name="download" className="size-4" /> {pending ? "Gerando…" : pdfs.length ? "Gerar nova versão" : "Gerar PDF"}
             </Button>
@@ -46,7 +67,9 @@ export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs, mindMapH
           {mindMapHref &&
             (ready ? (
               <a
+                ref={mapaRef}
                 href={mindMapHref}
+                onClick={(e) => interceptar(e, () => mapaRef.current?.click())}
                 download
                 data-testid="gerar-mapa-mental"
                 className="inline-flex min-h-11 select-none items-center justify-center gap-2 rounded-md bg-[#0A0A0A] px-4 text-[0.95rem] font-semibold text-white transition-transform duration-150 active:scale-[0.97]"
@@ -108,6 +131,21 @@ export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs, mindMapH
             </li>
           ))}
         </ul>
+      )}
+      {feedback && (
+        <FeedbackModal
+          lessonId={feedback.lessonId}
+          open={fbAberto}
+          enviar={enviarFeedbackAction}
+          dispensar={dispensarFeedbackAction}
+          onFinish={() => {
+            pendRef.current = false;
+            setFbAberto(false);
+            const seguir = depoisRef.current;
+            depoisRef.current = null;
+            setTimeout(() => seguir?.(), 50);
+          }}
+        />
       )}
     </section>
   );

@@ -10,6 +10,7 @@ import { CONTENT_TYPE_OPTIONS, boardDisplayName, type ExamBoardSlug } from "@/do
 import { lessonBannerUrl } from "@/server/services/banners";
 import { disciplineLabel } from "@/ai/pedagogy";
 import { explainSelectionAction, generateLessonAction } from "./actions";
+import { deveMostrarFeedback } from "@/server/services/lesson-feedback";
 import { getTopicSiblings } from "@/server/topic-siblings";
 import { logEvent } from "@/server/observability";
 import { SubtopicJump } from "@/components/aula/subtopic-search";
@@ -116,6 +117,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
     );
   }
 
+  const fb = await deveMostrarFeedback(me.id, id).catch(() => null);
   const notTaught = nodes.filter((n) => !n.taught);
   const discipline = lesson.study_trails.discipline_mode;
   const [nextInSubject, plan, pdfs, banner, siblingsInTopic] = await Promise.all([
@@ -187,7 +189,8 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       nextLabel={nextInSubject?.label ?? null}
       notices={notices}
       topicSearch={siblingsInTopic ? <SubtopicJump group={siblingsInTopic.group} items={siblingsInTopic.items} /> : null}
-      pdf={<PdfPanel trailId={lesson.trail_id} ready={units.length > 0 && unitsDone === units.length} unitsDone={unitsDone} unitsTotal={units.length} pdfs={pdfs} mindMapHref={`/api/mapa-mental/${id}`} />}
+      pdf={<PdfPanel trailId={lesson.trail_id} ready={units.length > 0 && unitsDone === units.length} unitsDone={unitsDone} unitsTotal={units.length} pdfs={pdfs} mindMapHref={`/api/mapa-mental/${id}`} feedback={fb?.perguntar ? { lessonId: id } : undefined} />}
+      feedbackAula={fb?.perguntar ? { lessonId: id } : null}
       position={idx >= 0 ? { index: idx, total: siblings.length } : null}
       moduleTitle={lesson.learning_modules?.title ?? null}
       outline={siblings.map((s) => ({ id: s.id, title: s.title, module: s.module }))}

@@ -16,6 +16,8 @@ import { useStored } from "@/components/use-stored";
 import { useStudyApi } from "@/components/study-api";
 import { LEVELS, levelStatus, type LevelKey } from "@/domain/progress/levels";
 import { SingleLevel } from "./levels-panel";
+import { FeedbackModal } from "@/components/aula/feedback-modal";
+import { dispensarFeedbackAction, enviarFeedbackAction } from "./feedback-actions";
 import { LessonTreePortal, type BoardOutlineItem } from "@/components/aula/lesson-board";
 import { ApostilaMarkdown } from "@/components/aula/apostila-markdown";
 import { ApostilaQuestion } from "@/components/aula/apostila-question";
@@ -72,6 +74,8 @@ export interface ReaderProps {
   topicSearch?: React.ReactNode;
   /** Painel do PDF do conteúdo (gerar, baixar e excluir versões). */
   pdf?: React.ReactNode;
+  /** Quando preenchido, a popup de avaliação abre ao concluir a aula nesta sessão. */
+  feedbackAula?: { lessonId: string } | null;
   /** Posição da aula no estudo (para "Aula 03" e "3 de 12 aulas"). */
   position?: { index: number; total: number } | null;
   /** Módulo da aula (plano do estudo). */
@@ -130,6 +134,14 @@ export function LessonReader(props: ReaderProps) {
     const t = setTimeout(go, 250);
     return () => clearTimeout(t);
   }, [lesson.id]);
+
+  const [fbAberto, setFbAberto] = useState(false);
+  const fbPrev = useRef(levelsPassed);
+  useEffect(() => {
+    const ganhou = fbPrev.current < 3 && levelsPassed >= 3;
+    fbPrev.current = levelsPassed;
+    if (ganhou && readingDone && props.feedbackAula) setFbAberto(true);
+  }, [levelsPassed, readingDone, props.feedbackAula]);
 
   const legal = useMemo(() => sections.some((s) => s.kind === "texto_legal"), [sections]);
   const modules = useMemo(() => groupIntoModules(sections, { legal }), [sections, legal]);
@@ -532,6 +544,9 @@ export function LessonReader(props: ReaderProps) {
         <p role="alert" className="ap-aviso" data-testid="trava-modulo">
           <Icon name="cadeado" className="size-4 shrink-0" /> {lockMsg}
         </p>
+      )}
+      {props.feedbackAula && (
+        <FeedbackModal lessonId={props.feedbackAula.lessonId} open={fbAberto} enviar={enviarFeedbackAction} dispensar={dispensarFeedbackAction} onFinish={() => setFbAberto(false)} />
       )}
       {props.outline && <LessonTreePortal trailId={lesson.trailId} trailTitle={lesson.trailTitle} outline={props.outline} currentId={lesson.id} />}
 
