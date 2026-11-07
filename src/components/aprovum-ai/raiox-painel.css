@@ -127,8 +127,23 @@
 .rxp-assina p { margin: 0; font: 800 clamp(14px, 2.4cqw, 19px) / 1.2 "Chakra Petch", sans-serif; color: #fff; }
 .rxp-assina b { color: var(--red); }
 
+/* barras horizontais (celular) */
+.rxp-hb { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 14px; }
+.rxp-hb li { display: grid; gap: 6px; padding: 10px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06); }
+.rxp-hb-t { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.rxp-hb-t b { font: 600 14px/1.25 "Chakra Petch", sans-serif; color: #fff; overflow-wrap: anywhere; min-width: 0; }
+.rxp-hb-t em { font: 800 13px "Chakra Petch", sans-serif; font-style: normal; white-space: nowrap; }
+.rxp-hb li[data-d="up"] .rxp-hb-t em { color: #7fe08a; } .rxp-hb li[data-d="down"] .rxp-hb-t em { color: #ff6b75; } .rxp-hb li[data-d="eq"] .rxp-hb-t em, .rxp-hb li[data-d="na"] .rxp-hb-t em { color: #b9bcc5; }
+.rxp-hb-r { display: grid; grid-template-columns: 38px minmax(0, 1fr) 30px; gap: 8px; align-items: center; }
+.rxp-hb-l { font: 500 12px "Chakra Petch", sans-serif; color: #aeb1ba; }
+.rxp-hb-r strong { font: 800 14px "Chakra Petch", sans-serif; text-align: right; color: #fff; }
+.rxp-hb-b { height: 12px; border-radius: 99px; background: #1f2026; overflow: hidden; box-shadow: inset 0 1px 2px #000; }
+.rxp-hb-b i { display: block; height: 100%; border-radius: inherit; transform-origin: left; animation: rxp-barra .9s cubic-bezier(.2,.8,.2,1) both; }
+.rxp-hb-b[data-k="prev"] i { background: linear-gradient(90deg, #5d6068, #b9bcc5); }
+.rxp-hb-b[data-k="cur"] i { background: linear-gradient(90deg, #b30012, #ff4d5a); box-shadow: 0 0 8px rgba(229,9,32,.6); }
+
 /* detalhes (fontes e tabelas existentes) */
-.rxp-det { margin-top: 14px; border-top: 1px solid rgba(255,255,255,.1); padding-top: 10px; }
+.rxp-det { min-width: 0; margin-top: 14px; border-top: 1px solid rgba(255,255,255,.1); padding-top: 10px; }
 .rxp-det summary { cursor: pointer; font: 600 13px "Chakra Petch", sans-serif; color: #ffb3b9; min-height: 32px; display: flex; align-items: center; }
 .rxp-det[open] > summary { margin-bottom: 10px; }
 
@@ -154,7 +169,7 @@
   .rxp-lista li .rxp-trilha { grid-column: 2 / 4; grid-row: 2; }
   .rxp-lista strong { font-size: 17px; min-width: 0; }
   .rxp-lado { grid-template-columns: 1fr; }
-  .rxp-sel { width: 100%; } .rxp-sel select { max-width: none; flex: 1; }
+  .rxp-sel { width: 100%; min-width: 0; } .rxp-sel select { max-width: none; flex: 1; min-width: 0; width: 100%; }
   .rxp-in { padding: 14px 12px 18px; }
   .rxp-g1 .rxp-proj { grid-template-columns: 1fr; }
   .rxp-cat { font-size: 11px; }

@@ -162,6 +162,14 @@
 .ai-rep li em { font-style: normal; color: var(--mut); font-size: 11.5px; }
 
 /* RAIO-X */
+.ai-root > * { min-width: 0; }
+[data-testid="raiox"] { grid-template-columns: minmax(0, 1fr); }
+.ai-rx { grid-template-columns: minmax(0, 1fr); overflow-wrap: anywhere; }
+.ai-rx-heat li > *, .ai-rx-rec > *, .ai-rx-groups li > * { min-width: 0; }
+.ai-rx-heat li b, .ai-rx-rec b { overflow-wrap: anywhere; }
+.ai-rx-groups li { align-items: baseline; }
+.ai-rx-groups li > b { flex: none; }
+.ai-tl { display: flex; flex-wrap: wrap; gap: 6px; min-width: 0; }
 .ai-rx { border: 1px solid #23262e; border-radius: 14px; background: #0b0c10; padding: 14px; display: grid; gap: 10px; }
 .ai-rx h3 { font: 700 13px/1.2 "Chakra Petch", sans-serif; letter-spacing: .12em; text-transform: uppercase; color: var(--mut); }
 .ai-rx h4 { font: 700 12.5px/1.3 "Chakra Petch", sans-serif; margin-top: 4px; }
@@ -172,7 +180,9 @@
 .ai-rx-hero p { margin-top: 6px; font-size: 12.5px; color: #c4c8cf; line-height: 1.4; }
 .ai-rx-sel { display: grid; gap: 4px; font-size: 11.5px; color: var(--mut); }
 .ai-rx-sel select { min-height: 40px; border-radius: 10px; border: 1px solid #343845; background: #0f1015; color: var(--ink); padding: 0 10px; font-size: 16px; }
-.ai-rx-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.ai-rx-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.ai-rx-sel, .ai-rx-sel select { min-width: 0; max-width: 100%; }
+@media (max-width: 520px) { .ai-rx-filters { grid-template-columns: minmax(0, 1fr); } }
 .ai-rx-scroll { overflow-x: auto; }
 .ai-rx-table { width: 100%; min-width: 440px; border-collapse: collapse; font-size: 12.5px; }
 .ai-rx-table th { text-align: left; font-size: 11px; color: var(--mut); font-weight: 600; padding: 6px 8px; }

@@ -211,6 +211,7 @@ function Comparativo({ cmp, detalhes }: { cmp: Comparison | null; detalhes: Reac
     const Y = (v: number) => pt + (1 - v / sc.max) * (H - pt - pb);
     const gw = (W - pl - pr) / subs.length, bw = Math.min(46, gw / 2.6);
     const py = `${cmp.previous.year}${cmp.previous.board ? ` · ${cmp.previous.board}` : ""}`, ry = `${cmp.recent.year}${cmp.recent.board ? ` · ${cmp.recent.board}` : ""}`;
+    const estreito = W < 480;
     return (
       <div className="rxp-g3">
         <figure className="rxp-chart rxp-chart3" ref={ref3 as React.RefObject<HTMLElement & HTMLDivElement>}>
@@ -218,6 +219,22 @@ function Comparativo({ cmp, detalhes }: { cmp: Comparison | null; detalhes: Reac
             <button type="button" aria-pressed={show.prev} onClick={() => setShow((v) => ({ ...v, prev: !v.prev }))}><i className="g" />Prova anterior ({py})</button>
             <button type="button" aria-pressed={show.cur} onClick={() => setShow((v) => ({ ...v, cur: !v.cur }))}><i className="r" />Prova atual ({ry})</button>
           </div>
+          {estreito ? (
+            <ul className="rxp-hb" aria-label="Questões por disciplina nas duas últimas provas">
+              {subs.map((s, i) => (
+                <li key={s.name} data-d={s.delta === null ? "na" : s.delta > 0 ? "up" : s.delta < 0 ? "down" : "eq"}>
+                  <div className="rxp-hb-t"><b>{s.name}</b>{s.delta !== null && <em>{s.delta > 0 ? "+" : ""}{s.delta}</em>}</div>
+                  {([["prev", s.previous, show.prev, py], ["cur", s.recent, show.cur, ry]] as const).map(([k, v, on, lbl]) => on && (
+                    <div key={k} className="rxp-hb-r" title={`${lbl}: ${v ?? "sem questões"}`}>
+                      <span className="rxp-hb-l">{k === "prev" ? cmp.previous.year : cmp.recent.year}</span>
+                      <span className="rxp-hb-b" data-k={k}><i style={{ width: `${v ? Math.max((v / sc.max) * 100, 3) : 0}%`, animationDelay: `${i * 80}ms` }} /></span>
+                      <strong>{v ?? "—"}</strong>
+                    </div>
+                  ))}
+                </li>
+              ))}
+            </ul>
+          ) : (
           <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label="Gráfico de barras agrupadas: questões por disciplina nas duas últimas provas" onPointerLeave={() => setTip(null)}>
             <defs>
               <linearGradient id="rxp-gr" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stopColor="#ff4d5a" /><stop offset="1" stopColor="#b30012" /></linearGradient>
@@ -242,7 +259,8 @@ function Comparativo({ cmp, detalhes }: { cmp: Comparison | null; detalhes: Reac
               </g>;
             })}
           </svg>
-          <Tooltip tip={tip} w={W} h={H} />
+          )}
+          {!estreito && <Tooltip tip={tip} w={W} h={H} />}
         </figure>
 
         <div className="rxp-lado">

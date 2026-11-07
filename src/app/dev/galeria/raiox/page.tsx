@@ -1,3 +1,4 @@
+import "@/components/aprovum-ai/aprovum-ai.css";
 import { RaioXPainel } from "@/components/aprovum-ai/raiox-painel";
 import type { Comparison } from "@/domain/strategic/analysis";
 import type { CutoffView } from "@/server/services/strategic";
@@ -15,9 +16,9 @@ const mods: Array<[string, string]> = [["ampla", "Ampla concorrência"]];
 export default function Page() {
   return (
     <div style={{ background: "#050507", minHeight: "100vh", padding: 12, display: "grid", gap: 28 }}>
-      <div style={{ maxWidth: 1100, margin: "0 auto", width: "100%" }}>
+      <div className="ai-root mx-auto grid w-full max-w-4xl gap-4"><div className="grid gap-5">
         <RaioXPainel cutoffs={[cut(2019, 64.7), cut(2021, 71.2), cut(2023, 78), cut(2025, 82.4)]} modalities={mods} incidence={[ed(2025, [["Conhecimentos Específicos", 40], ["Língua Portuguesa", 10], ["Matemática e Raciocínio Lógico", 10]]), ed(2023, [["Conhecimentos Específicos", 36], ["Língua Portuguesa", 12], ["Matemática e Raciocínio Lógico", 10]])]} comparison={cmp} detalhesCortes={<p>detalhes</p>} detalhesComparativo={<p>detalhes</p>} />
-      </div>
+      </div></div>
       <div id="vazio" style={{ maxWidth: 1100, margin: "0 auto", width: "100%" }}>
         <RaioXPainel cutoffs={[]} modalities={[]} incidence={[]} comparison={null} detalhesCortes={null} detalhesComparativo={null} />
       </div>
