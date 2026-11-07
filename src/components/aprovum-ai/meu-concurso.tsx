@@ -7,6 +7,7 @@ import { StartStudyDialog, type StartTheme } from "@/app/(app)/nova-trilha/start
 import type { PreparationTree, TreeTopic } from "@/server/services/edital-view";
 import { DeletePrep } from "./delete-prep";
 import { OrgEmblem } from "./org-emblem";
+import { VisaoGeral } from "./visao-geral";
 import "./aprovum-ai.css";
 
 const ST: Record<TreeTopic["status"], string> = {
@@ -74,28 +75,7 @@ export function MeuConcurso({ tree, save, start, tab, editing = false, children 
         {TABS.map(([k, label]) => <Link key={k} href={`/meu-concurso/${prep.id}?aba=${k}`} replace aria-current={tab === k ? "page" : undefined}>{label}</Link>)}
       </nav>
 
-      {tab === "visao" && (
-        <section className="grid gap-3" aria-label="Visão geral">
-        <div className="ai-ind" style={{ marginTop: 0 }}>
-          <div className="ai-kpi"><b>{totals.pct}%</b><span>Progresso no edital</span></div>
-          <div className="ai-kpi"><b>{disciplines.length}</b><span>Disciplinas</span></div>
-          <div className="ai-kpi"><b>{totals.lessonsAvailable}</b><span>Aulas disponíveis</span></div>
-          <div className="ai-kpi"><b>{totals.lessonsDone}</b><span>Aulas concluídas</span></div>
-          <div className="ai-kpi"><b>{totals.pending}</b><span>Tópicos pendentes</span></div>
-          <div className="ai-kpi"><b>{totals.questionsAnswered}</b><span>Questões respondidas</span></div>
-        </div>
-          <div className="ai-list" style={{ marginTop: 0 }}>
-            <h2>PROGRESSO POR DISCIPLINA</h2>
-            {disciplines.map((d) => (
-              <Link key={d.id} href={`/meu-concurso/${prep.id}?aba=aulas`} className="ai-item">
-                <div><b>{d.name}</b><small>{d.topics.length} tópicos · {d.doneCount} concluídos</small></div>
-                <span className="ai-meter" style={{ marginLeft: "auto" }} aria-label={`${d.pct}% concluído`}><i style={{ width: `${d.pct}%` }} /></span>
-              </Link>
-            ))}
-          </div>
-          <Link href={`/meu-concurso/${prep.id}/relatorio`} className="ai-go" style={{ textAlign: "center", lineHeight: "48px", display: "block" }}>VER RELATÓRIO COMPLETO DO EDITAL</Link>
-        </section>
-      )}
+      {tab === "visao" && <VisaoGeral tree={tree} />}
 
       {tab === "questoes" && (
         <section className="ai-rx" aria-label="Questões">
