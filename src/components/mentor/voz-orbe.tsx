@@ -69,6 +69,12 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
     const ca = new Float32Array(NC);
     const cd = new Float32Array(NC);
     const ck = new Uint8Array(NC); // 1 = partícula de fenda (acende com a voz)
+    const oax = new Float32Array(NC); // eixo da órbita de cada partícula
+    const oay = new Float32Array(NC);
+    const oaz = new Float32Array(NC);
+    const ow = new Float32Array(NC); // velocidade angular (rad/s)
+    const oam = new Float32Array(NC); // abertura da órbita (rad)
+    const oph = new Float32Array(NC);
     const cpx = new Float32Array(NC);
     const cpy = new Float32Array(NC);
     const cpa = new Float32Array(NC);
@@ -122,6 +128,16 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         cs[k] = 0.45 + rnd() * 0.9 + (cc[k] === 2 && rnd() < 0.08 ? 0.7 : 0);
         ca[k] = (cc[k] === 4 ? 0.7 : cc[k] === 3 ? 0.35 + 0.4 * rnd() : 0.5 + 0.5 * rnd()) * (back ? 0.45 : 1) * ((cc[k] ?? 4) <= 1 ? 1.25 : 1);
         cd[k] = rnd() * 1000;
+        // Órbita própria: eixo, sentido, velocidade e abertura aleatórios (nada anda igual).
+        const az = rnd() * 2 - 1;
+        const aa = rnd() * TAU;
+        const as = Math.sqrt(1 - az * az);
+        oax[k] = as * Math.cos(aa);
+        oay[k] = az;
+        oaz[k] = as * Math.sin(aa);
+        ow[k] = (0.05 + rnd() * 0.22) * (rnd() < 0.5 ? -1 : 1);
+        oam[k] = 0.05 + rnd() * 0.16;
+        oph[k] = rnd() * TAU;
       }
       nc = NC;
     };
@@ -258,6 +274,8 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
     let peak = 0;
     let loud = 0;
     let impulse = 0;
+    let coord = 0; // 0 = cada partícula na sua órbita; 1 = todas coordenadas com a voz
+    let tone = 0.4; // tom da voz: 0 grave, 1 agudo
     let lastWave = -1;
     let micSeen = false;
     let lastMic = -99;
@@ -325,6 +343,12 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
       const onset = tg.vol - loud;
       loud = ease(loud, tg.vol, 0.2, 0.03, f60);
       impulse *= Math.pow(0.93, f60);
+      {
+        const sum = cur.low + cur.mid + cur.high;
+        if (sum > 0.12) tone = ease(tone, clamp((cur.low * 0.1 + cur.mid * 0.5 + cur.high) / sum), 0.15, 0.15, f60);
+        const l = clamp(mic * 1.6 - me * 2);
+        coord = ease(coord, Math.max(clamp(me * 2.5), l * 0.55), 0.1, 0.025, f60);
+      }
       if (mic > 0.08) {
         micSeen = true;
         lastMic = t;
@@ -610,12 +634,44 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         const hyi = hy[i]!;
         const r0 = Math.hypot(hxi, hyi);
         const sdd = cd[i]!;
-        // Deriva suave; nas bordas a nuvem se solta e se espalha (por isso não há contorno de círculo).
-        const amp = (0.006 + 0.05 * r0 * r0 * r0 + cur.vol * 0.025 + cur.high * 0.015) * R * calm;
-        const push = 1 + cur.low * 0.05 + impulse * 0.2 * (0.3 + r0) + 0.05 * r0 * r0 * Math.sin(t * 0.6 + sdd);
-        const x = (hxi * R * push + Math.sin(t * 0.5 + sdd + hyi * 3) * amp) * grow;
-        const y = (hyi * R * push + Math.cos(t * 0.45 + sdd * 1.3 + hxi * 3) * amp) * grow;
-        const z = (hz[i]! * R * push + Math.sin(t * 0.4 + sdd * 0.7) * amp) * grow;
+        // Em repouso: cada partícula orbita sozinha, devagar (arco em torno de um eixo próprio).
+        // Falando: a órbita individual se acalma e todas passam a responder juntas ao áudio.
+        const rest = 1 - coord * 0.65;
+        const th = oam[i]! * (0.5 + r0) * rest * calm * Math.sin(t * ow[i]! * 4 + oph[i]!);
+        const ct = Math.cos(th);
+        const st = Math.sin(th);
+        const ux = oax[i]!;
+        const uy = oay[i]!;
+        const uz = oaz[i]!;
+        const vx = hxi;
+        const vy = hyi;
+        const vz = hz[i]!;
+        const dt3 = (ux * vx + uy * vy + uz * vz) * (1 - ct);
+        let ox2 = vx * ct + (uy * vz - uz * vy) * st + ux * dt3;
+        let oy2 = vy * ct + (uz * vx - ux * vz) * st + uy * dt3;
+        let oz2 = vz * ct + (ux * vy - uy * vx) * st + uz * dt3;
+        const wob = 1 + 0.025 * rest * calm * Math.sin(t * (0.3 + Math.abs(ow[i]!)) + sdd);
+        ox2 *= wob;
+        oy2 *= wob;
+        oz2 *= wob;
+        const d3 = Math.hypot(ox2, oy2, oz2);
+        // Resposta coordenada: três camadas (núcleo = grave, meio = médio, fora = agudo) e ondas que
+        // saem do centro; o tom muda a frequência das ondas e o volume muda a força.
+        const wl = clamp(1 - d3 * 2.2);
+        const wm = clamp(1 - Math.abs(d3 - 0.55) * 3.5);
+        const wh = clamp((d3 - 0.5) * 2.5);
+        const bandPush = wl * cur.low * 0.1 + wm * cur.mid * 0.08 + wh * cur.high * 0.07;
+        const wave = Math.sin(d3 * (3 + tone * 8) - t * (2.2 + tone * 5) * (listen > me ? -0.6 : 1)) * (0.012 + cur.vol * 0.07 + impulse * 0.07);
+        const radial = 1 + (bandPush + wave) * coord * calm + cur.low * 0.04 + impulse * 0.2 * (0.3 + r0) + 0.05 * r0 * r0 * Math.sin(t * 0.6 + sdd);
+        const edge = (0.004 + 0.045 * r0 * r0 * r0 + cur.high * 0.012 * coord) * R * calm;
+        // Torção coordenada em torno do eixo de visão: gira mais com o médio e com o tom.
+        const tw = coord * (cur.mid * 0.45 + cur.vol * 0.25) * Math.sin(t * (0.8 + tone * 2.4)) * (1 - d3 * 0.5) * calm;
+        const ctw = Math.cos(tw);
+        const stw = Math.sin(tw);
+        const x = ((ox2 * ctw - oy2 * stw) * R * radial + Math.sin(t * 0.5 + sdd + hyi * 3) * edge) * grow;
+        const y = ((ox2 * stw + oy2 * ctw) * R * radial + Math.cos(t * 0.45 + sdd * 1.3 + hxi * 3) * edge) * grow;
+        const z = (oz2 * R * radial + Math.sin(t * 0.4 + sdd * 0.7) * edge) * grow;
+        const bandLit = 1 + coord * (wl * cur.low * 0.5 + wm * cur.mid * 0.6 + wh * cur.high * 0.7);
         const xr = x * cyw + z * syw;
         const zr = -x * syw + z * cyw;
         const yr = y * cp - zr * sp;
@@ -623,7 +679,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         const k = F / (F - zr2);
         cpx[i] = cx + xr * k + (glitching && Math.sin(yr * 0.3 + t * 40) > 0.6 ? 7 : 0);
         cpy[i] = cy + bob + yr * k;
-        let a = ca[i]! * (0.7 + E * 0.6) * (0.55 + 0.45 * ((zr2 / R + 1) / 2));
+        let a = ca[i]! * (0.7 + E * 0.6) * bandLit * (0.55 + 0.45 * ((zr2 / R + 1) / 2));
         let sc = 1;
         if (ck[i]) {
           const band = Math.exp(-Math.pow(((hxi * 0.6 + hyi * 0.8) * 0.5 + 0.5 - ph) / 0.1, 2)) * (0.5 + E);
