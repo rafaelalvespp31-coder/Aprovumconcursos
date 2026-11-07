@@ -8,6 +8,7 @@ export function VozDemo({ modo, fase }: { modo: string; fase: Fase }) {
   const level = (): Bands => {
     const t = performance.now() / 1000;
     if (modo === "parado") return { vol: 0, low: 0, mid: 0, high: 0 };
+    if (modo === "ouvindo") return { vol: 0.35, low: 0.25, mid: 0.4, high: 0.2, me: 0, mic: 0.5 };
     if (modo === "forte") return { vol: 0.95, low: 0.9, mid: 0.9, high: 0.9 };
     const fala = Math.max(0, Math.sin(t * 1.3)) ** 0.5;
     const j = 0.35 + 0.35 * Math.abs(Math.sin(t * 9)) + 0.2 * Math.abs(Math.sin(t * 3.7));
