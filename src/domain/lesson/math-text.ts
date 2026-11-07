@@ -10,12 +10,18 @@ const sup = (s: string) => (s.split("").every((c) => c in SUP) ? s.split("").map
 /** Fórmula em linha (sem delimitadores) → texto legível. */
 export function formulaParaTexto(src: string): string {
   let t = src;
+  for (let i = 0; i < 4; i++) t = t.replace(/\\(?:text|mathrm|mathbf|operatorname|textbf|boxed|mathbb|mathcal)\s*\{([^{}]*)\}/g, "$1");
   for (let i = 0; i < 3; i++) t = t.replace(/\\[dt]?frac\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, (_, a: string, b: string) => `${/^[\w.,]+$/.test(a) ? a : `(${a})`}/${/^[\w.,]+$/.test(b) ? b : `(${b})`}`);
   t = t
     .replace(/\\sqrt\s*\{([^{}]*)\}/g, "√($1)")
-    .replace(/\\(?:text|mathrm|mathbf|operatorname|textbf)\s*\{([^{}]*)\}/g, "$1")
     .replace(/\\times/g, "×")
-    .replace(/\\cdot/g, "·")
+    .replace(/\\(?:ldots|cdots|dots)/g, "…")
+    .replace(/\\cdot(?![a-zA-Z])/g, "·")
+    .replace(/\\Delta/g, "Δ")
+    .replace(/\\sum/g, "Σ")
+    .replace(/\\mid(?![a-zA-Z])/g, "|")
+    .replace(/\\in(?![a-zA-Z])/g, "∈")
+    .replace(/\\iff(?![a-zA-Z])/g, "⇔")
     .replace(/\\div/g, "÷")
     .replace(/\\pm/g, "±")
     .replace(/\\(?:leq|le)(?![a-zA-Z])/g, "≤")

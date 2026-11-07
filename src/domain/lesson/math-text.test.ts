@@ -30,3 +30,11 @@ describe("textoSemLatex", () => {
     expect(textoSemLatex(undefined)).toBe("");
   });
 });
+
+import { formulaParaTexto as _f } from "./math-text";
+import { it as _it, expect as _expect } from "vitest";
+_it("converte reticências, Delta, boxed e cdots", () => {
+  _expect(_f("a_1+a_2+\\cdots+a_n")).toContain("…");
+  _expect(_f("\\Delta = b^2")).toContain("Δ");
+  _expect(_f("\\boxed{x=9}")).toBe("x=9");
+});
