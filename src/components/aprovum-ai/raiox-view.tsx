@@ -5,6 +5,7 @@ import { StartStudyDialog, type StartTheme } from "@/app/(app)/nova-trilha/start
 import { HEAT_LABEL, type Heat } from "@/domain/strategic/analysis";
 import { titleKey } from "@/domain/edital/text";
 import type { RaioX } from "@/server/services/strategic";
+import { RaioXPainel } from "./raiox-painel";
 import "./aprovum-ai.css";
 
 const KIND: Record<string, string> = { minima_aprovacao: "Nota mínima para aprovação", corte_primeira_fase: "Corte da 1ª fase", ultimo_classificado: "Último classificado", ultimo_convocado: "Último convocado", ultimo_dentro_vagas: "Último dentro das vagas" };
@@ -16,11 +17,9 @@ const date = (d: string | null) => (d ? new Date(`${d}T12:00:00`).toLocaleDateSt
 export function RaioXView({ data }: { data: RaioX }) {
   const { exam, incidence, comparison, heat, lessons } = data;
   const [theme, setTheme] = useState<StartTheme | null>(null);
-  const [ed, setEd] = useState(incidence[0]?.year ?? 0);
   const [modality, setModality] = useState("todas");
   const [disc, setDisc] = useState("todas");
   const [level, setLevel] = useState<"todos" | Heat>("todos");
-  const cur = incidence.find((i) => i.year === ed) ?? incidence[0];
 
   const cutoffs = exam.cutoffs.filter((c) => modality === "todas" || c.modality === modality);
   const latest = exam.cutoffs[0];
@@ -45,17 +44,14 @@ export function RaioXView({ data }: { data: RaioX }) {
         <p className="ai-sub">{exam.name}. Dados cadastrados e revisados pela equipe APROVUM, com fonte. Histórico não garante o que cairá na próxima prova e nenhum conteúdo do edital deve ser abandonado.</p>
       </header>
 
-      {/* A — notas de corte */}
-      <section className="ai-rx" aria-label="Notas de corte">
-        <h3>Histórico de notas de corte</h3>
-        {!latest ? <p className="ai-sub">Nota de corte ainda não catalogada.</p> : (
-          <>
-            <div className="ai-rx-hero">
-              <small>ÚLTIMA NOTA DE CORTE DISPONÍVEL</small>
-              <b>{fmt(latest.score)}{latest.maxScore ? <span> / {fmt(latest.maxScore)}</span> : null}</b>
-              <p>{KIND[latest.kind]} · {MODALITY[latest.modality]} · {latest.editionYear}{latest.board ? ` · ${latest.board}` : ""}{latest.position ? ` · ${latest.position}` : ""}{latest.stage ? ` · ${latest.stage}` : ""}</p>
-              <p>{latest.candidates ? `${latest.candidates.toLocaleString("pt-BR")} candidatos considerados · ` : ""}{latest.criterion ?? "Critério não informado"} · Fonte: {latest.source?.name ?? "não informada"}{latest.sourcePage ? ` (p. ${latest.sourcePage})` : ""} · verificada em {date(latest.verifiedAt)}</p>
-            </div>
+      {/* Painel: notas de corte, incidência e comparativo (dados reais do Raio-X) */}
+      <RaioXPainel
+        cutoffs={exam.cutoffs}
+        modalities={[...new Set(exam.cutoffs.map((c) => c.modality))].map((m) => [m, MODALITY[m] ?? m] as [string, string])}
+        incidence={incidence.map((i) => ({ year: i.year, board: i.board, denominator: i.denominator, rows: i.rows.map((r) => ({ name: r.name, questions: r.questions })) }))}
+        comparison={comparison}
+        detalhesCortes={<>
+          <p className="ai-sub">{latest ? `Última nota catalogada: ${fmt(latest.score)}${latest.maxScore ? ` / ${fmt(latest.maxScore)}` : ""} · ${KIND[latest.kind]} · ${MODALITY[latest.modality]} · ${latest.editionYear}${latest.board ? ` · ${latest.board}` : ""}` : ""}. Tipos diferentes de nota de corte não são equivalentes.</p>
             <label className="ai-rx-sel">Modalidade
               <select value={modality} onChange={(e) => setModality(e.target.value)}>
                 <option value="todas">Todas</option>
@@ -66,40 +62,9 @@ export function RaioXView({ data }: { data: RaioX }) {
               <thead><tr><th>Ano</th><th>Tipo (não são equivalentes)</th><th>Modalidade</th><th>Nota</th><th>Fonte</th></tr></thead>
               <tbody>{cutoffs.map((c) => <tr key={c.id}><td>{c.editionYear}</td><td>{KIND[c.kind]}{c.stage ? ` · ${c.stage}` : ""}</td><td>{MODALITY[c.modality]}{c.position ? ` · ${c.position}` : ""}</td><td><b>{fmt(c.score)}</b>{c.maxScore ? ` / ${fmt(c.maxScore)}` : ""}</td><td>{c.source?.name ?? "—"}{c.sourcePage ? ` p. ${c.sourcePage}` : ""}</td></tr>)}</tbody>
             </table></div>
-          </>
-        )}
-      </section>
-
-      {/* B — incidência por disciplina */}
-      {cur && (
-        <section className="ai-rx" aria-label="Incidência das matérias">
-          <h3>Incidência das matérias</h3>
-          <div className="ai-rx-tabs" role="tablist" aria-label="Prova">
-            {incidence.map((i) => <button key={i.year} type="button" role="tab" aria-selected={i.year === cur.year} onClick={() => setEd(i.year)}>{i.year}{i.board ? ` · ${i.board}` : ""}</button>)}
-          </div>
-          <p className="ai-sub">Total considerado nesta prova: <b>{cur.denominator} questões</b>. {cur.countingRule ? `Regra: ${cur.countingRule}` : "Regra de contagem de anuladas não informada."}</p>
-          <ul className="ai-rx-bars">
-            {cur.rows.map((r) => (
-              <li key={r.name} title={`${r.questions} de ${cur.denominator} questões`}>
-                <span>{r.name}</span>
-                <i style={{ width: `${Math.max(2, r.pct)}%` }} />
-                <b>{r.questions} · {fmt(r.pct)}%{r.annulled ? ` · ${r.annulled} anul.` : ""}</b>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {/* D — comparativo */}
-      <section className="ai-rx" aria-label="Comparativo">
-        <h3>Comparativo das duas últimas provas</h3>
-        {!comparison ? <p className="ai-sub">São necessárias duas provas catalogadas para comparar.</p> : (
-          <>
-            <p className="ai-sub">Prova anterior: {comparison.previous.year}{comparison.previous.board ? ` (${comparison.previous.board})` : ""} · mais recente: {comparison.recent.year}{comparison.recent.board ? ` (${comparison.recent.board})` : ""}. Totais diferentes entre provas: veja o denominador acima.</p>
-            <div className="ai-rx-scroll"><table className="ai-rx-table">
-              <thead><tr><th>Disciplina</th><th>{comparison.previous.year}</th><th>{comparison.recent.year}</th><th>Variação</th></tr></thead>
-              <tbody>{comparison.subjects.map((s) => <tr key={s.name}><td>{s.name}</td><td>{s.previous ?? "—"}</td><td>{s.recent ?? "—"}</td><td><b data-d={s.delta === null ? undefined : s.delta > 0 ? "up" : s.delta < 0 ? "down" : undefined}>{s.delta === null ? "—" : s.delta > 0 ? `+${s.delta}` : s.delta}</b></td></tr>)}</tbody>
-            </table></div>
+        </>}
+        detalhesComparativo={comparison && <>
+          <p className="ai-sub">Totais diferentes entre provas: a comparação usa o número de questões de cada disciplina.</p>
             {comparison.topicDataBoth ? (
               <div className="ai-rx-groups">
                 {(["ambas", "so_recente", "so_anterior"] as const).map((g) => {
@@ -109,9 +74,8 @@ export function RaioXView({ data }: { data: RaioX }) {
                 })}
               </div>
             ) : <p className="ai-sub">Os assuntos de uma das provas ainda não foram classificados: a comparação por assunto fica indisponível.</p>}
-          </>
-        )}
-      </section>
+        </>}
+      />
 
       {/* E — mapa de calor + C — assuntos */}
       <section className="ai-rx" aria-label="Mapa de calor e assuntos">
