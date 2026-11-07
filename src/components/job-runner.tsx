@@ -81,6 +81,10 @@ export function JobRunner({
 
   useEffect(() => {
     if (job.status === "succeeded") {
+      try {
+        sessionStorage.setItem("na:scroll-apostila", doneHref);
+      } catch {}
+      window.scrollTo({ top: 0 });
       router.replace(doneHref);
       router.refresh();
     }

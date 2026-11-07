@@ -117,6 +117,20 @@ export function LessonReader(props: ReaderProps) {
     void api.startLesson(lesson.id);
   }, [lesson.id, api]);
 
+  // Logo após a geração, a página troca o "Preparando…" pela aula: leva a tela ao início da aula.
+  useEffect(() => {
+    let flag: string | null = null;
+    try {
+      flag = sessionStorage.getItem("na:scroll-apostila");
+      if (flag) sessionStorage.removeItem("na:scroll-apostila");
+    } catch {}
+    if (!flag) return;
+    const go = () => document.getElementById("apostila")?.scrollIntoView({ block: "start" });
+    requestAnimationFrame(go);
+    const t = setTimeout(go, 250);
+    return () => clearTimeout(t);
+  }, [lesson.id]);
+
   const legal = useMemo(() => sections.some((s) => s.kind === "texto_legal"), [sections]);
   const modules = useMemo(() => groupIntoModules(sections, { legal }), [sections, legal]);
   const pages = useMemo(() => apostilaPages(modules.length), [modules.length]);
