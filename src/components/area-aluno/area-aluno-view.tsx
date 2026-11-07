@@ -7,7 +7,7 @@ const ITEMS: Array<{ id: string; path: string; label: string; desc: string; icon
   { id: "aprovum-ai", path: "/aprovum-ai", label: "APROVUM AI", desc: "Transforme seu edital em preparação", icon: BrainCircuit },
   { id: "concursos", path: "/concursos", label: "Concursos", desc: "Editais, vagas e datas de prova", icon: Landmark },
   { id: "depoimentos", path: "/depoimentos", label: "Depoimentos", desc: "Histórias de alunos aprovados", icon: Video },
-  { id: "perfil", path: "/perfil", label: "Perfil", desc: "Seus dados, metas e conquistas", icon: Settings },
+  { id: "perfil", path: "/perfil", label: "Perfil", desc: "Seus dados e metas", icon: Settings },
 ];
 
 /** Área do Aluno (celular): os menus do computador que não cabem no menu inferior. */

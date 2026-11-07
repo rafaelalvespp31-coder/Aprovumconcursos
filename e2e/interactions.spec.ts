@@ -464,14 +464,6 @@ test.describe("casco pastel", () => {
     const over = await rail.evaluate((el) => el.scrollWidth > el.clientWidth + 1 || [...el.querySelectorAll<HTMLElement>("*")].some((n) => n.getBoundingClientRect().right > el.getBoundingClientRect().right + 1));
     expect(over).toBe(false);
   });
-
-  test("perfil mostra conquistas com regras e progresso", async ({ page }) => {
-    await page.goto(`${G}/perfil`);
-    await expect(page.getByTestId("conquistas-total")).toContainText("/8");
-    await expect(page.getByText("Atirador de elite")).toBeVisible();
-    await expect(page.getByText("74% de acerto (meta: 80%)")).toBeVisible();
-    await expect(page.getByText(/XP/)).toHaveCount(0);
-  });
 });
 
 test.describe("catálogo: catalogar aula colando texto", () => {

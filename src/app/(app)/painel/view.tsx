@@ -77,7 +77,7 @@ export function DashboardView(d: DashboardData) {
       state: d.reviews.count ? `${d.reviews.count} ${d.reviews.count === 1 ? "pendente" : "pendentes"}` : "em dia",
     },
     { id: "evolucao", href: `${base}/desempenho`, label: "Evolução", desc: "Seu desempenho", state: d.accuracy14d !== null ? `${Math.round(d.accuracy14d * 100)}% em 14 dias` : null },
-    { id: "perfil", href: `${base}/perfil`, label: "Meu Perfil", desc: "Metas e conquistas", state: qGoal ? `Hoje: ${d.today.answered}/${qGoal} questões` : "defina sua meta" },
+    { id: "perfil", href: `${base}/perfil`, label: "Meu Perfil", desc: "Seus dados e metas", state: qGoal ? `Hoje: ${d.today.answered}/${qGoal} questões` : "defina sua meta" },
   ];
 
   return (

@@ -1,6 +1,6 @@
 "use client";
 
-import { Award, Crown, Flame, Lock, Trophy, Zap } from "lucide-react";
+import { Crown, Flame, Zap } from "lucide-react";
 import type { ReactNode } from "react";
 import { PastelCard } from "@/components/pastel/card";
 import type { Gamification } from "@/domain/progress/gamification";
@@ -31,8 +31,6 @@ function studyingFor(since: string | null, nowIso?: string): string | null {
 export function PastelProfile({ p, children }: { p: ProfileData; children?: ReactNode }) {
   const g = p.gamification;
   const since = studyingFor(p.since, p.now);
-  const unlocked = g.achievements.filter((a) => a.unlocked);
-  const locked = g.achievements.filter((a) => !a.unlocked).sort((a, b) => b.progress - a.progress);
   const qGoal = p.goals.dailyQuestions;
   const lGoal = p.goals.weeklyLessons;
   const qPct = qGoal ? Math.min(100, Math.round((p.today.answered / qGoal) * 100)) : 0;
@@ -59,7 +57,7 @@ export function PastelProfile({ p, children }: { p: ProfileData; children?: Reac
               </div>
             </div>
           </div>
-          <div className="grid grid-cols-3 gap-2 p-6 sm:gap-4">
+          <div className="grid grid-cols-2 gap-2 p-6 sm:gap-4">
             <div className="text-center">
               <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#F4F4F4]" aria-hidden>
                 <Crown className="h-6 w-6 text-[#FF1E1E]" />
@@ -67,22 +65,12 @@ export function PastelProfile({ p, children }: { p: ProfileData; children?: Reac
               <div className="text-[18px] font-[800] sm:text-[20px]" data-testid="nivel">Nível {g.level.level}</div>
               <div className="text-[11px] text-[#5C5C5C]">{p.themesPassed} {p.themesPassed === 1 ? "tema vencido" : "temas vencidos"}</div>
             </div>
-            <div className="border-x border-[#EBEBEB] text-center">
+            <div className="border-l border-[#EBEBEB] text-center">
               <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#FDECEC]" aria-hidden>
                 <Flame className="h-6 w-6 text-[#E10600]" />
               </div>
               <div className="text-[18px] font-[800] sm:text-[20px]">{g.streak.current} {g.streak.current === 1 ? "dia" : "dias"}</div>
               <div className="text-[11px] text-[#5C5C5C]">Sequência atual</div>
-            </div>
-            <div className="text-center">
-              <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-[14px] bg-[#F5F5F5]" aria-hidden>
-                <Trophy className="h-6 w-6 text-[#0A0A0A]" />
-              </div>
-              <div className="text-[18px] font-[800] sm:text-[20px]" data-testid="conquistas-total">
-                {g.unlockedCount}
-                <span className="text-[13px] font-semibold text-[#5C5C5C]">/{g.achievements.length}</span>
-              </div>
-              <div className="text-[11px] text-[#5C5C5C]">Conquistas</div>
             </div>
           </div>
           <div className="px-6 pb-6">
@@ -99,42 +87,6 @@ export function PastelProfile({ p, children }: { p: ProfileData; children?: Reac
             </div>
             <p className="mt-2 text-[11px] text-[#5C5C5C]">Você sobe um nível a cada 3 temas vencidos: todas as questões do tema, 75% de acerto e as essenciais corretas.</p>
           </div>
-        </PastelCard>
-
-        <PastelCard noTilt className="p-6" testId="conquistas">
-          <h2 className="mb-4 flex items-center gap-2 font-[Space_Grotesk] font-bold">
-            <Award className="h-4 w-4" aria-hidden /> Conquistas
-          </h2>
-          {unlocked.length === 0 && <p className="mb-3 text-[12px] text-[#5C5C5C]">Nenhuma conquista ainda. Elas se desbloqueiam sozinhas, conforme as regras abaixo.</p>}
-          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            {[...unlocked, ...locked].map((s) => (
-              <li
-                key={s.id}
-                data-unlocked={s.unlocked}
-                className={`flex gap-3 rounded-[16px] border p-4 transition-all ${s.unlocked ? "border-[#E5E5E5] bg-[#F5F5F5] hover:bg-[#EDEDED] hover:shadow-[0_8px_24px_rgba(225,6,0,0.08)]" : "border-dashed border-[#D9D9D9] bg-white/[0.02]"}`}
-              >
-                <div className={`relative flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border border-[#E5E5E5] bg-[#F5F5F5] text-[18px] shadow-sm ${s.unlocked ? "" : "grayscale opacity-60"}`} aria-hidden>
-                  {s.icon}
-                  {!s.unlocked && <Lock className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full bg-[#F5F5F5] p-0.5 text-[#5C5C5C]" />}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <div className="text-[13px] font-semibold">
-                    {s.title}
-                    <span className="sr-only">{s.unlocked ? " (conquistada)" : " (bloqueada)"}</span>
-                  </div>
-                  <div className="mt-0.5 text-[11px] text-[#4D4D4D]">{s.rule}</div>
-                  {!s.unlocked && (
-                    <>
-                      <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#F4F4F4]">
-                        <div className="h-full rounded-full" style={{ width: `${Math.round(s.progress * 100)}%`, background: s.color }} />
-                      </div>
-                      <div className="mt-1 text-[10.5px] text-[#5C5C5C]">{s.status}</div>
-                    </>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
         </PastelCard>
       </div>
 

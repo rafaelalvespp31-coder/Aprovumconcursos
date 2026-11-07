@@ -78,7 +78,7 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
     { id: "concursos", href: `${base}/concursos`, label: "Concursos", icon: Landmark, num: "8", desc: "Editais e provas", title: "Concursos", subtitle: "Concursos cadastrados, vagas e datas de prova." },
     { id: "aprovum-ai", href: `${base}/aprovum-ai`, label: "APROVUM AI", icon: BrainCircuit, num: "", desc: "Edital em preparação", also: [`${base}/meu-concurso`], title: "APROVUM AI", subtitle: "Seu concurso. Sua preparação. Nossa inteligência." },
     { id: "depoimentos", href: `${base}/depoimentos`, label: "Depoimentos", icon: Video, num: "9", desc: "Histórias de aprovados", title: "Depoimentos", subtitle: "Quem chegou lá conta como foi a trajetória até a aprovação." },
-    { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "0", desc: `Nível ${s.level}`, title: "Perfil & conquistas" },
+    { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "0", desc: `Nível ${s.level}`, title: "Perfil" },
     { id: "plano", href: `${base}/plano`, label: "Meu Plano", icon: Crown, num: "", desc: "Escolha seu plano", title: "Meu Plano", subtitle: "Conquiste mais. Estude sem limites." },
     { id: "area", href: `${base}/area-do-aluno`, label: "Área do Aluno", icon: LayoutGrid, num: "", desc: "Todos os menus", title: "Área do Aluno", subtitle: "Todos os menus do seu painel num só lugar.", hidden: true },
   ];
@@ -470,7 +470,7 @@ export function PastelShell({
                   <MenuButton menuRef={menuRef} dark={dark} />
                   <Link
                     href={`${basePath}/perfil`}
-                    aria-label="Perfil e conquistas"
+                    aria-label="Perfil"
                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-[12px] border shadow lg:hidden ${dark ? "border-white/15 bg-[#161616] text-white" : "border-[#E5E5E5] bg-[#F5F5F5]"}`}
                   >
                     <UserRound className="h-5 w-5" aria-hidden />
@@ -513,7 +513,7 @@ export function PastelShell({
                       </Link>
                       <Link
                         href={`${basePath}/perfil`}
-                        aria-label="Perfil e conquistas"
+                        aria-label="Perfil"
                         className="hidden h-11 w-11 items-center justify-center rounded-full border-2 border-white/70 bg-[#111113] text-white transition hover:border-[#FF1E1E] lg:flex"
                       >
                         <UserRound className="h-5 w-5" aria-hidden />
@@ -756,7 +756,7 @@ function EstudosHeader({ summary, basePath, items, searchRef, menuRef, mobileOnl
     </Link>
   );
   const avatar = (
-    <Link href={`${basePath}/perfil`} aria-label="Perfil e conquistas" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#080808] text-white shadow-[0_6px_16px_rgba(0,0,0,0.18)] transition hover:ring-2 hover:ring-[#F01820]/60">
+    <Link href={`${basePath}/perfil`} aria-label="Perfil" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#080808] text-white shadow-[0_6px_16px_rgba(0,0,0,0.18)] transition hover:ring-2 hover:ring-[#F01820]/60">
       <UserRound className="h-5 w-5" aria-hidden />
     </Link>
   );
