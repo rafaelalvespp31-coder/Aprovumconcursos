@@ -9,6 +9,7 @@ import { getBankRoles } from "@/server/services/bank";
 import { signOut } from "../../(auth)/actions";
 import { LogoutButton } from "../logout-button";
 import { ProfileForm } from "./form";
+import { PainelAdmin, type AdminItem } from "./painel-admin";
 import { PastelProfile } from "./pastel-profile";
 import { getPlanUsage } from "@/server/services/plans";
 import { FREE_LIMITS, PERIOD_LABELS, PLAN_LABELS, effectivePlan, type BillingPeriod } from "@/domain/plans/limits";
@@ -19,6 +20,17 @@ export default async function ProfilePage() {
   const user = await requireUser();
   const [{ profile, subscription }, stats, dash, roles, usage, partner, avatarGender] = await Promise.all([getProfile(), getStudyStats(), getDashboard(), getBankRoles(user.id), getPlanUsage(user.id), getPartnerStatus(user.id), getMyAvatarGender(user.id).catch(() => null)]);
   const staff = roles.admin || roles.autor || roles.revisor;
+  const adminItems: AdminItem[] = [
+    ...(roles.admin ? [{ href: "/admin/catalogo/enviar", label: "Catalogar aula" }] : []),
+    { href: "/banco/importar", label: "Cadastrar questões" },
+    { href: "/banco", label: "Banco de questões" },
+    ...(roles.admin ? [
+      { href: "/admin/catalogo", label: "Catálogo" }, { href: "/admin/catalogo/plano", label: "Plano de tópicos" }, { href: "/admin/catalogo/banners", label: "Banners" },
+      { href: "/admin/fila", label: "Fila da IA" }, { href: "/admin/alunos", label: "Alunos e planos" }, { href: "/admin/avatares", label: "Avatares" },
+      { href: "/admin/concursos", label: "Concursos" }, { href: "/admin/estrategico", label: "Estratégico" }, { href: "/admin/editais", label: "Editais" },
+      { href: "/admin/aprovados", label: "Aprovados" }, { href: "/admin/depoimentos", label: "Depoimentos" }, { href: "/admin/socio", label: "Sócio admin" },
+    ] : []),
+  ];
   const sub = subscription as unknown as { plan_id: string; status: string; current_period_end?: string | null; billing_period?: string | null } | null;
   const eff = effectivePlan(sub ? { planId: sub.plan_id, status: sub.status, currentPeriodEnd: sub.current_period_end ?? null } : null);
   return (
@@ -43,15 +55,9 @@ export default async function ProfilePage() {
       )}
       {staff && (
         <PastelCard noTilt className="p-6" testId="area-equipe">
-          <h2 className="mb-1 text-[13px] font-bold">Área da equipe</h2>
+          <h2 className="mb-1 text-[13px] font-bold">Painel do Admin</h2>
           <p className="mb-4 text-[12px] text-[#5C5C5C]">Visível só para a equipe do APROVUM.</p>
-          <div className="flex flex-wrap gap-2">
-            {roles.admin && <Link href="/admin/catalogo/enviar" className="inline-flex min-h-11 items-center rounded-xl bg-[#E10600] px-4 text-[13px] font-bold text-white active:scale-95">Catalogar aula</Link>}
-            <Link href="/banco/importar" className="inline-flex min-h-11 items-center rounded-xl bg-[#E10600] px-4 text-[13px] font-bold text-white active:scale-95">Cadastrar questões</Link>
-            <Link href="/banco" className="inline-flex min-h-11 items-center rounded-xl bg-[#0A0A0A] px-4 text-[13px] font-bold text-white active:scale-95">Banco de questões</Link>
-            {roles.admin && <Link href="/admin/catalogo" className="inline-flex min-h-11 items-center rounded-xl border border-[#D4D4D4] px-4 text-[13px] font-bold active:scale-95">Catálogo</Link>}
-            {roles.admin && <Link href="/admin/alunos" className="inline-flex min-h-11 items-center rounded-xl border border-[#D4D4D4] px-4 text-[13px] font-bold active:scale-95">Alunos e planos</Link>}
-          </div>
+          <PainelAdmin items={adminItems} />
         </PastelCard>
       )}
       <PastelCard noTilt className="p-6">

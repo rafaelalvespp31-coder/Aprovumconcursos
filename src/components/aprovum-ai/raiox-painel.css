@@ -228,3 +228,31 @@
 .rxp-mat-f { display: flex; align-items: center; gap: 10px; margin: 0; padding: 10px 14px 12px; font: 700 11px/1.3 "Chakra Petch", sans-serif; letter-spacing: .14em; color: #ff9aa3; text-align: center; }
 .rxp-mat-f i { flex: 1; height: 0; border-top: 2px dashed rgba(255,77,90,.5); }
 .rxp-in .rxp-mat .ai-rx-heat li { box-shadow: none; }
+
+/* Aulas do edital */
+.rxp-aulas-resumo { display: grid; grid-template-columns: repeat(3, auto) minmax(60px, 1fr) auto; gap: 8px 16px; align-items: center; margin-bottom: 14px; padding: 12px 14px; border-radius: 14px; border: 1px solid rgba(255,255,255,.1); background: linear-gradient(160deg, #1b1c21, #0b0b0e); box-shadow: inset 0 0 22px rgba(229,9,32,.1); }
+.rxp-aulas-resumo div { display: grid; line-height: 1.1; }
+.rxp-aulas-resumo b { font: 800 22px "Chakra Petch", sans-serif; color: #fff; }
+.rxp-aulas-resumo small { font: 500 11px "Chakra Petch", sans-serif; color: #aeb1ba; }
+.rxp-aulas-resumo strong { font: 800 20px "Chakra Petch", sans-serif; color: #fff; }
+.rxp-mat-m { display: block; height: 6px; margin-top: 6px; border-radius: 99px; background: rgba(0,0,0,.35); overflow: hidden; }
+.rxp-mat-m i { display: block; height: 100%; border-radius: inherit; background: #fff; box-shadow: 0 0 8px rgba(255,255,255,.6); transform-origin: left; animation: rxp-barra 1s cubic-bezier(.2,.8,.2,1) both; }
+.rxp-tops { list-style: none; margin: 0; padding: 12px; display: grid; gap: 8px; }
+.rxp-top { display: grid; gap: 8px; padding: 11px 12px; border-radius: 14px; border: 1px solid rgba(255,255,255,.08); border-left: 4px solid #4a4d57; background: linear-gradient(160deg, #1b1c21, #0c0c0f); min-width: 0; }
+.rxp-top[data-d="2"] { margin-left: 8px; } .rxp-top[data-d="3"] { margin-left: 16px; } .rxp-top[data-d="4"] { margin-left: 22px; }
+.rxp-top p { margin: 0; font: 600 14px/1.35 "Chakra Petch", sans-serif; color: #fff; overflow-wrap: anywhere; }
+.rxp-top code { margin-right: 6px; color: var(--red2); font: 700 12px ui-monospace, monospace; }
+.rxp-top[data-st="completa"] { border-left-color: #2f9e5b; } .rxp-top[data-st="parcial"] { border-left-color: #e0a526; } .rxp-top[data-st="conferencia"] { border-left-color: #6f8bff; } .rxp-top[data-st="nao_encontrado"] { border-left-color: var(--red); }
+.rxp-top[data-done="1"] { background: linear-gradient(160deg, #0f2a1a, #0c0c0f); }
+.rxp-pend h4 { margin: 4px 0 8px; font: 700 13px "Chakra Petch", sans-serif; color: #fff; }
+.rxp-pend ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.rxp-pend li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 12px; align-items: center; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); }
+.rxp-pend li div { min-width: 0; flex: 1 1 200px; } .rxp-pend li b { display: block; font: 600 13.5px/1.3 "Chakra Petch", sans-serif; color: #fff; } .rxp-pend li small { color: #aeb1ba; font-size: 12px; }
+.rxp-pend li span { padding: 4px 10px; border-radius: 99px; font: 700 11.5px "Chakra Petch", sans-serif; background: rgba(111,139,255,.15); color: #b8c6ff; }
+.rxp-pend li span[data-bad] { background: rgba(229,9,32,.18); color: #ffb3b9; }
+.rxp-acoes { display: grid; gap: 10px; margin-top: 14px; }
+.rxp-btn-r, .rxp-btn-g { display: grid; place-items: center; min-height: 52px; padding: 0 16px; border-radius: 14px; font: 800 14px "Chakra Petch", sans-serif; letter-spacing: .05em; text-align: center; text-decoration: none; transition: transform .2s, filter .2s; }
+.rxp-btn-r { background: linear-gradient(100deg, #e50920, #8e0716); color: #fff; box-shadow: 0 0 18px rgba(229,9,32,.4), inset 0 1px 0 rgba(255,255,255,.3); }
+.rxp-btn-g { min-height: 46px; border: 1px solid rgba(255,255,255,.2); color: #f1f2f5; background: rgba(255,255,255,.04); font-weight: 700; }
+.rxp-btn-r:hover, .rxp-btn-g:hover { transform: translateY(-2px); filter: brightness(1.12); }
+@container (max-width: 620px) { .rxp-aulas-resumo { grid-template-columns: repeat(3, 1fr); } .rxp-aulas-resumo .rxp-trilha { grid-column: 1 / 3; } .rxp-aulas-resumo strong { text-align: right; } }

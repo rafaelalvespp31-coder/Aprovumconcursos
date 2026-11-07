@@ -6,7 +6,7 @@ import { ensureDisciplines } from "@/server/services/disciplines";
 
 export const metadata = { title: "Administração" };
 
-/** Área da equipe: catálogo revisado e fila de temas gerados pela IA. Só administradores. */
+/** Painel do Admin: catálogo revisado e fila de temas gerados pela IA. Só administradores. */
 export default async function AdminLayout({
   children,
 }: {
