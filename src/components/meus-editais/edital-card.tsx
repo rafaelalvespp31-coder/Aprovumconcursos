@@ -71,7 +71,7 @@ export function EditalCard({ c, index }: { c: Card; index: number }) {
 
   return (
     <article className="me-card me-in" style={{ ["--d" as string]: `${0.12 + index * 0.07}s` }} data-tone={st.tone} aria-labelledby={`ed-${c.id}`}>
-      <Link href={ready ? detail : `/aprovum-ai/${c.id}`} className="me-visual" aria-label={`Abrir ${c.title}`} tabIndex={-1}>
+      <Link href={ready ? detail : `/aprovum-ai/${c.id}`} className="me-visual" style={{ ["--arte" as string]: `url(/meus-editais/ref-disc-${(index % 4) + 1}.webp)` }} aria-label={`Abrir ${c.title}`} tabIndex={-1}>
         <span className="me-visual-org" style={{ ["--n" as string]: Math.max(6, longest) }}>
           {lines.map((l, i) => <span key={i} data-ultima={i === lines.length - 1 && lines.length > 1 ? 1 : undefined}>{l}</span>)}
         </span>
@@ -93,11 +93,17 @@ export function EditalCard({ c, index }: { c: Card; index: number }) {
               <span>{c.stats.disciplines ?? 0} disciplinas</span><i aria-hidden>•</i>
               <span>{c.stats.topics ?? 0} tópicos</span><i aria-hidden>•</i>
               <span>{p ? p.lessons : (c.stats.completa ?? 0) + (c.stats.parcial ?? 0)} aulas</span>
+              {p && (<><i aria-hidden>•</i><span>{p.topicsDone} concluídos</span></>)}
             </>
           ) : (
             <span>{c.status === "erro" ? "A análise foi interrompida." : c.status === "conferencia" ? "Aguardando a sua conferência." : "A APROVUM está lendo este edital…"}</span>
           )}
         </p>
+        {ready && (
+          <span className="me-barra" role="progressbar" aria-label="Progresso do edital" aria-valuemin={0} aria-valuemax={100} aria-valuenow={p?.pct ?? 0} data-tone={st.tone}>
+            <i style={{ ["--w" as string]: `${p?.pct ?? 0}%` }} />
+          </span>
+        )}
       </div>
 
       <div className="me-progresso">
@@ -114,6 +120,8 @@ export function EditalCard({ c, index }: { c: Card; index: number }) {
           </span>
         )}
       </div>
+
+      <Link href={ready ? detail : `/aprovum-ai/${c.id}`} className="me-go" aria-label={ready ? `Ver detalhes de ${c.title}` : `Acompanhar ${c.title}`}><ChevronRight aria-hidden /></Link>
 
       <div className="me-acoes">
         {ready ? (

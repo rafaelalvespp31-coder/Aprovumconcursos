@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { ChevronRight, CircleAlert, Crosshair, FileText, Play, Plus, Trophy } from "lucide-react";
+import { ArrowRight, BookOpen, ChevronRight, CircleAlert, CircleCheck, CircleHelp, FileText, Plus } from "lucide-react";
 import type { EditaisOverview } from "@/server/services/edital-overview";
 import { EditalCard } from "./edital-card";
-import { ProgressRing } from "./progress-ring";
 import "./meus-editais.css";
 
 const fmt = (n: number) => n.toLocaleString("pt-BR");
@@ -11,51 +10,71 @@ const fmt = (n: number) => n.toLocaleString("pt-BR");
 export function MeusEditaisView({ data }: { data: EditaisOverview | null }) {
   const cards = data?.cards ?? [];
   const t = data?.totals;
-  // "Ver estratégia": o Raio-X publicado mais recente; senão o Raio-X do edital pronto mais recente (mostra o status da análise).
+  // Indicadores do topo = soma do progresso REAL de cada edital pronto (nada fictício).
+  const ready = cards.filter((c) => c.status === "concluido" && c.progress);
+  const hasProg = ready.length > 0;
+  const lessons = ready.reduce((s, c) => s + (c.progress?.lessons ?? 0), 0);
+  const lessonsDone = ready.reduce((s, c) => s + (c.progress?.lessonsDone ?? 0), 0);
+  const pending = ready.reduce((s, c) => s + Math.max(0, (c.progress?.topics ?? 0) - (c.progress?.topicsDone ?? 0)), 0);
+  // "Ver relatório": o Raio-X publicado mais recente; senão o Raio-X do edital pronto mais recente (mostra o status da análise).
   const withRaio = cards.find((c) => c.status === "concluido" && c.raioX.available);
   const firstReady = cards.find((c) => c.status === "concluido");
   const strategyHref = withRaio ? `/meu-concurso/${withRaio.id}?aba=raiox` : firstReady ? `/meu-concurso/${firstReady.id}?aba=raiox` : "/aprovum-ai";
+  const pendingHref = firstReady ? `/meu-concurso/${firstReady.id}?aba=visao` : "/trilhas";
+
+  const kpis = [
+    { href: "/trilhas", icon: BookOpen, n: hasProg ? fmt(lessons) : "—", label: "Aulas disponíveis", tone: "borda" },
+    { href: "/trilhas", icon: CircleCheck, n: hasProg ? fmt(lessonsDone) : "—", label: "Aulas concluídas", tone: "" },
+    { href: pendingHref, icon: null, n: hasProg ? fmt(pending) : "—", label: "Tópicos pendentes", tone: "borda" },
+    { href: "/desempenho", icon: CircleHelp, n: t ? fmt(t.questions) : "—", label: "Questões respondidas", tone: "borda" },
+  ] as const;
 
   return (
     <div className="me-root">
       <section className="me-hero" aria-labelledby="me-titulo">
         <div className="me-hero-txt">
-          <p className="me-kicker me-in"><Crosshair aria-hidden />MEUS EDITAIS</p>
-          <h1 id="me-titulo" className="me-titulo me-in" style={{ ["--d" as string]: ".05s" }}>Sua preparação, focada no seu <span>objetivo!</span></h1>
-          <p className="me-sub me-in" style={{ ["--d" as string]: ".1s" }}>Acompanhe e analise todos os editais que você já cadastrou e analisou com a APROVUM.</p>
-          <Link href="/desempenho" className="me-cta me-in" style={{ ["--d" as string]: ".15s" }}>
-            <span className="me-cta-play" aria-hidden><Play /></span>Ver Análise Geral
-          </Link>
+          <h1 id="me-titulo" className="me-in">
+            <span className="me-sr">Meus Editais — </span>
+            {/* eslint-disable-next-line @next/next/no-img-element -- arte fixa da marca (lettering) */}
+            <img className="me-titulo-img" src="/meus-editais/ref-titulo.webp" alt="Fala, Guerreiro!" width={390} height={122} fetchPriority="high" decoding="async" />
+          </h1>
+          <p className="me-sub me-in" style={{ ["--d" as string]: ".06s" }}>Sua jornada rumo à aprovação continua. Vamos evoluir?</p>
+          {/* eslint-disable-next-line @next/next/no-img-element -- selo fixo da marca */}
+          <img className="me-foco me-in" style={{ ["--d" as string]: ".1s" }} src="/meus-editais/ref-foco.webp" alt="Foco, disciplina, aprovação" width={350} height={55} decoding="async" />
         </div>
         <div className="me-hero-arte" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element -- arte fixa da marca */}
-          <img src="/meus-editais/hero.webp" alt="" width={918} height={672} fetchPriority="high" decoding="async" />
+          <img src="/meus-editais/ref-soldado.webp" alt="" width={412} height={490} fetchPriority="high" decoding="async" />
         </div>
       </section>
 
-      <section className="me-kpis me-in" style={{ ["--d" as string]: ".18s" }} aria-label="Indicadores gerais">
-        <div className="me-kpi">
-          <FileText className="me-kpi-ic" aria-hidden />
-          <div><b>{t ? fmt(t.analyzed) : "—"}</b><span>Editais Analisados</span></div>
-        </div>
-        <div className="me-kpi">
-          <ProgressRing pct={t?.avgPct ?? null} size={60} stroke={6} tone={t?.avgPct ? "red" : "gray"}>
-            <b className="me-kpi-ring">{t?.avgPct === null || !t ? "—" : `${t.avgPct}%`}</b>
-          </ProgressRing>
-          <div>{t?.avgPct === null || !t ? <em>Sem dados suficientes</em> : null}<span>Média de Conclusão</span></div>
-        </div>
-        <div className="me-kpi">
-          <span className="me-barras" aria-hidden><i /><i /><i /></span>
-          <div>
-            {t?.evolution7d === null || !t ? <em>Sem dados suficientes</em> : <b>{t.evolution7d > 0 ? "+" : ""}{t.evolution7d}%</b>}
-            <span>Evolução (7 dias)</span>
-          </div>
-        </div>
-        <div className="me-kpi">
-          <Trophy className="me-kpi-ic" aria-hidden />
-          <div><b>{t ? fmt(t.questions) : "—"}</b><span>Questões Analisadas</span></div>
-        </div>
+      <section className="me-kpis" aria-label="Indicadores gerais">
+        {kpis.map((k, i) => {
+          const Ic = k.icon;
+          return (
+            <Link key={k.label} href={k.href} className="me-kpi me-in" data-borda={k.tone || undefined} style={{ ["--d" as string]: `${0.12 + i * 0.05}s` }}>
+              <span className="me-kpi-ic" aria-hidden>
+                {Ic ? <Ic /> : <span className="me-barras"><i /><i /><i /></span>}
+              </span>
+              <b>{k.n}</b>
+              <span className="me-kpi-l">{k.label}</span>
+              <span className="me-kpi-go" aria-hidden><ArrowRight /></span>
+            </Link>
+          );
+        })}
       </section>
+
+      <div className="me-secao me-in" style={{ ["--d" as string]: ".3s" }}>
+        <h2><span className="me-riscos" aria-hidden><i /><i /><i /></span>PROGRESSO POR EDITAL</h2>
+        <Link href="/desempenho" className="me-detalhes">VER DETALHES <ArrowRight aria-hidden /></Link>
+      </div>
+      {t && (
+        <p className="me-resumo me-in" style={{ ["--d" as string]: ".32s" }}>
+          <span><b>{fmt(t.analyzed)}</b> {t.analyzed === 1 ? "edital analisado" : "editais analisados"}</span>
+          <span>Média de conclusão: <b>{t.avgPct === null ? "sem dados suficientes" : `${t.avgPct}%`}</b></span>
+          <span>Evolução (7 dias): <b>{t.evolution7d === null ? "sem dados suficientes" : `${t.evolution7d > 0 ? "+" : ""}${t.evolution7d}%`}</b></span>
+        </p>
+      )}
 
       {(!data || data.progressError) && (
         <p className="me-aviso" role="alert">
@@ -75,25 +94,19 @@ export function MeusEditaisView({ data }: { data: EditaisOverview | null }) {
         <section className="me-lista" aria-label="Seus editais">
           {cards.map((c, i) => <EditalCard key={c.id} c={c} index={i} />)}
           {data && (
-            <Link href="/aprovum-ai" className="me-novo me-in" style={{ ["--d" as string]: `${0.15 + cards.length * 0.07}s` }}>
+            <Link href="/aprovum-ai" className="me-novo me-in" style={{ ["--d" as string]: `${0.3 + cards.length * 0.07}s` }}>
               <span aria-hidden><Plus /></span>ENVIAR NOVO EDITAL
             </Link>
           )}
         </section>
       )}
 
-      <section className="me-estrategia me-in" style={{ ["--d" as string]: ".3s" }} aria-labelledby="me-estrategia-t">
+      <Link href={strategyHref} className="me-relat me-in" style={{ ["--d" as string]: ".4s" }}>
         {/* eslint-disable-next-line @next/next/no-img-element -- arte fixa da marca */}
-        <img className="me-estrategia-alvo" src="/meus-editais/alvo.webp" alt="" width={264} height={268} loading="lazy" decoding="async" />
-        <div className="me-estrategia-txt">
-          <p className="me-estrategia-k">ESTRATÉGIA APROVUM</p>
-          <h2 id="me-estrategia-t">Estude com inteligência!</h2>
-          <p>Use os dados do seu desempenho para focar no que realmente importa.</p>
-        </div>
-        <Link href={strategyHref} className="me-btn me-btn-contorno">Ver Estratégia <span aria-hidden><ChevronRight /></span></Link>
-        {/* eslint-disable-next-line @next/next/no-img-element -- arte fixa da marca */}
-        <img className="me-estrategia-rei" src="/meus-editais/xadrez.webp" alt="" width={208} height={352} loading="lazy" decoding="async" />
-      </section>
+        <img className="me-relat-arte" src="/meus-editais/ref-cerebro.webp" alt="" width={382} height={164} loading="lazy" decoding="async" />
+        <span className="me-relat-txt"><em>VER RELATÓRIO</em><em>COMPLETO DO EDITAL</em></span>
+        <span className="me-relat-go" aria-hidden><ChevronRight /></span>
+      </Link>
     </div>
   );
 }
