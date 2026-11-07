@@ -265,6 +265,14 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
     let tone = 0.4; // tom da voz: 0 grave, 1 agudo
     let form = 0; // 0 = nuvem solta; 1 = partículas aglutinadas formando a imagem de referência (ouvindo)
     let tp = 0; // tempo próprio do flutuar: acelera de leve com a voz, sem saltos
+    // Expressão da voz do Mentor: envelope (sílabas), tom relativo à média da própria voz (entonação) e a variação dele.
+    let env = 0;
+    let pt = 0.5;
+    let slowP = 0.5;
+    let into = 0;
+    let dInto = 0;
+    let psi = 0;
+    let vAge = 0;
     const sm = { vol: 0, low: 0, mid: 0, high: 0 }; // áudio bem suavizado para o movimento das partículas
     let micSeen = false;
     let lastMic = -99;
@@ -338,6 +346,23 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         if (sum > 0.1) tone = ease(tone, clamp((sm.low * 0.1 + sm.mid * 0.5 + sm.high) / sum), 0.04, 0.04, f60);
         coord = ease(coord, clamp(me * 2.5), 0.04, 0.02, f60);
       }
+      {
+        env = ease(env, tgMe, 0.3, 0.14, f60); // acompanha a sílaba, mas sem solavancos
+        vAge = tgMe < 0.04 ? 0 : vAge + dt;
+        const voiced = (tg.voiced ?? 0) > 0.5 && (tg.f0 ?? 0) > 0 && tgMe > 0.04;
+        if (voiced) {
+          const pn = clamp(Math.log2(tg.f0! / 90) / Math.log2(320 / 90));
+          const prev = pt;
+          pt = ease(pt, pn, 0.2, 0.2, f60);
+          const k = 0.008 + 0.08 * Math.exp(-vAge * 1.5); // aprende o tom médio da voz logo no começo da fala
+          slowP = ease(slowP, pt, k, k, f60);
+          dInto = ease(dInto, clamp((pt - prev) / Math.max(dt, 0.001), -2, 2), 0.15, 0.15, f60);
+        } else {
+          dInto = ease(dInto, 0, 0.08, 0.08, f60);
+        }
+        into = ease(into, voiced ? pt - slowP : 0, 0.15, 0.05, f60);
+        psi = clamp(psi + (dInto * 0.3 - psi * 0.9) * dt, -0.3, 0.3); // entonação subindo gira num sentido, descendo no outro
+      }
       tp += dt * (1 + sm.mid * 0.7 + sm.high * 0.4) * (1 - form * 0.7) * (reduce ? 0.4 : 1);
       if (mic > 0.08) {
         micSeen = true;
@@ -400,7 +425,8 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
       const sphere = 1 + sm.low * 0.04;
       const pull = (0.015 + sm.vol * 0.1 + listen * 0.04) * calm;
       // Onda suave e compartilhada (viaja do centro para fora; o tom muda o espaçamento e a velocidade).
-      const wv2 = (r: number) => 1 + coord * Math.sin(r * (2 + tone * 3) - tp * (1 + tone * 1.5)) * 0.05 * sm.vol * calm;
+      const wv2 = (r: number) => 1 + coord * Math.sin(r * (2 + tone * 3) - tp * (1 + tone * 1.5)) * 0.05 * (sm.vol * 0.5 + env * 0.5) * calm;
+      const liftA = -into * 0.25 * R * coord * calm; // tom sobe: as partículas sobem juntas; tom desce: descem
       for (let i = 0; i < n; i++) {
         const s = sd[i]!;
         let x = 0;
@@ -450,6 +476,7 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
           y = Math.sin(lat) * r;
           z = Math.cos(ang[i]!) * Math.cos(lat) * r;
         }
+        if (!screen) y += liftA;
         const k = F / (F - z);
         const X = screen ? x : cx + x * k;
         const Y = screen ? y : cy + y * k;
@@ -498,25 +525,6 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
       fg.addColorStop(1, "rgba(255,0,0,0)");
       ctx.fillStyle = fg;
       ctx.fillRect(cx - R * 0.45, fy - R * 0.2, R * 0.9, R * 0.4);
-      const hzg = ctx.createLinearGradient(0, 0, W, 0);
-      hzg.addColorStop(0, "rgba(255,40,30,0)");
-      hzg.addColorStop(0.5, `rgba(255,50,40,${fl * 0.9})`);
-      hzg.addColorStop(1, "rgba(255,40,30,0)");
-      ctx.fillStyle = hzg;
-      ctx.fillRect(0, fy - 0.5, W, 1);
-
-      // Colchetes de HUD nas laterais, como na arte.
-      ctx.strokeStyle = `rgba(255,40,35,${(0.3 + fx.ring * 0.3) * am})`;
-      ctx.lineWidth = 1.3;
-      for (const sd2 of [1, -1]) {
-        const x0 = sd2 > 0 ? 12 : W - 12;
-        ctx.beginPath();
-        ctx.moveTo(x0, cy + R * 0.7);
-        ctx.lineTo(x0, cy - R * 0.55);
-        ctx.lineTo(x0 + 16 * sd2, cy - R * 0.8);
-        ctx.lineTo(x0 + 46 * sd2, cy - R * 0.8);
-        ctx.stroke();
-      }
 
       // Fumaça.
       for (let i = 0; i < NF; i++) {
@@ -597,13 +605,20 @@ export function VozOrbe({ level, dim = false, size = 280, conn = "live" }: { lev
         const wm = clamp(1 - Math.abs(d3 - 0.55) * 3.5);
         const wh = clamp((d3 - 0.5) * 2.5);
         const bandLit = 1 + coord * (wl * sm.low * 0.45 + wm * sm.mid * 0.5 + wh * sm.high * 0.6);
-        const tw = coord * sm.vol * 0.1 * Math.sin(tp * (0.25 + tone * 0.5)) * (1 - d3 * 0.5) * calm;
+        const tw = psi * (1 - d3 * 0.5) * coord * calm;
         const ctw = Math.cos(tw);
         const stw = Math.sin(tw);
         // Onda suave e compartilhada (viaja do centro para fora): o corpo todo respira junto com a voz.
-        const rw = grow * (1 + coord * Math.sin(d3 * (2.5 + tone * 4) - tp * (1 + tone * 1.5)) * (0.004 + sm.vol * 0.022) * calm * (1 - form));
+        // Gravidade (graves): o núcleo se contrai e o corpo pesa de leve; a amplitude da voz abre as camadas de fora.
+        const heavy = sm.low * 0.03 * coord * clamp(1 - d3 * 1.2);
+        const rw = grow * (1 + coord * Math.sin(d3 * (2.5 + tone * 4) - tp * (1 + tone * 1.5)) * (0.004 + sm.vol * 0.022) * calm * (1 - form)) * (1 - heavy + env * 0.02 * d3 * coord * calm * (1 - form));
         const x = (ox2 * ctw - oy2 * stw) * R * rw;
-        const y = (ox2 * stw + oy2 * ctw) * R * rw;
+        // Entonação: tom sobe, o miolo sobe (mais que a borda); tom desce, afunda. Graves pesam para baixo.
+        // Boca: a região da mandíbula abre e fecha com o envelope da voz, como quem articula.
+        const jawW = clamp((hyi - 0.28) / 0.35) * clamp(1 - Math.abs(hxi) / 0.6);
+        const y =
+          (ox2 * stw + oy2 * ctw) * R * rw +
+          (-into * 0.35 * (1.1 - d3 * 0.7) + sm.low * 0.02 * (0.5 + 0.5 * oy2) + jawW * env * 0.07) * R * coord * calm * (1 - form);
         const z = oz2 * R * rw;
         const xr = x * cyw + z * syw;
         const zr = -x * syw + z * cyw;

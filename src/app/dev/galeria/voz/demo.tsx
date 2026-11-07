@@ -12,7 +12,8 @@ export function VozDemo({ modo, fase }: { modo: string; fase: Fase }) {
     if (modo === "forte") return { vol: 0.95, low: 0.9, mid: 0.9, high: 0.9 };
     const fala = Math.max(0, Math.sin(t * 1.3)) ** 0.5;
     const j = 0.35 + 0.35 * Math.abs(Math.sin(t * 9)) + 0.2 * Math.abs(Math.sin(t * 3.7));
-    return { vol: fala * j, low: fala * (0.4 + 0.5 * Math.abs(Math.sin(t * 5))), mid: fala * j, high: fala * 0.6 * Math.abs(Math.sin(t * 11)) };
+    const f0 = 120 + 70 * (0.5 + 0.5 * Math.sin(t * 2.3)) + 30 * Math.sin(t * 7); // entonação simulada: sobe e desce
+    return { f0, voiced: fala > 0.15 ? 1 : 0, vol: fala * j, low: fala * (0.4 + 0.5 * Math.abs(Math.sin(t * 5))), mid: fala * j, high: fala * 0.6 * Math.abs(Math.sin(t * 11)) };
   };
   return (
     <div className="mentor-painel is-escuro" style={{ position: "relative", width: 390, minHeight: 560, margin: "24px auto" }}>

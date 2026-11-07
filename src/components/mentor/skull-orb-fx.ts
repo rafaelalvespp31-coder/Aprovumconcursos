@@ -12,6 +12,9 @@ export type Bands = {
   /** Só a voz do Mentor e só o microfone do aluno (0 a 1), para a caveira distinguir falar de ouvir. */
   me?: number;
   mic?: number;
+  /** Tom da voz do Mentor em Hz e se há voz de fato (0 a 1); 0 quando é silêncio ou som sem tom. */
+  f0?: number;
+  voiced?: number;
 };
 export const SILENCE: Bands = { vol: 0, low: 0, mid: 0, high: 0 };
 

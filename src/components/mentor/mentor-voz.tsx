@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
 import { isFarewell } from "@/domain/mentor/voice";
+import { detectPitch } from "@/domain/mentor/pitch";
 import { VozView, type Fase } from "./voz-view";
 
 type Status = { available: boolean; reason?: "plano" | "indisponivel"; limit: number; left: number; unlimited?: boolean };
@@ -52,12 +53,15 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     active: boolean;
     aOut: AnalyserNode | null;
     aIn: AnalyserNode | null;
+    /** Janela maior só da voz do Mentor, para estimar o tom (f0). */
+    aF0: AnalyserNode | null;
+    f0buf: Float32Array<ArrayBuffer> | null;
     buf: Uint8Array<ArrayBuffer> | null;
     /** Fala do aluno neste turno e despedida detectada (encerra depois que o Mentor responder). */
     turn: string;
     bye: boolean;
     byeTimer: ReturnType<typeof setTimeout> | null;
-  }>({ session: null, ctx: null, stream: null, node: null, sources: new Set(), next: 0, startedAt: 0, leftAtStart: 0, said: [], replied: [], timer: null, active: false, aOut: null, aIn: null, buf: null, turn: "", bye: false, byeTimer: null });
+  }>({ session: null, ctx: null, stream: null, node: null, sources: new Set(), next: 0, startedAt: 0, leftAtStart: 0, said: [], replied: [], timer: null, active: false, aOut: null, aIn: null, aF0: null, f0buf: null, buf: null, turn: "", bye: false, byeTimer: null });
 
   /** Energia do áudio de verdade (voz do Mentor e microfone): volume e faixas grave, média e aguda. */
   const nivel = useCallback((): Bands => {
@@ -78,7 +82,17 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     const m = read(r.aIn, 0.55);
     // Porta de ruído: silêncio de verdade deixa o orbe em repouso.
     const gate = (v: number) => (v < 0.035 ? 0 : v);
-    return { vol: gate(Math.max(o.vol, m.vol)), low: gate(Math.max(o.low, m.low)), mid: gate(Math.max(o.mid, m.mid)), high: gate(Math.max(o.high, m.high)), me: gate(o.vol), mic: gate(m.vol) };
+    // Tom da voz do Mentor (f0) e se há voz de fato; a caveira usa para acompanhar a entonação.
+    let f0 = 0;
+    let voiced = 0;
+    if (r.aF0 && r.ctx && o.vol > 0.035) {
+      if (!r.f0buf || r.f0buf.length !== r.aF0.fftSize) r.f0buf = new Float32Array(r.aF0.fftSize);
+      r.aF0.getFloatTimeDomainData(r.f0buf);
+      const p = detectPitch(r.f0buf, r.ctx.sampleRate);
+      f0 = p.f0;
+      voiced = p.voiced;
+    }
+    return { f0, voiced, vol: gate(Math.max(o.vol, m.vol)), low: gate(Math.max(o.low, m.low)), mid: gate(Math.max(o.mid, m.mid)), high: gate(Math.max(o.high, m.high)), me: gate(o.vol), mic: gate(m.vol) };
   }, []);
 
   const carregar = useCallback(async () => {
@@ -130,7 +144,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     });
     r.sources.clear();
     void r.ctx?.close().catch(() => {});
-    r.session = r.ctx = r.stream = r.node = r.aOut = r.aIn = null;
+    r.session = r.ctx = r.stream = r.node = r.aOut = r.aIn = r.aF0 = null;
     setSpeaking(false);
     let restante = Math.max(0, r.leftAtStart - seconds);
     try {
@@ -168,6 +182,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.connect(r.aOut ?? ctx.destination);
+    if (r.aF0) src.connect(r.aF0);
     const at = Math.max(r.next, ctx.currentTime + 0.02);
     src.start(at);
     r.next = at + buf.duration;
@@ -260,6 +275,10 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       aIn.fftSize = 256;
       aIn.smoothingTimeConstant = 0.4;
       r.aIn = aIn;
+      const aF0 = ctx.createAnalyser();
+      aF0.fftSize = 2048; // ~42 ms a 48 kHz: cobre o tom mais grave da voz (cerca de 70 Hz)
+      aF0.smoothingTimeConstant = 0;
+      r.aF0 = aF0;
       await ctx.audioWorklet.addModule("/voz-worklet.js");
       const ai = new GoogleGenAI({ apiKey: s.token, httpOptions: { apiVersion: "v1alpha" } });
       const session = await ai.live.connect({
