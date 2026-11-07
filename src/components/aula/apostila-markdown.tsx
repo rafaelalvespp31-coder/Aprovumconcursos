@@ -1,4 +1,5 @@
 import ReactMarkdown from "react-markdown";
+import { limparMatematica } from "@/domain/lesson/math-text";
 import remarkGfm from "remark-gfm";
 import type { ElementContent } from "hast";
 import { isRevokedLegalLine } from "@/components/markdown";
@@ -45,7 +46,7 @@ export function ApostilaMarkdown({ children, legal = false }: { children: string
           ),
         }}
       >
-        {legal ? legalLines(children) : children}
+        {legal ? legalLines(children) : limparMatematica(children)}
       </ReactMarkdown>
     </div>
   );

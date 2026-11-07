@@ -1,4 +1,5 @@
 import ReactMarkdown from "react-markdown";
+import { limparMatematica } from "@/domain/lesson/math-text";
 import remarkGfm from "remark-gfm";
 import type { Element, ElementContent } from "hast";
 import { practiceToMarkdown } from "@/domain/content/practice";
@@ -82,7 +83,7 @@ export function Markdown({ children, legal = false }: { children: string; legal?
           ),
       }}
     >
-      {legal ? splitLegalLines(children) : practiceToMarkdown(children)}
+      {legal ? splitLegalLines(children) : limparMatematica(practiceToMarkdown(children))}
     </ReactMarkdown>
   );
 }
