@@ -63,6 +63,16 @@ interface NavItem {
   subtitle?: string;
   /** Rota sem item na barra lateral (ex.: Área do Aluno, do celular). */
   hidden?: boolean;
+  /** Selo ao lado do nome no menu (ex.: "Em breve"). */
+  badge?: string;
+}
+
+function NavBadge({ texto, on }: { texto: string; on: boolean }) {
+  return (
+    <span data-testid="nav-badge" className={`shrink-0 whitespace-nowrap rounded-full px-1.5 py-[2px] text-[8.5px] font-bold uppercase leading-none tracking-[0.04em] ${on ? "bg-white text-[#C8000A]" : "bg-[#E50914] text-white"}`}>
+      {texto}
+    </span>
+  );
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -78,7 +88,7 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
     { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "7", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
     { id: "concursos", href: `${base}/concursos`, label: "Concursos", icon: Landmark, num: "8", desc: "Editais e provas", title: "Concursos", subtitle: "Concursos cadastrados, vagas e datas de prova." },
     { id: "aprovum-ai", href: `${base}/aprovum-ai`, label: "APROVUM AI", icon: BrainCircuit, num: "", desc: "Edital em preparação", also: [`${base}/meu-concurso`], title: "APROVUM AI", subtitle: "Seu concurso. Sua preparação. Nossa inteligência." },
-    { id: "redacao", href: `${base}/redacao`, label: "Redação Elite", short: "Redação", icon: PenLine, num: "", desc: "Escreva e seja corrigido", title: "APROVUM REDAÇÃO ELITE", subtitle: "ESCREVA. CORRIJA. EVOLUA. CONQUISTE." },
+    { id: "redacao", href: `${base}/redacao`, label: "Redação Elite", short: "Redação", icon: PenLine, num: "", desc: "Escreva e seja corrigido", title: "APROVUM REDAÇÃO ELITE", subtitle: "ESCREVA. CORRIJA. EVOLUA. CONQUISTE.", badge: "Em breve" },
     { id: "depoimentos", href: `${base}/depoimentos`, label: "Depoimentos", icon: Video, num: "9", desc: "Histórias de aprovados", title: "Depoimentos", subtitle: "Quem chegou lá conta como foi a trajetória até a aprovação." },
     { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "0", desc: `Nível ${s.level}`, title: "Perfil" },
     { id: "plano", href: `${base}/plano`, label: "Meu Plano", icon: Crown, num: "", desc: "Escolha seu plano", title: "Meu Plano", subtitle: "Conquiste mais. Estude sem limites." },
@@ -359,8 +369,9 @@ export function PastelShell({
                         </span>
                         {!collapsed && (
                           <span className="mp-txt min-w-0 flex-1">
-                            <span className="flex items-center gap-2">
-                              <span className={`font-semibold tracking-tight ${on ? "text-white" : ""}`}>{s.label}</span>
+                            <span className="flex items-center gap-1.5">
+                              <span className={`whitespace-nowrap font-semibold tracking-tight ${on ? "text-white" : ""}`}>{s.label}</span>
+                              {s.badge && <NavBadge texto={s.badge} on={on} />}
                             </span>
                             <span className={`mt-0.5 block text-[11px] leading-none ${on ? "text-white/80" : "text-[#A3A3A3]"}`} data-testid={`nav-desc-${s.id}`}>{s.desc}</span>
                           </span>
@@ -710,7 +721,7 @@ function MobileMenu({ menuRef, items, summary, basePath }: { menuRef: React.RefO
                       <s.icon className="h-[18px] w-[18px]" aria-hidden />
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span className="block font-semibold">{s.label}</span>
+                      <span className="flex items-center gap-2 font-semibold">{s.label}{s.badge && <NavBadge texto={s.badge} on={on} />}</span>
                       <span className={`block text-[11.5px] ${on ? "text-white/80" : "text-[#9A9A9A]"}`}>{s.desc}</span>
                     </span>
                   </Link>
