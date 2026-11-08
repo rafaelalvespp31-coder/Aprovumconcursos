@@ -3883,3 +3883,13 @@ dialog[open][data-testid="feedback-aula"] { animation: fb-in-k 0.28s ease-out; }
 dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5); }
 .fb-star-on { animation: fb-pop-k 0.25s ease-out; }
 @media (prefers-reduced-motion: reduce) { dialog[open][data-testid="feedback-aula"], .fb-star-on { animation: none; } }
+
+/* Desktop: conteúdo das páginas em escala compacta (cards, botões, textos e espaçamentos juntos, sem mudar o layout).
+   Banners de largura total continuam preenchendo a largura, porque a escala não altera larguras em %.
+   Fica de fora: leitura de aula/trilha e o mapa do Novo Estudo (posicionam elementos pelo mouse). */
+@media (min-width: 1024px) {
+  main[data-compacto] { zoom: 0.86; }
+}
+@media (min-width: 1700px) {
+  main[data-compacto] { zoom: 0.9; }
+}

@@ -287,6 +287,7 @@ export function PastelShell({
   // Aula: no celular, cabeçalho com menu (árvore de aulas no menu); no desktop, árvore na barra lateral.
   const isAula = path.startsWith(`${basePath}/aula`);
   // Telas de estudo (aula e assunto): mostram o cronômetro de estudo do dia.
+  const isNovoEstudo = path.startsWith(`${basePath}/nova-trilha`);
   const isStudy = isAula || path.startsWith(`${basePath}/trilhas/`) || path === `${basePath}/trilha`;
   // Páginas internas com cabeçalho próprio (título e linha de apoio).
   const heading =
@@ -547,7 +548,10 @@ export function PastelShell({
             )}
             <MobileMenu menuRef={menuRef} items={items} summary={summary} basePath={basePath} />
             <ConnectivityBanner />
-            <main className={isPainel ? "pb-28 lg:px-10 lg:py-7 lg:pb-12" : "px-4 py-7 pb-28 sm:px-5 lg:px-10 lg:pb-12"}>
+            <main
+              className={isPainel ? "pb-28 lg:px-10 lg:py-7 lg:pb-12" : "px-4 py-7 pb-28 sm:px-5 lg:px-10 lg:pb-12"}
+              data-compacto={isStudy || isNovoEstudo ? undefined : ""}
+            >
               {isStudy && <div id="estudo-relogio-slot" className="mb-3 flex justify-center lg:hidden" />}
               <div key={active?.id ?? path} className="animate-[enter_0.5s_cubic-bezier(0.34,1.56,0.64,1)]">{children}</div>
             </main>

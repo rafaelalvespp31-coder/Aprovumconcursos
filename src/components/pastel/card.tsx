@@ -60,7 +60,9 @@ export function PastelCard({
     const r = ref.current?.getBoundingClientRect();
     if (r) {
       const id = Date.now() + Math.random();
-      setRipples((list) => [...list, { x: e.clientX - r.left, y: e.clientY - r.top, id }]);
+      // Converte do espaço da tela para o do elemento (o conteúdo pode estar em escala no desktop).
+      const k = ref.current && r.width ? ref.current.offsetWidth / r.width : 1;
+      setRipples((list) => [...list, { x: (e.clientX - r.left) * k, y: (e.clientY - r.top) * k, id }]);
       setTimeout(() => setRipples((list) => list.filter((p) => p.id !== id)), 800);
     }
     onActivate?.();

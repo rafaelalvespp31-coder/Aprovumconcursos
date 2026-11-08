@@ -71,4 +71,12 @@
 .vg-hex { position: absolute; right: calc(var(--u) * 20); top: calc(var(--u) * 50); width: calc(var(--u) * 78); height: auto; transition: transform .25s; }
 .vg-banner:hover .vg-hex { transform: translateX(calc(var(--u) * 5)) scale(1.05); }
 
+/* Colunas: no celular somem (display: contents); no desktop, herói + indicadores à esquerda e disciplinas + relatório à direita. */
+.vg-col { display: contents; }
+@container (min-width: 980px) {
+  .vg { --gc: 32px; --u: calc((100cqw - var(--gc)) / 2 / 836); grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--gc); align-items: start; }
+  .vg-col { display: grid; gap: calc(var(--u) * 22); min-width: 0; }
+  .vg-col-b { padding-top: calc(var(--u) * 24); }
+}
+
 @media (prefers-reduced-motion: reduce) { .vg *, .vg *::before { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }

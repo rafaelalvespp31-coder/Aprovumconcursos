@@ -31,6 +31,7 @@ export function VisaoGeral({ tree }: { tree: PreparationTree }) {
   return (
     <section className="vg-wrap" aria-label="Visão geral" data-testid="visao-geral">
       <div className="vg">
+        <div className="vg-col vg-col-a">
         <div className="vg-hero">
           {/* eslint-disable @next/next/no-img-element -- artes fixas da marca, recortadas da referência */}
           <img className="vg-riscos" src="/visao-geral/riscos.webp" alt="" aria-hidden width={76} height={142} />
@@ -50,7 +51,9 @@ export function VisaoGeral({ tree }: { tree: PreparationTree }) {
             </Link>
           ))}
         </nav>
+        </div>
 
+        <div className="vg-col vg-col-b">
         <div className="vg-sec">
           <div className="vg-barra" style={{ backgroundImage: "url(/visao-geral/barra.webp)" }}><h2>PROGRESSO POR DISCIPLINA</h2></div>
           <Link href={`${base}?aba=desempenho`} className="vg-detalhes" aria-label="Ver detalhes do desempenho">
@@ -88,6 +91,7 @@ export function VisaoGeral({ tree }: { tree: PreparationTree }) {
           <span className="vg-btxt"><em>VER RELATÓRIO</em><em>COMPLETO DO EDITAL</em></span>
           <img className="vg-hex" src="/visao-geral/hex.webp" alt="" aria-hidden width={78} height={72} decoding="async" />
         </Link>
+        </div>
         {/* eslint-enable @next/next/no-img-element */}
       </div>
     </section>

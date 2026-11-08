@@ -1,4 +1,4 @@
-import { MeuConcurso } from "@/components/aprovum-ai/meu-concurso";
+import { MeuConcurso, type PrepTab } from "@/components/aprovum-ai/meu-concurso";
 import type { PreparationTree } from "@/server/services/edital-view";
 
 /** Dados de EXEMPLO (só na galeria de desenvolvimento) para revisar a página Meu Concurso sem backend. */
@@ -12,7 +12,7 @@ const tree = {
 async function save() { "use server"; }
 async function start(): Promise<{ error?: string }> { "use server"; return {}; }
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ editar?: string }> }) {
-  const { editar } = await searchParams;
-  return <MeuConcurso tree={tree} save={save} start={start} tab="visao" editing={editar === "1"} />;
+export default async function Page({ searchParams }: { searchParams: Promise<{ editar?: string; aba?: string }> }) {
+  const { editar, aba } = await searchParams;
+  return <MeuConcurso tree={tree} save={save} start={start} tab={(["visao", "aulas", "raiox", "questoes", "desempenho"].includes(aba ?? "") ? aba : "visao") as PrepTab} editing={editar === "1"} />;
 }

@@ -213,8 +213,9 @@
 .ai-rx-src a { color: #9db4ff; text-decoration: underline; }
 .ai-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0; scrollbar-width: none; }
 .ai-tabs::-webkit-scrollbar { display: none; }
-.ai-tabs a { flex: none; min-height: 40px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 99px; border: 1px solid #343845; font: 600 12.5px/1 "Chakra Petch", sans-serif; letter-spacing: .06em; color: #c4c8cf; }
-.ai-tabs a[aria-current="page"] { border-color: var(--red2); background: rgba(225,29,38,.16); color: #fff; }
+.ai-tabs a { flex: none; min-height: 40px; display: inline-flex; align-items: center; padding: 0 14px; border-radius: 99px; border: 1px solid #d9dbe0; background: #fff; font: 600 12.5px/1 "Chakra Petch", sans-serif; letter-spacing: .06em; color: #3a3c42; transition: border-color .15s, color .15s; }
+.ai-tabs a:hover { border-color: var(--red); color: var(--red); }
+.ai-tabs a[aria-current="page"] { border-color: var(--red); background: var(--red); color: #fff; box-shadow: 0 6px 16px -8px rgba(225,29,38,.7); }
 
 /* Excluir preparação */
 .ai-del { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid #5a2327; color: #ffb4ae; font-size: 12.5px; font-weight: 600; background: transparent; transition: background .15s, border-color .15s; }
