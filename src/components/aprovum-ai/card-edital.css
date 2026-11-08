@@ -109,15 +109,15 @@
 /* Edição */
 .vc-edit { position: absolute; left: calc(var(--u) * 34); right: calc(var(--u) * 40); top: calc(var(--u) * 1050); z-index: 8; display: grid; gap: 10px; grid-template-columns: repeat(2, 1fr); padding: 14px; border: 1px solid rgba(229,9,32,.5); border-radius: 12px; background: #0b0c10; }
 .vc-edit label { display: grid; gap: 4px; font-size: 12px; color: #9a9ea8; }
-.vc-edit input { min-height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid #2a2c33; background: #14151a; color: #fff; font-size: 15px; }
+.vc-edit input { width: 100%; min-width: 0; min-height: 40px; padding: 0 10px; border-radius: 8px; border: 1px solid #2a2c33; background: #14151a; color: #fff; font-size: 15px; }
 .vc-salvar { grid-column: 1 / -1; min-height: 44px; border: 0; border-radius: 10px; background: var(--red); color: #fff; font: 800 15px "Chakra Petch", sans-serif; letter-spacing: .06em; cursor: pointer; }
 
 /* Entrada */
 .vc { animation: vc-in .5s ease-out both; }
 @keyframes vc-in { from { opacity: 0; transform: translateY(8px); } }
 
-/* Celular / estreito: empilhado, sem rolagem horizontal */
-@container (max-width: 699px) {
+/* Celular / tablet / estreito: empilhado, sem rolagem horizontal */
+@container (max-width: 899px) {
   .vc { --u: 1px; aspect-ratio: auto; display: grid; gap: 14px; padding: 22px 16px 16px; border: 1px solid rgba(229,9,32,.7); box-shadow: 0 0 22px rgba(229,9,32,.25), inset 0 0 30px rgba(229,9,32,.06); border-radius: 18px; overflow: hidden; }
   .vc { grid-template-columns: minmax(0, 1fr); }
   .vc > *, .vc-brasao, .vc-nome { position: static; }
@@ -162,5 +162,89 @@
   .vc-rapido small { font-size: 12px; }
   .vc-ask { position: static; width: auto; margin: 6px; }
   .vc-edit { position: static; grid-template-columns: 1fr; }
+  .vc-info > div:nth-child(3) { border-left: 0; padding-left: 0; }
+  .vc-sr { position: absolute; }
+}
+/* Tablet / desktop estreito: progresso e estudo inteligente lado a lado, botões numa linha */
+@container (min-width: 600px) and (max-width: 899px) {
+  .vc { grid-template-columns: repeat(2, minmax(0, 1fr)); padding: 24px 22px 20px; }
+  .vc > * { grid-column: 1 / -1; }
+  .vc-prog { grid-column: 1; }
+  .vc-inteligente { grid-column: 2; }
+  .vc-info { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vc-info > div:nth-child(3) { border-left: 1px solid rgba(255,255,255,.14); padding-left: 12px; }
+  .vc-info > div:nth-child(2) { padding-left: 12px; }
+  .vc-cta { height: 84px; }
+  .vc-btns { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .vc-edit { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (prefers-reduced-motion: reduce) { .vc, .vc-glow, .vc-a2, .vc-trilho i, .vc-cta::after { animation: none; transition: none; } }
+
+/* Desktop / largo: card horizontal (paisagem) que cabe na tela, em vez do quadrado gigante.
+   Coluna esquerda: identificação, dados e chamada principal. Coluna direita: progresso, estudo inteligente e ações.
+   Layout proporcional: 1 u = 1/1400 da largura. */
+@container (min-width: 900px) {
+  .vc { --u: calc(100cqw / 1400); aspect-ratio: 1400 / 620; border-radius: calc(var(--u) * 22); border: 1px solid rgba(229,9,32,.55); }
+  .vc-frame { background: none; border-radius: inherit;
+    background-image:
+      linear-gradient(var(--red), var(--red)), linear-gradient(var(--red), var(--red)),
+      linear-gradient(var(--red), var(--red)), linear-gradient(var(--red), var(--red)),
+      linear-gradient(var(--red), var(--red)), linear-gradient(var(--red), var(--red)),
+      linear-gradient(var(--red), var(--red)), linear-gradient(var(--red), var(--red));
+    background-repeat: no-repeat;
+    background-size: calc(var(--u) * 70) 3px, 3px calc(var(--u) * 70), calc(var(--u) * 70) 3px, 3px calc(var(--u) * 70), calc(var(--u) * 70) 3px, 3px calc(var(--u) * 70), calc(var(--u) * 70) 3px, 3px calc(var(--u) * 70);
+    background-position: left calc(var(--u) * 14) top calc(var(--u) * 14), left calc(var(--u) * 14) top calc(var(--u) * 14), right calc(var(--u) * 14) top calc(var(--u) * 14), right calc(var(--u) * 14) top calc(var(--u) * 14), left calc(var(--u) * 14) bottom calc(var(--u) * 14), left calc(var(--u) * 14) bottom calc(var(--u) * 14), right calc(var(--u) * 14) bottom calc(var(--u) * 14), right calc(var(--u) * 14) bottom calc(var(--u) * 14); }
+  .vc-glow { border-radius: calc(var(--u) * 22); }
+  .vc::before { content: ""; position: absolute; left: calc(var(--u) * 872); top: calc(var(--u) * 48); bottom: calc(var(--u) * 48); width: 1px; background: linear-gradient(180deg, transparent, rgba(229,9,32,.55), transparent); z-index: 2; }
+
+  /* Identificação */
+  .vc-brasao { left: calc(var(--u) * 46); top: calc(var(--u) * 48); width: calc(var(--u) * 150); height: calc(var(--u) * 152); }
+  .vc-brasao b { font-size: calc(var(--u) * min(48, 120 / var(--n))); }
+  .vc-nome { left: calc(var(--u) * 222); top: calc(var(--u) * 58); width: calc(var(--u) * 620); }
+  .vc-apoio { font-size: calc(var(--u) * 30); }
+  .vc-destaque { font-size: calc(var(--u) * max(42, min(86, 1050 / var(--b)))); }
+  .vc-tag { font-size: calc(var(--u) * 22); }
+
+  /* Informações */
+  .vc-info { left: calc(var(--u) * 52); top: calc(var(--u) * 236); width: calc(var(--u) * 790); grid-template-columns: 300fr 250fr 240fr; row-gap: calc(var(--u) * 18); }
+  .vc-info svg { width: calc(var(--u) * 30); height: calc(var(--u) * 30); }
+  .vc-info dt { font-size: calc(var(--u) * 16); }
+  .vc-info dd { font-size: calc(var(--u) * 24); }
+  .vc-criada dd { font-size: calc(var(--u) * 21); }
+  .vc-foco { display: none; }
+
+  /* CTA */
+  .vc-form { left: calc(var(--u) * 34); top: calc(var(--u) * 380); width: calc(var(--u) * 816); }
+  .vc-cta { height: calc(var(--u) * 152); border-radius: calc(var(--u) * 16); }
+  .vc-cta-txt { font-size: calc(var(--u) * 36); }
+  .vc-expl { left: calc(var(--u) * 12); top: calc(var(--u) * 166); width: calc(var(--u) * 790); font-size: calc(var(--u) * 19); }
+  .vc-erro { left: calc(var(--u) * 12); top: calc(var(--u) * 200); font-size: calc(var(--u) * 17); }
+
+  /* Coluna direita */
+  .vc-prog { left: calc(var(--u) * 898); top: calc(var(--u) * 48); width: calc(var(--u) * 456); height: calc(var(--u) * 126); }
+  .vc-anel { left: calc(var(--u) * 26); top: calc(var(--u) * 1); width: calc(var(--u) * 124); height: calc(var(--u) * 124); }
+  .vc-a1, .vc-a2 { stroke-width: 16; }
+  .vc-anel-txt b { font-size: calc(var(--u) * 34); }
+  .vc-anel-txt i { font-size: calc(var(--u) * 11); }
+  .vc-prog-txt { left: calc(var(--u) * 192); top: calc(var(--u) * 20); right: calc(var(--u) * 22); }
+  .vc-prog-txt h2 { font-size: calc(var(--u) * 18); }
+  .vc-prog-txt p { margin-top: calc(var(--u) * 6); font-size: calc(var(--u) * 16); }
+  .vc-trilho { margin-top: calc(var(--u) * 14); height: calc(var(--u) * 10); }
+
+  .vc-inteligente { left: calc(var(--u) * 898); top: calc(var(--u) * 194); width: calc(var(--u) * 456); height: calc(var(--u) * 124); padding: 0 calc(var(--u) * 26); gap: calc(var(--u) * 18); }
+  .vc-inteligente img { width: calc(var(--u) * 70); }
+  .vc-inteligente b { font-size: calc(var(--u) * 19); }
+  .vc-inteligente small { font-size: calc(var(--u) * 16); }
+
+  .vc-btn, .vc-del-box { height: calc(var(--u) * 80); font-size: calc(var(--u) * 19); padding-left: calc(var(--u) * 72); }
+  .vc-corrigir { left: calc(var(--u) * 898); top: calc(var(--u) * 340); width: calc(var(--u) * 222); }
+  .vc-del-box { left: calc(var(--u) * 1132); top: calc(var(--u) * 340); width: calc(var(--u) * 222); padding: 0; }
+  .vc-rapido { left: calc(var(--u) * 898); top: calc(var(--u) * 436); width: calc(var(--u) * 456); height: calc(var(--u) * 88); padding-left: calc(var(--u) * 80); }
+  .vc-btn svg, .vc-del-box .vc-btn svg { left: calc(var(--u) * 22); width: calc(var(--u) * 32); height: calc(var(--u) * 32); }
+  .vc-del-box .vc-btn { padding-left: calc(var(--u) * 72); }
+  .vc-rapido small { font-size: calc(var(--u) * 16); }
+
+  /* Edição: abre sobre a coluna direita, sem empurrar nem cortar o card */
+  .vc-edit { grid-template-columns: repeat(2, minmax(0, 1fr)); left: calc(var(--u) * 898); right: calc(var(--u) * 46); top: calc(var(--u) * 48); max-height: calc(var(--u) * 524); overflow-y: auto; box-shadow: 0 12px 32px rgba(0,0,0,.6); }
+  .vc-ask { width: min(360px, 40vw); }
+}

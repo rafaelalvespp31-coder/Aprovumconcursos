@@ -230,7 +230,7 @@
 .ai-item-row .ai-item { flex: 1; min-width: 0; }
 
 /* Nada pode estourar a largura da tela: o grid usa colunas encolhíveis e as abas rolam por dentro */
-.ai-root { min-width: 0; max-width: 100%; overflow-x: clip; }
+.ai-root { min-width: 0; max-width: min(100%, 1200px); margin-inline: auto; overflow-x: clip; }
 .ai-root.grid { grid-template-columns: minmax(0, 1fr); }
 .ai-root > *, .ai-root section, .ai-disc, .ai-disc > summary > div { min-width: 0; max-width: 100%; }
 .ai-disc h3, .ai-item b { overflow-wrap: anywhere; }

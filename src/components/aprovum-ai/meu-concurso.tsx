@@ -17,7 +17,7 @@ export function MeuConcurso({ tree, save, start, tab, editing = false, children 
   const [theme, setTheme] = useState<StartTheme | null>(null);
 
   return (
-    <div className="ai-root mx-auto grid w-full max-w-4xl gap-4" data-testid="meu-concurso">
+    <div className="ai-root mx-auto grid w-full gap-4" data-testid="meu-concurso">
       <CardEdital tree={tree} save={save} start={start} editing={editing} />
 
       <nav className="ai-tabs" aria-label="Seções da preparação">
