@@ -15,6 +15,8 @@ const ITENS = [
 
 export function RedacaoNav() {
   const path = usePathname();
+  // A página inicial da Redação Elite tem o próprio painel de atalhos.
+  if (path === "/redacao") return null;
   return (
     <nav aria-label="Redação Elite" className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" data-testid="redacao-nav">
       {ITENS.map((i) => {
