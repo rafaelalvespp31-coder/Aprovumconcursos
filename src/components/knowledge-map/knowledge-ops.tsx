@@ -809,9 +809,6 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
                         <span className={"km-plateBar"}>
                           <i style={{ width: `${t.progress ?? 0}%` }} />
                         </span>
-                        <span className={"km-plateMeta"}>
-                          <BookOpen aria-hidden /> {t.topics.length} assunto{t.topics.length === 1 ? "" : "s"}
-                        </span>
                       </>
                     )}
                   </span>

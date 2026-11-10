@@ -366,54 +366,104 @@ export function Embers({ quality, reduced }: { quality: Quality; reduced: boolea
   );
 }
 
-/** Helicópteros ao longe (silhuetas com luz piscando, só decoração). */
+/**
+ * Helicópteros patrulhando: cruzam o cenário de ponta a ponta, somem, e voltam em loop.
+ * Rotor principal e de cauda giram, luz de posição pisca e um holofote varre o terreno.
+ * Só transform/opacity por frame (sem alocação); parado com "reduzir movimento".
+ */
 export function Helicopters({ reduced }: { reduced: boolean }) {
   const glow = useMemo(() => glowTexture(), []);
-  const refs = useRef<THREE.Group[]>([]);
-  const rotors = useRef<THREE.Mesh[]>([]);
+  const groups = useRef<THREE.Group[]>([]);
+  const mains = useRef<THREE.Group[]>([]);
+  const tails = useRef<THREE.Mesh[]>([]);
   const lamps = useRef<THREE.Sprite[]>([]);
+  const beams = useRef<THREE.Mesh[]>([]);
+  const CYCLE = 28; // segundos entre o início de duas passagens
+  const PASS = 0.62; // fração do ciclo em que está cruzando
   const paths = useMemo(
     () => [
-      { r: 70, y: 34, speed: 0.05, phase: 0.6, cz: -60 },
-      { r: 95, y: 42, speed: -0.035, phase: 2.4, cz: -40 },
+      { dir: 1, y: 30, z: -55, offset: 0, span: 150 },
+      { dir: -1, y: 40, z: -85, offset: 14, span: 170 },
     ],
     [],
   );
   useFrame((s) => {
     const t = s.clock.elapsedTime;
     paths.forEach((p, i) => {
-      const g = refs.current[i];
+      const g = groups.current[i];
       if (!g) return;
-      const a = p.phase + (reduced ? 0 : t * p.speed);
-      g.position.set(Math.cos(a) * p.r, p.y + Math.sin(t * 0.7 + i) * 0.6, p.cz + Math.sin(a) * p.r * 0.45);
-      g.rotation.y = -a + (p.speed > 0 ? Math.PI : 0);
-      if (rotors.current[i]) rotors.current[i]!.rotation.y = t * 30;
-      if (lamps.current[i]) (lamps.current[i]!.material as THREE.SpriteMaterial).opacity = Math.sin(t * 5 + i) > 0.6 ? 1 : 0.1;
+      const u = reduced ? 0.3 : ((t + p.offset) % CYCLE) / CYCLE;
+      const on = reduced ? true : u < PASS;
+      g.visible = on;
+      if (!on) return;
+      const k = u / PASS;
+      g.position.set((k - 0.5) * 2 * p.span * p.dir, p.y + Math.sin(t * 0.9 + i) * 0.5, p.z + Math.sin(k * Math.PI) * 14);
+      g.rotation.y = p.dir > 0 ? 0 : Math.PI;
+      g.rotation.z = -0.07 + Math.sin(t * 0.8 + i) * 0.02; // leve inclinação para a frente
+      if (!reduced) {
+        if (mains.current[i]) mains.current[i]!.rotation.y = t * 38;
+        if (tails.current[i]) tails.current[i]!.rotation.z = t * 42;
+      }
+      if (lamps.current[i]) (lamps.current[i]!.material as THREE.SpriteMaterial).opacity = Math.sin(t * 5 + i) > 0.55 ? 1 : 0.12;
+      if (beams.current[i]) beams.current[i]!.rotation.x = Math.sin(t * 0.6 + i * 2) * 0.12;
     });
   });
   return (
     <>
       {paths.map((_, i) => (
-        <group key={i} ref={(el) => void (el && (refs.current[i] = el))} scale={1.4}>
-          <mesh>
-            <capsuleGeometry args={[0.9, 2.6, 4, 8]} />
-            <meshStandardMaterial color="#0b0c0f" roughness={0.6} metalness={0.4} />
+        <group key={i} ref={(el) => void (el && (groups.current[i] = el))} scale={1.5} visible={false}>
+          {/* cabine (nariz em +x) */}
+          <mesh rotation-z={Math.PI / 2}>
+            <capsuleGeometry args={[0.8, 2.2, 4, 10]} />
+            <meshStandardMaterial color="#0b0c0f" roughness={0.55} metalness={0.45} />
           </mesh>
-          <mesh rotation-z={Math.PI / 2} position={[0, 0.3, 0]}>
-            <boxGeometry args={[0.2, 5.5, 0.3]} />
+          {/* cauda */}
+          <mesh position={[-3.3, 0.25, 0]} rotation-z={Math.PI / 2}>
+            <cylinderGeometry args={[0.16, 0.34, 3.8, 6]} />
+            <meshStandardMaterial color="#0b0c0f" roughness={0.6} />
+          </mesh>
+          {/* deriva vertical + rotor de cauda */}
+          <mesh position={[-5.1, 0.75, 0]}>
+            <boxGeometry args={[0.7, 1.2, 0.08]} />
             <meshStandardMaterial color="#0b0c0f" />
           </mesh>
-          <mesh position={[3.6, 0.5, 0]}>
-            <boxGeometry args={[0.3, 1.4, 0.15]} />
+          <mesh ref={(el) => void (el && (tails.current[i] = el))} position={[-5.1, 0.85, 0.12]}>
+            <boxGeometry args={[0.1, 1.7, 0.04]} />
+            <meshBasicMaterial color="#000000" transparent opacity={0.6} />
+          </mesh>
+          {/* patins */}
+          <mesh position={[0.1, -1, 0.55]}>
+            <boxGeometry args={[3.2, 0.08, 0.08]} />
             <meshStandardMaterial color="#0b0c0f" />
           </mesh>
-          <mesh ref={(el) => void (el && (rotors.current[i] = el))} position={[0, 1.25, 0]}>
-            <boxGeometry args={[9, 0.06, 0.35]} />
-            <meshBasicMaterial color="#000000" transparent opacity={0.55} />
+          <mesh position={[0.1, -1, -0.55]}>
+            <boxGeometry args={[3.2, 0.08, 0.08]} />
+            <meshStandardMaterial color="#0b0c0f" />
           </mesh>
-          <sprite ref={(el) => void (el && (lamps.current[i] = el))} position={[0, -0.9, 0]} scale={[2.4, 2.4, 1]}>
+          {/* mastro + rotor principal */}
+          <mesh position={[0, 1.0, 0]}>
+            <cylinderGeometry args={[0.08, 0.08, 0.5, 6]} />
+            <meshStandardMaterial color="#0b0c0f" />
+          </mesh>
+          <group ref={(el) => void (el && (mains.current[i] = el))} position={[0, 1.3, 0]}>
+            <mesh>
+              <boxGeometry args={[9.5, 0.05, 0.3]} />
+              <meshBasicMaterial color="#000000" transparent opacity={0.6} />
+            </mesh>
+            <mesh rotation-y={Math.PI / 2}>
+              <boxGeometry args={[9.5, 0.05, 0.3]} />
+              <meshBasicMaterial color="#000000" transparent opacity={0.6} />
+            </mesh>
+          </group>
+          {/* luz de posição piscando */}
+          <sprite ref={(el) => void (el && (lamps.current[i] = el))} position={[-0.2, -0.95, 0]} scale={[2.6, 2.6, 1]}>
             <spriteMaterial map={glow} color="#ff2a2a" transparent blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
           </sprite>
+          {/* holofote varrendo o terreno */}
+          <mesh ref={(el) => void (el && (beams.current[i] = el))} position={[1.2, -12, 0]}>
+            <coneGeometry args={[4.2, 22, 18, 1, true]} />
+            <meshBasicMaterial color="#ffe9c4" transparent opacity={0.07} side={THREE.DoubleSide} blending={THREE.AdditiveBlending} depthWrite={false} toneMapped={false} />
+          </mesh>
         </group>
       ))}
     </>
