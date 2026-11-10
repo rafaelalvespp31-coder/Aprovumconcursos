@@ -407,6 +407,8 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
   const holder = useRef<HTMLDivElement>(null);
   const embers = useRef<HTMLCanvasElement>(null);
   const flash = useRef<HTMLDivElement>(null);
+  const sol = useRef<HTMLSpanElement>(null);
+  const reflexos = useRef<HTMLSpanElement>(null);
 
   // Laço de animação: câmera, placas, brasas e relâmpagos. Pausa sozinho com a aba oculta (rAF).
   useEffect(() => {
@@ -565,40 +567,9 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         return c;
       }),
     );
-    // Sol: brilho, rastro horizontal, véu e reflexos de lente (fantasmas) que seguem a direção do olhar.
-    const sunGlow = mk(128, [
-      [0, "rgba(255,238,196,0.6)"],
-      [0.16, "rgba(255,196,118,0.36)"],
-      [0.45, "rgba(255,126,52,0.13)"],
-      [0.8, "rgba(255,90,40,0.04)"],
-      [1, "rgba(255,60,20,0)"],
-    ]);
-    const ghostRing = (() => {
-      const c = document.createElement("canvas");
-      c.width = c.height = 96;
-      const g2 = c.getContext("2d");
-      if (g2) {
-        const g = g2.createRadialGradient(48, 48, 0, 48, 48, 48);
-        g.addColorStop(0, "rgba(255,170,90,0)");
-        g.addColorStop(0.72, "rgba(255,170,90,0.05)");
-        g.addColorStop(0.86, "rgba(255,200,140,0.55)");
-        g.addColorStop(1, "rgba(255,170,90,0)");
-        g2.fillStyle = g;
-        g2.fillRect(0, 0, 96, 96);
-      }
-      return c;
-    })();
-    const ghostCool = mk(48, [
-      [0, "rgba(140,200,255,0.5)"],
-      [0.6, "rgba(120,160,255,0.2)"],
-      [1, "rgba(100,120,255,0)"],
-    ]);
-    const ghostWarm = mk(48, [
-      [0, "rgba(255,190,110,0.55)"],
-      [0.6, "rgba(255,120,60,0.2)"],
-      [1, "rgba(255,80,30,0)"],
-    ]);
     let sunK = 0;
+    let sunQ = -1;
+    let sunOn = false;
     let frame = 0;
     let fxDt = 0;
     // Tamanho das placas sem forçar layout: o observador avisa quando muda.
@@ -664,6 +635,40 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       cam.shakeX = still * shake * Math.sin(now * 0.13 + 1) * 0.008 * cam.view.w;
       const t = cam.step(dt);
       ly.style.transform = `translate3d(${t.tx.toFixed(2)}px, ${t.ty.toFixed(2)}px, 0) scale(${t.s.toFixed(5)})`;
+      // Sol: halo em CSS dentro da camada da arte (acompanha a câmera a 60 fps, sem desenhar em canvas).
+      // Quanto mais a visão aponta para ele, mais brilha; ao desviar o olhar a luz some devagar.
+      const solEl = sol.current;
+      if (solEl) {
+        const sxp = SUN[0] * t.s + t.tx;
+        const syp = SUN[1] * t.s + t.ty;
+        const want = Math.max(0, 1 - Math.hypot((sxp - cam.view.w / 2) / (cam.view.w * 0.5), ((syp - cam.view.h / 2) / (cam.view.h * 0.5)) * 0.8) / 1.6);
+        const tk = want * want * (3 - 2 * want);
+        sunK += (tk - sunK) * (1 - Math.exp(-Math.min(dt, 0.1) * 2.5));
+        const q = Math.round(sunK * 40) / 40;
+        if (q !== sunQ) {
+          sunQ = q;
+          solEl.style.setProperty("--k", String(q));
+        }
+        // Reflexos de lente: sobre a linha do sol ao centro da tela (só em tela grande).
+        const rf2 = reflexos.current;
+        if (rf2 && !light) {
+          const on = q > 0.12;
+          if (on) {
+            const kids = rf2.children;
+            const F = [0.7, 1.15, 1.7];
+            for (let n = 0; n < kids.length; n++) {
+              const gx = sxp + (cam.view.w / 2 - sxp) * F[n]!;
+              const gy = syp + (cam.view.h / 2 - syp) * F[n]!;
+              (kids[n] as HTMLElement).style.transform = `translate3d(${gx.toFixed(1)}px, ${gy.toFixed(1)}px, 0)`;
+            }
+            rf2.style.setProperty("--k", String(q * q));
+          }
+          if (on !== sunOn) {
+            sunOn = on;
+            rf2.style.visibility = on ? "visible" : "hidden";
+          }
+        }
+      }
       const map = labels.current;
       // Meia largura/altura das placas: medidas pelo ResizeObserver (nunca lidas no laço).
       if (map && frame % 60 === 0)
@@ -765,43 +770,6 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
           const r = fr * t.s * 2 * fl;
           ctx.globalAlpha = Math.min(1, fl);
           ctx.drawImage(fireSpr, x - r, y - r, r * 2, r * 2);
-        }
-        // Sol do horizonte: o disco da arte continua visível; um halo suave o acompanha e cresce quando a
-        // visão aponta para ele (some devagar ao desviar o olhar), com reflexos de lente discretos.
-        {
-          const sxp = SUN[0] * t.s + t.tx;
-          const syp = SUN[1] * t.s + t.ty;
-          const dx = (sxp - w / 2) / (w * 0.5);
-          const dy = (syp - h / 2) / (h * 0.5);
-          const want = Math.max(0, 1 - Math.hypot(dx, dy * 0.8) / 1.6);
-          const tk = want * want * (3 - 2 * want);
-          sunK += (tk - sunK) * (1 - Math.exp(-Math.min(fdt, 0.1) * 2.5));
-          const R = Math.min(t.s * 150 * (1 + 0.8 * sunK), Math.max(w, h) * 0.4) * (1 + Math.sin(now / 1700) * 0.02);
-          if (sxp > -R * 2.5 && sxp < w + R * 2.5 && syp > -R * 2.5 && syp < h + R * 2.5) {
-            ctx.globalAlpha = 0.3 + 0.55 * sunK;
-            ctx.drawImage(sunGlow, sxp - R, syp - R, R * 2, R * 2);
-            if (sunK > 0.04) {
-              ctx.globalAlpha = 0.5 * sunK;
-              ctx.drawImage(sunGlow, sxp - R * 2.4, syp - R * 2.4, R * 4.8, R * 4.8);
-            }
-          }
-          if (!light && sunK > 0.12) {
-            const m = Math.min(w, h);
-            const gk = sunK * sunK;
-            const G: Array<[number, number, 0 | 1 | 2, number]> = [
-              [0.7, 0.06, 1, 0.35],
-              [1.1, 0.12, 0, 0.35],
-              [1.6, 0.05, 2, 0.4],
-            ];
-            for (const [f, sz, kind, ga] of G) {
-              const gx = sxp + (w / 2 - sxp) * f;
-              const gy = syp + (h / 2 - syp) * f;
-              const gs = m * sz;
-              ctx.globalAlpha = Math.min(1, gk * ga);
-              ctx.drawImage(kind === 0 ? ghostRing : kind === 1 ? ghostCool : ghostWarm, gx - gs, gy - gs, gs * 2, gs * 2);
-            }
-          }
-          ctx.globalAlpha = 1;
         }
         for (const p of parts) {
           p.y -= p.v * fdt;
@@ -1175,6 +1143,11 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
             </i>
           </span>
         </span>
+        {/* Sol do horizonte: halos redondos em CSS (intensidade pela direção do olhar, via --k). */}
+        <span ref={sol} className="km-sol" style={{ left: SUN[0] - 800, top: SUN[1] - 800 }} aria-hidden>
+          <i className="km-sol-a" />
+          <i className="km-sol-b" />
+        </span>
         {/* Feixe e pulsos do núcleo (clicável). */}
         <button type="button" tabIndex={-1} className="km-art-core" data-pick="" style={{ left: CORE[0], top: CORE[1] }} onClick={onSelectCore} aria-hidden>
           <i />
@@ -1213,6 +1186,11 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         <div ref={flash} className="km-art-flash" />
       </div>
       <canvas ref={embers} className="km-art-embers" />
+      <span ref={reflexos} className="km-reflexos" aria-hidden>
+        <i />
+        <i />
+        <i />
+      </span>
       <canvas ref={laser} className="km-laser" />
       <div ref={scope} className="km-scope">
         <i />
