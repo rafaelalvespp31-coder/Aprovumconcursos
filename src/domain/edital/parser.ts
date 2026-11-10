@@ -35,6 +35,13 @@ interface Line {
 }
 
 const START_RE = /(conte[úu]dos? program[áa]ticos?|programas? (das|de) (provas?|mat[ée]rias|conte[úu]dos?)|conhecimentos? (b[áa]sicos|gerais|espec[íi]ficos|profissionais)|anexo\s+[ivxl\d]+.{0,60}(conte[úu]do|programa|mat[ée]rias))/i;
+/** Título explícito da seção: vence qualquer menção solta a "conhecimentos específicos" no corpo (tabela de provas). */
+const TITLE_RE = /(conte[úu]dos? program[áa]ticos?|programas? (das|de) (provas?|mat[ée]rias|conte[úu]dos?)|anexo\s+[ivxl\d]+.{0,60}(conte[úu]do|programa|mat[ée]rias))/i;
+/** Matéria numerada no anexo: "1. LÍNGUA PORTUGUESA", "2 DIREITO PENAL" (sem texto depois). */
+const NUMBERED_DISC_RE = /^\d{1,2}[.)]?\s+([A-ZÀ-ÝÇ][A-ZÀ-ÝÇ0-9 ,/\-–()ºª]{3,70})$/;
+/** Linhas de regra do edital: nunca são matéria nem assunto de estudo. */
+const BAD_DISC_NAME = /\b(total|cargos?|candidatos?|informacao|pontos?|quadro|tabela|valor|nota|inscricao|inscricoes|vagas?|remuneracao|requisitos|etapa|fase|eliminatorio|classificatorio|ausente|aptidao fisica|exames? (medicos?|biomedicos?|biofisicos?|psicologicos?|toxicologicos?)|avaliacao (psicologica|medica|fisica)|heteroidentificacao)\b/;
+const PROSE_RE = /\b(sera|serao|devera|deverao|podera|poderao|tera|terao|ficara|ficarao|este edital|presente edital|banca examinadora|comissao|fiscais? de sala|no ato da|deverao comparecer)\b/;
 const END_RE = /^(cronograma|das? inscri[çc][õo]es|das? atribui[çc][õo]es|da remunera[çc][ãa]o|dos? requisitos|das etapas|da prova (objetiva|discursiva|pr[aá]tica|de t[íi]tulos)|dos recursos|das disposi[çc][õo]es (finais|gerais)|disposi[çc][õo]es (finais|gerais)|quadro de vagas|modelo de|formul[áa]rio|anexo\s+[ivxl\d]+\s*[-–—:.]?\s*(?!.*(conte[úu]do|programa|mat[ée]rias))\S|da (convoca[çc][ãa]o|nomea[çc][ãa]o|posse)|dos? (resultados?|crit[ée]rios de desempate))/i;
 const GROUP_RE = /^(conhecimentos? (b[áa]sicos|gerais|espec[íi]ficos|profissionais)|bloco\s+[ivx\d]+|parte\s+[ivx\d]+|etapa\s+[ivx\d]+|prova\s+(objetiva|discursiva|escrita)|(para|cargo)\b.*|nível\s+\w+)\s*[:.]?$/i;
 const KNOW_GROUP = /^conhecimentos? (b[áa]sicos|gerais|espec[íi]ficos|especiais|profissionais|especializados)\s*[:.]?$/i;
@@ -236,52 +243,95 @@ function disciplinesOfGroup(name: string, body: Line[]): ParsedDiscipline[] {
   return topics.length ? [{ name: name.replace(/[:.]+$/, "").trim(), mode: modeOfDiscipline(name), page: body[0]?.page ?? 1, topics }] : [];
 }
 
-export function parseEdital(pages: readonly string[]): ParsedEdital {
-  const lines = toLines(pages);
-  const warnings: string[] = [];
-  const fail = (w: string): ParsedEdital => ({ found: false, confidence: 0, sectionPages: null, disciplines: [], warnings: [...warnings, w] });
-  if (!lines.length) return fail("O PDF não tem texto selecionável.");
+/** Capítulo numerado do corpo ("11. DOS RECURSOS"): fecha a seção programática. */
+function isNumberedChapter(text: string): boolean {
+  const m = text.match(ITEM_START);
+  if (!m || upperRatio(text) < 0.85) return false;
+  return CHAPTER_RE.test(fold(text.slice(m[0].length)));
+}
 
-  // Candidatos ao início da seção; vence o que tem mais disciplinas logo em seguida.
+/** Matéria numerada em caixa-alta e reconhecível ("1. LÍNGUA PORTUGUESA"). */
+function numberedDiscipline(text: string): string | null {
+  const m = text.match(NUMBERED_DISC_RE);
+  if (!m) return null;
+  const name = m[1]!.trim();
+  return modeOfDiscipline(name) || DISCIPLINE_HINT.test(fold(name)) ? name : null;
+}
+
+/** Disciplina plausível: nome de matéria (não regra/tabela) e assuntos que não são texto corrido de regras. */
+function plausibleDisciplines(list: ParsedDiscipline[]): ParsedDiscipline[] {
+  const out: ParsedDiscipline[] = [];
+  for (const d of list) {
+    const f = fold(d.name);
+    if (BAD_DISC_NAME.test(f) && !modeOfDiscipline(d.name)) continue;
+    // "V – AUSENTE", "1.520 …": itens de tabela/regra, não matéria.
+    if (/^[ivx]+\s*[-–—]/i.test(d.name) || /\d/.test(d.name.replace(/[ºª]/g, "")) && !modeOfDiscipline(d.name)) continue;
+    const topics = d.topics.filter((t) => !PROSE_RE.test(fold(t.title)));
+    if (!topics.length || topics.length < d.topics.length * 0.6) continue;
+    // Nome de matéria curto, sem número e sem cara de regra ("CONTROLE E GESTÃO PÚBLICA") também vale, numerado ou não.
+    const known = !!d.mode || DISCIPLINE_HINT.test(f);
+    const numbered = topics.filter((t) => t.code).length >= Math.min(3, topics.length);
+    const titleLike = f.split(" ").length <= 9 && upperRatio(d.name) >= 0.6;
+    if (!known && !numbered && !titleLike) continue;
+    out.push({ ...d, topics });
+  }
+  return out;
+}
+
+/** Linha que pode ser o título da seção (e não uma menção no meio de um item, lista de anexos ou frase). */
+function isSectionTitle(text: string): boolean {
+  if (text.length > 160 || LETTER_START.test(text) || /[;,]$/.test(text)) return false;
+  // "8.90. O conteúdo programático do Curso…" é frase; "10. DO CONTEÚDO PROGRAMÁTICO" é título numerado.
+  if (ITEM_START.test(text) && !(text.length <= 90 && upperRatio(text) >= 0.6)) return false;
+  if (text.length > 90 && upperRatio(text) < 0.6) return false;
+  return true;
+}
+
+/** Procura a seção a partir dos candidatos que casam `startRe`; vence o candidato com mais matérias logo em seguida. */
+function parseSection(lines: Line[], startRe: RegExp, warnings: string[]): ParsedEdital | { fail: string } {
   let best: { idx: number; score: number } | null = null;
   lines.forEach((l, idx) => {
-    if (!START_RE.test(l.text) || l.text.length > 160) return;
-    // Menção no meio de um item ("8.90. O conteúdo programático do Curso…") não é o título da seção.
-    if (ITEM_START.test(l.text) || (l.text.length > 90 && upperRatio(l.text) < 0.6)) return;
+    if (!startRe.test(l.text) || !isSectionTitle(l.text)) return;
     let score = 0;
     for (let j = idx + 1; j < Math.min(lines.length, idx + 500); j++) {
-      if (END_RE.test(lines[j]!.text) && score > 0) break;
-      const h = headingOf(lines[j]!.text, lines[j + 1]?.text);
+      const t = lines[j]!.text;
+      if ((END_RE.test(t) || isNumberedChapter(t)) && score > 0) break;
+      const h = headingOf(t, lines[j + 1]?.text);
+      const nd = h ? null : numberedDiscipline(t);
       if (h) score += modeOfDiscipline(h.name) ? 3 : 1;
+      else if (nd) score += 3;
+      else if (KNOW_GROUP.test(t)) score += 1;
     }
     if (!best || score > best.score) best = { idx, score };
   });
   const b = best as { idx: number; score: number } | null;
-  if (!b || b.score < 1) return fail("Não localizei a seção de conteúdo programático.");
+  if (!b || b.score < 1) return { fail: "Não localizei a seção de conteúdo programático." };
 
   let end = lines.length;
   let seen = 0;
   for (let j = b.idx + 1; j < lines.length; j++) {
-    if (seen > 0 && END_RE.test(lines[j]!.text)) {
+    const t = lines[j]!.text;
+    if (seen > 0 && (END_RE.test(t) || isNumberedChapter(t))) {
       end = j;
       break;
     }
-    if (headingOf(lines[j]!.text, lines[j + 1]?.text) || KNOW_GROUP.test(lines[j]!.text)) seen++;
+    if (headingOf(t, lines[j + 1]?.text) || KNOW_GROUP.test(t) || numberedDiscipline(t)) seen++;
   }
 
-  const disciplines: ParsedDiscipline[] = [];
+  const found: ParsedDiscipline[] = [];
   let cur: { name: string; page: number; body: Line[] } | null = null;
   const flush = () => {
     if (!cur) return;
     const topics = itemsOf(cur.body);
-    if (topics.length) disciplines.push({ name: cur.name.replace(/\s+/g, " "), mode: modeOfDiscipline(cur.name), page: cur.page, topics });
+    if (topics.length) found.push({ name: cur.name.replace(/\s+/g, " "), mode: modeOfDiscipline(cur.name), page: cur.page, topics });
     cur = null;
   };
   let group: { name: string; body: Line[] } | null = null;
   const flushGroup = () => {
-    if (group) disciplines.push(...disciplinesOfGroup(group.name, group.body));
+    if (group) found.push(...disciplinesOfGroup(group.name, group.body));
     group = null;
   };
+  // Dentro de um bloco "CONHECIMENTOS …", as matérias numeradas ("1. LÍNGUA PORTUGUESA") são tratadas por disciplinesOfGroup.
   for (let j = b.idx + 1; j < end; j++) {
     const l = lines[j]!;
     const h = headingOf(l.text, lines[j + 1]?.text);
@@ -293,14 +343,22 @@ export function parseEdital(pages: readonly string[]): ParsedEdital {
       flush();
       flushGroup();
       group = { name: l.text, body: [] };
+    } else if (!group && !cur && numberedDiscipline(l.text)) {
+      // Anexo sem bloco "CONHECIMENTOS …": a matéria numerada abre a disciplina.
+      cur = { name: numberedDiscipline(l.text)!, page: l.page, body: [] };
     } else if (group) (group as { body: Line[] }).body.push(l);
     else if (cur) cur.body.push(l);
   }
   flush();
   flushGroup();
 
-  if (disciplines.length && !disciplines.some((d) => d.mode || DISCIPLINE_HINT.test(fold(d.name)))) return fail("As seções encontradas não parecem matérias de estudo.");
-  if (!disciplines.length) return fail("Encontrei o título do conteúdo programático, mas não consegui separar as disciplinas.");
+  const disciplines = plausibleDisciplines(found);
+  const dropped = found.length - disciplines.length;
+  if (!disciplines.length) {
+    return { fail: found.length ? "As seções encontradas não parecem matérias de estudo (parecem regras do edital)." : "Encontrei o título do conteúdo programático, mas não consegui separar as disciplinas." };
+  }
+  if (!disciplines.some((d) => d.mode || DISCIPLINE_HINT.test(fold(d.name)))) return { fail: "As seções encontradas não parecem matérias de estudo." };
+  if (dropped > 0) warnings.push(`${dropped} bloco(s) com cara de regra do edital foram ignorados.`);
   const total = disciplines.reduce((n, d) => n + d.topics.length, 0);
   const numbered = disciplines.reduce((n, d) => n + d.topics.filter((t) => t.code).length, 0);
   const known = disciplines.filter((d) => d.mode).length;
@@ -310,6 +368,19 @@ export function parseEdital(pages: readonly string[]): ParsedEdital {
   if (disciplines.length < 2) warnings.push("Só uma disciplina foi identificada; confira se o edital tem outras.");
   if (total < 5) warnings.push("Poucos assuntos foram extraídos; confira o conteúdo.");
   return { found: true, confidence, sectionPages: [Math.min(...pagesUsed), Math.max(...pagesUsed)], disciplines, warnings };
+}
+
+export function parseEdital(pages: readonly string[]): ParsedEdital {
+  const lines = toLines(pages);
+  const warnings: string[] = [];
+  const fail = (w: string): ParsedEdital => ({ found: false, confidence: 0, sectionPages: null, disciplines: [], warnings: [...warnings, w] });
+  if (!lines.length) return fail("O PDF não tem texto selecionável.");
+  // 1º: título explícito ("Conteúdo programático", "Anexo II – Conteúdo…"). 2º (só se falhar): blocos "Conhecimentos …".
+  const first = parseSection(lines, TITLE_RE, warnings);
+  if ("found" in first) return first;
+  const second = parseSection(lines, START_RE, warnings);
+  if ("found" in second) return second;
+  return fail("fail" in first && first.fail.startsWith("As seções") ? first.fail : second.fail);
 }
 
 /** Conferência manual: o aluno cola/edita o conteúdo programático e o mesmo leitor monta a estrutura. */

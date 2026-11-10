@@ -206,3 +206,123 @@ describe("edital de Guarda Municipal: bloco compacto seguido de anexos", () => {
     expect(esp.topics[1]!.title).toMatch(/^Código Penal \(Decreto-Lei nº 2\.848\/1940/);
   });
 });
+
+describe("edital FGV: tabela de provas no corpo e matérias numeradas no anexo", () => {
+  const pages = [
+    `EDITAL Nº 01/2026 — POLÍCIA CIVIL
+3. DAS PROVAS
+3.1 A prova objetiva terá 100 questões.
+Módulo II – Conhecimentos Específicos (40 questões)
+3.2 Os candidatos serão identificados pelos fiscais de sala antes do início.
+3.3 A ocorrência será registrada e enviada à comissão.
+5. DOS PROGRAMAS
+5.1. O conteúdo programático para a Prova Objetiva está indicado no Anexo I.
+6. EXAME DE VERIFICAÇÃO DA DEFICIÊNCIA
+6.1 O candidato com deficiência deverá comparecer ao exame.`,
+    `16.14 Integram o presente Edital os seguintes Anexos:
+a) Anexo I - Conteúdo Programático;
+b) Anexo II - Exames Biomédicos;
+c) Anexo III - Exames Biofísicos;`,
+    `ANEXO I
+CONTEÚDO PROGRAMÁTICO
+INVESTIGADOR DE POLÍCIA I
+CONHECIMENTOS BÁSICOS
+1. LÍNGUA PORTUGUESA
+1.1 Interpretação e compreensão de textos: 1.1.1 Tipos textuais; 1.1.2 Coerência e coesão.
+1.2 Conhecimentos linguísticos: 1.2.1 Sintaxe; 1.2.2 Pontuação.
+2. RACIOCÍNIO LÓGICO-MATEMÁTICO
+2.1. Lógica: proposições, conectivos. 2.2. Conjuntos e suas operações. 2.3. Porcentagem e juros.
+CONHECIMENTOS ESPECÍFICOS
+3. DIREITO PENAL
+3.1 Princípios do direito penal. 3.2 Aplicação da lei penal. 3.3 Crimes contra a pessoa.
+4. DIREITO PROCESSUAL PENAL
+4.1 Inquérito policial. 4.2 Ação penal. 4.3 Prisões.`,
+    `ANEXO II — EXAMES BIOMÉDICOS
+O candidato deverá apresentar hemograma completo e raio-X.`,
+  ];
+  const r = parseEdital(pages);
+  it("usa o Anexo de conteúdo programático, não a tabela de provas do corpo", () => {
+    expect(r.found).toBe(true);
+    expect(r.sectionPages?.[0]).toBeGreaterThanOrEqual(3);
+    expect(r.disciplines.map((d) => d.name)).toEqual(["LÍNGUA PORTUGUESA", "RACIOCÍNIO LÓGICO-MATEMÁTICO", "DIREITO PENAL", "DIREITO PROCESSUAL PENAL"]);
+  });
+  it("nenhuma regra do edital vira assunto", () => {
+    const all = r.disciplines.flatMap((d) => d.topics.map((t) => t.title)).join(" | ");
+    expect(all).not.toMatch(/fiscais|candidato|hemograma|comiss/i);
+    expect(r.disciplines[2]!.topics.length).toBeGreaterThanOrEqual(3);
+  });
+});
+
+describe("edital sem anexos (só o corpo)", () => {
+  const pages = [
+    `Edital de Abertura nº 002/2022 — SEAD
+1.7 Os conteúdos programáticos da Prova Objetiva encontram-se no Anexo II deste Edital.
+INFORMAÇÃO DO CANDIDATO
+1. A Prova Objetiva e a Redação terão a duração de 05 (cinco) horas.
+2. O candidato deverá comparecer com antecedência.
+3. Os candidatos serão identificados pelos fiscais de sala.
+4. A ocorrência será enviada à comissão.`,
+    `CARGOS
+09 Músico – Percussão 421 09 - 09
+09 Músico – Flauta 422 03 - 03
+TOTAL 54 06 60
+A APTIDÃO na Avaliação Psicológica é requisito indispensável para matrícula.
+Conhecimentos Específicos
+1. O candidato será convocado por edital.
+2. Os candidatos deverão comparecer ao local de prova.`,
+  ];
+  it("não inventa matérias a partir de regras: pede conferência", () => {
+    const r = parseEdital(pages);
+    expect(r.found).toBe(false);
+    expect(r.disciplines).toEqual([]);
+  });
+});
+
+describe("seção com título numerado e capítulo seguinte", () => {
+  const pages = [
+    `EDITAL Nº 5/2026
+9. DAS INSCRIÇÕES
+9.1 As inscrições ocorrerão pela internet.
+10. DO CONTEÚDO PROGRAMÁTICO
+LÍNGUA PORTUGUESA
+1 Interpretação de textos. 2 Ortografia. 3 Pontuação.
+DIREITO CONSTITUCIONAL
+1 Princípios fundamentais. 2 Direitos e garantias fundamentais.
+11. DOS RECURSOS
+11.1 O candidato poderá recorrer em até dois dias.
+11.2 Os recursos serão julgados pela banca examinadora.`,
+  ];
+  const r = parseEdital(pages);
+  it("lê só até o próximo capítulo do edital", () => {
+    expect(r.found).toBe(true);
+    expect(r.disciplines.map((d) => d.name)).toEqual(["LÍNGUA PORTUGUESA", "DIREITO CONSTITUCIONAL"]);
+    expect(r.disciplines.flatMap((d) => d.topics.map((t) => t.title)).join("|")).not.toMatch(/recorrer|banca/i);
+  });
+});
+
+describe("matérias do anexo x itens de tabela", () => {
+  const pages = [
+    `ANEXO III — CONTEÚDOS PROGRAMÁTICOS
+CONTROLE E GESTÃO PÚBLICA
+• Princípios da gestão pública
+• Controle interno e externo
+• Accountability e transparência
+V – AUSENTE
+1 Candidato que não comparecer.
+2 Candidato eliminado.
+3 Prova prática não realizada.
+EXAMES DE APTIDÃO FÍSICA
+1 Flexão de braço.
+2 Corrida de 12 minutos.
+3 Abdominal.
+DIREITO ADMINISTRATIVO
+1 Poderes da administração. 2 Atos administrativos. 3 Licitações e contratos.`,
+  ];
+  const r = parseEdital(pages);
+  it("mantém a matéria sem numeração e descarta tabela e exames", () => {
+    const names = r.disciplines.map((d) => d.name);
+    expect(names).toContain("CONTROLE E GESTÃO PÚBLICA");
+    expect(names).toContain("DIREITO ADMINISTRATIVO");
+    expect(names.join("|")).not.toMatch(/AUSENTE|APTIDÃO/);
+  });
+});
