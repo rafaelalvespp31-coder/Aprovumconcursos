@@ -30,3 +30,23 @@ export function lockScroll(): () => void {
 export function releaseStaleScrollLock() {
   if (locks === 0) apply(false);
 }
+
+/**
+ * Vigia: se a página ficou presa por algum motivo imprevisto (sem nenhuma trava ativa), a primeira tentativa
+ * de rolar (roda do mouse, toque ou teclado) já devolve a rolagem, sem precisar do F5. Devolve a função de remoção.
+ */
+export function watchStuckScroll(): () => void {
+  if (typeof window === "undefined") return () => {};
+  const on = () => releaseStaleScrollLock();
+  const opts = { passive: true, capture: true } as const;
+  window.addEventListener("wheel", on, opts);
+  window.addEventListener("touchstart", on, opts);
+  window.addEventListener("keydown", on, true);
+  window.addEventListener("pageshow", on);
+  return () => {
+    window.removeEventListener("wheel", on, opts);
+    window.removeEventListener("touchstart", on, opts);
+    window.removeEventListener("keydown", on, true);
+    window.removeEventListener("pageshow", on);
+  };
+}
