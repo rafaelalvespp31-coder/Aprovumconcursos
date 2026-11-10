@@ -62,8 +62,15 @@ async function usedToday(userId: string): Promise<number> {
   return (data?.used_seconds as number | undefined) ?? 0;
 }
 
+/** Admin pela tabela de papéis (o RPC da sessão podia falhar e tratar o admin como aluno de 3 min). */
+async function isAdminUser(userId: string): Promise<boolean> {
+  const r = await createAdminClient().from("admin_roles").select("user_id").eq("user_id", userId).eq("role", "admin").maybeSingle();
+  if (r.data) return true;
+  return isAdmin().catch(() => false);
+}
+
 export async function getVoiceStatus(userId: string): Promise<VoiceStatus> {
-  if (await isAdmin()) {
+  if (await isAdminUser(userId)) {
     if (!hasKey()) return { available: false, reason: "indisponivel", limit: VOICE_DAILY_SECONDS, left: 0 };
     return { available: true, limit: ADMIN_VOICE_SECONDS, left: ADMIN_VOICE_SECONDS, unlimited: true };
   }
@@ -118,7 +125,7 @@ export interface VoiceSession {
 
 /** Libera uma conversa: confere plano e saldo do dia, reserva o tempo e cria o token efêmero. */
 export async function startVoice(userId: string): Promise<VoiceSession> {
-  const admin = await isAdmin();
+  const admin = await isAdminUser(userId);
   const plan = await getMyPlan(userId);
   if (!admin && !plan.unlimited) throw new UserFacingError("O Mentor por voz é exclusivo dos planos pagos.", "plan_limit");
   const apiKey = process.env.GEMINI_API_KEY;
@@ -148,7 +155,7 @@ export async function startVoice(userId: string): Promise<VoiceSession> {
         uses: 1,
         expireTime: new Date(now.getTime() + (left + VOICE_TOKEN_GRACE_SECONDS) * 1000).toISOString(),
         newSessionExpireTime: new Date(now.getTime() + 60_000).toISOString(),
-        liveConnectConstraints: { model, config: { responseModalities: [Modality.AUDIO], inputAudioTranscription: {}, outputAudioTranscription: {}, systemInstruction: instruction, tools: voiceTools(), speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } },
+        liveConnectConstraints: { model, config: { responseModalities: [Modality.AUDIO], inputAudioTranscription: {}, outputAudioTranscription: {}, contextWindowCompression: { slidingWindow: {} }, systemInstruction: instruction, tools: voiceTools(), speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } },
         httpOptions: { apiVersion: "v1alpha" },
       },
     });
@@ -163,7 +170,7 @@ export async function startVoice(userId: string): Promise<VoiceSession> {
 
 /** Fim da conversa: cobra o tempo falado (limitado ao relógio do servidor) e devolve o saldo. */
 export async function endVoice(userId: string, reportedSeconds: unknown, transcript?: { student?: unknown; mentor?: unknown }): Promise<{ left: number; unlimited?: boolean }> {
-  const admin = await isAdmin();
+  const admin = await isAdminUser(userId);
   const reported = typeof reportedSeconds === "number" && Number.isFinite(reportedSeconds) ? reportedSeconds : null;
   if (!admin) await settle(userId, reported);
   // Memória do Mentor: guarda o que foi dito (texto), limpo e limitado, para a próxima conversa.

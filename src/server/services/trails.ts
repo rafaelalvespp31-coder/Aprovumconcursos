@@ -57,6 +57,9 @@ async function planLimits(userId: string): Promise<{ id: string; max_active_trai
   // Estudos ativos sem limite nos planos pagos e na degustação premium; só o plano gratuito tem teto.
   const UNLIMITED = 1_000_000;
   const paid = base.id !== "free";
+  // Admin nunca tem teto.
+  const adm = await db.from("admin_roles").select("user_id").eq("user_id", userId).eq("role", "admin").maybeSingle();
+  if (adm.data) return { ...base, max_active_trails: UNLIMITED, max_content_chars: Math.max(base.max_content_chars, 10_000_000) };
   // Degustação promocional válida: vale o maior limite entre o plano do aluno e o da campanha.
   const promo = await getActivePromo(userId);
   if (promo && promo.planId !== base.id) {
