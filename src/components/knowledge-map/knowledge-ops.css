@@ -1144,6 +1144,61 @@
     will-change: auto;
   }
 }
+/* Helicóptero patrulhando o céu: atravessa a arte, some e volta (loop). Só transform/opacity.
+   Sem animação (reduzir movimento), ele fica parado onde estava na arte original. */
+.km-heli {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  transform-origin: 50% 50%;
+}
+.km-heli img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  user-select: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .km-heli {
+    animation: km-heli-voo 36s linear infinite;
+    animation-delay: -13s; /* começa perto de onde ele estava na arte */
+    will-change: transform, opacity;
+  }
+  .km-heli img {
+    animation: km-heli-balanco 3.4s ease-in-out infinite;
+  }
+}
+@media (pointer: coarse) {
+  .km-heli {
+    will-change: auto;
+  }
+}
+@keyframes km-heli-voo {
+  0% {
+    transform: translate3d(-1750px, 70px, 0) scale(0.62);
+    opacity: 0;
+  }
+  6% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  86%,
+  100% {
+    transform: translate3d(2350px, -15px, 0) scale(1.12);
+    opacity: 0;
+  }
+}
+@keyframes km-heli-balanco {
+  0%,
+  100% {
+    transform: translateY(-4px) rotate(-0.8deg);
+  }
+  50% {
+    transform: translateY(5px) rotate(0.9deg);
+  }
+}
 .km-art-img {
   display: block;
   width: 100%;

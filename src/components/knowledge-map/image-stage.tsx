@@ -24,6 +24,8 @@ export const ART = {
   srcTall: "/images/knowledge-ops/territorio-alto.webp",
   tall: { x: 102, y: -1969, w: 3153, h: 5649 },
 };
+/** Helicóptero recortado da arte (posição original dele no céu, em px da arte). */
+const HELI = { src: "/images/knowledge-ops/helicoptero.webp", x: 1339, y: 187, w: 255, h: 116 };
 /** Braços e fuzil recortados da arte (camada própria, em primeira pessoa). */
 // O recorte continua (escurecendo) para baixo e para a direita da tela: ao girar ou subir a arma,
 // o braço nunca mostra a borda do recorte. "vh" é a altura da parte visível original.
@@ -926,6 +928,11 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
           <source media="(max-width: 700px)" srcSet={ART.srcSm} />
           <img src={ART.src} alt="" width={ART.w} height={ART.h} loading="lazy" decoding="async" draggable={false} className="km-art-img" />
         </picture>
+        {/* Helicóptero recortado da arte: cruza o céu em loop (a arte base já foi limpa onde ele estava). */}
+        <span className="km-heli" style={{ left: HELI.x, top: HELI.y, width: HELI.w, height: HELI.h }}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={HELI.src} alt="" width={HELI.w} height={HELI.h} loading="lazy" decoding="async" draggable={false} />
+        </span>
         {/* Feixe e pulsos do núcleo (clicável). */}
         <button type="button" tabIndex={-1} className="km-art-core" data-pick="" style={{ left: CORE[0], top: CORE[1] }} onClick={onSelectCore} aria-hidden>
           <i />
