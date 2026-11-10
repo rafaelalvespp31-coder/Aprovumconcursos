@@ -188,6 +188,28 @@ export async function examRequestInfo(examId: string): Promise<ExamRequestInfo |
 }
 
 /**
+ * Reaproveitamento da análise estratégica: se outro aluno já enviou exatamente o mesmo edital (mesmo hash do PDF)
+ * e ele já está ligado a um concurso do catálogo, liga este também. Se a análise já foi publicada, o aluno a recebe
+ * na hora, sem o admin fazer nada.
+ */
+export async function linkByFileHash(prepId: string): Promise<string | null> {
+  if (!UUID.test(prepId)) return null;
+  const db = createAdminClient();
+  const me = await db.from("edital_preparations").select("id, file_hash, strategic_exam_id").eq("id", prepId).maybeSingle();
+  if (!me.data?.file_hash) return null;
+  if (me.data.strategic_exam_id) return me.data.strategic_exam_id as string;
+  const same = await db.from("edital_preparations").select("strategic_exam_id").eq("file_hash", me.data.file_hash as string).neq("id", prepId).not("strategic_exam_id", "is", null).limit(50);
+  const ids = [...new Set(((same.data ?? []) as Row[]).map((r) => r.strategic_exam_id as string))];
+  if (!ids.length) return null;
+  const ex = await db.from("strategic_exams").select("id, status").in("id", ids).neq("status", "arquivado");
+  const rows = (ex.data ?? []) as Row[];
+  const pick = rows.find((r) => r.status === "publicado") ?? rows[0];
+  if (!pick) return null;
+  await db.from("edital_preparations").update({ strategic_exam_id: pick.id as string }).eq("id", prepId);
+  return pick.id as string;
+}
+
+/**
  * Liga o edital extraído do aluno ao concurso do catálogo estratégico — automático, sem o aluno escolher.
  * Procura um concurso já cadastrado com o mesmo nome (ou cujos termos aparecem todos no edital);
  * se não houver, cria um "aguardando análise" para o admin catalogar o Raio-X dele.
@@ -198,6 +220,11 @@ export async function linkPreparationToExam(prepId: string, opts: { force?: bool
   if (!prep.data) return null;
   const cur = (prep.data.strategic_exam_id as string | null) ?? null;
   if (cur && !opts.force) return cur;
+  // Mesmo PDF já enviado por outro aluno: reaproveita a análise dele, sem depender do nome informado.
+  if (!opts.force) {
+    const byHash = await linkByFileHash(prepId);
+    if (byHash) return byHash;
+  }
   const contest = ((prep.data.contest_name as string | null) ?? "").replace(/\s+/g, " ").trim();
   if (!contest) return null;
   const year = (prep.data.contest_year as number | null) ?? null;

@@ -153,6 +153,8 @@ export async function createPreparation(userId: string, raw: unknown): Promise<{
     throw new UserFacingError("Não foi possível preparar o envio agora. Tente novamente.", "storage");
   }
   await auditLog(db, { actorId: userId, userId, action: "edital.criado", entity: "edital_preparations", entityId: id }).catch(() => {});
+  // Edital igual ao de outro aluno: já nasce ligado à análise estratégica dele (publicada = entregue na hora).
+  await import("./strategic").then((m) => m.linkByFileHash(id)).catch(() => null);
   return { id, existing: false, upload: { path, token: signed.data.token } };
 }
 
