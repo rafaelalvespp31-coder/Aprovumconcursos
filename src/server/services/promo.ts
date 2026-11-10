@@ -19,6 +19,8 @@ export const getActivePromo = cache(async function getActivePromo(userId: string
     .order("expires_at", { ascending: false })
     .limit(1)
     .maybeSingle();
+  // Migração da campanha ainda não aplicada (tabela inexistente): sem degustação, nunca derruba o app.
+  if (error && (error.code === "42P01" || error.code === "PGRST205")) return null;
   if (error) throw new Error(error.message);
   if (!data) return null;
   const c = data.promo_campaigns as unknown as { name: string; plan_id: string } | null;
@@ -41,6 +43,7 @@ export const getActivePromo = cache(async function getActivePromo(userId: string
  */
 export const ensurePromo = cache(async function ensurePromo(userId: string): Promise<PromoGrant | null> {
   const { data, error } = await createAdminClient().rpc("promo_ensure", { p_user: userId });
+  if (error && (error.code === "42883" || error.code === "PGRST202")) return null; // migração pendente
   if (error) throw new Error(error.message);
   const row = ((data ?? []) as GrantRow[])[0];
   const g = row ? toPromoGrant(row) : null;
