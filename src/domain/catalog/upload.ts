@@ -382,6 +382,7 @@ export function parseLessonUpload(raw: string): ParsedLesson {
   let qStart = 0;
   let lastMetaKey: string | null = null;
   let implicit = false;
+  const looseLines: string[] = [];
 
   const flushSection = () => {
     if (!section) return;
@@ -430,8 +431,7 @@ export function parseLessonUpload(raw: string): ParsedLesson {
         level = /^facil/.test(lv) ? "facil" : /^medio/.test(lv) ? "medio" : /^dificil/.test(lv) ? "dificil" : null;
         if (!level) level = "medio";
       } else {
-        warnings.push(`Linha ${n}: bloco “${b[1]}” não reconhecido; o conteúdo dele foi ignorado.`);
-        mode = "none";
+        mode = "none"; // bloco desconhecido: o conteúdo dele não entra, sem aviso
       }
       return;
     }
@@ -449,6 +449,12 @@ export function parseLessonUpload(raw: string): ParsedLesson {
         if (!title) title = kind ? (kindRaw ?? "").trim() || SECTION_LABELS[kind] || "Seção" : (kindRaw ?? "").trim() || "Seção";
         section = { kind: kind ?? "explicacao", title: title.replace(/\s*-{2,}\s*$/, "").trim() || "Seção", module: currentModule ?? "Aula", bodyMarkdown: "", items: [], line: n };
         return;
+      }
+      if (mode !== "questoes" && /^quest[ãa]o\b/i.test(head)) {
+        // "--- QUESTÃO ---" fora de um bloco de nível: abre o bloco de questões (nível médio).
+        flushSection();
+        mode = "questoes";
+        level ??= "medio";
       }
       if (mode === "questoes" && /^quest[ãa]o\b/i.test(head)) {
         flushQuestion();
@@ -499,9 +505,14 @@ export function parseLessonUpload(raw: string): ParsedLesson {
       }
       case "questoes":
         if (qLines) qLines.push({ text: line, n });
-        else if (line.trim()) warnings.push(`Linha ${n}: texto fora de uma questão foi ignorado (comece com --- QUESTÃO ---).`);
+        else if (line.trim()) {
+          // Texto solto entre questões: vira o começo de uma nova questão (nada se perde nem trava).
+          qLines = [{ text: line, n }];
+          qStart = n;
+        }
         break;
       default:
+        if (line.trim()) looseLines.push(line);
         break;
     }
   });
@@ -559,7 +570,11 @@ export function parseLessonUpload(raw: string): ParsedLesson {
     meta.articles = [];
   }
   const sourceText = sourceLines.join("\n").trim();
-  if (!sections.length) errors.push("Não encontrei nenhuma seção. Cada seção começa com --- SEÇÃO: tipo | Título ---.");
+  if (!sections.length) {
+    // Sem nenhuma seção marcada: usa o que houver (texto solto, texto-base, resumo, objetivo) em vez de dar erro.
+    const body = [looseLines.join("\n").trim(), meta.summary ?? "", sourceText, meta.objective].find((t) => t && t.trim().length >= 5) ?? meta.title;
+    sections.push({ kind: "explicacao", title: (meta.title || "Visão geral").slice(0, TITLE_MAX), module: "Aula", bodyMarkdown: body.trim() || "Conteúdo a complementar.", items: [], line: 1 });
+  }
   // Seção grande demais é dividida em partes (sem aviso); módulo que cresce demais é desdobrado em mais módulos.
   for (let i = 0; i < sections.length; i++) {
     const s = sections[i]!;
@@ -642,14 +657,26 @@ function parseQuestion(lines: Array<{ text: string; n: number }>, level: UploadL
   };
   // Corrige o que dá para corrigir; a questão só é descartada (com aviso) quando não há como aproveitá-la.
   const where = `Questão da linha ${start}`;
-  const skip = (m: string) => {
-    warnings.push(`${where}: ${m} Questão ignorada.`);
+  void where;
+  void warnings;
+  const skip = (motivo: string) => (void motivo, null); // questão sem como aproveitar é descartada sem barulho
+  if (q.statement.length < 10) return skip("enunciado vazio ou curto demais.");
+  if (q.justification.length < 10) q.justification = "Veja o gabarito e releia o assunto da aula para conferir o raciocínio.";
+  // Gabarito "Certo/Errado" numa questão sem alternativas é uma questão de Certo ou Errado (mesmo sem "Tipo:").
+  const ceWord = (v: string | null) => {
+    const a = fold(v ?? "").replace(/[.!)\s]+$/g, "");
+    if (/^(c|certo|correto|verdadeiro|v)$/.test(a)) return "certo";
+    if (/^(e|errado|incorreto|falso|f)$/.test(a)) return "errado";
     return null;
   };
-  if (q.statement.length < 10) return skip("enunciado vazio ou curto demais.");
-  if (q.justification.length < 10) return skip("falta a “Justificativa:”.");
+  if (type === "multipla_escolha" && q.options.length < 2 && ceWord(answer)) {
+    type = "certo_errado";
+    q.type = "certo_errado";
+    q.options = [];
+  }
   if (type === "multipla_escolha") {
-    const ans = (answer ?? "").toUpperCase().match(/^[A-E]/)?.[0] ?? null;
+    const ans = (answer ?? "").toUpperCase().replace(/^\s*(LETRA|ALTERNATIVA|OP[ÇC][ÃA]O|RESPOSTA)\s*[:\-]?\s*/, "").match(/^\(?([A-E])\b/)?.[1] ?? null;
+    if (ans) q.answer = ans;
     // Letras repetidas ou fora de ordem: renumera A, B, C… e acompanha o gabarito.
     const labels = q.options.map((o) => o.label);
     if (new Set(labels).size !== labels.length) {
@@ -672,9 +699,9 @@ function parseQuestion(lines: Array<{ text: string; n: number }>, level: UploadL
     if (!final || !q.options.some((o) => o.label === final)) return skip("o “Gabarito:” não é a letra de uma das alternativas.");
     q.answer = final;
   } else {
-    const a = fold(answer ?? "");
-    if (!/^(c|certo|e|errado)$/.test(a)) return skip("o “Gabarito:” deve ser Certo ou Errado.");
-    q.answer = a.startsWith("c") ? "certo" : "errado";
+    const ce = ceWord(answer);
+    if (!ce) return skip("o “Gabarito:” deve ser Certo ou Errado.");
+    q.answer = ce;
   }
   return q;
 }

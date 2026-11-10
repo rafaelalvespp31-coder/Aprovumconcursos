@@ -114,7 +114,7 @@ describe("modelo de aula (upload)", () => {
     expect(p.errors).toEqual([]);
     expect(w).toMatch(/matéria “Astronomia”/);
     expect(w).not.toMatch(/Objetivo|TEXTO-BASE|tipo de seção/);
-    expect(w).toMatch(/Questão da linha 8: .*Gabarito.*Questão ignorada/);
+    expect(w).not.toMatch(/Questão da linha/); // questão sem gabarito válido é descartada sem aviso
     expect(p.meta.objective.length).toBeGreaterThan(5);
     expect(p.sections[0]).toMatchObject({ kind: "explicacao", title: "Seção" });
     expect(p.questions).toHaveLength(0);
@@ -360,5 +360,27 @@ describe("exemplos visuais e flashcards no texto colado", () => {
     expect(cases[0]!.scheme).toBeTruthy();
     const flash = p.sections.find((s) => s.kind === "flashcards")!;
     expect(parseFlashcards(flash.bodyMarkdown)).toHaveLength(2);
+  });
+});
+
+describe("catalogação sem erro (tolerante)", () => {
+  it("texto só com questões, sem nenhuma seção, não dá erro: vira uma seção", () => {
+    const t = ["=== QUESTÕES: FÁCIL ===", "--- QUESTÃO ---", "Enunciado: A legítima defesa exclui a ilicitude do fato.", "Gabarito: Certo", "Justificativa: Está no art. 23 do Código Penal."].join("\n");
+    const p = parseLessonUpload(t);
+    expect(p.errors).toEqual([]);
+    expect(p.sections.length).toBeGreaterThanOrEqual(1);
+    expect(p.questions).toHaveLength(1);
+  });
+  it("texto solto no bloco de questões vira questão e questão sem justificativa é aproveitada", () => {
+    const t = ["=== AULA ===", "Título: T", "=== MÓDULO: M ===", "--- SEÇÃO: explicação | S ---", "texto", "=== QUESTÕES: MÉDIO ===", "O estado de necessidade exige perigo atual?", "Tipo: certo ou errado", "Gabarito: Correto"].join("\n");
+    const p = parseLessonUpload(t);
+    expect(p.warnings.join("\n")).not.toMatch(/fora de uma questão/);
+    expect(p.questions).toHaveLength(1);
+    expect(p.questions[0]).toMatchObject({ type: "certo_errado", answer: "certo" });
+  });
+  it("gabarito 'Letra B' e 'Certo' sem Tipo funcionam", () => {
+    const t = ["=== QUESTÕES: DIFÍCIL ===", "--- QUESTÃO ---", "Enunciado: Qual é a alternativa correta sobre o tema?", "A) um", "B) dois", "Gabarito: Letra B", "Justificativa: A segunda está certa, conforme a lei.", "--- QUESTÃO ---", "Enunciado: Todo crime exige conduta humana para existir.", "Gabarito: Certo", "Justificativa: Sem conduta não há fato típico."].join("\n");
+    const p = parseLessonUpload(t);
+    expect(p.questions.map((q) => q.answer)).toEqual(["B", "certo"]);
   });
 });

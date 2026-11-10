@@ -300,7 +300,6 @@ export function describeIssues(raw: string, errors: readonly string[], warnings:
     return { start: a, deleteCount: 0, insert: [`--- SEÇÃO: explicação | ${t} ---`] };
   };
   const secGroups = groups(loose.secao);
-  const qGroups = groups(loose.questao);
 
   for (const e of errors) {
     if (/^A aula precisa de pelo menos 2 seções/.test(e)) {
@@ -320,18 +319,6 @@ export function describeIssues(raw: string, errors: readonly string[], warnings:
       continue;
     }
     handle(e, "erro");
-  }
-  for (const [a, b] of secGroups) {
-    add("aviso", `${a === b ? `Linha ${a}` : `Linhas ${a}–${b}`}: texto fora de uma seção (vai ser ignorado). Cada seção começa com "--- SEÇÃO: tipo | Título ---".`, a, b + 1, [
-      { label: "Transformar em seção", edit: toSection([a, b]) },
-      { label: a === b ? "Remover a linha" : `Remover as ${b - a + 1} linhas`, edit: { start: a, deleteCount: b - a + 1, insert: [] } },
-    ]);
-  }
-  for (const [a, b] of qGroups) {
-    add("aviso", `${a === b ? `Linha ${a}` : `Linhas ${a}–${b}`}: texto fora de uma questão (vai ser ignorado). Cada questão começa com "--- QUESTÃO ---".`, a, b + 1, [
-      { label: "Transformar em questão", edit: { start: a, deleteCount: 0, insert: ["--- QUESTÃO ---"] } },
-      { label: a === b ? "Remover a linha" : `Remover as ${b - a + 1} linhas`, edit: { start: a, deleteCount: b - a + 1, insert: [] } },
-    ]);
   }
   for (const w of rest) handle(w, "aviso");
   return out;

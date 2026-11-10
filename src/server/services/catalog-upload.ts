@@ -50,10 +50,6 @@ export async function previewLessonUpload(text: string): Promise<LessonUploadPre
     const { data: same } = await db.from("catalog_topics").select("title").eq("status", "publicado").eq("discipline_mode", m.disciplineMode).ilike("title", m.title.replace(/[%_\\]/g, ""));
     for (const t of same ?? []) warnings.push(`Atenção: já existe a aula publicada “${t.title}” na mesma matéria.`);
   }
-  const vis = enrichStatus(p.built.lesson as unknown as EnrichLesson);
-  if (vis.teaching && vis.withExample === 0) warnings.push(`A aula veio sem nenhum exemplo visual (bloco :::exemplo com tirinha, carimbo e esquema). Use o comando atual do painel ou, depois de catalogar, “Exemplos visuais e flashcards” na página da aula.`);
-  else if (vis.withExample < vis.teaching) warnings.push(`${vis.teaching - vis.withExample} de ${vis.teaching} seções vieram sem exemplo visual; dá para completar depois em “Exemplos visuais e flashcards”, na página da aula.`);
-  if (vis.flashcards < 4) warnings.push("A aula veio sem a seção de flashcards; dá para completar depois em “Exemplos visuais e flashcards”, na página da aula.");
   const summary = summarizeLessonUpload(p, { errors, warnings, existing: existing ? { id: existing.id as string, status: existing.status as string, title: existing.title as string } : null });
   return { ...summary, banner: await bannerUrlFor(m.disciplineMode) };
 }

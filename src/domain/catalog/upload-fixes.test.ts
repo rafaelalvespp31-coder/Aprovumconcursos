@@ -48,8 +48,7 @@ describe("conferência ao vivo: o painel corrige sozinho, sem erro", () => {
     expect(w).not.toMatch(/matéria/);
     expect(p.parsed.meta.disciplineMode).toBe("lingua_portuguesa");
     expect(w).not.toMatch(/veio vazia/);
-    expect(w).toMatch(/Questão da linha 15: .*Questão ignorada/);
-    expect(w).toMatch(/Questão da linha 23: .*Questão ignorada/);
+    expect(w).not.toMatch(/Questão da linha/); // descartadas sem aviso
     expect(p.parsed.sections.map((x) => x.title)).toEqual(["O que é", "Revisão"]);
     expect(p.parsed.sections[0]!.kind).toBe("explicacao");
     expect(p.built.lesson.objective.length).toBeGreaterThan(5);
@@ -73,7 +72,7 @@ describe("seções que o ChatGPT escreveu fora do formato", () => {
     expect(p.parsed.sections.map((s) => s.title)).toEqual(["O que é o TCO", "Rito sumaríssimo"]);
     expect(p.parsed.sections[0]!.bodyMarkdown).toContain("Mais texto.");
     expect(p.warnings.join("\n")).not.toMatch(/virou uma seção/);
-    expect(p.warnings.join("\n")).toMatch(/fora de uma questão/);
+    expect(p.warnings.join("\n")).not.toMatch(/fora de uma questão/);
   });
 });
 
@@ -104,13 +103,12 @@ describe("autocorrigir questões coladas na aula", () => {
     const p = parseLessonUpload(r.text);
     expect(p.questions.map((q) => q.level)).toEqual(["dificil", "dificil"]);
   });
-  it("sem pista de nível só corrige com o nível padrão", async () => {
+  it("sem pista de nível a questão entra no nível médio", async () => {
     const { autoFixText } = await import("./upload-fixes");
     const { checkQuestionsText, parseLessonUpload } = await import("./upload");
     const t = "--- QUESTÃO ---\nTipo: certo ou errado\nEnunciado: O inquérito é dispensável.\nGabarito: Certo\nJustificativa: Certo. Pode ser dispensado.";
-    expect(autoFixText(t, checkQuestionsText).remaining.length).toBe(1);
-    const r = autoFixText(t, checkQuestionsText, { level: 1 });
-    expect(r.remaining).toEqual([]);
-    expect(parseLessonUpload(r.text).questions[0]!.level).toBe("medio");
+    // Sem bloco de nível, a questão entra no nível médio sozinha: nada para decidir.
+    expect(autoFixText(t, checkQuestionsText).remaining).toEqual([]);
+    expect(parseLessonUpload(t).questions[0]!.level).toBe("medio");
   });
 });
