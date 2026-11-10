@@ -24,8 +24,12 @@ async function run(name: string, fn: (userId: string) => Promise<unknown>): Prom
   }
 }
 
-export async function createFolderAction(name: string, color?: string) {
-  return run("create", (u) => createFolder(u, name, color));
+export async function createFolderAction(name: string, color?: string, icon?: string | null) {
+  return run("create", (u) => createFolder(u, name, color, icon));
+}
+/** Aparência da pasta (cor e ícone) em uma gravação só. */
+export async function restyleFolderAction(folderId: string, color: string, icon: string | null) {
+  return run("restyle", (u) => updateFolder(u, folderId, { color, icon }));
 }
 export async function renameFolderAction(folderId: string, name: string) {
   return run("rename", (u) => updateFolder(u, folderId, { name }));

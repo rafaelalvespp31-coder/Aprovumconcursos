@@ -92,6 +92,20 @@ export async function getStudySeconds(): Promise<number> {
   return ((data ?? []) as Array<{ time_spent_seconds: number | null }>).reduce((s, a) => s + (a.time_spent_seconds ?? 0), 0);
 }
 
+/** Tempo de estudo por semana nas últimas `weeks` semanas (segundos; a última posição é a semana atual). */
+export async function getStudyWeeks(weeks = 4): Promise<number[]> {
+  const db = await createUserClient();
+  const now = Date.now();
+  const since = new Date(now - weeks * 7 * 86_400_000).toISOString();
+  const { data } = await db.from("answer_attempts").select("time_spent_seconds, created_at").eq("user_id", await myId()).not("time_spent_seconds", "is", null).gte("created_at", since).limit(20000);
+  const out = Array.from({ length: weeks }, () => 0);
+  for (const a of (data ?? []) as Array<{ time_spent_seconds: number | null; created_at: string }>) {
+    const idx = weeks - 1 - Math.floor((now - new Date(a.created_at).getTime()) / (7 * 86_400_000));
+    if (idx >= 0 && idx < weeks) out[idx]! += a.time_spent_seconds ?? 0;
+  }
+  return out;
+}
+
 export async function getTrail(id: string) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const db = await createUserClient();
@@ -876,11 +890,16 @@ export interface StudyFolder {
   name: string;
   color: string;
   sort_order: number;
+  icon?: string | null;
 }
 
 export async function listFolders(): Promise<StudyFolder[]> {
   const db = await createUserClient();
-  const { data, error } = await db.from("study_folders").select("id, name, color, sort_order").eq("user_id", await myId()).order("sort_order").order("created_at");
-  if (error) return [];
-  return (data ?? []) as StudyFolder[];
+  const me = await myId();
+  const q = (cols: string) => db.from("study_folders").select(cols).eq("user_id", me).order("sort_order").order("created_at");
+  let r = await q("id, name, color, sort_order, icon");
+  // Banco ainda sem a coluna `icon`: segue com o ícone automático.
+  if (r.error) r = await q("id, name, color, sort_order");
+  if (r.error) return [];
+  return (r.data ?? []) as unknown as StudyFolder[];
 }

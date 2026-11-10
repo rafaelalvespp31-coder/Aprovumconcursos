@@ -8,11 +8,11 @@ const F = (n: number) => `00000000-0000-4000-8300-${String(n).padStart(12, "0")}
 const ago = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString();
 const status = { label: "Em estudo", tone: "verde" as const };
 const T = (n: number, title: string, folderId: string | null, done: number, total: number, banca: string, bancaLabel: string, d: number): EstudoTrail => ({
-  id: `00000000-0000-4000-8100-${String(n).padStart(12, "0")}`, title, subtitle: bancaLabel, status, folderId, progress: { done, total }, banca, bancaLabel, updatedAt: ago(d),
+  id: `00000000-0000-4000-8100-${String(n).padStart(12, "0")}`, title, subtitle: bancaLabel, status, folderId, progress: { done, total }, banca, bancaLabel, updatedAt: ago(d), lastStudiedAt: done ? ago(d) : null,
 });
 
-export default async function Page({ searchParams }: { searchParams: Promise<{ vazio?: string; soltas?: string }> }) {
-  const { vazio, soltas } = await searchParams;
+export default async function Page({ searchParams }: { searchParams: Promise<{ vazio?: string; soltas?: string; pasta?: string }> }) {
+  const { vazio, soltas, pasta } = await searchParams;
   const folders = [
     { id: F(1), name: "Direito Penal", color: "vermelho" },
     { id: F(2), name: "Processo Penal", color: "azul" },
@@ -35,6 +35,8 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ v
       continueHref={vazio ? null : "/dev/galeria/aula"}
       continueLabel="Continuar estudos"
       archivedCount={vazio ? 0 : 2}
+      tendencia={vazio ? undefined : { aulasSerie: [3, 3, 4, 5, 5, 6, 6, 7], aulasPct30: 17, tempoSemanas: [2400, 5400, 4200, 7200], tempoVariacao: 71 }}
+      pastaInicial={pasta ?? null}
     />
   );
 }

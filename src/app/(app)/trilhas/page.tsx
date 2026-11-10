@@ -5,7 +5,8 @@ import { boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
 import type { BoardTrail } from "./folder-board";
 import { getStudiesHome } from "@/server/studies-home";
 import { MeuEstudo } from "@/components/meu-estudo/meu-estudo";
-import { getStudySeconds } from "@/server/queries";
+import { getStudySeconds, getStudyWeeks } from "@/server/queries";
+import { tendenciaAulas, variacaoSemanal } from "@/domain/studies/tendencia";
 
 export const metadata = { title: "Seus estudos" };
 
@@ -18,9 +19,9 @@ const STATUS: Record<string, BoardTrail["status"]> = {
   failed: { label: "Interrompida", tone: "vermelho" },
 };
 
-export default async function TrailsPage({ searchParams }: { searchParams: Promise<{ arquivadas?: string }> }) {
-  const { arquivadas } = await searchParams;
-  const [all, folders, progress, home, studySeconds] = await Promise.all([listTrails(true), listFolders(), listTrailProgress(), getStudiesHome(), getStudySeconds()]);
+export default async function TrailsPage({ searchParams }: { searchParams: Promise<{ arquivadas?: string; pasta?: string }> }) {
+  const { arquivadas, pasta } = await searchParams;
+  const [all, folders, progress, home, studySeconds, semanas] = await Promise.all([listTrails(true), listFolders(), listTrailProgress(), getStudiesHome(), getStudySeconds(), getStudyWeeks(4).catch(() => [] as number[])]);
   const showArchived = arquivadas === "1";
   const trails = all.filter((t) => (showArchived ? t.archived_at : !t.archived_at));
   const archivedCount = all.filter((t) => t.archived_at).length;
@@ -55,9 +56,10 @@ export default async function TrailsPage({ searchParams }: { searchParams: Promi
       </div>
     );
   const continueHref = home.current ? `/aula/${home.current.lessonId}` : null;
+  const aulas = tendenciaAulas(trails.map((t) => t.created_at));
   return (
     <MeuEstudo
-      folders={folders.map((f) => ({ id: f.id, name: f.name, color: f.color }))}
+      folders={folders.map((f) => ({ id: f.id, name: f.name, color: f.color, icon: f.icon ?? null }))}
       trails={trails.map((t) => ({
         id: t.id,
         title: t.title,
@@ -68,7 +70,10 @@ export default async function TrailsPage({ searchParams }: { searchParams: Promi
         banca: t.board_slug,
         bancaLabel: boardDisplayName(t.board_slug as ExamBoardSlug, t.other_board_name),
         updatedAt: t.last_studied_at ?? t.updated_at,
+        lastStudiedAt: t.last_studied_at,
       }))}
+      tendencia={{ aulasSerie: aulas.serie, aulasPct30: aulas.pct30, tempoSemanas: semanas, tempoVariacao: variacaoSemanal(semanas) }}
+      pastaInicial={pasta ?? null}
       studySeconds={studySeconds}
       continueHref={continueHref}
       continueLabel="Continuar estudos"
