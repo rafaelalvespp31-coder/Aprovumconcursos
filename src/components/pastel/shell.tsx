@@ -31,6 +31,7 @@ import {
   Settings,
   Target,
   UserRound,
+  ListTree,
   type LucideIcon,
 } from "lucide-react";
 import { ConnectivityBanner } from "@/components/pwa";
@@ -94,13 +95,30 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
     { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "6", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
     { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "7", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
     { id: "concursos", href: `${base}/concursos`, label: "Concursos", icon: Landmark, num: "8", desc: "Editais e provas", title: "Concursos", subtitle: "Concursos cadastrados, vagas e datas de prova." },
-    { id: "aprovum-ai", href: `${base}/aprovum-ai`, label: "APROVUM AI", icon: BrainCircuit, num: "", desc: "Edital em preparação", also: [`${base}/meu-concurso`], title: "APROVUM AI", subtitle: "Seu concurso. Sua preparação. Nossa inteligência.", badge: "Novo" },
+    { id: "aprovum-ai", href: `${base}/aprovum-ai`, label: "APROVUM AI", icon: BrainCircuit, num: "", desc: "Edital em preparação", title: "APROVUM AI", subtitle: "Seu concurso. Sua preparação. Nossa inteligência.", badge: "Novo" },
     { id: "redacao", href: `${base}/redacao`, label: "Redação Elite", short: "Redação", icon: PenLine, num: "", desc: "Escreva e seja corrigido", title: "APROVUM REDAÇÃO ELITE", subtitle: "ESCREVA. CORRIJA. EVOLUA. CONQUISTE.", badge: "Novo" },
     { id: "depoimentos", href: `${base}/depoimentos`, label: "Depoimentos", icon: Video, num: "9", desc: "Histórias de aprovados", title: "Depoimentos", subtitle: "Quem chegou lá conta como foi a trajetória até a aprovação." },
     { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "0", desc: `Nível ${s.level}`, title: "Perfil" },
     { id: "plano", href: `${base}/plano`, label: "Meu Plano", icon: Crown, num: "", desc: "Escolha seu plano", title: "Meu Plano", subtitle: "Conquiste mais. Estude sem limites." },
     { id: "area", href: `${base}/area-do-aluno`, label: "Área do Aluno", icon: LayoutGrid, num: "", desc: "Todos os menus", title: "Área do Aluno", subtitle: "Todos os menus do seu painel num só lugar.", hidden: true },
   ];
+}
+
+/** Atalho logo abaixo de APROVUM AI: o edital do aluno organizado por matéria e assunto. */
+function EditalVerticalizadoLink({ href, active, onNavigate }: { href: string; active: boolean; onNavigate?: () => void }) {
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      aria-current={active ? "page" : undefined}
+      data-testid="nav-edital-verticalizado"
+      className={`mb-1 ml-[22px] mt-0.5 flex items-center gap-2 rounded-[12px] py-2 pl-3 pr-3 text-[13px] font-semibold transition-colors ${active ? "bg-gradient-to-r from-[#FF1E1E] to-[#B30000] text-white" : "text-[#C9C9C9] hover:bg-white/[0.06] hover:text-white"}`}
+    >
+      <span aria-hidden className={`h-4 w-px ${active ? "bg-white/60" : "bg-[#E50914]/70"}`} />
+      <ListTree className="h-[15px] w-[15px] shrink-0" aria-hidden />
+      <span className="whitespace-nowrap">Edital Verticalizado</span>
+    </Link>
+  );
 }
 
 /** Grupo "Evolução": Desempenho e Revisões ficam dentro dele (recolhível; na barra recolhida vira um ícone). */
@@ -401,6 +419,7 @@ export function PastelShell({
                         </button>
                       )}
                       </div>
+                      {s.id === "aprovum-ai" && !collapsed && <EditalVerticalizadoLink href={`${basePath}/meu-concurso`} active={path.startsWith(`${basePath}/meu-concurso`)} />}
                       {s.id === "trilhas" && !collapsed && summary.subjects.length > 0 && estudosVisivel && (
                         <SubjectsSubmenu subjects={summary.subjects} base={basePath} path={path} />
                       )}
@@ -742,6 +761,7 @@ function MobileMenu({ menuRef, items, summary, basePath }: { menuRef: React.RefO
                       <span className={`block text-[11.5px] ${on ? "text-white/80" : "text-[#9A9A9A]"}`}>{s.desc}</span>
                     </span>
                   </Link>
+                  {s.id === "aprovum-ai" && <EditalVerticalizadoLink href={`${basePath}/meu-concurso`} active={path.startsWith(`${basePath}/meu-concurso`)} onNavigate={() => menuRef.current?.close()} />}
                   {s.id === "trilhas" && <SubjectsSubmenu subjects={summary.subjects} base={basePath} path={path} variant="menu" onNavigate={() => menuRef.current?.close()} />}
                 </li>
               );
