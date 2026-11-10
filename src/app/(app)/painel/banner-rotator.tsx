@@ -19,6 +19,7 @@ export function BannerRotator({ children, banners = APPROVAL_BANNERS, className 
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const [mov, setMov] = useState(false); // só anima a troca depois da primeira mudança (sem efeito ao carregar)
 
   useEffect(() => {
     const on = () => setHidden(document.visibilityState === "hidden");
@@ -29,7 +30,10 @@ export function BannerRotator({ children, banners = APPROVAL_BANNERS, className 
   const running = !paused && !hidden && total > 1;
   useEffect(() => {
     if (!running) return;
-    const t = setTimeout(() => setIndex((i) => (i + 1) % total), INTERVAL_MS);
+    const t = setTimeout(() => {
+      setMov(true);
+      setIndex((i) => (i + 1) % total);
+    }, INTERVAL_MS);
     return () => clearTimeout(t);
   }, [running, index, total]);
 
@@ -41,6 +45,7 @@ export function BannerRotator({ children, banners = APPROVAL_BANNERS, className 
       aria-label="Banners do APROVUM"
       data-testid="banner-rotator"
       data-slide={index}
+      data-mov={mov ? "1" : undefined}
       data-formato={index === 0 ? "marca" : "largo"}
     >
       {/* Slide 0: banner da marca (fica no fluxo e define a altura) */}
@@ -71,10 +76,21 @@ export function BannerRotator({ children, banners = APPROVAL_BANNERS, className 
         );
       })}
 
+      {/* Corte cinematográfico: feixe de luz varrendo a tela junto com a cortina diagonal + clarão quente. */}
+      {mov && (
+        <span key={index} className="br-corte" aria-hidden>
+          <i className="br-feixe" />
+          <i className="br-luz" />
+        </span>
+      )}
+
       <div className="br-controles">
         <div className="br-pontos" role="group" aria-label="Escolher banner">
           {Array.from({ length: total }, (_, i) => (
-            <button key={i} type="button" aria-label={`Mostrar banner ${i + 1} de ${total}`} aria-current={index === i ? "true" : undefined} onClick={() => setIndex(i)} />
+            <button key={i} type="button" aria-label={`Mostrar banner ${i + 1} de ${total}`} aria-current={index === i ? "true" : undefined} onClick={() => {
+                setMov(true);
+                setIndex(i);
+              }} />
           ))}
         </div>
         <button type="button" className="br-pausa" onClick={() => setPaused((p) => !p)} aria-label={paused ? "Retomar troca automática dos banners" : "Pausar troca automática dos banners"}>
