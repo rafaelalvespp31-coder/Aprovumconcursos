@@ -5,6 +5,7 @@ import { trailRequestSchema, type TrailRequest } from "@/domain/trail-input";
 import { aiEnabled, getAIProvider } from "@/ai";
 import type { CatalogMatch } from "@/domain/catalog/match";
 import { createAdminClient } from "../supabase";
+import { getActivePromo } from "./promo";
 import { advanceBuild, resumeFailedJob } from "../pipeline/build-trail";
 import { advanceLessonJob, type LessonJobState } from "../pipeline/generate-lesson";
 import type { BuildState, Job } from "../pipeline/types";
@@ -37,7 +38,7 @@ export async function enforceRateLimit(userId: string, action: string, max: numb
   if (data !== true) throw new UserFacingError("Muitas solicitações em pouco tempo. Aguarde um instante e tente novamente.", "rate_limited");
 }
 
-async function planLimits(userId: string) {
+async function planLimits(userId: string): Promise<{ id: string; max_active_trails: number; max_content_chars: number }> {
   const db = createAdminClient();
   const { data } = await db
     .from("subscriptions")
@@ -47,10 +48,19 @@ async function planLimits(userId: string) {
   const plan = (data?.status === "active" || data?.status === "trialing" ? data?.plans : null) as
     | { id: string; max_active_trails: number; max_content_chars: number }
     | null;
-  if (plan) return plan;
-  const free = await db.from("plans").select("id, max_active_trails, max_content_chars").eq("id", "free").single();
-  if (free.error || !free.data) throw new Error("Plano gratuito não encontrado.");
-  return free.data;
+  let base = plan;
+  if (!base) {
+    const free = await db.from("plans").select("id, max_active_trails, max_content_chars").eq("id", "free").single();
+    if (free.error || !free.data) throw new Error("Plano gratuito não encontrado.");
+    base = free.data;
+  }
+  // Degustação promocional válida: vale o maior limite entre o plano do aluno e o da campanha.
+  const promo = await getActivePromo(userId);
+  if (promo && promo.planId !== base.id) {
+    const p = await db.from("plans").select("id, max_active_trails, max_content_chars").eq("id", promo.planId).maybeSingle();
+    if (p.data) return { id: base.id, max_active_trails: Math.max(base.max_active_trails, p.data.max_active_trails as number), max_content_chars: Math.max(base.max_content_chars, p.data.max_content_chars as number) };
+  }
+  return base;
 }
 
 /**
