@@ -54,13 +54,17 @@ async function planLimits(userId: string): Promise<{ id: string; max_active_trai
     if (free.error || !free.data) throw new Error("Plano gratuito não encontrado.");
     base = free.data;
   }
+  // Estudos ativos sem limite nos planos pagos e na degustação premium; só o plano gratuito tem teto.
+  const UNLIMITED = 1_000_000;
+  const paid = base.id !== "free";
   // Degustação promocional válida: vale o maior limite entre o plano do aluno e o da campanha.
   const promo = await getActivePromo(userId);
   if (promo && promo.planId !== base.id) {
     const p = await db.from("plans").select("id, max_active_trails, max_content_chars").eq("id", promo.planId).maybeSingle();
-    if (p.data) return { id: base.id, max_active_trails: Math.max(base.max_active_trails, p.data.max_active_trails as number), max_content_chars: Math.max(base.max_content_chars, p.data.max_content_chars as number) };
+    if (p.data) return { id: base.id, max_active_trails: UNLIMITED, max_content_chars: Math.max(base.max_content_chars, p.data.max_content_chars as number) };
   }
-  return base;
+  if (promo) return { ...base, max_active_trails: UNLIMITED };
+  return paid ? { ...base, max_active_trails: UNLIMITED } : base;
 }
 
 /**
