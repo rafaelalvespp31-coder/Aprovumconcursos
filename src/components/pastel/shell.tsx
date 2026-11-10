@@ -239,12 +239,11 @@ export function PastelShell({
   const active = items.find((i) => [i.href, ...(i.also ?? [])].some((p) => path === p || path.startsWith(`${p}/`))) ?? null;
   const activeIndex = active ? items.indexOf(active) : -1;
   // Grupos recolhíveis: "Estudos" (matérias) e "Evolução" (Desempenho e Revisões).
-  const [estudosAberto, setEstudosAberto] = useStored("na:menu-estudos-aberto", false);
+  const [estudosAberto, setEstudosAberto] = useStored("na:menu-estudos-aberto", true);
   const [evolucaoAberta, setEvolucaoAberta] = useStored("na:menu-evolucao-aberta", false);
-  const emEstudos = active?.id === "trilhas";
-  const emEvolucao = active?.id === "revisoes" || active?.id === "desempenho";
-  const estudosVisivel = estudosAberto || emEstudos;
-  const evolucaoVisivel = evolucaoAberta || emEvolucao;
+  // Quem recolhe manda: nem estando na página de Estudos o grupo reabre sozinho.
+  const estudosVisivel = estudosAberto;
+  const evolucaoVisivel = evolucaoAberta;
   // O destaque deslizante acompanha o item ativo medindo-o no navegador (os grupos mudam a altura).
   const navRef = useRef<HTMLElement>(null);
   const [ind, setInd] = useState<{ top: number; h: number } | null>(null);
