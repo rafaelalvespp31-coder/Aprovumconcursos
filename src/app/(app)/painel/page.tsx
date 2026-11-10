@@ -8,6 +8,8 @@ import { listActiveApprovedBanners } from "@/server/services/approved-banners";
 import { ackLevelUpsAction, requestAvatarAction, selectSkinAction } from "./avatar-actions";
 import { getMyPlan } from "@/server/services/plans";
 import { logEvent } from "@/server/observability";
+import { getActivePromo } from "@/server/services/promo";
+import { PremiumIndicador } from "@/components/promo/premium-indicador";
 
 export const metadata = { title: "Painel" };
 export const dynamic = "force-dynamic";
@@ -15,7 +17,7 @@ export const dynamic = "force-dynamic";
 /** Painel (Home): avatar no centro e a gamificação real do aluno ao redor. */
 export default async function DashboardPage() {
   const me = await requireUser("/painel");
-  const [dash, avatar, request, home, approved, plan] = await Promise.all([
+  const [dash, avatar, request, home, approved, plan, promo] = await Promise.all([
     getDashboard(),
     loadMyAvatar(me.id).catch(async (e) => {
       await logEvent("avatar.load_failed", { error: (e as Error).message });
@@ -25,6 +27,7 @@ export default async function DashboardPage() {
     loadHome(me.id),
     listActiveApprovedBanners().catch(() => []),
     getMyPlan(me.id).catch(() => null),
+    getActivePromo(me.id).catch(() => null),
   ]);
   const name = dash.profile?.display_name ?? null;
   return (
@@ -33,6 +36,9 @@ export default async function DashboardPage() {
       <div className="cl-banner">
         <HeroBanner name={name?.split(" ")[0] ?? null} extra={approved} />
       </div>
+      {promo && (
+        <div className="px-3 pt-3 sm:px-0"><PremiumIndicador expiresAt={promo.expiresAt} campaignName={promo.campaignName} /></div>
+      )}
       <HomeOperacao
         name={name}
         data={home}
