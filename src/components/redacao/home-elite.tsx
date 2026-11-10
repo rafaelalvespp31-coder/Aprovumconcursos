@@ -56,7 +56,7 @@ function Medidor({ pct, nota, max }: { pct: number | null; nota: number | null; 
     <div className="relative h-[116px] w-[116px] shrink-0">
       <svg viewBox="0 0 132 132" className="h-full w-full -rotate-90" aria-hidden>
         <circle cx="66" cy="66" r={r} fill="none" stroke="#E4E5E9" strokeWidth="11" />
-        {p > 0 && <circle cx="66" cy="66" r={r} fill="none" stroke="url(#medidor)" strokeWidth="11" strokeLinecap="round" strokeDasharray={`${c * p} ${c}`} />}
+        {p > 0 && <circle cx="66" cy="66" r={r} fill="none" stroke="url(#medidor)" strokeWidth="11" strokeLinecap="round" strokeDasharray={`${c * p} ${c}`} data-mv-arco="" />}
         <defs>
           <linearGradient id="medidor" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0" stopColor="#FF2A2A" />
@@ -88,13 +88,13 @@ export function RedacaoHomeElite({ hist, competencias, iaAtiva }: { hist: Histor
       {/* ───── Hero ───── */}
       <section className="relative isolate overflow-hidden rounded-[18px] bg-[#0B0B0D] text-white shadow-[0_18px_40px_-20px_rgba(0,0,0,0.6)]">
         <div aria-hidden className="absolute inset-0 -z-10 bg-[radial-gradient(120%_90%_at_0%_0%,#2A2B2F_0%,#0B0B0D_55%)]" />
-        <div aria-hidden className="absolute inset-y-0 right-0 -z-10 hidden w-[62%] sm:block">
-          <Image src="/redacao/hero-arte.webp" alt="" fill priority sizes="62vw" className="object-cover object-right [mask-image:linear-gradient(90deg,transparent_0%,#000_22%)]" />
+        <div aria-hidden className="absolute inset-y-0 right-0 -z-10 hidden w-[50%] overflow-hidden sm:block xl:w-[62%]">
+          <Image src="/redacao/hero-arte.webp" alt="" fill priority sizes="62vw" data-mv-paralaxe="" className="object-cover object-right [mask-image:linear-gradient(90deg,transparent_0%,#000_22%)]" />
         </div>
-        <div className="relative max-w-[700px] px-5 py-6 sm:px-8 sm:py-7">
-          <h1 className="font-black italic uppercase leading-[0.92] tracking-[-0.02em]">
-            <span className="block text-[34px] sm:text-[46px]">APROVUM</span>
-            <span className="block text-[38px] sm:text-[58px]">
+        <div className="relative px-5 py-6 sm:max-w-[60%] sm:px-8 sm:py-7 xl:max-w-[700px]">
+          <h1 data-mv-titulo="" className="font-black italic uppercase leading-[0.92] tracking-[-0.02em]">
+            <span className="block text-[34px] sm:text-[38px] xl:text-[46px]">APROVUM</span>
+            <span className="block text-[38px] sm:text-[46px] xl:text-[58px]">
               <span className="text-[#E50914] [text-shadow:0_2px_0_#7A0006]">REDAÇÃO</span> ELITE
             </span>
           </h1>
@@ -124,13 +124,13 @@ export function RedacaoHomeElite({ hist, competencias, iaAtiva }: { hist: Histor
       {!iaAtiva && <Aviso tom="alerta">O professor de IA ainda não foi ativado neste ambiente (a equipe precisa configurar o provedor de IA). Você já pode escrever e salvar rascunhos; a correção fica disponível assim que a IA for ativada.</Aviso>}
 
       {/* ───── Ações ───── */}
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div data-mv-grupo="" className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-5">
         {ACOES.map(({ href, t, d, cta, Icon }) => (
-          <Link key={t} href={href} className="group flex flex-col items-center rounded-[14px] border border-[#ECECEF] bg-white px-4 pb-4 pt-5 text-center shadow-[0_6px_18px_-12px_rgba(8,9,11,0.35)] transition hover:-translate-y-0.5 hover:border-[#F2C4C7] hover:shadow-[0_18px_34px_-16px_rgba(229,9,20,0.3)]">
-            <Icon className="h-11 w-11 text-[#E50914] drop-shadow-[0_3px_4px_rgba(229,9,20,0.3)]" strokeWidth={2.2} aria-hidden />
-            <span className="mt-3 text-[16px] font-extrabold tracking-[-0.01em] text-[#08090B]">{t}</span>
-            <span className="mt-1 flex-1 text-[12.5px] leading-snug text-[#3A3C42]">{d}</span>
-            <span className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-[6px] bg-gradient-to-b from-[#F0141C] to-[#C8000A] px-3 py-2 text-[12.5px] font-bold text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] transition group-hover:brightness-110">
+          <Link key={t} href={href} className="group flex flex-col items-center rounded-[14px] border border-[#ECECEF] bg-white px-2.5 pb-3 pt-4 text-center last:max-md:col-span-2 sm:px-4 sm:pb-4 sm:pt-5 shadow-[0_6px_18px_-12px_rgba(8,9,11,0.35)] transition hover:-translate-y-0.5 hover:border-[#F2C4C7] hover:shadow-[0_18px_34px_-16px_rgba(229,9,20,0.3)]">
+            <span data-mv-ico="" className="block"><Icon className="h-9 w-9 text-[#E50914] drop-shadow-[0_3px_4px_rgba(229,9,20,0.3)] sm:h-11 sm:w-11" strokeWidth={2.2} aria-hidden /></span>
+            <span className="mt-2 text-[14px] font-extrabold leading-tight tracking-[-0.01em] text-[#08090B] sm:mt-3 sm:text-[16px]">{t}</span>
+            <span className="mt-1 flex-1 text-[11.5px] leading-snug text-[#3A3C42] sm:text-[12.5px]">{d}</span>
+            <span data-mv-brilho="" className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-[6px] bg-gradient-to-b from-[#F0141C] to-[#C8000A] px-2 py-2 text-[11.5px] font-bold sm:px-3 sm:text-[12.5px] text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.25)] transition group-hover:brightness-110">
               {cta} <ArrowRight className="h-3.5 w-3.5" aria-hidden />
             </span>
           </Link>
@@ -138,7 +138,7 @@ export function RedacaoHomeElite({ hist, competencias, iaAtiva }: { hist: Histor
       </div>
 
       {/* ───── Painéis ───── */}
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.28fr_1.2fr_1.06fr_0.74fr]">
+      <div data-mv-grupo="" className="grid gap-3 md:grid-cols-2 xl:grid-cols-[1.28fr_1.2fr_1.06fr_0.74fr]">
         {/* Desempenho */}
         <section className="@container flex flex-col overflow-hidden rounded-[12px] border border-[#ECECEF] bg-white shadow-[0_6px_18px_-12px_rgba(8,9,11,0.35)]" data-testid="redacao-desempenho">
           <Cabecalho titulo="Seu Desempenho em Redação" />
@@ -147,7 +147,7 @@ export function RedacaoHomeElite({ hist, competencias, iaAtiva }: { hist: Histor
               <div className="flex flex-col items-center gap-2.5 sm:flex-row sm:items-start">
                 <div className="flex flex-col items-center">
                   <Medidor pct={pct} nota={ultima.score} max={ultima.max} />
-                  <span className="-mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-extrabold text-[#08090B]" style={{ background: "#F5B400" }}>
+                  <span data-mv-selo="" className="-mt-2 inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[13px] font-extrabold text-[#08090B]" style={{ background: "#F5B400" }}>
                     <Trophy className="h-4 w-4 text-[#B30000]" aria-hidden /> {selo(pct!).txt}
                   </span>
                 </div>
@@ -180,7 +180,7 @@ export function RedacaoHomeElite({ hist, competencias, iaAtiva }: { hist: Histor
                 </div>
                 <div className="flex h-[64px] items-end gap-[6px]" role="img" aria-label={`Últimas notas: ${barras.map((b) => Math.round(b)).join(", ")}%`}>
                   {barras.map((b, i) => (
-                    <span key={i} className="w-[15px] rounded-[2px]" style={{ height: `${Math.max(14, b)}%`, background: i === 0 && barras.length > 2 ? "#6B6D74" : i === barras.length - 1 ? "#C8000A" : "#E50914" }} />
+                    <span key={i} data-mv-barra="" className="w-[15px] rounded-[2px]" style={{ height: `${Math.max(14, b)}%`, background: i === 0 && barras.length > 2 ? "#6B6D74" : i === barras.length - 1 ? "#C8000A" : "#E50914" }} />
                   ))}
                 </div>
               </div>
@@ -196,11 +196,11 @@ export function RedacaoHomeElite({ hist, competencias, iaAtiva }: { hist: Histor
 
         {/* Últimas redações */}
         <section className="flex flex-col overflow-hidden rounded-[12px] border border-[#ECECEF] bg-white shadow-[0_6px_18px_-12px_rgba(8,9,11,0.35)]">
-          <Cabecalho titulo="Últimas Redações" aside={<Link href="/redacao/historico" className="inline-flex items-center gap-1 text-[12px] font-semibold underline underline-offset-2 hover:text-[#FF6B73]">Ver Histórico <ArrowRight className="h-3.5 w-3.5" aria-hidden /></Link>} />
+          <Cabecalho titulo="Últimas Redações" aside={<Link href="/redacao/historico" data-toque="" className="inline-flex items-center gap-1 text-[12px] font-semibold underline underline-offset-2 hover:text-[#FF6B73]">Ver Histórico <ArrowRight className="h-3.5 w-3.5" aria-hidden /></Link>} />
           {recentes.length === 0 ? (
             <p className="p-5 text-[13px] text-[#64666D]">Você ainda não escreveu nenhuma redação.</p>
           ) : (
-            <ul className="flex flex-col divide-y divide-[#ECEDF0] px-3">
+            <ul data-mv-grupo="" className="flex flex-col divide-y divide-[#ECEDF0] px-3">
               {recentes.map((h) => {
                 const p = h.score !== null && h.max ? (h.score / h.max) * 100 : null;
                 return (

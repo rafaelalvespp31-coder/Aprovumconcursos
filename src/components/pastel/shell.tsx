@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { RotatingQuote } from "./rotating-quote";
-import { createContext, Fragment, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, Fragment, ViewTransition, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   Bell,
@@ -305,6 +305,7 @@ export function PastelShell({
   return (
     <ToastCtx.Provider value={setToast}>
       {isStudy && <StudyClock />}
+      <div className="mv-progresso" aria-hidden />
       <div className="pastel relative min-h-screen w-full overflow-x-clip font-[Inter,system-ui,sans-serif] text-[#0A0A0A] antialiased selection:bg-[#E10600]/25">
         <div className={`pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden ${dark ? "bg-[#070707]" : "bg-white"}`} />
         <div className="pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden" aria-hidden>
@@ -465,7 +466,7 @@ export function PastelShell({
 
           <div className="min-w-0 flex-1">
             <header
-              className={`sticky top-0 z-20 border-b backdrop-blur-[18px] ${dark ? "border-transparent bg-[#070707] text-white" : "border-black/[0.06] bg-white/75"} ${isPainel ? "max-lg:hidden" : ""}`}
+              className={`mv-cabecalho sticky top-0 z-20 border-b backdrop-blur-[18px] ${dark ? "border-transparent bg-[#070707] text-white" : "border-black/[0.06] bg-white/75"} ${isPainel ? "max-lg:hidden" : ""}`}
               style={{ top: "env(safe-area-inset-top, 0px)" }}
             >
               {isEstudos ? (
@@ -497,9 +498,9 @@ export function PastelShell({
                         <RotatingQuote uniform className="text-[14px] leading-tight sm:text-[16px] lg:text-[18px]" />
                       </div>
                     ) : active?.id === "perfil" ? (
-                      <h1 className="flex items-center gap-2 truncate font-[Space_Grotesk] text-[24px] font-[800] leading-none tracking-[-0.02em] sm:text-[28px] lg:text-[34px]">{title}</h1>
+                      <h1 className="block truncate font-[Space_Grotesk] text-[clamp(19px,5.6vw,24px)] font-[800] leading-[1.15] tracking-[-0.02em] sm:text-[28px] lg:text-[34px]">{title}</h1>
                     ) : (
-                      <p className="flex items-center gap-2 truncate font-[Space_Grotesk] text-[24px] font-[800] leading-none tracking-[-0.02em] sm:text-[28px] lg:text-[34px]">{title}</p>
+                      <p className="block truncate font-[Space_Grotesk] text-[clamp(19px,5.6vw,24px)] font-[800] leading-[1.15] tracking-[-0.02em] sm:text-[28px] lg:text-[34px]">{title}</p>
                     )}
                     <div className={`mt-2 hidden items-center gap-2 text-[13.5px] sm:flex ${dark ? "text-white/65" : "text-[#4D4D4D]"}`}>
                       <span className={`flex h-6 w-6 items-center justify-center rounded-full border ${dark ? "border-white/15 bg-[#161616]" : "border-[#E0E0E0] bg-[#F4F4F4]"}`} aria-hidden>
@@ -551,9 +552,13 @@ export function PastelShell({
             <main
               className={isPainel ? "pb-28 lg:px-10 lg:py-7 lg:pb-12" : "px-4 py-7 pb-28 sm:px-5 lg:px-10 lg:pb-12"}
               data-compacto={isStudy || isNovoEstudo ? undefined : ""}
+              data-mv={isStudy || isNovoEstudo ? undefined : ""}
             >
               {isStudy && <div id="estudo-relogio-slot" className="mb-3 flex justify-center lg:hidden" />}
-              <div key={active?.id ?? path} className="animate-[enter_0.5s_cubic-bezier(0.34,1.56,0.64,1)]">{children}</div>
+              {/* Troca de página: o conteúdo antigo sai e o novo entra (View Transitions); menu e cabeçalho ficam parados. */}
+              <ViewTransition key={active?.id ?? path} enter="pagina" exit="pagina" default="none">
+                <div className="mv-pagina">{children}</div>
+              </ViewTransition>
             </main>
 
             {/* Menu inferior: só no celular. No computador, o menu é o da barra lateral. */}

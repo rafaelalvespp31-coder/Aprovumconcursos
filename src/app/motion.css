@@ -1,0 +1,184 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Camada de movimento do APROVUM.
+   Só CSS nativo e recursos novos do navegador, sempre com degradação limpa:
+   quem não tem suporte (ou pediu menos movimento) vê a página parada e completa.
+   - Troca de página: View Transitions (React <ViewTransition> no shell).
+   - Revelação ao rolar: animation-timeline: view() (roda fora da thread principal).
+   - Barra de progresso de leitura: animation-timeline: scroll().
+   - Entrada de diálogos: @starting-style.
+   - Cascata em grades: sibling-index().
+   Nada aqui define o estado final com transform fixo: os keyframes só têm "from",
+   então hover, inclinação e demais efeitos de cada componente continuam valendo.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Em @layer components: utilitários do Tailwind e os estilos próprios de cada componente sempre vencem. */
+@layer components {
+:root {
+  --mv-suave: cubic-bezier(0.22, 1, 0.36, 1);
+  --mv-mola: linear(0, 0.36 9%, 0.72 20%, 0.94 30%, 1.04 39%, 1.07 46%, 1.05 56%, 1.01 70%, 1);
+}
+
+/* ── Troca de página ─────────────────────────────────────────────────────── */
+::view-transition { pointer-events: none; }
+::view-transition-old(.pagina) { animation: 140ms ease-in both mv-pagina-sai; }
+::view-transition-new(.pagina) { animation: 380ms var(--mv-suave) 90ms both mv-pagina-entra; }
+::view-transition-group(.pagina) { animation-duration: 0s; }
+/* Menu, cabeçalho e fundo não piscam: só o conteúdo da página é trocado. */
+::view-transition-old(root) { display: none; }
+::view-transition-new(root) { animation: none; }
+@keyframes mv-pagina-sai { to { opacity: 0; filter: blur(4px); scale: 0.992; } }
+/* Navegador sem View Transitions: entrada simples do conteúdo. */
+@supports not (view-transition-name: none) {
+  @media (prefers-reduced-motion: no-preference) { .mv-pagina { animation: mv-pagina-entra 380ms var(--mv-suave) both; } }
+}
+@keyframes mv-pagina-entra { from { opacity: 0; translate: 0 14px; filter: blur(6px); } }
+
+/* ── Barra de progresso da rolagem (topo da tela) ────────────────────────── */
+.mv-progresso {
+  position: fixed; left: 0; right: 0; top: 0; z-index: 60; height: 3px; pointer-events: none;
+  transform-origin: 0 50%; transform: scaleX(0);
+  background: linear-gradient(90deg, #7a0006, #e50914 55%, #ff5a5f);
+  box-shadow: 0 0 12px rgba(229, 9, 20, 0.6);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @supports (animation-timeline: scroll()) {
+    .mv-progresso { animation: mv-progresso linear both; animation-timeline: scroll(root block); }
+    @keyframes mv-progresso { to { transform: scaleX(1); } }
+  }
+
+  /* Cabeçalho ganha sombra assim que a página começa a rolar. */
+  @supports (animation-timeline: scroll()) {
+    .mv-cabecalho { animation: mv-cabecalho linear both; animation-timeline: scroll(root block); animation-range: 0px 90px; }
+    @keyframes mv-cabecalho { to { box-shadow: 0 10px 30px -18px rgba(8, 9, 11, 0.45); } }
+  }
+
+  /* ── Revelação ao rolar ────────────────────────────────────────────────── */
+  @supports (animation-timeline: view()) {
+    /* Blocos de página: seções, artigos e cards. Só o nível de fora anima (sem efeito em dobro). */
+    main[data-mv] :where(section, article, .pc, .vg-sec, .vg-hero, .vg-ind, .vg-disc, .vg-rel, [data-mv-item]):not(:where(section, article, .pc, [data-mv-item]) *, [data-mv-off], [data-mv-off] *, .cl-a, .cl-low, .vg-wrap) {
+      animation: mv-revela linear both;
+      animation-timeline: view();
+      animation-range: entry 0px entry 170px;
+    }
+    @keyframes mv-revela { from { opacity: 0; translate: 0 calc(18px + var(--mv-i, 0) * 7px); scale: 0.985; } }
+
+    /* Itens de grade e de lista dentro de um bloco [data-mv-grupo]: cada um revela por conta própria. */
+    main[data-mv] :where([data-mv-grupo], .area-grade, .cl-low, .vg-col, .vg-lista) > :where(*) {
+      animation: mv-revela linear both;
+      animation-timeline: view();
+      animation-range: entry 0px entry 150px;
+    }
+
+    /* Arte de banner: leve paralaxe enquanto o banner cruza a tela. */
+    main[data-mv] :where([data-mv-paralaxe]) {
+      animation: mv-paralaxe linear both;
+      animation-timeline: view();
+      animation-range: cover 0% cover 100%;
+    }
+    @keyframes mv-paralaxe { from { translate: 0 -14px; scale: 1.06; } to { translate: 0 14px; scale: 1.06; } }
+
+    /* Barras e medidores crescem quando entram na tela. */
+    main[data-mv] :where([data-mv-barra]) {
+      transform-origin: 50% 100%;
+      animation: mv-barra linear both;
+      animation-timeline: view();
+      animation-range: entry 0px entry 120px;
+    }
+    @keyframes mv-barra { from { scale: 1 0; opacity: 0.4; } }
+
+    /* Barras de progresso enchem da esquerda quando aparecem. */
+    main[data-mv] :where([role="progressbar"]) > :where(*) {
+      transform-origin: 0 50%;
+      animation: mv-enche linear both;
+      animation-timeline: view();
+      animation-range: entry 0px entry 140px;
+    }
+    @keyframes mv-enche { from { scale: 0 1; } }
+  }
+
+  /* Cascata: em grades, cada irmão entra um pouco depois do anterior. */
+  @supports (z-index: sibling-index()) {
+    main[data-mv] :where([data-mv-grupo], .area-grade, .cl-low, .vg-col, .vg-lista) > :where(*) { --mv-i: min(sibling-index(), 6); }
+  }
+
+  /* Medidor circular: o arco se desenha na primeira exibição. */
+  [data-mv-arco] { animation: mv-arco 1100ms var(--mv-suave) 220ms backwards; }
+  @keyframes mv-arco { from { stroke-dasharray: 0 999; } }
+
+  /* Selo que "carimba" ao aparecer. */
+  [data-mv-selo] { animation: mv-selo 620ms var(--mv-mola) 900ms backwards; }
+  @keyframes mv-selo { from { opacity: 0; scale: 0.4; rotate: -8deg; } }
+
+  /* Título de banner: as linhas sobem em sequência. */
+  [data-mv-titulo] > * { animation: mv-titulo 640ms var(--mv-suave) backwards; }
+  [data-mv-titulo] > :nth-child(2) { animation-delay: 90ms; }
+  [data-mv-titulo] > :nth-child(3) { animation-delay: 180ms; }
+  @keyframes mv-titulo { from { opacity: 0; translate: -18px 8px; filter: blur(6px); } }
+
+  /* ── Diálogos e menus: entrada com escala e desfoque ───────────────────── */
+  :where([role="dialog"], [role="alertdialog"], [role="menu"]) {
+    transition: opacity 240ms var(--mv-suave), scale 320ms var(--mv-mola), filter 240ms ease;
+  }
+  @starting-style {
+    :where([role="dialog"], [role="alertdialog"], [role="menu"]) { opacity: 0; scale: 0.96; filter: blur(6px); }
+  }
+
+  /* ── Toque e clique: resposta imediata ─────────────────────────────────── */
+  main[data-mv] :where(button, a, [role="button"], summary):where(:not(:disabled, [aria-disabled="true"])) {
+    transition-property: scale, translate, color, background-color, border-color, box-shadow, opacity, filter;
+    transition-duration: 180ms;
+    transition-timing-function: var(--mv-suave);
+  }
+  main[data-mv] :where(button, a[class*="rounded"], [role="button"]):where(:not(:disabled, [aria-disabled="true"])):active { scale: 0.965; }
+
+  /* Seta dos botões avança no hover (ícone no fim do botão). */
+  main[data-mv] :where(a, button):hover :where(svg.lucide-arrow-right, svg.lucide-chevron-right) { translate: 3px 0; }
+  main[data-mv] :where(a, button) :where(svg.lucide-arrow-right, svg.lucide-chevron-right) { transition: translate 220ms var(--mv-suave); }
+
+  /* Brilho que cruza os botões e cards marcados. */
+  [data-mv-brilho] { position: relative; overflow: hidden; isolation: isolate; }
+  [data-mv-brilho]::after {
+    content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+    background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.34) 50%, transparent 65%);
+    translate: -120% 0;
+  }
+  :where(a, button, [data-mv-item]):hover [data-mv-brilho]::after, [data-mv-brilho]:hover::after { translate: 120% 0; transition: translate 700ms var(--mv-suave); }
+
+  /* Ícone do card "salta" de leve no hover do card. */
+  :where(a, button):hover > :where([data-mv-ico]) { animation: mv-ico 520ms var(--mv-mola); }
+  @keyframes mv-ico { 40% { translate: 0 -6px; rotate: -6deg; scale: 1.08; } }
+}
+
+/* ── Quem pediu menos movimento: nada se mexe, nada some ─────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(*), ::view-transition-new(*), ::view-transition-group(*) { animation-duration: 0s !important; animation-delay: 0s !important; }
+  .mv-progresso { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Responsividade
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Toque: pontos de carrossel e links de texto pequenos ganham área de toque de ~40 px
+   sem mudar de tamanho na tela. */
+@media (pointer: coarse) {
+  :where(.cq-ponto, .br-pausa, .vg-detalhes, .pc-vertodas, .ap-topo-estudo, [data-toque]) { position: relative; }
+  :where(.cq-ponto, .br-pausa, .vg-detalhes, .pc-vertodas, .ap-topo-estudo, [data-toque])::before {
+    content: ""; position: absolute; left: 50%; top: 50%; translate: -50% -50%;
+    width: max(100%, 40px); height: max(100%, 40px);
+  }
+  /* Pontinhos de carrossel sem classe própria (botões minúsculos e redondos). */
+  main :where(button[aria-label^="Mostrar banner"], button[aria-label^="Página "], button[aria-label^="Ir para"], button[aria-label^="Slide"]) { position: relative; }
+  main :where(button[aria-label^="Mostrar banner"], button[aria-label^="Página "], button[aria-label^="Ir para"], button[aria-label^="Slide"])::before {
+    content: ""; position: absolute; left: 50%; top: 50%; translate: -50% -50%; width: max(100%, 32px); height: max(100%, 40px);
+  }
+}
+
+/* Textos longos nunca estouram o card em telas estreitas. */
+@media (max-width: 480px) {
+  main :where(h1, h2, h3, p) { overflow-wrap: break-word; }
+  main :where(h1, h2) { text-wrap: balance; }
+}
+main :where(p) { text-wrap: pretty; }
+}
