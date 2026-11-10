@@ -11,7 +11,7 @@ describe("permissões do sócio", () => {
   it("todas as 15 permissões aparecem uma vez nos grupos", () => {
     const keys = PERMISSION_GROUPS.flatMap((g) => g.items.map((i) => i.key));
     expect(keys.sort()).toEqual([...PARTNER_PERMISSIONS].sort());
-    expect(PARTNER_PERMISSIONS).toHaveLength(15);
+    expect(PARTNER_PERMISSIONS).toHaveLength(16);
     expect(COMMERCIAL_PERMISSIONS).toContain("visualizar_faturamento");
     expect(COMMERCIAL_PERMISSIONS).not.toContain(
       "visualizar_total_cadastrados",

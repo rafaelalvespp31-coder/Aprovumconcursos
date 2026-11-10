@@ -14,6 +14,7 @@ import {
   publishTopic,
   removeTopicQuestion,
   requireAdmin,
+  requireCatalogEditor,
   setTopicStatus,
   updateTopicMeta,
   updateTopicQuestion,
@@ -55,7 +56,7 @@ const pasted = (text: unknown) => {
 
 /** Lê o texto colado e mostra como a aula ficará, sem gravar. */
 export async function previewLessonUploadAction(text: string): Promise<UploadPreviewResult> {
-  await requireAdmin();
+  await requireCatalogEditor();
   let preview = null as LessonUploadPreview | null;
   const r = await guard("catalog.upload_preview", async () => {
     preview = await previewLessonUpload(pasted(text));
@@ -65,15 +66,16 @@ export async function previewLessonUploadAction(text: string): Promise<UploadPre
 
 /** Cataloga a aula colada (publica na hora quando tem ≥ 10 questões por nível) e abre a página dela. */
 export async function importLessonUploadAction(text: string): Promise<AdminResult> {
-  const user = await requireAdmin();
+  const { user, admin } = await requireCatalogEditor();
   let id = "";
   const r = await guard("catalog.upload", async () => {
     id = (await importLessonUpload(user, pasted(text), "texto colado")).id;
   });
   if (!r.ok) return r;
   revalidatePath("/admin/catalogo");
+  revalidatePath("/business/catalogo/plano");
   revalidatePath("/nova-trilha");
-  redirect(`/admin/catalogo/${id}`);
+  redirect(admin ? `/admin/catalogo/${id}` : "/business/catalogo/plano");
 }
 
 export async function saveSectionAction(id: string, index: number, data: { title: string; bodyMarkdown: string }): Promise<AdminResult> {
@@ -261,30 +263,34 @@ const outlineInput = (d: unknown): OutlineInput => {
 };
 
 export async function createOutlineAction(data: OutlineInput): Promise<AdminResult> {
-  const user = await requireAdmin();
+  const { user, admin } = await requireCatalogEditor();
   let id = "";
   const r = await guard("catalog.outline_create", async () => {
     id = await createOutline(user, outlineInput(data));
   });
   if (!r.ok) return r;
   revalidatePath("/admin/catalogo/plano");
-  redirect(`/admin/catalogo/plano/${id}`);
+  revalidatePath("/business/catalogo/plano");
+  redirect(`${admin ? "/admin" : "/business"}/catalogo/plano/${id}`);
 }
 
 export async function updateOutlineAction(id: string, data: OutlineInput): Promise<AdminResult> {
-  const user = await requireAdmin();
+  const { user } = await requireCatalogEditor();
   const r = await guard("catalog.outline_update", async () => updateOutline(user, z.uuid().parse(id), outlineInput(data)));
   revalidatePath(`/admin/catalogo/plano/${id}`);
   revalidatePath("/admin/catalogo/plano");
+  revalidatePath(`/business/catalogo/plano/${id}`);
+  revalidatePath("/business/catalogo/plano");
   return r;
 }
 
 export async function deleteOutlineAction(id: string): Promise<AdminResult> {
-  const user = await requireAdmin();
+  const { user, admin } = await requireCatalogEditor();
   const r = await guard("catalog.outline_delete", async () => deleteOutline(user, z.uuid().parse(id)));
   if (!r.ok) return r;
   revalidatePath("/admin/catalogo/plano");
-  redirect("/admin/catalogo/plano");
+  revalidatePath("/business/catalogo/plano");
+  redirect(`${admin ? "/admin" : "/business"}/catalogo/plano`);
 }
 
 // ---------------------------------------------------------------------------

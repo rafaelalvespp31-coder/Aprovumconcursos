@@ -1,9 +1,12 @@
+import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   BarChart3,
   GraduationCap,
   BadgeDollarSign,
+  FilePlus2,
   Gauge,
+  ListChecks,
   LogOut,
   TrendingUp,
 } from "lucide-react";
@@ -25,12 +28,15 @@ export function BusinessShell({
   who,
   signOut,
   studentHref = "/painel",
+  catalogo = false,
   children,
 }: {
   sections: ReadonlySet<BusinessSectionId>;
   who: { name: string | null; email: string | null };
   signOut?: () => Promise<void>;
   studentHref?: string;
+  /** Sócio com a permissão "catalogar_aulas": mostra os atalhos do catálogo. */
+  catalogo?: boolean;
   children: ReactNode;
 }) {
   const nav = BUSINESS_SECTIONS.filter((s) => sections.has(s.id));
@@ -50,6 +56,22 @@ export function BusinessShell({
                 {s.label}
               </a>
             ))}
+          </nav>
+        )}
+        {catalogo && (
+          <nav aria-label="Catálogo" className="bz-nav" data-testid="business-catalogo-nav">
+            <Link href="/business/catalogo/plano">
+              <span aria-hidden>
+                <ListChecks />
+              </span>
+              Plano de tópicos
+            </Link>
+            <Link href="/business/catalogo/enviar">
+              <span aria-hidden>
+                <FilePlus2 />
+              </span>
+              Catalogar aula
+            </Link>
           </nav>
         )}
         <div className="bz-quem">

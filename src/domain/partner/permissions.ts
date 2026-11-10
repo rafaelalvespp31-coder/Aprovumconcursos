@@ -15,12 +15,14 @@ export const PARTNER_PERMISSIONS = [
   "visualizar_taxa_conversao",
   "visualizar_lista_pagantes",
   "visualizar_historico_pagamentos",
+  // Não é indicador: libera as telas "Plano de tópicos" e "Catalogar aula" (as mesmas do administrador).
+  "catalogar_aulas",
 ] as const;
 export type PartnerPermission = (typeof PARTNER_PERMISSIONS)[number];
 
 export const PERMISSION_GROUPS: Array<{
   title: string;
-  kind: "geral" | "comercial" | "financeiro";
+  kind: "geral" | "comercial" | "financeiro" | "catalogo";
   items: Array<{ key: PartnerPermission; label: string; note?: string }>;
 }> = [
   {
@@ -92,10 +94,21 @@ export const PERMISSION_GROUPS: Array<{
       },
     ],
   },
+  {
+    title: "Catálogo de aulas",
+    kind: "catalogo",
+    items: [
+      {
+        key: "catalogar_aulas",
+        label: "Plano de tópicos e Catalogar aula",
+        note: "Libera as mesmas telas e comandos do administrador para planejar e catalogar aulas. Não dá acesso ao restante do painel de administração.",
+      },
+    ],
+  },
 ];
 
 export const COMMERCIAL_PERMISSIONS: readonly PartnerPermission[] =
-  PERMISSION_GROUPS.filter((g) => g.kind !== "geral").flatMap((g) =>
+  PERMISSION_GROUPS.filter((g) => g.kind === "comercial" || g.kind === "financeiro").flatMap((g) =>
     g.items.map((i) => i.key),
   );
 

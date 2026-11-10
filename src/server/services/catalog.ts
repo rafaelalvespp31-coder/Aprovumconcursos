@@ -316,6 +316,26 @@ export async function requireAdmin(): Promise<SessionUser> {
   return user;
 }
 
+/**
+ * Acesso às telas "Plano de tópicos" e "Catalogar aula": o ADMIN MASTER, ou o sócio ativo a quem o admin
+ * liberou a permissão `catalogar_aulas`. Conferido no servidor a cada chamada; qualquer outro vê "não encontrado".
+ */
+export async function requireCatalogEditor(): Promise<{ user: SessionUser; admin: boolean }> {
+  const user = await getSessionUser();
+  if (!user) notFound();
+  if (await isAdmin()) {
+    await ensureDisciplines();
+    return { user, admin: true };
+  }
+  const { data } = await createAdminClient().from("partner_accounts").select("active, permissions").eq("user_id", user.id).maybeSingle();
+  if (data?.active && Array.isArray(data.permissions) && (data.permissions as string[]).includes("catalogar_aulas")) {
+    await ensureDisciplines();
+    return { user, admin: false };
+  }
+  await auditLog(createAdminClient(), { actorId: user.id, userId: user.id, action: "partner.acesso_negado", entity: "catalogo", meta: { motivo: "sem_permissao_catalogar" } });
+  notFound();
+}
+
 const slugify = (s: string) =>
   normalizeText(s).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 100) || "tema";
 

@@ -51,7 +51,7 @@ export default async function BusinessPage({
     );
   }
   return (
-    <BusinessShell sections={visibleSections(data)} who={who} signOut={signOut}>
+    <BusinessShell sections={visibleSections(data)} who={who} signOut={signOut} catalogo={data.permissions.includes("catalogar_aulas")}>
       <AutoRefresh />
       <BusinessDashboard data={data} period={period} />
     </BusinessShell>
