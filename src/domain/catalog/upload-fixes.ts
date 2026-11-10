@@ -71,7 +71,6 @@ export function similarity(a: string, b: string): number {
 }
 
 export function describeIssues(raw: string, errors: readonly string[], warnings: readonly string[] = []): TextIssue[] {
-  const lines = raw.replace(/\r\n?/g, "\n").split("\n");
   const clean = cleanPasted(raw).split("\n");
   const L = (n: number) => clean[n - 1] ?? "";
   /** Fim (exclusivo) do bloco que começa na linha n: até o próximo marcador. */

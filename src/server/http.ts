@@ -6,7 +6,7 @@ import { AIError } from "@/ai/provider";
 import { logEvent } from "./observability";
 
 /** Bloqueia requisições de outras origens (proteção CSRF para rotas POST). */
-export function sameOrigin(req: NextRequest): boolean {
+export function sameOrigin(req: { headers: Headers }): boolean {
   const origin = req.headers.get("origin");
   if (!origin) return false;
   try {

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { sameOrigin } from "@/server/http";
 import { getSessionUser } from "@/server/auth";
 import { endVoice, getVoiceStatus, startVoice } from "@/server/services/mentor-voice";
 import { UserFacingError } from "@/server/services/trails";
@@ -23,6 +24,7 @@ export async function GET() {
 
 /** { action: "start" } libera uma conversa (token efêmero); { action: "end", seconds } a encerra. */
 export async function POST(req: NextRequest) {
+  if (!sameOrigin(req)) return NextResponse.json({ error: "Origem não permitida." }, { status: 403 });
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sessão expirada. Entre novamente." }, { status: 401, headers: noStore });
   let body: { action?: unknown; seconds?: unknown; transcript?: { student?: unknown; mentor?: unknown } };

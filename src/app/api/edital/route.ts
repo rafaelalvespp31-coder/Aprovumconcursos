@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { sameOrigin } from "@/server/http";
 import { getSessionUser } from "@/server/auth";
 import { createPreparation, listPreparations } from "@/server/services/edital";
 import { fail } from "@/server/edital-http";
@@ -19,6 +20,7 @@ export async function GET() {
 
 /** Cria a preparação e devolve o endereço assinado de envio do PDF (o arquivo não passa pelo servidor). */
 export async function POST(req: NextRequest) {
+  if (!sameOrigin(req)) return NextResponse.json({ error: "Origem não permitida." }, { status: 403 });
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sessão expirada. Entre novamente." }, { status: 401, headers: noStore });
   try {
