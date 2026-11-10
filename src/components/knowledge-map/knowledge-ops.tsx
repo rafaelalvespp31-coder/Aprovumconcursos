@@ -803,8 +803,6 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
                   </span>
                   <span className={"km-plateBody"}>
                     <span className={"km-plateName"}>{t.label}</span>
-                    {/* Arte: como na referência — concluídos/total, em vermelho (dado real do aluno). */}
-                    <span className={"km-plateCount"}>{t.topics.length ? `${t.done}/${t.topics.length}` : "em breve"}</span>
                     {!t.topics.length ? <span className={"km-plateNew"}>Em breve</span> : t.progress !== null ? <span className={"km-platePct"}>{t.progress}%</span> : <span className={"km-plateNew"}>Não iniciado</span>}
                     {t.topics.length > 0 && (
                       <>
