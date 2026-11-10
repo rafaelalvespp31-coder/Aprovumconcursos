@@ -132,6 +132,15 @@ body {
 .jogo-texto li { color: rgba(255, 255, 255, 0.9); }
 .jogo-texto strong { color: #ff6b6b; }
 .jogo-texto a { color: #ffffff; }
+/* Citações/destaques da explicação no Modo Jogo: fundo escuro (antes ficavam claros com texto branco). */
+.leitura.jogo-texto blockquote,
+.leitura.jogo-texto blockquote.md-destaque { background: rgba(255, 255, 255, 0.06); border-left-color: #e10600; color: rgba(255, 255, 255, 0.92); }
+.leitura.jogo-texto blockquote.md-lei { background: transparent; border-left-color: rgba(255, 255, 255, 0.35); }
+.leitura.jogo-texto blockquote *, .leitura.jogo-texto blockquote p, .leitura.jogo-texto blockquote li { color: rgba(255, 255, 255, 0.92); }
+.leitura.jogo-texto strong, .leitura.jogo-texto .md-forte, .leitura.jogo-texto h1, .leitura.jogo-texto h2, .leitura.jogo-texto h3, .leitura.jogo-texto h4 { color: #ff6b6b; }
+.leitura.jogo-texto th, .leitura.jogo-texto td { border-color: rgba(255, 255, 255, 0.18); color: rgba(255, 255, 255, 0.92); }
+.leitura.jogo-texto th, .leitura.jogo-texto code { background: rgba(255, 255, 255, 0.1); color: #fff; }
+.leitura.jogo-texto blockquote strong, .leitura.jogo-texto blockquote .md-forte { color: #ff6b6b; }
 
 /* Modo Jogo: banner */
 .font-stencil { font-family: "Saira Stencil One", "Chakra Petch", system-ui, sans-serif; }
