@@ -75,8 +75,7 @@ describe("completar aula com exemplos visuais e flashcards", () => {
 
   it("aponta título que não existe e bloco sem :::exemplo", () => {
     const r = parseEnrichment("--- SEÇÃO: Outra coisa ---\n:::exemplo\nSituação: a\nPergunta: b\nResposta: c\n:::\n--- SEÇÃO: Checklist ---\nsem bloco", lesson);
-    expect(r.errors).toHaveLength(2);
-    expect(r.errors[0]).toContain("não existe");
-    expect(r.errors[1]).toContain(":::exemplo");
+    expect(r.warnings.some((w) => w.includes("não existe"))).toBe(true);
+    expect(r.warnings.some((w) => w.includes(":::exemplo"))).toBe(true);
   });
 });

@@ -135,7 +135,7 @@ export function parseEnrichment(raw: string, lesson: EnrichLesson): EnrichParse 
     const body = nl < 0 ? "" : chunk.slice(nl + 1).split(/^\s*={3,}.*$/m)[0]!.trim();
     const index = byTitle.get(keyOf(title)) ?? byTitle.get(keyOf(head));
     if (index === undefined) {
-      errors.push(`Seção “${title}” não existe nesta aula: use o título exatamente como no comando.`);
+      warnings.push(`Seção “${title}” não existe nesta aula; ignorada.`);
       continue;
     }
     if (used.has(index)) {
@@ -145,7 +145,7 @@ export function parseEnrichment(raw: string, lesson: EnrichLesson): EnrichParse 
     const m = body.match(/(?:^|\n)[ \t]*:::exemplo[ \t]*\n[\s\S]*?\n[ \t]*:::[ \t]*(?=\n|$)/);
     const cases = m ? extractPractice(m[0]).cases : [];
     if (!m || !cases.length) {
-      errors.push(`“${title}”: falta o bloco :::exemplo completo (Situação, Pergunta e Resposta, fechado com ":::").`);
+      warnings.push(`“${title}”: sem bloco :::exemplo completo; seção ignorada (não bloqueia).`);
       continue;
     }
     const c = cases[0]!;
@@ -154,12 +154,20 @@ export function parseEnrichment(raw: string, lesson: EnrichLesson): EnrichParse 
     if (!c.scheme) warnings.push(`“${title}”: o esquema não veio ou o JSON está inválido.`);
     const s = lesson.sections[index]!;
     if (hasExample(s.bodyMarkdown)) warnings.push(`“${s.title}” já tinha exemplo visual: o novo entra como mais um.`);
-    if (s.bodyMarkdown.length + m[0].length + 2 > MAX_BODY) {
-      errors.push(`“${s.title}”: com o exemplo a seção passaria de ${MAX_BODY.toLocaleString("pt-BR")} caracteres. Encurte o exemplo.`);
-      continue;
+    let block = m[0].trim();
+    if (s.bodyMarkdown.length + block.length + 2 > MAX_BODY) {
+      // encurta sozinho: tira tirinha/carimbo/esquema (as linhas maiores) e mantém Situação/Pergunta/Resposta
+      const slim = block.split("\n").filter((l) => !/^\s*(?:Tirinha|Carimbo|Esquema)\s*:/i.test(l)).join("\n");
+      if (s.bodyMarkdown.length + slim.length + 2 <= MAX_BODY && extractPractice(slim).cases.length) {
+        block = slim;
+        warnings.push(`“${s.title}”: exemplo encurtado (sem tirinha/esquema) para caber na seção.`);
+      } else {
+        warnings.push(`“${s.title}”: a seção já está no limite; exemplo não adicionado.`);
+        continue;
+      }
     }
     used.add(index);
-    examples.push({ index, title: s.title, block: m[0].trim(), visual });
+    examples.push({ index, title: s.title, block, visual: block === m[0].trim() ? visual : false });
   }
 
   let flashcards: string | null = null;
