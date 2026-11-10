@@ -51,6 +51,13 @@ export function PendenciasSino({ initial }: { initial: Data }) {
     return () => { window.clearInterval(id); document.removeEventListener("visibilitychange", tick); };
   }, [refresh]);
 
+  // Ações da equipe (ex.: salvar/excluir avatar) pedem recontagem imediata.
+  useEffect(() => {
+    const on = () => void refresh();
+    window.addEventListener("admin:pendencias", on);
+    return () => window.removeEventListener("admin:pendencias", on);
+  }, [refresh]);
+
   // Número na aba do navegador: dá para ver de longe que há pedidos esperando.
   useEffect(() => {
     const w = window as unknown as Record<string, string | undefined>;

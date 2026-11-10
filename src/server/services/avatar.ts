@@ -213,7 +213,37 @@ export async function saveCustomAvatar(requestIdInput: unknown, artFile: File | 
   }
   const gone = dropped.flatMap((c) => [c.art, c.lids]);
   if (gone.length) await db.storage.from(CUSTOM_BUCKET).remove(gone);
-  await db.from("avatar_requests").update({ status: "concluida", note: "Seu avatar personalizado está pronto!", updated_at: new Date().toISOString() }).eq("id", requestId);
+  // Conclui o pedido e também os anteriores ainda abertos do mesmo aluno: a notificação sai da lista da equipe.
+  await db
+    .from("avatar_requests")
+    .update({ status: "concluida", note: "Seu avatar personalizado está pronto!", updated_at: new Date().toISOString() })
+    .eq("user_id", userId)
+    .in("status", ["enviada", "em_producao"]);
+}
+
+/**
+ * Equipe: exclui o avatar do aluno por completo (todas as skins, os pedidos e as fotos enviadas).
+ * Ele volta à arte padrão. Quem chama confere que é administrador.
+ */
+export async function deleteAvatarStudent(userIdInput: unknown) {
+  const userId = z.uuid().parse(userIdInput);
+  const db = createAdminClient();
+  const cur = await db.from("avatar_profiles").select("custom_portrait, custom_skins").eq("user_id", userId).maybeSingle();
+  const active = cur.data?.custom_portrait as StoredCustom | null | undefined;
+  const skins = [...((cur.data?.custom_skins ?? []) as StoredCustom[])];
+  if (active && !skins.some((c) => skinId(c) === skinId(active))) skins.unshift(active);
+  if (cur.data) {
+    const upd = await db.from("avatar_profiles").update({ custom_portrait: null, custom_skins: [], updated_at: new Date().toISOString() }).eq("user_id", userId);
+    if (upd.error) throw new Error(upd.error.message);
+  }
+  const reqs = await db.from("avatar_requests").select("id, photo_path").eq("user_id", userId);
+  if (reqs.error) throw new Error(reqs.error.message);
+  const del = await db.from("avatar_requests").delete().eq("user_id", userId);
+  if (del.error) throw new Error(del.error.message);
+  const photos = (reqs.data ?? []).map((r) => r.photo_path as string);
+  if (photos.length) await db.storage.from("avatar-solicitacoes").remove(photos);
+  const arts = skins.flatMap((c) => [c.art, c.lids]);
+  if (arts.length) await db.storage.from(CUSTOM_BUCKET).remove(arts);
 }
 
 /** Equipe: remove uma skin do aluno (vaga 0–2); se era a ativa, ele volta à arte padrão. */
@@ -339,8 +369,15 @@ export async function listAvatarRequests(limit = 100): Promise<AvatarRequestAdmi
 export async function setAvatarRequestStatus(id: string, status: AvatarRequestStatus, note: string | null) {
   if (!["enviada", "em_producao", "concluida", "recusada"].includes(status)) throw new UserFacingError("Situação inválida.", "validation");
   if (!/^[0-9a-f-]{36}$/i.test(id)) throw new UserFacingError("Solicitação inválida.", "validation");
-  const { error } = await createAdminClient().from("avatar_requests").update({ status, note: note?.trim().slice(0, 500) || null, updated_at: new Date().toISOString() }).eq("id", id);
+  const db = createAdminClient();
+  const patch = { status, note: note?.trim().slice(0, 500) || null, updated_at: new Date().toISOString() };
+  const { error } = await db.from("avatar_requests").update(patch).eq("id", id);
   if (error) throw new Error(error.message);
+  // Pedido atendido/recusado: os anteriores ainda "recebidos" do mesmo aluno saem da lista de pendências junto.
+  if (status !== "enviada") {
+    const who = await db.from("avatar_requests").select("user_id").eq("id", id).maybeSingle();
+    if (who.data) await db.from("avatar_requests").update(patch).eq("user_id", who.data.user_id as string).eq("status", "enviada");
+  }
 }
 
 /** Catálogo lido com a chave do servidor (no cadastro ainda pode não haver sessão). */

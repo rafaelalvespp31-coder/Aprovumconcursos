@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/server/services/catalog";
-import { removeCustomAvatar, saveCustomAvatar, setAvatarRequestStatus, type AvatarRequestStatus } from "@/server/services/avatar";
+import { deleteAvatarStudent, removeCustomAvatar, saveCustomAvatar, setAvatarRequestStatus, type AvatarRequestStatus } from "@/server/services/avatar";
 import { UserFacingError } from "@/server/services/trails";
 
 export async function setRequestStatusAction(id: string, status: string, note: string): Promise<{ ok: boolean; error?: string }> {
@@ -40,5 +40,18 @@ export async function removeCustomAvatarAction(id: string, slot = 0): Promise<{ 
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof UserFacingError ? e.message : "Não foi possível remover." };
+  }
+}
+
+/** Exclui o avatar do aluno (skins, pedidos e fotos). */
+export async function deleteAvatarStudentAction(userId: string): Promise<{ ok: boolean; error?: string }> {
+  await requireAdmin();
+  try {
+    await deleteAvatarStudent(userId);
+    revalidatePath("/admin/avatares");
+    revalidatePath("/painel");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof UserFacingError ? e.message : "Não foi possível excluir." };
   }
 }
