@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { lessonSchema } from "@/ai/schemas";
 import { extractStructure } from "@/domain/content/extract";
 import { normalizeContent } from "@/domain/content/normalize";
-import { buildLesson, disciplineFrom, itemKey, matchItem, parseLessonUpload, sectionKind } from "./upload";
+import { buildLesson, disciplineFrom, itemKey, matchItem, MAX_SECTIONS_PER_MODULE, parseLessonUpload, sectionKind } from "./upload";
 
 const nodesOf = (t: string) => extractStructure(normalizeContent(t).normalized).nodes;
 const template = readFileSync("public/modelos/modelo-aula.txt", "utf8");
@@ -37,7 +37,7 @@ describe("modelo de aula (upload)", () => {
     expect(q2!.type).toBe("certo_errado");
     expect(q2!.correctAnswerTrue).toBe(true);
     expect(nodes.find((n) => n.key === q2!.nodeKey)!.path).toBe("Art. 155 › § 1º");
-    expect(b.warnings.some((w) => /pelo menos 10/.test(w))).toBe(true);
+    expect(b.warnings).toEqual([]);
   });
 
   it("casa itens por caminho, marcador ou título", () => {
@@ -112,10 +112,8 @@ describe("modelo de aula (upload)", () => {
     const p = parseLessonUpload(txt);
     const w = p.warnings.join("\n");
     expect(p.errors).toEqual([]);
-    expect(w).toMatch(/Faltou o “Objetivo:”/);
     expect(w).toMatch(/matéria “Astronomia”/);
-    expect(w).toMatch(/TEXTO-BASE/);
-    expect(w).toMatch(/Linha 5: tipo de seção “inventada”/);
+    expect(w).not.toMatch(/Objetivo|TEXTO-BASE|tipo de seção/);
     expect(w).toMatch(/Questão da linha 8: .*Gabarito.*Questão ignorada/);
     expect(p.meta.objective.length).toBeGreaterThan(5);
     expect(p.sections[0]).toMatchObject({ kind: "explicacao", title: "Seção" });
@@ -131,20 +129,46 @@ describe("modelo de aula (upload)", () => {
     expect(parts.length).toBeGreaterThanOrEqual(3);
     expect(parts.every((s) => s.bodyMarkdown.length <= 10_000)).toBe(true);
     expect(parts[1]!.title).toBe("Tudo (parte 2)");
-    expect(p.warnings.join("\n")).toMatch(/dividi em \d+ partes/);
+    expect(p.warnings).toEqual([]);
   });
 
-  it("aceita mais de 30 seções, mais de 100 itens e questões longas (cortadas na frase)", () => {
+  it("aceita mais de 30 seções, mais de 100 itens e questões longas, sem cortar nem avisar", () => {
     const secs = Array.from({ length: 45 }, (_, i) => `--- SEÇÃO: explicação | Item ${i + 1} ---\nItens: ${i + 1}\nConteúdo do item ${i + 1}.`).join("\n");
     const base = Array.from({ length: 120 }, (_, i) => `${i + 1} Assunto ${i + 1}`).join("\n");
     const longQ = `Enunciado: ${"Frase longa de enunciado. ".repeat(250)}\nA) um\nB) dois\nGabarito: A\nJustificativa: ${"Justificativa longa. ".repeat(200)}`;
     const txt = ["=== AULA ===", "Título: Enorme", "Matéria: Direito Penal", "Objetivo: Dominar tudo isto.", "=== TEXTO-BASE ===", base, "=== MÓDULO: M ===", secs, "=== QUESTÕES: FÁCIL ===", "--- QUESTÃO ---", longQ].join("\n");
     const p = prepareLessonUpload(txt);
     expect(p.errors).toEqual([]);
+    expect(p.warnings).toEqual([]);
     expect(p.built.lesson.sections).toHaveLength(45);
+    // 45 seções num módulo só: a aula ganha mais módulos sozinha.
+    const mods = [...new Set(p.built.lesson.sections.map((s) => s.module))];
+    expect(mods.length).toBe(Math.ceil(45 / MAX_SECTIONS_PER_MODULE));
+    expect(mods[1]).toBe("M (parte 2)");
     expect(p.built.lesson.taughtNodeKeys.length).toBeGreaterThan(100);
-    expect(p.built.questions[0]!.statement.length).toBeLessThanOrEqual(4000);
-    expect(p.built.questions[0]!.justification.length).toBeLessThanOrEqual(3000);
+    expect(p.built.questions[0]!.statement.length).toBeGreaterThan(6000);
+    expect(p.built.questions[0]!.justification.length).toBeGreaterThan(4000);
+  });
+
+  it("sem módulos no texto, a aula grande é agrupada em módulos numerados", () => {
+    const secs = Array.from({ length: 25 }, (_, i) => `--- SEÇÃO: explicação | Parte ${i + 1} ---\nConteúdo ${i + 1}.`).join("\n");
+    const p = prepareLessonUpload(["=== AULA ===", "Título: Sem módulos", "Matéria: Direito Penal", "Objetivo: Dominar o tema.", secs].join("\n"));
+    expect(p.warnings).toEqual([]);
+    expect([...new Set(p.built.lesson.sections.map((s) => s.module))]).toEqual(["Módulo 1", "Módulo 2", "Módulo 3"]);
+  });
+
+  it("texto-base vazio: os itens vêm dos códigos citados nas seções (8.1.1, 8.1.2…) e nada é avisado", () => {
+    const txt = [
+      "=== AULA ===", "Título: Cap. IV", "Matéria: Direito Penal", "Objetivo: Dominar o capítulo.", "=== TEXTO-BASE ===", "",
+      "=== MÓDULO: Visão geral ===", "--- SEÇÃO: introdução | Visão geral ---", "Itens: 8.1.1; 8.1.2; 8.1.3", "Texto geral.",
+      "--- SEÇÃO: explicação | Detalhe ---", "Itens: 8.1.4", "Texto do detalhe.",
+    ].join("\n");
+    const p = prepareLessonUpload(txt);
+    expect(p.errors).toEqual([]);
+    expect(p.warnings).toEqual([]);
+    expect(p.nodes.map((n) => n.path)).toEqual(["8.1.1", "8.1.2", "8.1.3", "8.1.4"]);
+    expect(p.built.lesson.sections[0]!.nodeKeys).toHaveLength(3);
+    expect(p.built.lesson.sections[1]!.nodeKeys).toHaveLength(1);
   });
 
   it("sem === AULA ===, sem texto-base e com seção fora do módulo: monta tudo a partir das seções", () => {
@@ -153,7 +177,7 @@ describe("modelo de aula (upload)", () => {
     expect(p.errors).toEqual([]);
     expect(p.built.lesson.sections).toHaveLength(2);
     expect(p.built.lesson.taughtNodeKeys.length).toBeGreaterThan(0);
-    expect(p.warnings.join("\n")).toMatch(/AULA/);
+    expect(p.warnings).toEqual([]);
   });
 });
 

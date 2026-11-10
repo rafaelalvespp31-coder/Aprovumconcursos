@@ -107,6 +107,29 @@ export const lessonSchema = z.object({
 });
 export type LessonOutput = z.infer<typeof lessonSchema>;
 
+/**
+ * Aula enviada pelo painel (catalogada pela equipe): mesma forma da aula gerada pela IA, mas sem os
+ * tetos de tamanho que existem só para limitar a resposta do modelo. Aula grande é só mais módulos.
+ */
+export const lessonUploadSchema = z.object({
+  title: z.string().min(2),
+  objective: z.string().min(5),
+  sections: z
+    .array(
+      z.object({
+        kind: z.enum(LESSON_SECTION_KINDS),
+        title: z.string().min(2),
+        bodyMarkdown: z.string().min(1),
+        nodeKeys: z.array(nodeKey),
+        sourceKey: nodeKey.optional(),
+      }),
+    )
+    .min(1),
+  taughtNodeKeys: z.array(nodeKey).min(1),
+  references: z.array(z.object({ kind: z.enum(["texto_informado", "lei", "doutrina", "jurisprudencia", "outro"]), citation: z.string().min(3) })),
+  unverifiedClaims: z.array(z.string().min(5)),
+});
+
 // ---- Questões -----------------------------------------------------------------
 const optionSchema = z.object({
   label: z.string().min(1).max(3),

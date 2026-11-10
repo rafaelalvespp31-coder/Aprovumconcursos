@@ -2,7 +2,7 @@
  * Prévia da catalogação por upload — pura (roda no servidor e na galeria de desenvolvimento).
  * O servidor acrescenta as conferências que dependem do banco (aula já existente, duplicatas).
  */
-import { lessonSchema } from "@/ai/schemas";
+import { lessonUploadSchema } from "@/ai/schemas";
 import { disciplineLabel, SECTION_LABELS } from "@/ai/pedagogy";
 import { extractStructure } from "@/domain/content/extract";
 import { normalizeContent } from "@/domain/content/normalize";
@@ -62,16 +62,33 @@ export function prepareLessonUpload(text: string) {
     return { source, nodes: source ? extractStructure(source).nodes : [] };
   };
   let { source, nodes } = read(parsed.sourceText);
-  // Sem texto-base utilizável (vazio ou sem itens numerados): a lista de itens sai das próprias seções.
+  // Sem texto-base utilizável (vazio ou sem itens numerados): a lista de itens sai das próprias seções,
+  // preferindo os códigos que elas já citam em "Itens:" (8.1.1, 8.1.2…); seção sem código vira um item numerado.
   if (!nodes.some((n) => n.requiresDirectCoverage) && parsed.sections.length) {
-    const synth = parsed.sections.map((s, i) => `${i + 1} ${s.title}`).join("\n");
+    const seen = new Set<string>();
+    const lines: string[] = [];
+    const sem: string[] = [];
+    for (const sec of parsed.sections) {
+      let coded = false;
+      for (const it of sec.items) {
+        const m = it.match(/^(\d+(?:\.\d+)*)\.?(?:\s+(.+))?$/);
+        if (!m || seen.has(m[1]!)) continue;
+        seen.add(m[1]!);
+        lines.push(m[2] ? `${m[1]} ${m[2]}` : m[1]!);
+        coded = true;
+      }
+      if (!coded) sem.push(sec.title);
+    }
+    const base = Math.max(0, ...[...seen].map((c) => Number(c.split(".")[0]) || 0));
+    sem.forEach((t, i) => lines.push(`${base + i + 1} ${t}`));
+    const synth = lines.join("\n");
     ({ source, nodes } = read(synth));
-    parsed = { ...parsed, sourceText: synth, warnings: [...parsed.warnings, "O texto-base não tinha itens numerados; montei a lista de itens a partir das seções."] };
+    parsed = { ...parsed, sourceText: synth };
   }
   const built = buildLesson(parsed, nodes);
   const errors = [...parsed.errors, ...(parsed.errors.length ? [] : built.errors)];
   if (!errors.length) {
-    const v = lessonSchema.safeParse(built.lesson);
+    const v = lessonUploadSchema.safeParse(built.lesson);
     if (!v.success) errors.push(`A aula não passou na validação: ${v.error.issues[0]?.path.join(".")} — ${v.error.issues[0]?.message}`);
   }
   const m = parsed.meta;

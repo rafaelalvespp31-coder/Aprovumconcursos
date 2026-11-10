@@ -14,8 +14,8 @@ import { groupHeaderLines, type OutlineItem, type OutlineSubtopic } from "./topi
 
 /** Tamanho máximo do comando (caracteres); acima disso o esqueleto de cada item é enxugado. */
 export const SUBTOPIC_PROMPT_MAX = 40_000;
-/** O painel aceita até 150 seções por aula; o comando usa até 120 e deixa folga para as partes extras. */
-const MAX_SECTIONS = 120;
+/** O painel não limita seções por aula (módulos extras são abertos sozinhos); este teto só mantém o comando num tamanho que o ChatGPT consegue seguir. */
+const MAX_SECTIONS = 400;
 
 const label = (x: OutlineItem) => `${x.code ? `${x.code} ` : ""}${x.title}`;
 
@@ -166,6 +166,8 @@ FORMATO OBRIGATÓRIO
 - SOMENTE o texto no formato abaixo, em UM bloco de código, nada antes ou depois; marcadores (=== / ---) e campos exatamente iguais.
 - Markdown: parágrafos curtos, **negrito**, listas "-", tabelas "|", caixas ">". Sem === ou --- no conteúdo.
 - TAMANHO DA AULA: não há limite de módulos nem de seções. Cada seção deve ter no máximo uns 6.000 caracteres; se um item ou assunto for extenso, abra MAIS seções do mesmo tipo (ex.: "Furto simples — parte 2") ou um módulo novo, em vez de escrever uma seção gigante ou resumir. Quanto maior o assunto, mais módulos.
+- O bloco === TEXTO-BASE === é OBRIGATÓRIO e nunca pode ficar vazio: copie nele, exatamente como está abaixo, a lista numerada de itens. Em cada "Itens:" use SOMENTE números que existam no TEXTO-BASE (ex.: 8.1.2). Nunca invente um número que não esteja lá.
+- Não existe limite de itens, referências, questões nem tamanho: escreva tudo o que o assunto pede, sem resumir.
 - Cortou? Eu peço "continue": siga de onde parou, sem repetir.`;
 
   const lesson = (mods: string) => `=== AULA ===

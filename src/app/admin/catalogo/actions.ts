@@ -45,11 +45,11 @@ async function guard(name: string, fn: () => Promise<string | void>): Promise<Ad
 
 export type UploadPreviewResult = { ok: true; preview: LessonUploadPreview } | { ok: false; error: string };
 
-const MAX_TEXT = 400_000;
+const MAX_TEXT = 3_000_000;
 const pasted = (text: unknown) => {
   const t = typeof text === "string" ? text : "";
   if (!t.trim()) throw new UserFacingError("Cole o texto da aula no campo.", "invalid_input");
-  if (t.length > MAX_TEXT) throw new UserFacingError("Texto grande demais (máximo de 400 mil caracteres). Divida a aula em partes.", "invalid_input");
+  if (t.length > MAX_TEXT) throw new UserFacingError("Texto grande demais (máximo de 3 milhões de caracteres).", "invalid_input");
   return t;
 };
 

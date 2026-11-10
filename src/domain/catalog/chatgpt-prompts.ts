@@ -15,6 +15,8 @@ FORMATO OBRIGATÓRIO
 - Mantenha exatamente os marcadores (=== … === e --- … ---) e os nomes dos campos (Título:, Matéria:, Itens:, Enunciado:, Gabarito: etc.).
 - Conteúdo das seções em Markdown: parágrafos curtos, **negrito** nos termos-chave, listas com "-", listas numeradas, tabelas com "|". Caixas de destaque com ">" no começo da linha, ex.: "> **Pegadinha:** …", "> **Por que isso importa na prova:** …", "> **A campeã de prova:** …".
 - Não use os marcadores === ou --- dentro do conteúdo. Cada seção com uns 6.000 caracteres; se o assunto for grande, crie mais seções e mais módulos (não há limite de módulos nem de seções).
+- O bloco === TEXTO-BASE === é OBRIGATÓRIO e nunca pode ficar vazio. Em cada "Itens:" use SOMENTE itens que existam no TEXTO-BASE, escritos igual (ex.: Art. 155; § 1º; 3; 8.1.2). Nunca invente um número que não esteja lá.
+- Não existe limite de itens, de referências, de questões nem de tamanho: escreva tudo o que o assunto pede, sem resumir.
 - Se a resposta for cortada por tamanho, eu vou pedir "continue": continue exatamente de onde parou, sem repetir nada e sem abrir explicações.
 
 ${visualRules()}

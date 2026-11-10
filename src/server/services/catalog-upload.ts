@@ -6,7 +6,7 @@ import { buildCompactPrompt, buildModelPrompt, buildModelPromptParts, exportTopi
 import { parseQuestionsForTopic } from "@/domain/catalog/upload";
 import { existingForUpload, slugMatchIsSameLesson } from "@/domain/catalog/topic-group";
 import { applyEnrichment, enrichStatus, parseEnrichment, type EnrichLesson } from "@/domain/catalog/enrich";
-import { lessonSchema } from "@/ai/schemas";
+import { lessonUploadSchema } from "@/ai/schemas";
 import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
 import { auditLog } from "../observability";
@@ -271,7 +271,7 @@ async function loadTopicForQuestions(topicId: string) {
 
 function analyzeTopicQuestions(text: string, t: { nodes: unknown; articles: unknown; lesson: unknown; status: unknown }, current: Record<"facil" | "medio" | "dificil", number>) {
   if (!text.trim()) throw new UserFacingError("Cole as questões no campo.", "invalid_input");
-  if (text.length > 400_000) throw new UserFacingError("Texto grande demais. Cole em partes.", "invalid_input");
+  if (text.length > 3_000_000) throw new UserFacingError("Texto grande demais (máximo de 3 milhões de caracteres).", "invalid_input");
   const nodes = (t.nodes as ExportableTopic["nodes"]) ?? [];
   if (!nodes.length) throw new UserFacingError("Esta aula não tem texto-base: catalogue a aula completa primeiro.", "invalid_input");
   const r = parseQuestionsForTopic(text, nodes, (t.articles as string[]) ?? []);
@@ -371,7 +371,7 @@ export async function applyTopicEnrichment(user: SessionUser, topicId: string, t
   const { p, next } = analyzeEnrich(text, t.lesson);
   if (p.errors.length) throw new UserFacingError(p.errors[0]!, "invalid_input");
   if (!p.examples.length && !p.flashcards) throw new UserFacingError("Nada para acrescentar.", "invalid_input");
-  const chk = lessonSchema.safeParse({ ...next, verificationPending: undefined });
+  const chk = lessonUploadSchema.safeParse({ ...next, verificationPending: undefined });
   if (!chk.success) throw new UserFacingError(`A aula ficaria fora do formato: ${chk.error.issues[0]?.path.join(".")} — ${chk.error.issues[0]?.message}`, "invalid_input");
   const db = createAdminClient();
   const up = await db.from("catalog_topics").update({ lesson: next, updated_at: new Date().toISOString() }).eq("id", topicId);

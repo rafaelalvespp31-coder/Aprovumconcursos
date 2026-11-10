@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { prepareLessonUpload } from "./upload-preview";
-import { applyLineEdit, describeIssues } from "./upload-fixes";
+import { describeIssues } from "./upload-fixes";
 
 const base = [
   "```",
@@ -44,10 +44,10 @@ describe("conferência ao vivo: o painel corrige sozinho, sem erro", () => {
     const issues = describeIssues(base, p.errors, p.warnings);
     expect(issues.some((i) => i.severity === "erro")).toBe(false);
     const w = p.warnings.join("\n");
-    expect(w).toMatch(/Faltou o “Objetivo:”/);
+    expect(w).not.toMatch(/Objetivo/);
     expect(w).not.toMatch(/matéria/);
     expect(p.parsed.meta.disciplineMode).toBe("lingua_portuguesa");
-    expect(w).toMatch(/veio vazia e foi ignorada/);
+    expect(w).not.toMatch(/veio vazia/);
     expect(w).toMatch(/Questão da linha 15: .*Questão ignorada/);
     expect(w).toMatch(/Questão da linha 23: .*Questão ignorada/);
     expect(p.parsed.sections.map((x) => x.title)).toEqual(["O que é", "Revisão"]);
@@ -55,9 +55,8 @@ describe("conferência ao vivo: o painel corrige sozinho, sem erro", () => {
     expect(p.built.lesson.objective.length).toBeGreaterThan(5);
   });
 
-  it("sem bloco AULA: insere o cabeçalho no começo", () => {
-    const i = issuesOf("qualquer coisa").find((x) => /AULA/.test(x.message))!;
-    expect(applyLineEdit("qualquer coisa", i.fixes[0]!.edit).startsWith("=== AULA ===\n")).toBe(true);
+  it("sem bloco AULA: não avisa; os dados saem do conteúdo", () => {
+    expect(issuesOf("qualquer coisa").some((x) => /AULA/.test(x.message))).toBe(false);
   });
 });
 
@@ -73,7 +72,7 @@ describe("seções que o ChatGPT escreveu fora do formato", () => {
     expect(p.errors).toEqual([]);
     expect(p.parsed.sections.map((s) => s.title)).toEqual(["O que é o TCO", "Rito sumaríssimo"]);
     expect(p.parsed.sections[0]!.bodyMarkdown).toContain("Mais texto.");
-    expect(p.warnings.join("\n")).toMatch(/virou uma seção de explicação/);
+    expect(p.warnings.join("\n")).not.toMatch(/virou uma seção/);
     expect(p.warnings.join("\n")).toMatch(/fora de uma questão/);
   });
 });

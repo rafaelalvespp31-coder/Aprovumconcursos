@@ -8,7 +8,7 @@ import { disciplineLabel, isDisciplineSlug, type DisciplineMode } from "@/ai/ped
 import { ensureDisciplines } from "./disciplines";
 import { getPartnerStatus } from "./partner";
 import type { CatalogPickerGroup } from "@/domain/catalog/picker";
-import { lessonSchema, type LessonOutput } from "@/ai/schemas";
+import { lessonUploadSchema, type LessonOutput } from "@/ai/schemas";
 import { normalizeContent } from "@/domain/content/normalize";
 import { extractStructure, type ExtractedNode } from "@/domain/content/extract";
 import { auditPlan } from "@/domain/content/audit";
@@ -549,7 +549,7 @@ export async function updateTopicSection(id: string, index: number, input: unkno
   if (!t.lesson || !t.lesson.sections[index]) throw new UserFacingError("Seção não encontrada.", "not_found");
   const v = sectionEditSchema.parse(input);
   const lesson = { ...t.lesson, sections: t.lesson.sections.map((s, i) => (i === index ? { ...s, ...v } : s)) };
-  lessonSchema.parse({ ...lesson, verificationPending: undefined });
+  lessonUploadSchema.parse({ ...lesson, verificationPending: undefined });
   const up = await createAdminClient().from("catalog_topics").update({ lesson, updated_at: new Date().toISOString() }).eq("id", id);
   if (up.error) throw new Error(up.error.message);
 }

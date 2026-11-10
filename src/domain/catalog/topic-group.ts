@@ -192,7 +192,6 @@ export function parseOutline(text: string): Outline {
     if (!grp.subtopics.length) warnings.push(`O tópico “${grp.title}” não tem subtópicos (4.1, 4.2…).`);
     for (const sub of grp.subtopics) {
       if (!sub.items.length) warnings.push(`O subtópico “${sub.code ? `${sub.code} ` : ""}${sub.title}” não tem itens: a aula terá só os módulos fixos.`);
-      if (sub.items.length > 12) warnings.push(`O subtópico “${sub.code ? `${sub.code} ` : ""}${sub.title}” tem ${sub.items.length} itens; acima de 10 a aula fica longa — considere dividir.`);
       if (sub.code && grp.code && !codeBelongs(sub.code, grp.code)) warnings.push(`O subtópico ${sub.code} não começa com o número do tópico (${grp.code}).`);
     }
   }
