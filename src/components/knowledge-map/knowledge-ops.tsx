@@ -1,5 +1,6 @@
 "use client";
 
+import { lockScroll } from "@/lib/scroll-lock";
 import { Component, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -213,11 +214,10 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
-    const prev = { ho: html.style.overscrollBehavior, bo: body.style.overscrollBehavior, ov: body.style.overflow, hov: html.style.overflow };
+    const prev = { ho: html.style.overscrollBehavior, bo: body.style.overscrollBehavior };
+    const unlock = lockScroll();
     html.style.overscrollBehavior = "none";
     body.style.overscrollBehavior = "none";
-    html.style.overflow = "hidden";
-    body.style.overflow = "hidden";
     const SCROLLERS = ".km-results, .km-list, .km-panel, .km-topicList, input, textarea, select";
     const block = (e: TouchEvent) => {
       const t = e.target as Element | null;
@@ -234,8 +234,7 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
       document.removeEventListener("dblclick", noGesture);
       html.style.overscrollBehavior = prev.ho;
       body.style.overscrollBehavior = prev.bo;
-      html.style.overflow = prev.hov;
-      body.style.overflow = prev.ov;
+      unlock();
     };
   }, []);
 
@@ -298,13 +297,11 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
       setMode3d(!sem3d && hasWebGL() ? "3d" : "lista");
     }, 0);
     window.addEventListener("resize", update);
-    const html = document.documentElement;
-    const prev = html.style.overflow;
-    html.style.overflow = "hidden";
+    const unlock = lockScroll();
     const t = setTimeout(() => setHint(false), 7000);
     return () => {
       window.removeEventListener("resize", update);
-      html.style.overflow = prev;
+      unlock();
       clearTimeout(t);
       clearTimeout(t0);
       document.body.style.cursor = "";

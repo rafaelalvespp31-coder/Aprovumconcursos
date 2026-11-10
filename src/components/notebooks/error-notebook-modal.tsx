@@ -1,5 +1,6 @@
 "use client";
 
+import { lockScroll } from "@/lib/scroll-lock";
 import { createPortal } from "react-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CircleCheck, ClipboardX, X } from "lucide-react";
@@ -32,14 +33,13 @@ export function ErrorNotebookModal({ notebookId, title, api, onClose }: { notebo
         if (r.ok) setData(r.data);
         else setLoadError(r.error);
       });
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlock = lockScroll();
     cardRef.current?.focus();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
     window.addEventListener("keydown", onKey);
     return () => {
       alive = false;
-      document.body.style.overflow = prev;
+      unlock();
       window.removeEventListener("keydown", onKey);
     };
   }, [apiRef, notebookId, onClose]);

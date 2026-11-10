@@ -1,5 +1,6 @@
 "use client";
 
+import { lockScroll } from "@/lib/scroll-lock";
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import "./caveira-popup.css";
@@ -41,14 +42,13 @@ export function CaveiraPopup({ campaignId, days, markSeen }: Props) {
       void markSeen(campaignId).catch(() => undefined);
     }
     botao.current?.focus();
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlock = lockScroll();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") fechar();
     };
     window.addEventListener("keydown", onKey);
     return () => {
-      document.body.style.overflow = prev;
+      unlock();
       window.removeEventListener("keydown", onKey);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps

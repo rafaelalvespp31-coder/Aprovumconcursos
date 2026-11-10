@@ -1,5 +1,6 @@
 "use client";
 
+import { lockScroll } from "@/lib/scroll-lock";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, X } from "lucide-react";
 import { ICONES, PALETA } from "./base";
@@ -14,13 +15,12 @@ export function Janela({ titulo, onClose, children, largo }: { titulo: string; o
     window.setTimeout(onClose, 190);
   }, [onClose]);
   useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlock = lockScroll();
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && fechar();
     window.addEventListener("keydown", onKey);
     ref.current?.querySelector<HTMLElement>("input,button,select")?.focus();
     return () => {
-      document.body.style.overflow = prev;
+      unlock();
       window.removeEventListener("keydown", onKey);
     };
   }, [fechar]);

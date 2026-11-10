@@ -1,5 +1,6 @@
 "use client";
 
+import { lockScroll } from "@/lib/scroll-lock";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -240,13 +241,12 @@ function useModal(onClose: () => void) {
   });
   useEffect(() => {
     const prevFocus = document.activeElement as HTMLElement | null;
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const unlock = lockScroll();
     ref.current?.focus();
     const key = (e: KeyboardEvent) => e.key === "Escape" && closeRef.current();
     window.addEventListener("keydown", key);
     return () => {
-      document.body.style.overflow = prev;
+      unlock();
       window.removeEventListener("keydown", key);
       prevFocus?.focus?.();
     };

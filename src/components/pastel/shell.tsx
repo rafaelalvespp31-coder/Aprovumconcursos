@@ -1,5 +1,6 @@
 "use client";
 
+import { releaseStaleScrollLock } from "@/lib/scroll-lock";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { RotatingQuote } from "./rotating-quote";
@@ -234,6 +235,13 @@ export function PastelShell({
   floating?: ReactNode;
 }) {
   const path = usePathname();
+  // Rede de segurança: ao trocar de página (ou voltar do cache) sem nenhuma trava ativa, a rolagem nunca fica presa.
+  useEffect(() => {
+    releaseStaleScrollLock();
+    const onShow = () => releaseStaleScrollLock();
+    window.addEventListener("pageshow", onShow);
+    return () => window.removeEventListener("pageshow", onShow);
+  }, [path]);
   const router = useRouter();
   const items = useMemo(() => navItems(summary, basePath), [summary, basePath]);
   const active = items.find((i) => [i.href, ...(i.also ?? [])].some((p) => path === p || path.startsWith(`${p}/`))) ?? null;
