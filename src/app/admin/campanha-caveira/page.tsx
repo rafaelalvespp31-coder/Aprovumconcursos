@@ -12,8 +12,17 @@ const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString("pt-BR",
 export default async function CampanhaPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
   await requireAdmin();
   const { q = "" } = await searchParams;
-  const [info, stats, found] = await Promise.all([getCampaignInfo(), getCampaignStats(), searchCampaignUsers(q)]);
-  if (!info) return <p className="t-small">Campanha não encontrada. Aplique a migração da campanha.</p>;
+  const info = await getCampaignInfo();
+  if (!info)
+    return (
+      <div data-testid="campanha-pendente">
+        <h1 className="t-h1">CAMPANHA — O CAVEIRA FICOU MALUCO</h1>
+        <p className="mt-3 max-w-2xl rounded-lg border border-linha bg-superficie p-4 t-small">
+          A campanha ainda não foi instalada no banco de dados. Aplique a migração <code>20261108120000_campanha_caveira.sql</code> no Supabase e recarregue esta página.
+        </p>
+      </div>
+    );
+  const [stats, found] = await Promise.all([getCampaignStats(), searchCampaignUsers(q)]);
   return (
     <div>
       <h1 className="t-h1">CAMPANHA — O CAVEIRA FICOU MALUCO</h1>

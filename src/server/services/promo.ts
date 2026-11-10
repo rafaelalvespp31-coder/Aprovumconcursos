@@ -3,6 +3,11 @@ import { cache } from "react";
 import { createAdminClient } from "../supabase";
 import { CAVEIRA_CAMPAIGN_ID, promoIsValid, toPromoGrant, type PromoGrant } from "@/domain/plans/promo";
 
+/** Tabela/função da campanha inexistente (migração pendente): PostgREST 404 ou erro de relação. */
+function isMissingRelation(e: { code?: string; message?: string }): boolean {
+  return e.code === "42P01" || e.code === "PGRST205" || /could not find the table|does not exist/i.test(e.message ?? "");
+}
+
 type GrantRow = Parameters<typeof toPromoGrant>[0];
 
 /**
@@ -20,7 +25,7 @@ export const getActivePromo = cache(async function getActivePromo(userId: string
     .limit(1)
     .maybeSingle();
   // Migração da campanha ainda não aplicada (tabela inexistente): sem degustação, nunca derruba o app.
-  if (error && (error.code === "42P01" || error.code === "PGRST205")) return null;
+  if (error && isMissingRelation(error)) return null;
   if (error) throw new Error(error.message);
   if (!data) return null;
   const c = data.promo_campaigns as unknown as { name: string; plan_id: string } | null;
@@ -98,6 +103,7 @@ export interface PromoUserRow {
 
 export async function getCampaignInfo(id: string = CAVEIRA_CAMPAIGN_ID): Promise<PromoCampaignInfo | null> {
   const { data, error } = await createAdminClient().from("promo_campaigns").select("*").eq("id", id).maybeSingle();
+  if (error && isMissingRelation(error)) return null; // migração ainda não aplicada
   if (error) throw new Error(error.message);
   if (!data) return null;
   return {
