@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { Lock } from "lucide-react";
 import { publicEnv } from "@/lib/env";
+import { normalizeReferralCode } from "@/domain/referral/code";
 import { CadastroForm } from "@/components/cadastro/cadastro-form";
 import { CadastroRodape } from "@/components/cadastro/cadastro-rodape";
 import "@/components/cadastro/cadastro.css";
@@ -11,7 +12,8 @@ export const metadata = { title: "Criar conta" };
  * Tela de cadastro tática do APROVUM. A arte do topo (soldado, caveira, marca e bandeira) é uma
  * camada de imagem; todo o formulário é HTML real ligado ao cadastro existente (Supabase).
  */
-export default function SignUpPage() {
+export default async function SignUpPage({ searchParams }: { searchParams: Promise<{ ref?: string }> }) {
+  const { ref } = await searchParams;
   const configured = publicEnv().configured;
   return (
     <div className="cd-tela">
@@ -49,7 +51,7 @@ export default function SignUpPage() {
             Autenticação não configurada: defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.
           </p>
         )}
-        <CadastroForm />
+        <CadastroForm refInicial={normalizeReferralCode(ref) ?? ""} />
       </main>
 
       <CadastroRodape />

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useRef, useState } from "react";
-import { Check, ChevronRight, ChevronsRight, CircleAlert, Crosshair, Eye, EyeOff, Info, LoaderCircle, Lock, Mail, Mars, Rocket, User, Venus, X } from "lucide-react";
+import { Check, ChevronRight, ChevronsRight, CircleAlert, Crosshair, Eye, EyeOff, Gift, Info, LoaderCircle, Lock, Mail, Mars, Rocket, User, Venus, X } from "lucide-react";
 import { signUp, type AuthState } from "@/app/(auth)/actions";
 import { normalizeWhatsapp } from "@/domain/contact/whatsapp";
 
@@ -58,9 +58,9 @@ function keepVisible(e: React.FocusEvent<HTMLElement>) {
   }, 320);
 }
 
-export function CadastroForm() {
+export function CadastroForm({ refInicial = "" }: { refInicial?: string }) {
   const [state, action, pending] = useActionState(submit, initial);
-  const [f, setF] = useState({ name: "", gender: "" as "" | "m" | "f", whatsapp: "", email: "", password: "", consent: false });
+  const [f, setF] = useState({ name: "", gender: "" as "" | "m" | "f", whatsapp: "", email: "", password: "", consent: false, referral: refInicial });
   const [show, setShow] = useState(false);
   // Avisos locais só depois da 1ª tentativa de envio (erro surgindo no blur desloca o botão sob o dedo).
   const [tried, setTried] = useState(false);
@@ -97,6 +97,7 @@ export function CadastroForm() {
   const eName = err("name", "Informe seu nome.");
   const eWhats = err("whatsapp", "Informe um WhatsApp válido com DDD.");
   const eEmail = err("email", "Informe um e-mail válido.");
+  const eRef = state.fieldErrors?.referral ?? null;
   const ePass = err("password", "Use pelo menos 8 caracteres, com letras e números.");
   const eGender = valid.gender ? null : state.fieldErrors?.gender ?? null;
   const eConsent = valid.consent ? null : state.fieldErrors?.consent ?? null;
@@ -192,6 +193,16 @@ export function CadastroForm() {
                 </div>
                 <FieldError id="email" msg={eEmail} />
               </div>
+            </div>
+
+            <div className="cd-campo cd-in" style={{ ["--d" as string]: "0.5s" }} data-erro={eRef ? 1 : undefined}>
+              <span className="cd-icone" aria-hidden><Gift /></span>
+              <div className="cd-caixa">
+                <label htmlFor="referral">ID de indicação <small>(opcional)</small></label>
+                <input id="referral" name="referral" data-campo="referral" type="text" autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="APV-XXXXXX" maxLength={12} value={f.referral} onChange={(e) => set("referral", e.target.value.toUpperCase())} onFocus={keepVisible} aria-invalid={!!eRef} aria-describedby={`referral-dica${eRef ? " referral-erro" : ""}`} data-testid="cadastro-indicacao" />
+              </div>
+              <p id="referral-dica" className="cd-regras"><span>Veio por indicação de um amigo? Se ele já assinar o plano anual ou vitalício, vocês dois ganham copo e camisa.</span></p>
+              <FieldError id="referral" msg={eRef} />
             </div>
 
             <div className="cd-campo cd-in" style={{ ["--d" as string]: "0.54s" }} data-erro={ePass ? 1 : undefined} data-ok={valid.password ? 1 : undefined}>

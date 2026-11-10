@@ -9,6 +9,8 @@ import { normalizeWhatsapp } from "@/domain/contact/whatsapp";
 import { CANONICAL_URL, nameMatches } from "@/domain/auth/identity";
 import { getPartnerStatus } from "@/server/services/partner";
 import { initAvatarForNewUser } from "@/server/services/avatar";
+import { ensureReferralCode, referralCodeExists, registerReferral } from "@/server/services/referral";
+import { normalizeReferralCode } from "@/domain/referral/code";
 
 export interface AuthState {
   error?: string;
@@ -102,6 +104,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
       email,
       password,
       consent: z.literal("on", { error: "É preciso aceitar os termos e a política de privacidade." }),
+      referral: z.string().trim().max(20).optional(),
     })
     .safeParse({
       name: form.get("name"),
@@ -110,8 +113,14 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
       email: form.get("email"),
       password: form.get("password"),
       consent: form.get("consent"),
+      referral: form.get("referral") ?? undefined,
     });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error) };
+  // ID de indicação é opcional, mas se foi preenchido precisa existir (o aluno corrige antes de criar a conta).
+  if (parsed.data.referral) {
+    if (!normalizeReferralCode(parsed.data.referral) || !(await referralCodeExists(parsed.data.referral)))
+      return { fieldErrors: { referral: "Não encontramos esse ID de indicação. Confira com seu amigo ou deixe em branco." } };
+  }
   if (await rateLimited("signup", 5)) return { error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
 
   const supabase = await createUserClient();
@@ -129,6 +138,11 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
   }
   // Avatar do gênero escolhido (falha aqui não impede o cadastro: o painel usa o gênero do cadastro).
   if (data.user?.id) await initAvatarForNewUser(data.user.id, parsed.data.gender).catch((e) => console.error("avatar.init", (e as Error).message));
+  // Indicação: liga ao amigo que indicou e gera o código do novo aluno (falha aqui não impede o cadastro).
+  if (data.user?.id) {
+    if (parsed.data.referral) await registerReferral(data.user.id, parsed.data.referral).catch((e) => console.error("referral.register", (e as Error).message));
+    await ensureReferralCode(data.user.id, { force: true }).catch((e) => console.error("referral.code", (e as Error).message));
+  }
   // Sem confirmação de e-mail habilitada, a sessão já vem criada.
   if (data.session) redirect("/painel");
   return { message: "Enviamos um link de confirmação para o seu e-mail. Abra-o para ativar a conta." };

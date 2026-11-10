@@ -11,6 +11,9 @@ import { LogoutButton } from "../logout-button";
 import { ProfileForm } from "./form";
 import { PainelAdmin, type AdminItem, type AdminNote } from "./painel-admin";
 import { listRaioXRequests, studentLabel } from "@/server/services/strategic";
+import { Indicacao } from "./indicacao";
+import { getMyReferral } from "@/server/services/referral";
+import { publicEnv } from "@/lib/env";
 import { PastelProfile } from "./pastel-profile";
 import { getPlanUsage } from "@/server/services/plans";
 import { FREE_LIMITS, PERIOD_LABELS, PLAN_LABELS, effectivePlan, type BillingPeriod } from "@/domain/plans/limits";
@@ -20,6 +23,7 @@ export const metadata = { title: "Perfil" };
 export default async function ProfilePage() {
   const user = await requireUser();
   const [{ profile, subscription }, stats, dash, roles, usage, partner, avatarGender] = await Promise.all([getProfile(), getStudyStats(), getDashboard(), getBankRoles(user.id), getPlanUsage(user.id), getPartnerStatus(user.id), getMyAvatarGender(user.id).catch(() => null)]);
+  const indicacao = await getMyReferral(user.id).catch(() => null);
   const pedidos = roles.admin ? await listRaioXRequests({ onlyPending: true, limit: 50 }).catch(() => []) : [];
   const notes: AdminNote[] = pedidos.map((r) => ({
     id: r.prepId, title: `Novo pedido de Raio-X: ${r.examName}`,
@@ -71,6 +75,12 @@ export default async function ProfilePage() {
         <h2 className="mb-4 text-[13px] font-bold">Dados e metas</h2>
         <ProfileForm whatsapp={(profile as { whatsapp?: string | null } | null)?.whatsapp ?? null} motto={(profile as { motto?: string | null } | null)?.motto ?? null} avatarGender={avatarGender} displayName={profile?.display_name ?? ""} dailyQuestions={profile?.daily_questions_goal ?? null} weeklyLessons={profile?.weekly_lessons_goal ?? null} />
       </PastelCard>
+      {indicacao?.code && (
+        <PastelCard noTilt className="p-6" testId="indique">
+          <h2 className="mb-1 text-[13px] font-bold">Indique um amigo</h2>
+          <Indicacao data={indicacao} origin={publicEnv().siteUrl} />
+        </PastelCard>
+      )}
       <PastelCard noTilt className="p-6" testId="plano">
         <h2 id="plano" className="mb-3 text-[13px] font-bold">Plano</h2>
         <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-[13px]">

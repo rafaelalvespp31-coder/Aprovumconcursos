@@ -6,6 +6,7 @@ import { UserFacingError, enforceRateLimit } from "./trails";
 import { OFFERS, isOfferKey, type OfferKey } from "@/domain/plans/offers";
 import { accessEnd, isValidCpf, mapStatus, toCents, type PayStatus } from "@/domain/payments/mercadopago";
 import { effectivePlan } from "@/domain/plans/limits";
+import { cancelOnRefund, rewardOnPurchase } from "./referral";
 
 /** Configuração do Mercado Pago (o Access Token fica só no servidor). */
 export function mpConfigured(): boolean {
@@ -231,6 +232,8 @@ async function activate(row: Row): Promise<void> {
     });
     if (rec.error) throw new Error(rec.error.message);
     await logEvent("payments.activated", { paymentId: row.id, offer: row.offer });
+    // Indicação: anual/vitalício do indicado dá copo + camisa a quem indicou e a ele (nunca derruba a liberação do plano).
+    await rewardOnPurchase(row.user_id, row.id, row.offer).catch((e) => logEvent("referral.reward_failed", { paymentId: row.id, error: String((e as Error).message).slice(0, 200) }));
   } catch (e) {
     await db.from("mp_payments").update({ applied_at: null }).eq("id", row.id); // permite nova tentativa
     throw e;
@@ -245,6 +248,7 @@ async function revoke(row: Row): Promise<void> {
   const { error } = await db.from("subscriptions").update({ plan_id: "free", current_period_end: null, billing_period: null, updated_at: new Date().toISOString() }).eq("user_id", row.user_id);
   if (error) throw new Error(error.message);
   await logEvent("payments.revoked", { paymentId: row.id });
+  await cancelOnRefund(row.id).catch(() => undefined);
 }
 
 /** Consulta o pagamento direto na API do Mercado Pago e atualiza o nosso registro (webhook e status). */

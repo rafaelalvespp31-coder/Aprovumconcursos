@@ -126,6 +126,12 @@ export default async function AdminLayout({
                 Depoimentos
               </Link>
               <Link
+                href="/admin/indicacoes"
+                className="text-destaque underline-offset-2 hover:underline"
+              >
+                Indicações
+              </Link>
+              <Link
                 href="/admin/campanha-caveira"
                 className="text-destaque underline-offset-2 hover:underline"
               >
