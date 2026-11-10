@@ -7,9 +7,14 @@ async function noop() {
   "use server";
 }
 
+/** Data de fim fictícia (fora da renderização, para não ferir a regra de pureza do React). */
+function fimEmDias(dias: number) {
+  return new Date(Date.now() + dias * 86_400_000).toISOString();
+}
+
 export default function Page() {
   if (process.env.NODE_ENV === "production" && process.env.ENABLE_DESIGN_GALLERY !== "1") notFound();
-  const fim = new Date(Date.now() + 6.4 * 86_400_000).toISOString();
+  const fim = fimEmDias(6.4);
   return (
     <div className="p-6">
       <PremiumIndicador expiresAt={fim} campaignName="O CAVEIRA FICOU MALUCO" />

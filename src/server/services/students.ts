@@ -5,7 +5,7 @@ import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
 import { auditLog } from "../observability";
 import { UserFacingError } from "./trails";
-import { ADMIN_OFFERS, LIFETIME_PAYMENT_END, OFFER_KEYS, offerStorage, type AdminOffer, type OfferKey } from "@/domain/plans/offers";
+import { ADMIN_OFFERS, LIFETIME_PAYMENT_END, OFFER_KEYS, offerStorage, type OfferKey } from "@/domain/plans/offers";
 import { effectivePlan, nextPeriodEnd, type BillingPeriod, type PlanId, type PlanState } from "@/domain/plans/limits";
 
 export interface StudentRow {

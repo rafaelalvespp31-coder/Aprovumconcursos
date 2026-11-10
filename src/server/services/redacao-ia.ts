@@ -28,8 +28,14 @@ async function checarOrcamento(): Promise<void> {
   const teto = Number(process.env.REDACAO_ORCAMENTO_DIA_USD);
   if (!Number.isFinite(teto) || teto <= 0) return;
   const db = createAdminClient();
-  const r = await db.from("writing_usage").select("cost_usd").gte("created_at", brDay().start).limit(20000);
-  const gasto = ((r.data ?? []) as { cost_usd: number | null }[]).reduce((s, x) => s + Number(x.cost_usd ?? 0), 0);
+  // Soma no banco (migração 20261110050000). Se ela ainda não foi aplicada, cai para a soma no servidor.
+  const agg = await db.rpc("redacao_gasto_dia", { p_start: brDay().start });
+  let gasto: number;
+  if (!agg.error && agg.data !== null) gasto = Number(agg.data);
+  else {
+    const r = await db.from("writing_usage").select("cost_usd").gte("created_at", brDay().start).limit(20000);
+    gasto = ((r.data ?? []) as { cost_usd: number | null }[]).reduce((s, x) => s + Number(x.cost_usd ?? 0), 0);
+  }
   if (gasto >= teto) throw new AIError("O limite diário de uso da IA de redação foi atingido. Tente amanhã.", "budget_exceeded", false);
 }
 

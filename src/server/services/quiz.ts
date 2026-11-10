@@ -196,7 +196,8 @@ export interface QuizCheck {
 
 export async function checkAnswer(topicId: string, nodeKey: string, given: string[], tierN: number, responseMs?: number): Promise<QuizCheck> {
   const user = await requireUser("/quiz");
-  await enforceRateLimit(user.id, "quiz_check", 120);
+  // Um humano responde bem menos que isso por minuto; o teto barra automação (XP em massa).
+  await enforceRateLimit(user.id, "quiz_check", 40);
   await assertQuota(user.id, "jogo");
   const [topics, before] = await Promise.all([loadTopics(), myAttempts()]);
   const topic = topics.find((t) => t.id === topicId);
@@ -207,9 +208,17 @@ export async function checkAnswer(topicId: string, nodeKey: string, given: strin
   if (!topic || !item) throw new UserFacingError("Questão não encontrada. Comece uma nova rodada.", "not_found");
   const results = checkCloze(item, given.slice(0, item.answers.length).map((g) => String(g ?? "").slice(0, 80)));
   const correct = results.every(Boolean);
-  const xp = correct ? tier.xp : 0;
+  // Anti-farm: acertar de novo o mesmo item dentro de 24 h não rende XP nem conta como nova resposta
+  // (a resposta certa é mostrada após o primeiro acerto; sem isso dava para repetir o item em loop).
+  const since = new Date(Date.now() - 24 * 3_600_000).toISOString();
+  const repeat = correct
+    ? await createAdminClient().from("quiz_attempts").select("id", { head: true, count: "exact" }).eq("user_id", user.id).eq("topic_id", topicId).eq("node_key", nodeKey).eq("correct", true).gte("created_at", since)
+    : null;
+  if (repeat?.error) throw new Error(repeat.error.message);
+  const repeated = (repeat?.count ?? 0) > 0;
+  const xp = correct && !repeated ? tier.xp : 0;
   // Grava só pelo servidor, depois de conferir (o aluno não grava XP direto no banco).
-  const { error } = await createAdminClient().from("quiz_attempts").insert({ user_id: user.id, topic_id: topicId, node_key: nodeKey, correct, xp, tier: tier.tier, response_ms: typeof responseMs === "number" && Number.isFinite(responseMs) ? Math.min(3_600_000, Math.max(0, Math.round(responseMs))) : null });
+  const { error } = repeated ? { error: null } : await createAdminClient().from("quiz_attempts").insert({ user_id: user.id, topic_id: topicId, node_key: nodeKey, correct, xp, tier: tier.tier, response_ms: typeof responseMs === "number" && Number.isFinite(responseMs) ? Math.min(3_600_000, Math.max(0, Math.round(responseMs))) : null });
   if (error) throw new Error(error.message);
   const after = await myAttempts();
   const s = summarize(after, topics);

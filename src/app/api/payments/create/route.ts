@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { sameOrigin } from "@/server/http";
 import { getSessionUser } from "@/server/auth";
 import { createPayment } from "@/server/services/payments";
 import { UserFacingError } from "@/server/services/trails";
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 /** Cria o pagamento (PIX ou cartão) do plano escolhido. O valor é o do servidor. */
 export async function POST(req: NextRequest) {
+  if (!sameOrigin(req)) return NextResponse.json({ error: "Origem não permitida." }, { status: 403 });
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sessão expirada. Entre novamente." }, { status: 401 });
   let body: { offer?: unknown; formData?: unknown; deviceId?: unknown };

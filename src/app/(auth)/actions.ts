@@ -27,17 +27,20 @@ async function clientIp(): Promise<string> {
   return (h.get("x-forwarded-for")?.split(",")[0] ?? h.get("x-real-ip") ?? "local").trim();
 }
 
-async function rateLimited(action: string, max: number): Promise<boolean> {
+async function rateLimitedKey(key: string, max: number): Promise<boolean> {
   try {
-    const { data } = await createAdminClient().rpc("check_rate_limit", {
-      p_key: `${action}:${await clientIp()}`,
-      p_window_seconds: 600,
-      p_max: max,
-    });
+    const { data, error } = await createAdminClient().rpc("check_rate_limit", { p_key: key, p_window_seconds: 600, p_max: max });
+    if (error) throw new Error(error.message);
     return data === false;
   } catch {
-    return false; // sem banco configurado o Supabase Auth ainda aplica seus próprios limites
+    // Em produção a checagem falha fechada: se o banco de limites não responde, o login/cadastro
+    // também não funcionaria (mesmo projeto). Fora de produção segue liberado para não travar o desenvolvimento.
+    return process.env.VERCEL_ENV === "production";
   }
+}
+
+async function rateLimited(action: string, max: number): Promise<boolean> {
+  return rateLimitedKey(`${action}:${await clientIp()}`, max);
 }
 
 const email = z.email("Informe um e-mail válido.").max(254);
@@ -65,6 +68,8 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   });
   if (!parsed.success) return { fieldErrors: fieldErrors(parsed.error) };
   if (await rateLimited("signin", 20)) return { error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
+  // Limite por conta (qualquer origem): barra tentativa de senha distribuída em vários IPs contra um mesmo e-mail.
+  if (await rateLimitedKey(`signin-conta:${parsed.data.email.toLowerCase()}`, 30)) return { error: "Muitas tentativas. Aguarde alguns minutos e tente de novo." };
 
   // "Manter conectado": marcado (padrão) mantém a sessão; desmarcado, ela vale só até fechar o navegador.
   const store = await cookies();

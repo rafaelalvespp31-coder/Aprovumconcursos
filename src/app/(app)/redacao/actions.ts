@@ -4,9 +4,11 @@ import { after } from "next/server";
 import { ZodError } from "zod";
 import { getSessionUser, isAdmin } from "@/server/auth";
 import { logEvent } from "@/server/observability";
-import { UserFacingError } from "@/server/services/trails";
+import { UserFacingError, enforceRateLimit } from "@/server/services/trails";
 import { executarCorrecao } from "@/server/services/redacao-ia";
 import * as R from "@/server/services/redacao";
+
+const MAX_PDF_PAGES = 40;
 
 type Res<T = Record<string, never>> = ({ ok: true } & T) | { ok: false; error: string; expired?: boolean };
 
@@ -78,7 +80,9 @@ export async function perguntarAction(input: Parameters<typeof R.askTeacher>[1])
 
 /** Extrai o texto de um PDF enviado (até 5 MB) para o aluno conferir antes de enviar. DOCX ainda não é suportado. */
 export async function extrairArquivoAction(form: FormData) {
-  return run("extrair", async () => {
+  return run("extrair", async (uid) => {
+    // Ler PDF gasta CPU do servidor: limite por aluno e teto de páginas (um PDF de 5 MB pode ter milhares).
+    await enforceRateLimit(uid, "redacao:extrair", 6, 60);
     const f = form.get("arquivo");
     if (!(f instanceof File)) throw new UserFacingError("Escolha um arquivo.", "invalid");
     if (f.size > 5 * 1024 * 1024) throw new UserFacingError("O arquivo passou de 5 MB.", "invalid");
@@ -87,6 +91,7 @@ export async function extrairArquivoAction(form: FormData) {
     if (!isPdf) throw new UserFacingError("Por enquanto só aceitamos PDF com texto selecionável. Para DOCX, copie e cole o texto no editor.", "invalid");
     const { extractText, getDocumentProxy } = await import("unpdf");
     const pdf = await getDocumentProxy(buf);
+    if (pdf.numPages > MAX_PDF_PAGES) throw new UserFacingError(`O PDF tem mais de ${MAX_PDF_PAGES} páginas. Envie só o trecho da redação.`, "invalid");
     const { text } = await extractText(pdf, { mergePages: true });
     const t = (Array.isArray(text) ? text.join("\n") : text).replace(/\r/g, "").replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").trim();
     if (t.length < 40) throw new UserFacingError("Não encontramos texto neste PDF (pode ser imagem escaneada). Digite ou cole o texto.", "invalid");

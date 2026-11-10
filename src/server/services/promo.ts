@@ -228,6 +228,8 @@ export interface PromoActivityRow {
 }
 
 const ACTIVITY_LIMIT = 100;
+/** Teto de respostas lidas para montar o painel (as mais recentes); evita carga alta com muita atividade. */
+const ATTEMPTS_SCAN_LIMIT = 20000;
 
 /**
  * Quem viu a popup da campanha e o que está estudando. "Estudando" = respondeu questões ou mexeu
@@ -253,28 +255,25 @@ export async function getCampaignActivity(id: string = CAVEIRA_CAMPAIGN_ID): Pro
   const [profiles, trails, emails, counts] = await Promise.all([
     db.from("profiles").select("id, display_name").in("id", ids),
     db.from("study_trails").select("user_id, title, status, last_studied_at").in("user_id", ids).is("archived_at", null).order("last_studied_at", { ascending: false, nullsFirst: false }).limit(2000),
+    // E-mails só dos (no máximo 100) alunos da lista, em vez de varrer todos os usuários do Auth.
     (async () => {
       const m = new Map<string, string>();
-      const want = new Set(ids);
-      for (let page = 1; page <= 20 && want.size > m.size; page++) {
-        const { data } = await db.auth.admin.listUsers({ page, perPage: 1000 });
-        if (!data) break;
-        for (const u of data.users) if (want.has(u.id) && u.email) m.set(u.id, u.email);
-        if (data.users.length < 1000) break;
-      }
+      await Promise.all(
+        ids.map(async (uid) => {
+          const { data } = await db.auth.admin.getUserById(uid);
+          if (data.user?.email) m.set(uid, data.user.email);
+        }),
+      );
       return m;
     })(),
-    Promise.all(
-      list.map(async (g) => {
-        const uid = g.user_id as string;
-        const since = g.starts_at as string;
-        const [n, last] = await Promise.all([
-          db.from("answer_attempts").select("id", { count: "exact", head: true }).eq("user_id", uid).gte("created_at", since),
-          db.from("answer_attempts").select("created_at").eq("user_id", uid).gte("created_at", since).order("created_at", { ascending: false }).limit(1).maybeSingle(),
-        ]);
-        return [uid, { n: n.count ?? 0, last: (last.data?.created_at as string | undefined) ?? null }] as const;
-      }),
-    ),
+    // Uma consulta só (em vez de duas por aluno): respostas desde a concessão mais antiga; o corte exato por aluno é feito abaixo.
+    db
+      .from("answer_attempts")
+      .select("user_id, created_at")
+      .in("user_id", ids)
+      .gte("created_at", list.map((g) => g.starts_at as string).sort()[0]!)
+      .order("created_at", { ascending: false })
+      .limit(ATTEMPTS_SCAN_LIMIT),
   ]);
   const nameOf = new Map((profiles.data ?? []).map((p) => [p.id as string, (p.display_name as string | null) || null]));
   const trailsOf = new Map<string, Array<{ title: string; status: string; last_studied_at: string | null }>>();
@@ -283,7 +282,15 @@ export async function getCampaignActivity(id: string = CAVEIRA_CAMPAIGN_ID): Pro
     arr.push(t);
     trailsOf.set(t.user_id, arr);
   }
-  const attempts = new Map(counts);
+  const startOf = new Map(list.map((g) => [g.user_id as string, new Date(g.starts_at as string).getTime()]));
+  const attempts = new Map<string, { n: number; last: string | null }>();
+  for (const r of (counts.data ?? []) as Array<{ user_id: string; created_at: string }>) {
+    if (new Date(r.created_at).getTime() < (startOf.get(r.user_id) ?? 0)) continue;
+    const cur = attempts.get(r.user_id) ?? { n: 0, last: null };
+    cur.n += 1;
+    cur.last ??= r.created_at; // vem da mais recente para a mais antiga
+    attempts.set(r.user_id, cur);
+  }
   const nowMs = Date.now();
   const rows = list.map<PromoActivityRow>((g) => {
     const uid = g.user_id as string;

@@ -10,6 +10,8 @@ export const FREE_LIMITS = {
   questionsPerDay: 5,
   /** Questões respondidas por dia no Modo Jogo. */
   gameQuestionsPerDay: 5,
+  /** Redações enviadas para correção por IA por dia (plano pago e degustação seguem o limite geral da redação). */
+  redacoesPerDay: 1,
 } as const;
 
 export const PLAN_IDS = ["free", "pro", "premium"] as const;
@@ -66,4 +68,15 @@ export function limitMessage(kind: QuotaKind): string {
   if (kind === "aula") return `O plano gratuito libera ${FREE_LIMITS.lessonsPerDay} aula por dia e você já estudou a de hoje. Volte amanhã ou assine um plano para estudar sem limites.`;
   if (kind === "questoes") return `Você respondeu as ${FREE_LIMITS.questionsPerDay} questões de hoje do plano gratuito. Volte amanhã ou assine um plano para resolver sem limites.`;
   return `O Modo Jogo do plano gratuito libera ${FREE_LIMITS.gameQuestionsPerDay} questões por dia e as de hoje acabaram. Volte amanhã ou assine um plano para jogar sem limites.`;
+}
+
+/** Correções de redação por dia: o gratuito tem o limite do plano; pago/degustação, o limite geral; admin não tem. */
+export function redacaoDailyLimit(plan: { unlimited: boolean }, generalLimit: number): number {
+  return plan.unlimited ? generalLimit : FREE_LIMITS.redacoesPerDay;
+}
+
+export function redacaoLimitMessage(limit: number, free: boolean): string {
+  return free
+    ? `O plano gratuito libera ${limit} redação por dia e a de hoje já foi enviada. Volte amanhã ou assine um plano para corrigir mais redações.`
+    : `Você atingiu o limite de ${limit} correções por dia. Volte amanhã ou reescreva depois.`;
 }
