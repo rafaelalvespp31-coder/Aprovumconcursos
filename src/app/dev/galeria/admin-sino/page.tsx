@@ -7,8 +7,8 @@ export default function Page() {
   const initial = {
     total: 3,
     items: [
-      { key: "planos", label: "Pedidos de plano", count: 1, href: "/admin/alunos", latestAt: new Date(Date.now() - 12 * 60_000).toISOString() },
-      { key: "avatares", label: "Avatares personalizados", count: 2, href: "/admin/avatares", latestAt: new Date(Date.now() - 5 * 3_600_000).toISOString() },
+      { key: "planos", label: "Pedidos de plano", count: 1, href: "/admin/alunos", latestAt: "2026-11-10T13:00:00.000Z" },
+      { key: "avatares", label: "Avatares personalizados", count: 2, href: "/admin/avatares", latestAt: "2026-11-10T09:00:00.000Z" },
       { key: "raiox", label: "Pedidos de Raio-X", count: 0, href: "/admin/estrategico", latestAt: null },
     ],
   };

@@ -60,6 +60,12 @@ export default async function AdminLayout({
                 Banners
               </Link>
               <Link
+                href="/admin/legislacao"
+                className="text-destaque underline-offset-2 hover:underline"
+              >
+                Legislação
+              </Link>
+              <Link
                 href="/admin/fila"
                 className="text-destaque underline-offset-2 hover:underline"
               >

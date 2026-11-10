@@ -421,6 +421,11 @@ export interface TopicRow {
   topic_group: string | null;
   topic_group_code: string | null;
   subtopic_code: string | null;
+  law_status: "nao_conferido" | "baseline" | "ok" | "desatualizado" | "sem_referencia" | "erro" | "atualizando";
+  law_hashes: Record<string, string>;
+  law_changed: string[];
+  law_missing: string[];
+  law_checked_at: string | null;
 }
 
 export async function getTopic(id: string): Promise<TopicRow> {
