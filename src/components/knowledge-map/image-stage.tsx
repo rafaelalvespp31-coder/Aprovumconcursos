@@ -457,16 +457,20 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     resize();
     const ro = new ResizeObserver(resize);
     ro.observe(el);
-    const N = light ? 36 : 70;
     let seed = 17;
     const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
-    const parts = Array.from({ length: N }, () => ({
+    // Brasas: micropartículas finas, muitas e leves; sobem do chão em vida própria, ondulam com turbulência,
+    // cintilam e esfriam (de amarelo-laranja para vermelho escuro) até sumir.
+    const parts = Array.from({ length: light ? 80 : 150 }, () => ({
       x: rnd(),
-      y: rnd(),
-      v: 0.02 + rnd() * 0.05,
-      r: 0.6 + rnd() * 1.6,
-      a: 0.3 + rnd() * 0.7,
-      d: (rnd() - 0.5) * 0.02,
+      y0: 0.55 + rnd() * 0.55,
+      u: rnd(),
+      sp: 0.03 + rnd() * 0.06,
+      r: 0.35 + rnd() * 0.9,
+      a: 0.4 + rnd() * 0.6,
+      ph: rnd() * 6.28,
+      fq: 1.2 + rnd() * 3.5,
+      dr: 0.01 + rnd() * 0.03,
     }));
     let last = performance.now();
     let raf = 0;
@@ -518,11 +522,6 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       }
       return c;
     };
-    const ember = mk(16, [
-      [0, "rgba(255,180,100,1)"],
-      [0.35, "rgba(255,110,40,0.6)"],
-      [1, "rgba(255,60,20,0)"],
-    ]);
     const fireSpr = mk(64, [
       [0, "rgba(255,170,60,0.6)"],
       [0.5, "rgba(255,70,20,0.24)"],
@@ -570,6 +569,16 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     let sunK = 0;
     let sunQ = -1;
     let sunOn = false;
+    const emberHot = mk(8, [
+      [0, "rgba(255,226,170,1)"],
+      [0.3, "rgba(255,150,64,0.7)"],
+      [1, "rgba(255,90,30,0)"],
+    ]);
+    const emberCool = mk(8, [
+      [0, "rgba(255,130,64,0.9)"],
+      [0.4, "rgba(205,56,24,0.4)"],
+      [1, "rgba(160,30,10,0)"],
+    ]);
     let frame = 0;
     let fxDt = 0;
     // Tamanho das placas sem forçar layout: o observador avisa quando muda.
@@ -772,16 +781,24 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
           ctx.drawImage(fireSpr, x - r, y - r, r * 2, r * 2);
         }
         for (const p of parts) {
-          p.y -= p.v * fdt;
-          p.x += p.d * fdt + Math.sin(now / 900 + p.r * 9) * 0.0004;
-          if (p.y < -0.02) {
-            p.y = 1.02;
+          p.u += p.sp * fdt;
+          if (p.u >= 1) {
+            p.u -= 1;
             p.x = rnd();
+            p.y0 = 0.55 + rnd() * 0.55;
           }
-          const px = p.x * w;
-          const py = p.y * h;
-          ctx.globalAlpha = p.a;
-          ctx.drawImage(ember, px - p.r * 3, py - p.r * 3, p.r * 6, p.r * 6);
+          const u = p.u;
+          // Turbulência em duas frequências + deriva do vento, mais solta quanto mais alto.
+          const sway = (Math.sin(now / 900 + p.ph) + 0.5 * Math.sin(now / 370 + p.ph * 2)) * 0.005 * (0.3 + u);
+          const px = (p.x + p.dr * u + sway) * w;
+          const py = (p.y0 - u * 0.6) * h;
+          if (py < -8 || py > h + 8) continue;
+          // Entra suave, some devagar e cintila como brasa de verdade.
+          const al = p.a * Math.min(1, u / 0.08) * Math.pow(1 - u, 1.2) * (0.62 + 0.38 * Math.sin(now / 1000 * p.fq + p.ph));
+          if (al < 0.02) continue;
+          const sz = p.r * 3.4 * (1 - u * 0.35);
+          ctx.globalAlpha = al;
+          ctx.drawImage(u < 0.45 ? emberHot : emberCool, px - sz, py - sz, sz * 2, sz * 2);
         }
         ctx.globalAlpha = 1;
       }
