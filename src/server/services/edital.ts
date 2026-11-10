@@ -21,7 +21,7 @@ export const MAX_EDITAL_BYTES = 25 * 1024 * 1024;
 const MAX_PAGES = 600;
 
 export type PrepStatus = "recebendo" | "lendo" | "identificando" | "mapeando" | "organizando" | "concluido" | "conferencia" | "erro";
-export const PARSER_V = 5;
+export const PARSER_V = 6;
 const STEP_OF: Record<PrepStatus, number> = { recebendo: 1, lendo: 2, identificando: 3, mapeando: 4, organizando: 5, concluido: 6, conferencia: 3, erro: 0 };
 
 export const createInput = z.object({
