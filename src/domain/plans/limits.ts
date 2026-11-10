@@ -80,3 +80,24 @@ export function redacaoLimitMessage(limit: number, free: boolean): string {
     ? `O plano gratuito libera ${limit} redação por dia e a de hoje já foi enviada. Volte amanhã ou assine um plano para corrigir mais redações.`
     : `Você atingiu o limite de ${limit} correções por dia. Volte amanhã ou reescreva depois.`;
 }
+
+/** Usos de IA da redação por dia (além da correção): gratuito x pago/degustação. Ajuste aqui. */
+export const REDACAO_IA_DIARIO = {
+  "redacao.tema": { free: 1, pago: 10, label: "gerar propostas de tema" },
+  "redacao.exercicio": { free: 1, pago: 10, label: "gerar exercícios" },
+  "redacao.exercicio_correcao": { free: 1, pago: 10, label: "corrigir exercícios" },
+  "redacao.comparacao": { free: 1, pago: 10, label: "comparar versões" },
+  "redacao.chat": { free: 10, pago: 60, label: "conversar com o professor" },
+} as const;
+export type RedacaoIaKind = keyof typeof REDACAO_IA_DIARIO;
+
+export function redacaoIaLimit(kind: RedacaoIaKind, plan: { unlimited: boolean }): number {
+  return plan.unlimited ? REDACAO_IA_DIARIO[kind].pago : REDACAO_IA_DIARIO[kind].free;
+}
+
+export function redacaoIaMessage(kind: RedacaoIaKind, limit: number, free: boolean): string {
+  const o = REDACAO_IA_DIARIO[kind].label;
+  return free
+    ? `O plano gratuito libera ${limit} uso${limit > 1 ? "s" : ""} por dia para ${o} e o de hoje acabou. Volte amanhã ou assine um plano para usar mais.`
+    : `Você atingiu o limite de ${limit} usos por dia para ${o}. Volte amanhã.`;
+}

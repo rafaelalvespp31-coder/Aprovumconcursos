@@ -1,6 +1,6 @@
 /** Redação por IA: plano gratuito = 1 envio por dia; pago/degustação = limite geral; admin sem limite. */
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { redacaoDailyLimit } from "@/domain/plans/limits";
+import { redacaoDailyLimit, redacaoIaLimit } from "@/domain/plans/limits";
 
 type Row = Record<string, unknown>;
 const tables: Record<string, Row[]> = {};
@@ -33,7 +33,7 @@ vi.mock("@/server/services/trails", () => ({ enforceRateLimit: async () => undef
 vi.mock("@/ai", async (orig) => ({ ...(await orig<Record<string, unknown>>()), aiIsConfigured: () => true }));
 vi.mock("@/server/services/redacao-ia", () => ({ limiteDiario: () => 5, exigirIA: () => undefined, chamarIA: async () => ({}), USER_FACING_AI: "" }));
 
-const { submitForCorrection } = await import("@/server/services/redacao");
+const { submitForCorrection, askTeacher } = await import("@/server/services/redacao");
 
 const U = "00000000-0000-4000-8000-00000000aa01";
 const SUB = "00000000-0000-4000-8000-00000000bb01";
@@ -68,5 +68,30 @@ describe("limite diário de redação", () => {
     admin = true;
     for (let i = 0; i < 6; i++) tables.writing_submissions!.push({ id: `o${i}`, user_id: U, status: "concluida", submitted_at: today() });
     await expect(submitForCorrection(U, SUB)).resolves.toMatchObject({ created: true });
+  });
+});
+
+describe("cota diária dos demais usos de IA da redação", () => {
+  const chat = { messages: [{ role: "user" as const, content: "Como melhorar minha coesão?" }] };
+  const usos = (n: number) => Array.from({ length: n }, () => ({ user_id: U, kind: "redacao.chat", ok: true, created_at: today() }));
+  it("limites: gratuito x pago", () => {
+    expect(redacaoIaLimit("redacao.chat", { unlimited: false })).toBe(10);
+    expect(redacaoIaLimit("redacao.chat", { unlimited: true })).toBe(60);
+    expect(redacaoIaLimit("redacao.tema", { unlimited: false })).toBe(1);
+  });
+  it("gratuito: com 10 mensagens hoje, a 11ª é barrada no chat", async () => {
+    tables.writing_usage = usos(10);
+    await expect(askTeacher(U, chat)).rejects.toThrow(/plano gratuito libera 10 usos por dia/);
+  });
+  it("pago: com 10 mensagens hoje ainda passa da cota (segue para a IA)", async () => {
+    plan = { unlimited: true };
+    tables.writing_usage = usos(10);
+    // passa pela cota; a chamada de IA é um mock vazio, então falha depois, em outro ponto — não na cota
+    await expect(askTeacher(U, chat)).rejects.not.toThrow(/libera|limite de/);
+  });
+  it("admin não tem cota", async () => {
+    admin = true;
+    tables.writing_usage = usos(500);
+    await expect(askTeacher(U, chat)).rejects.not.toThrow(/libera|limite de/);
   });
 });

@@ -4,7 +4,7 @@ import { createAdminClient } from "../supabase";
 import { isAdmin } from "../auth";
 import { aiIsConfigured, AIError } from "@/ai";
 import { UserFacingError, enforceRateLimit } from "./trails";
-import { brDay, redacaoDailyLimit, redacaoLimitMessage } from "@/domain/plans/limits";
+import { brDay, redacaoDailyLimit, redacaoIaLimit, redacaoIaMessage, redacaoLimitMessage, type RedacaoIaKind } from "@/domain/plans/limits";
 import { getMyPlan } from "./plans";
 import { MODALIDADES, rubricaDaModalidade } from "@/domain/redacao/rubricas";
 import { MAX_CHARS, contar, validarParaEnvio } from "@/domain/redacao/texto";
@@ -22,6 +22,16 @@ function iaMsg(e: unknown): never {
   if (e instanceof UserFacingError) throw e;
   if (e instanceof AIError) throw new UserFacingError(e.kind === "not_configured" || e.kind === "budget_exceeded" ? e.message : USER_FACING_AI, "ia");
   throw e;
+}
+/** Cota diária de IA da redação (tema, exercício, comparação, chat), conferida no servidor; admin não tem limite. */
+async function assertRedacaoIa(userId: string, kind: RedacaoIaKind): Promise<void> {
+  if (await isAdmin().catch(() => false)) return;
+  const plan = await getMyPlan(userId);
+  const limite = redacaoIaLimit(kind, plan);
+  const { start } = brDay();
+  const q = await db().from("writing_usage").select("id", { count: "exact", head: true }).eq("user_id", userId).eq("kind", kind).eq("ok", true).gte("created_at", start);
+  if (q.error) throw new Error(q.error.message);
+  if ((q.count ?? 0) >= limite) throw new UserFacingError(redacaoIaMessage(kind, limite, !plan.unlimited), "limit");
 }
 function exigirIA() {
   if (!aiIsConfigured("redacao")) throw new UserFacingError("O professor de redação ainda não está ativado neste ambiente (a IA precisa estar configurada).", "ia_off");
@@ -234,6 +244,7 @@ export async function explainComparison(userId: string, toId: string): Promise<v
   if (!cmp) throw new UserFacingError("Corrija as duas versões antes de comparar.", "invalid");
   exigirIA();
   await enforceRateLimit(userId, "redacao:comparar", 6, 60);
+  await assertRedacaoIa(userId, "redacao.comparacao");
   const [a, b] = await Promise.all([getSubmission(userId, cmp.fromId), getSubmission(userId, toId)]);
   if (!a || !b) throw new UserFacingError("Redação não encontrada.", "not_found");
   const dados = JSON.stringify({ notaAnterior: cmp.antes, notaAtual: cmp.depois, maximo: cmp.max, diferenca: cmp.delta, competencias: cmp.competencias.map((c) => ({ c: c.label, antes: c.antes, depois: c.depois, max: c.max })), errosCorrigidos: cmp.corrigidos, errosQuePermaneceram: cmp.permaneceram, errosNovos: cmp.novos });
@@ -332,6 +343,7 @@ export async function generateTheme(userId: string, input: z.input<typeof temaIn
   const i = temaInput.parse(input);
   exigirIA();
   await enforceRateLimit(userId, "redacao:tema", 8, 60);
+  await assertRedacaoIa(userId, "redacao.tema");
   const admin = db();
   let cat: { slug: string; name: string } | null = null;
   const cats = await listCategories();
@@ -390,6 +402,7 @@ export async function generateExercise(userId: string, category: string): Promis
   const cat = z.string().trim().min(2).max(40).parse(category);
   exigirIA();
   await enforceRateLimit(userId, "redacao:exercicio", 5, 60);
+  await assertRedacaoIa(userId, "redacao.exercicio");
   const admin = db();
   const er = await admin.from("writing_errors").select("excerpt, explanation, rule, evaluation_id").eq("user_id", userId).eq("category", cat).order("id", { ascending: false }).limit(8);
   const ex = (er.data ?? []) as { excerpt: string; explanation: string; rule: string | null; evaluation_id: string }[];
@@ -422,6 +435,7 @@ export async function submitExercise(userId: string, id: string, answers: Record
   for (const q of qs) clean[q.id] = String(answers[q.id] ?? "").slice(0, 1500);
   if (qs.some((q) => !clean[q.id]?.trim())) throw new UserFacingError("Responda todas as questões antes de enviar.", "invalid");
   await enforceRateLimit(userId, "redacao:exercicio_corrigir", 6, 60);
+  await assertRedacaoIa(userId, "redacao.exercicio_correcao");
   const itens: { id: string; correta: boolean; pontos: number; comentario: string; gabarito: string; explicacao: string }[] = [];
   const reescritas = qs.filter((q) => q.tipo === "reescrita");
   for (const q of qs.filter((x) => x.tipo !== "reescrita")) {
@@ -457,6 +471,7 @@ export async function askTeacher(userId: string, input: z.input<typeof chatSchem
   if (i.messages[i.messages.length - 1]?.role !== "user") throw new UserFacingError("Mensagem inválida.", "invalid");
   exigirIA();
   await enforceRateLimit(userId, "redacao:chat", 15, 60);
+  await assertRedacaoIa(userId, "redacao.chat");
   const admin = db();
   let ctx = "O aluno ainda não escolheu uma redação corrigida: responda de forma geral e sugira enviar uma redação para análise personalizada.";
   if (i.evaluationId) {
