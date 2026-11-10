@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { listFolders, listTrailProgress, listTrails } from "@/server/queries";
-import { ButtonLink, EmptyState, Tag } from "@/components/ui";
+import { EmptyState, Tag } from "@/components/ui";
 import { boardDisplayName, type ExamBoardSlug } from "@/domain/trail-input";
-import { FolderBoard, type BoardTrail } from "./folder-board";
+import type { BoardTrail } from "./folder-board";
 import { getStudiesHome } from "@/server/studies-home";
-import { StudiesPage } from "@/components/estudos/studies-page";
+import { MeuEstudo } from "@/components/meu-estudo/meu-estudo";
+import { getStudySeconds } from "@/server/queries";
 
 export const metadata = { title: "Seus estudos" };
 
@@ -19,25 +20,18 @@ const STATUS: Record<string, BoardTrail["status"]> = {
 
 export default async function TrailsPage({ searchParams }: { searchParams: Promise<{ arquivadas?: string }> }) {
   const { arquivadas } = await searchParams;
-  const [all, folders, progress, home] = await Promise.all([listTrails(true), listFolders(), listTrailProgress(), getStudiesHome()]);
+  const [all, folders, progress, home, studySeconds] = await Promise.all([listTrails(true), listFolders(), listTrailProgress(), getStudiesHome(), getStudySeconds()]);
   const showArchived = arquivadas === "1";
   const trails = all.filter((t) => (showArchived ? t.archived_at : !t.archived_at));
   const archivedCount = all.filter((t) => t.archived_at).length;
   const subtitle = (t: (typeof all)[number]) =>
     `${boardDisplayName(t.board_slug as ExamBoardSlug, t.other_board_name)}${t.last_studied_at ? ` · estudado em ${new Date(t.last_studied_at).toLocaleDateString("pt-BR")}` : ""}`;
 
-  const board = (
-    <div id="pastas" className="scroll-mt-24">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        {showArchived ? <h1 className="t-h1">Estudos arquivados</h1> : <h2 className="t-h2">Todos os seus estudos, por pasta</h2>}
-        <ButtonLink href="/nova-trilha">Novo estudo</ButtonLink>
-      </div>
-      {!showArchived && (
-        <p className="mt-1 t-small text-tinta-suave">Organize cada tema ou assunto na pasta da sua matéria. A ordem da pasta define o “próximo tema” no fim de cada aula.</p>
-      )}
-
-      {showArchived ? (
-        trails.length === 0 ? (
+  if (showArchived)
+    return (
+      <div id="pastas" className="scroll-mt-24">
+        <h1 className="t-h1">Estudos arquivados</h1>
+        {trails.length === 0 ? (
           <div className="mt-6"><EmptyState title="Nenhum estudo arquivado" /></div>
         ) : (
           <ul className="mt-6 divide-y divide-linha rounded-lg border border-linha bg-superficie">
@@ -56,27 +50,29 @@ export default async function TrailsPage({ searchParams }: { searchParams: Promi
               );
             })}
           </ul>
-        )
-      ) : trails.length === 0 && folders.length === 0 ? (
-        <div className="mt-6">
-          <EmptyState title="Você ainda não tem estudos" action={<ButtonLink href="/nova-trilha">Começar o primeiro estudo</ButtonLink>}>
-            Escolha um tema ou artigo do catálogo para começar.
-          </EmptyState>
-        </div>
-      ) : (
-        <FolderBoard
-          folders={folders.map((f) => ({ id: f.id, name: f.name, color: f.color }))}
-          trails={trails.map((t) => ({ id: t.id, title: t.title, subtitle: subtitle(t), status: STATUS[t.status] ?? STATUS.pending!, folderId: t.folder_id, progress: progress[t.id] ?? { done: 0, total: 0 } }))}
-        />
-      )}
-
-      {(archivedCount > 0 || showArchived) && (
-        <Link href={showArchived ? "/trilhas" : "/trilhas?arquivadas=1"} className="mt-4 inline-block t-small text-destaque underline underline-offset-2">
-          {showArchived ? "Ver estudos ativos" : `Ver ${archivedCount} estudo(s) arquivado(s)`}
-        </Link>
-      )}
-    </div>
+        )}
+        <Link href="/trilhas" className="mt-4 inline-block t-small text-destaque underline underline-offset-2">Ver estudos ativos</Link>
+      </div>
+    );
+  const continueHref = home.current ? `/aula/${home.current.lessonId}` : null;
+  return (
+    <MeuEstudo
+      folders={folders.map((f) => ({ id: f.id, name: f.name, color: f.color }))}
+      trails={trails.map((t) => ({
+        id: t.id,
+        title: t.title,
+        subtitle: subtitle(t),
+        status: STATUS[t.status] ?? STATUS.pending!,
+        folderId: t.folder_id,
+        progress: progress[t.id] ?? { done: 0, total: 0 },
+        banca: t.board_slug,
+        bancaLabel: boardDisplayName(t.board_slug as ExamBoardSlug, t.other_board_name),
+        updatedAt: t.last_studied_at ?? t.updated_at,
+      }))}
+      studySeconds={studySeconds}
+      continueHref={continueHref}
+      continueLabel="Continuar estudos"
+      archivedCount={archivedCount}
+    />
   );
-  if (showArchived) return board;
-  return <StudiesPage data={home}>{board}</StudiesPage>;
 }
