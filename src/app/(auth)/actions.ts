@@ -141,7 +141,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
   // Indicação: liga ao amigo que indicou e gera o código do novo aluno (falha aqui não impede o cadastro).
   if (data.user?.id) {
     if (parsed.data.referral) await registerReferral(data.user.id, parsed.data.referral).catch((e) => console.error("referral.register", (e as Error).message));
-    await ensureReferralCode(data.user.id, { force: true }).catch((e) => console.error("referral.code", (e as Error).message));
+    await ensureReferralCode(data.user.id).catch((e) => console.error("referral.code", (e as Error).message));
   }
   // Sem confirmação de e-mail habilitada, a sessão já vem criada.
   if (data.session) redirect("/painel");

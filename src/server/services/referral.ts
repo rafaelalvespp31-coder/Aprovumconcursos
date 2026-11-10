@@ -5,17 +5,14 @@ import { generateReferralCode, isReferralOffer, normalizeReferralCode } from "@/
 
 type Row = Record<string, unknown>;
 
-/** Só quem se cadastrou a partir do lançamento do programa recebe código. */
-const PROGRAMA_DESDE = "2026-11-10T18:19:00Z";
 export const REWARD_ITEM = "Copo + Camisa APROVUM";
 
-/** Código do aluno (cria na primeira vez). null se o aluno é anterior ao programa. */
-export async function ensureReferralCode(userId: string, opts: { force?: boolean } = {}): Promise<string | null> {
+/** Código do aluno (cria na primeira vez, para qualquer aluno: novos e antigos podem indicar). */
+export async function ensureReferralCode(userId: string): Promise<string | null> {
   const db = createAdminClient();
-  const p = await db.from("profiles").select("referral_code, created_at").eq("id", userId).maybeSingle();
+  const p = await db.from("profiles").select("referral_code").eq("id", userId).maybeSingle();
   if (!p.data) return null;
   if (p.data.referral_code) return p.data.referral_code as string;
-  if (!opts.force && new Date(p.data.created_at as string).getTime() < new Date(PROGRAMA_DESDE).getTime()) return null;
   for (let i = 0; i < 8; i++) {
     const code = generateReferralCode();
     const up = await db.from("profiles").update({ referral_code: code }).eq("id", userId).is("referral_code", null).select("referral_code");
