@@ -68,12 +68,19 @@ interface NavItem {
 }
 
 function NavBadge({ texto, on }: { texto: string; on: boolean }) {
+  const novo = texto === "Novo";
   return (
-    <span data-testid="nav-badge" className={`shrink-0 whitespace-nowrap rounded-full px-1.5 py-[2px] text-[8.5px] font-bold uppercase leading-none tracking-[0.04em] ${on ? "bg-white text-[#C8000A]" : "bg-[#E50914] text-white"}`}>
+    <span
+      data-testid="nav-badge"
+      className={`${novo ? "mp-novo " : ""}shrink-0 whitespace-nowrap rounded-full px-1.5 py-[2px] text-[8.5px] font-bold uppercase leading-none tracking-[0.04em] ${on ? "bg-white text-[#C8000A]" : "bg-[#E50914] text-white"}`}
+    >
       {texto}
     </span>
   );
 }
+
+/** Itens recém-lançados: ganham destaque (fundo avermelhado, borda e selo "Novo" pulsando) no menu. */
+const itemNovo = (s: { badge?: string }, on: boolean) => (s.badge === "Novo" && !on ? "mp-item-novo" : "");
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
@@ -87,8 +94,8 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
     { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "6", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
     { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "7", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
     { id: "concursos", href: `${base}/concursos`, label: "Concursos", icon: Landmark, num: "8", desc: "Editais e provas", title: "Concursos", subtitle: "Concursos cadastrados, vagas e datas de prova." },
-    { id: "aprovum-ai", href: `${base}/aprovum-ai`, label: "APROVUM AI", icon: BrainCircuit, num: "", desc: "Edital em preparação", also: [`${base}/meu-concurso`], title: "APROVUM AI", subtitle: "Seu concurso. Sua preparação. Nossa inteligência." },
-    { id: "redacao", href: `${base}/redacao`, label: "Redação Elite", short: "Redação", icon: PenLine, num: "", desc: "Escreva e seja corrigido", title: "APROVUM REDAÇÃO ELITE", subtitle: "ESCREVA. CORRIJA. EVOLUA. CONQUISTE.", badge: "Em breve" },
+    { id: "aprovum-ai", href: `${base}/aprovum-ai`, label: "APROVUM AI", icon: BrainCircuit, num: "", desc: "Edital em preparação", also: [`${base}/meu-concurso`], title: "APROVUM AI", subtitle: "Seu concurso. Sua preparação. Nossa inteligência.", badge: "Novo" },
+    { id: "redacao", href: `${base}/redacao`, label: "Redação Elite", short: "Redação", icon: PenLine, num: "", desc: "Escreva e seja corrigido", title: "APROVUM REDAÇÃO ELITE", subtitle: "ESCREVA. CORRIJA. EVOLUA. CONQUISTE.", badge: "Novo" },
     { id: "depoimentos", href: `${base}/depoimentos`, label: "Depoimentos", icon: Video, num: "9", desc: "Histórias de aprovados", title: "Depoimentos", subtitle: "Quem chegou lá conta como foi a trajetória até a aprovação." },
     { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "0", desc: `Nível ${s.level}`, title: "Perfil" },
     { id: "plano", href: `${base}/plano`, label: "Meu Plano", icon: Crown, num: "", desc: "Escolha seu plano", title: "Meu Plano", subtitle: "Conquiste mais. Estude sem limites." },
@@ -364,10 +371,11 @@ export function PastelShell({
                         onClick={() => {
                           if (path === s.href) setToast(`${s.label} já está aberto ✨`);
                         }}
-                        className={`barra-item ${s.id === "plano" ? `mp-brilho mp-${summary.plan}` : ""} group relative flex w-full items-center gap-3.5 rounded-[18px] px-4 text-left text-[14.5px] font-medium transition-all duration-300 ${on ? "text-white" : "text-[#B3B3B3] hover:bg-white/[0.06] hover:text-white"}`}
+                        className={`barra-item ${itemNovo(s, on)} ${s.id === "plano" ? `mp-brilho mp-${summary.plan}` : ""} group relative flex w-full items-center gap-3.5 rounded-[18px] px-4 text-left text-[14.5px] font-medium transition-all duration-300 ${on ? "text-white" : "text-[#B3B3B3] hover:bg-white/[0.06] hover:text-white"}`}
                       >
-                        <span className={`${s.id === "plano" ? "mp-ico" : ""} flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-all duration-300 ${on ? "bg-white/20 text-white" : "bg-[#1A1A1A] group-hover:rotate-[-6deg] group-hover:scale-110 group-hover:bg-[#1C1C1C]"}`}>
+                        <span className={`${s.id === "plano" ? "mp-ico" : ""} ${s.badge === "Novo" && collapsed ? "relative" : ""} flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-all duration-300 ${on ? "bg-white/20 text-white" : "bg-[#1A1A1A] group-hover:rotate-[-6deg] group-hover:scale-110 group-hover:bg-[#1C1C1C]"}`}>
                           <s.icon className="h-[18px] w-[18px]" aria-hidden />
+                          {collapsed && s.badge === "Novo" && !on && <span aria-hidden className="mp-novo absolute right-1.5 top-1.5 !h-2 !w-2 !rounded-full !p-0" />}
                         </span>
                         {!collapsed && (
                           <span className="mp-txt min-w-0 flex-1">
@@ -724,7 +732,7 @@ function MobileMenu({ menuRef, items, summary, basePath }: { menuRef: React.RefO
                     href={s.href}
                     onClick={() => menuRef.current?.close()}
                     aria-current={on ? "page" : undefined}
-                    className={`flex min-h-14 items-center gap-3.5 rounded-[16px] px-3.5 ${on ? "bg-gradient-to-r from-[#FF1E1E] to-[#B30000] text-white" : "text-[#C9C9C9] hover:bg-white/[0.06]"}`}
+                    className={`${itemNovo(s, on)} flex min-h-14 items-center gap-3.5 rounded-[16px] px-3.5 ${on ? "bg-gradient-to-r from-[#FF1E1E] to-[#B30000] text-white" : "text-[#C9C9C9] hover:bg-white/[0.06]"}`}
                   >
                     <span className={`flex h-9 w-9 items-center justify-center rounded-[12px] ${on ? "bg-white/20" : "bg-[#1A1A1A]"}`}>
                       <s.icon className="h-[18px] w-[18px]" aria-hidden />
