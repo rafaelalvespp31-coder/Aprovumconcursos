@@ -3,7 +3,8 @@ import { Logo } from "@/components/logo";
 import { requireAdmin } from "@/server/services/catalog";
 import { DisciplinesSync } from "@/components/disciplines-sync";
 import { ensureDisciplines } from "@/server/services/disciplines";
-import { listRaioXRequests } from "@/server/services/strategic";
+import { getAdminPendencias } from "@/server/services/admin-pendencias";
+import { PendenciasSino } from "@/components/admin/pendencias-sino";
 
 export const metadata = { title: "Administração" };
 
@@ -15,7 +16,9 @@ export default async function AdminLayout({
 }) {
   await requireAdmin();
   const disciplines = await ensureDisciplines();
-  const pendentes = (await listRaioXRequests({ onlyPending: true, limit: 200 }).catch(() => [])).length;
+  const pend = await getAdminPendencias().catch(() => ({ total: 0, items: [] as Awaited<ReturnType<typeof getAdminPendencias>>["items"] }));
+  const nPend = (key: string) => pend.items.find((i) => i.key === key)?.count ?? 0;
+  const pendentes = nPend("raiox");
   return (
     <DisciplinesSync list={disciplines}>
       <div className="min-h-dvh">
@@ -26,6 +29,7 @@ export default async function AdminLayout({
               <span className="rounded-full bg-tinta px-2 py-0.5 t-tiny font-semibold text-white">
                 Equipe
               </span>
+              <PendenciasSino initial={pend} />
             </div>
             <nav
               aria-label="Administração"
@@ -77,13 +81,13 @@ export default async function AdminLayout({
                 href="/admin/alunos"
                 className="text-destaque underline-offset-2 hover:underline"
               >
-                Alunos
+                Alunos{nPend("planos") > 0 && <span className="ml-1 rounded-full bg-destaque px-1.5 py-0.5 t-tiny font-bold text-white" aria-label={`${nPend("planos")} pedidos de plano`}>{nPend("planos")}</span>}
               </Link>
               <Link
                 href="/admin/avatares"
                 className="text-destaque underline-offset-2 hover:underline"
               >
-                Avatares
+                Avatares{nPend("avatares") > 0 && <span className="ml-1 rounded-full bg-destaque px-1.5 py-0.5 t-tiny font-bold text-white" aria-label={`${nPend("avatares")} avatares personalizados`}>{nPend("avatares")}</span>}
               </Link>
               <Link
                 href="/admin/concursos"
