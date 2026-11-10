@@ -3,6 +3,7 @@
  * e monta o comando do ChatGPT usando essa aula inteira como MODELO OFICIAL — puro.
  * Ida e volta: exportar → colar → ler devolve a mesma estrutura (módulos, seções, itens, questões).
  */
+import { DELIVERY_CONTRACT, QUESTIONS_CONTRACT } from "./delivery";
 import { disciplineLabel } from "@/ai/pedagogy";
 import type { ExtractedNode } from "@/domain/content/extract";
 
@@ -291,6 +292,8 @@ FORMATO DA RESPOSTA
 - Responda SOMENTE com as questões, dentro de UM único bloco de código, começando por "=== QUESTÕES: FÁCIL ===", depois "=== QUESTÕES: MÉDIO ===" e "=== QUESTÕES: DIFÍCIL ===", cada questão começando com "--- QUESTÃO ---".
 - Se a resposta for cortada por tamanho, eu vou pedir "continue": continue exatamente de onde parou, sem repetir nada.
 
+${QUESTIONS_CONTRACT}
+
 <<<INÍCIO DAS QUESTÕES DO MODELO: ${t.title}>>>
 ${exportTopicText(t, "questoes")}<<<FIM DAS QUESTÕES DO MODELO>>>`;
   return { part1, part2 };
@@ -402,6 +405,8 @@ ${visualRules(t)}
 TEXTO-BASE: texto LITERAL e VIGENTE dos artigos, um dispositivo por linha, e depois o sumário numerado dos subtemas.
 QUESTÕES (12 por nível): ${lv("facil", "Fácil")}; ${lv("medio", "Médio")}; ${lv("dificil", "Difícil")}. Múltipla escolha com A a E, cada alternativa com "Comentário:". Todas com Item (existente no TEXTO-BASE), Essencial, Dificuldade, Gabarito e Justificativa. Questões autorais, sem banca ou concurso real; gabaritos coerentes e distribuídos entre A e E.
 Nunca invente súmula, tese ou julgado; o que precisar de conferência vai em "=== A CONFERIR ===".
+
+${DELIVERY_CONTRACT}
 
 COMO RESPONDER
 Responda com a aula COMPLETA — da "=== AULA ===" até o fim das questões do nível difícil — num único bloco de código, sem nada fora dele. Se cortar por tamanho, eu escrevo "continue" e você segue exatamente de onde parou, sem repetir nada. Use exatamente os marcadores e campos do modelo; não use === nem --- dentro do conteúdo.

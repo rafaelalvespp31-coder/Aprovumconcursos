@@ -8,6 +8,7 @@
  * entregar. É UM comando só, completo (aula, referências e questões), e a aula cresce junto com o
  * assunto: um módulo por item do edital e mais módulos/seções quando o conteúdo for extenso. Puro.
  */
+import { DELIVERY_CONTRACT, DELIVERY_REMINDER } from "./delivery";
 import { disciplineLabel, isLegalMode, type DisciplineMode } from "@/ai/pedagogy";
 import { visualRulesCompact } from "./export";
 import { groupHeaderLines, type OutlineItem, type OutlineSubtopic } from "./topic-group";
@@ -151,7 +152,9 @@ Justificativa: (começa com "Certo." ou "Errado.")
 === QUESTÕES: DIFÍCIL ===
 (12: 7 múltipla escolha e 5 certo ou errado; Dificuldade: 4 ou 5; casos longos estilo FGV${legal ? ", figuras próximas e jurisprudência" : ""}; 2 essenciais.)
 
-REGRAS DAS QUESTÕES: autorais (sem banca ou concurso real); 5 alternativas plausíveis com comentário; gabaritos espalhados de A a E; "Item:" que exista no TEXTO-BASE; sem repetir.`;
+REGRAS DAS QUESTÕES: autorais (sem banca ou concurso real); 5 alternativas plausíveis com comentário; gabaritos espalhados de A a E; "Item:" que exista no TEXTO-BASE; sem repetir.
+
+${DELIVERY_REMINDER}`;
 
   const head = `Escreva uma aula completa para concursos públicos no PADRÃO APROVUM, com a profundidade da aula-modelo de Homicídio do catálogo.
 
@@ -168,7 +171,9 @@ FORMATO OBRIGATÓRIO
 - TAMANHO DA AULA: não há limite de módulos nem de seções. Cada seção deve ter no máximo uns 6.000 caracteres; se um item ou assunto for extenso, abra MAIS seções do mesmo tipo (ex.: "Furto simples — parte 2") ou um módulo novo, em vez de escrever uma seção gigante ou resumir. Quanto maior o assunto, mais módulos.
 - O bloco === TEXTO-BASE === é OBRIGATÓRIO e nunca pode ficar vazio: copie nele, exatamente como está abaixo, a lista numerada de itens. Em cada "Itens:" use SOMENTE números que existam no TEXTO-BASE (ex.: 8.1.2). Nunca invente um número que não esteja lá.
 - Não existe limite de itens, referências, questões nem tamanho: escreva tudo o que o assunto pede, sem resumir.
-- Cortou? Eu peço "continue": siga de onde parou, sem repetir.`;
+- Cortou? Eu peço "continue": siga de onde parou, sem repetir.
+
+${DELIVERY_CONTRACT}`;
 
   const lesson = (mods: string) => `=== AULA ===
 Título: ${sub.title}

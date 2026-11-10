@@ -160,3 +160,18 @@ describe("endereço da aula com tópico de nome longo", () => {
     expect(existingForUpload({ title: "Ferramentas (nova versão)", topicGroup: longGroup, topicGroupCode: "2", subtopicCode: "2.1" }, "outro-endereco", [old])?.row.id).toBe("x");
   });
 });
+
+describe("entrega obrigatória no comando do subtópico", () => {
+  it("exige 12 questões por nível e flashcards, no começo e no fim do comando", async () => {
+    const { buildSubtopicPrompt } = await import("./subtopic-prompt");
+    const { parseOutline } = await import("./topic-group");
+    const o = parseOutline("1. Ação Penal\n1.1 Conceito\n1.1.1 Natureza jurídica\n1.2 Espécies");
+    const g = o.groups[0]!;
+    const out = buildSubtopicPrompt({ disciplineMode: "direito_processual_penal", group: g, sub: g.subtopics[0]! });
+    expect(out).toContain("ENTREGA OBRIGATÓRIA");
+    expect(out).toContain("LEMBRETE FINAL");
+    expect(out).toMatch(/12 em "=== QUESTÕES: FÁCIL ==="/);
+    expect(out).toMatch(/flashcards/i);
+    expect(out.length).toBeLessThanOrEqual(40_000);
+  });
+});

@@ -4,6 +4,7 @@
  * resposta no campo de texto do painel.
  */
 
+import { DELIVERY_CONTRACT, DELIVERY_REMINDER } from "./delivery";
 import { visualRules } from "./export";
 
 export const LESSON_PROMPT = `Você vai escrever uma aula completa para concursos públicos (carreiras policiais e jurídicas) no PADRÃO APROVUM.
@@ -149,7 +150,11 @@ Justificativa: (começa com "Certo." ou "Errado." e explica)
 === QUESTÕES: DIFÍCIL ===
 (12 questões, mesmo formato: 7 de múltipla escolha e 5 de certo ou errado, Dificuldade: 4 ou 5. Casos longos no estilo FGV, combinação de institutos, crimes próximos e jurisprudência; 2 essenciais.)
 
-REGRAS DAS QUESTÕES: todas autorais (não atribua a banca nem a concurso real); 5 alternativas (A a E) nas de múltipla escolha, todas plausíveis e com comentário; gabarito sempre coerente com a justificativa; distribua as letras corretas entre A e E; cada questão ligada a um "Item:" que exista no TEXTO-BASE; não repita questões.`;
+REGRAS DAS QUESTÕES: todas autorais (não atribua a banca nem a concurso real); 5 alternativas (A a E) nas de múltipla escolha, todas plausíveis e com comentário; gabarito sempre coerente com a justificativa; distribua as letras corretas entre A e E; cada questão ligada a um "Item:" que exista no TEXTO-BASE; não repita questões.
+
+${DELIVERY_CONTRACT}
+
+${DELIVERY_REMINDER}`;
 
 export const QUESTIONS_PROMPT = `Organize as questões de concurso abaixo no formato a seguir. [COLE AQUI AS QUESTÕES OU DESCREVA A PROVA]
 
