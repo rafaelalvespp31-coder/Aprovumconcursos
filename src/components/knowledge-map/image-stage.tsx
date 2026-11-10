@@ -501,8 +501,8 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       t: number;
       life: number;
     }> = [];
-    const PER_COL = light ? 5 : 8;
-    const PER_MIST = light ? 3 : 4;
+    const PER_COL = light ? 4 : 5;
+    const PER_MIST = light ? 2 : 3;
     // Brasa e fogo pré-desenhados (sem criar gradientes a cada quadro).
     const mk = (r: number, stops: Array<[number, string]>) => {
       const c = document.createElement("canvas");
@@ -567,10 +567,10 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     );
     // Sol: brilho, rastro horizontal, véu e reflexos de lente (fantasmas) que seguem a direção do olhar.
     const sunGlow = mk(128, [
-      [0, "rgba(255,252,232,1)"],
-      [0.1, "rgba(255,228,168,0.9)"],
-      [0.3, "rgba(255,160,78,0.42)"],
-      [0.65, "rgba(255,95,42,0.12)"],
+      [0, "rgba(255,238,196,0.6)"],
+      [0.16, "rgba(255,196,118,0.36)"],
+      [0.45, "rgba(255,126,52,0.13)"],
+      [0.8, "rgba(255,90,40,0.04)"],
       [1, "rgba(255,60,20,0)"],
     ]);
     const ghostRing = (() => {
@@ -766,47 +766,39 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
           ctx.globalAlpha = Math.min(1, fl);
           ctx.drawImage(fireSpr, x - r, y - r, r * 2, r * 2);
         }
-        // Sol do horizonte: brilha sempre um pouco; quanto mais a visão aponta para ele, mais ele estoura,
-        // espalha luz pela tela e projeta reflexos de lente. Afastou o olhar, a luz vai sumindo.
+        // Sol do horizonte: o disco da arte continua visível; um halo suave o acompanha e cresce quando a
+        // visão aponta para ele (some devagar ao desviar o olhar), com reflexos de lente discretos.
         {
           const sxp = SUN[0] * t.s + t.tx;
           const syp = SUN[1] * t.s + t.ty;
           const dx = (sxp - w / 2) / (w * 0.5);
           const dy = (syp - h / 2) / (h * 0.5);
-          const want = Math.max(0, 1 - Math.hypot(dx, dy * 0.8) / 1.5);
+          const want = Math.max(0, 1 - Math.hypot(dx, dy * 0.8) / 1.6);
           const tk = want * want * (3 - 2 * want);
-          sunK += (tk - sunK) * (1 - Math.exp(-Math.min(fdt, 0.1) * 3.5));
-          const R = Math.min(t.s * 230 * (1 + 1.3 * sunK), Math.max(w, h) * 0.62) * (1 + Math.sin(now / 1300) * 0.03 + Math.sin(now / 410) * 0.012);
-          if (sxp > -R * 2 && sxp < w + R * 2 && syp > -R && syp < h + R) {
-            ctx.globalAlpha = 0.5 + 0.5 * sunK;
+          sunK += (tk - sunK) * (1 - Math.exp(-Math.min(fdt, 0.1) * 2.5));
+          const R = Math.min(t.s * 150 * (1 + 0.8 * sunK), Math.max(w, h) * 0.4) * (1 + Math.sin(now / 1700) * 0.02);
+          if (sxp > -R * 2.5 && sxp < w + R * 2.5 && syp > -R * 2.5 && syp < h + R * 2.5) {
+            ctx.globalAlpha = 0.3 + 0.55 * sunK;
             ctx.drawImage(sunGlow, sxp - R, syp - R, R * 2, R * 2);
-            const SW = R * 5.5;
-            const SH = R * 0.2;
-            ctx.globalAlpha = 0.14 + 0.5 * sunK;
-            ctx.drawImage(sunGlow, sxp - SW / 2, syp - SH / 2, SW, SH);
+            if (sunK > 0.04) {
+              ctx.globalAlpha = 0.5 * sunK;
+              ctx.drawImage(sunGlow, sxp - R * 2.4, syp - R * 2.4, R * 4.8, R * 4.8);
+            }
           }
-          if (sunK > 0.03) {
-            ctx.globalAlpha = 1;
-            ctx.fillStyle = `rgba(255,158,78,${(0.2 * sunK).toFixed(3)})`;
-            ctx.fillRect(0, 0, w, h);
-            if (!light) {
-              const m = Math.min(w, h);
-              const gk = sunK * sunK;
-              // Reflexos ao longo da linha que liga o sol ao centro da tela (e além).
-              const G: Array<[number, number, 0 | 1 | 2, number]> = [
-                [0.55, 0.07, 1, 0.5],
-                [0.95, 0.15, 0, 0.55],
-                [1.35, 0.05, 2, 0.6],
-                [1.8, 0.24, 0, 0.35],
-                [2.2, 0.09, 1, 0.45],
-              ];
-              for (const [f, sz, kind, ga] of G) {
-                const gx = sxp + (w / 2 - sxp) * f;
-                const gy = syp + (h / 2 - syp) * f;
-                const gs = m * sz * (1 + sunK * 0.4);
-                ctx.globalAlpha = Math.min(1, gk * ga);
-                ctx.drawImage(kind === 0 ? ghostRing : kind === 1 ? ghostCool : ghostWarm, gx - gs, gy - gs, gs * 2, gs * 2);
-              }
+          if (!light && sunK > 0.12) {
+            const m = Math.min(w, h);
+            const gk = sunK * sunK;
+            const G: Array<[number, number, 0 | 1 | 2, number]> = [
+              [0.7, 0.06, 1, 0.35],
+              [1.1, 0.12, 0, 0.35],
+              [1.6, 0.05, 2, 0.4],
+            ];
+            for (const [f, sz, kind, ga] of G) {
+              const gx = sxp + (w / 2 - sxp) * f;
+              const gy = syp + (h / 2 - syp) * f;
+              const gs = m * sz;
+              ctx.globalAlpha = Math.min(1, gk * ga);
+              ctx.drawImage(kind === 0 ? ghostRing : kind === 1 ? ghostCool : ghostWarm, gx - gs, gy - gs, gs * 2, gs * 2);
             }
           }
           ctx.globalAlpha = 1;

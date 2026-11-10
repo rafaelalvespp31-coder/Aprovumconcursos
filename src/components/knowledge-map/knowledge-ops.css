@@ -1179,8 +1179,6 @@
   pointer-events: none;
   /* visto quase de lado: o disco vira uma elipse fina */
   transform: scaleY(0.15) rotate(-1.2deg);
-  -webkit-mask-image: radial-gradient(circle, transparent 0 5%, #000 9% 90%, transparent 100%);
-  mask-image: radial-gradient(circle, transparent 0 5%, #000 9% 90%, transparent 100%);
 }
 .km-heli-rotor b,
 .km-heli-rotor u {
