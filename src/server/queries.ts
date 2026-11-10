@@ -85,6 +85,13 @@ export async function listTrailProgress(): Promise<Record<string, { done: number
   return out;
 }
 
+/** Tempo de estudo registrado: soma do tempo gasto nas respostas do aluno (segundos). */
+export async function getStudySeconds(): Promise<number> {
+  const db = await createUserClient();
+  const { data } = await db.from("answer_attempts").select("time_spent_seconds").eq("user_id", await myId()).not("time_spent_seconds", "is", null).limit(50000);
+  return ((data ?? []) as Array<{ time_spent_seconds: number | null }>).reduce((s, a) => s + (a.time_spent_seconds ?? 0), 0);
+}
+
 export async function getTrail(id: string) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) notFound();
   const db = await createUserClient();

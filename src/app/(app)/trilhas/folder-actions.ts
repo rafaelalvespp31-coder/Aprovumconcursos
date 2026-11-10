@@ -30,6 +30,9 @@ export async function createFolderAction(name: string, color?: string) {
 export async function renameFolderAction(folderId: string, name: string) {
   return run("rename", (u) => updateFolder(u, folderId, { name }));
 }
+export async function recolorFolderAction(folderId: string, color: string) {
+  return run("recolor", (u) => updateFolder(u, folderId, { color }));
+}
 export async function deleteFolderAction(folderId: string) {
   return run("delete", (u) => deleteFolder(u, folderId));
 }
