@@ -5,6 +5,7 @@ import { prepareLessonUpload, summarizeLessonUpload, type LessonUploadPreview } 
 import { buildCompactPrompt, buildModelPrompt, buildModelPromptParts, exportTopicText, type ExportableTopic } from "@/domain/catalog/export";
 import { parseQuestionsForTopic } from "@/domain/catalog/upload";
 import { existingForUpload, slugMatchIsSameLesson } from "@/domain/catalog/topic-group";
+import { fold } from "@/domain/catalog/upload";
 import { applyEnrichment, enrichStatus, parseEnrichment, type EnrichLesson } from "@/domain/catalog/enrich";
 import { lessonUploadSchema } from "@/ai/schemas";
 import { createAdminClient } from "../supabase";
@@ -14,7 +15,7 @@ import { UserFacingError } from "./trails";
 import { bannerUrlFor } from "./banners";
 
 
-type ExistingTopic = { id: string; status: string; title: string; by: "endereco" | "subtopico" };
+type ExistingTopic = { id: string; status: string; title: string; by: "endereco" | "subtopico" | "titulo"; topicGroup?: string | null; topicGroupCode?: string | null; subtopicCode?: string | null };
 
 /**
  * A aula que este texto vai atualizar: a do mesmo endereço ou, se não houver, a que já cobre o
@@ -25,11 +26,22 @@ async function findExisting(db: ReturnType<typeof createAdminClient>, p: ReturnT
   const { data: bySlug } = await db.from("catalog_topics").select("id, status, title, topic_group, subtopic_code").eq("slug", p.slug).maybeSingle();
   if (bySlug && slugMatchIsSameLesson(m, { topicGroup: bySlug.topic_group as string | null, subtopicCode: bySlug.subtopic_code as string | null }))
     return { id: bySlug.id as string, status: bySlug.status as string, title: bySlug.title as string, by: "endereco" };
-  if (!m.topicGroup || !m.disciplineMode) return null;
-  const { data } = await db.from("catalog_topics").select("id, slug, title, status, topic_group, subtopic_code").eq("discipline_mode", m.disciplineMode).not("topic_group", "is", null).limit(5000);
-  const rows = (data ?? []).map((t) => ({ id: t.id as string, slug: t.slug as string, title: t.title as string, status: t.status as string, topicGroup: t.topic_group as string | null, subtopicCode: t.subtopic_code as string | null }));
-  const hit = existingForUpload(m, p.slug, rows);
-  return hit ? { id: hit.row.id, status: hit.row.status, title: hit.row.title, by: hit.by } : null;
+  if (!m.disciplineMode) return null;
+  const { data } = await db.from("catalog_topics").select("id, slug, title, status, topic_group, topic_group_code, subtopic_code").eq("discipline_mode", m.disciplineMode).limit(5000);
+  const all = (data ?? []).map((t) => ({ id: t.id as string, slug: t.slug as string, title: t.title as string, status: t.status as string, topicGroup: t.topic_group as string | null, topicGroupCode: t.topic_group_code as string | null, subtopicCode: t.subtopic_code as string | null }));
+  if (m.topicGroup) {
+    const hit = existingForUpload(m, p.slug, all.filter((r) => r.topicGroup));
+    if (hit) return { id: hit.row.id, status: hit.row.status, title: hit.row.title, by: hit.by };
+  }
+  // Aula repetida em outro tópico do plano (mesmo assunto, mesmo título): entra no subtópico em que ela já está,
+  // em vez de criar uma segunda. Só títulos específicos (nada de "Conceito" ou "Princípios", que se repetem de verdade).
+  const key = fold(m.title);
+  if (key.length >= 15) {
+    const same = all.filter((r) => fold(r.title) === key);
+    const hit = same.find((r) => r.status === "publicado") ?? same[0];
+    if (hit) return { id: hit.id, status: hit.status, title: hit.title, by: "titulo", topicGroup: hit.topicGroup, topicGroupCode: hit.topicGroupCode, subtopicCode: hit.subtopicCode };
+  }
+  return null;
 }
 
 /** Confere o arquivo e mostra como a aula vai ficar, sem gravar nada. */
@@ -39,6 +51,8 @@ export async function previewLessonUpload(text: string): Promise<LessonUploadPre
   const existing = await findExisting(db, p);
   const errors: string[] = [];
   const warnings: string[] = [];
+  if (existing?.by === "titulo")
+    warnings.push(`Esta aula repete “${existing.title}”${existing.topicGroup ? ` (${existing.topicGroup}${existing.subtopicCode ? ` › ${existing.subtopicCode}` : ""})` : ""}, que já existe no plano. Ao salvar, ela atualiza essa aula no subtópico certo — não cria outra.`);
   if (existing?.by === "subtopico")
     warnings.push(`Este subtópico já está catalogado na aula “${existing.title}”. Ao salvar, esta versão atualiza essa aula — não cria uma aula duplicada.`);
   if (existing?.status === "publicado") warnings.push(`“${existing.title}” já está publicada: ao salvar, esta versão substitui a do site (as questões antigas ficam inativas e quem já estudava recebe o aviso de atualização).`);
@@ -111,6 +125,13 @@ export async function importLessonUpload(user: SessionUser, text: string, fileNa
     subtopic_code: m.subtopicCode,
     updated_at: new Date().toISOString(),
   };
+  // Repetida em outro tópico: fica no subtópico onde já estava (mesmo tópico, número e título).
+  if (existing?.by === "titulo") {
+    row.title = existing.title;
+    row.topic_group = existing.topicGroup ?? null;
+    row.topic_group_code = existing.topicGroupCode ?? null;
+    row.subtopic_code = existing.subtopicCode ?? null;
+  }
   let id: string;
   let oldQuestionIds: string[] = [];
   if (existing) {
