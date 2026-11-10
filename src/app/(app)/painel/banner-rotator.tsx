@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Pause, Play } from "lucide-react";
 
 import { APPROVAL_BANNERS, type ApprovalBanner } from "./approval-banners";
@@ -19,6 +19,7 @@ export function BannerRotator({ children, banners = APPROVAL_BANNERS, className 
   const [index, setIndex] = useState(0);
   const [paused, setPaused] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const box = useRef<HTMLDivElement>(null);
   const [mov, setMov] = useState(false); // só anima a troca depois da primeira mudança (sem efeito ao carregar)
 
   useEffect(() => {
@@ -39,6 +40,20 @@ export function BannerRotator({ children, banners = APPROVAL_BANNERS, className 
 
   return (
     <div
+      ref={box}
+      onPointerMove={(e) => {
+        // Paralaxe do ponteiro: posição relativa ao centro (-1..1); as camadas se movem em profundidades diferentes.
+        if (e.pointerType !== "mouse") return;
+        const el = box.current;
+        if (!el) return;
+        const r = el.getBoundingClientRect();
+        el.style.setProperty("--px", (((e.clientX - r.left) / r.width) * 2 - 1).toFixed(3));
+        el.style.setProperty("--py", (((e.clientY - r.top) / r.height) * 2 - 1).toFixed(3));
+      }}
+      onPointerLeave={() => {
+        box.current?.style.setProperty("--px", "0");
+        box.current?.style.setProperty("--py", "0");
+      }}
       className={`banner-rotator relative ${className}`}
       role="region"
       aria-roledescription="carrossel"
@@ -75,14 +90,6 @@ export function BannerRotator({ children, banners = APPROVAL_BANNERS, className 
           </div>
         );
       })}
-
-      {/* Corte cinematográfico: feixe de luz varrendo a tela junto com a cortina diagonal + clarão quente. */}
-      {mov && (
-        <span key={index} className="br-corte" aria-hidden>
-          <i className="br-feixe" />
-          <i className="br-luz" />
-        </span>
-      )}
 
       <div className="br-controles">
         <div className="br-pontos" role="group" aria-label="Escolher banner">
