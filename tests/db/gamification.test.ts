@@ -164,8 +164,8 @@ describe("ranking", () => {
     expect((await sync(A)).ranking).toMatchObject({ position: 2, total: 2 });
     const top = await t.db.query("select * from public.gamification_top(10)");
     expect(top.rows).toEqual([
-      { pos: 1, name: "Bia", level: 5, xp: "5000" },
-      { pos: 2, name: "Rafael S.", level: 2, xp: "1200" },
+      { pos: 1, name: "Bia", motto: null, level: 5, xp: "5000" },
+      { pos: 2, name: "Rafael S.", motto: null, level: 2, xp: "1200" },
     ]);
   });
 });

@@ -4,7 +4,8 @@ import { createAdminClient } from "../supabase";
 import { isAdmin } from "../auth";
 import { aiIsConfigured, AIError } from "@/ai";
 import { UserFacingError, enforceRateLimit } from "./trails";
-import { brDay } from "@/domain/plans/limits";
+import { brDay, redacaoDailyLimit, redacaoLimitMessage } from "@/domain/plans/limits";
+import { getMyPlan } from "./plans";
 import { MODALIDADES, rubricaDaModalidade } from "@/domain/redacao/rubricas";
 import { MAX_CHARS, contar, validarParaEnvio } from "@/domain/redacao/texto";
 import { classificar } from "@/domain/redacao/consistencia";
@@ -93,9 +94,14 @@ export async function submitForCorrection(userId: string, id: string): Promise<{
   exigirIA();
   await enforceRateLimit(userId, "redacao:enviar", 6, 60);
   if (!(await isAdmin().catch(() => false))) {
+    // Limite diário no servidor: gratuito = 1 por dia; pago/degustação = limite geral da redação.
+    const plan = await getMyPlan(userId);
+    const limite = redacaoDailyLimit(plan, limiteDiario());
+    // Fecha a brecha de dois envios simultâneos no gratuito (a contagem abaixo não é atômica).
+    if (!plan.unlimited) await enforceRateLimit(userId, "redacao:enviar_gratis", 1, 15);
     const { start } = brDay();
     const q = await admin.from("writing_submissions").select("id", { count: "exact", head: true }).eq("user_id", userId).gte("submitted_at", start).in("status", ["processando", "concluida"]);
-    if ((q.count ?? 0) >= limiteDiario()) throw new UserFacingError(`Você atingiu o limite de ${limiteDiario()} correções por dia. Volte amanhã ou reescreva depois.`, "limit");
+    if ((q.count ?? 0) >= limite) throw new UserFacingError(redacaoLimitMessage(limite, !plan.unlimited), "limit");
   }
   const rub = rubricaDaModalidade(s.data.modality as string);
   const ins = await admin.from("writing_evaluations").insert({ submission_id: id, user_id: userId, status: "processando", stage: "Na fila", rubric_key: rub.key, rubric_version: rub.version, modality: s.data.modality, estimated: rub.estimated, max_score: rub.max }).select("id").single();
