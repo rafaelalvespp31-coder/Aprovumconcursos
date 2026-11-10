@@ -1,5 +1,5 @@
 import { requireAdmin } from "@/server/services/catalog";
-import { getCampaignInfo, getCampaignStats, searchCampaignUsers } from "@/server/services/promo";
+import { getCampaignActivity, getCampaignInfo, getCampaignStats, searchCampaignUsers } from "@/server/services/promo";
 import { CampanhaControles } from "./controles";
 import { concederManualAction, estenderAction, setCampanhaAtivaAction } from "./actions";
 
@@ -22,7 +22,7 @@ export default async function CampanhaPage({ searchParams }: { searchParams: Pro
         </p>
       </div>
     );
-  const [stats, found] = await Promise.all([getCampaignStats(), searchCampaignUsers(q)]);
+  const [stats, found, activity] = await Promise.all([getCampaignStats(), searchCampaignUsers(q), getCampaignActivity()]);
   return (
     <div>
       <h1 className="t-h1">CAMPANHA — O CAVEIRA FICOU MALUCO</h1>
@@ -55,6 +55,40 @@ export default async function CampanhaPage({ searchParams }: { searchParams: Pro
           </div>
         ))}
       </dl>
+
+      <section className="mt-6" data-testid="campanha-atividade">
+        <h2 className="t-h3">Quem viu e está estudando</h2>
+        <p className="mt-1 t-tiny text-tinta-suave">
+          {activity.totalVistas} alunos viram a popup{activity.totalVistas > activity.rows.length ? ` (mostrando os ${activity.rows.length} mais recentes)` : ""} · {activity.rows.filter((r) => r.estudando).length} estudando desde que ganharam o acesso. “Estudando” = respondeu questões ou abriu um estudo depois da concessão.
+        </p>
+        {activity.rows.length === 0 ? (
+          <p className="mt-3 t-small text-tinta-suave">Ninguém viu a popup ainda.</p>
+        ) : (
+          <ul className="mt-3 divide-y divide-linha rounded-lg border border-linha bg-superficie">
+            {activity.rows.map((r) => (
+              <li key={r.userId} className="px-3 py-3 t-small" data-testid="campanha-atividade-aluno">
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <span><strong>{r.name ?? "—"}</strong><br /><span className="text-tinta-fraca">{r.email ?? "—"}</span></span>
+                  <span className="text-right">
+                    <strong className={r.estudando ? "text-acerto" : "text-tinta-fraca"}>{r.estudando ? "Estudando" : "Só viu a popup"}</strong>
+                    <br /><span className="t-tiny text-tinta-fraca">{r.ativo ? "acesso ativo" : "acesso expirado"} · popup {fmt(r.popupSeenAt)}</span>
+                  </span>
+                </div>
+                <p className="mt-1 t-tiny text-tinta-suave">{r.respostas} respostas · última atividade {fmt(r.ultimaAtividade)}</p>
+                {r.trails.length > 0 && (
+                  <ul className="mt-2 flex flex-wrap gap-1.5">
+                    {r.trails.map((t, i) => (
+                      <li key={i} className={`rounded-full border px-2 py-0.5 t-tiny ${t.duranteCampanha ? "border-acerto font-semibold" : "border-linha text-tinta-fraca"}`} title={t.lastStudiedAt ? `Último estudo ${fmt(t.lastStudiedAt)}` : "Nunca estudado"}>
+                        {t.title}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="mt-6" data-testid="campanha-busca">
         <h2 className="t-h3">Consulta individual</h2>

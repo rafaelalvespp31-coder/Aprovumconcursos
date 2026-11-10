@@ -204,3 +204,112 @@ export async function extendGrant(adminId: string, grantId: string, days: number
   const { error } = await createAdminClient().rpc("promo_extend", { p_grant: grantId, p_days: days, p_actor: adminId });
   if (error) throw new Error(error.message);
 }
+
+export interface PromoActivityTrail {
+  title: string;
+  status: string;
+  lastStudiedAt: string | null;
+  /** Estudo mexido depois que a campanha foi concedida a este aluno. */
+  duranteCampanha: boolean;
+}
+
+export interface PromoActivityRow {
+  userId: string;
+  name: string | null;
+  email: string | null;
+  popupSeenAt: string;
+  expiresAt: string;
+  ativo: boolean;
+  /** Respostas dadas desde que a concessão começou. */
+  respostas: number;
+  ultimaAtividade: string | null;
+  estudando: boolean;
+  trails: PromoActivityTrail[];
+}
+
+const ACTIVITY_LIMIT = 100;
+
+/**
+ * Quem viu a popup da campanha e o que está estudando. "Estudando" = respondeu questões ou mexeu
+ * em algum estudo depois que a concessão começou. Lê só dados já existentes (sem migração).
+ */
+export async function getCampaignActivity(id: string = CAVEIRA_CAMPAIGN_ID): Promise<{ rows: PromoActivityRow[]; totalVistas: number }> {
+  const db = createAdminClient();
+  const { data: grants, error, count } = await db
+    .from("promo_grants")
+    .select("user_id, starts_at, expires_at, popup_seen_at", { count: "exact" })
+    .eq("campaign_id", id)
+    .neq("status", "revogado")
+    .not("popup_seen_at", "is", null)
+    .order("popup_seen_at", { ascending: false })
+    .limit(ACTIVITY_LIMIT);
+  if (error) {
+    if (isMissingRelation(error)) return { rows: [], totalVistas: 0 };
+    throw new Error(error.message);
+  }
+  const list = grants ?? [];
+  if (!list.length) return { rows: [], totalVistas: 0 };
+  const ids = list.map((g) => g.user_id as string);
+  const [profiles, trails, emails, counts] = await Promise.all([
+    db.from("profiles").select("id, display_name").in("id", ids),
+    db.from("study_trails").select("user_id, title, status, last_studied_at").in("user_id", ids).is("archived_at", null).order("last_studied_at", { ascending: false, nullsFirst: false }).limit(2000),
+    (async () => {
+      const m = new Map<string, string>();
+      const want = new Set(ids);
+      for (let page = 1; page <= 20 && want.size > m.size; page++) {
+        const { data } = await db.auth.admin.listUsers({ page, perPage: 1000 });
+        if (!data) break;
+        for (const u of data.users) if (want.has(u.id) && u.email) m.set(u.id, u.email);
+        if (data.users.length < 1000) break;
+      }
+      return m;
+    })(),
+    Promise.all(
+      list.map(async (g) => {
+        const uid = g.user_id as string;
+        const since = g.starts_at as string;
+        const [n, last] = await Promise.all([
+          db.from("answer_attempts").select("id", { count: "exact", head: true }).eq("user_id", uid).gte("created_at", since),
+          db.from("answer_attempts").select("created_at").eq("user_id", uid).gte("created_at", since).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+        ]);
+        return [uid, { n: n.count ?? 0, last: (last.data?.created_at as string | undefined) ?? null }] as const;
+      }),
+    ),
+  ]);
+  const nameOf = new Map((profiles.data ?? []).map((p) => [p.id as string, (p.display_name as string | null) || null]));
+  const trailsOf = new Map<string, Array<{ title: string; status: string; last_studied_at: string | null }>>();
+  for (const t of (trails.data ?? []) as Array<{ user_id: string; title: string; status: string; last_studied_at: string | null }>) {
+    const arr = trailsOf.get(t.user_id) ?? [];
+    arr.push(t);
+    trailsOf.set(t.user_id, arr);
+  }
+  const attempts = new Map(counts);
+  const nowMs = Date.now();
+  const rows = list.map<PromoActivityRow>((g) => {
+    const uid = g.user_id as string;
+    const since = new Date(g.starts_at as string).getTime();
+    const a = attempts.get(uid) ?? { n: 0, last: null };
+    const ts = (trailsOf.get(uid) ?? []).map<PromoActivityTrail>((t) => ({
+      title: t.title,
+      status: t.status,
+      lastStudiedAt: t.last_studied_at,
+      duranteCampanha: !!t.last_studied_at && new Date(t.last_studied_at).getTime() >= since,
+    }));
+    const lastTrail = ts.map((t) => t.lastStudiedAt).filter((x): x is string => !!x && new Date(x).getTime() >= since).sort().pop() ?? null;
+    const ultima = [a.last, lastTrail].filter((x): x is string => !!x).sort().pop() ?? null;
+    return {
+      userId: uid,
+      name: nameOf.get(uid) ?? null,
+      email: emails.get(uid) ?? null,
+      popupSeenAt: g.popup_seen_at as string,
+      expiresAt: g.expires_at as string,
+      ativo: new Date(g.expires_at as string).getTime() > nowMs,
+      respostas: a.n,
+      ultimaAtividade: ultima,
+      estudando: a.n > 0 || ts.some((t) => t.duranteCampanha),
+      trails: ts,
+    };
+  });
+  rows.sort((x, y) => Number(y.estudando) - Number(x.estudando) || (y.ultimaAtividade ?? "").localeCompare(x.ultimaAtividade ?? ""));
+  return { rows, totalVistas: count ?? rows.length };
+}
