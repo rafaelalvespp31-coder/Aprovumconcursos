@@ -255,15 +255,15 @@ export async function getCampaignActivity(id: string = CAVEIRA_CAMPAIGN_ID): Pro
   const [profiles, trails, emails, counts] = await Promise.all([
     db.from("profiles").select("id, display_name").in("id", ids),
     db.from("study_trails").select("user_id, title, status, last_studied_at").in("user_id", ids).is("archived_at", null).order("last_studied_at", { ascending: false, nullsFirst: false }).limit(2000),
+    // E-mails só dos (no máximo 100) alunos da lista, em vez de varrer todos os usuários do Auth.
     (async () => {
       const m = new Map<string, string>();
-      const want = new Set(ids);
-      for (let page = 1; page <= 20 && want.size > m.size; page++) {
-        const { data } = await db.auth.admin.listUsers({ page, perPage: 1000 });
-        if (!data) break;
-        for (const u of data.users) if (want.has(u.id) && u.email) m.set(u.id, u.email);
-        if (data.users.length < 1000) break;
-      }
+      await Promise.all(
+        ids.map(async (uid) => {
+          const { data } = await db.auth.admin.getUserById(uid);
+          if (data.user?.email) m.set(uid, data.user.email);
+        }),
+      );
       return m;
     })(),
     // Uma consulta só (em vez de duas por aluno): respostas desde a concessão mais antiga; o corte exato por aluno é feito abaixo.
