@@ -1158,14 +1158,90 @@
   height: 100%;
   user-select: none;
 }
+/* Sem animação: imagem original (hélices paradas). Com animação: corpo sem hélice + rotor girando. */
+.km-heli .km-heli-corpo,
+.km-heli .km-heli-rotor,
+.km-heli .km-heli-cauda {
+  display: none;
+}
+.km-heli-in {
+  position: absolute;
+  inset: 0;
+  display: block;
+}
+.km-heli-rotor {
+  position: absolute;
+  left: -8px;
+  top: -89px; /* centro do disco no cubo do rotor (123, 42) */
+  width: 262px;
+  height: 262px;
+  margin: 0;
+  pointer-events: none;
+  /* visto quase de lado: o disco vira uma elipse fina */
+  transform: scaleY(0.15) rotate(-1.2deg);
+  -webkit-mask-image: radial-gradient(circle, transparent 0 5%, #000 9% 90%, transparent 100%);
+  mask-image: radial-gradient(circle, transparent 0 5%, #000 9% 90%, transparent 100%);
+}
+.km-heli-rotor b,
+.km-heli-rotor u {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  text-decoration: none;
+}
+/* névoa de movimento (o disco que o olho vê quando as pás passam rápido) */
+.km-heli-rotor b {
+  background: radial-gradient(circle, rgba(10, 8, 12, 0.26), rgba(10, 8, 12, 0.14) 70%, rgba(10, 8, 12, 0) 100%);
+}
+/* pás: cinco, com ponta nítida e rastro que some atrás (borrão de rotação) */
+.km-heli-rotor u {
+  background: repeating-conic-gradient(from 0deg, rgba(8, 6, 10, 0.78) 0deg, rgba(8, 6, 10, 0) 58deg, rgba(8, 6, 10, 0) 72deg);
+}
+.km-heli-cauda {
+  position: absolute;
+  left: 25px;
+  top: 44px; /* rotor de cauda (36, 55) */
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  pointer-events: none;
+}
+.km-heli-cauda u {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  text-decoration: none;
+  background: repeating-conic-gradient(from 0deg, rgba(8, 6, 10, 0.55) 0deg, rgba(8, 6, 10, 0) 80deg, rgba(8, 6, 10, 0) 120deg);
+  opacity: 0.8;
+}
+@keyframes km-heli-gira {
+  to {
+    transform: rotate(360deg);
+  }
+}
 @media (prefers-reduced-motion: no-preference) {
   .km-heli {
     animation: km-heli-voo 36s linear infinite;
     animation-delay: -13s; /* começa perto de onde ele estava na arte */
     will-change: transform, opacity;
   }
-  .km-heli img {
+  .km-heli-in {
     animation: km-heli-balanco 3.4s ease-in-out infinite;
+  }
+  .km-heli .km-heli-full {
+    display: none;
+  }
+  .km-heli .km-heli-corpo,
+  .km-heli .km-heli-rotor,
+  .km-heli .km-heli-cauda {
+    display: block;
+  }
+  .km-heli-rotor u {
+    animation: km-heli-gira 0.4s linear infinite;
+    will-change: transform;
+  }
+  .km-heli-cauda u {
+    animation: km-heli-gira 0.12s linear infinite;
   }
 }
 @media (pointer: coarse) {

@@ -25,15 +25,37 @@ export const ART = {
   tall: { x: 102, y: -1969, w: 3153, h: 5649 },
 };
 /** Helicóptero recortado da arte (posição original dele no céu, em px da arte). */
-const HELI = { src: "/images/knowledge-ops/helicoptero.webp", x: 1339, y: 187, w: 255, h: 116 };
+const HELI = {
+  src: "/images/knowledge-ops/helicoptero.webp",
+  corpo: "/images/knowledge-ops/helicoptero-corpo.webp",
+  x: 1339,
+  y: 187,
+  w: 255,
+  h: 116,
+};
 /** Braços e fuzil recortados da arte (camada própria, em primeira pessoa). */
 // O recorte continua (escurecendo) para baixo e para a direita da tela: ao girar ou subir a arma,
 // o braço nunca mostra a borda do recorte. "vh" é a altura da parte visível original.
-const RIFLE = { src: "/images/knowledge-ops/fuzil.webp", srcSm: "/images/knowledge-ops/fuzil-sm.webp", x: 1083, y: 967, w: 1608, h: 1529, vh: 899, muzzle: [1769, 975] as [number, number], pivot: [2035, 1549] as [number, number] };
+const RIFLE = {
+  src: "/images/knowledge-ops/fuzil.webp",
+  srcSm: "/images/knowledge-ops/fuzil-sm.webp",
+  x: 1083,
+  y: 967,
+  w: 1608,
+  h: 1529,
+  vh: 899,
+  muzzle: [1769, 975] as [number, number],
+  pivot: [2035, 1549] as [number, number],
+};
 /** Coordenadas medidas na arte em 2000 px de largura → px da arte (3344). */
 const d = (x: number, y: number): [number, number] => [Math.round(x * 1.672), Math.round(y * 1.672)];
 /** Fumaça: colunas que sobem dos incêndios e névoa baixa sobre o campo (coordenadas da arte). */
-const SMOKE: Array<{ x: number; y: number; kind: "coluna" | "nevoa"; size: number }> = [
+const SMOKE: Array<{
+  x: number;
+  y: number;
+  kind: "coluna" | "nevoa";
+  size: number;
+}> = [
   { x: 936, y: 385, kind: "coluna", size: 150 },
   { x: 585, y: 351, kind: "coluna", size: 110 },
   { x: 2424, y: 619, kind: "coluna", size: 95 },
@@ -43,6 +65,8 @@ const SMOKE: Array<{ x: number; y: number; kind: "coluna" | "nevoa"; size: numbe
   { x: 1338, y: 1204, kind: "nevoa", size: 240 },
   { x: 2842, y: 936, kind: "nevoa", size: 220 },
 ];
+/** Centro do sol no horizonte (px da arte). */
+const SUN: [number, number] = [2358, 269];
 /** Focos de fogo que tremulam. */
 const FIRES: Array<[number, number, number]> = [
   [552, 360, 50],
@@ -73,13 +97,33 @@ export const ART_SLOTS: Record<string, ArtSlot> = {
   direito_penal: { plate: d(440, 215), base: d(420, 300), drawn: true },
   lingua_portuguesa: { plate: d(1125, 305), base: d(1080, 400), drawn: true },
   raciocinio_logico: { plate: d(1693, 301), base: d(1600, 360), drawn: true },
-  direito_processual_penal: { plate: d(693, 451), base: d(700, 530), drawn: true },
+  direito_processual_penal: {
+    plate: d(693, 451),
+    base: d(700, 530),
+    drawn: true,
+  },
   informatica: { plate: d(1760, 440), base: d(1660, 505), drawn: true },
-  direito_constitucional: { plate: d(440, 622), base: d(400, 660), drawn: true },
-  direito_administrativo: { plate: d(1620, 640), base: d(1600, 720), drawn: true },
+  direito_constitucional: {
+    plate: d(440, 622),
+    base: d(400, 660),
+    drawn: true,
+  },
+  direito_administrativo: {
+    plate: d(1620, 640),
+    base: d(1600, 720),
+    drawn: true,
+  },
   matematica: { plate: d(1180, 690), base: d(1150, 725), drawn: true },
-  legislacao_especial: { plate: d(1040, 790), base: d(1050, 830), drawn: false },
-  conhecimentos_especificos: { plate: d(190, 470), base: d(160, 520), drawn: false },
+  legislacao_especial: {
+    plate: d(1040, 790),
+    base: d(1050, 830),
+    drawn: false,
+  },
+  conhecimentos_especificos: {
+    plate: d(190, 470),
+    base: d(160, 520),
+    drawn: false,
+  },
   outras: { plate: d(1000, 560), base: d(1000, 600), drawn: false },
 };
 export const ART_ORDER_DRAWN = ["direito_penal", "lingua_portuguesa", "raciocinio_logico", "direito_processual_penal", "informatica", "direito_constitucional", "direito_administrativo"];
@@ -97,7 +141,11 @@ export function registerExtraSlots(ids: readonly string[]) {
     const k = i % EXTRA_PLATES.length;
     const off = Math.floor(i / EXTRA_PLATES.length) * 90;
     const [x, y] = EXTRA_PLATES[k]!;
-    extraSlots.set(id, { plate: [x + off, y], base: [x + off - 30, y + 90], drawn: false });
+    extraSlots.set(id, {
+      plate: [x + off, y],
+      base: [x + off - 30, y + 90],
+      drawn: false,
+    });
   });
 }
 
@@ -112,7 +160,6 @@ const FIT = { cx: 1800, cy: 760, span: 2236 };
 const LOOK_MARGIN = 1.12;
 /** Tamanho do braço/fuzil na tela (independe da folga da câmera). */
 const RIFLE_SCALE = 1.22;
-
 
 /** Câmera 2D sobre a arte (valores em pixels da arte). */
 export class PlateCamera {
@@ -309,7 +356,12 @@ export class PlateCamera {
   visible(t: { s: number; tx: number; ty: number }) {
     const x = Math.max(0, -t.tx / t.s / ART.w);
     const y = Math.max(0, -t.ty / t.s / ART.h);
-    return { x, y, w: Math.min(1 - x, this.view.w / t.s / ART.w), h: Math.min(1 - y, this.view.h / t.s / ART.h) };
+    return {
+      x,
+      y,
+      w: Math.min(1 - x, this.view.w / t.s / ART.w),
+      h: Math.min(1 - y, this.view.h / t.s / ART.h),
+    };
   }
 }
 
@@ -326,7 +378,11 @@ export interface ImageStageProps {
   /** Para onde o soldado mira (ponto da arte): matéria em foco ou sob o cursor. */
   aim: React.RefObject<[number, number] | null>;
   /** Mira travada: animação de mira a laser e foco total na matéria escolhida. */
-  lock: React.RefObject<{ at: number; target: [number, number]; label: string } | null>;
+  lock: React.RefObject<{
+    at: number;
+    target: [number, number];
+    label: string;
+  } | null>;
   onSelect: (t: Territory) => void;
   onSelectCore: () => void;
   onSelectTopic: (t: Territory, topic: MapTopic) => void;
@@ -401,8 +457,15 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     ro.observe(el);
     const N = light ? 36 : 70;
     let seed = 17;
-    const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
-    const parts = Array.from({ length: N }, () => ({ x: rnd(), y: rnd(), v: 0.02 + rnd() * 0.05, r: 0.6 + rnd() * 1.6, a: 0.3 + rnd() * 0.7, d: (rnd() - 0.5) * 0.02 }));
+    const rnd = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const parts = Array.from({ length: N }, () => ({
+      x: rnd(),
+      y: rnd(),
+      v: 0.02 + rnd() * 0.05,
+      r: 0.6 + rnd() * 1.6,
+      a: 0.3 + rnd() * 0.7,
+      d: (rnd() - 0.5) * 0.02,
+    }));
     let last = performance.now();
     let raf = 0;
     let nextFlash = 5 + rnd() * 6;
@@ -421,25 +484,25 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     let shake = 0;
     let shotAt = -1e9;
     let shotTarget: [number, number] | null = null;
-    const shells: Array<{ x: number; y: number; vx: number; vy: number; a: number; va: number; t: number }> = [];
-    const sparks: Array<{ x: number; y: number; vx: number; vy: number; t: number; life: number }> = [];
-    // Fumaça: sprite macio gerado uma vez; cada fonte solta baforadas que sobem e se espalham.
-    const sprite = document.createElement("canvas");
-    sprite.width = sprite.height = 128;
-    const sg = sprite.getContext("2d");
-    if (sg) {
-      for (let i = 0; i < 26; i++) {
-        const x = 64 + (rnd() - 0.5) * 60;
-        const y = 64 + (rnd() - 0.5) * 60;
-        const r = 16 + rnd() * 34;
-        const g = sg.createRadialGradient(x, y, 0, x, y, r);
-        g.addColorStop(0, "rgba(120,112,108,0.07)");
-        g.addColorStop(1, "rgba(120,112,108,0)");
-        sg.fillStyle = g;
-        sg.fillRect(0, 0, 128, 128);
-      }
-    }
-    const PER = light ? 3 : 4;
+    const shells: Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      a: number;
+      va: number;
+      t: number;
+    }> = [];
+    const sparks: Array<{
+      x: number;
+      y: number;
+      vx: number;
+      vy: number;
+      t: number;
+      life: number;
+    }> = [];
+    const PER_COL = light ? 5 : 8;
+    const PER_MIST = light ? 3 : 4;
     // Brasa e fogo pré-desenhados (sem criar gradientes a cada quadro).
     const mk = (r: number, stops: Array<[number, string]>) => {
       const c = document.createElement("canvas");
@@ -463,6 +526,79 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       [0.5, "rgba(255,70,20,0.24)"],
       [1, "rgba(255,40,0,0)"],
     ]);
+    // Fumaça natural: 4 formas de baforada x 3 tons (quente perto do fogo -> cinza -> escuro no alto).
+    // Cada forma junta dezenas de manchas macias com bordas esfumadas, geradas uma vez.
+    let ss = 7;
+    const sr = () => (ss = (ss * 16807) % 2147483647) / 2147483647;
+    const TONES: Array<[number, number, number]> = [
+      [176, 108, 64],
+      [118, 104, 100],
+      [72, 68, 76],
+    ];
+    const smokeSprites = TONES.map(([r, g, b]) =>
+      Array.from({ length: 4 }, () => {
+        const c = document.createElement("canvas");
+        c.width = c.height = 160;
+        const g2 = c.getContext("2d");
+        if (g2) {
+          for (let n = 0; n < 38; n++) {
+            const ang = sr() * 6.2832;
+            const rad = Math.sqrt(sr()) * 46;
+            const x = 80 + Math.cos(ang) * rad;
+            const y = 80 + Math.sin(ang) * rad * 0.9;
+            const rr = 12 + sr() * 30;
+            const gr = g2.createRadialGradient(x, y, 0, x, y, rr);
+            gr.addColorStop(0, `rgba(${r},${g},${b},${(0.1 + sr() * 0.07).toFixed(3)})`);
+            gr.addColorStop(1, `rgba(${r},${g},${b},0)`);
+            g2.fillStyle = gr;
+            g2.fillRect(0, 0, 160, 160);
+          }
+          // Borda esfumada: nada de contorno de círculo.
+          g2.globalCompositeOperation = "destination-in";
+          const m = g2.createRadialGradient(80, 80, 8, 80, 80, 80);
+          m.addColorStop(0, "rgba(0,0,0,1)");
+          m.addColorStop(0.6, "rgba(0,0,0,0.85)");
+          m.addColorStop(1, "rgba(0,0,0,0)");
+          g2.fillStyle = m;
+          g2.fillRect(0, 0, 160, 160);
+        }
+        return c;
+      }),
+    );
+    // Sol: brilho, rastro horizontal, véu e reflexos de lente (fantasmas) que seguem a direção do olhar.
+    const sunGlow = mk(128, [
+      [0, "rgba(255,252,232,1)"],
+      [0.1, "rgba(255,228,168,0.9)"],
+      [0.3, "rgba(255,160,78,0.42)"],
+      [0.65, "rgba(255,95,42,0.12)"],
+      [1, "rgba(255,60,20,0)"],
+    ]);
+    const ghostRing = (() => {
+      const c = document.createElement("canvas");
+      c.width = c.height = 96;
+      const g2 = c.getContext("2d");
+      if (g2) {
+        const g = g2.createRadialGradient(48, 48, 0, 48, 48, 48);
+        g.addColorStop(0, "rgba(255,170,90,0)");
+        g.addColorStop(0.72, "rgba(255,170,90,0.05)");
+        g.addColorStop(0.86, "rgba(255,200,140,0.55)");
+        g.addColorStop(1, "rgba(255,170,90,0)");
+        g2.fillStyle = g;
+        g2.fillRect(0, 0, 96, 96);
+      }
+      return c;
+    })();
+    const ghostCool = mk(48, [
+      [0, "rgba(140,200,255,0.5)"],
+      [0.6, "rgba(120,160,255,0.2)"],
+      [1, "rgba(100,120,255,0)"],
+    ]);
+    const ghostWarm = mk(48, [
+      [0, "rgba(255,190,110,0.55)"],
+      [0.6, "rgba(255,120,60,0.2)"],
+      [1, "rgba(255,80,30,0)"],
+    ]);
+    let sunK = 0;
     let frame = 0;
     let fxDt = 0;
     // Tamanho das placas sem forçar layout: o observador avisa quando muda.
@@ -486,7 +622,17 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
     let lastView = "";
     let laserDirty = true;
     let lastRifle = "";
-    const puffs = SMOKE.flatMap((src, i) => Array.from({ length: PER }, (_, j) => ({ i, u: j / PER + rnd() * 0.08, sp: 0.03 + rnd() * 0.025, rot: rnd() * 6.28, dr: (rnd() - 0.5) * 0.2 })));
+    const puffs = SMOKE.flatMap((src, i) => {
+      const n = src.kind === "coluna" ? PER_COL : PER_MIST;
+      return Array.from({ length: n }, (_, j) => ({
+        i,
+        u: j / n + rnd() * 0.06,
+        sp: 0.032 + rnd() * 0.03,
+        ph: rnd() * 6.28,
+        v: Math.floor(rnd() * 4),
+        k: 0.8 + rnd() * 0.5,
+      }));
+    });
     const loop = (now: number) => {
       const dt = (now - last) / 1000;
       last = now;
@@ -583,20 +729,32 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
         const h = cam.view.h;
         ctx.clearRect(0, 0, w, h);
         ctx.globalCompositeOperation = "source-over";
+        // Vento que muda devagar: a fumaça se inclina e volta, sem ritmo mecânico.
+        const wind = 1 + Math.sin(now / 7000) * 0.28 + Math.sin(now / 2300 + 1) * 0.1;
         for (const p of puffs) {
           const src = SMOKE[p.i]!;
-          p.u += p.sp * fdt * (src.kind === "nevoa" ? 0.45 : 1);
-          if (p.u > 1) p.u -= 1;
           const col = src.kind === "coluna";
-          const ax = src.x + (col ? p.u * 260 + Math.sin(p.u * 6 + p.i) * 30 : (p.u - 0.5) * 900);
-          const ay = src.y - (col ? p.u * 420 : Math.sin(p.u * 3.14) * 40);
-          const size = src.size * (col ? 1 + p.u * 2.4 : 2) * t.s * 1.8;
+          p.u += p.sp * fdt * (col ? 1 : 0.4);
+          if (p.u > 1) p.u -= 1;
+          const u = p.u;
+          const e = u * u * (3 - 2 * u);
+          const ax = src.x + (col ? e * 300 * wind + Math.sin(u * 5 + p.ph) * 30 * u + Math.sin(now / 1900 + p.ph) * 8 : (u - 0.5) * 900 + Math.sin(now / 3000 + p.ph) * 30);
+          const ay = src.y - (col ? u * 430 : Math.sin(u * Math.PI) * 40);
+          const size = src.size * (col ? 0.8 + u * 2.6 : 2) * p.k * t.s * 1.8;
           const x = ax * t.s + t.tx;
           const y = ay * t.s + t.ty;
           if (x < -size || x > w + size || y < -size || y > h + size) continue;
-          ctx.globalAlpha = Math.sin(Math.PI * p.u) * (col ? 0.75 : 0.4);
-          // Sem girar (num borrão macio não se vê) e sem save/restore: bem mais barato por baforada.
-          ctx.drawImage(sprite, x - size / 2, y - size / 2, size, size);
+          // Entra rápido, some devagar; esfria de laranja (perto do fogo) para cinza e escuro.
+          const al = Math.min(1, u / 0.12) * Math.pow(1 - u, 1.4) * (col ? 0.85 : 0.4);
+          const pos = col ? Math.min(1.999, u * 2.4) : 1;
+          const i0 = Math.floor(pos);
+          const fr = pos - i0;
+          ctx.globalAlpha = al * (1 - fr);
+          ctx.drawImage(smokeSprites[i0]![p.v]!, x - size / 2, y - size / 2, size, size);
+          if (fr > 0.03) {
+            ctx.globalAlpha = al * fr;
+            ctx.drawImage(smokeSprites[i0 + 1]![p.v]!, x - size / 2, y - size / 2, size, size);
+          }
         }
         ctx.globalAlpha = 1;
         ctx.globalCompositeOperation = "lighter";
@@ -607,6 +765,51 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
           const r = fr * t.s * 2 * fl;
           ctx.globalAlpha = Math.min(1, fl);
           ctx.drawImage(fireSpr, x - r, y - r, r * 2, r * 2);
+        }
+        // Sol do horizonte: brilha sempre um pouco; quanto mais a visão aponta para ele, mais ele estoura,
+        // espalha luz pela tela e projeta reflexos de lente. Afastou o olhar, a luz vai sumindo.
+        {
+          const sxp = SUN[0] * t.s + t.tx;
+          const syp = SUN[1] * t.s + t.ty;
+          const dx = (sxp - w / 2) / (w * 0.5);
+          const dy = (syp - h / 2) / (h * 0.5);
+          const want = Math.max(0, 1 - Math.hypot(dx, dy * 0.8) / 1.5);
+          const tk = want * want * (3 - 2 * want);
+          sunK += (tk - sunK) * (1 - Math.exp(-Math.min(fdt, 0.1) * 3.5));
+          const R = Math.min(t.s * 230 * (1 + 1.3 * sunK), Math.max(w, h) * 0.62) * (1 + Math.sin(now / 1300) * 0.03 + Math.sin(now / 410) * 0.012);
+          if (sxp > -R * 2 && sxp < w + R * 2 && syp > -R && syp < h + R) {
+            ctx.globalAlpha = 0.5 + 0.5 * sunK;
+            ctx.drawImage(sunGlow, sxp - R, syp - R, R * 2, R * 2);
+            const SW = R * 5.5;
+            const SH = R * 0.2;
+            ctx.globalAlpha = 0.14 + 0.5 * sunK;
+            ctx.drawImage(sunGlow, sxp - SW / 2, syp - SH / 2, SW, SH);
+          }
+          if (sunK > 0.03) {
+            ctx.globalAlpha = 1;
+            ctx.fillStyle = `rgba(255,158,78,${(0.2 * sunK).toFixed(3)})`;
+            ctx.fillRect(0, 0, w, h);
+            if (!light) {
+              const m = Math.min(w, h);
+              const gk = sunK * sunK;
+              // Reflexos ao longo da linha que liga o sol ao centro da tela (e além).
+              const G: Array<[number, number, 0 | 1 | 2, number]> = [
+                [0.55, 0.07, 1, 0.5],
+                [0.95, 0.15, 0, 0.55],
+                [1.35, 0.05, 2, 0.6],
+                [1.8, 0.24, 0, 0.35],
+                [2.2, 0.09, 1, 0.45],
+              ];
+              for (const [f, sz, kind, ga] of G) {
+                const gx = sxp + (w / 2 - sxp) * f;
+                const gy = syp + (h / 2 - syp) * f;
+                const gs = m * sz * (1 + sunK * 0.4);
+                ctx.globalAlpha = Math.min(1, gk * ga);
+                ctx.drawImage(kind === 0 ? ghostRing : kind === 1 ? ghostCool : ghostWarm, gx - gs, gy - gs, gs * 2, gs * 2);
+              }
+            }
+          }
+          ctx.globalAlpha = 1;
         }
         for (const p of parts) {
           p.y -= p.v * fdt;
@@ -709,12 +912,28 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
             // Cápsula sai pela janela de ejeção (lado direito da arma), para a direita e para cima.
             const [ex0, ey0] = at2(RIFLE.muzzle[0] + (RIFLE.pivot[0] - RIFLE.muzzle[0]) * 0.55, RIFLE.muzzle[1] + (RIFLE.pivot[1] - RIFLE.muzzle[1]) * 0.55);
             const u = H / 800;
-            shells.push({ x: ex0, y: ey0, vx: (230 + rnd() * 120) * u, vy: -(330 + rnd() * 120) * u, a: rnd() * 6, va: 18 + rnd() * 10, t: 0 });
-            if (shotTarget) for (let k = 0; k < 22; k++) {
-              const ang = rnd() * Math.PI * 2;
-              const sp2 = 120 + rnd() * 320;
-              sparks.push({ x: shotTarget[0], y: shotTarget[1], vx: Math.cos(ang) * sp2, vy: Math.sin(ang) * sp2 - 80, t: 0, life: 0.22 + rnd() * 0.3 });
-            }
+            shells.push({
+              x: ex0,
+              y: ey0,
+              vx: (230 + rnd() * 120) * u,
+              vy: -(330 + rnd() * 120) * u,
+              a: rnd() * 6,
+              va: 18 + rnd() * 10,
+              t: 0,
+            });
+            if (shotTarget)
+              for (let k = 0; k < 22; k++) {
+                const ang = rnd() * Math.PI * 2;
+                const sp2 = 120 + rnd() * 320;
+                sparks.push({
+                  x: shotTarget[0],
+                  y: shotTarget[1],
+                  vx: Math.cos(ang) * sp2,
+                  vy: Math.sin(ang) * sp2 - 80,
+                  t: 0,
+                  life: 0.22 + rnd() * 0.3,
+                });
+              }
           }
           if (lk && target && sinceShot > 140) {
             const reach = Math.min(1, since / 380);
@@ -768,7 +987,13 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
             lctx.translate(bx, by);
             lctx.rotate(dirA);
             lctx.fillStyle = `rgba(255,212,150,${(0.8 * f).toFixed(3)})`;
-            for (const [len, wid, off] of [[1.7, 0.14, 0], [0.85, 0.11, 0.85], [0.85, 0.11, -0.85], [0.5, 0.09, 1.9], [0.5, 0.09, -1.9]] as const) {
+            for (const [len, wid, off] of [
+              [1.7, 0.14, 0],
+              [0.85, 0.11, 0.85],
+              [0.85, 0.11, -0.85],
+              [0.5, 0.09, 1.9],
+              [0.5, 0.09, -1.9],
+            ] as const) {
               lctx.save();
               lctx.rotate(off);
               lctx.beginPath();
@@ -923,15 +1148,40 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
       <div ref={layer} className="km-art-layer" style={{ width: ART.w, height: ART.h }}>
         {/* Celular em pé: UMA imagem alta e contínua do mesmo cenário, preenchendo a tela inteira. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={ART.srcTall} alt="" loading="lazy" decoding="async" draggable={false} className="km-art-ext" style={{ left: ART.tall.x, top: ART.tall.y, width: ART.tall.w, height: ART.tall.h }} />
+        <img
+          src={ART.srcTall}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          draggable={false}
+          className="km-art-ext"
+          style={{
+            left: ART.tall.x,
+            top: ART.tall.y,
+            width: ART.tall.w,
+            height: ART.tall.h,
+          }}
+        />
         <picture>
           <source media="(max-width: 700px)" srcSet={ART.srcSm} />
           <img src={ART.src} alt="" width={ART.w} height={ART.h} loading="lazy" decoding="async" draggable={false} className="km-art-img" />
         </picture>
         {/* Helicóptero recortado da arte: cruza o céu em loop (a arte base já foi limpa onde ele estava). */}
         <span className="km-heli" style={{ left: HELI.x, top: HELI.y, width: HELI.w, height: HELI.h }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={HELI.src} alt="" width={HELI.w} height={HELI.h} loading="lazy" decoding="async" draggable={false} />
+          <span className="km-heli-in">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={HELI.src} alt="" width={HELI.w} height={HELI.h} loading="lazy" decoding="async" draggable={false} className="km-heli-full" />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={HELI.corpo} alt="" width={HELI.w} height={HELI.h} loading="lazy" decoding="async" draggable={false} className="km-heli-corpo" />
+            {/* Rotor: disco achatado (visto de lado) com pás girando e rastro de movimento, como na vida real. */}
+            <i className="km-heli-rotor">
+              <b />
+              <u />
+            </i>
+            <i className="km-heli-cauda">
+              <u />
+            </i>
+          </span>
         </span>
         {/* Feixe e pulsos do núcleo (clicável). */}
         <button type="button" tabIndex={-1} className="km-art-core" data-pick="" style={{ left: CORE[0], top: CORE[1] }} onClick={onSelectCore} aria-hidden>
@@ -953,7 +1203,11 @@ export function ImageStage({ cam, territories, selected, labels, topicOffsets, o
               data-sel={selected === t.id ? "1" : undefined}
               data-vazio={t.topics.length ? undefined : "1"}
               data-tid={t.id}
-              style={{ left: sl.base[0], top: sl.base[1], ["--c" as string]: t.color }}
+              style={{
+                left: sl.base[0],
+                top: sl.base[1],
+                ["--c" as string]: t.color,
+              }}
               onClick={() => onSelect(t)}
               onPointerEnter={() => onHover?.(t, true)}
               onPointerLeave={() => onHover?.(t, false)}
