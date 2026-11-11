@@ -17,6 +17,8 @@ export interface StudentRow {
   whatsapp: string | null;
   confirmed: boolean;
   isAdmin: boolean;
+  /** Conta fantasma: fora dos indicadores do sócio (só o ADMIN MASTER vê). */
+  isGhost: boolean;
   /** Plano gravado (o que foi adquirido/definido). */
   planId: string;
   /** Plano em vigor agora (pago vencido = gratuito). */
@@ -38,12 +40,14 @@ export async function listStudents(): Promise<StudentRow[]> {
     users.push(...data.users);
     if (data.users.length < 1000) break;
   }
-  const [profiles, subs, payments, admins] = await Promise.all([
+  const [profiles, subs, payments, admins, ghosts] = await Promise.all([
     db.from("profiles").select("id, display_name, whatsapp").limit(20000),
     db.from("subscriptions").select("user_id, plan_id, status, current_period_end, billing_period, paid_at").limit(20000),
     db.from("subscription_payments").select("user_id, plan_id, period, amount_cents, paid_at").order("paid_at", { ascending: false }).limit(20000),
     db.from("admin_roles").select("user_id").eq("role", "admin"),
+    db.from("ghost_accounts").select("user_id").limit(20000),
   ]);
+  const ghostIds = new Set((ghosts.data ?? []).map((g) => g.user_id as string));
   const name = new Map((profiles.data ?? []).map((p) => [p.id as string, (p.display_name as string | null) || null]));
   const wpp = new Map((profiles.data ?? []).map((p) => [p.id as string, (p.whatsapp as string | null) || null]));
   const sub = new Map((subs.data ?? []).map((s) => [s.user_id as string, s]));
@@ -63,6 +67,7 @@ export async function listStudents(): Promise<StudentRow[]> {
         whatsapp: wpp.get(u.id) ?? null,
         confirmed: !!u.email_confirmed_at,
         isAdmin: adminIds.has(u.id),
+        isGhost: ghostIds.has(u.id),
         planId: (s?.plan_id as string) ?? "free",
         effectivePlanId: eff.planId,
         state: eff.state,
@@ -182,6 +187,19 @@ export async function resetStudentPassword(admin: SessionUser, userIdInput: stri
   if (error) throw new UserFacingError(`Não foi possível trocar a senha: ${error.message}`, "auth");
   await auditLog(db, { actorId: admin.id, userId, action: "admin.password_reset", entity: "auth.users", entityId: userId, meta: { email: user.email ?? null, generated: !typed } });
   return { password };
+}
+
+/** Liga/desliga a conta fantasma (só ADMIN MASTER). Não altera plano nem pagamentos; só some dos indicadores do sócio. */
+export async function setStudentGhost(admin: SessionUser, userIdInput: string, ghost: boolean) {
+  const userId = idSchema.parse(userIdInput);
+  await assertStudent(userId);
+  const db = createAdminClient();
+  const { error } = ghost
+    ? await db.from("ghost_accounts").upsert({ user_id: userId, created_by: admin.id }, { onConflict: "user_id" })
+    : await db.from("ghost_accounts").delete().eq("user_id", userId);
+  if (error) throw new Error(error.message);
+  // Ação fora dos filtros "partner.%" / "admin.partner_%" do módulo do sócio.
+  await auditLog(db, { actorId: admin.id, userId, action: ghost ? "admin.ghost_on" : "admin.ghost_off", entity: "ghost_accounts", entityId: userId, meta: {} });
 }
 
 /** Números do topo da página de alunos. */

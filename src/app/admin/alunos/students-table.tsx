@@ -17,6 +17,7 @@ export interface StudentItem {
   whatsapp?: string | null;
   confirmed: boolean;
   isAdmin: boolean;
+  isGhost?: boolean;
   planId: string;
   effectivePlanId: PlanId;
   state: PlanState;
@@ -30,6 +31,7 @@ export interface StudentActions {
   setPlan: (id: string, data: { offer: string; expiresOn?: string }) => Promise<StudentActionResult>;
   markPaid: (id: string, data: { offer: string; amount?: string; note?: string }) => Promise<StudentActionResult>;
   resetPassword: (id: string, typed?: string) => Promise<StudentActionResult>;
+  setGhost?: (id: string, ghost: boolean) => Promise<StudentActionResult>;
 }
 
 const TZ = { timeZone: "America/Sao_Paulo" } as const;
@@ -128,7 +130,7 @@ function StudentRowView({ s, open, onToggle, actions }: { s: StudentItem; open: 
       <tr data-testid="aluno-linha" data-aluno={s.email ?? s.id}>
         <td className="px-3 py-2">
           <p className="font-semibold">
-            {s.name || "(sem nome)"} {s.isAdmin && <Tag tone="azul">Admin</Tag>}
+            {s.name || "(sem nome)"} {s.isAdmin && <Tag tone="azul">Admin</Tag>} {s.isGhost && <Tag tone="neutro">Fantasma</Tag>}
           </p>
           <p className="t-tiny text-tinta-fraca">
             {s.email ?? "—"}
@@ -293,6 +295,20 @@ function ManagePanel({ s, actions }: { s: StudentItem; actions: StudentActions }
         )}
         <p className="t-tiny text-tinta-fraca">A senha antiga deixa de valer na hora. A nova aparece só uma vez, aqui.</p>
       </div>
+
+      {actions.setGhost && (
+        <div className="flex flex-col gap-2 rounded-md border border-linha bg-superficie p-3 lg:col-span-3" data-testid="painel-fantasma">
+          <p className="font-bold">Conta fantasma</p>
+          <p className="t-tiny text-tinta-fraca">
+            {s.isGhost
+              ? "Esta conta está fantasma: não conta nos indicadores do sócio (cadastros, pagantes, faturamento e listas). Você segue vendo e administrando normalmente."
+              : "Tira esta conta (paga ou não) de todos os indicadores do sócio. Não muda plano, pagamento nem acesso do aluno. Só você vê."}
+          </p>
+          <Button variant="secundario" disabled={pending} onClick={() => run(() => actions.setGhost!(s.id, !s.isGhost))} data-testid="alternar-fantasma">
+            {s.isGhost ? "Voltar a aparecer nos indicadores" : "Tornar fantasma"}
+          </Button>
+        </div>
+      )}
 
       {res && (
         <div className="lg:col-span-3" role={res.ok ? "status" : "alert"} data-testid="aluno-aviso">

@@ -1,7 +1,7 @@
 import { requireAdmin } from "@/server/services/catalog";
 import { listStudents, studentSummary } from "@/server/services/students";
 import { FREE_LIMITS } from "@/domain/plans/limits";
-import { markPaidAction, resetPasswordAction, resolvePlanRequestAction, setPlanAction } from "./actions";
+import { markPaidAction, resetPasswordAction, resolvePlanRequestAction, setGhostAction, setPlanAction } from "./actions";
 import { StudentsTable } from "./students-table";
 import { listOpenPlanRequests } from "@/server/services/plan-requests";
 import { OFFERS } from "@/domain/plans/offers";
@@ -56,7 +56,7 @@ export default async function StudentsPage() {
           </ul>
         </section>
       )}
-      <StudentsTable students={students} actions={{ setPlan: setPlanAction, markPaid: markPaidAction, resetPassword: resetPasswordAction }} />
+      <StudentsTable students={students} actions={{ setPlan: setPlanAction, markPaid: markPaidAction, resetPassword: resetPasswordAction, setGhost: setGhostAction }} />
     </div>
   );
 }

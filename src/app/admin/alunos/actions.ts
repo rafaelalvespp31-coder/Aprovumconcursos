@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { requireAdmin } from "@/server/services/catalog";
-import { markStudentPaid, resetStudentPassword, setStudentPlan } from "@/server/services/students";
+import { markStudentPaid, resetStudentPassword, setStudentGhost, setStudentPlan } from "@/server/services/students";
 import { UserFacingError, enforceRateLimit } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
 import { resolvePlanRequest } from "@/server/services/plan-requests";
@@ -29,6 +29,17 @@ export async function setPlanAction(userId: string, data: { offer: string; expir
     await enforceRateLimit(admin.id, "admin_students", 60);
     await setStudentPlan(admin, userId, { offer: str(data?.offer), expiresOn: str(data?.expiresOn) });
     return { message: "Plano atualizado." };
+  });
+  if (r.ok) revalidatePath("/admin/alunos");
+  return r;
+}
+
+export async function setGhostAction(userId: string, ghost: boolean): Promise<StudentActionResult> {
+  const admin = await requireAdmin();
+  const r = await guard("admin.ghost", async () => {
+    await enforceRateLimit(admin.id, "admin_students", 60);
+    await setStudentGhost(admin, userId, !!ghost);
+    return { message: ghost ? "Conta marcada como fantasma." : "Conta voltou a aparecer nos indicadores." };
   });
   if (r.ok) revalidatePath("/admin/alunos");
   return r;
