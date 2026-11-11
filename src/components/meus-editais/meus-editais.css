@@ -168,10 +168,17 @@
 .me-meta b { font-weight: 700; color: var(--p); }
 .me-meta-sec { color: var(--mut); }
 .me-excluir { margin-left: auto; }
+/* Confirmação de exclusão aberta: ocupa a linha toda do rodapé, fica acima dos outros cards e os botões aparecem inteiros. */
+.me-excluir:has(.ai-del-ask) { flex: 1 1 100%; width: 100%; margin-left: 0; min-width: 0; position: relative; z-index: 20; }
+.me-excluir .ai-del-ask { width: 100%; max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
+.me-excluir .ai-del-btns { position: relative; z-index: 21; }
+.me-excluir .ai-del-yes, .me-excluir .ai-del-no { flex: 1 1 140px; min-height: 44px; cursor: pointer; }
+.me-card:has(.ai-del-ask) { z-index: 30; overflow: visible; }
 .me-card .ai-del { border-color: #e2e3e8; color: #9a9da5; min-height: 34px; }
 .me-card .ai-del[data-compact="1"] { width: 36px; }
 .me-card .ai-del:hover { color: var(--v); border-color: #f8c2c8; background: #fff1f2; }
 .me-card .ai-del-ask { background: #fff4f5; border-color: #f8c2c8; color: #3a3d44; }
+.me-card .ai-del-yes { background: #c4121f; color: #fff; border: 0; }
 .me-card .ai-del-no { border-color: #d6d8de; color: #3a3d44; }
 .me-card .ai-del-ask em { color: #b0061a; }
 
