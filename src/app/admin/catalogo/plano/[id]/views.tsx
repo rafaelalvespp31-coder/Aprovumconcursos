@@ -56,6 +56,7 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
           <h2 id={`g-${gi}`} className="border-b border-linha bg-nevoa px-4 py-3 t-h2">
             <span className="t-tiny font-bold uppercase tracking-wide text-destaque">Tópico</span> {g.code ? `${g.code}. ` : ""}{g.title}
             {v.dupes.flagged.includes(`g:${gi}`) && <span className="dup-ribbon" data-testid="topico-duplicado">DUPLICADO</span>}
+            {g.subtopics.length > 0 && <Link href={`${base}/enviar/massa?plano=${outline.id}&topico=${gi}`} className="ml-3 align-middle t-small font-semibold text-destaque underline underline-offset-2" data-testid="catalogar-topico-massa">Catalogar o tópico inteiro</Link>}
           </h2>
           <ul className="divide-y divide-linha">
             {g.subtopics.map((s) => (

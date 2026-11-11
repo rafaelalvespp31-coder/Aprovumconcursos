@@ -24,6 +24,7 @@ import {
 } from "@/server/services/catalog";
 import { addTopicQuestions, applyTopicEnrichment, importLessonUpload, previewLessonUpload, previewTopicEnrichment, previewTopicQuestions, type LessonUploadPreview, type TopicEnrichPreview, type TopicQuestionsPreview } from "@/server/services/catalog-upload";
 import { createOutline, deleteOutline, getOutline, updateOutline } from "@/server/services/outlines";
+import { importBulkUpload, previewBulkUpload, type BulkPreview, type BulkResult } from "@/server/services/catalog-bulk";
 import { removeSubtopicFromOutlineText } from "@/domain/catalog/topic-group";
 import { createDiscipline, deleteDiscipline, updateDiscipline } from "@/server/services/disciplines";
 import { bannerUrlFor, removeBanner, removeTopicBanner, saveBanner, saveTopicBanner, topicBannerUrl } from "@/server/services/banners";
@@ -79,6 +80,30 @@ export async function importLessonUploadAction(text: string): Promise<AdminResul
   revalidatePath("/business/catalogo/plano");
   revalidatePath("/nova-trilha");
   redirect(admin ? `/admin/catalogo/${id}` : "/business/catalogo/plano");
+}
+
+export type BulkPreviewResult = { ok: true; preview: BulkPreview } | { ok: false; error: string };
+export type BulkImportResult = { ok: true; result: BulkResult } | { ok: false; error: string };
+
+/** Importação em massa: confere cada aula do arquivo (sem gravar). */
+export async function previewBulkUploadAction(text: string): Promise<BulkPreviewResult> {
+  await requireCatalogEditor();
+  let preview = null as BulkPreview | null;
+  const r = await guard("catalog.bulk_preview", async () => { preview = await previewBulkUpload(pasted(text)); });
+  return r.ok && preview ? { ok: true, preview } : { ok: false, error: r.error ?? "Não foi possível ler o arquivo." };
+}
+
+/** Importação em massa: cataloga e publica (as que atendem às regras) cada aula do arquivo. */
+export async function importBulkUploadAction(text: string, fileName: string): Promise<BulkImportResult> {
+  const { user } = await requireCatalogEditor();
+  let result = null as BulkResult | null;
+  const r = await guard("catalog.bulk_import", async () => { result = await importBulkUpload(user, pasted(text), (fileName || "texto colado").slice(0, 120)); });
+  if (!r.ok || !result) return { ok: false, error: r.error ?? "Não foi possível importar." };
+  revalidatePath("/admin/catalogo");
+  revalidatePath("/admin/catalogo/plano");
+  revalidatePath("/business/catalogo/plano");
+  revalidatePath("/nova-trilha");
+  return { ok: true, result };
 }
 
 export async function saveSectionAction(id: string, index: number, data: { title: string; bodyMarkdown: string }): Promise<AdminResult> {

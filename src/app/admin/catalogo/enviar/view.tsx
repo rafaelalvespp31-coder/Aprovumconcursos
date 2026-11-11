@@ -16,6 +16,7 @@ export async function UploadLessonView({ searchParams, base, admin }: { searchPa
       <div>
         <Link href={admin ? "/admin/catalogo" : "/business"} className="t-small text-destaque underline underline-offset-2">{admin ? "Catálogo" : "APROVUM BUSINESS"}</Link>
         <h1 className="mt-1 t-h1">Catalogar aula (colar texto)</h1>
+        <p className="mt-1 t-small"><Link href={`${base}/enviar/massa`} className="font-semibold text-destaque underline underline-offset-2" data-testid="ir-massa">Tem várias aulas? Catalogar um tópico inteiro em massa (arquivo .txt)</Link></p>
         <p className="mt-1 max-w-3xl t-small text-tinta-suave">
           Cole a aula no formato do painel e ela é montada como as demais do catálogo: dados do tema, texto-base (lei seca ou sumário), módulos com suas seções e
           as questões de fixação por nível. Ela entra na matéria indicada em “Matéria:”.{admin && (

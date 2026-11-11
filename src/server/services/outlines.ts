@@ -1,5 +1,6 @@
 import "server-only";
 import { isDisciplineSlug } from "@/ai/pedagogy";
+import { buildTopicMasterPrompt } from "@/domain/catalog/topic-master";
 import { buildSubtopicPrompt } from "@/domain/catalog/subtopic-prompt";
 import { findAllCatalogFor, parseOutline, type Outline, type OutlineStatus } from "@/domain/catalog/topic-group";
 import { findPlanDuplicates, type PlanDuplicates } from "@/domain/catalog/plan-duplicates";
@@ -139,6 +140,22 @@ export async function subtopicPrompt(outlineId: string, ref: string): Promise<{ 
   if (!g || !s) return null;
   const input = { disciplineMode: o.disciplineMode, group: g, sub: s };
   return { prompt: buildSubtopicPrompt(input), label: `${s.code ? `${s.code} ` : ""}${s.title}`, planTitle: o.title };
+}
+
+/** Comando-mestre de um tópico do plano (todos os subtópicos de uma vez). */
+export async function topicMasterPromptFor(outlineId: string, gi: number): Promise<{ prompt: string; label: string; planTitle: string; subtopics: number } | null> {
+  const o = await getOutline(outlineId);
+  if (!o || !Number.isInteger(gi)) return null;
+  const g = parseOutline(o.sourceText).groups[gi];
+  if (!g || !g.subtopics.length) return null;
+  return { prompt: buildTopicMasterPrompt({ disciplineMode: o.disciplineMode, group: g }), label: `${g.code ? `${g.code}. ` : ""}${g.title}`, planTitle: o.title, subtopics: g.subtopics.length };
+}
+
+/** Tópicos do plano (para escolher qual catalogar em massa). */
+export async function planTopicsOf(outlineId: string): Promise<{ planTitle: string; topics: Array<{ gi: number; label: string; subtopics: number }> } | null> {
+  const o = await getOutline(outlineId);
+  if (!o) return null;
+  return { planTitle: o.title, topics: parseOutline(o.sourceText).groups.map((g, gi) => ({ gi, label: `${g.code ? `${g.code}. ` : ""}${g.title}`, subtopics: g.subtopics.length })).filter((t) => t.subtopics > 0) };
 }
 
 export interface OutlineTotals {
