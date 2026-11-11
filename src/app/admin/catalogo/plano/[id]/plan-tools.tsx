@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { Button } from "@/components/ui";
 import type { AdminResult } from "../../actions";
-import { AutogenButton } from "./autogen-button";
 import { OutlineForm } from "../outline-form";
 import { buildSubtopicPrompt } from "@/domain/catalog/subtopic-prompt";
 import type { OutlineItem, OutlineSubtopic } from "@/domain/catalog/topic-group";
@@ -13,13 +12,12 @@ import type { OutlineItem, OutlineSubtopic } from "@/domain/catalog/topic-group"
  * Comando do subtópico, montado no navegador (a página não carrega um texto grande por subtópico).
  * É um comando só, completo (aula, referências e questões); a aula cresce com o assunto.
  */
-export function SubtopicCommands({ disciplineMode, group, sub, outlineId, refKey }: { disciplineMode: string; group: OutlineItem; sub: OutlineSubtopic; outlineId?: string; refKey?: string }) {
+export function SubtopicCommands({ disciplineMode, group, sub }: { disciplineMode: string; group: OutlineItem; sub: OutlineSubtopic }) {
   const name = (sub.code ?? sub.title).replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 40);
   const [whole] = useState(() => buildSubtopicPrompt({ disciplineMode, group, sub }));
   return (
     <span className="inline-flex flex-wrap items-center gap-2" data-testid="comandos-subtopico">
       <CopyPrompt prompt={whole} name={name} label="Copiar comando completo" primary />
-      {outlineId && refKey && <AutogenButton outlineId={outlineId} refKey={refKey} />}
     </span>
   );
 }
