@@ -166,7 +166,7 @@ ESTA AULA É UM SUBTÓPICO DO EDITAL
 Não ensine os outros subtópicos do tópico (terão aulas próprias); cite-os só para diferenciar.
 
 FORMATO OBRIGATÓRIO
-- SOMENTE o texto no formato abaixo, em UM bloco de código POR ETAPA (veja ENTREGA OBRIGATÓRIA EM ETAPAS), nada além da linha de fim de etapa fora do bloco; marcadores (=== / ---) e campos exatamente iguais.
+- SOMENTE o texto no formato abaixo, em UM bloco de código, nada antes ou depois; marcadores (=== / ---) e campos exatamente iguais.
 - Markdown: parágrafos curtos, **negrito**, listas "-", tabelas "|", caixas ">". Sem === ou --- no conteúdo.
 - TAMANHO DA AULA: não há limite de módulos nem de seções. Cada seção deve ter no máximo uns 6.000 caracteres; se um item ou assunto for extenso, abra MAIS seções do mesmo tipo (ex.: "Furto simples — parte 2") ou um módulo novo, em vez de escrever uma seção gigante ou resumir. Quanto maior o assunto, mais módulos.
 - O bloco === TEXTO-BASE === é OBRIGATÓRIO e nunca pode ficar vazio: copie nele, exatamente como está abaixo, a lista numerada de itens. Em cada "Itens:" use SOMENTE números que existam no TEXTO-BASE (ex.: 8.1.2). Nunca invente um número que não esteja lá.
