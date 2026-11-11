@@ -634,6 +634,12 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .login-indicadores li:first-child { padding-bottom: 0.5rem; border-bottom: 1px solid rgba(255, 255, 255, 0.18); }
 .login-indicador-traco { display: inline-block; width: 0.85rem; height: 2px; background: #ff1e12; transform: rotate(-55deg); }
 @media (min-width: 640px) { .login-indicadores { font-size: 0.72rem; gap: 0.7rem; } .login-indicadores li:first-child { padding-bottom: 0.7rem; } }
+/* Celular: os indicadores descem para uma linha abaixo da logo (em vez de vazar para fora da tela). */
+@media (max-width: 639px) {
+  .login-indicadores { flex-direction: row; flex-wrap: wrap; gap: 0.35rem 1.1rem; width: 100%; font-size: 0.58rem; letter-spacing: 0.14em; }
+  .login-indicadores li { white-space: normal; gap: 0.45rem; }
+  .login-indicadores li:first-child { padding-bottom: 0; border-bottom: 0; }
+}
 
 /* Palco: celular = arte no topo + painel; desktop = arte à esquerda + painel à direita */
 .login-palco { position: relative; z-index: 1; width: 100%; max-width: 1280px; margin: 0 auto; display: flex; flex-direction: column; padding: 0 1rem; }
