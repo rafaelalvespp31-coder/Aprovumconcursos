@@ -5,6 +5,7 @@ import { disciplineLabel } from "@/ai/pedagogy";
 import { getOutline, planView } from "@/server/services/outlines";
 import { deleteOutlineAction, updateOutlineAction } from "../../actions";
 import { EditPlan, SubtopicCommands } from "./plan-tools";
+import { DuplicatesCenter } from "./duplicates-center";
 
 const STATUS = {
   publicado: { label: "Publicado", tone: "verde" as const },
@@ -27,7 +28,7 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
         <h1 className="mt-1 t-h1">{outline.title}</h1>
         <p className="mt-1 t-small text-tinta-suave">
           {disciplineLabel(outline.disciplineMode) ?? outline.disciplineMode} · {v.totals.subtopics} subtópico(s): {v.totals.publicado} publicado(s), {v.totals.rascunho} em rascunho,{" "}
-          {v.totals.pendente} pendente(s){v.totals.duplicados ? ` · ${v.totals.duplicados} duplicado(s)` : ""}
+          {v.totals.pendente} pendente(s){v.dupes.total ? ` · ${v.dupes.total} duplicada(s)` : ""}
         </p>
         <div className="mt-2 h-2 max-w-md overflow-hidden rounded-full bg-nevoa" aria-label={`Publicados: ${pct}%`}>
           <div className="h-full bg-dominado" style={{ width: `${pct}%` }} />
@@ -47,44 +48,7 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
         </p>
       </section>
 
-      {v.totals.duplicados > 0 && (
-        <section role="alert" aria-labelledby="duplicados" className="rounded-lg border-2 border-erro/50 bg-erro/5 px-4 py-3" data-testid="aviso-duplicados">
-          <h2 id="duplicados" className="font-bold text-erro">
-            ⚠ {v.totals.duplicados} {v.totals.duplicados === 1 ? "subtópico tem aula duplicada" : "subtópicos têm aula duplicada"}
-          </h2>
-          <p className="mt-1 t-small text-tinta-suave">
-            Mais de uma aula do catálogo cobre o mesmo subtópico. Fique com uma (de preferência a publicada) e exclua ou arquive as outras na página de cada aula. Daqui
-            para frente, catalogar de novo um subtópico atualiza a aula que já existe, sem duplicar.
-          </p>
-          <ul className="mt-2 flex flex-col gap-1.5 t-small">
-            {v.groups.flatMap((g) =>
-              g.subtopics
-                .filter((s) => s.duplicates.length > 1)
-                .map((s) => (
-                  <li key={s.ref}>
-                    <span className="font-semibold">
-                      {s.code ? `${s.code} ` : ""}
-                      {s.title}:
-                    </span>{" "}
-                    {s.duplicates.map((d, i) => (
-                      <span key={d.id}>
-                        {i > 0 && " · "}
-                        {admin ? (
-                          <Link href={`/admin/catalogo/${d.id}`} className="text-destaque underline underline-offset-2">
-                            {d.title}
-                          </Link>
-                        ) : (
-                          <span className="font-semibold">{d.title}</span>
-                        )}{" "}
-                        <span className="text-tinta-fraca">({STATUS[d.status === "publicado" ? "publicado" : "rascunho"].label.toLowerCase()})</span>
-                      </span>
-                    ))}
-                  </li>
-                )),
-            )}
-          </ul>
-        </section>
-      )}
+      <DuplicatesCenter dupes={v.dupes} base={base} admin={admin} />
 
       {v.warnings.length > 0 && (
         <ul className="flex flex-col gap-1 rounded-md border border-alerta/30 bg-alerta-fundo px-4 py-3 t-small">
@@ -93,13 +57,14 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
       )}
 
       {v.groups.map((g, gi) => (
-        <section key={gi} aria-labelledby={`g-${gi}`} className="rounded-lg border border-linha" data-testid="plano-topico">
+        <section key={gi} aria-labelledby={`g-${gi}`} className={`rounded-lg border ${v.dupes.flagged.includes(`g:${gi}`) ? "dup-flag-box" : "border-linha"}`} data-testid="plano-topico">
           <h2 id={`g-${gi}`} className="border-b border-linha bg-nevoa px-4 py-3 t-h2">
             <span className="t-tiny font-bold uppercase tracking-wide text-destaque">Tópico</span> {g.code ? `${g.code}. ` : ""}{g.title}
+            {v.dupes.flagged.includes(`g:${gi}`) && <span className="dup-ribbon" data-testid="topico-duplicado">DUPLICADO</span>}
           </h2>
           <ul className="divide-y divide-linha">
             {g.subtopics.map((s) => (
-              <li key={s.ref} className="flex flex-col gap-2 px-4 py-3" data-testid="plano-subtopico" data-status={s.status}>
+              <li key={s.ref} id={`sub-${s.ref}`} className={`flex flex-col gap-2 px-4 py-3 ${v.dupes.flagged.includes(s.ref) ? "dup-flag-row" : ""}`} data-testid="plano-subtopico" data-status={s.status}>
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold">

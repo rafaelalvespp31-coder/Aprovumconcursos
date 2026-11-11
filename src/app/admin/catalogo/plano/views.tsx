@@ -18,6 +18,28 @@ export async function PlanListView({ base, admin }: { base: string; admin: boole
         </p>
       </div>
 
+      {outlines.some((o) => (o.totals.duplicados ?? 0) > 0) && (
+        <section role="alert" className="dup-center" data-testid="aviso-duplicados-lista">
+          <div className="dup-head">
+            <span className="dup-siren" aria-hidden>⚠</span>
+            <div className="min-w-0">
+              <h2>HÁ AULAS DUPLICADAS NOS PLANOS</h2>
+              <p>Abra o plano marcado para ver exatamente quais aulas, subtópicos e tópicos estão repetidos.</p>
+            </div>
+            <span className="dup-total">{outlines.reduce((a, o) => a + (o.totals.duplicados ?? 0), 0)}</span>
+          </div>
+          <div className="dup-blk">
+            <ul>
+              {outlines.filter((o) => (o.totals.duplicados ?? 0) > 0).map((o) => (
+                <li key={o.id}>
+                  <p className="dup-tt"><Link href={`${base}/plano/${o.id}#duplicados`}>{o.title}</Link><small>{o.totals.duplicados} subtópico{o.totals.duplicados === 1 ? "" : "s"} com aula duplicada</small></p>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
+
       {outlines.length > 0 && <SavedOutlines outlines={outlines} base={`${base}/plano`} />}
 
       <section aria-labelledby="novo-plano" className="rounded-lg border border-linha p-5">

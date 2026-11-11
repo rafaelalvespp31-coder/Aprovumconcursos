@@ -2,6 +2,7 @@ import "server-only";
 import { isDisciplineSlug } from "@/ai/pedagogy";
 import { buildSubtopicPrompt } from "@/domain/catalog/subtopic-prompt";
 import { findAllCatalogFor, parseOutline, type Outline, type OutlineStatus } from "@/domain/catalog/topic-group";
+import { findPlanDuplicates, type PlanDuplicates } from "@/domain/catalog/plan-duplicates";
 import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
 import { auditLog } from "../observability";
@@ -88,6 +89,8 @@ export interface PlanView {
   warnings: string[];
   groups: Array<{ code: string | null; title: string; subtopics: PlanSubtopic[] }>;
   totals: { subtopics: number; publicado: number; rascunho: number; pendente: number; duplicados: number };
+  /** Tudo o que está duplicado neste plano (aulas gêmeas, subtópicos com 2+ aulas, itens repetidos no sumário). */
+  dupes: PlanDuplicates;
 }
 
 /** Árvore do plano com a situação de cada subtópico no catálogo e o comando pronto do ChatGPT. */
@@ -97,8 +100,7 @@ export async function planView(outline: OutlineRow): Promise<PlanView> {
     .from("catalog_topics")
     .select("id, title, status, topic_group, subtopic_code")
     .eq("discipline_mode", outline.disciplineMode)
-    .not("topic_group", "is", null)
-    .limit(2000);
+    .limit(5000);
   const catalog = (data ?? []).map((t) => ({ id: t.id as string, title: t.title as string, status: t.status as string, topicGroup: t.topic_group as string | null, subtopicCode: t.subtopic_code as string | null }));
   const totals = { subtopics: 0, publicado: 0, rascunho: 0, pendente: 0, duplicados: 0 };
   const groups = parsed.groups.map((g, gi) => ({
@@ -123,7 +125,7 @@ export async function planView(outline: OutlineRow): Promise<PlanView> {
       };
     }),
   }));
-  return { outline, warnings: parsed.warnings, groups, totals };
+  return { outline, warnings: parsed.warnings, groups, totals, dupes: findPlanDuplicates(parsed, catalog) };
 }
 
 /** Comando de um subtópico do plano (para abrir direto em "Catalogar aula"). */
