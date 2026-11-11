@@ -21,7 +21,7 @@ const COMPAT_PRESETS: Record<string, { baseUrl: string; keyVar: string; keyRequi
 };
 
 /** Onde a IA é usada: estudos dos alunos (aulas) ou banco de questões (equipe). */
-export type AIScope = "estudos" | "banco" | "redacao";
+export type AIScope = "estudos" | "banco" | "redacao" | "catalogo";
 
 /**
  * Modo só catálogo: a IA fica desligada até `AI_ENABLED` no servidor.
@@ -32,7 +32,7 @@ export type AIScope = "estudos" | "banco" | "redacao";
 export function aiEnabled(scope: AIScope = "estudos"): boolean {
   // Aceita lista separada por vírgula (ex.: AI_ENABLED=banco,redacao). "true" liga tudo.
   const tokens = (process.env.AI_ENABLED ?? "").toLowerCase().split(",").map((t) => t.trim());
-  return tokens.includes("true") || (scope !== "estudos" && tokens.includes(scope));
+  return tokens.includes("true") || (scope !== "estudos" && tokens.includes(scope)) || (scope === "catalogo" && tokens.includes("banco"));
 }
 
 export const AI_DISABLED_MESSAGE =

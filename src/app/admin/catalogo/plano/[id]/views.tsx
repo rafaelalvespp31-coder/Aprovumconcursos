@@ -126,7 +126,7 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
                         Catalogar
                       </Link>
                     )}
-                    <SubtopicCommands disciplineMode={outline.disciplineMode} group={{ code: g.code, title: g.title }} sub={{ code: s.code, title: s.title, items: s.items }} />
+                    <SubtopicCommands disciplineMode={outline.disciplineMode} group={{ code: g.code, title: g.title }} sub={{ code: s.code, title: s.title, items: s.items }} outlineId={outline.id} refKey={s.ref} />
                   </div>
                 </div>
                 {s.items.length > 0 && (

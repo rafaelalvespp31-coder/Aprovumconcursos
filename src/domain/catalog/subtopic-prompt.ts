@@ -43,7 +43,7 @@ function reviewBlock(legal: boolean): string {
 }
 
 /** Seções de cada item do edital: duas por item quando cabe, uma quando não, e itens agrupados se forem muitos. */
-function itemModules(items: Array<{ key: string; title: string; code: string | null }>, slots: number): string {
+export function itemModules(items: Array<{ key: string; title: string; code: string | null }>, slots: number): string {
   const groups: Array<typeof items> = [];
   const per = Math.max(1, Math.ceil(items.length / slots));
   for (let i = 0; i < items.length; i += per) groups.push(items.slice(i, i + per));
@@ -59,10 +59,10 @@ function itemModules(items: Array<{ key: string; title: string; code: string | n
     .join("\n\n");
 }
 
-type SubtopicInput = { disciplineMode: string; group: OutlineItem; sub: OutlineSubtopic; year?: number };
+export type SubtopicInput = { disciplineMode: string; group: OutlineItem; sub: OutlineSubtopic; year?: number };
 
 /** Partes do comando de um subtópico (usadas no comando inteiro e no dividido em 2). */
-function pieces(input: SubtopicInput) {
+export function pieces(input: SubtopicInput) {
   const { group, sub } = input;
   const mode = input.disciplineMode as DisciplineMode;
   const subject = disciplineLabel(mode) ?? "";
