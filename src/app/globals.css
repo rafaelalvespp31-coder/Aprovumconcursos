@@ -4007,3 +4007,10 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 @keyframes plano-dup-pulso { 0%, 100% { box-shadow: 0 0 0 2px rgba(255, 45, 70, 0.55); } 50% { box-shadow: 0 0 0 5px rgba(255, 45, 70, 0.2); } }
 @media (prefers-reduced-motion: reduce) { .plano-dup-faixa { animation: none; } }
 .plano-pill-zero { background: rgba(255,255,255,0.85); color: #1f5d2c; }
+
+/* Links da central de duplicadas: levam direto ao item e o destacam */
+.dup-tt a { text-decoration: underline; text-underline-offset: 3px; font-weight: 800; }
+.dup-tt a::after { content: " →"; }
+[id^="sub-"], [id^="g-"] { scroll-margin-top: 90px; }
+.dup-flag-row:target, .dup-flag-box:target, h2:target { animation: dup-alvo 1.6s ease-out 2; }
+@keyframes dup-alvo { 0%, 100% { outline: 0 solid rgba(255, 45, 70, 0); } 40% { outline: 4px solid rgba(255, 45, 70, 0.8); } }

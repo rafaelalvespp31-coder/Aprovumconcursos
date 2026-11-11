@@ -63,7 +63,10 @@ export function DuplicatesCenter({ dupes, base, admin }: { dupes: PlanDuplicates
           <ul>
             {dupes.titles.map((d) => (
               <li key={d.lessons.map((l) => l.id).join()}>
-                <p className="dup-tt"><span>{d.title}</span><small>{d.lessons.length} aulas</small></p>
+                <p className="dup-tt">
+                  {admin ? <Link href={`/admin/catalogo/${d.lessons[0]!.id}`}>{d.title}</Link> : <span>{d.title}</span>}
+                  <small>{d.lessons.length} aulas</small>
+                </p>
                 <div className="dup-chips">{d.lessons.map((l) => <LessonChip key={l.id} l={l} base={base} admin={admin} />)}</div>
               </li>
             ))}
@@ -78,7 +81,7 @@ export function DuplicatesCenter({ dupes, base, admin }: { dupes: PlanDuplicates
             {dupes.outline.map((o) => (
               <li key={`${o.kind}|${o.refs.join()}`}>
                 <p className="dup-tt">
-                  <span>{o.kind === "topico" ? "Tópico" : "Subtópico"} {o.code ? `${o.code} ` : ""}{o.title}</span>
+                  <a href={o.refs[0]!.startsWith("g:") ? `#g-${o.refs[0]!.slice(2)}` : `#sub-${o.refs[0]}`}>{o.kind === "topico" ? "Tópico" : "Subtópico"} {o.code ? `${o.code} ` : ""}{o.title}</a>
                   <small>aparece {o.times}× · {o.where}</small>
                 </p>
               </li>
