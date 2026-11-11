@@ -61,6 +61,40 @@ export function itemModules(items: Array<{ key: string; title: string; code: str
 
 export type SubtopicInput = { disciplineMode: string; group: OutlineItem; sub: OutlineSubtopic; year?: number };
 
+
+/**
+ * Título que enumera várias facetas ("Competência em razão da matéria, da pessoa, do lugar e da função")
+ * vira uma faceta por item: cada uma ganha o próprio módulo, em vez de uma aula rasa sobre o título inteiro.
+ */
+export function splitFacets(title: string): string[] {
+  const parts = title.split(/\s*,\s*|\s+e\s+(?=(?:d[aeo]s?|n[oa]s?|em|a|o)\s)/i).map((x) => x.trim()).filter(Boolean);
+  if (parts.length < 3 && !(parts.length === 2 && /,/.test(title))) return [title];
+  const first = parts[0]!;
+  const prep = parts[1]!.match(/^(d[aeo]s?|n[oa]s?)\s/i)?.[1];
+  let prefix = "";
+  if (prep) {
+    const at = first.toLowerCase().lastIndexOf(` ${prep.toLowerCase()} `);
+    if (at > 0) prefix = first.slice(0, at).trim();
+  }
+  return parts.map((x, i) => (i === 0 || !prefix || !/^(d[aeo]s?|n[oa]s?)\s/i.test(x) ? x : `${prefix} ${x}`));
+}
+
+/** Itens do subtópico, com as facetas enumeradas no título separadas em itens próprios. */
+function expandItems(sub: OutlineSubtopic): Array<{ code: string | null; title: string }> {
+  const raw = sub.items.length ? sub.items : [{ code: sub.code ? `${sub.code}.1` : null, title: sub.title }];
+  const out: Array<{ code: string | null; title: string }> = [];
+  for (const it of raw) {
+    const f = splitFacets(it.title);
+    if (f.length < 2) {
+      out.push({ code: it.code, title: it.title });
+      continue;
+    }
+    const base = sub.items.length ? it.code : sub.code;
+    f.forEach((t, i) => out.push({ code: base ? `${base}.${i + 1}` : null, title: t }));
+  }
+  return out;
+}
+
 /** Partes do comando de um subtópico (usadas no comando inteiro e no dividido em 2). */
 export function pieces(input: SubtopicInput) {
   const { group, sub } = input;
@@ -68,7 +102,7 @@ export function pieces(input: SubtopicInput) {
   const subject = disciplineLabel(mode) ?? "";
   const legal = disciplineLabel(mode) ? isLegalMode(mode) : false;
   const year = input.year ?? 2026;
-  const raw = sub.items.length ? sub.items : [{ code: sub.code ? `${sub.code}.1` : null, title: sub.title }];
+  const raw = expandItems(sub);
   const items = raw.map((it, i) => ({ key: it.code ?? `${i + 1}`, title: it.title, code: it.code ?? `${i + 1}` }));
   const numbered = items.map((it) => `${it.key} ${it.title}`);
   // Visão geral e mapa cobrem todos os itens (com muitos itens, a lista fica só no TEXTO-BASE).
@@ -162,7 +196,7 @@ ESTA AULA É UM SUBTÓPICO DO EDITAL
 - Matéria: ${subject}
 - Tópico: ${group.code ? `${group.code}. ` : ""}${group.title}
 - Subtópico (esta aula): ${label(sub)}
-- Itens do edital: os do TEXTO-BASE, todos, nesta ordem (cada um tem seu módulo).
+- Itens do edital: os do TEXTO-BASE, todos, nesta ordem (cada um tem seu módulo). Cada item é uma aula em miniatura e deve ser ESGOTADO: todas as regras, hipóteses, exceções, súmulas/teses, pegadinhas e casos de prova. Com poucos itens, cada um recebe mais profundidade, nunca menos.
 Não ensine os outros subtópicos do tópico (terão aulas próprias); cite-os só para diferenciar.
 
 FORMATO OBRIGATÓRIO

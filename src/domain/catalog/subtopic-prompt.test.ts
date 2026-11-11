@@ -175,3 +175,21 @@ describe("entrega obrigatória no comando do subtópico", () => {
     expect(out.length).toBeLessThanOrEqual(40_000);
   });
 });
+
+describe("título que enumera facetas", () => {
+  it("separa matéria, pessoa, lugar e função em itens próprios", async () => {
+    const { splitFacets, buildSubtopicPrompt } = await import("./subtopic-prompt");
+    expect(splitFacets("Competência em razão da matéria, da pessoa, do lugar e da função")).toEqual([
+      "Competência em razão da matéria",
+      "Competência em razão da pessoa",
+      "Competência em razão do lugar",
+      "Competência em razão da função",
+    ]);
+    expect(splitFacets("Prisão em flagrante")).toEqual(["Prisão em flagrante"]);
+    const { parseOutline } = await import("./topic-group");
+    const o = parseOutline("6. Competência\n6.3 Competência em razão da matéria, da pessoa, do lugar e da função");
+    const g = o.groups[0]!;
+    const out = buildSubtopicPrompt({ disciplineMode: "direito_processual_penal", group: g, sub: g.subtopics[0]! });
+    for (const f of ["da matéria", "da pessoa", "do lugar", "da função"]) expect(out).toContain(`Competência em razão ${f}`);
+  });
+});
