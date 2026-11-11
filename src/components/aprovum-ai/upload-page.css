@@ -158,3 +158,17 @@
 @media (prefers-reduced-motion: reduce) { .up *, .up *::before, .up *::after { animation: none !important; transition: none !important; } }
 
 @media (max-width: 419px) { .up-back span { display: none; } .up-back { padding: 0 8px; } .up-logo { font-size: 23px; } }
+
+/* Como colar o conteúdo programático */
+.up-how { display: flex; gap: 14px; align-items: flex-start; margin-top: 14px; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: #fafafb; }
+.up-how-img { position: relative; flex: none; width: 96px; height: 126px; padding: 0; border: 1.5px solid #cfd2d8; border-radius: 10px; overflow: hidden; background: #fff; cursor: zoom-in; }
+.up-how-img img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.up-how-img span { position: absolute; inset: auto 0 0 0; padding: 4px 2px; background: rgba(8,8,10,.78); color: #fff; font: 700 9.5px/1.2 Inter, sans-serif; text-align: center; }
+.up-how b { font-size: 13.5px; }
+.up-how ol { margin: 6px 0 6px; padding-left: 18px; font-size: 12.8px; line-height: 1.45; }
+.up-how li { margin-bottom: 3px; }
+.up-how small { display: block; font-size: 12px; line-height: 1.4; color: #5b616c; }
+.up-zoom { position: fixed; inset: 0; z-index: 120; display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 16px; overflow-y: auto; background: rgba(0,0,0,.88); cursor: zoom-out; }
+.up-zoom img { width: min(100%, 560px); height: auto; border-radius: 10px; }
+.up-zoom button { min-height: 44px; padding: 0 22px; border-radius: 10px; background: #e11d26; color: #fff; font-weight: 700; }
+@media (max-width: 380px) { .up-how { flex-direction: column; } .up-how-img { width: 100%; height: 150px; } }

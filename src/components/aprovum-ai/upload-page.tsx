@@ -34,6 +34,7 @@ export function UploadPage({ name, dueReviews, hasPreps }: { name: string | null
   const [file, setFile] = useState<File | null>(null);
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState<null | "hash" | "upload" | "start">(null);
+  const [zoom, setZoom] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [more, setMore] = useState(false);
   const [f, setF] = useState({ contestName: "", roleName: "", board: "", year: "" });
@@ -160,6 +161,30 @@ export function UploadPage({ name, dueReviews, hasPreps }: { name: string | null
               </div>
             )}
             <input ref={input} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => pick(e.target.files)} data-testid="ai-arquivo" />
+
+            <div className="up-how" data-testid="ai-como-colar">
+              <button type="button" className="up-how-img" onClick={() => setZoom(true)} aria-label="Ampliar o exemplo de texto selecionado no edital">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/exemplo-conteudo-programatico.jpg" alt="Exemplo: conteúdo programático selecionado no PDF do edital" loading="lazy" />
+                <span>Toque para ampliar</span>
+              </button>
+              <div>
+                <b>Como colar o conteúdo programático</b>
+                <ol>
+                  <li>Abra o PDF do edital e vá até o conteúdo programático (anexo ou item &quot;conhecimentos&quot;).</li>
+                  <li>Toque e segure no começo do texto das suas matérias, arraste até o fim e toque em <b>Copiar</b>, como na imagem.</li>
+                  <li>Volte aqui e cole no campo <b>Conteúdo programático</b>, logo abaixo. Pode colar várias matérias seguidas.</li>
+                </ol>
+                <small>Copie com o nome de cada matéria e a numeração dos itens (1, 2, 2.1…). Se o edital tiver vários cargos, copie só o do seu.</small>
+              </div>
+            </div>
+            {zoom && (
+              <div className="up-zoom" role="dialog" aria-modal="true" aria-label="Exemplo ampliado" onClick={() => setZoom(false)}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src="/images/exemplo-conteudo-programatico.jpg" alt="Exemplo: conteúdo programático selecionado no PDF do edital" />
+                <button type="button" onClick={() => setZoom(false)}>Fechar</button>
+              </div>
+            )}
 
             <div className="up-or">CONTEÚDO PROGRAMÁTICO DO CONCURSO</div>
             <p className="up-help" style={{ fontSize: 13.5, lineHeight: 1.5, margin: "0 0 8px" }}>
