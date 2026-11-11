@@ -107,8 +107,8 @@ export function displayTitle(contestName: string | null, fileName: string): stri
 const ROLE_STOP = /\s*(?:[,;:()\[\]]|\.\s|\s[-–—]\s|\bdo quadro\b|\bda carreira\b|\bn[ií]vel\b|\bcom\b|\bpara\b|\bconforme\b|\bsob\b|\blotad|\bc[oó]digo\b|\bvagas?\b|\bjornada\b|\bcarga hor|\bremunera|\bvencimento|\bsal[aá]rio|\bescolaridade|\brequisito|\bregime\b|\bmediante\b|\bem\s+(?:car[aá]ter|regime)|\bdo munic[ií]pio|\bdo estado|\bda prefeitura|\bdeste\b|\bdesta\b|\bnos termos|\be (?:forma[cç][aã]o|cadastro)|\bpor meio|\bconstantes?\b|\bprevist|\ba que\b|\bque\b|\bse\b|\s[eé]\s+de\b|\bser[aá]\b|\bna forma\b|\bdever)/i;
 const ROLE_GENERIC = /^(?:efetivos?|p[uú]blicos?|de provimento efetivo|provimento efetivo|n[ií]vel (?:superior|m[eé]dio|fundamental|t[eé]cnico)|diversos|v[aá]rios|abaixo|a seguir|relacionados?|ofertados?|indicados?|vagos|e empregos?|do edital|o cargo|cargos?|pretendido|escolhido|optado|para o qual.*|que .*|em quest[aã]o|.*\bedital\b.*)$/i;
 
-/** Cargo pretendido pelo texto do edital (sem IA). Só devolve quando há UM cargo claro; com vários, o aluno escolhe. */
-export function detectRole(pages: string[]): string | null {
+/** Todos os cargos que o texto das primeiras páginas do edital cita (sem IA), do mais citado ao menos citado. */
+export function detectRoles(pages: string[]): string[] {
   const text = pages.slice(0, 4).join("\n");
   const found = new Map<string, string>();
   const seen = new Map<string, number>();
@@ -127,11 +127,21 @@ export function detectRole(pages: string[]): string | null {
   for (const m of text.matchAll(/(?:^|\n)\s*cargo\s*(?:[:–—-]|\bde\b)\s*([^\n]{3,90})/gi)) take(m[1]!);
   // "... para o cargo de Agente de Polícia ..." / "provimento do cargo de ..."
   for (const m of text.matchAll(/\bcargos?(?:\s+(?:efetivos?|p[uú]blicos?)){0,2}\s+de\s+([^\n]{3,90})/gi)) take(m[1]!);
-  // "Investigador" e "Investigador de Polícia I" são o mesmo cargo: agrupa pelo começo do nome
-  // e fica o mais citado (empate: o mais completo). Grupos diferentes = vários cargos → aluno escolhe.
+  // "Investigador" e "Investigador de Polícia I" são o mesmo cargo: agrupa pelo começo do nome e fica o mais completo/citado.
   const keys = [...found.keys()].sort((a, b) => a.length - b.length);
   const roots = keys.filter((k) => !keys.some((o) => o !== k && k.startsWith(`${o} `)));
-  if (roots.length !== 1) return null;
-  const best = keys.sort((a, b) => (seen.get(b)! - seen.get(a)!) || b.length - a.length)[0]!;
-  return found.get(best)!;
+  return roots
+    .map((root) => {
+      const group = keys.filter((k) => k === root || k.startsWith(`${root} `));
+      const best = group.sort((a, b) => (seen.get(b)! - seen.get(a)!) || b.length - a.length)[0]!;
+      return { name: found.get(best)!, n: group.reduce((t, k) => t + (seen.get(k) ?? 0), 0) };
+    })
+    .sort((a, b) => b.n - a.n)
+    .map((x) => x.name);
+}
+
+/** Cargo pretendido pelo texto do edital (sem IA). Só devolve quando há UM cargo claro; com vários, o aluno escolhe. */
+export function detectRole(pages: string[]): string | null {
+  const roles = detectRoles(pages);
+  return roles.length === 1 ? roles[0]! : null;
 }

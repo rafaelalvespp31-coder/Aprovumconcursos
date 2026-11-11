@@ -31,7 +31,8 @@ export function Processing({ initial, initialEvents }: { initial: PrepSummary; i
   const [events, setEvents] = useState(initialEvents);
   const [net, setNet] = useState<string | null>(null);
   const [pulse, setPulse] = useState(0);
-  const [manual, setManual] = useState("");
+  const [manual, setManual] = useState(initial.programmaticText ?? "");
+  const [role, setRole] = useState("");
   const [busy, setBusy] = useState(false);
   const last = useRef(initialEvents.at(-1)?.id ?? 0);
   const inflight = useRef(false);
@@ -82,6 +83,19 @@ export function Processing({ initial, initialEvents }: { initial: PrepSummary; i
     try {
       setNet(null);
       apply(await call(`/api/edital/${prep.id}/manual`, { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: manual }) }));
+    } catch (e) {
+      setNet((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const enviarCargo = async () => {
+    setBusy(true);
+    try {
+      setNet(null);
+      apply(await call(`/api/edital/${prep.id}/cargo`, { headers: { "Content-Type": "application/json" }, body: JSON.stringify({ role }) }));
+      setRole("");
     } catch (e) {
       setNet((e as Error).message);
     } finally {
@@ -165,7 +179,26 @@ export function Processing({ initial, initialEvents }: { initial: PrepSummary; i
           </div>
         )}
 
-        {needsReview && s.notEdital && (
+        {needsReview && s.needRole && (
+          <div className="ai-actions" data-testid="ai-cargo">
+            <p style={{ fontSize: 14, color: "#e5e7eb", lineHeight: 1.5 }}>
+              <b>Qual é o seu cargo?</b> Este edital tem {prep.roleOptions?.length ?? "vários"} cargos. Escolha o seu para o APROVUM analisar só o que corresponde à sua função.
+            </p>
+            <div role="radiogroup" aria-label="Cargo pretendido" style={{ display: "grid", gap: 8 }}>
+              {(prep.roleOptions ?? []).map((r) => (
+                <label key={r} style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 12px", border: `1px solid ${role === r ? "#e50919" : "#3a3d44"}`, borderRadius: 10, cursor: "pointer", color: "#fff" }}>
+                  <input type="radio" name="cargo" checked={role === r} onChange={() => setRole(r)} />
+                  <span>{r}</span>
+                </label>
+              ))}
+            </div>
+            <input className="ai-area" style={{ minHeight: 0, height: 46 }} value={prep.roleOptions?.includes(role) ? "" : role} onChange={(e) => setRole(e.target.value)} placeholder="Ou digite o cargo, se não estiver na lista" aria-label="Outro cargo" data-testid="ai-cargo-outro" />
+            <button type="button" className="ai-go" disabled={busy || role.trim().length < 3} onClick={enviarCargo}>{busy ? "CONTINUANDO…" : "CONTINUAR COM ESTE CARGO"}</button>
+            <DeletePrep id={prep.id} redirectTo="/aprovum-ai" />
+          </div>
+        )}
+
+        {needsReview && !s.needRole && s.notEdital && (
           <div className="ai-actions">
             <p style={{ fontSize: 14, color: "#e5e7eb", lineHeight: 1.5 }}>
               <b>Este arquivo não parece ser um edital.</b> Não encontrei inscrições, cargos, vagas ou banca, então não há conteúdo programático para destrinchar. Envie o PDF do edital oficial do concurso.
@@ -180,7 +213,7 @@ export function Processing({ initial, initialEvents }: { initial: PrepSummary; i
           </div>
         )}
 
-        {needsReview && !s.notEdital && (
+        {needsReview && !s.needRole && !s.notEdital && (
           <div className="ai-actions">
             <p style={{ fontSize: 13.5, color: "#c4c8cf", lineHeight: 1.5 }}>
               {prep.error ?? s.warnings?.[0] ?? "Não localizei o conteúdo programático com segurança."} Cole abaixo só o conteúdo programático do edital: o nome de cada disciplina em uma linha e, embaixo, os assuntos numerados (1, 1.1, 2…).

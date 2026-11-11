@@ -9,6 +9,8 @@ import "./upload-page.css";
 
 const MAX = 25 * 1024 * 1024;
 const BUCKET = "editais";
+/** Teto técnico (corpo da requisição na Vercel); a interface não corta nada: se passar, avisa e pede para dividir. */
+const MAX_CONTENT = 1_500_000;
 const size = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
 async function sha256(file: File): Promise<string> {
@@ -35,6 +37,8 @@ export function UploadPage({ name, dueReviews, hasPreps }: { name: string | null
   const [err, setErr] = useState<string | null>(null);
   const [more, setMore] = useState(false);
   const [f, setF] = useState({ contestName: "", roleName: "", board: "", year: "" });
+  const [content, setContent] = useState("");
+  const area = useRef<HTMLTextAreaElement>(null);
   const first = name?.trim().split(/\s+/)[0] ?? null;
 
   const pick = (list: FileList | null | undefined) => {
@@ -53,12 +57,13 @@ export function UploadPage({ name, dueReviews, hasPreps }: { name: string | null
     try {
       setBusy("hash");
       const hash = await sha256(file);
+      if (content.length > MAX_CONTENT) throw new Error(`O conteúdo tem ${content.length.toLocaleString("pt-BR")} caracteres e o limite técnico é ${MAX_CONTENT.toLocaleString("pt-BR")}. Nada foi cortado: divida em duas partes.`);
       const year = f.year.trim() ? Number(f.year) : undefined;
       if (year !== undefined && !(year >= 1990 && year <= 2100)) throw new Error("Ano inválido.");
       const res = await fetch("/api/edital", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fileName: file.name, size: file.size, hash, contestName: f.contestName.trim() || undefined, roleName: f.roleName.trim() || undefined, board: f.board.trim() || undefined, year }),
+        body: JSON.stringify({ fileName: file.name, size: file.size, hash, contestName: f.contestName.trim() || undefined, roleName: f.roleName.trim() || undefined, board: f.board.trim() || undefined, year, content: content.trim() || undefined }),
       });
       const j = (await res.json()) as { id?: string; upload?: { path: string; token: string } | null; error?: string };
       if (!res.ok || !j.id) throw new Error(j.error ?? "Não foi possível iniciar.");
@@ -83,7 +88,6 @@ export function UploadPage({ name, dueReviews, hasPreps }: { name: string | null
   const label = busy === "hash" ? "VERIFICANDO ARQUIVO…" : busy === "upload" ? "ENVIANDO EDITAL…" : busy === "start" ? "INICIANDO…" : "INICIAR PROCESSAMENTO";
   const fields: Array<[keyof typeof f, string, string, React.ReactNode, string?]> = [
     ["contestName", "Nome do concurso", "Ex: Polícia Civil MG", <Trophy key="a" size={22} aria-hidden />],
-    ["roleName", "Cargo pretendido", "Ex: Investigador", <Briefcase key="b" size={22} aria-hidden />],
     ["board", "Banca organizadora", "Ex: Cebraspe", <Landmark key="c" size={22} aria-hidden />],
     ["year", "Ano do concurso", "Ex: 2026", <CalendarDays key="d" size={22} aria-hidden />, "numeric"],
   ];
@@ -156,6 +160,41 @@ export function UploadPage({ name, dueReviews, hasPreps }: { name: string | null
               </div>
             )}
             <input ref={input} type="file" accept="application/pdf,.pdf" hidden onChange={(e) => pick(e.target.files)} data-testid="ai-arquivo" />
+
+            <div className="up-or">CONTEÚDO PROGRAMÁTICO DO CONCURSO</div>
+            <p className="up-help" style={{ fontSize: 13.5, lineHeight: 1.5, margin: "0 0 8px" }}>
+              Para aumentar a precisão da análise, cole abaixo o conteúdo programático completo do cargo pretendido, conforme consta no edital. O APROVUM utilizará essas informações em conjunto com o PDF para identificar todas as matérias, tópicos e subtópicos.
+            </p>
+            <textarea
+              ref={area}
+              className="up-area"
+              value={content}
+              onChange={(e) => {
+                setContent(e.target.value);
+                e.currentTarget.style.height = "auto";
+                e.currentTarget.style.height = `${e.currentTarget.scrollHeight}px`;
+              }}
+              placeholder="Cole aqui o conteúdo programático completo do concurso, incluindo todas as matérias, tópicos e subtópicos…"
+              aria-label="Conteúdo programático do concurso"
+              data-testid="ai-conteudo"
+              rows={6}
+              disabled={!!busy}
+              style={{ width: "100%", minHeight: 150, resize: "vertical", overflow: "hidden", padding: 12, borderRadius: 12, border: "1.5px solid #cfd2d8", fontSize: 14.5, lineHeight: 1.5, fontFamily: "inherit" }}
+            />
+            <p style={{ fontSize: 12.5, margin: "6px 0 0", color: content.length > MAX_CONTENT ? "#b0061a" : "inherit" }} data-testid="ai-conteudo-contagem">
+              {content.length > 0 ? `${content.length.toLocaleString("pt-BR")} caracteres. ` : ""}Quanto mais completo for o conteúdo informado, mais precisa será a identificação do que você precisa estudar.
+            </p>
+
+            <div className="up-or">CARGO PRETENDIDO</div>
+            <p className="up-help" style={{ fontSize: 13.5, lineHeight: 1.5, margin: "0 0 8px" }}>
+              Selecione o cargo para o qual você está se preparando. Isso permite que o APROVUM identifique somente as matérias e os conteúdos correspondentes à sua função. Se o edital tiver vários cargos e você deixar em branco, mostramos a lista encontrada no PDF para você escolher.
+            </p>
+            <div className="up-fields">
+              <label className="up-f">
+                <Briefcase size={22} aria-hidden />
+                <span>Cargo pretendido<input value={f.roleName} onChange={set("roleName")} placeholder="Ex: Guarda Civil Municipal" maxLength={160} autoComplete="off" data-testid="ai-cargo-campo" /></span>
+              </label>
+            </div>
 
             <div className="up-or">OU PREENCHA OS DADOS DO CONCURSO</div>
             <div className="up-fields">

@@ -5,9 +5,10 @@ import { createAdminClient } from "../supabase";
 import { auditLog, logEvent } from "../observability";
 import { UserFacingError, enforceRateLimit } from "./trails";
 import { looksLikeEdital, parseEdital, parseProgrammaticText, type ParsedEdital } from "@/domain/edital/parser";
-import { detectContestInfo, detectRole, displayTitle } from "@/domain/edital/info";
+import { detectContestInfo, detectRoles, detectRole, displayTitle } from "@/domain/edital/info";
 import { extractOrgLogo } from "./edital-logo";
 import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match";
+import { crossSources } from "@/domain/edital/cross";
 
 /**
  * APROVUM AI — preparação por edital. Tudo roda aqui, sem IA externa: leitura do PDF, localização do
@@ -19,6 +20,8 @@ import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match
 export const EDITAL_BUCKET = "editais";
 export const MAX_EDITAL_BYTES = 25 * 1024 * 1024;
 const MAX_PAGES = 600;
+/** Texto do conteúdo programático: sem corte silencioso. O teto só protege a infraestrutura (corpo da requisição na Vercel ≈ 4,5 MB) e avisa o aluno quando passa. */
+export const MAX_PROGRAMMATIC_CHARS = 1_500_000;
 
 export type PrepStatus = "recebendo" | "lendo" | "identificando" | "mapeando" | "organizando" | "concluido" | "conferencia" | "erro";
 export const PARSER_V = 6;
@@ -32,6 +35,8 @@ export const createInput = z.object({
   roleName: z.string().trim().max(160).optional(),
   board: z.string().trim().max(80).optional(),
   year: z.number().int().min(1990).max(2100).optional(),
+  /** Conteúdo programático colado pelo aluno (opcional). */
+  content: z.string().max(MAX_PROGRAMMATIC_CHARS).optional(),
 });
 
 export interface PrepEvent {
@@ -63,12 +68,23 @@ export interface PrepStats {
   matchedAt?: string;
   /** Versão da regra de vínculo usada: ao mudar a regra, os editais refazem os vínculos sozinhos. */
   matchV?: number;
+  /** O edital tem vários cargos e o aluno ainda não escolheu: a análise espera. */
+  needRole?: boolean;
+  /** Fontes usadas na análise (rastreabilidade) e divergências entre PDF e texto colado. */
+  sources?: { pdf: boolean; text: boolean; role: string | null; roleSource: "aluno" | "edital" | null };
+  divergences?: string[];
 }
 export interface PrepSummary {
   id: string;
   title: string;
   contestName: string | null;
   roleName: string | null;
+  /** Cargos encontrados no PDF (o aluno escolhe um quando são vários). */
+  roleOptions?: string[];
+  /** Quantos caracteres de conteúdo programático o aluno colou (0 = nenhum). */
+  contentChars?: number;
+  /** Texto colado, devolvido só na conferência para o aluno poder corrigir sem perder o que digitou. */
+  programmaticText?: string;
   /** Símbolo do órgão tirado do cabeçalho do edital (data URL PNG) — null quando o PDF não traz. */
   orgLogo: string | null;
   board: string | null;
@@ -91,6 +107,9 @@ const toSummary = (r: Row): PrepSummary => ({
   title: displayTitle((r.contest_name as string | null) ?? null, r.file_name as string),
   contestName: (r.contest_name as string | null) ?? null,
   roleName: (r.role_name as string | null) ?? null,
+  roleOptions: Array.isArray(r.role_options) ? (r.role_options as unknown[]).filter((x): x is string => typeof x === "string") : [],
+  contentChars: typeof r.programmatic_text === "string" ? r.programmatic_text.length : 0,
+  ...(r.status === "conferencia" && typeof r.programmatic_text === "string" ? { programmaticText: r.programmatic_text } : {}),
   orgLogo: (r.org_logo as string | null) ?? null,
   board: (r.board as string | null) ?? null,
   year: (r.contest_year as number | null) ?? null,
@@ -134,8 +153,17 @@ export async function createPreparation(userId: string, raw: unknown): Promise<{
   await enforceRateLimit(userId, "edital_novo", 6, 3600);
   const db = createAdminClient();
   // Mesmo edital já enviado por este aluno: reaproveita (sem duplicar nem reprocessar).
-  const dup = await db.from("edital_preparations").select("id, status").eq("user_id", userId).eq("file_hash", v.hash).maybeSingle();
-  if (dup.data) return { id: dup.data.id as string, existing: true, upload: null };
+  const dup = await db.from("edital_preparations").select("id, status, programmatic_text, role_name").eq("user_id", userId).eq("file_hash", v.hash).maybeSingle();
+  if (dup.data) {
+    // Mesmo edital reenviado: nada de vínculos nem disciplinas novos. Se o aluno trouxe texto/cargo diferentes, só atualiza e refaz a análise do mesmo registro.
+    const content = v.content?.replace(/\u0000/g, "").trim() || null;
+    const changed = (content && content !== dup.data.programmatic_text) || (v.roleName && v.roleName !== dup.data.role_name);
+    if (changed) {
+      await db.from("edital_preparations").update({ ...(content ? { programmatic_text: content } : {}), ...(v.roleName ? { role_name: v.roleName } : {}), updated_at: new Date().toISOString() }).eq("id", dup.data.id as string);
+      if (dup.data.status === "concluido" || dup.data.status === "conferencia") await setStatus(dup.data.id as string, "identificando", { error: null });
+    }
+    return { id: dup.data.id as string, existing: true, upload: null };
+  }
   const id = crypto.randomUUID();
   const path = `${userId}/${id}.pdf`;
   const ins = await db.from("edital_preparations").insert({
@@ -143,6 +171,7 @@ export async function createPreparation(userId: string, raw: unknown): Promise<{
     user_id: userId,
     contest_name: v.contestName || null,
     role_name: v.roleName || null,
+    programmatic_text: v.content?.replace(/\u0000/g, "").trim() || null,
     board: v.board || null,
     contest_year: v.year ?? null,
     file_name: v.fileName,
@@ -323,18 +352,60 @@ async function stageIdentify(p: Row) {
   const db = createAdminClient();
   const ex = await db.from("edital_extractions").select("pages").eq("file_hash", p.file_hash as string).maybeSingle();
   if (ex.error || !ex.data) throw new UserFacingError("A leitura do edital não foi encontrada. Retome o processamento.", "extraction_missing");
-  await fillInfo(p, ex.data.pages as string[]);
+  const pages = ex.data.pages as string[];
+  await fillInfo(p, pages);
   if (!p.extras_checked) await fillLogo(p);
-  const parsed = parseEdital(ex.data.pages as string[]);
-  if (!parsed.found || parsed.confidence < 0.4 || !parsed.disciplines.length) {
-    const notEdital = !looksLikeEdital(ex.data.pages as string[]);
-    const msg = notEdital ? "Este arquivo não parece ser um edital de concurso (não há inscrições, cargos, vagas ou banca)." : (parsed.warnings[0] ?? "Não localizei o conteúdo programático com segurança.");
-    await event(id, userId, 3, msg, "warn");
-    await event(id, userId, 3, notEdital ? "Envie o PDF do edital oficial." : "Precisamos da sua conferência para continuar.", "warn");
-    await setStatus(id, "conferencia", { stats: { ...((p.stats as PrepStats) ?? {}), warnings: [msg, ...parsed.warnings.slice(1)], notEdital } });
+
+  // Cargos do edital: guardados para o aluno escolher. Com vários cargos e nenhum escolhido, a análise espera.
+  const roles = detectRoles(pages).slice(0, 40);
+  if (roles.length && JSON.stringify(roles) !== JSON.stringify(p.role_options ?? [])) {
+    await db.from("edital_preparations").update({ role_options: roles }).eq("id", id);
+    p.role_options = roles;
+  }
+  if (!p.role_name && roles.length > 1) {
+    await event(id, userId, 3, `O edital tem ${roles.length} cargos. Escolha o seu para continuar.`, "warn");
+    await setStatus(id, "conferencia", { stats: { ...((p.stats as PrepStats) ?? {}), needRole: true, notEdital: false } });
     return;
   }
-  await persistParsed(p, parsed, false);
+
+  const pdf = parseEdital(pages);
+  const typed = typeof p.programmatic_text === "string" && p.programmatic_text.trim() ? parseProgrammaticText(p.programmatic_text) : null;
+  const cross = crossSources(pdf, typed);
+  const parsed = cross.parsed;
+  const usable = cross.used.text || (pdf.found && pdf.confidence >= 0.4 && pdf.disciplines.length > 0);
+  if (!usable) {
+    const notEdital = !looksLikeEdital(pages);
+    const msg = notEdital ? "Este arquivo não parece ser um edital de concurso (não há inscrições, cargos, vagas ou banca)." : (pdf.warnings[0] ?? "Não localizei o conteúdo programático com segurança.");
+    await event(id, userId, 3, msg, "warn");
+    await event(id, userId, 3, notEdital ? "Envie o PDF do edital oficial." : "Precisamos da sua conferência para continuar.", "warn");
+    await setStatus(id, "conferencia", { stats: { ...((p.stats as PrepStats) ?? {}), needRole: false, warnings: [msg, ...pdf.warnings.slice(1)], notEdital } });
+    return;
+  }
+  if (typed && !cross.used.text) await event(id, userId, 3, "Não consegui identificar disciplinas no texto colado; usei o PDF.", "warn");
+  if (cross.used.text) await event(id, userId, 3, cross.used.pdf ? "Conteúdo programático do PDF cruzado com o texto informado." : "Conteúdo programático lido do texto informado.", "ok");
+  for (const d of cross.divergences.slice(0, 8)) await event(id, userId, 3, `Divergência: ${d}`, "warn");
+  await persistParsed(p, parsed, cross.used.text);
+  const fresh = await own(userId, id);
+  const sources = { pdf: cross.used.pdf, text: cross.used.text, role: (fresh.role_name as string | null) ?? null, roleSource: fresh.role_name ? (p.role_name ? "aluno" : "aluno") : null };
+  await db.from("edital_preparations").update({ sources, stats: { ...((fresh.stats as PrepStats) ?? {}), needRole: false, sources, divergences: cross.divergences.slice(0, 12) } }).eq("id", id);
+}
+
+/**
+ * O aluno escolheu (ou digitou) o cargo. Se a análise estava esperando por isso, ela continua de onde parou.
+ * Em análise já concluída, só registra o cargo (a seleção por cargo entra na análise na etapa seguinte).
+ */
+export async function chooseRole(userId: string, id: string, role: unknown): Promise<PrepSummary> {
+  const p = await own(userId, id);
+  const r = typeof role === "string" ? role.replace(/\s+/g, " ").trim().slice(0, 160) : "";
+  if (r.length < 3) throw new UserFacingError("Informe o cargo pretendido.", "invalid_input");
+  const db = createAdminClient();
+  const st = (p.stats as PrepStats) ?? {};
+  const up = await db.from("edital_preparations").update({ role_name: r, updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", userId);
+  if (up.error) throw new Error(up.error.message);
+  await event(id, userId, 3, `Cargo selecionado: ${r}.`, "ok");
+  if (p.status === "conferencia" && st.needRole) await setStatus(id, "identificando", { error: null, stats: { ...st, needRole: false } });
+  await import("./strategic").then((m) => m.linkPreparationToExam(id, { force: true })).catch(() => null);
+  return toSummary(await own(userId, id));
 }
 
 /** Recalcula os vínculos do edital com as aulas PUBLICADAS hoje no catálogo (sem eventos nem mudança de etapa). */
@@ -493,9 +564,11 @@ export async function resumePreparation(userId: string, id: string): Promise<Pre
 export async function submitManualContent(userId: string, id: string, text: unknown): Promise<PrepSummary> {
   const p = await own(userId, id);
   const t = typeof text === "string" ? text.replace(/\u0000/g, "").trim() : "";
-  if (t.length < 20 || t.length > 120000) throw new UserFacingError("Cole o conteúdo programático (de 20 a 120 mil caracteres).", "invalid_input");
+  if (t.length < 20) throw new UserFacingError("Cole o conteúdo programático (mínimo de 20 caracteres).", "invalid_input");
+  if (t.length > MAX_PROGRAMMATIC_CHARS) throw new UserFacingError(`O texto tem ${t.length.toLocaleString("pt-BR")} caracteres e o limite técnico é ${MAX_PROGRAMMATIC_CHARS.toLocaleString("pt-BR")}. Nada foi cortado: divida o conteúdo em duas partes.`, "invalid_input");
   const parsed = parseProgrammaticText(t);
   if (!parsed.found) throw new UserFacingError(parsed.warnings[0] ?? "Não consegui identificar disciplinas. Escreva o nome da disciplina em uma linha e os assuntos numerados abaixo.", "invalid_input");
+  await createAdminClient().from("edital_preparations").update({ programmatic_text: t }).eq("id", id);
   await persistParsed(p, parsed, true);
   return toSummary(await own(userId, id));
 }
