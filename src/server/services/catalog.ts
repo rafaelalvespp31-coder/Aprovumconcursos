@@ -336,6 +336,27 @@ export async function requireCatalogEditor(): Promise<{ user: SessionUser; admin
   notFound();
 }
 
+/**
+ * Quem pode corrigir UMA aula: o ADMIN MASTER (qualquer aula) ou o sócio com a permissão de catalogar,
+ * mas só nas aulas em RASCUNHO que ele mesmo catalogou. Conferido no servidor a cada tela e a cada ação.
+ */
+export async function requireTopicEditor(topicId: string): Promise<{ user: SessionUser; admin: boolean }> {
+  const ctx = await requireCatalogEditor();
+  if (ctx.admin) return ctx;
+  const { data } = await createAdminClient().from("catalog_topics").select("created_by, status").eq("id", topicId).maybeSingle();
+  if (!data || data.created_by !== ctx.user.id || data.status !== "rascunho") {
+    await auditLog(createAdminClient(), { actorId: ctx.user.id, userId: ctx.user.id, action: "partner.acesso_negado", entity: "catalogo", entityId: topicId, meta: { motivo: "aula_fora_do_escopo" } });
+    notFound();
+  }
+  return ctx;
+}
+
+/** Garante que a questão pertence à aula informada (o sócio só mexe nas questões da aula que ele pode editar). */
+export async function assertQuestionInTopic(topicId: string, questionId: string): Promise<void> {
+  const { data } = await createAdminClient().from("catalog_questions").select("topic_id").eq("id", questionId).maybeSingle();
+  if (!data || data.topic_id !== topicId) notFound();
+}
+
 const slugify = (s: string) =>
   normalizeText(s).replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 100) || "tema";
 

@@ -15,6 +15,8 @@ import {
   removeTopicQuestion,
   requireAdmin,
   requireCatalogEditor,
+  requireTopicEditor,
+  assertQuestionInTopic,
   setTopicStatus,
   updateTopicMeta,
   updateTopicQuestion,
@@ -79,32 +81,38 @@ export async function importLessonUploadAction(text: string): Promise<AdminResul
 }
 
 export async function saveSectionAction(id: string, index: number, data: { title: string; bodyMarkdown: string }): Promise<AdminResult> {
-  await requireAdmin();
+  await requireTopicEditor(z.uuid().parse(id));
   const r = await guard("catalog.section", async () => updateTopicSection(id, index, data));
   revalidatePath(`/admin/catalogo/${id}`);
+  revalidatePath(`/business/catalogo/${id}`);
   return r;
 }
 
 export async function saveTopicMetaAction(id: string, data: { title: string; kind: string; law?: string; articles?: string; topicGroup?: string; subtopicCode?: string; disciplineMode?: string }): Promise<AdminResult> {
-  await requireAdmin();
+  await requireTopicEditor(z.uuid().parse(id));
   const r = await guard("catalog.meta", async () => updateTopicMeta(z.uuid().parse(id), data));
   revalidatePath(`/admin/catalogo/${id}`);
+  revalidatePath(`/business/catalogo/${id}`);
   revalidatePath("/admin/catalogo");
   revalidatePath("/nova-trilha");
   return r;
 }
 
 export async function saveQuestionAction(topicId: string, questionId: string, data: unknown): Promise<AdminResult> {
-  await requireAdmin();
+  await requireTopicEditor(z.uuid().parse(topicId));
+  await assertQuestionInTopic(topicId, z.uuid().parse(questionId));
   const r = await guard("catalog.question", async () => updateTopicQuestion(z.uuid().parse(questionId), data));
   revalidatePath(`/admin/catalogo/${topicId}`);
+  revalidatePath(`/business/catalogo/${topicId}`);
   return r;
 }
 
 export async function removeQuestionAction(topicId: string, questionId: string): Promise<AdminResult> {
-  await requireAdmin();
+  await requireTopicEditor(z.uuid().parse(topicId));
+  await assertQuestionInTopic(topicId, z.uuid().parse(questionId));
   const r = await guard("catalog.question_remove", async () => removeTopicQuestion(z.uuid().parse(questionId)));
   revalidatePath(`/admin/catalogo/${topicId}`);
+  revalidatePath(`/business/catalogo/${topicId}`);
   return r;
 }
 
@@ -204,7 +212,7 @@ export async function deleteTopicAction(id: string): Promise<AdminResult> {
 export type QuestionsPreviewResult = { ok: true; preview: TopicQuestionsPreview } | { ok: false; error: string };
 
 export async function previewTopicQuestionsAction(topicId: string, text: string): Promise<QuestionsPreviewResult> {
-  await requireAdmin();
+  await requireTopicEditor(z.uuid().parse(topicId));
   let preview = null as TopicQuestionsPreview | null;
   const r = await guard("catalog.questions_preview", async () => {
     preview = await previewTopicQuestions(topicId, text);
@@ -214,13 +222,14 @@ export async function previewTopicQuestionsAction(topicId: string, text: string)
 
 /** Acrescenta questões coladas a uma aula catalogada (publica se ela ficar completa). */
 export async function addTopicQuestionsAction(topicId: string, text: string): Promise<AdminResult> {
-  const user = await requireAdmin();
+  const { user } = await requireTopicEditor(z.uuid().parse(topicId));
   const r = await guard("catalog.questions_add", async () => {
     const x = await addTopicQuestions(user, topicId, text);
     return `${x.added} questão(ões) adicionada(s).${x.published ? " A aula ficou completa e foi publicada." : ""}`;
   });
   if (r.ok) {
     revalidatePath(`/admin/catalogo/${topicId}`);
+  revalidatePath(`/business/catalogo/${topicId}`);
     revalidatePath("/admin/catalogo");
     revalidatePath("/nova-trilha");
   }
@@ -230,7 +239,7 @@ export async function addTopicQuestionsAction(topicId: string, text: string): Pr
 export type EnrichPreviewResult = { ok: true; preview: TopicEnrichPreview } | { ok: false; error: string };
 
 export async function previewTopicEnrichAction(topicId: string, text: string): Promise<EnrichPreviewResult> {
-  await requireAdmin();
+  await requireTopicEditor(z.uuid().parse(topicId));
   let preview = null as TopicEnrichPreview | null;
   const r = await guard("catalog.enrich_preview", async () => {
     preview = await previewTopicEnrichment(topicId, text);
@@ -240,13 +249,14 @@ export async function previewTopicEnrichAction(topicId: string, text: string): P
 
 /** Acrescenta exemplos visuais e flashcards a uma aula catalogada. */
 export async function applyTopicEnrichAction(topicId: string, text: string): Promise<AdminResult> {
-  const user = await requireAdmin();
+  const { user } = await requireTopicEditor(z.uuid().parse(topicId));
   const r = await guard("catalog.enrich_apply", async () => {
     const x = await applyTopicEnrichment(user, topicId, text);
     return `${x.examples} exemplo(s) visual(is)${x.flashcards ? ` e ${x.flashcards} flashcards` : ""} acrescentado(s).${x.version ? ` Aula atualizada no site (versão ${x.version}).` : ""}`;
   });
   if (r.ok) {
     revalidatePath(`/admin/catalogo/${topicId}`);
+  revalidatePath(`/business/catalogo/${topicId}`);
     revalidatePath("/admin/catalogo");
   }
   return r;

@@ -118,6 +118,8 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
                     {s.topicId ? (
                       admin ? (
                         <Link href={`/admin/catalogo/${s.topicId}`} className="t-small font-semibold text-destaque underline underline-offset-2">Abrir aula</Link>
+                      ) : s.status !== "publicado" ? (
+                        <Link href={`${base}/${s.topicId}`} className="rounded-full bg-destaque px-3 py-1 t-small font-bold text-white" data-testid="corrigir-rascunho">Abrir para corrigir</Link>
                       ) : (
                         <span className="t-small font-semibold text-tinta-suave">Já no catálogo</span>
                       )
