@@ -29,7 +29,7 @@ export default async function MeuConcursoPage({ params, searchParams }: { params
       {tab === "raiox" && (
         <>
           <PrioridadesEdital scoring={tree.prep.stats.scoring} disciplines={tree.disciplines} role={tree.prep.roleName} />
-          {rx?.raiox ? <RaioXView data={rx.raiox} /> : (
+          {rx?.raiox ? <RaioXView data={rx.raiox} pdfHref={`/api/raiox/${id}/pdf`} /> : (
             <section className="ai-rx" aria-label="Raio-X">
               <h3>RAIO-X DO EDITAL</h3>
               {rx?.status === "sem_nome" ? (

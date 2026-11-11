@@ -267,3 +267,5 @@
 .pr-bar { height: 8px; border-radius: 99px; background: #2a2c31; overflow: hidden; }
 .pr-bar span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #e50919, #ff6b6b); }
 .pr-list small { font-size: 12.5px; line-height: 1.45; color: #c4c8cf; }
+
+.ai-rx-pdf { text-decoration: none; margin-top: 14px; width: auto; display: inline-flex; padding: 0 22px; }

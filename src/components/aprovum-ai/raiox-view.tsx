@@ -7,7 +7,7 @@ import { titleKey } from "@/domain/edital/text";
 import type { RaioX } from "@/server/services/strategic";
 import { materiaOf, materiaOrder } from "@/domain/strategic/materias";
 import { Moldura, RaioXPainel } from "./raiox-painel";
-import { ChevronDown, Compass, Flame, ShieldCheck } from "lucide-react";
+import { ChevronDown, Compass, FileDown, Flame, ShieldCheck } from "lucide-react";
 import "./aprovum-ai.css";
 
 const KIND: Record<string, string> = { minima_aprovacao: "Nota mínima para aprovação", corte_primeira_fase: "Corte da 1ª fase", ultimo_classificado: "Último classificado", ultimo_convocado: "Último convocado", ultimo_dentro_vagas: "Último dentro das vagas" };
@@ -16,7 +16,7 @@ const PRIO = { maxima: "PRIORIDADE MÁXIMA", alta: "PRIORIDADE ALTA", complement
 const fmt = (n: number) => n.toLocaleString("pt-BR", { maximumFractionDigits: 1 });
 const date = (d: string | null) => (d ? new Date(`${d}T12:00:00`).toLocaleDateString("pt-BR") : "—");
 
-export function RaioXView({ data }: { data: RaioX }) {
+export function RaioXView({ data, pdfHref }: { data: RaioX; pdfHref?: string }) {
   const { exam, incidence, comparison, heat, lessons } = data;
   const [theme, setTheme] = useState<StartTheme | null>(null);
   const [modality, setModality] = useState("todas");
@@ -49,6 +49,7 @@ export function RaioXView({ data }: { data: RaioX }) {
         <p className="ai-kicker"><i />RAIO-X DO EDITAL</p>
         <h2 className="mt-2 font-[Chakra_Petch] text-[20px] font-bold">Diagnóstico estratégico do concurso</h2>
         <p className="ai-sub">{exam.name}. Dados cadastrados e revisados pela equipe APROVUM, com fonte. Histórico não garante o que cairá na próxima prova e nenhum conteúdo do edital deve ser abandonado.</p>
+        {pdfHref && <a href={pdfHref} download className="ai-go ai-rx-pdf" data-testid="raiox-pdf"><FileDown aria-hidden size={18} />GERAR PDF DO RAIO-X</a>}
       </header>
 
       {/* Painel: notas de corte, incidência e comparativo (dados reais do Raio-X) */}
