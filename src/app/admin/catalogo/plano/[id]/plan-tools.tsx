@@ -132,3 +132,32 @@ export function RemoveLessonButton({ id, title, remove }: { id: string; title: s
     </span>
   );
 }
+
+/** Botão "Remover do plano": tira o subtópico repetido (e os itens dele) do sumário. Não apaga aulas. */
+export function RemoveFromPlanButton({ outlineId, refId, title, remove }: { outlineId: string; refId: string; title: string; remove: (id: string, ref: string) => Promise<AdminResult> }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [erro, setErro] = useState("");
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        disabled={pending}
+        data-testid="remover-do-plano"
+        className="rounded-full bg-erro px-3 py-1 t-small font-bold text-white disabled:opacity-60"
+        onClick={() => {
+          if (!window.confirm(`Tirar "${title}" do plano? Os módulos dele também saem do sumário. Nenhuma aula é apagada.`)) return;
+          setErro("");
+          start(async () => {
+            const r = await remove(outlineId, refId);
+            if (r.ok) router.refresh();
+            else setErro(r.error ?? "Não consegui remover.");
+          });
+        }}
+      >
+        {pending ? "Removendo…" : "Remover do plano"}
+      </button>
+      {erro && <span className="t-tiny text-erro">{erro}</span>}
+    </span>
+  );
+}

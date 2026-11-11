@@ -273,3 +273,35 @@ export function slugMatchIsSameLesson(meta: { topicGroup: string | null; subtopi
   if (meta.topicGroup && row.topicGroup && groupKey(meta.topicGroup) !== groupKey(row.topicGroup)) return false;
   return true;
 }
+
+/**
+ * Tira um subtópico (e os itens dele) do texto do sumário. `gi`/`si` são o tópico e o subtópico
+ * na ordem lida por `parseOutline`. Devolve o texto novo, ou null se não achou ou se a conferência falhar.
+ */
+export function removeSubtopicFromOutlineText(text: string, gi: number, si: number): string | null {
+  const lines = text.replace(/\r/g, "").split("\n");
+  const tree = (k: number) => parseOutline(lines.slice(0, k).join("\n"));
+  const has = (t: Outline, a: number, b: number) => t.groups.length > a && (t.groups[a]?.subtopics.length ?? 0) > b;
+  let start = -1;
+  for (let k = 1; k <= lines.length; k++) {
+    if (has(tree(k), gi, si)) {
+      start = k - 1;
+      break;
+    }
+  }
+  if (start < 0) return null;
+  let end = lines.length;
+  for (let k = start + 2; k <= lines.length; k++) {
+    const t = tree(k);
+    if (t.groups.length > gi + 1 || (t.groups[gi]?.subtopics.length ?? 0) > si + 1) {
+      end = k - 1;
+      break;
+    }
+  }
+  const out = [...lines.slice(0, start), ...lines.slice(end)].join("\n");
+  const before = parseOutline(text);
+  const after = parseOutline(out);
+  const count = (o: Outline) => o.groups.reduce((n, x) => n + x.subtopics.length, 0);
+  if (count(after) !== count(before) - 1) return null;
+  return out;
+}

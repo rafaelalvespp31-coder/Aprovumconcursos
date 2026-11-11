@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { Tag } from "@/components/ui";
 import { disciplineLabel } from "@/ai/pedagogy";
 import { getOutline, planView } from "@/server/services/outlines";
-import { deleteOutlineAction, removeDuplicateLessonAction, updateOutlineAction } from "../../actions";
-import { EditPlan, RemoveLessonButton, SubtopicCommands } from "./plan-tools";
+import { deleteOutlineAction, removeDuplicateLessonAction, removeOutlineSubtopicAction, updateOutlineAction } from "../../actions";
+import { EditPlan, RemoveFromPlanButton, RemoveLessonButton, SubtopicCommands } from "./plan-tools";
 import { DuplicatesCenter } from "./duplicates-center";
 
 const STATUS = {
@@ -110,6 +110,12 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
                       </li>
                     ))}
                   </ul>
+                )}
+                {v.dupes.flagged.includes(s.ref) && v.dupes.outline.some((o) => o.kind === "subtopico" && o.refs.includes(s.ref)) && (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-md border border-erro/40 bg-erro/5 p-2 t-small" data-testid="repetido-no-plano">
+                    <span><b>Repetido no sumário do plano.</b> Deixe só uma vez.</span>
+                    <RemoveFromPlanButton outlineId={outline.id} refId={s.ref} title={`${s.code ? `${s.code} ` : ""}${s.title}`} remove={removeOutlineSubtopicAction} />
+                  </div>
                 )}
                 {s.items.length > 0 && (
                   <details className="t-small">

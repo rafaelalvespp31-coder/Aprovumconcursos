@@ -23,7 +23,8 @@ import {
   updateTopicSection,
 } from "@/server/services/catalog";
 import { addTopicQuestions, applyTopicEnrichment, importLessonUpload, previewLessonUpload, previewTopicEnrichment, previewTopicQuestions, type LessonUploadPreview, type TopicEnrichPreview, type TopicQuestionsPreview } from "@/server/services/catalog-upload";
-import { createOutline, deleteOutline, updateOutline } from "@/server/services/outlines";
+import { createOutline, deleteOutline, getOutline, updateOutline } from "@/server/services/outlines";
+import { removeSubtopicFromOutlineText } from "@/domain/catalog/topic-group";
 import { createDiscipline, deleteDiscipline, updateDiscipline } from "@/server/services/disciplines";
 import { bannerUrlFor, removeBanner, removeTopicBanner, saveBanner, saveTopicBanner, topicBannerUrl } from "@/server/services/banners";
 
@@ -299,6 +300,24 @@ export async function updateOutlineAction(id: string, data: OutlineInput): Promi
   revalidatePath(`/admin/catalogo/plano/${id}`);
   revalidatePath("/admin/catalogo/plano");
   revalidatePath(`/business/catalogo/plano/${id}`);
+  revalidatePath("/business/catalogo/plano");
+  return r;
+}
+
+/** Tira um subtópico repetido do sumário do plano (e os itens dele). Não mexe em aulas. */
+export async function removeOutlineSubtopicAction(id: string, ref: string): Promise<AdminResult> {
+  const { user } = await requireCatalogEditor();
+  const outlineId = z.uuid().parse(id);
+  const m = /^(\d+)-(\d+)$/.exec(ref);
+  if (!m) return { ok: false, error: "Subtópico inválido." };
+  const outline = await getOutline(outlineId);
+  if (!outline) return { ok: false, error: "Plano não encontrado." };
+  const text = removeSubtopicFromOutlineText(outline.sourceText, Number(m[1]), Number(m[2]));
+  if (text === null) return { ok: false, error: "Não consegui localizar esse subtópico no texto do plano. Edite o plano no fim da página." };
+  const r = await guard("catalog.outline_update", async () => updateOutline(user, outlineId, { disciplineMode: outline.disciplineMode, title: outline.title, text }));
+  revalidatePath(`/admin/catalogo/plano/${outlineId}`);
+  revalidatePath("/admin/catalogo/plano");
+  revalidatePath(`/business/catalogo/plano/${outlineId}`);
   revalidatePath("/business/catalogo/plano");
   return r;
 }
