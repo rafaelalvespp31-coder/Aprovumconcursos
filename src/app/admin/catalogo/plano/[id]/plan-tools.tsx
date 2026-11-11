@@ -1,8 +1,10 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
-import { Button } from "@/components/ui";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { Button, Notice, Tag } from "@/components/ui";
+import { importBulkUploadAction, previewBulkUploadAction, topicMasterPromptAction } from "../../actions";
+import type { BulkPreview, BulkResult } from "@/server/services/catalog-bulk";
 import type { AdminResult } from "../../actions";
 import { OutlineForm } from "../outline-form";
 import { buildSubtopicPrompt } from "@/domain/catalog/subtopic-prompt";
@@ -196,5 +198,104 @@ export function HidePublished({ publicados, children }: { publicados: number; ch
         {children}
       </div>
     </>
+  );
+}
+
+
+/**
+ * Dentro do card do tópico: copiar o comando-mestre (todos os subtópicos) e, logo abaixo, enviar o .txt com as aulas.
+ * O envio confere cada aula e só cataloga quando se clica em Publicar.
+ */
+export function TopicBulk({ outlineId, gi, label }: { outlineId: string; gi: number; label: string }) {
+  const router = useRouter();
+  const [copied, setCopied] = useState<"" | "ok" | "erro">("");
+  const [fileName, setFileName] = useState("");
+  const [text, setText] = useState("");
+  const [preview, setPreview] = useState<BulkPreview | null>(null);
+  const [result, setResult] = useState<BulkResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, start] = useTransition();
+  const [publishing, setPublishing] = useState(false);
+  const input = useRef<HTMLInputElement>(null);
+
+  const copy = () => {
+    setError(null);
+    start(async () => {
+      const r = await topicMasterPromptAction(outlineId, gi);
+      if (!r.ok) { setError(r.error); return; }
+      try { await navigator.clipboard.writeText(r.prompt); setCopied("ok"); setTimeout(() => setCopied(""), 2500); }
+      catch {
+        const url = URL.createObjectURL(new Blob([r.prompt], { type: "text/plain;charset=utf-8" }));
+        const a = document.createElement("a");
+        a.href = url; a.download = `comando-mestre-topico-${gi + 1}.txt`; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+        setCopied("erro");
+      }
+    });
+  };
+  const onFile = async (f: File | undefined) => {
+    if (!f) return;
+    setError(null); setPreview(null); setResult(null);
+    if (f.size > 3_000_000) { setError("Arquivo grande demais (máximo de 3 MB)."); return; }
+    const t = await f.text();
+    setFileName(f.name); setText(t);
+    start(async () => {
+      const r = await previewBulkUploadAction(t);
+      if (r.ok) setPreview(r.preview); else setError(r.error);
+    });
+    if (input.current) input.current.value = "";
+  };
+  const publish = () => {
+    setError(null); setPublishing(true);
+    start(async () => {
+      const r = await importBulkUploadAction(text, fileName);
+      if (r.ok) { setResult(r.result); setPreview(null); router.refresh(); } else setError(r.error);
+      setPublishing(false);
+    });
+  };
+  const clear = () => { setPreview(null); setResult(null); setError(null); setText(""); setFileName(""); };
+
+  return (
+    <div className="mt-3 flex flex-col items-start gap-2" data-testid="topico-massa" aria-label={`Catalogar o tópico ${label} em massa`}>
+      <Button type="button" variant="primario" onClick={copy} disabled={pending && !preview} data-testid="copiar-comando-mestre">
+        {copied === "ok" ? "Comando-mestre copiado ✓" : copied === "erro" ? "Baixei o comando-mestre (.txt)" : "Copiar comando-mestre do tópico"}
+      </Button>
+      <input ref={input} type="file" accept=".txt,text/plain" hidden onChange={(e) => onFile(e.target.files?.[0])} data-testid="topico-arquivo" />
+      <Button type="button" variant="secundario" onClick={() => input.current?.click()} disabled={pending} data-testid="enviar-aulas-txt">
+        {pending && !publishing && fileName ? "Conferindo…" : "Enviar .txt com as aulas do tópico"}
+      </Button>
+      {error && <Notice tone="erro" title="Não deu para usar este arquivo">{error}</Notice>}
+      {preview && (
+        <div className="w-full rounded-md border border-linha bg-papel p-3" data-testid="topico-previa">
+          <div className="flex flex-wrap items-center gap-2">
+            <strong className="t-small">{fileName}: {preview.total} {preview.total === 1 ? "aula" : "aulas"}</strong>
+            <Tag tone="verde">{preview.ready} prontas</Tag>
+            {preview.blocked > 0 && <Tag tone="vermelho">{preview.blocked} com erro</Tag>}
+            <Tag tone="azul">{preview.willPublish} vão ao ar na hora</Tag>
+          </div>
+          <ul className="mt-2 divide-y divide-linha">
+            {preview.items.map((it) => (
+              <li key={it.index} className="py-2 t-small">
+                <span className="tabular-nums text-tinta-fraca">{String(it.index).padStart(2, "0")}</span> <strong>{it.title}</strong>{" "}
+                <Tag tone={!it.ok ? "vermelho" : it.willPublish ? "verde" : "ambar"}>{!it.ok ? "Com erro" : it.willPublish ? "Publica" : "Rascunho"}</Tag>
+                {it.errors.slice(0, 2).map((e, i) => <p key={i} className="t-tiny text-erro">• {e}</p>)}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <Button type="button" onClick={publish} disabled={pending || preview.ready === 0} data-testid="topico-publicar">{publishing ? "Publicando…" : `Publicar ${preview.ready} ${preview.ready === 1 ? "aula" : "aulas"}`}</Button>
+            <Button type="button" variant="discreto" onClick={clear} disabled={pending}>Cancelar</Button>
+          </div>
+        </div>
+      )}
+      {result && (
+        <div className="w-full" data-testid="topico-resultado">
+          <Notice tone={result.failed ? "alerta" : "sucesso"} title={`${result.published} publicada(s), ${result.drafts} em rascunho${result.failed ? `, ${result.failed} não entrou(entraram)` : ""}`}>
+            {result.items.filter((i) => i.status === "falhou" || i.status === "ignorada").map((i) => `${i.title}: ${i.message}`).join(" · ") || "Tudo catalogado neste tópico."}
+          </Notice>
+          <Button type="button" variant="discreto" className="mt-2" onClick={clear}>Fechar</Button>
+        </div>
+      )}
+    </div>
   );
 }

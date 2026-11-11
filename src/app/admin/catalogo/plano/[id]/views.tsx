@@ -4,7 +4,7 @@ import { Tag } from "@/components/ui";
 import { disciplineLabel } from "@/ai/pedagogy";
 import { getOutline, planView } from "@/server/services/outlines";
 import { deleteOutlineAction, removeDuplicateLessonAction, removeOutlineSubtopicAction, updateOutlineAction } from "../../actions";
-import { EditPlan, HidePublished, RemoveFromPlanButton, RemoveLessonButton, SubtopicCommands } from "./plan-tools";
+import { EditPlan, HidePublished, RemoveFromPlanButton, RemoveLessonButton, SubtopicCommands, TopicBulk } from "./plan-tools";
 import { DuplicatesCenter } from "./duplicates-center";
 
 const STATUS = {
@@ -53,11 +53,11 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
       <HidePublished publicados={v.totals.publicado}>
       {v.groups.map((g, gi) => (
         <section key={gi} data-completo={g.subtopics.length > 0 && g.subtopics.every((x) => x.status === "publicado") ? 1 : undefined} aria-labelledby={`g-${gi}`} className={`rounded-lg border ${v.dupes.flagged.includes(`g:${gi}`) ? "dup-flag-box" : "border-linha"}`} data-testid="plano-topico">
-          <h2 id={`g-${gi}`} className="border-b border-linha bg-nevoa px-4 py-3 t-h2">
+          <h2 id={`g-${gi}`} className="bg-nevoa px-4 pt-3 pb-1 t-h2">
             <span className="t-tiny font-bold uppercase tracking-wide text-destaque">Tópico</span> {g.code ? `${g.code}. ` : ""}{g.title}
             {v.dupes.flagged.includes(`g:${gi}`) && <span className="dup-ribbon" data-testid="topico-duplicado">DUPLICADO</span>}
-            {g.subtopics.length > 0 && <Link href={`${base}/enviar/massa?plano=${outline.id}&topico=${gi}`} className="ml-3 align-middle t-small font-semibold text-destaque underline underline-offset-2" data-testid="catalogar-topico-massa">Catalogar o tópico inteiro</Link>}
           </h2>
+          {g.subtopics.length > 0 && <div className="border-b border-linha bg-nevoa px-4 pb-3"><TopicBulk outlineId={outline.id} gi={gi} label={`${g.code ? `${g.code}. ` : ""}${g.title}`} /></div>}
           <ul className="divide-y divide-linha">
             {g.subtopics.map((s) => (
               <li key={s.ref} id={`sub-${s.ref}`} className={`flex flex-col gap-2 px-4 py-3 ${v.dupes.flagged.includes(s.ref) ? "dup-flag-row" : ""}`} data-testid="plano-subtopico" data-status={s.status}>

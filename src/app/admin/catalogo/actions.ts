@@ -24,6 +24,7 @@ import {
 } from "@/server/services/catalog";
 import { addTopicQuestions, applyTopicEnrichment, importLessonUpload, previewLessonUpload, previewTopicEnrichment, previewTopicQuestions, type LessonUploadPreview, type TopicEnrichPreview, type TopicQuestionsPreview } from "@/server/services/catalog-upload";
 import { createOutline, deleteOutline, getOutline, updateOutline } from "@/server/services/outlines";
+import { topicMasterPromptFor } from "@/server/services/outlines";
 import { importBulkUpload, previewBulkUpload, type BulkPreview, type BulkResult } from "@/server/services/catalog-bulk";
 import { removeSubtopicFromOutlineText } from "@/domain/catalog/topic-group";
 import { createDiscipline, deleteDiscipline, updateDiscipline } from "@/server/services/disciplines";
@@ -104,6 +105,13 @@ export async function importBulkUploadAction(text: string, fileName: string): Pr
   revalidatePath("/business/catalogo/plano");
   revalidatePath("/nova-trilha");
   return { ok: true, result };
+}
+
+/** Comando-mestre de um tópico do plano (carregado só quando o botão é clicado, para a página não ficar pesada). */
+export async function topicMasterPromptAction(outlineId: string, gi: number): Promise<{ ok: true; prompt: string } | { ok: false; error: string }> {
+  await requireCatalogEditor();
+  const r = await topicMasterPromptFor(z.string().uuid().parse(outlineId), z.number().int().min(0).max(999).parse(gi));
+  return r ? { ok: true, prompt: r.prompt } : { ok: false, error: "Tópico sem subtópicos ou não encontrado." };
 }
 
 export async function saveSectionAction(id: string, index: number, data: { title: string; bodyMarkdown: string }): Promise<AdminResult> {
