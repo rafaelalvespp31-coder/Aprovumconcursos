@@ -253,3 +253,17 @@
 .ai-item .ai-role[data-missing="1"] { color: #f5c26b; font-weight: 600; }
 .ai-head-top { display: flex; align-items: center; gap: 14px; }
 .ai-head-top h1 { min-width: 0; }
+
+/* Prioridades de estudo do edital (questões × peso) */
+.pr-box { display: grid; gap: 10px; }
+.pr-list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.pr-list li { display: grid; gap: 6px; padding: 12px 14px; border: 1px solid #3a3d44; border-radius: 12px; background: rgba(255,255,255,.03); }
+.pr-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; }
+.pr-tag { padding: 3px 10px; border-radius: 999px; font-size: 11.5px; font-weight: 800; letter-spacing: .02em; background: #3a3d44; color: #fff; }
+.pr-tag[data-p="maxima"] { background: #e50919; }
+.pr-tag[data-p="alta"] { background: #f08a00; }
+.pr-tag[data-p="moderada"] { background: #2f7de1; }
+.pr-tag[data-p="complementar"] { background: #4b5563; }
+.pr-bar { height: 8px; border-radius: 99px; background: #2a2c31; overflow: hidden; }
+.pr-bar span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, #e50919, #ff6b6b); }
+.pr-list small { font-size: 12.5px; line-height: 1.45; color: #c4c8cf; }

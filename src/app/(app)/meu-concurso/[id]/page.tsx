@@ -6,6 +6,7 @@ import { markRaioXSeen } from "@/server/services/raiox-notice";
 import { getRaioX } from "@/server/services/strategic";
 import { MeuConcurso, type PrepTab } from "@/components/aprovum-ai/meu-concurso";
 import { RaioXView } from "@/components/aprovum-ai/raiox-view";
+import { PrioridadesEdital } from "@/components/aprovum-ai/prioridades-edital";
 import { startStudyAction, updateInfoAction } from "./actions";
 
 export const metadata = { title: "Meu Concurso" };
@@ -27,6 +28,7 @@ export default async function MeuConcursoPage({ params, searchParams }: { params
     <MeuConcurso tree={tree} save={updateInfoAction.bind(null, id)} start={startStudyAction.bind(null, id)} tab={tab} editing={editar === "1"}>
       {tab === "raiox" && (
         <>
+          <PrioridadesEdital scoring={tree.prep.stats.scoring} disciplines={tree.disciplines} role={tree.prep.roleName} />
           {rx?.raiox ? <RaioXView data={rx.raiox} /> : (
             <section className="ai-rx" aria-label="Raio-X">
               <h3>RAIO-X DO EDITAL</h3>

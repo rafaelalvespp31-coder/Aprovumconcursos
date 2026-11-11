@@ -10,6 +10,7 @@ import { extractOrgLogo } from "./edital-logo";
 import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match";
 import { crossSources } from "@/domain/edital/cross";
 import { filterPagesByRole } from "@/domain/edital/role-filter";
+import { computePriorities, extractScoring, type Priorities } from "@/domain/edital/scoring";
 
 /**
  * APROVUM AI — preparação por edital. Tudo roda aqui, sem IA externa: leitura do PDF, localização do
@@ -74,6 +75,8 @@ export interface PrepStats {
   /** Fontes usadas na análise (rastreabilidade) e divergências entre PDF e texto colado. */
   sources?: { pdf: boolean; text: boolean; role: string | null; roleSource: "aluno" | "edital" | null };
   divergences?: string[];
+  /** Questões, pesos e prioridades de estudo lidos do PDF (só o que o edital informa). */
+  scoring?: Priorities;
   /** Como o conteúdo foi separado por cargo (PDF e texto colado). */
   roleFilter?: { role: string | null; pdf?: { applied: boolean; removed: number }; text?: { applied: boolean; removed: number } };
 }
@@ -404,9 +407,12 @@ async function stageIdentify(p: Row) {
   if (cross.used.text) await event(id, userId, 3, cross.used.pdf ? "Conteúdo programático do PDF cruzado com o texto informado." : "Conteúdo programático lido do texto informado.", "ok");
   for (const d of cross.divergences.slice(0, 8)) await event(id, userId, 3, `Divergência: ${d}`, "warn");
   await persistParsed(p, parsed, cross.used.text);
+  const discNames = parsed.disciplines.map((d) => d.name);
+  const scoring = computePriorities(discNames, extractScoring(pdfPages, discNames));
+  await event(id, userId, 3, scoring.basis === "nao_disponivel" ? "O edital não informa questões por disciplina: prioridade quantitativa indisponível." : `Questões e pesos lidos do edital (${scoring.rows.filter((r) => r.priority).length} disciplinas classificadas).`, scoring.basis === "nao_disponivel" ? "warn" : "ok");
   const fresh = await own(userId, id);
   const sources = { pdf: cross.used.pdf, text: cross.used.text, role: (fresh.role_name as string | null) ?? null, roleSource: fresh.role_name ? (p.role_name ? "aluno" : "aluno") : null };
-  await db.from("edital_preparations").update({ sources, stats: { ...((fresh.stats as PrepStats) ?? {}), needRole: false, sources, roleFilter, divergences: cross.divergences.slice(0, 12) } }).eq("id", id);
+  await db.from("edital_preparations").update({ sources, stats: { ...((fresh.stats as PrepStats) ?? {}), needRole: false, sources, roleFilter, scoring, divergences: cross.divergences.slice(0, 12) } }).eq("id", id);
 }
 
 /**

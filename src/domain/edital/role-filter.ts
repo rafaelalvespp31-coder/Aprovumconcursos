@@ -15,6 +15,9 @@ const ITEM_LINE = /^\s*\d{1,2}(?:\.\d{1,2}){0,3}[.)]?\s+\S/;
 const ALL_ROLES = /\b(?:todos os cargos|todos os candidatos|comum a todos|para todos os cargos|conhecimentos? comuns?|cargos? de n[ií]vel (?:superior|m[eé]dio|fundamental|t[eé]cnico) \(?todos)/;
 const HEAD_WORD = /^(?:anexo\b|cargos?\b|para o cargo|para os cargos|provas? (?:objetiva )?(?:para|do|dos)|conte[uú]do program[aá]tico (?:para|do|dos)|n[ií]vel\b|[ivx]+\s*[-–.)]\s)/;
 
+/** Título de seção do edital (sem cargo): volta ao conteúdo comum, para não herdar o cargo do bloco anterior. */
+const SECTION = /^(?:anexo\b|conte[uú]do program[aá]tico\b|quadro\b|cap[ií]tulo\b|disposi[cç][oõ]es\b|das? provas?\b|da prova\b|dos conte[uú]dos\b|programa\b)/;
+
 function isUpper(line: string): boolean {
   const letters = line.replace(/[^A-Za-zÀ-ÿ]/g, "");
   if (letters.length < 4) return false;
@@ -65,6 +68,8 @@ export function filterPagesByRole(pages: readonly string[], role: string, option
           if (mentioned.size) {
             current = mentioned;
             sawHeading = true;
+          } else if (SECTION.test(f)) {
+            current = null;
           }
         }
       }
