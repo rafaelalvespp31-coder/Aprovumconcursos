@@ -172,7 +172,10 @@ FOCO: MAXIMA | Direito Penal | Crimes contra a Administração Pública | Cobrad
 
 export interface PromptInfo { name?: string | null; organ?: string | null; role?: string | null; board?: string | null; year?: number | null; program?: string | null }
 
-/** Comando para colar no ChatGPT: gera a análise exatamente no formato que parseStrategicText entende. Com info, já vem preenchido com o concurso do edital do aluno. */
+/**
+ * Comando para colar no chat (ChatGPT, Claude…): a IA analisa as provas e devolve SÓ as linhas que parseStrategicText entende.
+ * Com info, já vem preenchido com o concurso do edital do aluno.
+ */
 export function buildStrategicPrompt(info: PromptInfo = {}): string {
   const v = (x: string | number | null | undefined, ph: string) => (x === null || x === undefined || x === "" ? ph : String(x));
   const head = `CONCURSO: ${v(info.name, "[nome do concurso]")}${info.name ? " (use exatamente este nome na linha CONCURSO)" : ""}
@@ -180,42 +183,62 @@ export function buildStrategicPrompt(info: PromptInfo = {}): string {
 CARGO(S): ${v(info.role, "[cargo]")}
 BANCA DO EDITAL ATUAL: ${v(info.board, "[banca, se souber]")}
 ANO DO EDITAL ATUAL: ${v(info.year, "[ano]")}
-PROVAS A ANALISAR: [ex.: as 2 ou 3 últimas provas objetivas]${info.program ? `
+PROVAS A ANALISAR: [ex.: as 2 ou 3 últimas provas objetivas do mesmo cargo]${info.program ? `
 
 CONTEÚDO PROGRAMÁTICO EXTRAÍDO DO EDITAL ATUAL (use estes nomes de disciplinas e assuntos sempre que corresponderem):
 ${info.program}` : ""}`;
-  return `Você é um analista de concursos públicos. Faça a ANÁLISE ESTRATÉGICA do concurso abaixo para eu importar no meu sistema.
+  return `# PAPEL
+Você é um analista de provas de concursos públicos. Sua tarefa é catalogar o RAIO-X do concurso abaixo, no formato exato que o sistema APROVUM importa. Não é para explicar nem resumir: é para devolver dados.
 
+# CONCURSO
 ${head}
 
-REGRAS OBRIGATÓRIAS
-1. NUNCA invente números. Questões por disciplina/assunto e notas de corte só com base em fonte que você consiga indicar (edital, resultado, prova, gabarito).
-   - Nas linhas DISCIPLINA e ASSUNTO o número de questões é OBRIGATÓRIO e deve ser um número inteiro (nunca "-", "?" ou texto). Se não conseguir contar as questões de um assunto, NÃO crie a linha ASSUNTO e cite isso em LIMITAÇÕES.
-   - Se não localizar uma nota de corte, NÃO crie a linha NOTA.
-   - Nos demais campos opcionais (url, página, datas, candidatos), use "-" quando não souber.
-2. A classificação das questões por assunto é análise própria: registre como FONTE do tipo PROPRIA.
-3. Toda linha NOTA precisa apontar a chave de uma FONTE que exista.
-4. A soma das DISCIPLINAS não pode passar do total de questões da PROVA, e a soma dos ASSUNTOS não pode passar das questões da DISCIPLINA.
-5. Datas em DD/MM/AAAA. Separe campos com " | " (barra vertical).
-6. Responda SOMENTE com as linhas no formato abaixo, em texto puro: sem markdown, sem tabelas, sem comentários antes ou depois.
+# O QUE FAZER (siga nesta ordem)
+1. Localize as provas e os resultados do concurso (use os arquivos que eu anexei; se não houver anexo, pesquise nas fontes oficiais da banca e do órgão).
+2. Para cada prova, conte quantas questões cada DISCIPLINA tem.
+3. Dentro de cada disciplina, classifique cada questão em um ASSUNTO e conte quantas questões cada assunto teve.
+4. Localize as notas de corte (mínima de aprovação, corte da 1ª fase, último classificado etc.) com a fonte de cada uma.
+5. Monte as recomendações de estudo (FOCO) a partir da incidência real dos assuntos.
+6. Confira as regras de validação abaixo e só então responda.
 
-FORMATO (uma linha por registro, nesta ordem)
+# REGRAS OBRIGATÓRIAS
+- NUNCA invente números. Questões e notas só com base em fonte que você consiga indicar (edital, resultado, prova, gabarito).
+- Em DISCIPLINA e ASSUNTO, o número de questões é OBRIGATÓRIO e deve ser inteiro (nunca "-", "?" ou texto). Se não conseguir contar as questões de um assunto, NÃO crie a linha ASSUNTO e explique em LIMITAÇÕES.
+- Se não localizar uma nota de corte, NÃO crie a linha NOTA.
+- Campos opcionais (url, página, datas, candidatos, critério): use "-" quando não souber.
+- A classificação das questões por assunto é análise própria: registre como FONTE do tipo PROPRIA.
+- Toda linha NOTA aponta para a chave de uma FONTE que exista.
+- A soma das DISCIPLINAS não passa do total de questões da PROVA; a soma dos ASSUNTOS não passa das questões da DISCIPLINA.
+- Use os nomes de disciplina e de assunto do edital atual sempre que corresponderem, para o sistema ligar com as aulas.
+- Datas em DD/MM/AAAA. Separe os campos com " | " (barra vertical). Não use " | " dentro de um campo.
+
+# FORMATO DA RESPOSTA
+Responda SOMENTE com as linhas abaixo, dentro de UM único bloco de código de texto puro (para eu copiar com um toque). Sem tabelas, sem markdown, sem títulos e sem nenhum comentário antes ou depois do bloco.
+
+Cabeçalho (uma vez):
 CONCURSO: nome | órgão
 CARGOS: cargo 1; cargo 2
 LIMITAÇÕES: o que a análise não cobre ou não conseguiu confirmar
 FONTE: chave | OFICIAL, EXTRAIDO ou PROPRIA | nome do documento | url | página | órgão/banca | data de publicação | data de consulta | conferido por
 
-Para CADA prova, repita o bloco:
+Depois, para CADA prova, repita este bloco (da mais recente para a mais antiga):
 PROVA: ano | banca | total de questões | regra de contagem (ex.: anuladas pontuam para todos)
 NOTA: cargo | AMPLA, PCD ou NEGROS | etapa | MINIMA_APROVACAO, CORTE_1FASE, ULTIMO_CLASSIFICADO, ULTIMO_CONVOCADO ou ULTIMO_DENTRO_VAGAS | nota | nota máxima | nº de candidatos | critério | chave da fonte | página | data da verificação
 DISCIPLINA: nome | nº de questões | nº de anuladas
 ASSUNTO: título do assunto | nº de questões | nº de anuladas
-(cada DISCIPLINA seguida dos seus ASSUNTOS)
+(cada DISCIPLINA vem seguida dos seus ASSUNTOS)
 
-No final, as recomendações de estudo:
+No final (uma vez):
 FOCO: MAXIMA, ALTA ou COMPLEMENTAR | disciplina | assunto | justificativa curta baseada na incidência
 
-EXEMPLO DE SAÍDA
+# CONFIRA ANTES DE RESPONDER
+- Existe ao menos uma linha CONCURSO e uma linha PROVA?
+- Cada NOTA cita uma chave de FONTE que está na lista?
+- Nenhuma soma passa do total (assuntos <= disciplina <= prova)?
+- Todo número de questões é inteiro?
+- A resposta contém apenas linhas no formato, dentro de um único bloco de código?
+
+# EXEMPLO DE SAÍDA
 ${IMPORT_EXAMPLE_TEXT}`;
 }
 

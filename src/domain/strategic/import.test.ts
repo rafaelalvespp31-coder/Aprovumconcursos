@@ -76,3 +76,17 @@ describe("comando do ChatGPT preenchido pelo edital do aluno", () => {
     expect(buildStrategicPrompt()).toContain("[nome do concurso]");
   });
 });
+
+import { IMPORT_EXAMPLE_TEXT, parseStrategicText } from "./text";
+describe("resposta do chat no formato do comando", () => {
+  it("o exemplo do comando é aceito, mesmo dentro de bloco de código", () => {
+    const r = parseStrategicText("```text\n" + IMPORT_EXAMPLE_TEXT + "\n```");
+    expect(r.data).not.toBeNull();
+    expect(r.issues.filter((i) => i.level === "erro")).toEqual([]);
+  });
+  it("o comando traz as seções e pede um único bloco", () => {
+    const p = buildStrategicPrompt();
+    for (const h of ["# PAPEL", "# CONCURSO", "# O QUE FAZER", "# REGRAS OBRIGATÓRIAS", "# FORMATO DA RESPOSTA", "# CONFIRA ANTES DE RESPONDER", "# EXEMPLO DE SAÍDA"]) expect(p).toContain(h);
+    expect(p).toContain("UM único bloco de código");
+  });
+});
