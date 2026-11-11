@@ -20,3 +20,13 @@ describe("conteúdo programático em texto corrido (PMERJ)", () => {
     expect(titles).toContain("Improbidade Administrativa");
   });
 });
+
+describe("itens numerados colados em texto corrido", () => {
+  const r = parseProgrammaticText(readFileSync(join(__dirname, "fixtures/lingua-portuguesa.txt"), "utf8"));
+  const t = r.disciplines[0]!.topics;
+  it("separa tópicos e subtópicos, mesmo com número no fim da linha", () => {
+    expect(t.map((x) => x.code)).toEqual(["1","2","3","4","4.1","4.2","5","5.1","5.2","5.3","5.4","5.5","5.6","5.7","5.8","6","6.1","6.2","6.3","6.4","7","7.1","7.2","7.3","7.4"]);
+    expect(t.find((x) => x.code === "7")!.title).toMatch(/^Correspondência oficial/);
+    expect(t.find((x) => x.code === "4.1")!.title).toMatch(/^Emprego de elementos de referenciação/);
+  });
+});

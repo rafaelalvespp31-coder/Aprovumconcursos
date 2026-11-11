@@ -142,7 +142,21 @@ function itemsOf(lines: Line[]): ParsedTopic[] {
     last = it;
     if (code) lastNumbered = it;
   };
+  // Número do item que ficou no fim da linha ("... textual. 4.1⏎Emprego de ..."): passa para o começo da próxima.
+  const joined: Line[] = [];
+  let carry = "";
   for (const l of lines) {
+    let text = carry ? `${carry} ${l.text}` : l.text;
+    carry = "";
+    const m = text.match(/^(.*[.!?:;])\s+(\d{1,2}(?:\.\d{1,2}){0,3})$/);
+    if (m) {
+      text = m[1]!;
+      carry = m[2]!;
+    }
+    joined.push({ ...l, text });
+  }
+  if (carry && joined.length) joined[joined.length - 1]!.text += ` ${carry}`;
+  for (const l of joined) {
     // Vários itens colados na mesma linha: "1 Compreensão. 2 Tipologia. 3 …"
     const parts = ITEM_START.test(l.text) || INLINE_SPLIT.test(l.text) ? l.text.split(INLINE_SPLIT) : [l.text];
     for (const part of parts) {
