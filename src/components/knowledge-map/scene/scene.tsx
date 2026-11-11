@@ -113,8 +113,9 @@ export default function KnowledgeScene(p: SceneProps) {
   const sel = useMemo(() => p.map.territories.find((t) => t.id === p.selectedTerritory) ?? null, [p.map, p.selectedTerritory]);
   return (
     <Canvas
-      dpr={p.quality === "alta" ? [1, 1.75] : [1, 1.25]}
-      gl={{ antialias: p.quality === "alta", powerPreference: "high-performance", alpha: false }}
+      // Celular (qualidade "baixa"): resolução 1x e GPU econômica, para o iOS não derrubar a aba por falta de memória.
+      dpr={p.quality === "alta" ? [1, 1.75] : [1, 1]}
+      gl={{ antialias: p.quality === "alta", powerPreference: p.quality === "alta" ? "high-performance" : "low-power", alpha: false }}
       camera={{ position: [0, 30, 70], fov: 50, near: 0.03, far: 900 }}
       onCreated={({ gl }) => {
         gl.toneMapping = THREE.ACESFilmicToneMapping;
