@@ -77,7 +77,6 @@ describe("comando do ChatGPT preenchido pelo edital do aluno", () => {
   });
 });
 
-import { IMPORT_EXAMPLE_TEXT, parseStrategicText } from "./text";
 describe("resposta do chat no formato do comando", () => {
   it("o exemplo do comando é aceito, mesmo dentro de bloco de código", () => {
     const r = parseStrategicText("```text\n" + IMPORT_EXAMPLE_TEXT + "\n```");
