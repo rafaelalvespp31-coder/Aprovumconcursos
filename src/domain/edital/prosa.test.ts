@@ -30,3 +30,13 @@ describe("itens numerados colados em texto corrido", () => {
     expect(t.find((x) => x.code === "4.1")!.title).toMatch(/^Emprego de elementos de referenciação/);
   });
 });
+
+describe("várias matérias na mesma linha (PRF)", () => {
+  const r = parseProgrammaticText(readFileSync(join(__dirname, "fixtures/prf.txt"), "utf8"));
+  it("lê todas as matérias, não só a primeira", () => {
+    const names = r.disciplines.map((d) => d.name);
+    expect(names).toEqual(["LÍNGUA PORTUGUESA", "RACIOCÍNIO LÓGICO", "INFORMÁTICA", "DIREITO CONSTITUCIONAL", "DIREITO PENAL"]);
+    expect(r.disciplines[1]!.topics.map((t) => t.code)).toEqual(["1", "2", "2.1", "3"]);
+    expect(r.disciplines[3]!.topics.length).toBe(3);
+  });
+});

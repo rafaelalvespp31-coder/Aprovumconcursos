@@ -50,6 +50,8 @@ const ITEM_START = /^(\d{1,2}(?:\.\d{1,2}){0,3})[.)]?\s+(?=\S)/;
 const LETTER_START = /^([a-z])[).]\s+(?=\S)/;
 const INLINE_SPLIT = /(?<=[.;:])\s+(?=\d{1,2}(?:\.\d{1,2}){0,3}[.)]?\s+[A-ZÀ-Ú])/;
 
+const INLINE_HEADING = /(?<=[.!?;])\s+(?=[A-ZÀ-ÝÇ][A-ZÀ-ÝÇ0-9 ,/\-–()ºª]{5,85}:\s+\S)/;
+
 const upperRatio = (s: string) => {
   const letters = s.replace(/[^A-Za-zÀ-ÿ]/g, "");
   if (!letters.length) return 0;
@@ -61,7 +63,9 @@ function toLines(pages: readonly string[]): Line[] {
   pages.forEach((p, i) => {
     for (const raw of p.replace(/\r/g, "").split("\n")) {
       const text = raw.replace(/\s+/g, " ").trim();
-      if (text) out.push({ text, page: i + 1 });
+      if (!text) continue;
+      // Matéria que começa no meio da linha, logo depois do fim do assunto anterior: "... ao gênero. RACIOCÍNIO LÓGICO: 1 Estruturas ..."
+      for (const part of text.split(INLINE_HEADING)) if (part.trim()) out.push({ text: part.trim(), page: i + 1 });
     }
   });
   // Cabeçalhos/rodapés repetidos em várias páginas não são conteúdo.
