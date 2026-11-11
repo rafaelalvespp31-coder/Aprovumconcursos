@@ -3,7 +3,7 @@ import { createAdminClient } from "../supabase";
 import { disciplineLabel } from "@/ai/pedagogy";
 import { UserFacingError } from "./trails";
 import { displayTitle } from "@/domain/edital/info";
-import { backfillInfo } from "./edital";
+import { backfillInfo, refreshMatchesIfStale } from "./edital";
 import type { PrepStats, PrepStatus, PrepSummary } from "./edital";
 
 type Row = Record<string, unknown>;
@@ -102,7 +102,10 @@ export async function loadStudy(userId: string, catalogIds: string[]): Promise<{
 export async function getPreparationTree(userId: string, id: string): Promise<PreparationTree> {
   if (!UUID.test(id)) throw new UserFacingError("Preparação não encontrada.", "not_found");
   const db = createAdminClient();
-  const prep = await db.from("edital_preparations").select("*").eq("id", id).eq("user_id", userId).maybeSingle();
+  let prep = await db.from("edital_preparations").select("*").eq("id", id).eq("user_id", userId).maybeSingle();
+  if (!prep.data) throw new UserFacingError("Preparação não encontrada.", "not_found");
+  // Aulas catalogadas depois do envio do edital passam a valer sem precisar reenviar o PDF.
+  if (await refreshMatchesIfStale(userId, id).catch(() => false)) prep = await db.from("edital_preparations").select("*").eq("id", id).eq("user_id", userId).maybeSingle();
   if (!prep.data) throw new UserFacingError("Preparação não encontrada.", "not_found");
   await backfillInfo([prep.data as Row]);
   const [discs, tops] = await Promise.all([

@@ -256,3 +256,20 @@
 .rxp-btn-g { min-height: 46px; border: 1px solid rgba(255,255,255,.2); color: #f1f2f5; background: rgba(255,255,255,.04); font-weight: 700; }
 .rxp-btn-r:hover, .rxp-btn-g:hover { transform: translateY(-2px); filter: brightness(1.12); }
 @container (max-width: 620px) { .rxp-aulas-resumo { grid-template-columns: repeat(3, 1fr); } .rxp-aulas-resumo .rxp-trilha { grid-column: 1 / 3; } .rxp-aulas-resumo strong { text-align: right; } }
+
+/* Aulas do edital: VERDE = aula disponível, VERMELHO = indisponível (sempre chamativo, também no celular). */
+.rxp .rxp-top[data-av="1"] { border-color: rgba(34,224,120,.45); border-left: 5px solid #22e078; background: linear-gradient(160deg, rgba(20,110,60,.55), #08130d 70%); box-shadow: 0 0 0 1px rgba(34,224,120,.12), 0 6px 22px rgba(34,224,120,.18); }
+.rxp .rxp-top[data-av="0"] { border-color: rgba(255,45,70,.5); border-left: 5px solid #ff2d46; background: linear-gradient(160deg, rgba(150,10,28,.55), #140609 70%); box-shadow: 0 0 0 1px rgba(255,45,70,.14), 0 6px 22px rgba(255,45,70,.2); }
+.rxp .rxp-top[data-av="1"] code { color: #7dffb4; } .rxp .rxp-top[data-av="0"] code { color: #ff8a98; }
+.rxp .rxp-av { display: inline-flex; align-items: center; gap: 6px; padding: 4px 11px; border-radius: 99px; font: 800 11px/1 "Chakra Petch", sans-serif; letter-spacing: .08em; }
+.rxp .rxp-av::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: currentColor; box-shadow: 0 0 8px currentColor; }
+.rxp .rxp-av[data-av="1"] { background: #22e078; color: #03210f; animation: rxp-pulso-v 2.4s ease-in-out infinite; }
+.rxp .rxp-av[data-av="0"] { background: rgba(255,45,70,.2); color: #ff6b7d; border: 1px solid rgba(255,45,70,.6); }
+.rxp .rxp-top[data-av="1"] .ai-lesson { border-color: #22e078; background: linear-gradient(135deg, rgba(34,224,120,.28), rgba(34,224,120,.08)); color: #eafff3; box-shadow: 0 0 14px rgba(34,224,120,.25); }
+.rxp .rxp-top[data-av="1"] .ai-lesson:hover { background: #22e078; color: #03210f; }
+.rxp .rxp-top[data-av="1"] .ai-lesson small { color: #7dffb4; font-weight: 800; margin-left: 6px; }
+.rxp .rxp-top[data-av="1"] .ai-lesson:hover small { color: #03210f; }
+.rxp .rxp-top[data-av="1"] .ai-lesson[data-done="1"] { background: #22e078; color: #03210f; } .rxp .rxp-top[data-av="1"] .ai-lesson[data-done="1"] small { color: #03210f; }
+.rxp .rxp-top[data-av="0"] .ai-st { color: #ff9aa6; font-weight: 600; }
+@keyframes rxp-pulso-v { 0%,100% { box-shadow: 0 0 0 0 rgba(34,224,120,.55); } 50% { box-shadow: 0 0 0 6px rgba(34,224,120,0); } }
+@media (prefers-reduced-motion: reduce) { .rxp .rxp-av[data-av="1"] { animation: none; } }

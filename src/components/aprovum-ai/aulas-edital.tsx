@@ -68,13 +68,17 @@ export function AulasEdital({ tree, onLesson }: { tree: PreparationTree; onLesso
                 </summary>
                 <ul className="rxp-tops">
                   {topics.map((t) => (
-                    <li key={t.id} className="rxp-top" data-st={t.status} data-done={t.done ? 1 : undefined} data-d={Math.min(Math.max(t.depth, 1), 4)}>
+                    <li key={t.id} className="rxp-top" data-st={t.status} data-av={t.lessons.length > 0 ? 1 : 0} data-done={t.done ? 1 : undefined} data-d={Math.min(Math.max(t.depth, 1), 4)}>
                       <p>{t.code && <code>{t.code}</code>}{t.title}</p>
                       <div className="ai-tl">
                         {t.lessons.length === 0 ? (
-                          <span className="ai-st">{ST[t.status]}{t.page ? ` · edital p. ${t.page}` : ""}</span>
+                          <>
+                            <span className="rxp-av" data-av="0">INDISPONÍVEL</span>
+                            <span className="ai-st">Aula ainda não disponível{t.page ? ` · edital p. ${t.page}` : ""}</span>
+                          </>
                         ) : (
                           <>
+                            <span className="rxp-av" data-av="1">{t.done ? "CONCLUÍDA" : t.status === "completa" ? "AULA DISPONÍVEL" : "DISPONÍVEL"}</span>
                             {t.status !== "completa" && <span className="ai-st">{ST[t.status]}</span>}
                             {t.lessons.map((l) => (
                               <button key={l.catalogId} type="button" className="ai-lesson" data-done={l.done ? 1 : undefined} onClick={() => onLesson({ id: l.catalogId, title: l.title, discipline: d.name })}>

@@ -59,6 +59,8 @@ export interface PrepStats {
   warnings?: string[];
   /** Pasta em "Meus estudos" criada pelo botão Começar estudo. */
   studyFolderId?: string;
+  /** Quando os vínculos com o catálogo foram calculados pela última vez (ISO). */
+  matchedAt?: string;
 }
 export interface PrepSummary {
   id: string;
@@ -333,11 +335,10 @@ async function stageIdentify(p: Row) {
   await persistParsed(p, parsed, false);
 }
 
-async function stageMap(p: Row) {
-  const userId = p.user_id as string;
+/** Recalcula os vínculos do edital com as aulas PUBLICADAS hoje no catálogo (sem eventos nem mudança de etapa). */
+async function applyMatches(p: Row) {
   const id = p.id as string;
   const db = createAdminClient();
-  await event(id, userId, 4, "Consultando catálogo de aulas.", "info");
   const catalog = await loadCatalog();
   const idx = buildIndex(catalog);
   const discs = await db.from("edital_disciplines").select("id, discipline_mode").eq("preparation_id", id);
@@ -372,11 +373,53 @@ async function stageMap(p: Row) {
     const ins = await db.from("edital_topic_lessons").insert(links.slice(o, o + 400));
     if (ins.error) throw new Error(ins.error.message);
   }
-  const stats = { ...((p.stats as PrepStats) ?? {}), lessons: lessonIds.size, completa: counts.completa, parcial: counts.parcial, conferencia: counts.conferencia, pendentes: counts.nao_encontrado };
+  const total = (tops.data ?? []).length;
+  const covered = counts.completa + counts.parcial;
+  const stats: PrepStats = {
+    ...((p.stats as PrepStats) ?? {}),
+    lessons: lessonIds.size,
+    completa: counts.completa,
+    parcial: counts.parcial,
+    conferencia: counts.conferencia,
+    pendentes: counts.nao_encontrado,
+    coveragePct: total ? Math.round(((counts.completa + (covered - counts.completa) * 0.5) / total) * 100) : 0,
+    matchedAt: new Date().toISOString(),
+  };
+  return { stats, counts, lessons: lessonIds.size };
+}
+
+async function stageMap(p: Row) {
+  const userId = p.user_id as string;
+  const id = p.id as string;
+  await event(id, userId, 4, "Consultando catálogo de aulas.", "info");
+  const { stats, counts, lessons } = await applyMatches(p);
   await setStatus(id, "organizando", { stats });
-  await event(id, userId, 4, `${lessonIds.size} aulas correspondentes localizadas.`, "ok");
+  await event(id, userId, 4, `${lessons} aulas correspondentes localizadas.`, "ok");
   if (counts.conferencia) await event(id, userId, 4, `${counts.conferencia} conteúdos necessitam de conferência.`, "warn");
   if (counts.nao_encontrado) await event(id, userId, 4, `${counts.nao_encontrado} conteúdos sem aula no catálogo (pendentes).`, "warn");
+}
+
+const refreshing = new Set<string>();
+/**
+ * Aulas catalogadas DEPOIS do envio do edital: se o catálogo publicado mudou desde o último vínculo,
+ * refaz os vínculos (rápido, sem IA e sem reler o PDF). Devolve true quando atualizou.
+ */
+export async function refreshMatchesIfStale(userId: string, id: string): Promise<boolean> {
+  const p = await own(userId, id);
+  if (p.status !== "concluido" || refreshing.has(id)) return false;
+  const st = (p.stats as PrepStats) ?? {};
+  const db = createAdminClient();
+  const last = await db.from("catalog_topics").select("updated_at").eq("status", "publicado").order("updated_at", { ascending: false }).limit(1).maybeSingle();
+  const catalogAt = (last.data as Row | null)?.updated_at as string | undefined;
+  if (!catalogAt || (st.matchedAt && new Date(st.matchedAt).getTime() >= new Date(catalogAt).getTime())) return false;
+  refreshing.add(id);
+  try {
+    const { stats } = await applyMatches(p);
+    await db.from("edital_preparations").update({ stats }).eq("id", id);
+    return true;
+  } finally {
+    refreshing.delete(id);
+  }
 }
 
 async function stageOrganize(p: Row) {
