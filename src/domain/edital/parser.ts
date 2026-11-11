@@ -106,7 +106,10 @@ function headingRaw(line: string, next: string | undefined): { name: string; res
 /** Capítulos do corpo do edital ("DA PROVA OBJETIVA", "DO EXAME MÉDICO"…) nunca são matérias de estudo. */
 const CHAPTER_RE = /^(d[aeo]s?|das?|dos?)\s+(.*\b)?(prova|provas|exame|exames|teste|testes|avaliacao|avaliacoes|investigacao|inscricao|inscricoes|curso|formacao|recurso|recursos|selecao|concurso|candidato|candidatos|vagas?|cargo|cargos|nomeacao|posse|resultado|resultados|habilitacao|titulos|disposicoes|etapas?|fase|fases|aptidao|heteroidentificacao|pessoas com deficiencia|remuneracao|atribuicoes|requisitos|convocacao|validade|cronograma)\b/;
 
-/** Divide em frases ("Código Penal (arts. 1º ao 6º). Código de Processo Penal …") sem cortar dentro de parênteses. */
+/** Abreviações que terminam com ponto mas não encerram o assunto ("art.", "nº", "inc."). */
+const ABBR = new Set(["art", "arts", "inc", "incs", "n", "no", "nº", "nr", "nrs", "dr", "dra", "sr", "sra", "ex", "etc", "cf", "v", "vs", "p", "pp", "par", "al", "obs", "ed", "cap", "tit", "seç", "sec"]);
+
+/** Divide em frases ("Código Penal (arts. 1º ao 6º). Código de Processo Penal …") sem cortar dentro de parênteses nem depois de abreviação. */
 function splitSentences(text: string): string[] {
   const out: string[] = [];
   let depth = 0;
@@ -116,6 +119,8 @@ function splitSentences(text: string): string[] {
     if (c === "(") depth++;
     else if (c === ")") depth = Math.max(0, depth - 1);
     else if (depth === 0 && /[.!?]/.test(c) && /\s/.test(text[i + 1] ?? "") && /[A-ZÀ-Ú]/.test(text.slice(i + 1).trimStart()[0] ?? "")) {
+      const word = (text.slice(start, i).match(/(\S+)$/)?.[1] ?? "").toLowerCase().replace(/^[("“]+/, "");
+      if (word.length <= 1 || ABBR.has(word)) continue;
       out.push(text.slice(start, i + 1));
       start = i + 1;
     }
@@ -164,15 +169,12 @@ function itemsOf(lines: Line[]): ParsedTopic[] {
   for (const it of items) {
     const title = clean(it.text);
     if (title.length < 3) continue;
-    // Sem numeração no edital: cada trecho separado por ";" vira um assunto.
-    const bySemi = !numbered && !it.code && title.includes(";");
-    const bySentence = !numbered && !it.code && !bySemi && title.length > 70 && /[.!?]\s+[A-ZÀ-Ú]/.test(title);
-    const chunks = bySemi
-      ? title.split(/\s*;\s*/).map(clean).filter((c) => c.length >= 3)
-      : bySentence
-        ? splitSentences(title).map(clean).filter((c) => c.length >= 3)
-        : [title];
-    for (const c of chunks) out.push({ code: it.code, depth: it.depth, title: c.slice(0, 400), titleKey: titleKey(c), page: it.page });
+    // Sem numeração no edital (texto corrido): cada frase é um assunto. Sem frases separadas, cada trecho entre ";" é um assunto.
+    const sentences = !numbered && !it.code && title.length > 70 ? splitSentences(title).map(clean).filter((c) => c.length >= 3) : [title];
+    const bySentence = sentences.length >= 2;
+    const bySemi = !numbered && !it.code && !bySentence && title.includes(";");
+    const chunks = bySentence ? sentences : bySemi ? title.split(/\s*;\s*/).map(clean).filter((c) => c.length >= 3) : [title];
+    for (const c of chunks) out.push({ code: it.code, depth: it.depth, title: c.slice(0, 1000), titleKey: titleKey(c), page: it.page });
   }
   return out;
 }
