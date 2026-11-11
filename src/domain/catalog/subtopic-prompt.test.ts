@@ -186,6 +186,13 @@ describe("título que enumera facetas", () => {
       "Competência em razão da função",
     ]);
     expect(splitFacets("Prisão em flagrante")).toEqual(["Prisão em flagrante"]);
+    expect(splitFacets("Exceções processuais: suspeição, incompetência, litispendência, ilegitimidade de parte e coisa julgada.")).toEqual([
+      "Exceções processuais: suspeição",
+      "Exceções processuais: incompetência",
+      "Exceções processuais: litispendência",
+      "Exceções processuais: ilegitimidade de parte",
+      "Exceções processuais: coisa julgada",
+    ]);
     const { parseOutline } = await import("./topic-group");
     const o = parseOutline("6. Competência\n6.3 Competência em razão da matéria, da pessoa, do lugar e da função");
     const g = o.groups[0]!;

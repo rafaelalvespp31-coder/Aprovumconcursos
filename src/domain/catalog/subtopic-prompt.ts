@@ -67,6 +67,16 @@ export type SubtopicInput = { disciplineMode: string; group: OutlineItem; sub: O
  * vira uma faceta por item: cada uma ganha o próprio módulo, em vez de uma aula rasa sobre o título inteiro.
  */
 export function splitFacets(title: string): string[] {
+  // "Assunto: a, b, c e d" — lista depois dos dois-pontos; o último "e" separa os dois últimos itens.
+  const colon = title.match(/^([^:]{3,}):\s*(.+?)\.?$/);
+  if (colon && /,|\s+e\s+/.test(colon[2]!)) {
+    const parts = colon[2]!.split(/\s*,\s*/).map((x) => x.trim()).filter(Boolean);
+    const last = parts.pop() ?? "";
+    const cut = last.lastIndexOf(" e ");
+    const tail = cut > 0 ? [last.slice(0, cut).trim(), last.slice(cut + 3).trim()] : [last];
+    const all = [...parts, ...tail].filter(Boolean);
+    if (all.length >= 2) return all.map((f) => `${colon[1]!.trim()}: ${f}`);
+  }
   const parts = title.split(/\s*,\s*|\s+e\s+(?=(?:d[aeo]s?|n[oa]s?|em|a|o)\s)/i).map((x) => x.trim()).filter(Boolean);
   if (parts.length < 3 && !(parts.length === 2 && /,/.test(title))) return [title];
   const first = parts[0]!;
