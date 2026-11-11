@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { Button } from "@/components/ui";
 import type { AdminResult } from "../../actions";
 import { OutlineForm } from "../outline-form";
@@ -159,5 +159,42 @@ export function RemoveFromPlanButton({ outlineId, refId, title, remove }: { outl
       </button>
       {erro && <span className="t-tiny text-erro">{erro}</span>}
     </span>
+  );
+}
+
+/** Esconde (ou mostra) os subtópicos já publicados e os tópicos completos, para ver só o que falta. Lembra a escolha neste aparelho. */
+export function HidePublished({ publicados, children }: { publicados: number; children: React.ReactNode }) {
+  const [hide, setHide] = useState(false);
+  useEffect(() => {
+    try {
+      if (window.localStorage.getItem("plano-esconder-catalogados") === "1") setHide(true);
+    } catch {
+      /* sem armazenamento: segue mostrando tudo */
+    }
+  }, []);
+  const toggle = () => {
+    const next = !hide;
+    setHide(next);
+    try {
+      window.localStorage.setItem("plano-esconder-catalogados", next ? "1" : "0");
+    } catch {
+      /* ignora */
+    }
+  };
+  return (
+    <>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-pressed={hide}
+        data-testid="esconder-catalogados"
+        className={`self-start rounded-full px-4 py-2 t-small font-bold ${hide ? "bg-destaque text-white" : "border border-linha bg-white text-tinta"}`}
+      >
+        {hide ? `Mostrar os ${publicados} já catalogados` : `Esconder os ${publicados} já catalogados`}
+      </button>
+      <div className="flex flex-col gap-8" data-esconder={hide ? "1" : undefined}>
+        {children}
+      </div>
+    </>
   );
 }

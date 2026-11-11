@@ -4,7 +4,7 @@ import { Tag } from "@/components/ui";
 import { disciplineLabel } from "@/ai/pedagogy";
 import { getOutline, planView } from "@/server/services/outlines";
 import { deleteOutlineAction, removeDuplicateLessonAction, removeOutlineSubtopicAction, updateOutlineAction } from "../../actions";
-import { EditPlan, RemoveFromPlanButton, RemoveLessonButton, SubtopicCommands } from "./plan-tools";
+import { EditPlan, HidePublished, RemoveFromPlanButton, RemoveLessonButton, SubtopicCommands } from "./plan-tools";
 import { DuplicatesCenter } from "./duplicates-center";
 
 const STATUS = {
@@ -50,8 +50,9 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
 
       <DuplicatesCenter dupes={v.dupes} base={base} admin={admin} />
 
+      <HidePublished publicados={v.totals.publicado}>
       {v.groups.map((g, gi) => (
-        <section key={gi} aria-labelledby={`g-${gi}`} className={`rounded-lg border ${v.dupes.flagged.includes(`g:${gi}`) ? "dup-flag-box" : "border-linha"}`} data-testid="plano-topico">
+        <section key={gi} data-completo={g.subtopics.length > 0 && g.subtopics.every((x) => x.status === "publicado") ? 1 : undefined} aria-labelledby={`g-${gi}`} className={`rounded-lg border ${v.dupes.flagged.includes(`g:${gi}`) ? "dup-flag-box" : "border-linha"}`} data-testid="plano-topico">
           <h2 id={`g-${gi}`} className="border-b border-linha bg-nevoa px-4 py-3 t-h2">
             <span className="t-tiny font-bold uppercase tracking-wide text-destaque">Tópico</span> {g.code ? `${g.code}. ` : ""}{g.title}
             {v.dupes.flagged.includes(`g:${gi}`) && <span className="dup-ribbon" data-testid="topico-duplicado">DUPLICADO</span>}
@@ -127,6 +128,7 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
           </ul>
         </section>
       ))}
+      </HidePublished>
 
       <EditPlan id={outline.id} initial={{ disciplineMode: outline.disciplineMode, title: outline.title, text: outline.sourceText }} update={updateOutlineAction} remove={deleteOutlineAction} />
     </div>

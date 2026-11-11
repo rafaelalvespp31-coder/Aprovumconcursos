@@ -4014,3 +4014,6 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 [id^="sub-"], [id^="g-"] { scroll-margin-top: 90px; }
 .dup-flag-row:target, .dup-flag-box:target, h2:target { animation: dup-alvo 1.6s ease-out 2; }
 @keyframes dup-alvo { 0%, 100% { outline: 0 solid rgba(255, 45, 70, 0); } 40% { outline: 4px solid rgba(255, 45, 70, 0.8); } }
+
+/* Plano: botão "Esconder já catalogados" */
+[data-esconder="1"] [data-status="publicado"], [data-esconder="1"] [data-completo="1"] { display: none; }
