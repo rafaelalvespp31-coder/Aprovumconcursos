@@ -10,7 +10,7 @@ export interface SavedOutline {
   disciplineMode: string;
   sourceText: string;
   /** Subtópicos do plano já publicados e os que faltam (sem isso, só a contagem do plano). */
-  totals?: { subtopics: number; publicado: number; rascunho: number; faltam: number; duplicados?: number };
+  totals?: { subtopics: number; publicado: number; rascunho: number; faltam: number; duplicados?: number; dupAulas?: number; dupSumario?: number };
 }
 
 /** Agrupa os planos pela matéria (na ordem das matérias; os de matéria desconhecida no fim), por título. */
@@ -35,6 +35,15 @@ const colorOf = (mode: string) => disciplineColor(mode);
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
+/** Resumo das duplicadas: "2 subtópicos · 1 aula · 1 repetido no sumário" (só o que existir). */
+export function dupBreakdown(t: { duplicados?: number; dupAulas?: number; dupSumario?: number } | undefined): { total: number; texto: string } {
+  const sub = t?.duplicados ?? 0;
+  const aul = t?.dupAulas ?? 0;
+  const sum = t?.dupSumario ?? 0;
+  const partes = [sub && plural(sub, "subtópico", "subtópicos"), aul && plural(aul, "aula", "aulas"), sum && `${sum} ${sum === 1 ? "repetido" : "repetidos"} no sumário`].filter(Boolean);
+  return { total: sub + aul + sum, texto: partes.join(" · ") };
+}
+
 /**
  * Planos salvos, cada um dentro da sua matéria (uma pasta colorida por matéria, que abre e fecha),
  * com quantos subtópicos já estão publicados e quantos faltam — no plano e na matéria.
@@ -51,6 +60,7 @@ export function SavedOutlines({ outlines, base = "/admin/catalogo/plano" }: { ou
           const color = colorOf(g.mode);
           const sum = g.items.reduce((a, o) => (o.totals ? { publicado: a.publicado + o.totals.publicado, faltam: a.faltam + o.totals.faltam, dup: a.dup + (o.totals.duplicados ?? 0) } : a), { publicado: 0, faltam: 0, dup: 0 });
           const hasTotals = g.items.some((o) => o.totals);
+          const dd = dupBreakdown(g.items.reduce((a, o) => ({ duplicados: a.duplicados + (o.totals?.duplicados ?? 0), dupAulas: a.dupAulas + (o.totals?.dupAulas ?? 0), dupSumario: a.dupSumario + (o.totals?.dupSumario ?? 0) }), { duplicados: 0, dupAulas: 0, dupSumario: 0 }));
           return (
             <details key={g.mode} open className="plano-materia group" style={{ "--cor": color } as CSSProperties} data-testid="planos-materia" data-materia={g.mode}>
               <summary className="plano-materia-topo">
@@ -69,6 +79,12 @@ export function SavedOutlines({ outlines, base = "/admin/catalogo/plano" }: { ou
                         ⚠ {sum.dup} duplicado{sum.dup === 1 ? "" : "s"}
                       </span>
                     )}
+                  </span>
+                )}
+                {dd.total > 0 && (
+                  <span className="plano-dup-faixa" data-testid="materia-duplicadas">
+                    <strong>⚠ {plural(dd.total, "duplicada", "duplicadas")}</strong>
+                    <span>{dd.texto}</span>
                   </span>
                 )}
               </summary>
@@ -100,6 +116,12 @@ export function SavedOutlines({ outlines, base = "/admin/catalogo/plano" }: { ou
                             </span>
                           )}
                         </span>
+                        {t && dupBreakdown(t).total > 0 && (
+                          <span className="plano-dup-faixa mt-2" data-testid="plano-duplicadas-detalhe">
+                            <strong>⚠ {plural(dupBreakdown(t).total, "duplicada", "duplicadas")}</strong>
+                            <span>{dupBreakdown(t).texto}</span>
+                          </span>
+                        )}
                         {t && (
                           <span className="mt-3 block">
                             <span className="plano-barra" aria-hidden>

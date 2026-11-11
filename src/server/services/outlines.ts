@@ -149,6 +149,10 @@ export interface OutlineTotals {
   faltam: number;
   /** Subtópicos com mais de uma aula (duplicadas). */
   duplicados: number;
+  /** Aulas com o mesmo título (fora dos subtópicos já contados). */
+  dupAulas?: number;
+  /** Tópicos/subtópicos repetidos no próprio sumário do plano. */
+  dupSumario?: number;
 }
 
 /** Planos salvos com quantos subtópicos já estão publicados e quantos faltam (uma consulta só ao catálogo). */
@@ -160,7 +164,6 @@ export async function listOutlinesWithTotals(): Promise<Array<OutlineRow & { tot
     .from("catalog_topics")
     .select("id, title, status, topic_group, subtopic_code, discipline_mode")
     .in("discipline_mode", modes)
-    .not("topic_group", "is", null)
     .limit(10000);
   if (error) throw new Error(error.message);
   type Row = { id: string; title: string; status: string; topicGroup: string | null; subtopicCode: string | null; mode: string };
@@ -172,7 +175,11 @@ export async function listOutlinesWithTotals(): Promise<Array<OutlineRow & { tot
   return outlines.map((o) => {
     const catalog = byMode.get(o.disciplineMode) ?? [];
     const totals: OutlineTotals = { subtopics: 0, publicado: 0, rascunho: 0, faltam: 0, duplicados: 0 };
-    for (const g of parseOutline(o.sourceText).groups)
+    const parsedOutline = parseOutline(o.sourceText);
+    const dupes = findPlanDuplicates(parsedOutline, catalog);
+    totals.dupAulas = dupes.titles.length;
+    totals.dupSumario = dupes.outline.length;
+    for (const g of parsedOutline.groups)
       for (const sub of g.subtopics) {
         const all = findAllCatalogFor(g, sub, catalog);
         const hit = all[0];
