@@ -103,3 +103,32 @@ export function EditPlan({ id, initial, update, remove }: { id: string; initial:
     </div>
   );
 }
+
+/** Botão "Remover aula" (só administrador) dentro do subtópico repetido: arquiva a aula e atualiza a tela. */
+export function RemoveLessonButton({ id, title, remove }: { id: string; title: string; remove: (id: string) => Promise<AdminResult> }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  const [erro, setErro] = useState("");
+  return (
+    <span className="inline-flex items-center gap-2">
+      <button
+        type="button"
+        disabled={pending}
+        data-testid="remover-aula-duplicada"
+        className="rounded-full bg-erro px-3 py-1 t-small font-bold text-white disabled:opacity-60"
+        onClick={() => {
+          if (!window.confirm(`Remover a aula "${title}"? Ela sai do site (fica arquivada e dá para restaurar na página da aula).`)) return;
+          setErro("");
+          start(async () => {
+            const r = await remove(id);
+            if (r.ok) router.refresh();
+            else setErro(r.error ?? "Não consegui remover.");
+          });
+        }}
+      >
+        {pending ? "Removendo…" : "Remover aula"}
+      </button>
+      {erro && <span className="t-tiny text-erro">{erro}</span>}
+    </span>
+  );
+}

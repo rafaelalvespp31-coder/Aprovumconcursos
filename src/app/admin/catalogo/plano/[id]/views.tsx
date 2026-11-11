@@ -3,8 +3,8 @@ import { notFound } from "next/navigation";
 import { Tag } from "@/components/ui";
 import { disciplineLabel } from "@/ai/pedagogy";
 import { getOutline, planView } from "@/server/services/outlines";
-import { deleteOutlineAction, updateOutlineAction } from "../../actions";
-import { EditPlan, SubtopicCommands } from "./plan-tools";
+import { deleteOutlineAction, removeDuplicateLessonAction, updateOutlineAction } from "../../actions";
+import { EditPlan, RemoveLessonButton, SubtopicCommands } from "./plan-tools";
 import { DuplicatesCenter } from "./duplicates-center";
 
 const STATUS = {
@@ -96,6 +96,21 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
                     <SubtopicCommands disciplineMode={outline.disciplineMode} group={{ code: g.code, title: g.title }} sub={{ code: s.code, title: s.title, items: s.items }} />
                   </div>
                 </div>
+                {admin && v.dupes.flagged.includes(s.ref) && (s.duplicates.length > 1 || s.topicId) && (
+                  <ul className="flex flex-col gap-1.5 rounded-md border border-erro/40 bg-erro/5 p-2" data-testid="remover-duplicadas">
+                    {(s.duplicates.length > 1 ? s.duplicates : [{ id: s.topicId!, title: s.title, status: s.status }]).map((l) => (
+                      <li key={l.id} className="flex flex-wrap items-center justify-between gap-2 t-small">
+                        <span className="min-w-0 break-words">
+                          <b>{l.title}</b> <span className="text-tinta-suave">· {l.status === "publicado" ? "no ar" : l.status}</span>
+                        </span>
+                        <span className="flex items-center gap-3">
+                          <Link href={`/admin/catalogo/${l.id}`} className="font-semibold text-destaque underline underline-offset-2">Abrir</Link>
+                          <RemoveLessonButton id={l.id} title={l.title} remove={removeDuplicateLessonAction} />
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
                 {s.items.length > 0 && (
                   <details className="t-small">
                     <summary className="cursor-pointer text-tinta-suave">Ver os {s.items.length} módulos</summary>

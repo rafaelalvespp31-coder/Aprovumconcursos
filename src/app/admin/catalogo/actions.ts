@@ -132,6 +132,15 @@ export async function setStatusAction(id: string, status: "rascunho" | "arquivad
   return r;
 }
 
+/** Remove uma aula repetida a partir do plano de tópicos: arquiva (sai do site e da contagem; dá para restaurar na página da aula). */
+export async function removeDuplicateLessonAction(id: string): Promise<AdminResult> {
+  const user = await requireAdmin();
+  const lessonId = z.uuid().parse(id);
+  const r = await guard("catalog.status", async () => setTopicStatus(user, lessonId, "arquivado"));
+  revalidatePath("/admin/catalogo", "layout");
+  return r;
+}
+
 export async function promoteAction(lessonId: string): Promise<AdminResult> {
   const user = await requireAdmin();
   let id = "";
