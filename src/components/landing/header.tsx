@@ -14,7 +14,7 @@ const LINKS = [
  * Cabeçalho da landing: logo oficial, navegação para as seções da página e acesso ao
  * login/cadastro (ou ao painel, para quem já entrou). No celular, menu que abre e fecha.
  */
-export function LandingHeader({ loggedIn }: { loggedIn: boolean }) {
+export function LandingHeader({ loggedIn, admin = false }: { loggedIn: boolean; admin?: boolean }) {
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState("#inicio");
   const btnRef = useRef<HTMLButtonElement>(null);
@@ -48,9 +48,16 @@ export function LandingHeader({ loggedIn }: { loggedIn: boolean }) {
   }, [open]);
 
   const actions = loggedIn ? (
-    <Link href="/painel" className="lp-btn lp-btn-vermelho">
-      Ir para o painel
-    </Link>
+    <>
+      <Link href="/painel" className="lp-btn lp-btn-vermelho">
+        Ir para o painel
+      </Link>
+      {admin && (
+        <Link href="/admin" className="lp-btn lp-btn-contorno" data-testid="botao-admin">
+          Painel de admin
+        </Link>
+      )}
+    </>
   ) : (
     <>
       <Link href="/entrar" className="lp-btn lp-btn-vermelho">

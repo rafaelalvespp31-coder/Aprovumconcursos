@@ -1,7 +1,7 @@
 import type { RulerState } from "@/components/coverage-ruler";
 import { normalizeContent } from "@/domain/content/normalize";
 import { extractStructure } from "@/domain/content/extract";
-import { getSessionUser } from "@/server/auth";
+import { getSessionUser, isAdmin } from "@/server/auth";
 import { getPublicCatalogStats } from "@/server/public-stats";
 import { publicEnv } from "@/lib/env";
 import { LandingHeader } from "@/components/landing/header";
@@ -27,6 +27,7 @@ export default async function Home() {
     configured ? getSessionUser().catch(() => null) : Promise.resolve(null),
     configured ? getPublicCatalogStats().catch(() => null) : Promise.resolve(null),
   ]);
+  const admin = user ? await isAdmin().catch(() => false) : false;
   const { nodes } = extractStructure(normalizeContent(DEMO).normalized);
   const items = nodes.filter((n) => n.requiresDirectCoverage);
   const segments = items.map((n, i) => ({ key: n.key, state: DEMO_STATES[i % DEMO_STATES.length]!, title: n.title }));
@@ -35,7 +36,7 @@ export default async function Home() {
   return (
     <div className="lp">
       <div className="lp-textura" aria-hidden />
-      <LandingHeader loggedIn={!!user} />
+      <LandingHeader loggedIn={!!user} admin={admin} />
       <main className="lp-main">
         <LandingHero primaryHref={primaryHref} primaryLabel={user ? "Começar um estudo" : "Criar conta grátis"} />
         <CareersCarousel ctaHref={primaryHref} />
