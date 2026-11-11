@@ -409,7 +409,7 @@ Nunca invente súmula, tese ou julgado; o que precisar de conferência vai em "=
 ${DELIVERY_CONTRACT}
 
 COMO RESPONDER
-Responda com a aula COMPLETA — da "=== AULA ===" até o fim das questões do nível difícil — num único bloco de código, sem nada fora dele. Se cortar por tamanho, eu escrevo "continue" e você segue exatamente de onde parou, sem repetir nada. Use exatamente os marcadores e campos do modelo; não use === nem --- dentro do conteúdo.
+Responda com a aula COMPLETA — da "=== AULA ===" até o fim das questões do nível difícil — em etapas (veja ENTREGA OBRIGATÓRIA EM ETAPAS), cada uma num bloco de código. Se cortar por tamanho, eu escrevo "continue" e você segue exatamente de onde parou, sem repetir nada. Use exatamente os marcadores e campos do modelo; não use === nem --- dentro do conteúdo.
 
 <<<MODELO RESUMIDO: ${t.title}>>>
 ${sample.join("\n").replace(/\n{3,}/g, "\n\n").trim()}
