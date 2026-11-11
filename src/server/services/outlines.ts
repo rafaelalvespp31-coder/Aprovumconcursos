@@ -94,7 +94,7 @@ export interface PlanView {
   dupes: PlanDuplicates;
 }
 
-/** Árvore do plano com a situação de cada subtópico no catálogo e o comando pronto do ChatGPT. */
+/** Árvore do plano com a situação de cada subtópico no catálogo e o comando pronto da IA. */
 export async function planView(outline: OutlineRow): Promise<PlanView> {
   const parsed: Outline = parseOutline(outline.sourceText);
   const { data } = await createAdminClient()

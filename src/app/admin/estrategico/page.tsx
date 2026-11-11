@@ -23,7 +23,7 @@ export default async function EstrategicoPage() {
       </div>
       <section className="mt-5 rounded-xl border-2 border-destaque p-4" aria-label="Aguardando análise">
         <h2 className="font-semibold">Aguardando análise ({awaiting.length})</h2>
-        <p className="mt-1 t-small text-tinta-suave">Criados automaticamente quando um aluno envia o edital. Toque no concurso, copie o comando (já preenchido com o conteúdo programático), cole a resposta do ChatGPT e publique.</p>
+        <p className="mt-1 t-small text-tinta-suave">Criados automaticamente quando um aluno envia o edital. Toque no concurso, copie o comando (já preenchido com o conteúdo programático), cole a resposta da IA e publique.</p>
         {awaiting.length === 0 ? <p className="mt-3 t-small text-tinta-suave">Nenhum edital esperando análise.</p> : (
           <ul className="mt-3 grid gap-2">
             {awaiting.map((e) => (

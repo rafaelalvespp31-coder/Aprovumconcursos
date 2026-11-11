@@ -31,7 +31,7 @@ export async function UploadLessonView({ searchParams, base, admin }: { searchPa
         <div className="rounded-md border border-azul/25 bg-nevoa px-4 py-3 t-small" data-testid="comando-subtopico">
           <p className="font-semibold">Comando do subtópico {plan.label}</p>
           <p className="mt-1 text-tinta-suave">
-            Do plano “{plan.planTitle}”. É um comando só, completo (aula e questões): copie, cole no ChatGPT e cole a resposta aqui. A aula cresce conforme o assunto (mais módulos quando for grande) e entra no tópico automaticamente.{" "}
+            Do plano “{plan.planTitle}”. É um comando só, completo (aula e questões): copie, cole na IA e cole a resposta aqui. A aula cresce conforme o assunto (mais módulos quando for grande) e entra no tópico automaticamente.{" "}
             <Link href={`${base}/enviar`} className="font-semibold text-destaque underline underline-offset-2">Usar o comando-mestre</Link>
           </p>
         </div>

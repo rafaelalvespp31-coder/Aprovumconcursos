@@ -63,7 +63,7 @@ export function AddVisualsPanel({
         <Notice tone="sucesso">Esta aula já tem exemplo visual em todas as seções e flashcards.</Notice>
       ) : (
         <Notice tone="alerta" title="Faltam exemplos visuais ou flashcards">
-          {[missing ? `${missing} seção(ões) sem exemplo visual` : null, status.flashcards < 4 ? "sem flashcards" : null].filter(Boolean).join(" · ")}. Copie o comando, cole no ChatGPT e cole a resposta aqui: a aula não é refeita, só ganha os blocos.
+          {[missing ? `${missing} seção(ões) sem exemplo visual` : null, status.flashcards < 4 ? "sem flashcards" : null].filter(Boolean).join(" · ")}. Copie o comando, cole na IA e cole a resposta aqui: a aula não é refeita, só ganha os blocos.
         </Notice>
       )}
       {!complete && (
@@ -91,7 +91,7 @@ export function AddVisualsPanel({
           </details>
         </>
       )}
-      <label htmlFor="visuais-aula" className="font-semibold">Cole aqui a resposta do ChatGPT</label>
+      <label htmlFor="visuais-aula" className="font-semibold">Cole aqui a resposta da IA</label>
       <textarea
         id="visuais-aula"
         value={text}
@@ -118,7 +118,7 @@ export function AddVisualsPanel({
               <ul className="mt-1 list-disc pl-5">{autoMsg.applied.map((a, k) => <li key={k}>{a}</li>)}</ul>
             </details>
           )}
-          <p className="mt-1">{autoMsg.remaining ? `Falta(m) ${autoMsg.remaining} erro(s): peça esses blocos de novo ao ChatGPT.` : "Pronto: confira o resultado e clique em “Acrescentar à aula”."}</p>
+          <p className="mt-1">{autoMsg.remaining ? `Falta(m) ${autoMsg.remaining} erro(s): peça esses blocos de novo à IA.` : "Pronto: confira o resultado e clique em “Acrescentar à aula”."}</p>
         </Notice>
       )}
       <div className="flex flex-wrap items-center gap-2">

@@ -81,7 +81,7 @@ describe("aula-modelo exportada no formato do painel", () => {
     expect(prompt).toContain("- Médio: 1 questões (1 de múltipla escolha e 0 de certo ou errado");
     expect(prompt).toContain("<<<INÍCIO DO MODELO OFICIAL: Homicídio (CP, art. 121)>>>");
     expect(prompt).toContain(exportTopicText(topic));
-    // O que o ChatGPT devolver no mesmo formato é lido pelo painel (o próprio modelo serve de teste).
+    // O que a IA devolver no mesmo formato é lido pelo painel (o próprio modelo serve de teste).
     const inner = prompt.slice(prompt.indexOf(">>>\n") + 4, prompt.lastIndexOf("<<<FIM"));
     expect(parseLessonUpload(inner).errors).toEqual([]);
   });

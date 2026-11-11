@@ -1,7 +1,7 @@
 import { fold } from "@/domain/edital/text";
 
 /**
- * Formato de texto (colado do ChatGPT) → mesma estrutura da importação JSON. Uma linha por registro:
+ * Formato de texto (colado da IA) → mesma estrutura da importação JSON. Uma linha por registro:
  *   CONCURSO: nome | ÓRGÃO: x | CARGOS: a; b | LIMITAÇÕES: texto
  *   FONTE: chave | tipo | nome | url | página | órgão | publicado | consultado | conferido por
  *   PROVA: ano | banca | total de questões | regra de contagem
@@ -173,7 +173,7 @@ FOCO: MAXIMA | Direito Penal | Crimes contra a Administração Pública | Cobrad
 export interface PromptInfo { name?: string | null; organ?: string | null; role?: string | null; board?: string | null; year?: number | null; program?: string | null }
 
 /**
- * Comando para colar no chat (ChatGPT, Claude…): a IA analisa as provas e devolve SÓ as linhas que parseStrategicText entende.
+ * Comando para colar no chat (IA, Claude…): a IA analisa as provas e devolve SÓ as linhas que parseStrategicText entende.
  * Com info, já vem preenchido com o concurso do edital do aluno.
  */
 export function buildStrategicPrompt(info: PromptInfo = {}): string {

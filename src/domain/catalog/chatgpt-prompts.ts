@@ -1,6 +1,6 @@
 /**
- * Comandos prontos para pedir a aula ou as questões ao ChatGPT (ou outro assistente) já no
- * formato que o painel entende. O administrador copia, troca o tema, cola no ChatGPT e cola a
+ * Comandos prontos para pedir a aula ou as questões à IA (ou outro assistente) já no
+ * formato que o painel entende. O administrador copia, troca o tema, cola na IA e cola a
  * resposta no campo de texto do painel.
  */
 

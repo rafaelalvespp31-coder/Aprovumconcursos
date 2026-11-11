@@ -40,7 +40,7 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
         <ol className="mt-2 list-decimal pl-5 text-tinta-suave">
           <li>Clique em <strong>Copiar comando</strong> no subtópico (ou em <strong>Catalogar</strong>, que abre o painel com o comando pronto).</li>
           <li>Aula grande? Use o <strong>Comando 1</strong> (a aula) e, na mesma conversa, o <strong>Comando 2</strong> (as questões); cole as duas respostas nos dois campos de “Catalogar aula”.</li>
-          <li>Cole no ChatGPT e copie a resposta inteira (peça “continue” se ela vier cortada).</li>
+          <li>Cole na IA e copie a resposta inteira (peça “continue” se ela vier cortada).</li>
           <li>Cole em <strong>Catalogar aula</strong>: a aula já entra no tópico certo, na ordem do número. Aqui ela passa de “Pendente” para “Rascunho” ou “Publicado”.</li>
         </ol>
         <p className="mt-2 text-tinta-suave">

@@ -149,7 +149,7 @@ export function parseBankUpload(raw: string): ParsedBankUpload {
       else if (line.trim()) warnings.push(`Linha ${n}: texto antes da primeira questão foi ignorado (comece com --- QUESTÃO ---).`);
     }
   });
-  if (!seenBlock) errors.push("Não encontrei os blocos do modelo (=== PADRÃO === e === QUESTÕES ===). Use o comando do ChatGPT desta página para organizar as questões.");
+  if (!seenBlock) errors.push("Não encontrei os blocos do modelo (=== PADRÃO === e === QUESTÕES ===). Use o comando da IA desta página para organizar as questões.");
   if (seenBlock && !blocks.length) errors.push("Nenhuma questão encontrada: separe cada uma com --- QUESTÃO ---.");
 
   const questions: ParsedBankQuestion[] = [];

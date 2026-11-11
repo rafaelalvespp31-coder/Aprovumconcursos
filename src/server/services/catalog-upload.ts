@@ -190,7 +190,7 @@ export async function importLessonUpload(user: SessionUser, text: string, fileNa
 export type { LessonUploadPreview };
 
 // ---------------------------------------------------------------------------
-// Comando do ChatGPT a partir de uma aula-modelo publicada (padrão: Homicídio)
+// Comando da IA a partir de uma aula-modelo publicada (padrão: Homicídio)
 // ---------------------------------------------------------------------------
 
 export const DEFAULT_MODEL_SLUG = "cp-art-121-homicidio";
@@ -201,7 +201,7 @@ export interface ModelPrompt {
   prompt: string;
   /** O mesmo comando dividido em 2 (aula; depois questões, na mesma conversa). */
   parts: { part1: string; part2: string };
-  /** Versão compacta (começo de cada seção + 1 exemplo de questão por tipo): cabe no ChatGPT. */
+  /** Versão compacta (começo de cada seção + 1 exemplo de questão por tipo): cabe na IA. */
   compact: string;
   /** Problemas ao reler o próprio modelo no formato do painel (vazio = o formato bate). */
   selfCheck: string[];

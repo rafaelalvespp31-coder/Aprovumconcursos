@@ -1,6 +1,6 @@
 /**
  * Exporta uma aula do catálogo no MESMO formato de texto que o painel lê (Catalogar aula),
- * e monta o comando do ChatGPT usando essa aula inteira como MODELO OFICIAL — puro.
+ * e monta o comando da IA usando essa aula inteira como MODELO OFICIAL — puro.
  * Ida e volta: exportar → colar → ler devolve a mesma estrutura (módulos, seções, itens, questões).
  */
 import { DELIVERY_CONTRACT, QUESTIONS_CONTRACT } from "./delivery";
@@ -64,7 +64,7 @@ const KIND_LABEL: Record<string, string> = {
 const REF_LABEL: Record<string, string> = { lei: "Lei", doutrina: "Doutrina", jurisprudencia: "Jurisprudência", texto_informado: "Texto informado", outro: "Outro" };
 const LEVEL_TITLE = { facil: "FÁCIL", medio: "MÉDIO", dificil: "DIFÍCIL" } as const;
 
-/** Texto da aula no formato do painel (o mesmo que o ChatGPT deve devolver). */
+/** Texto da aula no formato do painel (o mesmo que a IA deve devolver). */
 export function exportTopicText(t: ExportableTopic, part: "tudo" | "aula" | "questoes" = "tudo"): string {
   const byKey = new Map(t.nodes.map((n) => [n.key, n]));
   const item = (k: string) => byKey.get(k)?.path ?? k;
@@ -183,7 +183,7 @@ export function modelOutline(t: ExportableTopic) {
   return { modules, levels: { facil: count("facil"), medio: count("medio"), dificil: count("dificil") }, sections: t.lesson.sections.length };
 }
 
-/** Comando para o ChatGPT: a aula-modelo inteira + a ordem de reproduzir a mesma forma no novo tema. */
+/** Comando para a IA: a aula-modelo inteira + a ordem de reproduzir a mesma forma no novo tema. */
 export function buildModelPrompt(t: ExportableTopic): string {
   const o = modelOutline(t);
   const lv = (k: "facil" | "medio" | "dificil", name: string) =>
@@ -231,7 +231,7 @@ ${exportTopicText(t)}<<<FIM DO MODELO OFICIAL>>>`;
 }
 
 /**
- * Comando em 2 partes (para quando o comando inteiro fica grande demais para o ChatGPT):
+ * Comando em 2 partes (para quando o comando inteiro fica grande demais para a IA):
  * parte 1 = a aula (teoria) com o modelo sem questões; parte 2, na MESMA conversa = as questões,
  * com as questões do modelo. No painel, as duas respostas são coladas e publicadas juntas.
  */
@@ -323,7 +323,7 @@ export function sectionExcerpt(md: string, max = 160): string {
 }
 
 /**
- * Comando COMPACTO (cabe no ChatGPT): esqueleto com o tamanho de cada seção, o começo de cada
+ * Comando COMPACTO (cabe na IA): esqueleto com o tamanho de cada seção, o começo de cada
  * seção do modelo (mostra tabelas, caixas e listas), um exemplo de cada tipo de questão por nível
  * e as quantidades. A resposta vem inteira (aula + questões), num bloco só.
  */
@@ -418,7 +418,7 @@ ${qSample.join("\n").replace(/\n{3,}/g, "\n\n").trim()}
 <<<FIM DO MODELO>>>`;
 }
 
-/** Comando para o ChatGPT completar só as questões de uma aula já catalogada. */
+/** Comando para a IA completar só as questões de uma aula já catalogada. */
 export function buildQuestionsPrompt(input: { title: string; sourceText: string; need: Record<"facil" | "medio" | "dificil", number> }): string {
   const lines: string[] = [];
   for (const [k, name, dif, mix] of [

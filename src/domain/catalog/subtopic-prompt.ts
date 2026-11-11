@@ -1,5 +1,5 @@
 /**
- * Comando do ChatGPT para UM subtópico do plano de tópicos (ex.: 4.1 Causas de exclusão da
+ * Comando da IA para UM subtópico do plano de tópicos (ex.: 4.1 Causas de exclusão da
  * ilicitude). Padrão único para qualquer subtópico, de qualquer matéria, com a mesma lógica da
  * aula de Homicídio do catálogo: visão geral e base (lei seca ou regras), um módulo por item do
  * edital, aprofundamento, combinações e crimes/temas próximos, casos e pegadinhas, doutrina,
@@ -15,7 +15,7 @@ import { groupHeaderLines, type OutlineItem, type OutlineSubtopic } from "./topi
 
 /** Tamanho máximo do comando (caracteres); acima disso o esqueleto de cada item é enxugado. */
 export const SUBTOPIC_PROMPT_MAX = 40_000;
-/** O painel não limita seções por aula (módulos extras são abertos sozinhos); este teto só mantém o comando num tamanho que o ChatGPT consegue seguir. */
+/** O painel não limita seções por aula (módulos extras são abertos sozinhos); este teto só mantém o comando num tamanho que a IA consegue seguir. */
 const MAX_SECTIONS = 400;
 
 const label = (x: OutlineItem) => `${x.code ? `${x.code} ` : ""}${x.title}`;

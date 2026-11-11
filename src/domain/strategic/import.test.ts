@@ -22,7 +22,7 @@ describe("importação estratégica", () => {
 });
 
 import { IMPORT_EXAMPLE_TEXT, parseStrategicText } from "./text";
-describe("importação por texto (ChatGPT)", () => {
+describe("importação por texto (IA)", () => {
   it("o exemplo em texto vira dados válidos", () => {
     const r = parseStrategicText(IMPORT_EXAMPLE_TEXT);
     expect(r.issues).toEqual([]);
@@ -67,7 +67,7 @@ FOCO: Muito alta | Legislação | - | Cai sempre`;
 });
 
 import { buildStrategicPrompt } from "./text";
-describe("comando do ChatGPT preenchido pelo edital do aluno", () => {
+describe("comando da IA preenchido pelo edital do aluno", () => {
   it("leva nome, ano e conteúdo programático", () => {
     const p = buildStrategicPrompt({ name: "PMERJ 2026", year: 2026, program: "Direito Penal: Crimes contra a pessoa" });
     expect(p).toContain("CONCURSO: PMERJ 2026 (use exatamente este nome");

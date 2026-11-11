@@ -18,7 +18,7 @@ interface Actions {
 const LEVEL = { facil: "Fácil", medio: "Médio", dificil: "Difícil" } as const;
 
 /**
- * Catalogação por texto colado: 1) copiar o comando para o ChatGPT, 2) colar a resposta,
+ * Catalogação por texto colado: 1) copiar o comando para a IA, 2) colar a resposta,
  * 3) conferir como a aula vai ficar (módulos, seções, questões, erros e avisos), 4) salvar.
  */
 export interface PromptModel {
@@ -49,7 +49,7 @@ export function LessonUploadForm({
   /** Modo inicial dos comandos (ex.: o plano de tópicos abre aula grande já em 2 partes). */
   initialMode?: "compacto" | "partes" | "inteiro";
 }) {
-  // Com aula-modelo, começa no compacto (cabe no ChatGPT).
+  // Com aula-modelo, começa no compacto (cabe na IA).
   type Mode = "compacto" | "partes" | "inteiro";
   const [mode, setMode] = useState<Mode>(initialMode ?? (compact ? "compacto" : parts && prompt.length > 60_000 ? "partes" : "inteiro"));
   const [text, setText] = useState("");
@@ -214,13 +214,13 @@ export function LessonUploadForm({
   return (
     <div className="flex flex-col gap-5" data-testid="upload-aula">
       <div className="rounded-lg border border-linha bg-superficie p-4">
-        <p className="font-semibold">1. Peça a aula ao ChatGPT</p>
+        <p className="font-semibold">1. Peça a aula à IA</p>
         {model ? (
           <p className="mt-1 t-small text-tinta-suave">
-            O comando leva a aula <strong>{model.title}</strong> como modelo oficial ({model.stats.modules} módulos, {model.stats.sections} seções, {model.stats.questions.facil}/{model.stats.questions.medio}/{model.stats.questions.dificil} questões por nível) e manda o ChatGPT fazer a nova aula exatamente na mesma forma. Troque só a linha <strong>TEMA DA NOVA AULA</strong>.
+            O comando leva a aula <strong>{model.title}</strong> como modelo oficial ({model.stats.modules} módulos, {model.stats.sections} seções, {model.stats.questions.facil}/{model.stats.questions.medio}/{model.stats.questions.dificil} questões por nível) e manda a IA fazer a nova aula exatamente na mesma forma. Troque só a linha <strong>TEMA DA NOVA AULA</strong>.
           </p>
         ) : (
-          <p className="mt-1 t-small text-tinta-suave">Copie o comando, troque o tema na primeira linha e envie no ChatGPT. Ele responde já no formato do painel.</p>
+          <p className="mt-1 t-small text-tinta-suave">Copie o comando, troque o tema na primeira linha e envie na IA. Ele responde já no formato do painel.</p>
         )}
         {model && model.options.length > 1 && (
           <form method="get" className="mt-2 flex flex-wrap items-center gap-2 t-small">
@@ -265,12 +265,12 @@ export function LessonUploadForm({
         )}
         {mode === "compacto" && compact && (
           <p className="mt-2 t-small text-tinta-suave">
-            Envie o comando no ChatGPT: ele responde com a aula completa (teoria e questões). Se ele cortar, escreva <strong>continue</strong> e cole a continuação logo abaixo, no mesmo campo.
+            Envie o comando na IA: ele responde com a aula completa (teoria e questões). Se ele cortar, escreva <strong>continue</strong> e cole a continuação logo abaixo, no mesmo campo.
           </p>
         )}
         {mode === "partes" && parts && (
           <p className="mt-2 t-small text-tinta-suave">
-            Envie o <strong>comando 1</strong> (a aula) no ChatGPT e, quando ele terminar, envie o <strong>comando 2</strong> (as questões) <strong>na mesma conversa</strong>. Cole a resposta do comando 1 no primeiro campo e a do comando 2 no segundo: são publicadas juntas, como uma aula só.
+            Envie o <strong>comando 1</strong> (a aula) na IA e, quando ele terminar, envie o <strong>comando 2</strong> (as questões) <strong>na mesma conversa</strong>. Cole a resposta do comando 1 no primeiro campo e a do comando 2 no segundo: são publicadas juntas, como uma aula só.
           </p>
         )}
         <div className="mt-3 flex flex-col gap-3">
@@ -278,7 +278,7 @@ export function LessonUploadForm({
             <div key={c.label} className={multi ? "rounded-md border border-linha p-3" : ""}>
               {multi && <p className="mb-2 t-small font-semibold">{c.label}</p>}
               <div className="flex flex-wrap items-center gap-2">
-                <Button variant="secundario" onClick={() => copy(i, c.text)}>{copied === i ? "Comando copiado ✓" : multi ? `Copiar comando ${i + 1}` : "Copiar comando para o ChatGPT"}</Button>
+                <Button variant="secundario" onClick={() => copy(i, c.text)}>{copied === i ? "Comando copiado ✓" : multi ? `Copiar comando ${i + 1}` : "Copiar comando para a IA"}</Button>
                 <Button variant="discreto" onClick={() => download(c.text, multi ? `-comando-${i + 1}` : mode === "compacto" ? "-compacto" : "")}>Baixar (.txt)</Button>
                 <span className="t-tiny text-tinta-fraca">{c.text.length.toLocaleString("pt-BR")} caracteres</span>
               </div>
@@ -289,11 +289,11 @@ export function LessonUploadForm({
             </div>
           ))}
         </div>
-        {mode === "inteiro" && prompt.length > 60_000 && <p className="mt-1 t-tiny text-tinta-fraca">Comando longo: se o ChatGPT não aceitar, use o “Compacto” ou anexe o .txt.</p>}
+        {mode === "inteiro" && prompt.length > 60_000 && <p className="mt-1 t-tiny text-tinta-fraca">Comando longo: se a IA não aceitar, use o “Compacto” ou anexe o .txt.</p>}
       </div>
 
       <div className="flex flex-col gap-2">
-        <label htmlFor="texto-aula" className="font-semibold">{usingTwo ? "2. Cole aqui a parte 1 da resposta" : "2. Cole aqui a resposta completa do ChatGPT (aula e questões)"}</label>
+        <label htmlFor="texto-aula" className="font-semibold">{usingTwo ? "2. Cole aqui a parte 1 da resposta" : "2. Cole aqui a resposta completa da IA (aula e questões)"}</label>
         <MarkedTextarea ref={ta1} id="texto-aula" value={text} onChange={setText} marks={marks[0]} placeholder={"=== AULA ===\nTítulo: …\nMatéria: …\n…\n=== QUESTÕES: FÁCIL ===\n…"} />
         {usingTwo ? (
           <>
@@ -360,7 +360,7 @@ export function LessonUploadForm({
           </div>
 
           {preview.errors.length > 0 && (
-            <Notice tone="erro" title="Corrija o texto (com os botões abaixo, editando no campo ou pedindo ao ChatGPT) e confira de novo">
+            <Notice tone="erro" title="Corrija o texto (com os botões abaixo, editando no campo ou pedindo à IA) e confira de novo">
               <div className="mt-2 flex flex-col gap-2">
                 {!stale && autoButton}
                 <IssueList issues={previewIssues.filter((i) => i.severity === "erro")} disabled={!!stale || pending} onGo={goTo} onFix={(f) => fix(f)} lineLabel={lineLabel} />

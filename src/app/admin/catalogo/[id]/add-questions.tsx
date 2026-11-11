@@ -12,7 +12,7 @@ import type { TopicQuestionsPreview } from "@/server/services/catalog-upload";
 const LEVEL = { facil: "Fácil", medio: "Médio", dificil: "Difícil" } as const;
 type L = keyof typeof LEVEL;
 
-/** Completar o banco de questões de uma aula já catalogada: comando do ChatGPT, colar, conferir, adicionar. */
+/** Completar o banco de questões de uma aula já catalogada: comando da IA, colar, conferir, adicionar. */
 export function AddQuestionsPanel({
   topicId,
   counts,
@@ -77,7 +77,7 @@ export function AddQuestionsPanel({
       </p>
       {missing.length > 0 && (
         <Notice tone="alerta" title="Faltam questões nesta aula">
-          {missing.map((k) => `${LEVEL[k]}: faltam ${10 - counts[k]}`).join(" · ")}. Peça ao ChatGPT com o comando abaixo e cole a resposta.
+          {missing.map((k) => `${LEVEL[k]}: faltam ${10 - counts[k]}`).join(" · ")}. Peça à IA com o comando abaixo e cole a resposta.
         </Notice>
       )}
       <div className="flex flex-wrap items-center gap-2">
@@ -93,7 +93,7 @@ export function AddQuestionsPanel({
             }
           }}
         >
-          {copied ? "Comando copiado ✓" : "Copiar comando das questões para o ChatGPT"}
+          {copied ? "Comando copiado ✓" : "Copiar comando das questões para a IA"}
         </Button>
         <span className="t-tiny text-tinta-fraca">{prompt.length.toLocaleString("pt-BR")} caracteres · já leva o texto-base desta aula</span>
       </div>

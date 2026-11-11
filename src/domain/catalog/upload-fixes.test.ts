@@ -59,7 +59,7 @@ describe("conferência ao vivo: o painel corrige sozinho, sem erro", () => {
   });
 });
 
-describe("seções que o ChatGPT escreveu fora do formato", () => {
+describe("seções que a IA escreveu fora do formato", () => {
   const head = ["=== AULA ===", "Título: TCO", "Matéria: Legislação especial", "Tipo: tema", "Objetivo: Dominar o termo circunstanciado.", "=== TEXTO-BASE ===", "1 Conceito", "2 Rito", "=== MÓDULO: Base ==="];
   it("aceita travessão no lugar de --- e “### SEÇÃO:”", () => {
     const t = [...head, "— SEÇÃO: introdução | O que é o TCO —", "Texto um.", "### SEÇÃO: resumo | Revisão", "Texto dois."].join("\n");

@@ -1,5 +1,5 @@
 /**
- * Correção automática da resposta do ChatGPT para "Exemplos visuais e flashcards":
+ * Correção automática da resposta da IA para "Exemplos visuais e flashcards":
  * cabeçalhos fora do formato, título de seção parecido, bloco :::exemplo sem abrir/fechar,
  * JSON da tirinha/esquema com aspas curvas, vírgula sobrando ou valores fora da lista,
  * e flashcards em outros formatos ("Pergunta:/Resposta:", "P:/R:", "pergunta? — resposta").

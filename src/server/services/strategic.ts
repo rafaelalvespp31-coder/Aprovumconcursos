@@ -43,7 +43,7 @@ function parseRaw(raw: unknown): { data: StrategicImport | null; issues: ImportI
         return { data: null, issues: [{ level: "erro", path: "json", message: `JSON inválido: ${(e as Error).message}` }] };
       }
     } else {
-      // Texto colado do ChatGPT (formato de linhas CONCURSO / PROVA / NOTA / DISCIPLINA / ASSUNTO / FOCO).
+      // Texto colado da IA (formato de linhas CONCURSO / PROVA / NOTA / DISCIPLINA / ASSUNTO / FOCO).
       const t = parseStrategicText(raw);
       const textIssues: ImportIssue[] = t.issues.map((i) => ({ level: i.level ?? "erro", path: i.line ? `linha ${i.line}` : "texto", message: i.message }));
       if (!t.data) return { data: null, issues: textIssues };
@@ -57,7 +57,7 @@ function parseRaw(raw: unknown): { data: StrategicImport | null; issues: ImportI
   return { data: r.data, issues: [...repairImport(r.data), ...checkImport(r.data)] };
 }
 
-/** targetId: grava a análise no concurso aberto pelo admin (vindo do edital do aluno), mesmo que o ChatGPT escreva o nome diferente. */
+/** targetId: grava a análise no concurso aberto pelo admin (vindo do edital do aluno), mesmo que a IA escreva o nome diferente. */
 export async function previewImport(raw: unknown, targetId?: string | null): Promise<ImportPreview> {
   const { data, issues } = parseRaw(raw);
   if (!data) return { ok: false, issues, data: null, summary: null, existing: null };
@@ -167,7 +167,7 @@ export async function backfillExamLinks(limit = 100): Promise<number> {
 /** Concurso aguardando análise: criado pelo edital de um aluno e ainda sem nenhuma prova catalogada. */
 export const isAwaiting = (e: { editions: number | unknown[] }) => (typeof e.editions === "number" ? e.editions : e.editions.length) === 0;
 
-/** Pedido do aluno visto pelo admin: dados do edital extraído e o conteúdo programático (para o comando do ChatGPT). */
+/** Pedido do aluno visto pelo admin: dados do edital extraído e o conteúdo programático (para o comando da IA). */
 export interface ExamRequestInfo { requests: number; contest: string | null; role: string | null; board: string | null; year: number | null; program: string }
 export async function examRequestInfo(examId: string): Promise<ExamRequestInfo | null> {
   if (!UUID.test(examId)) return null;

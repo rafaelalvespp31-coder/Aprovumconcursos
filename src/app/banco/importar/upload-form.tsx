@@ -62,9 +62,9 @@ export function BankUploadForm({ actions }: { actions: BankUploadActions }) {
   return (
     <div className="flex flex-col gap-4" data-testid="upload-questoes">
       <div className="rounded-xl border border-white/10 bg-white/[0.03] p-4">
-        <p className="font-semibold">1. Peça ao ChatGPT para organizar as questões</p>
-        <p className="mt-1 text-[13px] text-white/60">Copie o comando, cole as questões (ou a prova) no lugar indicado e envie no ChatGPT.</p>
-        <button type="button" className={`${dButton("secundario")} mt-3`} onClick={copyPrompt}>{copied ? "Comando copiado ✓" : "Copiar comando para o ChatGPT"}</button>
+        <p className="font-semibold">1. Peça à IA para organizar as questões</p>
+        <p className="mt-1 text-[13px] text-white/60">Copie o comando, cole as questões (ou a prova) no lugar indicado e envie na IA.</p>
+        <button type="button" className={`${dButton("secundario")} mt-3`} onClick={copyPrompt}>{copied ? "Comando copiado ✓" : "Copiar comando para a IA"}</button>
         <details className="mt-2 text-[13px]">
           <summary className="cursor-pointer text-[#ff6b6b]">Ver o comando</summary>
           <pre className="mt-2 max-h-72 overflow-auto whitespace-pre-wrap rounded-md bg-black/40 p-3 text-[12px] text-white/80">{QUESTIONS_PROMPT}</pre>

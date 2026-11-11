@@ -75,7 +75,7 @@ export function BulkForm({ prompt, topicLabel, base, admin, actions }: {
         <h2 className="t-h2">1. Comando-mestre do tópico</h2>
         {prompt ? (
           <>
-            <p className="mt-1 t-small text-tinta-suave">Tópico <strong>{topicLabel}</strong>: um comando só, com todos os subtópicos. Cole no ChatGPT; ele entrega uma aula por subtópico (digite “próximo” se ele parar). Junte todas as respostas em um único arquivo .txt.</p>
+            <p className="mt-1 t-small text-tinta-suave">Tópico <strong>{topicLabel}</strong>: um comando só, com todos os subtópicos. Cole na IA; ele entrega uma aula por subtópico (digite “próximo” se ele parar). Junte todas as respostas em um único arquivo .txt.</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <Button variant="secundario" onClick={copy}>{copied ? "Comando copiado ✓" : "Copiar comando-mestre"}</Button>
               <Button variant="discreto" onClick={download}>Baixar (.txt)</Button>

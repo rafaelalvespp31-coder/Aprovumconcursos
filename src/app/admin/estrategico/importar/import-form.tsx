@@ -34,7 +34,7 @@ export function ImportForm({ example, examId = null }: { example: string; examId
         </label>
         <button type="button" className="rounded-full border border-linha px-4 py-2 t-small font-semibold" onClick={() => { setJson(example); setPv(null); }}>Ver exemplo do formato em texto</button>
       </div>
-      <textarea value={json} onChange={(e) => { setJson(e.target.value); setPv(null); setDone(null); }} rows={14} spellCheck={false} placeholder="Cole aqui o texto gerado pelo ChatGPT" className="w-full rounded-xl border border-linha bg-white p-3 font-mono text-[12.5px]" aria-label="Texto da análise" />
+      <textarea value={json} onChange={(e) => { setJson(e.target.value); setPv(null); setDone(null); }} rows={14} spellCheck={false} placeholder="Cole aqui o texto gerado pela IA" className="w-full rounded-xl border border-linha bg-white p-3 font-mono text-[12.5px]" aria-label="Texto da análise" />
       <div><button type="button" disabled={pending || json.trim().length < 10} onClick={check} className="rounded-full bg-tinta px-5 py-2 t-small font-semibold text-white disabled:opacity-50">{pending ? "Conferindo…" : "Conferir e ver prévia"}</button></div>
       {err && <p role="alert" className="rounded-lg bg-[#FDECEC] p-3 t-small text-[#C81018]">{err}</p>}
       {pv && (

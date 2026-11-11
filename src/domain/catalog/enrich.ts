@@ -1,7 +1,7 @@
 /**
  * Completar uma aula já catalogada com os exemplos visuais (":::exemplo" — tirinha, carimbo e
  * esquema) e a seção de flashcards, sem refazer a aula: o painel gera o comando com os títulos
- * das seções, o ChatGPT devolve só os blocos e o painel acrescenta cada um à seção certa.
+ * das seções, a IA devolve só os blocos e o painel acrescenta cada um à seção certa.
  */
 import { extractPractice, PRACTICE_KINDS } from "@/domain/content/practice";
 import { visualRules } from "./export";
@@ -55,7 +55,7 @@ function excerpt(md: string, max = 280): string {
   return plain.length > max ? `${plain.slice(0, max).replace(/\s+\S*$/, "")}…` : plain;
 }
 
-/** Comando para o ChatGPT devolver só os blocos que faltam. */
+/** Comando para a IA devolver só os blocos que faltam. */
 export function buildEnrichPrompt(title: string, lesson: EnrichLesson): string {
   const st = enrichStatus(lesson);
   const targets = st.missing.map((m) => lesson.sections[m.index]!);
@@ -114,7 +114,7 @@ function clean(raw: string): string {
 
 const keyOf = (s: string) => fold(s).replace(/[^a-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
 
-/** Lê a resposta do ChatGPT e liga cada bloco à seção da aula (pelo título). */
+/** Lê a resposta da IA e liga cada bloco à seção da aula (pelo título). */
 export function parseEnrichment(raw: string, lesson: EnrichLesson): EnrichParse {
   const text = clean(raw);
   const errors: string[] = [];
@@ -178,7 +178,7 @@ export function parseEnrichment(raw: string, lesson: EnrichLesson): EnrichParse 
     else if (flashMd.length > MAX_BODY) errors.push("Flashcards: texto grande demais; use até 15 cartões curtos.");
     else flashcards = flashMd;
   }
-  if (!examples.length && !flashcards && !errors.length) errors.push("Não achei blocos “--- SEÇÃO: … ---” com :::exemplo nem “=== FLASHCARDS ===”. Cole a resposta do ChatGPT inteira.");
+  if (!examples.length && !flashcards && !errors.length) errors.push("Não achei blocos “--- SEÇÃO: … ---” com :::exemplo nem “=== FLASHCARDS ===”. Cole a resposta da IA inteira.");
   return { examples, flashcards, flashCount, errors, warnings };
 }
 

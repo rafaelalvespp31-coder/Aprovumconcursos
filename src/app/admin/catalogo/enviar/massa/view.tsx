@@ -17,7 +17,7 @@ export async function BulkUploadView({ searchParams, base, admin }: { searchPara
         <Link href={`${base}/enviar`} className="t-small text-destaque underline underline-offset-2">Catalogar aula</Link>
         <h1 className="mt-1 t-h1">Catalogar em massa (um tópico por vez)</h1>
         <p className="mt-1 max-w-3xl t-small text-tinta-suave">
-          Copie o comando-mestre do tópico, peça as aulas de todos os subtópicos ao ChatGPT, junte tudo num arquivo .txt e envie aqui. Você confere cada aula e, ao clicar em <strong>Publicar</strong>, o sistema cataloga tudo no tópico certo: quem tem 10 questões por nível vai ao ar, as demais entram como rascunho, e subtópico que já existe é atualizado, nunca duplicado.
+          Copie o comando-mestre do tópico, peça as aulas de todos os subtópicos à IA, junte tudo num arquivo .txt e envie aqui. Você confere cada aula e, ao clicar em <strong>Publicar</strong>, o sistema cataloga tudo no tópico certo: quem tem 10 questões por nível vai ao ar, as demais entram como rascunho, e subtópico que já existe é atualizado, nunca duplicado.
         </p>
       </div>
       {master && (

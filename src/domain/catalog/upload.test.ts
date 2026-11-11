@@ -181,7 +181,7 @@ describe("modelo de aula (upload)", () => {
   });
 });
 
-describe("texto colado do ChatGPT", () => {
+describe("texto colado da IA", () => {
   it("aceita cercas de código, títulos em negrito e marcadores com #", () => {
     const txt = [
       "Claro! Aqui está a aula:",

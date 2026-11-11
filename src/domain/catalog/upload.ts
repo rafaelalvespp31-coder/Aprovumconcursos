@@ -322,7 +322,7 @@ const yes = (v: string) => /^(sim|s|yes|true|x)$/i.test(v.trim());
 // ---------------------------------------------------------------------------
 
 /**
- * Texto colado do ChatGPT (ou outro assistente): tira cercas de código (```), marcação de
+ * Texto colado da IA (ou outro assistente): tira cercas de código (```), marcação de
  * título/negrito em volta dos marcadores (### === AULA ===, **Título:**) e espaços especiais.
  * O conteúdo das seções (Markdown) fica como está.
  */
@@ -338,7 +338,7 @@ export function cleanPasted(raw: string): string {
     .map((l) => {
       // Cerca de código vira linha vazia (não some): os números de linha dos erros batem com o texto colado.
       if (/^\s*```[\w-]*\s*$/.test(l)) return "";
-      // Travessões no lugar de "---" (o ChatGPT às vezes troca "---" por "—" ou "–") e
+      // Travessões no lugar de "---" (a IA às vezes troca "---" por "—" ou "–") e
       // cabeçalhos sem os traços: "— SEÇÃO: tipo | Título —", "### SEÇÃO: …", "**QUESTÃO 3**".
       const dash = l.match(/^\s*(?:#{1,6}\s*|>\s*)?(?:\*\*|__)?\s*(?:[-—–‒―]{1,}\s*)?(SE[ÇC][ÃA]O\s*[:\-–—]\s*[^|]{1,60}\|.+?|QUEST[ÃA]O(?:\s*\d{1,3})?)\s*(?:[-—–‒―]{1,})?\s*(?:\*\*|__)?\s*$/i);
       if (dash && !/^\s*-{3,}/.test(l)) return `--- ${dash[1]!.replace(/\s*[-—–‒―]+\s*$/, "").trim()} ---`;

@@ -471,8 +471,8 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");
     await up.getByRole("radio", { name: "Completo", exact: true }).click();
-    await expect(up.getByRole("button", { name: "Copiar comando para o ChatGPT" })).toBeVisible();
-    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").fill("```text\n" + readFileSync("public/modelos/modelo-aula.txt", "utf8") + "\n```");
+    await expect(up.getByRole("button", { name: "Copiar comando para a IA" })).toBeVisible();
+    await up.getByLabel("2. Cole aqui a resposta completa da IA (aula e questões)").fill("```text\n" + readFileSync("public/modelos/modelo-aula.txt", "utf8") + "\n```");
     await up.getByRole("button", { name: "3. Conferir aula" }).click();
     const pv = up.locator("section[aria-labelledby=previa]");
     await expect(pv.getByRole("heading", { name: "Furto (art. 155 do CP)" })).toBeVisible();
@@ -484,8 +484,8 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await expect(pv.getByText("Fácil: 2", { exact: true })).toBeVisible();
     await expect(up.getByRole("button", { name: "4. Salvar como rascunho" })).toBeEnabled();
     // Mudou o texto depois de conferir: precisa conferir de novo.
-    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").press("End");
-    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").pressSequentially(" ");
+    await up.getByLabel("2. Cole aqui a resposta completa da IA (aula e questões)").press("End");
+    await up.getByLabel("2. Cole aqui a resposta completa da IA (aula e questões)").pressSequentially(" ");
     await expect(up.getByRole("button", { name: "4. Salvar como rascunho" })).toBeDisabled();
   });
 
@@ -511,7 +511,7 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await page.goto(`${G}/catalogo`);
     const box = page.getByTestId("adicionar-questoes");
     await expect(box.getByText("Faltam questões nesta aula")).toBeVisible();
-    await expect(box.getByRole("button", { name: "Copiar comando das questões para o ChatGPT" })).toBeVisible();
+    await expect(box.getByRole("button", { name: "Copiar comando das questões para a IA" })).toBeVisible();
     await box.getByLabel("Cole aqui as questões").fill("=== QUESTÕES: DIFÍCIL ===\n--- QUESTÃO ---\nTipo: certo ou errado\nItem: § 1º\nEnunciado: O repouso noturno aumenta a pena do furto.\nGabarito: Certo\nJustificativa: Certo. É o § 1º do art. 155.");
     await box.getByRole("button", { name: "Conferir questões" }).click();
     await expect(box.getByText("Pronto para adicionar")).toBeVisible();
@@ -525,7 +525,7 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     const box = page.getByTestId("adicionar-visuais");
     await expect(box.getByText("Faltam exemplos visuais ou flashcards")).toBeVisible();
     await expect(box.getByRole("button", { name: "Copiar comando dos exemplos e flashcards" })).toBeVisible();
-    await box.getByLabel("Cole aqui a resposta do ChatGPT").fill(
+    await box.getByLabel("Cole aqui a resposta da IA").fill(
       [
         "=== EXEMPLOS VISUAIS ===",
         "--- SEÇÃO: Equações do 2º grau: discriminante ---",
@@ -566,7 +566,7 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     const full = readFileSync("public/modelos/modelo-aula.txt", "utf8");
     // Estraga o gabarito da primeira questão de múltipla escolha.
     const broken = full.replace(/Gabarito:\s*[A-E]\b/, "Gabarito: Z");
-    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").fill(broken);
+    await up.getByLabel("2. Cole aqui a resposta completa da IA (aula e questões)").fill(broken);
     const live = page.getByTestId("conferencia-ao-vivo");
     await expect(live.getByText("Nenhum erro de formato no texto. Clique em “Conferir aula”.")).toBeVisible();
     await expect(live.locator("li[data-severidade=aviso]").filter({ hasText: /Gabarito:.*Questão ignorada/ })).toBeVisible();
@@ -578,7 +578,7 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await up.getByRole("radio", { name: "Completo", exact: true }).click();
     const full = readFileSync("public/modelos/modelo-aula.txt", "utf8");
     const broken = full.replace(/--- SEÇÃO: ([^|\n]+)\|/, "--- SEÇÃO: explicaçao detalhada |").replace(/Gabarito:\s*Certo/, "Gabarito: talvez");
-    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").fill(broken);
+    await up.getByLabel("2. Cole aqui a resposta completa da IA (aula e questões)").fill(broken);
     await expect(page.getByTestId("conferencia-ao-vivo").getByText("Nenhum erro de formato no texto. Clique em “Conferir aula”.")).toBeVisible();
     await up.getByRole("button", { name: "3. Conferir aula" }).click();
     await expect(up.locator("section[aria-labelledby=previa]").getByText(/Pronto para (salvar|publicar)/)).toBeVisible();
@@ -599,7 +599,7 @@ test.describe("catálogo: catalogar aula colando texto", () => {
   test("exemplos visuais: corrigir tudo automaticamente", async ({ page }) => {
     await page.goto(`${G}/catalogo`);
     const box = page.getByTestId("adicionar-visuais");
-    await box.getByLabel("Cole aqui a resposta do ChatGPT").fill(
+    await box.getByLabel("Cole aqui a resposta da IA").fill(
       [
         "**SEÇÃO: Equacoes do 2 grau discriminante**",
         "Situação: Área de 49 m².",
@@ -623,7 +623,7 @@ test.describe("catálogo: catalogar aula colando texto", () => {
     await page.goto(`${G}/catalogo`);
     const up = page.getByTestId("upload-aula");
     await up.getByRole("radio", { name: "Completo", exact: true }).click();
-    await up.getByLabel("2. Cole aqui a resposta completa do ChatGPT (aula e questões)").fill("=== AULA ===\nTítulo: Teste\nMatéria: Astronomia\n");
+    await up.getByLabel("2. Cole aqui a resposta completa da IA (aula e questões)").fill("=== AULA ===\nTítulo: Teste\nMatéria: Astronomia\n");
     await up.getByRole("button", { name: "3. Conferir aula" }).click();
     await expect(up.getByText(/Não reconheci a matéria “Astronomia”/)).toBeVisible();
     await expect(up.getByRole("button", { name: "4. Salvar como rascunho" })).toBeDisabled();

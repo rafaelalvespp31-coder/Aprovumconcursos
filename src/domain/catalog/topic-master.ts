@@ -1,6 +1,6 @@
 /**
  * COMANDO-MESTRE DO TÓPICO: um comando só para o tópico inteiro do plano, com TODOS os subtópicos.
- * O ChatGPT escreve uma aula por subtópico (cada uma no padrão do comando de subtópico) e o resultado
+ * A IA escreve uma aula por subtópico (cada uma no padrão do comando de subtópico) e o resultado
  * inteiro vai num único .txt para a importação em massa. Puro.
  */
 import { DELIVERY_CONTRACT } from "./delivery";

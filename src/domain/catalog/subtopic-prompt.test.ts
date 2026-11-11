@@ -15,7 +15,7 @@ const outline = parseOutline(`tópico: Ilicitude
 const group = outline.groups[0]!;
 const sub = group.subtopics[0]!;
 
-/** Resposta como o ChatGPT devolveria seguindo o comando: o esqueleto preenchido. */
+/** Resposta como a IA devolveria seguindo o comando: o esqueleto preenchido. */
 function fakeAnswer(prompt: string): string {
   const start = prompt.indexOf("=== AULA ===");
   const end = prompt.indexOf("=== REFERÊNCIAS ===");
