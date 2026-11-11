@@ -50,6 +50,12 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
 
       <DuplicatesCenter dupes={v.dupes} base={base} admin={admin} />
 
+      {v.warnings.length > 0 && (
+        <ul className="flex flex-col gap-1 rounded-md border border-alerta/30 bg-alerta-fundo px-4 py-3 t-small">
+          {v.warnings.map((w, i) => <li key={i}>⚠ {w}</li>)}
+        </ul>
+      )}
+
       {v.groups.map((g, gi) => (
         <section key={gi} aria-labelledby={`g-${gi}`} className={`rounded-lg border ${v.dupes.flagged.includes(`g:${gi}`) ? "dup-flag-box" : "border-linha"}`} data-testid="plano-topico">
           <h2 id={`g-${gi}`} className="border-b border-linha bg-nevoa px-4 py-3 t-h2">
