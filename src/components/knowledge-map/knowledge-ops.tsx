@@ -88,6 +88,41 @@ class SceneBoundary extends Component<{ onError: () => void; children: ReactNode
 /** Relógio para os tempos da mira (só usado em eventos, nunca na renderização). */
 const clockMs = () => performance.now();
 
+/**
+ * Memória do aparelho: cada celular decide sozinho. A aba que "cai" (o iOS derruba abas que passam do
+ * limite de memória, sem avisar) deixa uma marca de "mapa aberto"; se ela ainda estiver lá quando o
+ * mapa abrir de novo, o aparelho não aguentou, e passa a abrir em modo lista por alguns dias.
+ */
+const KEY_ABERTO = "km-mapa-aberto";
+const KEY_LISTA = "km-mapa-lista";
+const LISTA_MS = 3 * 24 * 3600 * 1000;
+const QUEDA_JANELA_MS = 30 * 60 * 1000;
+type SemMemoria = "baixa" | "queda" | "contexto" | "forcado";
+function ls(op: "get" | "set" | "del", key: string, val?: string): string | null {
+  try {
+    if (op === "get") return window.localStorage.getItem(key);
+    if (op === "set") window.localStorage.setItem(key, val ?? "");
+    else window.localStorage.removeItem(key);
+  } catch {
+    /* sem armazenamento: segue sem a proteção */
+  }
+  return null;
+}
+function avaliarMemoria(): SemMemoria | null {
+  const agora = Date.now();
+  const lista = Number(ls("get", KEY_LISTA) || 0);
+  if (lista && agora - lista < LISTA_MS) return "queda";
+  const aberto = Number(ls("get", KEY_ABERTO) || 0);
+  if (aberto && agora - aberto < QUEDA_JANELA_MS) {
+    ls("del", KEY_ABERTO);
+    ls("set", KEY_LISTA, String(agora));
+    return "queda";
+  }
+  const dm = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+  if (typeof dm === "number" && dm <= 2) return "baixa";
+  return null;
+}
+
 function hasWebGL(): boolean {
   try {
     const c = document.createElement("canvas");
@@ -130,6 +165,8 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
   }, [full, filterDisc, sit]);
 
   const [mode3d, setMode3d] = useState<"verificando" | "3d" | "lista">("verificando");
+  const [semMemoria, setSemMemoria] = useState<SemMemoria | null>(null);
+  const modoLista = semMemoria !== null;
   const [quality, setQuality] = useState<"alta" | "baixa">("alta");
   const [portrait, setPortrait] = useState(false);
   // Objeto mutável compartilhado com a cena (a cena lê a cada quadro; não dispara re-render).
@@ -292,14 +329,31 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
       setQuality(p || window.innerWidth < 900 || (navigator.hardwareConcurrency ?? 8) <= 4 ? "baixa" : "alta");
     };
     // Fora do render (o servidor não conhece a tela nem o WebGL).
+    let marcar = false;
+    const aberto = () => ls("set", KEY_ABERTO, String(Date.now()));
+    const fechado = () => ls("del", KEY_ABERTO);
+    const visib = () => (document.visibilityState === "hidden" ? fechado() : aberto());
     const t0 = setTimeout(() => {
       update();
-      setMode3d(!sem3d && hasWebGL() ? "3d" : "lista");
+      const motivo: SemMemoria | null = sem3d ? "forcado" : avaliarMemoria();
+      if (motivo) setSemMemoria(motivo);
+      setMode3d(!motivo && !sem3d && hasWebGL() ? "3d" : "lista");
+      if (!motivo) {
+        marcar = true;
+        aberto();
+        document.addEventListener("visibilitychange", visib);
+        window.addEventListener("pagehide", fechado);
+      }
     }, 0);
     window.addEventListener("resize", update);
     const unlock = lockScroll();
     const t = setTimeout(() => setHint(false), 7000);
     return () => {
+      if (marcar) {
+        fechado();
+        document.removeEventListener("visibilitychange", visib);
+        window.removeEventListener("pagehide", fechado);
+      }
       window.removeEventListener("resize", update);
       unlock();
       clearTimeout(t);
@@ -464,7 +518,7 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
   // Mouse/toque: olhar acompanha o cursor; arrastar gira ou move; roda e pinça aproximam.
   useEffect(() => {
     const el = stage.current;
-    if (!el || (!art && mode3d !== "3d")) return;
+    if (!el || modoLista || (!art && mode3d !== "3d")) return;
     const pts = new Map<number, { x: number; y: number }>();
     let pinch = 0;
     let travel = 0;
@@ -600,7 +654,7 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
       el.removeEventListener("pointerleave", leave);
       el.removeEventListener("wheel", wheel);
     };
-  }, [controls, rig, cam, art, mode3d]);
+  }, [controls, rig, cam, art, mode3d, modoLista]);
 
   useEffect(() => rig.setDragMode(dragMode), [rig, dragMode]);
   useEffect(() => rig.setLowered(!!selT || coreOpen), [rig, selT, coreOpen]);
@@ -663,8 +717,8 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
   }, []);
 
   const [lost, setLost] = useState(false);
-  const show3d = !art && mode3d === "3d" && !lost;
-  const showStage = art || show3d;
+  const show3d = !art && mode3d === "3d" && !lost && !modoLista;
+  const showStage = !modoLista && (art || show3d);
   const empty = full.territories.length === 0;
   const done = full.totals.done;
 
@@ -708,12 +762,12 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
   );
 
   return (
-    <div ref={root} className={"km-root"} data-testid="knowledge-ops" data-modo={art ? "arte" : show3d ? "3d" : "lista"}>
+    <div ref={root} className={"km-root"} data-testid="knowledge-ops" data-modo={modoLista ? "lista" : art ? "arte" : show3d ? "3d" : "lista"}>
       <h1 className="sr-only">Novo estudo — Central de operações: mapa do conhecimento</h1>
 
       {/* Camada A — mundo 3D */}
       <div ref={stage} className={"km-stage"}>
-        {art && (
+        {art && !modoLista && (
           <ImageStage
             cam={cam}
             territories={artTerritories}
@@ -747,7 +801,10 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
               onSelectTerritory={openDirect}
               onSelectTopic={selectTopic}
               onSelectCore={selectCore}
-              onContextLost={() => setLost(true)}
+              onContextLost={() => {
+                ls("set", KEY_LISTA, String(Date.now()));
+                setLost(true);
+              }}
             />
           </SceneBoundary>
         )}
@@ -1134,7 +1191,32 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
               </button>
             )}
           </div>
-          {!showStage && <p className={"km-muted"}>{lost ? "O mapa 3D foi interrompido pelo navegador." : "Seu navegador não exibe o mapa 3D."} Escolha a matéria e o assunto por aqui.</p>}
+          {!showStage && (
+            <p className={"km-muted"} role="status" data-testid="aviso-memoria">
+              {semMemoria === "queda" || semMemoria === "baixa" || lost
+                ? "A memória do seu aparelho está fraca, por isso o mapa não está carregando. Abrimos o modo lista, que funciona do mesmo jeito."
+                : semMemoria === "forcado"
+                  ? "Mapa em modo lista."
+                  : "Seu navegador não exibe o mapa 3D."}{" "}
+              Escolha a matéria e o assunto por aqui.
+              {(semMemoria === "queda" || semMemoria === "baixa" || lost) && (
+                <>
+                  {" "}
+                  <button
+                    type="button"
+                    className={"km-ghost"}
+                    onClick={() => {
+                      ls("del", KEY_LISTA);
+                      ls("del", KEY_ABERTO);
+                      window.location.reload();
+                    }}
+                  >
+                    Tentar o mapa de novo
+                  </button>
+                </>
+              )}
+            </p>
+          )}
           {map.territories.map((t) => (
             <div key={t.id} className={"km-listGroup"}>
               <button type="button" className={"km-listDisc"} style={{ ["--c" as string]: t.color }} onClick={() => openDirect(t)}>
