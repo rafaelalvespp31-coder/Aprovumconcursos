@@ -58,7 +58,7 @@ export function SavedOutlines({ outlines, base = "/admin/catalogo/plano" }: { ou
       <div className="mt-3 flex flex-col gap-3">
         {groups.map((g) => {
           const color = colorOf(g.mode);
-          const sum = g.items.reduce((a, o) => (o.totals ? { publicado: a.publicado + o.totals.publicado, faltam: a.faltam + o.totals.faltam, dup: a.dup + (o.totals.duplicados ?? 0) } : a), { publicado: 0, faltam: 0, dup: 0 });
+          const sum = g.items.reduce((a, o) => (o.totals ? { publicado: a.publicado + o.totals.publicado, faltam: a.faltam + o.totals.faltam } : a), { publicado: 0, faltam: 0 });
           const hasTotals = g.items.some((o) => o.totals);
           const dd = dupBreakdown(g.items.reduce((a, o) => ({ duplicados: a.duplicados + (o.totals?.duplicados ?? 0), dupAulas: a.dupAulas + (o.totals?.dupAulas ?? 0), dupSumario: a.dupSumario + (o.totals?.dupSumario ?? 0) }), { duplicados: 0, dupAulas: 0, dupSumario: 0 }));
           return (
@@ -74,11 +74,9 @@ export function SavedOutlines({ outlines, base = "/admin/catalogo/plano" }: { ou
                   <span className="flex shrink-0 flex-wrap items-center gap-1.5" data-testid="materia-contagem">
                     <span className="plano-pill plano-pill-ok">{plural(sum.publicado, "publicado", "publicados")}</span>
                     <span className="plano-pill plano-pill-falta">{sum.faltam} {sum.faltam === 1 ? "falta" : "faltam"}</span>
-                    {sum.dup > 0 && (
-                      <span className="plano-pill plano-pill-dup">
-                        ⚠ {sum.dup} duplicado{sum.dup === 1 ? "" : "s"}
-                      </span>
-                    )}
+                    <span className={dd.total > 0 ? "plano-pill plano-pill-dup" : "plano-pill plano-pill-zero"} data-testid="materia-dup-pill">
+                      {dd.total > 0 ? `⚠ ${dd.total} duplicado${dd.total === 1 ? "" : "s"}` : "0 duplicados"}
+                    </span>
                   </span>
                 )}
                 {dd.total > 0 && (
@@ -108,10 +106,12 @@ export function SavedOutlines({ outlines, base = "/admin/catalogo/plano" }: { ou
                             <span className="plano-contagem" data-testid="plano-contagem" aria-label={`${t.publicado} publicados e ${t.faltam} faltando de ${t.subtopics}`}>
                               <span className="plano-pill plano-pill-ok">{t.publicado} publicado{t.publicado === 1 ? "" : "s"}</span>
                               <span className="plano-pill plano-pill-falta">{t.faltam} {t.faltam === 1 ? "falta" : "faltam"}</span>
-                              {!!t.duplicados && (
+                              {dupBreakdown(t).total > 0 ? (
                                 <span className="plano-pill plano-pill-dup" data-testid="plano-duplicados">
-                                  ⚠ {t.duplicados} duplicado{t.duplicados === 1 ? "" : "s"}
+                                  ⚠ {dupBreakdown(t).total} duplicado{dupBreakdown(t).total === 1 ? "" : "s"}
                                 </span>
+                              ) : (
+                                <span className="plano-pill plano-pill-zero">0 duplicados</span>
                               )}
                             </span>
                           )}

@@ -4006,3 +4006,4 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 .plano-dup-faixa strong { font-weight: 800; }
 @keyframes plano-dup-pulso { 0%, 100% { box-shadow: 0 0 0 2px rgba(255, 45, 70, 0.55); } 50% { box-shadow: 0 0 0 5px rgba(255, 45, 70, 0.2); } }
 @media (prefers-reduced-motion: reduce) { .plano-dup-faixa { animation: none; } }
+.plano-pill-zero { background: rgba(255,255,255,0.85); color: #1f5d2c; }
