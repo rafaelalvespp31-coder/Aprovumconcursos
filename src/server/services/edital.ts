@@ -9,6 +9,7 @@ import { detectContestInfo, detectRoles, detectRole, displayTitle } from "@/doma
 import { extractOrgLogo } from "./edital-logo";
 import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match";
 import { crossSources } from "@/domain/edital/cross";
+import { filterPagesByRole } from "@/domain/edital/role-filter";
 
 /**
  * APROVUM AI — preparação por edital. Tudo roda aqui, sem IA externa: leitura do PDF, localização do
@@ -73,6 +74,8 @@ export interface PrepStats {
   /** Fontes usadas na análise (rastreabilidade) e divergências entre PDF e texto colado. */
   sources?: { pdf: boolean; text: boolean; role: string | null; roleSource: "aluno" | "edital" | null };
   divergences?: string[];
+  /** Como o conteúdo foi separado por cargo (PDF e texto colado). */
+  roleFilter?: { role: string | null; pdf?: { applied: boolean; removed: number }; text?: { applied: boolean; removed: number } };
 }
 export interface PrepSummary {
   id: string;
@@ -368,8 +371,24 @@ async function stageIdentify(p: Row) {
     return;
   }
 
-  const pdf = parseEdital(pages);
-  const typed = typeof p.programmatic_text === "string" && p.programmatic_text.trim() ? parseProgrammaticText(p.programmatic_text) : null;
+  // Só o conteúdo do cargo escolhido: blocos de outros cargos ficam de fora (PDF e texto colado).
+  let pdfPages = pages;
+  let typedText = typeof p.programmatic_text === "string" && p.programmatic_text.trim() ? (p.programmatic_text as string) : null;
+  const roleFilter: { role: string | null; pdf?: { applied: boolean; removed: number }; text?: { applied: boolean; removed: number } } = { role: (p.role_name as string | null) ?? null };
+  if (p.role_name && roles.length > 1) {
+    const fp = filterPagesByRole(pages, p.role_name as string, roles);
+    pdfPages = fp.pages;
+    roleFilter.pdf = { applied: fp.applied, removed: fp.removedLines };
+    if (typedText) {
+      const ft = filterPagesByRole([typedText], p.role_name as string, roles);
+      typedText = ft.pages[0] ?? typedText;
+      roleFilter.text = { applied: ft.applied, removed: ft.removedLines };
+    }
+    const sep = fp.applied || roleFilter.text?.applied;
+    await event(id, userId, 3, sep ? `Conteúdo separado para o cargo ${fp.target}: ${(fp.removedLines + (roleFilter.text?.removed ?? 0)).toLocaleString("pt-BR")} linhas de outros cargos foram ignoradas.` : `Não encontrei títulos de cargo no conteúdo programático; usei o conteúdo inteiro. Confira se ele é do cargo ${fp.target}.`, sep ? "ok" : "warn");
+  }
+  const pdf = parseEdital(pdfPages);
+  const typed = typedText ? parseProgrammaticText(typedText) : null;
   const cross = crossSources(pdf, typed);
   const parsed = cross.parsed;
   const usable = cross.used.text || (pdf.found && pdf.confidence >= 0.4 && pdf.disciplines.length > 0);
@@ -387,7 +406,7 @@ async function stageIdentify(p: Row) {
   await persistParsed(p, parsed, cross.used.text);
   const fresh = await own(userId, id);
   const sources = { pdf: cross.used.pdf, text: cross.used.text, role: (fresh.role_name as string | null) ?? null, roleSource: fresh.role_name ? (p.role_name ? "aluno" : "aluno") : null };
-  await db.from("edital_preparations").update({ sources, stats: { ...((fresh.stats as PrepStats) ?? {}), needRole: false, sources, divergences: cross.divergences.slice(0, 12) } }).eq("id", id);
+  await db.from("edital_preparations").update({ sources, stats: { ...((fresh.stats as PrepStats) ?? {}), needRole: false, sources, roleFilter, divergences: cross.divergences.slice(0, 12) } }).eq("id", id);
 }
 
 /**
@@ -404,6 +423,7 @@ export async function chooseRole(userId: string, id: string, role: unknown): Pro
   if (up.error) throw new Error(up.error.message);
   await event(id, userId, 3, `Cargo selecionado: ${r}.`, "ok");
   if (p.status === "conferencia" && st.needRole) await setStatus(id, "identificando", { error: null, stats: { ...st, needRole: false } });
+  else if (p.status === "concluido" && r !== p.role_name && ((p.role_options as unknown[] | null)?.length ?? 0) > 1) await setStatus(id, "identificando", { error: null }); // cargo trocado: refaz a análise do mesmo registro
   await import("./strategic").then((m) => m.linkPreparationToExam(id, { force: true })).catch(() => null);
   return toSummary(await own(userId, id));
 }
@@ -581,13 +601,22 @@ export async function listPreparations(userId: string): Promise<PrepSummary[]> {
   return rows.map(toSummary);
 }
 
-export async function updatePreparationInfo(userId: string, id: string, patch: { contestName?: string; roleName?: string; board?: string; year?: number | null }) {
-  await own(userId, id);
+export async function updatePreparationInfo(userId: string, id: string, patch: { contestName?: string; roleName?: string; board?: string; year?: number | null }): Promise<{ reanalyze: boolean }> {
+  const before = await own(userId, id);
   const clean = (v?: string) => (v ?? "").replace(/\s+/g, " ").trim().slice(0, 160) || null;
   const { error } = await createAdminClient().from("edital_preparations").update({ contest_name: clean(patch.contestName), role_name: clean(patch.roleName), board: clean(patch.board), contest_year: patch.year ?? null, updated_at: new Date().toISOString() }).eq("id", id).eq("user_id", userId);
   if (error) throw new Error(error.message);
   // Nome/ano do concurso mudou: refaz a ligação automática do Raio-X.
   await import("./strategic").then((m) => m.linkPreparationToExam(id, { force: true })).catch(() => null);
+  // Cargo trocado numa análise pronta de edital com vários cargos: refaz a análise do mesmo registro (sem criar outro).
+  const newRole = clean(patch.roleName);
+  const many = ((before.role_options as unknown[] | null)?.length ?? 0) > 1;
+  if (before.status === "concluido" && many && newRole && newRole !== before.role_name) {
+    await setStatus(id, "identificando", { error: null });
+    await event(id, userId, 3, `Cargo alterado para ${newRole}. Refazendo a análise.`, "info");
+    return { reanalyze: true };
+  }
+  return { reanalyze: false };
 }
 
 export async function listEvents(userId: string, id: string, after = 0): Promise<PrepEvent[]> {
