@@ -84,10 +84,11 @@ export function clausesOf(text: string): string[] {
   return [t];
 }
 
-function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null): MatchResult {
+function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null, parent: string | null = null): MatchResult {
   const clause = tokensOf(clauseText);
   if (!clause.all.length) return { status: "nao_encontrado", score: 0, links: [] };
   const key = fold(clauseText);
+  const parentTok = parent ? tokensOf(parent) : null;
   const scored: Array<MatchLink & { r: number }> = [];
   for (const it of idx.items) {
     const m = it.entry.mode;
@@ -102,10 +103,17 @@ function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null)
     const matched = clause.all.filter((t) => it.union.has(t)).length;
     if (!exact && !lawHit && matched < Math.min(2, clause.all.length)) continue;
     const base = exact || lawHit ? 1 : Math.max(rName, 0.85 * rUnion);
-    const score = base * factor;
+    // Hierarquia: o tópico do edital onde o assunto está deve ter a ver com o tópico da aula no catálogo.
+    // Sem nenhuma palavra em comum, é outro contexto: pesa menos e nunca vira "completa" só por parecer.
+    let otherContext = false;
+    if (parentTok?.all.length && it.entry.group) {
+      const g = tokensOf(it.entry.group);
+      if (g.all.length) otherContext = !parentTok.all.some((t) => g.set.has(t)) && !g.all.some((t) => parentTok.set.has(t));
+    }
+    const score = base * factor * (otherContext ? 0.85 : 1);
     if (score < 0.3) continue;
     const sameArea = factor >= 0.85;
-    const coverage: MatchLink["coverage"] = (exact || lawHit || rName >= 0.8) && sameArea ? "completa" : exact || lawHit ? "conferencia" : rName >= 0.5 || (rUnion >= 0.75 && matched >= 2) ? "parcial" : "conferencia";
+    const coverage: MatchLink["coverage"] = (exact || lawHit || (rName >= 0.8 && !otherContext)) && sameArea ? "completa" : exact || lawHit ? "conferencia" : rName >= 0.5 || (rUnion >= 0.75 && matched >= 2) ? "parcial" : "conferencia";
     scored.push({ catalogId: it.entry.id, coverage, score: Math.round(score * 1000) / 1000, r: rName });
   }
   scored.sort((a, b) => b.score - a.score);
@@ -119,10 +127,13 @@ function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null)
  * Classifica um assunto do edital. Itens com vários trechos são avaliados trecho a trecho:
  * todos cobertos = completa; alguns = parcial; nenhum = não encontrado (ou conferência).
  */
-export function matchTopic(idx: CatalogIndex, text: string, mode: string | null): MatchResult {
+export function matchTopic(idx: CatalogIndex, text: string, mode: string | null, parent: string | null = null): MatchResult {
   const clauses = clausesOf(text);
-  if (clauses.length === 1) return scoreClause(idx, clauses[0]!, mode);
-  const parts = clauses.map((c) => scoreClause(idx, c, mode));
+  if (clauses.length === 1) return scoreClause(idx, clauses[0]!, mode, parent);
+  // O título inteiro (com dois-pontos e vírgulas) pode ser, ele mesmo, o nome de uma aula do catálogo.
+  const whole = scoreClause(idx, text, mode, parent);
+  if (whole.status === "completa") return whole;
+  const parts = clauses.map((c) => scoreClause(idx, c, mode, parent));
   const done = parts.filter((p) => p.status === "completa").length;
   const some = parts.filter((p) => p.status !== "nao_encontrado").length;
   const links = new Map<string, MatchLink>();

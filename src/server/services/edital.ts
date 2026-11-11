@@ -61,6 +61,8 @@ export interface PrepStats {
   studyFolderId?: string;
   /** Quando os vínculos com o catálogo foram calculados pela última vez (ISO). */
   matchedAt?: string;
+  /** Versão da regra de vínculo usada: ao mudar a regra, os editais refazem os vínculos sozinhos. */
+  matchV?: number;
 }
 export interface PrepSummary {
   id: string;
@@ -343,15 +345,23 @@ async function applyMatches(p: Row) {
   const idx = buildIndex(catalog);
   const discs = await db.from("edital_disciplines").select("id, discipline_mode").eq("preparation_id", id);
   const modeOf = new Map(((discs.data ?? []) as Row[]).map((d) => [d.id as string, (d.discipline_mode as string | null) ?? null]));
-  const tops = await db.from("edital_topics").select("id, discipline_id, title").eq("preparation_id", id).limit(5000);
+  const tops = await db.from("edital_topics").select("id, discipline_id, title, depth, position").eq("preparation_id", id).order("position").limit(5000);
   if (tops.error) throw new Error(tops.error.message);
   await db.from("edital_topic_lessons").delete().in("topic_id", ((tops.data ?? []) as Row[]).map((t) => t.id as string).slice(0, 5000));
   const links: Array<{ topic_id: string; catalog_topic_id: string; coverage: string; score: number }> = [];
   const lessonIds = new Set<string>();
   const counts = { completa: 0, parcial: 0, conferencia: 0, nao_encontrado: 0 };
   const updates = new Map<string, Array<{ id: string; score: number }>>();
+  // Tópico-pai de cada assunto (o mais próximo acima, com nível menor, na mesma disciplina): é o contexto da hierarquia.
+  const stacks = new Map<string, Array<{ depth: number; title: string }>>();
   for (const t of (tops.data ?? []) as Row[]) {
-    const r = matchTopic(idx, t.title as string, modeOf.get(t.discipline_id as string) ?? null);
+    const did = t.discipline_id as string;
+    const depth = (t.depth as number | null) ?? 1;
+    const stack = (stacks.get(did) ?? []).filter((x) => x.depth < depth);
+    const parent = stack[stack.length - 1]?.title ?? null;
+    stack.push({ depth, title: t.title as string });
+    stacks.set(did, stack);
+    const r = matchTopic(idx, t.title as string, modeOf.get(did) ?? null, parent);
     counts[r.status]++;
     const list = updates.get(r.status) ?? [];
     list.push({ id: t.id as string, score: r.score });
@@ -384,6 +394,7 @@ async function applyMatches(p: Row) {
     pendentes: counts.nao_encontrado,
     coveragePct: total ? Math.round(((counts.completa + (covered - counts.completa) * 0.5) / total) * 100) : 0,
     matchedAt: new Date().toISOString(),
+    matchV: MATCH_VERSION,
   };
   return { stats, counts, lessons: lessonIds.size };
 }
@@ -399,6 +410,7 @@ async function stageMap(p: Row) {
   if (counts.nao_encontrado) await event(id, userId, 4, `${counts.nao_encontrado} conteúdos sem aula no catálogo (pendentes).`, "warn");
 }
 
+const MATCH_VERSION = 2;
 const refreshing = new Set<string>();
 /**
  * Aulas catalogadas DEPOIS do envio do edital: se o catálogo publicado mudou desde o último vínculo,
@@ -411,7 +423,8 @@ export async function refreshMatchesIfStale(userId: string, id: string): Promise
   const db = createAdminClient();
   const last = await db.from("catalog_topics").select("updated_at").eq("status", "publicado").order("updated_at", { ascending: false }).limit(1).maybeSingle();
   const catalogAt = (last.data as Row | null)?.updated_at as string | undefined;
-  if (!catalogAt || (st.matchedAt && new Date(st.matchedAt).getTime() >= new Date(catalogAt).getTime())) return false;
+  const ruleChanged = (st.matchV ?? 1) < MATCH_VERSION;
+  if (!ruleChanged && (!catalogAt || (st.matchedAt && new Date(st.matchedAt).getTime() >= new Date(catalogAt).getTime()))) return false;
   refreshing.add(id);
   try {
     const { stats } = await applyMatches(p);
