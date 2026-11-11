@@ -90,8 +90,6 @@ export function findPlanDuplicates(outline: Outline, catalog: readonly CatalogGr
     g.subtopics.forEach((s, si) => {
       const keys = [s.code ? `c:${gi}:${s.code}` : null, `t:${gi}:${groupKey(s.title)}`];
       for (const k of keys) if (k) seenS.set(k, [...(seenS.get(k) ?? []), { gi, si }]);
-      const tk = groupKey(s.title);
-      if (tk.length >= 15) seenS.set(`x:${tk}`, [...(seenS.get(`x:${tk}`) ?? []), { gi, si }]);
     }),
   );
   const doneS = new Set<string>();
