@@ -4,6 +4,7 @@ import { getMyAvatarRequest, loadMyAvatar } from "@/server/services/avatar";
 import { loadHome } from "@/server/services/gamification";
 import { HomeOperacao } from "@/components/home/home-operacao";
 import { HeroBanner } from "./hero-banner";
+import { BlackNovemberTicker, blackNovemberActive } from "@/components/home/black-november-ticker";
 import { listActiveApprovedBanners } from "@/server/services/approved-banners";
 import { ackLevelUpsAction, requestAvatarAction, selectSkinAction } from "./avatar-actions";
 import { getMyPlan } from "@/server/services/plans";
@@ -36,6 +37,8 @@ export default async function DashboardPage() {
       <div className="cl-banner">
         <HeroBanner name={name?.split(" ")[0] ?? null} extra={approved} />
       </div>
+      {/* Faixa corrente do Black November: entre o banner do topo e o palco do avatar (sai do ar em dezembro) */}
+      {blackNovemberActive() && <BlackNovemberTicker />}
       {promo && (
         <div className="px-3 pt-3 sm:px-0"><PremiumIndicador expiresAt={promo.expiresAt} campaignName={promo.campaignName} /></div>
       )}

@@ -3130,6 +3130,43 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .cl-card { max-width: 100%; }
 .cl-medal > span:last-child { overflow-wrap: anywhere; }
 
+/* ===== Faixa corrente "Black November" (entre o banner do topo e o palco do avatar) ===== */
+.bnv { position: relative; display: flex; align-items: stretch; width: calc(100% - 20px); max-width: 1480px; margin: 0 auto 12px; border-radius: 14px; overflow: hidden; color: #fff; font-family: Inter, sans-serif; background: linear-gradient(90deg, #060607, #170506 50%, #060607); border: 1px solid rgba(255,59,68,0.55); box-shadow: 0 10px 28px -14px rgba(225,6,0,0.7), inset 0 1px 0 rgba(255,255,255,0.08); }
+.bnv::before, .bnv::after { content: ""; position: absolute; left: 0; right: 0; height: 4px; z-index: 3; pointer-events: none; background: repeating-linear-gradient(115deg, #ff2a1f 0 12px, #0a0a0b 12px 24px); opacity: .9; animation: bnv-faixa 1.2s linear infinite; }
+.bnv::before { top: 0; } .bnv::after { bottom: 0; animation-direction: reverse; }
+.bnv-janela { position: relative; flex: 1; min-width: 0; overflow: hidden; padding: 4px 0; -webkit-mask-image: linear-gradient(90deg, transparent, #000 5%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 5%, #000 92%, transparent); }
+.bnv-esteira { display: flex; width: max-content; animation: bnv-corre 28s linear infinite; }
+.bnv:hover .bnv-esteira, .bnv:focus-within .bnv-esteira, .bnv:active .bnv-esteira { animation-play-state: paused; }
+.bnv-trilho { display: flex; align-items: center; gap: 12px; padding: 9px 6px; flex: none; }
+.bnv-item { display: inline-flex; align-items: center; gap: 8px; flex: none; white-space: nowrap; }
+.bnv-selo { padding: 7px 14px; border-radius: 8px; background: linear-gradient(180deg, #ff2a1f, #a80300); font: 900 italic 17px/1 "Barlow Condensed", Inter, sans-serif; letter-spacing: .06em; box-shadow: 0 0 18px rgba(255,42,31,0.6); transform: skewX(-8deg); }
+.bnv-selo b { color: #0a0a0b; background: #fff; padding: 2px 6px; border-radius: 4px; }
+.bnv-selo svg { width: 16px; height: 16px; animation: bnv-chama 1s ease-in-out infinite; }
+.bnv-frase { font: 800 12px/1 "Chakra Petch", Inter, sans-serif; letter-spacing: .2em; color: #d7d9de; }
+.bnv-frase i { font-style: normal; color: #ff2a1f; }
+.bnv-frase svg { width: 14px; height: 14px; color: #ffd166; }
+.bnv-plano { flex-direction: column; gap: 3px; padding: 7px 14px; border-radius: 10px; border: 1px solid rgba(255,255,255,0.16); background: rgba(255,255,255,0.05); text-decoration: none; color: #fff; transition: transform .2s, border-color .2s, background .2s, box-shadow .2s; }
+.bnv-plano:hover, .bnv-plano:focus-visible { transform: translateY(-2px) scale(1.04); border-color: #ff3b44; background: rgba(225,6,0,0.22); box-shadow: 0 0 20px -4px rgba(255,59,68,0.8); outline: none; }
+.bnv-plano:active { transform: scale(.97); }
+.bnv-nome { font: 800 11px/1 "Chakra Petch", Inter, sans-serif; letter-spacing: .14em; color: #b9bcc4; }
+.bnv-plano strong { font: 900 italic 19px/1 "Barlow Condensed", Inter, sans-serif; letter-spacing: .01em; font-variant-numeric: tabular-nums; }
+.bnv-plano small { font-size: 10.5px; font-weight: 600; color: #9a9da6; }
+.bnv-semestral { border-color: rgba(255,59,68,0.6); }
+.bnv-vitalicio { border-color: rgba(246,194,26,0.6); }
+.bnv-vitalicio strong, .bnv-vitalicio .bnv-nome { color: #ffd166; }
+.bnv-cta { position: relative; z-index: 2; display: inline-flex; align-items: center; gap: 4px; flex: none; margin: 8px 8px 8px 0; padding: 0 14px; border-radius: 10px; background: linear-gradient(180deg, #ff2a1f, #b30400); border: 1px solid #ff6a60; font: 800 12px/1 "Chakra Petch", Inter, sans-serif; letter-spacing: .1em; color: #fff; text-decoration: none; box-shadow: 0 0 18px rgba(225,6,0,0.55); animation: bnv-pulso 2s ease-in-out infinite; transition: transform .15s; }
+.bnv-cta:hover { transform: scale(1.05); } .bnv-cta:active { transform: scale(.95); }
+.bnv-cta:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.bnv-cta svg { width: 15px; height: 15px; }
+@media (max-width: 560px) { .bnv-cta { padding: 0 9px; margin: 10px 8px 10px 0; } .bnv-cta span { display: none; } .bnv-cta svg { width: 20px; height: 20px; } .bnv-esteira { animation-duration: 22s; } }
+/* O palco do avatar não sobe por cima da faixa. */
+.bnv + .clw { margin-top: 8px !important; }
+@keyframes bnv-corre { to { transform: translateX(-50%); } }
+@keyframes bnv-faixa { to { background-position: 28px 0; } }
+@keyframes bnv-chama { 50% { transform: scale(1.25) rotate(-6deg); } }
+@keyframes bnv-pulso { 50% { box-shadow: 0 0 28px rgba(225,6,0,0.9); } }
+@media (prefers-reduced-motion: reduce) { .bnv-esteira, .bnv::before, .bnv::after, .bnv-selo svg, .bnv-cta { animation: none; } .bnv-janela { overflow-x: auto; } .bnv-trilho[aria-hidden] { display: none; } }
+
 /* ===== Próximos concursos: interativo e animado ===== */
 .cc { overflow: hidden; animation: cc-in 0.6s cubic-bezier(0.2, 0.9, 0.3, 1) both; }
 .cc::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(110deg, transparent 35%, rgba(225,6,0,0.07) 50%, transparent 65%); background-size: 250% 100%; animation: cc-sheen 6s ease-in-out infinite; }

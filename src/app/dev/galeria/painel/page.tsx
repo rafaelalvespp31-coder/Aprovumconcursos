@@ -1,4 +1,5 @@
 import { HeroBanner } from "@/app/(app)/painel/hero-banner";
+import { BlackNovemberTicker } from "@/components/home/black-november-ticker";
 import { DemoHome } from "./demo-home";
 
 /** Galeria: a Home (painel de operações) com dados de exemplo. `?dados=vazio`, `?genero=f`, `?nivel=N`, `?levelup=1`, `?plano=gratis` (conta gratuita). */
@@ -20,6 +21,7 @@ export default async function Page({
       <div className="cl-banner">
         <HeroBanner name="Rafael" />
       </div>
+      <BlackNovemberTicker href="/dev/galeria/plano" />
       <DemoHome
         mannequin={sp.avatar === "manequim"}
         gender={sp.genero === "f" ? "f" : "m"}
