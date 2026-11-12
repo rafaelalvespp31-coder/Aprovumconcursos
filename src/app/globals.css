@@ -4161,3 +4161,28 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 
 /* Plano: botão "Esconder já catalogados" */
 [data-esconder="1"] [data-status="publicado"], [data-esconder="1"] [data-completo="1"] { display: none; }
+
+/* ===== Desktop: página inteira preenchida + fundo de caveira APROVUM ===== */
+/* Fundo: padrão de caveiras em marca d'água, fixo, cobrindo a tela toda por trás de menu, banner e cartões. */
+.aprovum-fundo { z-index: 0; background: url("/images/fundo-caveira.webp") 0 0 / 360px auto repeat; }
+.aprovum-fundo-escuro { filter: invert(1); opacity: 0.55; }
+@media (min-width: 1024px) {
+  /* Sem teto de largura: banner, faixa Black November, palco e cartões acompanham a largura da tela. */
+  .clw, .cl-banner, .bnv, .plano { max-width: none; width: 100%; }
+  .bnv { width: 100%; margin-inline: 0; }
+  .clw { background: transparent; }
+  /* Cartões da coluna direita crescem junto com a tela (antes ficavam em 0,68px fixos). */
+  .cl-low { --u: clamp(0.68px, calc(100cqw * 0.00046), 1.15px); }
+}
+
+/* Painel no desktop: banner, faixa, palco e cartões colados, sem vãos, formando um bloco só que preenche a página. */
+@media (min-width: 1024px) {
+  .cl-banner, .cl-banner + .bnv, .bnv { margin: 0; }
+  .cl-banner { overflow: hidden; border-radius: 18px 18px 0 0; }
+  .bnv { border-radius: 0; border-left: 0; border-right: 0; width: 100%; }
+  .clw { margin-top: 0; border-radius: 0 0 18px 18px; box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.09); }
+  .cl { gap: 0; }
+  .cl-stage { border-radius: 0; }
+  .cl-low { gap: 0; padding: 0; grid-auto-rows: minmax(min-content, 1fr); align-content: stretch; }
+  .cl-card { border-radius: 0; border: 0; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.14); height: 100%; }
+}
