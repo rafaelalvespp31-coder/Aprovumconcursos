@@ -3082,6 +3082,24 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   .pl-vantagens { display: flex; gap: 0; }
   .pl-vant { flex: var(--w) 1 0; min-width: 0; border-radius: 0; }
 }
+.pl-titulo-movel { display: none; }
+/* Celular: o banner preenche a tela inteira como fundo fixo e os planos ficam em cartões de vidro. */
+@media (max-width: 819.98px) {
+  .plano { position: relative; isolation: isolate; gap: 14px; }
+  .plano::before { content: ""; position: fixed; inset: 0; z-index: -2; background: #050505 url("/plano/escolha-seu-plano.webp") no-repeat 53% 0; background-size: auto calc(100lvh * 1298 / 432); }
+  .plano::after { content: ""; position: fixed; inset: 0; z-index: -1; background: linear-gradient(180deg, rgba(5,5,6,0.35) 0%, rgba(5,5,6,0.5) 45%, rgba(5,5,6,0.72) 100%); }
+  .plano .pl-topo { display: none; }
+  .pl-titulo-movel { display: block; padding: 10px 6px 2px; text-align: center; color: #fff; font-family: Inter, sans-serif; text-shadow: 0 2px 14px rgba(0,0,0,0.85); }
+  .pl-titulo-movel h1 { margin: 0; font-size: clamp(26px, 8.4vw, 36px); line-height: 1; font-weight: 900; font-style: italic; letter-spacing: 0.01em; }
+  .pl-titulo-movel h1 em { color: #ff2a1f; }
+  .pl-titulo-movel p { margin: 8px 0 0; font-size: 11px; font-weight: 700; letter-spacing: 0.3em; color: rgba(255,255,255,0.85); }
+  .pm, .pm-gratuito, .pm-vitalicio { background: linear-gradient(160deg, rgba(255,255,255,0.13), rgba(255,255,255,0.03) 42%, rgba(10,10,12,0.3)); -webkit-backdrop-filter: blur(16px) saturate(150%); backdrop-filter: blur(16px) saturate(150%); border: 1px solid rgba(255,255,255,0.24); box-shadow: inset 0 1px 0 rgba(255,255,255,0.32), inset 0 -1px 0 rgba(255,255,255,0.06), 0 14px 34px rgba(0,0,0,0.5); }
+  .pm-semestral { border-color: rgba(255,90,80,0.65); box-shadow: inset 0 1px 0 rgba(255,255,255,0.32), 0 0 24px rgba(225,6,0,0.45), 0 14px 34px rgba(0,0,0,0.5); }
+  .pm-vitalicio { border-color: rgba(246,194,26,0.6); background: linear-gradient(160deg, rgba(246,194,26,0.18), rgba(255,255,255,0.03) 45%, rgba(10,10,12,0.3)); box-shadow: inset 0 1px 0 rgba(255,236,170,0.4), 0 0 22px rgba(242,183,5,0.3), 0 14px 34px rgba(0,0,0,0.5); }
+  .pm-btn-free { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.4); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .plano .pl-vant, .plano .pl-rodape { opacity: 0.94; box-shadow: 0 10px 26px rgba(0,0,0,0.45); }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .pm, .pm-gratuito, .pm-vitalicio { background: rgba(14,14,16,0.82); } }
+}
 .plano-fundo { position: fixed; inset: 0; z-index: 90; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(0,0,0,0.78); }
 .plano-caixa { width: min(380px, 100%); padding: 26px 22px 20px; text-align: center; border-radius: 16px; background: radial-gradient(80% 60% at 50% 0%, rgba(225,6,0,0.4), transparent), #0b0b0c; border: 1px solid #ff4a40; box-shadow: 0 0 40px rgba(225,6,0,0.5); color: #fff; font-family: Inter, sans-serif; }
 .plano-k { font-size: 12px; letter-spacing: 0.14em; font-weight: 700; color: #f6c21a; }

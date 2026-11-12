@@ -163,6 +163,11 @@ export function PlanoView({ current, choose, mp = null }: { current: "gratuito" 
   return (
     <div className="plano" data-testid="meu-plano">
       <Crop x={0} y={0} w={W} h={CARD_Y} className="pl-topo" label="Escolha seu plano APROVUM: Gratuito, Mensal R$ 37, Semestral R$ 197, Anual R$ 347 e Vitalício R$ 697" />
+      {/* Celular: a arte vira o fundo da página (CSS) e o título passa a ser texto de verdade. */}
+      <header className="pl-titulo-movel">
+        <h1>ESCOLHA SEU <em>PLANO</em></h1>
+        <p>CONQUISTE MAIS. ESTUDE SEM LIMITES.</p>
+      </header>
       <div className="pm-lista-planos" data-testid="plano-cartoes">
         {CARDS.map((c) => (
           <MobileCard key={c.id} id={c.id} current={c.id === current} onPick={setSel} />
