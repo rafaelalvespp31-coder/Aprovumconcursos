@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
-import { CircleAlert, Eye, EyeOff, Info, LoaderCircle, Lock, Fingerprint, LogIn, Mail, UserPlus, Check } from "lucide-react";
+import { CircleAlert, Eye, EyeOff, Info, LoaderCircle, Lock, ScanFace, LogIn, Mail, UserPlus, Check } from "lucide-react";
 import { signIn, type AuthState } from "@/app/(auth)/actions";
 import { biometriaDisponivel, entrarComBiometria } from "@/lib/biometria";
 
@@ -143,8 +143,8 @@ export function LoginForm({ next, notice }: { next?: string; notice?: string | n
       {bio && (
         <>
           <button type="button" onClick={entrarBio} disabled={bioBusy || pending} className="login-botao-sec order-5 mt-3" data-testid="login-biometria">
-            {bioBusy ? <LoaderCircle className="size-5 animate-spin" aria-hidden /> : <Fingerprint className="size-5" aria-hidden />}
-            {bioBusy ? "Aguardando biometria…" : "Entrar com digital ou rosto"}
+            {bioBusy ? <LoaderCircle className="size-5 animate-spin" aria-hidden /> : <ScanFace className="size-5" aria-hidden />}
+            {bioBusy ? "Abrindo o reconhecimento facial…" : "Entrar com reconhecimento facial"}
           </button>
           {bioErro && <p className="login-erro order-5 mt-2" role="alert">{bioErro}</p>}
         </>
