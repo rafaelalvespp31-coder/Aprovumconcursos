@@ -35,6 +35,7 @@ import type { ShellSummary } from "@/server/queries";
 import { useStored } from "@/components/use-stored";
 import { StudyClock } from "./study-clock";
 import { MenuTatico } from "./menu-tatico";
+import { FundoCaveira } from "./fundo-caveira";
 import { BottomNavigation, type BottomNavId } from "./bottom-navigation";
 
 // ---------------------------------------------------------------------------
@@ -195,7 +196,7 @@ export function PastelShell({
       <div className="mv-progresso" aria-hidden />
       <div className="pastel relative min-h-screen w-full overflow-x-clip font-[Inter,system-ui,sans-serif] text-[#0A0A0A] antialiased selection:bg-[#E10600]/25">
         <div className={`pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden ${dark ? "bg-[#070707]" : "bg-white"}`} />
-        <div className={`aprovum-fundo pointer-events-none fixed inset-0 max-w-[100vw] ${dark ? "aprovum-fundo-escuro" : ""}`} aria-hidden />
+        <FundoCaveira dark={dark} />
         <div className="pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden" aria-hidden>
           <div className="absolute -top-[220px] -left-[140px] h-[min(620px,80vw)] w-[min(620px,80vw)] animate-[meshMove_18s_ease-in-out_infinite] rounded-full bg-[#E10600]/[0.05] blur-[70px]" />
           <div className="absolute -top-[120px] -right-[120px] h-[min(560px,70vw)] w-[min(560px,70vw)] animate-[meshMove_22s_ease-in-out_infinite_2s] rounded-full bg-black/[0.025] blur-[70px]" />

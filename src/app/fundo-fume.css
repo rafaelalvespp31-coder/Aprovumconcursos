@@ -1,0 +1,60 @@
+/* ==========================================================================
+   Fundo caveira em vidro fumê (todas as telas) + preenchimento e menu inferior no celular
+   ========================================================================== */
+.fc { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; background: #070606; }
+.fc > * { position: absolute; will-change: transform; }
+.fc-img { inset: -6%; background: url("/images/fundo-caveira-fume.webp") 50% 28% / cover no-repeat; transform-origin: 50% 36%; }
+/* brilho laranja atrás da caveira, na altura dos olhos */
+.fc-brilho { left: 50%; top: 30%; width: 120vmax; height: 120vmax; margin: -60vmax 0 0 -60vmax; background: radial-gradient(closest-side, rgba(255, 96, 20, 0.34), rgba(255, 60, 10, 0.12) 45%, transparent 72%); mix-blend-mode: screen; }
+.fc-fumaca { width: 150%; height: 70%; filter: blur(34px); mix-blend-mode: screen; }
+.fc-fumaca-a { left: -25%; top: 4%; background: radial-gradient(40% 55% at 30% 50%, rgba(255, 255, 255, 0.26), transparent 70%), radial-gradient(34% 46% at 72% 36%, rgba(255, 150, 90, 0.2), transparent 70%); }
+.fc-fumaca-b { left: -20%; bottom: -8%; background: radial-gradient(44% 52% at 62% 56%, rgba(255, 255, 255, 0.22), transparent 70%), radial-gradient(30% 40% at 20% 40%, rgba(255, 110, 50, 0.22), transparent 70%); }
+.fc-brasa { inset: 0 0 -40% 0; opacity: 0.85;
+  background-image:
+    radial-gradient(2px 2px at 12% 20%, #ff8a3d 50%, transparent 52%), radial-gradient(1.5px 1.5px at 28% 62%, #ffb067 50%, transparent 52%),
+    radial-gradient(2.5px 2.5px at 46% 34%, #ff6a1f 50%, transparent 52%), radial-gradient(1.5px 1.5px at 63% 78%, #ff9b52 50%, transparent 52%),
+    radial-gradient(2px 2px at 78% 24%, #ff7a2e 50%, transparent 52%), radial-gradient(1.5px 1.5px at 90% 58%, #ffc07d 50%, transparent 52%),
+    radial-gradient(2px 2px at 36% 90%, #ff8a3d 50%, transparent 52%), radial-gradient(1.5px 1.5px at 84% 92%, #ff6a1f 50%, transparent 52%);
+  filter: drop-shadow(0 0 4px rgba(255, 120, 40, 0.9)); }
+/* o vidro fumê: escurece, desfoca e dá o ar de tela translúcida */
+.fc-vidro { inset: 0; --fc-blur: 1.5px;
+  -webkit-backdrop-filter: blur(var(--fc-blur)) saturate(1.1); backdrop-filter: blur(var(--fc-blur)) saturate(1.1);
+  background: linear-gradient(180deg, rgba(246, 243, 241, 0.34), rgba(236, 232, 230, 0.42) 55%, rgba(230, 225, 222, 0.5)); }
+.fc-escuro .fc-vidro { background: linear-gradient(180deg, rgba(6, 5, 5, 0.46), rgba(6, 5, 5, 0.58) 55%, rgba(6, 5, 5, 0.7)); }
+@media (prefers-reduced-motion: reduce) { .fc-img { transform: scale(1.12); } }
+
+/* ------------------------------------------------------------------ celular: telas preenchidas */
+@media (max-width: 1023.98px) {
+  main:has(.cl-banner) { padding-inline: 0 !important; }
+  main:has(.cl-banner) .mv-pagina > p { margin: 0 0 0 !important; border-radius: 0; border-left: 0; border-right: 0; }
+  .cl-banner, .cl-banner .banner-gate, .cl-banner .banner-rotator { border-radius: 0 !important; }
+  .cl-banner { margin: 0 !important; }
+  .cl-banner .banner-gate { margin-bottom: 0 !important; }
+  .bnv { width: 100% !important; max-width: none !important; margin: 0 !important; border-radius: 0 !important; border-left: 0 !important; border-right: 0 !important; }
+  .clw { width: 100% !important; max-width: none !important; margin: 0 !important; border-radius: 0 !important; box-shadow: none !important; }
+  .bnv + .clw, .clw { margin-top: 0 !important; }
+}
+
+/* ------------------------------------------------------------------ menu inferior (celular): barra encostada, vidro fumê */
+@media (max-width: 1023.98px) {
+  .bn-wrap { padding: 0 !important; }
+  .bn-moldura { max-width: none !important; margin: 0 !important; filter: none !important; }
+  .bn-moldura::before, .bn-moldura::after, .bn-fundo, .bn-luz-cima, .bn-luz-baixo { display: none !important; }
+  .bn { --c: 0px; gap: 1px !important; padding: 7px 3px calc(7px + env(safe-area-inset-bottom)) !important; grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+    background: linear-gradient(180deg, rgba(20, 14, 14, 0.78), rgba(8, 6, 6, 0.92)); -webkit-backdrop-filter: blur(22px) saturate(1.5); backdrop-filter: blur(22px) saturate(1.5);
+    border-top: 1px solid rgba(255, 70, 55, 0.55); box-shadow: 0 -14px 34px rgba(0, 0, 0, 0.5), 0 -1px 18px rgba(255, 30, 30, 0.28); }
+  .bn::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: linear-gradient(90deg, transparent, #ff2a2a 30%, #ff6a5c 50%, #ff2a2a 70%, transparent); background-size: 200% 100%; animation: bnFio 4s linear infinite; }
+  .bn-cel { filter: none !important; }
+  .bn-item { clip-path: none !important; min-height: 54px !important; gap: 3px !important; padding: 6px 0 !important; border-radius: 14px; background: transparent !important; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s, color 0.2s; }
+  .bn-item::before, .bn-item::after { display: none !important; }
+  .bn-ico { width: 22px; height: 22px; }
+  .bn-txt { font-size: 9.5px !important; letter-spacing: -0.02em !important; font-weight: 600; }
+  .bn-item:active { transform: scale(0.9); }
+  .bn-cel-ativa .bn-item { margin: 0 !important; height: 100% !important; background: linear-gradient(180deg, #ff4b3f, #d10b12) !important; box-shadow: 0 0 18px rgba(255, 30, 30, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3); animation: bnPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .bn-cel-ativa .bn-ico, .bn-cel-ativa .bn-txt { color: #fff; }
+  .bn-novo-ico { display: grid; place-items: center; width: 28px; height: 28px; margin-top: -2px; border-radius: 10px; background: linear-gradient(180deg, #ff4b3f, #d10b12); box-shadow: 0 0 14px rgba(255, 30, 30, 0.7); }
+  .bn-novo-ico .bn-ico { width: 18px; height: 18px; color: #fff; filter: none; }
+}
+@keyframes bnFio { to { background-position: -200% 0; } }
+@keyframes bnPop { from { transform: scale(0.85); } to { transform: none; } }
+@media (max-width: 359px) { .bn-txt { font-size: 9px !important; } }
