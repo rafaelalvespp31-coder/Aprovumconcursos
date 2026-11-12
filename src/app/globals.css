@@ -4166,8 +4166,6 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 
 /* ===== Desktop: página inteira preenchida + fundo de caveira APROVUM ===== */
 /* Fundo: padrão de caveiras em marca d'água, fixo, cobrindo a tela toda por trás de menu, banner e cartões. */
-.aprovum-fundo { z-index: 0; background: url("/images/fundo-caveira.webp") 0 0 / 360px auto repeat; }
-.aprovum-fundo-escuro { filter: invert(1); opacity: 0.55; }
 @media (min-width: 1024px) {
   /* Sem teto de largura: banner, faixa Black November, palco e cartões acompanham a largura da tela. */
   .clw, .cl-banner, .bnv, .plano { max-width: none; width: 100%; }
