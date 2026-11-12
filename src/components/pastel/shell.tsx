@@ -314,7 +314,7 @@ export function PastelShell({
             <MobileMenu menuRef={menuRef} items={items} summary={summary} basePath={basePath} activeId={active?.id ?? null} />
             <ConnectivityBanner />
             <main
-              className={isPainel ? "pb-28 lg:px-10 lg:py-7 lg:pb-12" : "px-4 py-7 pb-28 sm:px-5 lg:px-10 lg:pb-12"}
+              className={isPainel ? "pb-28 lg:px-0 lg:py-0 lg:pb-0" : "px-4 py-7 pb-28 sm:px-5 lg:px-10 lg:pb-12"}
               data-compacto={isStudy || isNovoEstudo ? undefined : ""}
               data-mv={isStudy || isNovoEstudo ? undefined : ""}
             >

@@ -4187,3 +4187,19 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
   .cl-low { gap: 0; padding: 0; grid-auto-rows: minmax(min-content, 1fr); align-content: stretch; }
   .cl-card { border-radius: 0; border: 0; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.14); height: 100%; }
 }
+
+/* Painel (computador): tudo de ponta a ponta, do menu lateral até a borda direita da tela. */
+@media (min-width: 1024px) {
+  main:has(.cl-banner) { padding: 0 !important; }
+  main:has(.cl-banner) .mv-pagina > p { margin: 0; border-radius: 0; border-left: 0; border-right: 0; }
+  .cl-banner, .bnv, .clw { margin-left: 0; margin-right: 0; width: 100%; max-width: none; }
+  .cl-banner, .cl-banner .banner-gate, .cl-banner .banner-rotator { border-radius: 0; }
+  .bnv { border-radius: 0; border-left: 0; border-right: 0; }
+  .bnv-janela { -webkit-mask-image: linear-gradient(90deg, transparent, #000 2%, #000 98%, transparent); mask-image: linear-gradient(90deg, transparent, #000 2%, #000 98%, transparent); }
+  .clw { border-radius: 0; box-shadow: none; }
+}
+@media (min-width: 1024px) {
+  .cl-banner .banner-gate { margin-bottom: 0 !important; }
+  .cl-banner + .bnv, .bnv { margin-top: 0 !important; margin-bottom: 0 !important; }
+  .bnv + .clw { margin-top: 0 !important; }
+}
