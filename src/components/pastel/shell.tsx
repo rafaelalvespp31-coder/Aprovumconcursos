@@ -728,6 +728,10 @@ function QuickSearch({ inputRef, basePath, items, dark = false }: { inputRef: Re
 /** Menu do celular (hambúrguer): um só para todas as telas; o botão de cada cabeçalho abre este diálogo. */
 function MobileMenu({ menuRef, items, summary, basePath }: { menuRef: React.RefObject<HTMLDialogElement | null>; items: NavItem[]; summary: ShellSummary; basePath: string }) {
   const path = usePathname();
+  // Grupo "Evolução" (Desempenho e Revisões), igual ao da barra lateral do computador.
+  const evolucao = ["desempenho", "revisoes"].map((id) => items.find((i) => i.id === id)).filter((i): i is NavItem => !!i);
+  const dentroEvolucao = evolucao.some((f) => path === f.href);
+  const [evolucaoAberta, setEvolucaoAberta] = useState(dentroEvolucao);
   return (
     <>
       {/* Menu do celular (hambúrguer) */}
@@ -748,10 +752,11 @@ function MobileMenu({ menuRef, items, summary, basePath }: { menuRef: React.RefO
             </button>
           </div>
           <ul className="mt-6 flex flex-col gap-1.5">
-            {items.filter((s) => s.id !== "novo" && !s.hidden).map((s) => {
+            {items.filter((s) => s.id !== "novo" && s.id !== "revisoes" && s.id !== "desempenho" && !s.hidden).map((s) => {
               const on = path === s.href || (s.also ?? []).some((a) => path.startsWith(a));
               return (
-                <li key={s.id}>
+                <Fragment key={s.id}>
+                <li>
                   <Link
                     href={s.href}
                     onClick={() => menuRef.current?.close()}
@@ -769,6 +774,52 @@ function MobileMenu({ menuRef, items, summary, basePath }: { menuRef: React.RefO
                   {s.id === "aprovum-ai" && <EditalVerticalizadoLink href={`${basePath}/meu-concurso`} active={path.startsWith(`${basePath}/meu-concurso`)} onNavigate={() => menuRef.current?.close()} />}
                   {s.id === "trilhas" && <SubjectsSubmenu subjects={summary.subjects} base={basePath} path={path} variant="menu" onNavigate={() => menuRef.current?.close()} />}
                 </li>
+                {s.id === "questoes" && evolucao.length > 0 && (
+                  <li>
+                    <button
+                      type="button"
+                      aria-expanded={evolucaoAberta}
+                      data-testid="evolucao-toggle-movel"
+                      onClick={() => setEvolucaoAberta((v) => !v)}
+                      className={`flex min-h-14 w-full items-center gap-3.5 rounded-[16px] px-3.5 text-left ${dentroEvolucao ? "text-white" : "text-[#C9C9C9] hover:bg-white/[0.06]"}`}
+                    >
+                      <span className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[#1A1A1A]">
+                        <TrendingUp className="h-[18px] w-[18px]" aria-hidden />
+                      </span>
+                      <span className="min-w-0 flex-1">
+                        <span className="block font-semibold">Evolução</span>
+                        <span className="block text-[11.5px] text-[#9A9A9A]">Seu progresso</span>
+                      </span>
+                      <ChevronDown className={`size-4 shrink-0 transition-transform ${evolucaoAberta ? "rotate-180" : ""}`} aria-hidden />
+                    </button>
+                    {evolucaoAberta && (
+                      <ul aria-label="Evolução" className="mt-1 flex flex-col gap-1 pl-4">
+                        {evolucao.map((f) => {
+                          const fOn = path === f.href;
+                          return (
+                            <li key={f.id}>
+                              <Link
+                                href={f.href}
+                                onClick={() => menuRef.current?.close()}
+                                aria-current={fOn ? "page" : undefined}
+                                className={`flex min-h-12 items-center gap-3 rounded-[14px] px-3 ${fOn ? "bg-gradient-to-r from-[#FF1E1E] to-[#B30000] text-white" : "text-[#C9C9C9] hover:bg-white/[0.06]"}`}
+                              >
+                                <span className={`flex h-8 w-8 items-center justify-center rounded-[10px] ${fOn ? "bg-white/20" : "bg-[#1A1A1A]"}`}>
+                                  <f.icon className="h-4 w-4" aria-hidden />
+                                </span>
+                                <span className="min-w-0 flex-1">
+                                  <span className="block text-[14px] font-semibold">{f.label}</span>
+                                  <span className={`block text-[11px] ${fOn ? "text-white/80" : "text-[#9A9A9A]"}`}>{f.desc}</span>
+                                </span>
+                              </Link>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                )}
+                </Fragment>
               );
             })}
           </ul>
