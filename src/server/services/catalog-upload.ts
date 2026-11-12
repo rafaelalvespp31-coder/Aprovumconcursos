@@ -12,6 +12,7 @@ import { createAdminClient } from "../supabase";
 import type { SessionUser } from "../auth";
 import { auditLog } from "../observability";
 import { UserFacingError } from "./trails";
+import { deleteTopic } from "./catalog";
 import { bannerUrlFor } from "./banners";
 
 
@@ -33,15 +34,20 @@ async function findExisting(db: ReturnType<typeof createAdminClient>, p: ReturnT
     const hit = existingForUpload(m, p.slug, all.filter((r) => r.topicGroup));
     if (hit) return { id: hit.row.id, status: hit.row.status, title: hit.row.title, by: hit.by };
   }
-  // Aula repetida em outro tópico do plano (mesmo assunto, mesmo título): entra no subtópico em que ela já está,
-  // em vez de criar uma segunda. Só títulos específicos (nada de "Conceito" ou "Princípios", que se repetem de verdade).
-  const key = fold(m.title);
-  if (key.length >= 15) {
-    const same = all.filter((r) => fold(r.title) === key);
-    const hit = same.find((r) => r.status === "publicado") ?? same[0];
-    if (hit) return { id: hit.id, status: hit.status, title: hit.title, by: "titulo", topicGroup: hit.topicGroup, topicGroupCode: hit.topicGroupCode, subtopicCode: hit.subtopicCode };
-  }
   return null;
+}
+
+/** Títulos específicos (15+ caracteres) que se repetem de verdade em outra aula: genéricos como "Conceito" ficam de fora. */
+const MIN_TITLE_KEY = 15;
+
+/** Outras aulas do catálogo com o mesmo título da que está sendo catalogada (qualquer tópico). */
+async function findTitleDuplicates(db: ReturnType<typeof createAdminClient>, title: string, exceptId: string | null): Promise<Array<{ id: string; title: string; status: string; topicGroup: string | null; subtopicCode: string | null }>> {
+  const key = fold(title);
+  if (key.length < MIN_TITLE_KEY) return [];
+  const { data } = await db.from("catalog_topics").select("id, title, status, topic_group, subtopic_code").limit(5000);
+  return (data ?? [])
+    .filter((r) => r.id !== exceptId && fold(r.title as string) === key)
+    .map((r) => ({ id: r.id as string, title: r.title as string, status: r.status as string, topicGroup: r.topic_group as string | null, subtopicCode: r.subtopic_code as string | null }));
 }
 
 /** Confere o arquivo e mostra como a aula vai ficar, sem gravar nada. */
@@ -51,8 +57,8 @@ export async function previewLessonUpload(text: string): Promise<LessonUploadPre
   const existing = await findExisting(db, p);
   const errors: string[] = [];
   const warnings: string[] = [];
-  if (existing?.by === "titulo")
-    warnings.push(`Esta aula repete “${existing.title}”${existing.topicGroup ? ` (${existing.topicGroup}${existing.subtopicCode ? ` › ${existing.subtopicCode}` : ""})` : ""}, que já existe no plano. Ao salvar, ela atualiza essa aula no subtópico certo — não cria outra.`);
+  for (const d of await findTitleDuplicates(db, p.parsed.meta.title, existing ? (existing.id as string) : null))
+    warnings.push(`Já existe uma aula com este mesmo título: “${d.title}”${d.topicGroup ? ` (${d.topicGroup}${d.subtopicCode ? ` › ${d.subtopicCode}` : ""})` : ""}. Ao salvar, a mais nova fica e essa é excluída de vez.`);
   if (existing?.by === "subtopico")
     warnings.push(`Este subtópico já está catalogado na aula “${existing.title}”. Ao salvar, esta versão atualiza essa aula — não cria uma aula duplicada.`);
   if (existing?.status === "publicado") warnings.push(`“${existing.title}” já está publicada: ao salvar, esta versão substitui a do site (as questões antigas ficam inativas e quem já estudava recebe o aviso de atualização).`);
@@ -88,6 +94,8 @@ export interface LessonImportResult {
   version: number | null;
   /** Motivos de não ter publicado (vazio quando publicou). */
   blockers: string[];
+  /** Aulas antigas de mesmo título excluídas ao salvar (fica só a mais nova). */
+  removedDuplicates: string[];
 }
 
 /**
@@ -125,13 +133,6 @@ export async function importLessonUpload(user: SessionUser, text: string, fileNa
     subtopic_code: m.subtopicCode,
     updated_at: new Date().toISOString(),
   };
-  // Repetida em outro tópico: fica no subtópico onde já estava (mesmo tópico, número e título).
-  if (existing?.by === "titulo") {
-    row.title = existing.title;
-    row.topic_group = existing.topicGroup ?? null;
-    row.topic_group_code = existing.topicGroupCode ?? null;
-    row.subtopic_code = existing.subtopicCode ?? null;
-  }
   let id: string;
   let oldQuestionIds: string[] = [];
   if (existing) {
@@ -175,6 +176,12 @@ export async function importLessonUpload(user: SessionUser, text: string, fileNa
     if (r.error) throw new UserFacingError(`A aula foi salva, mas não foi publicada: ${r.error.message}`, "db_rule");
     version = r.data as number;
   }
+  // Mesmo título em outra aula: fica só a mais nova (esta); as outras são excluídas.
+  const removedDuplicates: string[] = [];
+  for (const d of await findTitleDuplicates(db, m.title, id)) {
+    await deleteTopic(user, d.id);
+    removedDuplicates.push(`${d.title}${d.topicGroup ? ` (${d.topicGroup}${d.subtopicCode ? ` › ${d.subtopicCode}` : ""})` : ""}`);
+  }
   const sha = createHash("sha256").update(text).digest("hex");
   await auditLog(db, {
     actorId: user.id,
@@ -182,9 +189,9 @@ export async function importLessonUpload(user: SessionUser, text: string, fileNa
     action: version ? "catalog.topic_uploaded_published" : existing ? "catalog.topic_upload_updated" : "catalog.topic_uploaded",
     entity: "catalog_topics",
     entityId: id,
-    meta: { fileName: fileName.slice(0, 200), sha256: sha, sections: p.built.lesson.sections.length, questions: rows.length, version },
+    meta: { fileName: fileName.slice(0, 200), sha256: sha, sections: p.built.lesson.sections.length, questions: rows.length, version, removedDuplicates },
   });
-  return { id, updated: Boolean(existing), published: version !== null, version, blockers };
+  return { id, updated: Boolean(existing), published: version !== null, version, blockers, removedDuplicates };
 }
 
 export type { LessonUploadPreview };
