@@ -19,10 +19,9 @@ describe("código de indicação", () => {
     expect(normalizeReferralCode("APV-O0I1LL")).toBeNull();
     expect(normalizeReferralCode(42)).toBeNull();
   });
-  it("só anual e vitalício dão prêmio", () => {
-    expect(isReferralOffer("anual")).toBe(true);
-    expect(isReferralOffer("vitalicio")).toBe(true);
-    expect(isReferralOffer("mensal")).toBe(false);
-    expect(isReferralOffer("semestral")).toBe(false);
+  it("qualquer plano pago dá prêmio", () => {
+    for (const o of ["mensal", "semestral", "anual", "vitalicio"]) expect(isReferralOffer(o)).toBe(true);
+    expect(isReferralOffer("gratis")).toBe(false);
+    expect(isReferralOffer("")).toBe(false);
   });
 });

@@ -232,7 +232,7 @@ async function activate(row: Row): Promise<void> {
     });
     if (rec.error) throw new Error(rec.error.message);
     await logEvent("payments.activated", { paymentId: row.id, offer: row.offer });
-    // Indicação: anual/vitalício do indicado dá copo + camisa a quem indicou e a ele (nunca derruba a liberação do plano).
+    // Indicação: plano pago do indicado dá copo + camisa a quem indicou e a ele (nunca derruba a liberação do plano).
     await rewardOnPurchase(row.user_id, row.id, row.offer).catch((e) => logEvent("referral.reward_failed", { paymentId: row.id, error: String((e as Error).message).slice(0, 200) }));
   } catch (e) {
     await db.from("mp_payments").update({ applied_at: null }).eq("id", row.id); // permite nova tentativa

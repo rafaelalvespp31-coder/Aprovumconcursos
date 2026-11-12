@@ -201,7 +201,7 @@ export function CadastroForm({ refInicial = "" }: { refInicial?: string }) {
                 <label htmlFor="referral">ID de indicação <small>(opcional)</small></label>
                 <input id="referral" name="referral" data-campo="referral" type="text" autoComplete="off" autoCapitalize="characters" spellCheck={false} placeholder="APV-XXXXXX" maxLength={12} value={f.referral} onChange={(e) => set("referral", e.target.value.toUpperCase())} onFocus={keepVisible} aria-invalid={!!eRef} aria-describedby={`referral-dica${eRef ? " referral-erro" : ""}`} data-testid="cadastro-indicacao" />
               </div>
-              <p id="referral-dica" className="cd-regras"><span>Veio por indicação de um amigo? Se ele já assinar o plano anual ou vitalício, vocês dois ganham copo e camisa.</span></p>
+              <p id="referral-dica" className="cd-regras"><span>Veio por indicação de um amigo? Se ele assinar qualquer plano, vocês dois ganham copo e camisa.</span></p>
               <FieldError id="referral" msg={eRef} />
             </div>
 

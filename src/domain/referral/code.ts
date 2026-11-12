@@ -17,6 +17,6 @@ export function normalizeReferralCode(raw: unknown): string | null {
   return PREFIX + s;
 }
 
-/** Planos que dão o prêmio da indicação. */
-export const REFERRAL_OFFERS = ["anual", "vitalicio"] as const;
+/** Planos que dão o prêmio da indicação: qualquer plano pago (mensal, semestral, anual ou vitalício). */
+export const REFERRAL_OFFERS = ["mensal", "semestral", "anual", "vitalicio"] as const;
 export const isReferralOffer = (o: string): boolean => (REFERRAL_OFFERS as readonly string[]).includes(o);

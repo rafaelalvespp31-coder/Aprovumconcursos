@@ -17,7 +17,7 @@ export default async function IndicacoesPage() {
     <div data-testid="admin-indicacoes">
       <h1 className="t-h1">INDICAÇÕES — COPO + CAMISA</h1>
       <p className="mt-2 max-w-2xl t-small text-tinta-suave">
-        Quando um aluno indicado assina o plano anual ou vitalício, o indicador e o indicado entram aqui. Combine a entrega pelo WhatsApp e marque como enviado.
+        Quando um aluno indicado assina qualquer plano, o indicador e o indicado entram aqui. Combine a entrega pelo WhatsApp e marque como enviado.
         {pend > 0 ? ` ${pend} para enviar.` : ""}
       </p>
       {rewards.length === 0 ? (

@@ -53,7 +53,7 @@ export async function referralCodeExists(rawCode: unknown): Promise<boolean> {
 }
 
 /**
- * Compra confirmada do indicado: anual ou vitalício gera o prêmio (copo + camisa) para o indicador e para o indicado.
+ * Compra confirmada do indicado: qualquer plano pago gera o prêmio (copo + camisa) para o indicador e para o indicado.
  * Idempotente: só a primeira compra qualificada conta.
  */
 export async function rewardOnPurchase(userId: string, paymentId: string, offer: string): Promise<boolean> {

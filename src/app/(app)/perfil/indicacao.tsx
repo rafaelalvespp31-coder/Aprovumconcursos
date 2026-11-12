@@ -28,7 +28,7 @@ export function Indicacao({ data, origin }: { data: MyReferral; origin: string }
   return (
     <div data-testid="indicacao">
       <p className="mb-3 text-[12px] text-[#5C5C5C]">
-        Passe seu ID para um amigo se cadastrar. Se ele assinar o plano <b>anual ou vitalício</b>, <b>vocês dois ganham um copo e uma camisa</b> da APROVUM.
+        Passe seu ID para um amigo se cadastrar. Se ele assinar <b>qualquer plano</b>, <b>vocês dois ganham um copo e uma camisa</b> da APROVUM.
       </p>
       <div className="flex flex-wrap items-center gap-2">
         <code className="rounded-xl border border-[#E4E4E4] bg-[#F7F7F8] px-4 py-2.5 text-[17px] font-extrabold tracking-[0.12em]" data-testid="indicacao-codigo">{data.code}</code>
@@ -44,7 +44,7 @@ export function Indicacao({ data, origin }: { data: MyReferral; origin: string }
           {data.rewards.map((r, i) => (
             <li key={i} className="flex items-center gap-2 rounded-xl bg-[#FFF4F4] px-3 py-2 text-[13px]">
               <Gift className="h-4 w-4 shrink-0 text-[#E50914]" aria-hidden />
-              <span><b>{r.item}</b> · {r.role === "indicador" ? "por indicar" : "por ter sido indicado"} · {STATUS[r.status]}</span>
+              <span>{r.status === "cancelado" ? "" : "Você vai receber "}<b>{r.item}</b> · {r.role === "indicador" ? "por indicar um amigo que assinou" : "por ter assinado pela indicação de um amigo"} · {STATUS[r.status]}</span>
             </li>
           ))}
         </ul>
