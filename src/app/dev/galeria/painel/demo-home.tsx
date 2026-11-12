@@ -45,7 +45,7 @@ export function DemoHome({ mannequin, gender, level, empty, levelUp, canCustomiz
     continueLesson: empty ? null : { lessonId: "00000000-0000-4000-8000-000000000001", lesson: "Princípios do Direito Penal", subject: "Direito Penal", module: "Módulo 1", pct: 68, at: "2026-11-02T22:00:00Z" },
     contests: empty
       ? []
-      : [{ id: "c1", name: "Concurso Exemplo", institution: "Órgão de exemplo (galeria)", roleName: "Agente", status: "edital_publicado", vacancies: 5000, salary: null, examDate: "2027-07-27", examDateConfirmed: true, infoConfirmed: false, sourceName: "Exemplo da galeria", sourceUrl: null, infoUpdatedAt: "2026-11-01", imageUrl: null }],
+      : [{ id: "c1", name: "Concurso Exemplo", institution: "Órgão de exemplo (galeria)", roleName: "Agente", status: "edital_publicado", vacancies: 5000, salary: null, examDate: "2027-07-27", examDateConfirmed: true, infoConfirmed: false, sourceName: "Exemplo da galeria", sourceUrl: null, infoUpdatedAt: "2026-11-01", imageUrl: null }, { id: "c2", name: "Segundo Exemplo", institution: "Órgão de exemplo (galeria)", roleName: "Agente", status: "edital_publicado", vacancies: 3000, salary: null, examDate: null, examDateConfirmed: false, infoConfirmed: false, sourceName: "Exemplo da galeria", sourceUrl: null, infoUpdatedAt: "2026-11-01", imageUrl: "/images/landing-hero.webp"}],
     insights: empty ? [] : [{ title: "Reforce Processo Penal: Inquérito Policial.", reason: "Você acertou 55% das 120 questões desse assunto.", href: "/questoes", actionLabel: "Resolver 15 questões" }],
     top: empty ? [] : [{ pos: 1, name: "Ana P.", level: 6, xp: 7200, motto: "Disciplina vence talento." }, { pos: 2, name: "João S.", level: 5, xp: 5600 }, { pos: 3, name: "Rafael A.", level: 1, xp: 1000 }],
   };
