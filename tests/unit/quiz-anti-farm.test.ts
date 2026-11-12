@@ -1,4 +1,4 @@
-/** Modo Jogo: acertar de novo o mesmo item em 24 h não rende XP nem conta como nova resposta. */
+/** Modo Jogo: responder de novo a mesma pergunta não rende XP nem conta como nova resposta (cada pergunta vale uma vez por aluno). */
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 type Row = Record<string, unknown>;

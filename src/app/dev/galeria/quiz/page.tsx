@@ -44,7 +44,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
   return (
     <QuizView
       home={{ topics, level, xp: 130, todayHits: 7, streak: { current: 3, best: 5, studiedToday: true, last7: [false, true, false, false, true, true, true], message: "Faltam 4 dia(s) para 7 seguidos" } }}
-      initialRound={{ topic: topics[0]!, items: sp.longo ? longItems : items, level }}
+      initialRound={{ topic: topics[0]!, items: sp.longo ? longItems : items, level, movedFrom: null }}
       previewLevelUp={sp.nivel ? { from: lv(19), to: level } : undefined}
       previewRanking={ranking}
       lives={3}

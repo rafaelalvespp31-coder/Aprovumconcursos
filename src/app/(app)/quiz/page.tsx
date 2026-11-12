@@ -26,12 +26,29 @@ export default async function QuizPage({ searchParams }: { searchParams: Promise
   const usage = await getPlanUsage(user.id);
   let round: Awaited<ReturnType<typeof startRound>> | null = null;
   let limit: string | null = null;
+  let exhausted = false;
   try {
     round = await startRound(chosen.id);
   } catch (e) {
-    // Plano gratuito: as questões do dia no Modo Jogo acabaram.
+    // Plano gratuito: as questões do dia acabaram; ou o aluno já respondeu todas as perguntas do jogo.
     if (!(e instanceof UserFacingError)) throw e;
     limit = e.message;
+    exhausted = e.code === "quiz_exhausted";
+  }
+  if (!round && exhausted) {
+    return (
+      <div className="mx-auto max-w-2xl" data-testid="jogo-esgotado">
+        <h1 className="t-h1">Modo Jogo</h1>
+        <div className="mt-4">
+          <Notice tone="info" title="Você zerou o Modo Jogo">
+            {limit}
+          </Notice>
+        </div>
+        <ButtonLink href="/questoes" className="mt-4">
+          Ir para Questões
+        </ButtonLink>
+      </div>
+    );
   }
   if (!round) {
     return (
@@ -55,7 +72,7 @@ export default async function QuizPage({ searchParams }: { searchParams: Promise
           Plano gratuito: {usage.gameLeft === 1 ? "resta 1 questão" : `restam ${usage.gameLeft} questões`} no Modo Jogo hoje.
         </p>
       )}
-      <QuizView key={chosen.id} home={home} initialRound={round} lives={LIVES} dailyGoal={DAILY_GOAL} />
+      <QuizView key={round.topic.id} home={home} initialRound={round} lives={LIVES} dailyGoal={DAILY_GOAL} />
     </>
   );
 }

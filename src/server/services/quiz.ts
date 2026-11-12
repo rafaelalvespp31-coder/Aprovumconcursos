@@ -150,30 +150,60 @@ export interface QuizRound {
   topic: QuizTopicSummary;
   items: PublicClozeItem[];
   level: QuizLevel;
+  /** Preenchido quando o tema pedido não tinha mais perguntas inéditas e a rodada mudou de tema. */
+  movedFrom: string | null;
+}
+
+/** Dispositivos que o aluno já respondeu neste tema (certo ou errado), consultados direto no banco. */
+async function seenKeys(topicId: string): Promise<Set<string>> {
+  const db = await createUserClient();
+  const seen = new Set<string>();
+  // Em páginas: o banco devolve no máximo 1000 linhas por consulta.
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await db.from("quiz_attempts").select("node_key").eq("topic_id", topicId).order("created_at", { ascending: true }).range(from, from + 999);
+    if (error) throw new Error(error.message);
+    for (const r of data ?? []) seen.add(r.node_key as string);
+    if ((data ?? []).length < 1000) break;
+  }
+  return seen;
 }
 
 /**
  * Rodada no nível atual do aluno: vai até completar o nível (10 questões, ou o que falta).
- * Primeiro os dispositivos que ele ainda não acertou; nos níveis altos, os de mais lacunas.
+ * Pergunta já respondida (certa ou errada) NUNCA volta para o mesmo aluno. Quando o tema pedido
+ * acaba, a rodada segue em outro tema com perguntas inéditas (primeiro da mesma matéria); quando
+ * não sobra nenhuma no jogo inteiro, o aluno é avisado.
  */
 export async function startRound(topicId: string): Promise<QuizRound> {
   const user = await requireUser("/quiz");
   await assertQuota(user.id, "jogo");
   const [topics, attempts] = await Promise.all([loadTopics(), myAttempts()]);
-  const topic = topics.find((t) => t.id === topicId);
-  if (!topic) throw new UserFacingError("Este conteúdo não está disponível no quiz.", "not_found");
-  const s = summarize(attempts, [topic]);
+  const asked = topics.find((t) => t.id === topicId);
+  if (!asked) throw new UserFacingError("Este conteúdo não está disponível no quiz.", "not_found");
   const lv = levelInfo(attempts.length);
-  const pool = itemsFor(topic, lv.tier);
-  const rnd = seeded(`${topicId}:${Date.now()}:${Math.random()}`);
-  // Já respondida (certa ou errada) não volta: só aparece de novo quando o aluno esgota o tema,
-  // e então as mais antigas vêm primeiro. A ordem é sempre aleatória.
-  const lastSeen = new Map<string, string>();
-  for (const a of attempts) if (a.topic_id === topicId && !lastSeen.has(a.node_key)) lastSeen.set(a.node_key, a.created_at);
-  const fresh = shuffle(pool.filter((i) => !lastSeen.has(i.nodeKey)), rnd);
-  const seen = pool.filter((i) => lastSeen.has(i.nodeKey)).sort((x, y) => lastSeen.get(x.nodeKey)!.localeCompare(lastSeen.get(y.nodeKey)!));
-  const items = [...fresh, ...seen].slice(0, lv.toNext).map(({ answers, ...rest }) => ({ ...rest, blanks: answers.length }));
-  return { topic: s.topics[0]!, items, level: lv };
+  // Já visto segundo o histórico carregado: serve para pular, sem consulta, temas claramente esgotados.
+  const approx = new Map<string, Set<string>>();
+  for (const a of attempts) approx.set(a.topic_id, (approx.get(a.topic_id) ?? new Set<string>()).add(a.node_key));
+  const order = [asked, ...topics.filter((t) => t.id !== asked.id && t.discipline === asked.discipline), ...topics.filter((t) => t.discipline !== asked.discipline)];
+  let topic: QuizTopic | null = null;
+  let fresh: ClozeItem[] = [];
+  for (const t of order) {
+    const pool = itemsFor(t, lv.tier);
+    const known = approx.get(t.id);
+    if (known && pool.every((i) => known.has(i.nodeKey))) continue;
+    const seen = await seenKeys(t.id);
+    const f = pool.filter((i) => !seen.has(i.nodeKey));
+    if (f.length) {
+      topic = t;
+      fresh = f;
+      break;
+    }
+  }
+  if (!topic) throw new UserFacingError("Você já respondeu todas as perguntas do Modo Jogo. Novas perguntas aparecem quando novos conteúdos forem publicados.", "quiz_exhausted");
+  const s = summarize(attempts, [topic]);
+  const rnd = seeded(`${topic.id}:${Date.now()}:${Math.random()}`);
+  const items = shuffle(fresh, rnd).slice(0, lv.toNext).map(({ answers, ...rest }) => ({ ...rest, blanks: answers.length }));
+  return { topic: s.topics[0]!, items, level: lv, movedFrom: topic.id !== asked.id ? asked.title : null };
 }
 
 export interface QuizHelp {
@@ -210,12 +240,11 @@ export async function checkAnswer(topicId: string, nodeKey: string, given: strin
   const correct = results.every(Boolean);
   // Anti-farm: acertar de novo o mesmo item dentro de 24 h não rende XP nem conta como nova resposta
   // (a resposta certa é mostrada após o primeiro acerto; sem isso dava para repetir o item em loop).
-  const since = new Date(Date.now() - 24 * 3_600_000).toISOString();
-  const repeat = correct
-    ? await createAdminClient().from("quiz_attempts").select("id", { head: true, count: "exact" }).eq("user_id", user.id).eq("topic_id", topicId).eq("node_key", nodeKey).eq("correct", true).gte("created_at", since)
-    : null;
-  if (repeat?.error) throw new Error(repeat.error.message);
-  const repeated = (repeat?.count ?? 0) > 0;
+  // Cada pergunta vale uma vez por aluno: responder de novo a mesma (por exemplo, reenviando o pedido)
+  // não rende XP nem conta como nova resposta.
+  const repeat = await createAdminClient().from("quiz_attempts").select("id", { head: true, count: "exact" }).eq("user_id", user.id).eq("topic_id", topicId).eq("node_key", nodeKey);
+  if (repeat.error) throw new Error(repeat.error.message);
+  const repeated = (repeat.count ?? 0) > 0;
   const xp = correct && !repeated ? tier.xp : 0;
   // Grava só pelo servidor, depois de conferir (o aluno não grava XP direto no banco).
   const { error } = repeated ? { error: null } : await createAdminClient().from("quiz_attempts").insert({ user_id: user.id, topic_id: topicId, node_key: nodeKey, correct, xp, tier: tier.tier, response_ms: typeof responseMs === "number" && Number.isFinite(responseMs) ? Math.min(3_600_000, Math.max(0, Math.round(responseMs))) : null });

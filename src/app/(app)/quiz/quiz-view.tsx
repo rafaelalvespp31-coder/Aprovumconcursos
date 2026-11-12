@@ -118,6 +118,8 @@ export function QuizView({
   const [tab, setTab] = useState<Tab>("explicacao");
   const [filter, setFilter] = useState("Todos");
   const [error, setError] = useState<string | null>(null);
+  // Tema de onde a rodada saiu por não ter mais perguntas inéditas (as perguntas não se repetem).
+  const [moved, setMoved] = useState<string | null>(initialRound.movedFrom);
   const [pending, start] = useTransition();
   const [roundNo, setRoundNo] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
@@ -303,6 +305,7 @@ export function QuizView({
     start(async () => {
       const r = await startRoundAction(topicId);
       if (!r.ok) return setError(r.error);
+      setMoved(r.round.movedFrom);
       setRound(r.round);
       setLevel(r.round.level);
       setIdx(0);
@@ -466,6 +469,11 @@ export function QuizView({
             </div>
           )}
 
+          {moved && !error && (
+            <p className="mt-3 rounded-[12px] border border-white/15 bg-white/[0.06] px-3 py-2 text-[13.5px] text-white" role="status" data-testid="jogo-mudou-tema">
+              Você já respondeu todas as perguntas de <b>{moved}</b>. Seguimos com <b>{topic.title}</b>: as perguntas não se repetem.
+            </p>
+          )}
           {error && (
             <p
               className="mt-3 rounded-[12px] border border-[#FF3B30]/50 bg-[#2A0606] px-3 py-2 text-[14px] font-semibold text-white"
