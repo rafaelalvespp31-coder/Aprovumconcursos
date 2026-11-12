@@ -900,7 +900,7 @@ test.describe("página de estudos", () => {
     await page.getByRole("button", { name: "Abrir menu" }).click();
     const menu = page.getByRole("dialog", { name: "Menu" });
     await expect(menu.getByRole("link", { name: /Modo Jogo/ })).toHaveAttribute("href", "/dev/galeria/quiz");
-    await expect(menu.getByRole("link", { name: /Novo estudo/ })).toBeVisible();
+    await expect(menu.getByRole("link", { name: /Novo estudo/i })).toBeVisible();
     await menu.getByRole("button", { name: "Fechar menu" }).click();
     await expect(menu).toBeHidden();
   });
@@ -966,7 +966,9 @@ test("menu Estudos: submenu com as matérias abre os assuntos estudados", async 
   await page.goto(`${G}/${isMobile ? "trilhas" : "painel"}`);
   if (isMobile) await page.getByRole("button", { name: "Abrir menu" }).click();
   else {
-    // Desktop: as matérias começam recolhidas; o botão do grupo abre e fecha.
+    // Desktop: as matérias começam abertas; o botão do grupo recolhe e abre de novo.
+    await expect(page.getByTestId("submenu-materias-lateral")).toHaveCount(1);
+    await page.getByTestId("estudos-toggle").click();
     await expect(page.getByTestId("submenu-materias-lateral")).toHaveCount(0);
     await page.getByTestId("estudos-toggle").click();
   }
@@ -1402,9 +1404,10 @@ test.describe("menu lateral: Depoimentos, Evolução e plano", () => {
     await page.getByTestId("evolucao-toggle").click();
     await expect(nav.getByRole("link", { name: "Desempenho", exact: true })).toBeVisible();
     await expect(nav.getByText(/respostas/)).toHaveCount(0);
-    // o card do plano cabe e todos os menus ficam alcançáveis
+    // o card do plano fica no fim da lista e é alcançável rolando o menu
     const plano = page.getByTestId("plano-card");
     await expect(plano).toContainText("Recruta");
+    await plano.scrollIntoViewIfNeeded();
     const box = (await plano.boundingBox())!;
     expect(box.y + box.height).toBeLessThanOrEqual(768);
   });

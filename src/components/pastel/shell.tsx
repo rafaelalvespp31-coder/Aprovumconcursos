@@ -4,17 +4,13 @@ import { releaseStaleScrollLock, watchStuckScroll } from "@/lib/scroll-lock";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { RotatingQuote } from "./rotating-quote";
-import { createContext, Fragment, ViewTransition, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { createContext, Fragment, ViewTransition, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   ArrowRight,
   Bell,
   Menu,
-  X,
   Gamepad2,
   ChartColumn,
-  ChevronDown,
-  ChevronRight,
-  TrendingUp,
   CircleHelp,
   Clock3,
   Video,
@@ -24,15 +20,12 @@ import {
   Crown,
   House,
   Map as MapIcon,
-  PanelLeftClose,
-  PanelLeftOpen,
   PenLine,
   Plus,
   Search,
   Settings,
   Target,
   UserRound,
-  ListTree,
   type LucideIcon,
 } from "lucide-react";
 import { ConnectivityBanner } from "@/components/pwa";
@@ -41,7 +34,7 @@ import type { SearchItem } from "@/app/(app)/study-actions";
 import type { ShellSummary } from "@/server/queries";
 import { useStored } from "@/components/use-stored";
 import { StudyClock } from "./study-clock";
-import { SubjectsSubmenu } from "./subjects-submenu";
+import { MenuTatico } from "./menu-tatico";
 import { BottomNavigation, type BottomNavId } from "./bottom-navigation";
 
 // ---------------------------------------------------------------------------
@@ -69,21 +62,6 @@ interface NavItem {
   badge?: string;
 }
 
-function NavBadge({ texto, on }: { texto: string; on: boolean }) {
-  const novo = texto === "Novo";
-  return (
-    <span
-      data-testid="nav-badge"
-      className={`${novo ? "mp-novo " : ""}shrink-0 whitespace-nowrap rounded-full px-1.5 py-[2px] text-[8.5px] font-bold uppercase leading-none tracking-[0.04em] ${on ? "bg-white text-[#C8000A]" : "bg-[#E50914] text-white"}`}
-    >
-      {texto}
-    </span>
-  );
-}
-
-/** Itens recém-lançados: ganham destaque (fundo avermelhado, borda e selo "Novo" pulsando) no menu. */
-const itemNovo = (s: { badge?: string }, on: boolean) => (s.badge === "Novo" && !on ? "mp-item-novo" : "");
-
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 function navItems(s: ShellSummary, base: string): NavItem[] {
@@ -103,106 +81,6 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
     { id: "plano", href: `${base}/plano`, label: "Meu Plano", icon: Crown, num: "", desc: "Escolha seu plano", title: "Meu Plano", subtitle: "Conquiste mais. Estude sem limites." },
     { id: "area", href: `${base}/area-do-aluno`, label: "Área do Aluno", icon: LayoutGrid, num: "", desc: "Todos os menus", title: "Área do Aluno", subtitle: "Todos os menus do seu painel num só lugar.", hidden: true },
   ];
-}
-
-/** Atalho logo abaixo de APROVUM AI: o edital do aluno organizado por matéria e assunto. */
-function EditalVerticalizadoLink({ href, active, onNavigate }: { href: string; active: boolean; onNavigate?: () => void }) {
-  return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-      aria-current={active ? "page" : undefined}
-      data-testid="nav-edital-verticalizado"
-      className={`mb-1 ml-[22px] mt-0.5 flex items-center gap-2 rounded-[12px] py-2 pl-3 pr-3 text-[13px] font-semibold transition-colors ${active ? "bg-gradient-to-r from-[#FF1E1E] to-[#B30000] text-white" : "text-[#C9C9C9] hover:bg-white/[0.06] hover:text-white"}`}
-    >
-      <span aria-hidden className={`h-4 w-px ${active ? "bg-white/60" : "bg-[#E50914]/70"}`} />
-      <ListTree className="h-[15px] w-[15px] shrink-0" aria-hidden />
-      <span className="whitespace-nowrap">Edital Verticalizado</span>
-    </Link>
-  );
-}
-
-/** Grupo "Evolução": Desempenho e Revisões ficam dentro dele (recolhível; na barra recolhida vira um ícone). */
-function EvolucaoGrupo({
-  items,
-  collapsed,
-  open,
-  onToggle,
-  activeId,
-  basePath,
-  path,
-  onSame,
-}: {
-  items: NavItem[];
-  collapsed: boolean;
-  open: boolean;
-  onToggle: () => void;
-  activeId: string | null;
-  basePath: string;
-  path: string;
-  onSame: (label: string) => void;
-}) {
-  const filhos = ["desempenho", "revisoes"].map((id) => items.find((i) => i.id === id)).filter((i): i is NavItem => !!i);
-  const dentro = filhos.some((f) => f.id === activeId);
-  if (collapsed) {
-    return (
-      <Link
-        href={`${basePath}/desempenho`}
-        aria-label="Evolução"
-        title="Evolução"
-        aria-current={dentro ? "page" : undefined}
-        className={`barra-item group relative flex w-full items-center justify-center rounded-[18px] ${dentro ? "text-white" : "text-[#B3B3B3] hover:bg-white/[0.06] hover:text-white"}`}
-      >
-        <span className={`flex h-9 w-9 items-center justify-center rounded-[12px] ${dentro ? "bg-white/20" : "bg-[#1A1A1A]"}`}>
-          <TrendingUp className="h-[18px] w-[18px]" aria-hidden />
-        </span>
-      </Link>
-    );
-  }
-  return (
-    <>
-      <button
-        type="button"
-        aria-expanded={open}
-        data-testid="evolucao-toggle"
-        onClick={onToggle}
-        className={`barra-item group relative flex w-full items-center gap-3.5 rounded-[18px] px-4 text-left text-[14.5px] font-medium transition-colors duration-300 ${dentro ? "text-white" : "text-[#B3B3B3] hover:bg-white/[0.06] hover:text-white"}`}
-      >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] bg-[#1A1A1A] transition-all duration-300 group-hover:rotate-[-6deg] group-hover:scale-110">
-          <TrendingUp className="h-[18px] w-[18px]" aria-hidden />
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block font-semibold tracking-tight">Evolução</span>
-          <span className="mt-0.5 block text-[11px] leading-none text-[#A3A3A3]">Seu progresso</span>
-        </span>
-        <ChevronDown className={`size-4 shrink-0 transition-transform ${open ? "rotate-180" : ""}`} aria-hidden />
-      </button>
-      {open && (
-        <ul className="barra-subgrupo" aria-label="Evolução">
-          {filhos.map((f) => {
-            const on = activeId === f.id;
-            return (
-              <li key={f.id}>
-                <Link
-                  href={f.href}
-                  aria-current={on ? "page" : undefined}
-                  onClick={() => {
-                    if (path === f.href) onSame(f.label);
-                  }}
-                  className={`barra-sub group flex items-center gap-3 rounded-[14px] px-3 text-[13.5px] font-semibold transition-colors ${on ? "text-white" : "text-[#B3B3B3] hover:bg-white/[0.06] hover:text-white"}`}
-                >
-                  <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-[10px] ${on ? "bg-white/20" : "bg-[#1A1A1A]"}`}>
-                    <f.icon className="h-4 w-4" aria-hidden />
-                  </span>
-                  <span className="min-w-0 flex-1 truncate">{f.label}</span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </>
-  );
 }
 
 const PAGE_HEADINGS: Array<{ path: string; title: string; subtitle: string }> = [
@@ -243,32 +121,11 @@ export function PastelShell({
   const router = useRouter();
   const items = useMemo(() => navItems(summary, basePath), [summary, basePath]);
   const active = items.find((i) => [i.href, ...(i.also ?? [])].some((p) => path === p || path.startsWith(`${p}/`))) ?? null;
-  const activeIndex = active ? items.indexOf(active) : -1;
   // Grupos recolhíveis: "Estudos" (matérias) e "Evolução" (Desempenho e Revisões).
   const [estudosAberto, setEstudosAberto] = useStored("na:menu-estudos-aberto", true);
   const [evolucaoAberta, setEvolucaoAberta] = useStored("na:menu-evolucao-aberta", false);
-  // Quem recolhe manda: nem estando na página de Estudos o grupo reabre sozinho.
-  const estudosVisivel = estudosAberto;
-  const evolucaoVisivel = evolucaoAberta;
-  // O destaque deslizante acompanha o item ativo medindo-o no navegador (os grupos mudam a altura).
-  const navRef = useRef<HTMLElement>(null);
-  const [ind, setInd] = useState<{ top: number; h: number } | null>(null);
   const [collapsed, setCollapsedStored] = useStored("na:sidebar-recolhida", false);
   const toggleCollapsed = () => setCollapsedStored(!collapsed);
-  useLayoutEffect(() => {
-    const nav = navRef.current;
-    if (!nav) return;
-    const measure = () => {
-      const el = nav.querySelector<HTMLElement>('[aria-current="page"]');
-      if (!el) return setInd(null);
-      const next = { top: el.offsetTop + nav.offsetTop, h: el.offsetHeight };
-      setInd((p) => (p && p.top === next.top && p.h === next.h ? p : next));
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(nav);
-    return () => ro.disconnect();
-  }, [path, collapsed, estudosVisivel, evolucaoVisivel, summary.subjects, activeIndex]);
   const [toast, setToast] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDialogElement>(null);
@@ -349,152 +206,26 @@ export function PastelShell({
         <div className="relative flex min-h-screen w-full max-w-[100vw]">
           {/* Barra lateral (desktop) */}
           <aside
-            className={`sticky top-0 z-30 hidden h-screen shrink-0 flex-col transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:flex ${collapsed ? "w-[92px]" : "w-[272px] xl:w-[292px]"}`}
+            className={`sticky top-0 z-30 hidden h-screen shrink-0 flex-col transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:flex ${collapsed ? "w-[92px]" : "w-[304px] xl:w-[324px]"}`}
             style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
           >
-            <div className={`barra-lateral ${collapsed ? "is-rec" : ""} m-4 flex min-h-0 flex-1 flex-col overflow-hidden rounded-[32px] border border-[#1F1F1F] bg-[#0A0A0A] text-white shadow-[0_16px_48px_rgba(225,6,0,0.10),inset_0_1px_0_rgba(255,255,255,0.05)]`}>
-              <div className="barra-topo flex items-center gap-3.5 p-[22px]">
-                <Link
-                  href={`${basePath}/painel`}
-                  aria-label="APROVUM — ir para o painel"
-                  className="group relative flex h-[52px] w-[52px] shrink-0 items-center justify-center overflow-hidden rounded-[16px] border border-[#2A2A2A] bg-black shadow-[0_8px_24px_rgba(225,6,0,0.30)]"
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/icons/aprovum-mark.png" alt="" className="h-full w-full scale-110 object-cover transition-transform duration-500 group-hover:scale-125" />
-                </Link>
-                {!collapsed && (
-                  <div className="leading-none">
-                    <div className="font-[Space_Grotesk] text-[21px] font-[700] tracking-[0.04em]">
-                      APRO<span className="text-[#F80000]">V</span>UM
-                    </div>
-                    <div className="mt-1.5 text-[8.5px] font-semibold uppercase tracking-[0.16em] text-[#A3A3A3]">Sua preparação. Seu próximo cargo.</div>
-                  </div>
-                )}
-              </div>
-
-              <div className="barra-rolagem relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden px-3 [scrollbar-width:none]">
-                {ind && (
-                  <div
-                    aria-hidden
-                    data-tier={active?.id === "plano" ? summary.plan : undefined}
-                    className="barra-indicador absolute left-3 right-3 rounded-[18px] bg-gradient-to-r from-[#FF1E1E] to-[#B30000] shadow-[0_10px_24px_rgba(225,6,0,0.32),inset_0_1px_0_rgba(255,255,255,0.3)] transition-all duration-500 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-                    style={{ transform: `translateY(${ind.top}px)`, height: ind.h }}
-                  />
-                )}
-                <nav ref={navRef} aria-label="Principal" className="barra-nav relative flex flex-col">
-                  {items.filter((s) => s.id !== "revisoes" && s.id !== "desempenho" && !s.hidden).map((s) => {
-                    const on = active?.id === s.id;
-                    return (
-                      <Fragment key={s.id}>
-                      <div className="relative">
-                      <Link
-                        href={s.href}
-                        aria-current={on ? "page" : undefined}
-                        aria-label={collapsed ? s.label : undefined}
-                        title={collapsed ? s.label : undefined}
-                        onClick={() => {
-                          if (path === s.href) setToast(`${s.label} já está aberto ✨`);
-                        }}
-                        className={`barra-item ${itemNovo(s, on)} ${s.id === "plano" ? `mp-brilho mp-${summary.plan}` : ""} group relative flex w-full items-center gap-3.5 rounded-[18px] px-4 text-left text-[14.5px] font-medium transition-all duration-300 ${on ? "text-white" : "text-[#B3B3B3] hover:bg-white/[0.06] hover:text-white"}`}
-                      >
-                        <span className={`${s.id === "plano" ? "mp-ico" : ""} ${s.badge === "Novo" && collapsed ? "relative" : ""} flex h-9 w-9 shrink-0 items-center justify-center rounded-[12px] transition-all duration-300 ${on ? "bg-white/20 text-white" : "bg-[#1A1A1A] group-hover:rotate-[-6deg] group-hover:scale-110 group-hover:bg-[#1C1C1C]"}`}>
-                          <s.icon className="h-[18px] w-[18px]" aria-hidden />
-                          {collapsed && s.badge === "Novo" && !on && <span aria-hidden className="mp-novo absolute right-1.5 top-1.5 !h-2 !w-2 !rounded-full !p-0" />}
-                        </span>
-                        {!collapsed && (
-                          <span className="mp-txt min-w-0 flex-1">
-                            <span className="flex items-center gap-1.5">
-                              <span className={`whitespace-nowrap font-semibold tracking-tight ${on ? "text-white" : ""}`}>{s.label}</span>
-                              {s.badge && <NavBadge texto={s.badge} on={on} />}
-                            </span>
-                            <span className={`mt-0.5 block text-[11px] leading-none ${on ? "text-white/80" : "text-[#A3A3A3]"}`} data-testid={`nav-desc-${s.id}`}>{s.desc}</span>
-                          </span>
-                        )}
-                        {!collapsed && on && s.id !== "trilhas" && <ChevronRight className="mp-chev h-4 w-4 text-white/70 transition-transform group-hover:translate-x-0.5" aria-hidden />}
-                      </Link>
-                      {s.id === "trilhas" && !collapsed && summary.subjects.length > 0 && (
-                        <button
-                          type="button"
-                          className="barra-grupo-toggle"
-                          aria-expanded={estudosVisivel}
-                          aria-label={estudosVisivel ? "Recolher matérias" : "Mostrar matérias"}
-                          data-testid="estudos-toggle"
-                          onClick={() => setEstudosAberto(!estudosVisivel)}
-                        >
-                          <ChevronDown className={`size-4 transition-transform ${estudosVisivel ? "rotate-180" : ""}`} aria-hidden />
-                        </button>
-                      )}
-                      </div>
-                      {s.id === "aprovum-ai" && !collapsed && <EditalVerticalizadoLink href={`${basePath}/meu-concurso`} active={path.startsWith(`${basePath}/meu-concurso`)} />}
-                      {s.id === "trilhas" && !collapsed && summary.subjects.length > 0 && estudosVisivel && (
-                        <SubjectsSubmenu subjects={summary.subjects} base={basePath} path={path} />
-                      )}
-                      {s.id === "questoes" && (
-                        <EvolucaoGrupo
-                          items={items}
-                          collapsed={collapsed}
-                          open={evolucaoVisivel}
-                          onToggle={() => setEvolucaoAberta(!evolucaoVisivel)}
-                          activeId={active?.id ?? null}
-                          basePath={basePath}
-                          path={path}
-                          onSame={(label) => setToast(`${label} já está aberto ✨`)}
-                        />
-                      )}
-                      </Fragment>
-                    );
-                  })}
-                </nav>
-                {isAula && !collapsed && <div id="aula-arvore-desktop" className="mt-4 border-t border-white/10 px-1 pt-4" />}
-              </div>
-
-              <div className="barra-base mt-auto shrink-0 p-4">
-                {!collapsed ? (
-                  <>
-                    <Link
-                      href={`${basePath}/plano`}
-                      data-tier={summary.plan}
-                      data-testid="plano-card"
-                      aria-label={`${summary.planInfo.label} — ver meu plano`}
-                      className={`sb-plano barra-streak ${isAula ? "!hidden" : ""}`}
-                    >
-                      <span className="sb-plano-ico" aria-hidden><Crown className="h-5 w-5" /></span>
-                      <span className="sb-plano-txt">
-                        <span className="sb-plano-rotulo">Seu plano</span>
-                        <span className="sb-plano-nome">{summary.planInfo.label}</span>
-                        <span className="sb-plano-sub">{summary.planInfo.tagline}</span>
-                      </span>
-                      <ChevronRight className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
-                    </Link>
-                    <div className="mt-3 flex gap-2">
-                      <button type="button" onClick={toggleCollapsed} className="flex h-10 flex-1 items-center justify-center gap-2 rounded-[12px] border border-[#2A2A2A] bg-[#161616] text-[12px] font-semibold transition hover:bg-[#1A1A1A]">
-                        <PanelLeftClose className="h-4 w-4" aria-hidden /> Recolher
-                      </button>
-                      <Link
-                        href={`${basePath}/revisoes`}
-                        aria-label={`Revisões pendentes: ${summary.counts.dueReviews}`}
-                        className="relative flex h-10 w-10 items-center justify-center rounded-[12px] border border-[#2A2A2A] bg-[#161616] transition hover:bg-[#1A1A1A]"
-                      >
-                        <Bell className="h-4 w-4" aria-hidden />
-                        {summary.counts.dueReviews > 0 && (
-                          <span className="absolute -right-1 -top-1 min-w-4 rounded-full bg-[#E10600] px-1 text-center text-[10px] font-bold leading-4 text-white">{summary.counts.dueReviews}</span>
-                        )}
-                      </Link>
-                      {logout}
-                    </div>
-                  </>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    <button type="button" onClick={toggleCollapsed} aria-label="Expandir barra lateral" className="flex h-12 w-full items-center justify-center rounded-[16px] border border-[#2A2A2A] bg-[#161616] transition hover:bg-[#1A1A1A]">
-                      <PanelLeftOpen className="h-5 w-5" aria-hidden />
-                    </button>
-                    <Link href={`${basePath}/plano`} data-tier={summary.plan} className="sb-plano sb-plano-rail" aria-label={`${summary.planInfo.label} — ver meu plano`} title={summary.planInfo.label}>
-                      <Crown className="h-5 w-5" aria-hidden />
-                    </Link>
-                  </div>
-                )}
-              </div>
-            </div>
+            <MenuTatico
+              variant="desktop"
+              items={items}
+              summary={summary}
+              basePath={basePath}
+              path={path}
+              activeId={active?.id ?? null}
+              collapsed={collapsed}
+              onToggleCollapsed={toggleCollapsed}
+              onSame={(label) => setToast(`${label} já está aberto ✨`)}
+              estudosAberto={estudosAberto}
+              onToggleEstudos={() => setEstudosAberto(!estudosAberto)}
+              evolucaoAberta={evolucaoAberta}
+              onToggleEvolucao={() => setEvolucaoAberta(!evolucaoAberta)}
+              logout={logout}
+              isAula={isAula}
+            />
           </aside>
 
           <div className="min-w-0 flex-1">
@@ -580,7 +311,7 @@ export function PastelShell({
                 <span className="flex rounded-[12px] bg-black/55 backdrop-blur-md"><MenuButton menuRef={menuRef} dark /></span>
               </div>
             )}
-            <MobileMenu menuRef={menuRef} items={items} summary={summary} basePath={basePath} />
+            <MobileMenu menuRef={menuRef} items={items} summary={summary} basePath={basePath} activeId={active?.id ?? null} />
             <ConnectivityBanner />
             <main
               className={isPainel ? "pb-28 lg:px-10 lg:py-7 lg:pb-12" : "px-4 py-7 pb-28 sm:px-5 lg:px-10 lg:pb-12"}
@@ -726,115 +457,50 @@ function QuickSearch({ inputRef, basePath, items, dark = false }: { inputRef: Re
 }
 
 
-/** Menu do celular (hambúrguer): um só para todas as telas; o botão de cada cabeçalho abre este diálogo. */
-function MobileMenu({ menuRef, items, summary, basePath }: { menuRef: React.RefObject<HTMLDialogElement | null>; items: NavItem[]; summary: ShellSummary; basePath: string }) {
+/** Menu do celular (hambúrguer): gaveta lateral com o mesmo menu tático do computador. */
+function MobileMenu({ menuRef, items, summary, basePath, activeId }: { menuRef: React.RefObject<HTMLDialogElement | null>; items: NavItem[]; summary: ShellSummary; basePath: string; activeId: string | null }) {
   const path = usePathname();
-  // Grupo "Evolução" (Desempenho e Revisões), igual ao da barra lateral do computador.
-  const evolucao = ["desempenho", "revisoes"].map((id) => items.find((i) => i.id === id)).filter((i): i is NavItem => !!i);
-  const dentroEvolucao = evolucao.some((f) => path === f.href);
-  const [evolucaoAberta, setEvolucaoAberta] = useState(dentroEvolucao);
+  const [estudosAberto, setEstudosAberto] = useState(true);
+  const [evolucaoAberta, setEvolucaoAberta] = useState(activeId === "desempenho" || activeId === "revisoes");
+  // Fecha com animação de saída (a gaveta desliza de volta antes do diálogo sumir).
+  const fechar = useCallback(() => {
+    const d = menuRef.current;
+    if (!d?.open || d.dataset.saindo) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return d.close();
+    d.dataset.saindo = "1";
+    setTimeout(() => {
+      delete d.dataset.saindo;
+      d.close();
+    }, 240);
+  }, [menuRef]);
   return (
-    <>
-      {/* Menu do celular (hambúrguer) */}
-      <dialog
-        ref={menuRef}
-        aria-label="Menu"
-        className="m-0 h-dvh max-h-none w-[min(86vw,340px)] max-w-none bg-transparent p-0 backdrop:bg-black/50 open:animate-[enter_0.3s_ease-out]"
-        onClick={(e) => {
-          if (e.target === e.currentTarget) e.currentTarget.close();
-        }}
-      >
-        <nav aria-label="Menu principal" className="flex h-full flex-col overflow-y-auto bg-[#0A0A0A] px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))] text-white">
-          <div className="flex items-center justify-between gap-3">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/aprovum-login-logo.png" alt="APROVUM" width={523} height={107} className="h-auto w-[190px]" />
-            <button type="button" onClick={() => menuRef.current?.close()} aria-label="Fechar menu" className="flex h-11 w-11 items-center justify-center rounded-[12px] bg-white/[0.06] hover:bg-white/[0.12]">
-              <X className="h-5 w-5" aria-hidden />
-            </button>
-          </div>
-          <ul className="mt-6 flex flex-col gap-1.5">
-            {items.filter((s) => s.id !== "novo" && s.id !== "revisoes" && s.id !== "desempenho" && !s.hidden).map((s) => {
-              const on = path === s.href || (s.also ?? []).some((a) => path.startsWith(a));
-              return (
-                <Fragment key={s.id}>
-                <li>
-                  <Link
-                    href={s.href}
-                    onClick={() => menuRef.current?.close()}
-                    aria-current={on ? "page" : undefined}
-                    className={`${itemNovo(s, on)} flex min-h-14 items-center gap-3.5 rounded-[16px] px-3.5 ${on ? "bg-gradient-to-r from-[#FF1E1E] to-[#B30000] text-white" : "text-[#C9C9C9] hover:bg-white/[0.06]"}`}
-                  >
-                    <span className={`flex h-9 w-9 items-center justify-center rounded-[12px] ${on ? "bg-white/20" : "bg-[#1A1A1A]"}`}>
-                      <s.icon className="h-[18px] w-[18px]" aria-hidden />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center gap-2 font-semibold">{s.label}{s.badge && <NavBadge texto={s.badge} on={on} />}</span>
-                      <span className={`block text-[11.5px] ${on ? "text-white/80" : "text-[#9A9A9A]"}`}>{s.desc}</span>
-                    </span>
-                  </Link>
-                  {s.id === "aprovum-ai" && <EditalVerticalizadoLink href={`${basePath}/meu-concurso`} active={path.startsWith(`${basePath}/meu-concurso`)} onNavigate={() => menuRef.current?.close()} />}
-                  {s.id === "trilhas" && <SubjectsSubmenu subjects={summary.subjects} base={basePath} path={path} variant="menu" onNavigate={() => menuRef.current?.close()} />}
-                </li>
-                {s.id === "questoes" && evolucao.length > 0 && (
-                  <li>
-                    <button
-                      type="button"
-                      aria-expanded={evolucaoAberta}
-                      data-testid="evolucao-toggle-movel"
-                      onClick={() => setEvolucaoAberta((v) => !v)}
-                      className={`flex min-h-14 w-full items-center gap-3.5 rounded-[16px] px-3.5 text-left ${dentroEvolucao ? "text-white" : "text-[#C9C9C9] hover:bg-white/[0.06]"}`}
-                    >
-                      <span className="flex h-9 w-9 items-center justify-center rounded-[12px] bg-[#1A1A1A]">
-                        <TrendingUp className="h-[18px] w-[18px]" aria-hidden />
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block font-semibold">Evolução</span>
-                        <span className="block text-[11.5px] text-[#9A9A9A]">Seu progresso</span>
-                      </span>
-                      <ChevronDown className={`size-4 shrink-0 transition-transform ${evolucaoAberta ? "rotate-180" : ""}`} aria-hidden />
-                    </button>
-                    {evolucaoAberta && (
-                      <ul aria-label="Evolução" className="mt-1 flex flex-col gap-1 pl-4">
-                        {evolucao.map((f) => {
-                          const fOn = path === f.href;
-                          return (
-                            <li key={f.id}>
-                              <Link
-                                href={f.href}
-                                onClick={() => menuRef.current?.close()}
-                                aria-current={fOn ? "page" : undefined}
-                                className={`flex min-h-12 items-center gap-3 rounded-[14px] px-3 ${fOn ? "bg-gradient-to-r from-[#FF1E1E] to-[#B30000] text-white" : "text-[#C9C9C9] hover:bg-white/[0.06]"}`}
-                              >
-                                <span className={`flex h-8 w-8 items-center justify-center rounded-[10px] ${fOn ? "bg-white/20" : "bg-[#1A1A1A]"}`}>
-                                  <f.icon className="h-4 w-4" aria-hidden />
-                                </span>
-                                <span className="min-w-0 flex-1">
-                                  <span className="block text-[14px] font-semibold">{f.label}</span>
-                                  <span className={`block text-[11px] ${fOn ? "text-white/80" : "text-[#9A9A9A]"}`}>{f.desc}</span>
-                                </span>
-                              </Link>
-                            </li>
-                          );
-                        })}
-                      </ul>
-                    )}
-                  </li>
-                )}
-                </Fragment>
-              );
-            })}
-          </ul>
-          <Link
-            href={`${basePath}/nova-trilha`}
-            onClick={() => menuRef.current?.close()}
-            className="mt-4 flex min-h-12 items-center justify-center gap-2 rounded-[16px] bg-gradient-to-br from-[#FF1E1E] to-[#B30000] font-semibold text-white"
-          >
-            <Plus className="h-5 w-5" aria-hidden /> Novo estudo
-          </Link>
-          {path.includes("/aula") && <div id="aula-arvore-movel" className="mt-5 border-t border-white/10 pt-4" />}
-        </nav>
-      </dialog>
-    </>
+    <dialog
+      ref={menuRef}
+      aria-label="Menu"
+      className="mt-gaveta"
+      onCancel={(e) => {
+        e.preventDefault();
+        fechar();
+      }}
+      onClick={(e) => {
+        if (e.target === e.currentTarget) fechar();
+      }}
+    >
+      <MenuTatico
+        variant="mobile"
+        items={items}
+        summary={summary}
+        basePath={basePath}
+        path={path}
+        activeId={activeId}
+        onClose={fechar}
+        estudosAberto={estudosAberto}
+        onToggleEstudos={() => setEstudosAberto((v) => !v)}
+        evolucaoAberta={evolucaoAberta}
+        onToggleEvolucao={() => setEvolucaoAberta((v) => !v)}
+        isAula={path.includes("/aula")}
+      />
+    </dialog>
   );
 }
 
