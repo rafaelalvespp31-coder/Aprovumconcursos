@@ -24,6 +24,17 @@ export function studyStatus(lessonCount: number, progress: Array<{ state: string
 
 export const OTHER_SUBJECTS = "Outras matérias";
 
+/** Matérias básicas, na ordem em que aparecem primeiro no menu; as demais (conhecimentos específicos) vêm depois, em ordem alfabética. */
+const BASICAS = ["portugu", "matematica", "raciocinio logico", "informatica"];
+const semAcento = (t: string) => t.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+/** Posição da matéria: 0..3 = básicas (na ordem fixa); 100 = específicas; 999 = "Outras matérias". */
+export function subjectRank(name: string): number {
+  if (name === OTHER_SUBJECTS) return 999;
+  const n = semAcento(name);
+  const i = BASICAS.findIndex((k) => n.includes(k));
+  return i >= 0 ? i : 100;
+}
+
 export function buildSubjectsMenu(input: {
   trails: Array<{ id: string; title: string; folder_id: string | null; last_studied_at: string | null; updated_at: string; catalogTopicIds: string[] }>;
   folders: Array<{ id: string; name: string }>;
@@ -45,5 +56,5 @@ export function buildSubjectsMenu(input: {
       name,
       studies: list.sort((a, b) => b.at.localeCompare(a.at)).map(({ id, title }) => ({ id, title, status: input.status?.get(id) ?? ("nao_iniciado" as const) })),
     }))
-    .sort((a, b) => (a.name === OTHER_SUBJECTS ? 1 : b.name === OTHER_SUBJECTS ? -1 : a.name.localeCompare(b.name, "pt-BR")));
+    .sort((a, b) => subjectRank(a.name) - subjectRank(b.name) || a.name.localeCompare(b.name, "pt-BR"));
 }

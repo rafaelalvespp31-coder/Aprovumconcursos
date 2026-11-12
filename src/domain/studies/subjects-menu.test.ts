@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildSubjectsMenu, studyStatus } from "./subjects-menu";
+import { buildSubjectsMenu, studyStatus, subjectRank } from "./subjects-menu";
 
 describe("submenu de matérias", () => {
   it("agrupa os estudos por matéria do catálogo, depois pasta, depois 'Outras matérias'", () => {
@@ -15,6 +15,12 @@ describe("submenu de matérias", () => {
     });
     expect(menu.map((m) => m.name)).toEqual(["Direito Penal", "Processo Penal", "Outras matérias"]);
     expect(menu[0]!.studies.map((s) => s.title)).toEqual(["Furto", "Homicídio"]);
+  });
+
+  it("ordem: básicas primeiro (Português, Matemática, Raciocínio Lógico, Informática), depois específicas e 'Outras'", () => {
+    const nomes = ["Direito Penal", "Outras matérias", "Informática", "Raciocínio Lógico", "Direito Administrativo", "Língua Portuguesa", "Matemática", "Legislação especial"];
+    const ordenado = [...nomes].sort((a, b) => subjectRank(a) - subjectRank(b) || a.localeCompare(b, "pt-BR"));
+    expect(ordenado).toEqual(["Língua Portuguesa", "Matemática", "Raciocínio Lógico", "Informática", "Direito Administrativo", "Direito Penal", "Legislação especial", "Outras matérias"]);
   });
 
   it("situação do assunto: concluído, em andamento ou não iniciado", () => {
