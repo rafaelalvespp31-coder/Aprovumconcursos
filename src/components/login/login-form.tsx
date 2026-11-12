@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useState } from "react";
-import { CircleAlert, Eye, EyeOff, Info, LoaderCircle, Lock, LogIn, Mail, UserPlus, Check } from "lucide-react";
+import { useActionState, useEffect, useState } from "react";
+import { CircleAlert, Eye, EyeOff, Info, LoaderCircle, Lock, Fingerprint, LogIn, Mail, UserPlus, Check } from "lucide-react";
 import { signIn, type AuthState } from "@/app/(auth)/actions";
+import { biometriaDisponivel, entrarComBiometria } from "@/lib/biometria";
 
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
@@ -16,6 +17,22 @@ export function LoginForm({ next, notice }: { next?: string; notice?: string | n
   const [state, action, pending] = useActionState<AuthState, FormData>(signIn, {});
   const [show, setShow] = useState(false);
   const [remember, setRemember] = useState(true);
+  const [bio, setBio] = useState(false);
+  const [bioBusy, setBioBusy] = useState(false);
+  const [bioErro, setBioErro] = useState<string | null>(null);
+  useEffect(() => {
+    void biometriaDisponivel().then(setBio);
+  }, []);
+  const entrarBio = async () => {
+    setBioBusy(true);
+    setBioErro(null);
+    try {
+      window.location.assign(await entrarComBiometria(next));
+    } catch (e) {
+      setBioErro((e as Error).message);
+      setBioBusy(false);
+    }
+  };
   const [local, setLocal] = useState<{ email?: string; password?: string }>({});
 
   const emailError = local.email ?? state.fieldErrors?.email;
@@ -122,6 +139,16 @@ export function LoginForm({ next, notice }: { next?: string; notice?: string | n
         {pending ? <LoaderCircle className="size-5 animate-spin" aria-hidden /> : <LogIn className="size-5" aria-hidden />}
         {pending ? "Entrando…" : "Entrar na operação"}
       </button>
+
+      {bio && (
+        <>
+          <button type="button" onClick={entrarBio} disabled={bioBusy || pending} className="login-botao-sec order-5 mt-3" data-testid="login-biometria">
+            {bioBusy ? <LoaderCircle className="size-5 animate-spin" aria-hidden /> : <Fingerprint className="size-5" aria-hidden />}
+            {bioBusy ? "Aguardando biometria…" : "Entrar com digital ou rosto"}
+          </button>
+          {bioErro && <p className="login-erro order-5 mt-2" role="alert">{bioErro}</p>}
+        </>
+      )}
 
       <div className="login-ou order-5 my-5" aria-hidden>
         <span>ou</span>
