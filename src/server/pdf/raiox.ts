@@ -543,7 +543,7 @@ function syllabusSection(d: Doc, toc: TocItem[], n: number, disciplines: Syllabu
   const total = disciplines.reduce((a, x) => a + x.topics.length, 0);
   sectionPage(d, toc, n, "Conteúdo programático", `Tudo o que o edital cobra: ${disciplines.length} disciplinas e ${total} assuntos, na ordem do edital.`, null);
   kpis(d, [{ v: String(disciplines.length), l: "Disciplinas" }, { v: String(total), l: "Assuntos do edital" }, { v: String(disciplines.reduce((a, x) => a + x.topics.filter((t) => t.hasLesson).length, 0)), l: "Com aula na APROVUM" }]);
-  const DISC_COLORS = [rgb(0.11, 0.36, 0.78), rgb(0.1, 0.55, 0.36), rgb(0.85, 0.5, 0.04), rgb(0.5, 0.2, 0.7), rgb(0.05, 0.5, 0.55), rgb(0.3, 0.33, 0.4), rgb(0.45, 0.28, 0.15), rgb(0.2, 0.25, 0.6)]; // sem vermelho: o vermelho é só dos assuntos
+  const DISC_COLORS = [rgb(0.882, 0.024, 0), rgb(0.11, 0.36, 0.78), rgb(0.1, 0.55, 0.36), rgb(0.85, 0.5, 0.04), rgb(0.5, 0.2, 0.7), rgb(0.05, 0.5, 0.55), rgb(0.3, 0.33, 0.4), rgb(0.45, 0.28, 0.15), rgb(0.2, 0.25, 0.6)]; // tópicos e subtópicos usam a cor da matéria em tom claro
   const tint = (c: RGB, k: number) => rgb(1 - (1 - c.red) * k, 1 - (1 - c.green) * k, 1 - (1 - c.blue) * k);
   disciplines.forEach((disc, di) => {
     const col = DISC_COLORS[di % DISC_COLORS.length]!;
@@ -560,22 +560,24 @@ function syllabusSection(d: Doc, toc: TocItem[], n: number, disciplines: Syllabu
       const indent = Math.max(0, Math.min(2, t.depth - 1)) * 12;
       const x0 = MX + indent, wCard = CW - indent;
       const { head, items } = splitItem(t.title);
-      const hl = d.wrap(head.toUpperCase(), 11.5, wCard - 120, d.f.bold, 5);
+      const hl = d.wrap(head.toUpperCase(), 11.5, wCard - 124, d.f.bold, 5);
       const hh = hl.length * 15 + 16;
       d.ensure(hh + (items.length ? 40 : 6));
-      d.card(x0, d.y - hh, wCard, hh, RED, 9);
-      d.card(x0 + 10, d.y - 24, 38, 16, WHITE, 5);
-      d.center(`${di + 1}.${ti + 1}`, x0 + 29, d.y - 19.5, 8.5, d.f.bold, RED);
-      hl.forEach((l, k) => d.text(l, x0 + 58, d.y - 20 - k * 15, 11.5, d.f.bold, WHITE));
-      d.right(t.hasLesson ? "COM AULA" : "SEM AULA", x0 + wCard - 10, d.y - 19, 7, d.f.bold, WHITE);
+      const deep = rgb(col.red * 0.55, col.green * 0.55, col.blue * 0.55);
+      d.card(x0, d.y - hh, wCard, hh, tint(col, 0.3), 9, tint(col, 0.55));
+      d.rect(x0, d.y - hh + 7, 4.5, hh - 14, col);
+      d.card(x0 + 12, d.y - 24, 38, 16, col, 5);
+      d.center(`${di + 1}.${ti + 1}`, x0 + 31, d.y - 19.5, 8.5, d.f.bold, WHITE);
+      hl.forEach((l, k) => d.text(l, x0 + 60, d.y - 20 - k * 15, 11.5, d.f.bold, deep));
+      d.right(t.hasLesson ? "COM AULA" : "SEM AULA", x0 + wCard - 10, d.y - 19, 7, d.f.bold, deep);
       d.y -= hh + 3;
       items.forEach((it, ii) => {
         const il = d.wrap(it, 8.5, wCard - 66, d.f.regular, 4);
         const ih = il.length * 11 + 9;
         d.ensure(ih + 4);
-        d.card(x0 + 22, d.y - ih, wCard - 22, ih, WHITE, 6, rgb(0.93, 0.62, 0.6));
+        d.card(x0 + 22, d.y - ih, wCard - 22, ih, tint(col, 0.1), 6, tint(col, 0.4));
         d.rect(x0 + 22, d.y - ih + 5, 3, ih - 10, tint(col, 1));
-        d.text(`${di + 1}.${ti + 1}.${ii + 1}`, x0 + 32, d.y - 12, 7, d.f.bold, RED);
+        d.text(`${di + 1}.${ti + 1}.${ii + 1}`, x0 + 32, d.y - 12, 7, d.f.bold, col);
         il.forEach((l, k) => d.text(l, x0 + 62, d.y - 12 - k * 11, 8.5, d.f.regular, GRAPHITE));
         d.y -= ih + 3;
       });
