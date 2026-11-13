@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Pause, Play } from "lucide-react";
 
 import { APPROVAL_BANNERS, type ApprovalBanner } from "./approval-banners";
 
@@ -11,13 +10,12 @@ const INTERVAL_MS = 3000;
 
 /**
  * Reveza o banner da marca (primeiro slide, que dá a altura) com os banners de aprovação,
- * a cada 3 segundos, com transição suave. Pausa com a aba oculta e no botão de pausa;
- * os pontos levam direto a cada banner (e a contagem recomeça dali).
+ * a cada 3 segundos, com transição suave. Pausa só com a aba oculta;
+ * sem pontos nem botão de pausa por cima da arte.
  */
 export function BannerRotator({ children, banners = APPROVAL_BANNERS, className = "" }: { children: ReactNode; banners?: ApprovalBanner[]; className?: string }) {
   const total = banners.length + 1;
   const [index, setIndex] = useState(0);
-  const [paused, setPaused] = useState(false);
   const [hidden, setHidden] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const [mov, setMov] = useState(false); // só anima a troca depois da primeira mudança (sem efeito ao carregar)
@@ -28,7 +26,7 @@ export function BannerRotator({ children, banners = APPROVAL_BANNERS, className 
     return () => document.removeEventListener("visibilitychange", on);
   }, []);
 
-  const running = !paused && !hidden && total > 1;
+  const running = !hidden && total > 1;
   useEffect(() => {
     if (!running) return;
     const t = setTimeout(() => {
@@ -90,20 +88,6 @@ export function BannerRotator({ children, banners = APPROVAL_BANNERS, className 
           </div>
         );
       })}
-
-      <div className="br-controles">
-        <div className="br-pontos" role="group" aria-label="Escolher banner">
-          {Array.from({ length: total }, (_, i) => (
-            <button key={i} type="button" aria-label={`Mostrar banner ${i + 1} de ${total}`} aria-current={index === i ? "true" : undefined} onClick={() => {
-                setMov(true);
-                setIndex(i);
-              }} />
-          ))}
-        </div>
-        <button type="button" className="br-pausa" onClick={() => setPaused((p) => !p)} aria-label={paused ? "Retomar troca automática dos banners" : "Pausar troca automática dos banners"}>
-          {paused ? <Play className="size-3.5" aria-hidden /> : <Pause className="size-3.5" aria-hidden />}
-        </button>
-      </div>
     </div>
   );
 }

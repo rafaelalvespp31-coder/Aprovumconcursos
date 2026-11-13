@@ -931,16 +931,10 @@ test("banner das aprovações: saudação reveza com os banners de aprovação a
   await expect(rot).toHaveAttribute("data-slide", "1", { timeout: 5000 });
   await expect(rot.getByRole("img", { name: /Fábio Bezerra/ })).toBeVisible();
   await expect(rot.getByRole("img", { name: /William Abreu|Rafael Alves/ })).toHaveCount(0);
-  // Pontos levam direto a um banner; pausa interrompe a troca.
-  await rot.getByRole("button", { name: "Mostrar banner 3 de 3" }).click();
-  await expect(rot.getByRole("img", { name: /Sd Lacerda/ })).toBeVisible();
-  await rot.getByRole("button", { name: "Mostrar banner 2 de 3" }).click();
-  await expect(rot.getByRole("img", { name: /Fábio Bezerra/ })).toBeVisible();
-  await rot.getByRole("button", { name: /Pausar troca automática/ }).click();
-  // pausado: o slide atual não muda mais (lê depois do clique, sem depender do relógio da máquina de teste)
-  const paused = await rot.getAttribute("data-slide");
-  await page.waitForTimeout(3600);
-  await expect(rot).toHaveAttribute("data-slide", paused!);
+  // Sem pontos nem botão de pausa por cima da arte.
+  await expect(rot.getByRole("button")).toHaveCount(0);
+  // Espera um banner de aprovado ficar ativo antes de medir o encaixe.
+  await expect(rot.locator(".br-slide-aprovado[data-ativo='1']")).toHaveCount(1, { timeout: 15000 }).catch(() => {});
   // Card na proporção exata das artes (2000×711): o banner ativo preenche 100% do card.
   await page.waitForTimeout(1000);
   const fit = await page.evaluate(() => {
