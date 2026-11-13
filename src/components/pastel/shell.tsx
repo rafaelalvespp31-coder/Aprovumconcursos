@@ -1,6 +1,7 @@
 "use client";
 
 import { releaseStaleScrollLock, watchStuckScroll } from "@/lib/scroll-lock";
+import { armTickSound } from "@/components/tick-sound";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { RotatingQuote } from "./rotating-quote";
@@ -119,6 +120,8 @@ export function PastelShell({
     releaseStaleScrollLock();
   }, [path]);
   useEffect(() => watchStuckScroll(), []);
+  // Libera o áudio no primeiro toque (o som do cronômetro do Modo Jogo depende disso, principalmente no iPhone).
+  useEffect(() => armTickSound(), []);
   const router = useRouter();
   const items = useMemo(() => navItems(summary, basePath), [summary, basePath]);
   const active = items.find((i) => [i.href, ...(i.also ?? [])].some((p) => path === p || path.startsWith(`${p}/`))) ?? null;

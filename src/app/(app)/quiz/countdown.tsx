@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { TimerReset } from "lucide-react";
-import { playTick } from "@/components/tick-sound";
+import { armTickSound, playCountdownBeep } from "@/components/tick-sound";
 
 /** Tempo de cada questão do Modo Jogo. */
 export const QUESTION_SECONDS = 35;
@@ -55,10 +55,13 @@ export function Countdown({
   const sec = Math.ceil(left / 1000);
   const frac = left / total;
   const urgent = !result && left > 0 && sec <= 5;
-  // Tic-tac a cada segundo quando faltam 10 segundos ou menos.
-  const ticking = running && !result && left > 0 && sec <= 10;
+  // Som a cada segundo quando faltam 10 segundos ou menos (bip duplo nos últimos 5; bipe longo ao zerar).
+  const ticking = running && !result && sec <= 10;
   useEffect(() => {
-    if (ticking) playTick(sec % 2 === 0);
+    armTickSound();
+  }, []);
+  useEffect(() => {
+    if (ticking) playCountdownBeep(sec);
   }, [ticking, sec]);
   const color = result === "ok" ? "#4ADE80" : result === "erro" ? "rgba(255,255,255,0.45)" : urgent ? "#FFD60A" : "#FF1E12";
 
