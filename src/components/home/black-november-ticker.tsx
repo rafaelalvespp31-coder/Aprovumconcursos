@@ -33,7 +33,17 @@ export function BlackNovemberTicker({ href = "/plano" }: { href?: string }) {
   const resumo = `Black November APROVUM. ${planos.map((p) => `${p.nome}: ${p.preco}, ${p.det}`).join(". ")}.`;
   const trilho = (oculto: boolean) => (
     <div className="bnv-trilho" key={oculto ? "b" : "a"} aria-hidden={oculto || undefined}>
-      <span className="bnv-item bnv-selo"><Flame aria-hidden /><span>BLACK NOVEMBER</span></span>
+      <span className="bnv-item bnv-selo">
+        <Flame aria-hidden />
+        <span>BLACK</span>
+        {/* Vão entre as palavras: é por onde desce a perna do Caveira, sem cobrir nenhuma letra. */}
+        <span className="bnv-vao" aria-hidden>
+          <span className="bnv-assento" />
+          {/* eslint-disable-next-line @next/next/no-img-element -- recorte fixo (4x) da arte oficial, sem otimizador para não perder nitidez */}
+          <img className="bnv-caveira" src="/home/caveira-sentado.webp" alt="" width={94} height={110} decoding="async" />
+        </span>
+        <span>NOVEMBER</span>
+      </span>
       <span className="bnv-item bnv-frase">SUA APROVAÇÃO NÃO ESPERA <i>{"///"}</i> ESCOLHA SEU PLANO</span>
       {planos.flatMap((p) => [
         <Link key={p.k} href={href} className={`bnv-item bnv-plano bnv-${p.k}`} tabIndex={oculto ? -1 : 0} data-testid={oculto ? undefined : `bn-plano-${p.k}`}>
@@ -50,6 +60,13 @@ export function BlackNovemberTicker({ href = "/plano" }: { href?: string }) {
   return (
     <aside className="bnv" aria-label="Black November APROVUM" data-testid="black-november">
       <p className="sr-only">{resumo}</p>
+      {/* Brasas e fumaça em camadas, em toda a faixa (decorativo, atrás do conteúdo). */}
+      <div className="bnv-fx" aria-hidden>
+        <span className="bnv-brasa" />
+        <span className="bnv-fumo bnv-fumo-a" />
+        <span className="bnv-fumo bnv-fumo-b" />
+        <span className="bnv-fumo bnv-fumo-c" />
+      </div>
       <div className="bnv-janela">
         <div className="bnv-esteira">
           {trilho(false)}
