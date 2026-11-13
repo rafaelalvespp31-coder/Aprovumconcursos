@@ -240,6 +240,16 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, canCu
                 <p className="cl-cont-t">{cont.subject} • {cont.lesson}</p>
                 <div className="cl-prog"><i style={{ width: `${cont.pct}%` }} /><b>{cont.pct}%</b></div>
                 <Link href={`/aula/${cont.lessonId}`} className="cl-cta" data-testid="retomar-missao">RETOMAR MISSÃO</Link>
+                <ul className="cl-chips" aria-label="Detalhes da última aula">
+                  {cont.module && <li><b>Módulo</b>{cont.module}</li>}
+                  <li><b>Última atividade</b>{dateBR(cont.at)}</li>
+                  <li><b>Faltam</b>{Math.max(0, 100 - cont.pct)}% da aula</li>
+                </ul>
+                <nav className="cl-atalhos" aria-label="Atalhos de estudo">
+                  <Link href="/questoes">Questões</Link>
+                  <Link href="/revisoes">Revisões</Link>
+                  <Link href="/trilhas">Meus estudos</Link>
+                </nav>
               </>
             ) : (
               <>
@@ -260,6 +270,11 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, canCu
                 <div><b>{hours ?? "—"}</b><small>{hours ? "Horas de estudo" : "Sem tempo registrado"}</small></div>
                 <div><b>{evo == null ? "—" : `${evo > 0 ? "+" : ""}${evo}%`}</b><small>Evolução</small></div>
                 <span className="cl-sr">{fmt(perf.correct)} acertos e {fmt(perf.wrong)} erros</span>
+                <div className="cl-perf-bar" aria-hidden>
+                  <span className="cl-perf-ok" style={{ width: `${perf.answered ? Math.round((perf.correct / perf.answered) * 100) : 0}%` }} />
+                  <span className="cl-perf-leg"><i className="ok" />{fmt(perf.correct)} acertos</span>
+                  <span className="cl-perf-leg"><i className="er" />{fmt(perf.wrong)} erros</span>
+                </div>
               </Link>
             )}
           </div>
@@ -284,6 +299,13 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, canCu
               </details>
             </div>
             <span className="cl-sr">{unlocked} de {game.achievements.length} conquistas desbloqueadas</span>
+            <div className="cl-conq-prog" aria-hidden>
+              <div className="cl-conq-bar"><i style={{ width: `${game.achievements.length ? Math.round((unlocked / game.achievements.length) * 100) : 0}%` }} /></div>
+              {(() => {
+                const prox = game.achievements.find((a) => !a.unlockedAt);
+                return prox ? <p><b>Próxima:</b> {prox.name} — {prox.criterion}</p> : <p><b>Todas desbloqueadas.</b> Você completou o arsenal.</p>;
+              })()}
+            </div>
             <div className="cl-medals">
               {MEDAL_ROW.map((m) => {
                 const a = byId.get(m.id);

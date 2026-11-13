@@ -4314,3 +4314,36 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
   .mt-abrir.mt-abrir-fino:hover, .mt-abrir.mt-abrir-fino:focus-visible { width: 96px; opacity: 1; padding: 8px 10px 8px 3px; transform: none; }
   .mt-abrir.mt-abrir-fino:hover span, .mt-abrir.mt-abrir-fino:focus-visible span { display: inline; white-space: nowrap; }
 }
+
+/* ===== Painel (desktop): cartões da direita maiores, mais informativos e sem vazio ===== */
+@media (min-width: 1100px) {
+  .cl-low { --u: clamp(0.95px, calc(100cqw * 0.00098), 1.35px); }
+  .cl-low > .cl-card { display: flex; flex-direction: column; justify-content: space-between; gap: calc(14 * var(--u)); padding: calc(26 * var(--u)) calc(30 * var(--u)); }
+  .cl-card .cl-h { padding-left: 0; }
+  .cl-cta { margin-top: 0; height: calc(64 * var(--u)); font-size: calc(30 * var(--u)); }
+  .cl-cont-t { margin-top: 0; font-size: max(15px, calc(30 * var(--u))); }
+  .cl-prog { margin-top: 0; height: calc(18 * var(--u)); }
+  .cl-chips { display: flex; flex-wrap: wrap; gap: calc(10 * var(--u)); margin: 0; padding: 0; list-style: none; }
+  .cl-chips li { display: flex; flex-direction: column; gap: 2px; padding: calc(8 * var(--u)) calc(14 * var(--u)); border-radius: calc(12 * var(--u)); background: rgba(13,13,15,0.045); border: 1px solid rgba(13,13,15,0.08); font-family: "Barlow Semi Condensed", Inter, sans-serif; font-weight: 600; font-size: max(13px, calc(22 * var(--u))); line-height: 1.15; min-width: 0; }
+  .cl-chips b { font-weight: 700; font-size: max(10.5px, calc(16 * var(--u))); letter-spacing: 0.06em; text-transform: uppercase; color: #c20500; }
+  .cl-atalhos { display: grid; grid-template-columns: repeat(3, 1fr); gap: calc(10 * var(--u)); }
+  .cl-atalhos a { display: flex; align-items: center; justify-content: center; min-height: 40px; padding: calc(10 * var(--u)) calc(8 * var(--u)); border-radius: calc(12 * var(--u)); border: 1px solid rgba(225,6,0,0.45); color: #c20500; font-family: "Barlow Condensed", Inter, sans-serif; font-weight: 700; font-size: max(14px, calc(26 * var(--u))); text-decoration: none; transition: background 0.2s, color 0.2s, transform 0.2s; }
+  .cl-atalhos a:hover { background: #d10500; color: #fff; transform: translateY(-2px); }
+  .cl-perf-g { margin-top: 0; gap: calc(18 * var(--u)); }
+  .cl-perf-g b { font-size: max(24px, calc(56 * var(--u))); }
+  .cl-perf-g small { font-size: max(12px, calc(24 * var(--u))); }
+  .cl-perf-bar { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px calc(18 * var(--u)); padding-top: calc(6 * var(--u)); position: relative; }
+  .cl-perf-bar::before { content: ""; flex: 1 0 100%; height: calc(14 * var(--u)); min-height: 8px; border-radius: 99px; background: #e63a3a55; order: 0; }
+  .cl-perf-ok { position: absolute; left: 0; top: calc(6 * var(--u)); height: calc(14 * var(--u)); min-height: 8px; border-radius: 99px; background: linear-gradient(180deg, #34c759, #1f9d45); }
+  .cl-perf-leg { display: inline-flex; align-items: center; gap: 6px; font-family: "Barlow Semi Condensed", Inter, sans-serif; font-weight: 600; font-size: max(12px, calc(22 * var(--u))); order: 1; }
+  .cl-perf-leg i { width: 10px; height: 10px; border-radius: 99px; } .cl-perf-leg i.ok { background: #28a745; } .cl-perf-leg i.er { background: #e63a3a; }
+  .cl-medals { margin-top: 0; gap: calc(14 * var(--u)); }
+  .cl-medal-i { width: 78%; }
+  .cl-medal > span:last-child { font-size: clamp(11px, 0.95vw, 14px); }
+  .cl-conq-prog { display: flex; flex-direction: column; gap: calc(8 * var(--u)); }
+  .cl-conq-bar { height: calc(12 * var(--u)); min-height: 7px; border-radius: 99px; background: #dcdce0; overflow: hidden; }
+  .cl-conq-bar i { display: block; height: 100%; border-radius: 99px; background: linear-gradient(180deg, #ffd24a, #d9930a); }
+  .cl-conq-prog p { margin: 0; font-family: "Barlow Semi Condensed", Inter, sans-serif; font-weight: 600; font-size: max(12.5px, calc(22 * var(--u))); line-height: 1.25; color: rgba(13,13,15,0.78); }
+  .cl-conq-prog b { color: #c20500; }
+}
+@media (min-width: 1100px) { .cl-atalhos a { white-space: nowrap; font-size: max(13px, calc(23 * var(--u))); padding-inline: 4px; } }
