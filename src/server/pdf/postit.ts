@@ -4,6 +4,8 @@
  * guardou (acentos preservados). Entrada: o retrato congelado; saída: bytes do PDF.
  */
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { LOGO_ESCURA_PNG } from "./logos";
 import { parseExplanation } from "@/domain/study/explanation-format";
 import type { PostitPdfSnapshot } from "./postit-types";
@@ -105,7 +107,28 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   y -= 18;
 
   const QS = 10.5, NS = 9.5, LH = 1.38;
+  // Faixas finas decorativas (de borda a borda) separando um assunto do outro; as 4 artes se revezam.
+  const faixas: Awaited<ReturnType<PDFDocument["embedJpg"]>>[] = [];
+  for (let f = 1; f <= 4; f++) {
+    try {
+      faixas.push(await doc.embedJpg(await readFile(path.join(process.cwd(), "public", "pdf", `fina-${f}.jpg`))));
+    } catch {
+      /* sem a arte, os assuntos seguem sem a faixa */
+    }
+  }
+  let idx = -1;
   for (const it of s.items) {
+    idx += 1;
+    if (idx > 0 && faixas.length) {
+      const fi = faixas[(idx - 1) % faixas.length]!;
+      const fh = (A4[0] * fi.height) / fi.width;
+      if (y - fh - 12 - 18 - 30 < M.bottom) newPage();
+      else y -= 4;
+      page.drawImage(fi, { x: 0, y: y - fh, width: A4[0], height: fh });
+      page.drawRectangle({ x: 0, y: y - fh - 0.9, width: A4[0], height: 0.9, color: RED });
+      page.drawRectangle({ x: 0, y, width: A4[0], height: 0.9, color: RED });
+      y -= fh + 14;
+    }
     const quoteLines = wrap(regular, clean(it.quote), QS, innerW - 40);
     const noteLines = it.note ? wrap(italic, clean(it.note), NS, innerW - 52) : [];
     const sec = it.sectionTitle ? clean(it.sectionTitle) : "";
