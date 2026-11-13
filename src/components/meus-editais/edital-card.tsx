@@ -1,3 +1,4 @@
+import { orgImageFor } from "@/domain/edital/org-images";
 import Link from "next/link";
 import { BarChart3, BookOpenCheck, Briefcase, CheckCircle2, ChevronRight, CircleDashed, Clock3, Hourglass, Layers, LoaderCircle, Radar, TriangleAlert } from "lucide-react";
 import type { EditalCard as Card } from "@/server/services/edital-overview";
@@ -68,10 +69,11 @@ export function EditalCard({ c, index }: { c: Card; index: number }) {
       ? { k: "Última atividade", v: dt(p.lastActivity) }
       : { k: "Enviado em", v: dt(c.createdAt) };
   const StIcon = st.icon;
+  const capa = orgImageFor(c.contestName, c.roleName, c.title)?.capa ?? null;
 
   return (
     <article className="me-card me-in" style={{ ["--d" as string]: `${0.12 + index * 0.07}s` }} data-tone={st.tone} aria-labelledby={`ed-${c.id}`}>
-      <Link href={ready ? detail : `/aprovum-ai/${c.id}`} className="me-visual" style={{ ["--arte" as string]: `url(/meus-editais/ref-disc-${(index % 4) + 1}.webp)` }} aria-label={`Abrir ${c.title}`} tabIndex={-1}>
+      <Link href={ready ? detail : `/aprovum-ai/${c.id}`} className="me-visual" data-capa={capa ? 1 : undefined} style={{ ["--arte" as string]: `url(${capa ?? `/meus-editais/ref-disc-${(index % 4) + 1}.webp`})` }} aria-label={`Abrir ${c.title}`} tabIndex={-1}>
         <span className="me-visual-org" style={{ ["--n" as string]: Math.max(6, longest) }}>
           {lines.map((l, i) => <span key={i} data-ultima={i === lines.length - 1 && lines.length > 1 ? 1 : undefined}>{l}</span>)}
         </span>

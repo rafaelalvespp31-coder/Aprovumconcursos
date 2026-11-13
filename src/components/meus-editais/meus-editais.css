@@ -237,3 +237,7 @@
 /* Status na miniatura: cabe na largura estreita */
 @media (max-width: 759px) { .me-status { left: 6px; right: 6px; bottom: 6px; padding: 4px 5px; gap: 3px; font-size: 7.5px; letter-spacing: 0; justify-content: center; } .me-status svg { display: none; } .me-visual-emblema { bottom: 30px; } }
 @media (max-width: 520px) { .me-relat { grid-template-columns: minmax(0, 36%) minmax(0, 1fr) auto; } .me-relat-txt { font-size: clamp(14px, 4.7vw, 22px); } }
+
+/* Órgão com imagem oficial: a arte preenche o card inteiro (sem texto nem brasão por cima). */
+.me-visual[data-capa] { background: linear-gradient(0deg, rgba(0, 0, 0, .55) 0, transparent 26%), var(--arte) center 35% / cover no-repeat, #141418; }
+.me-visual[data-capa] .me-visual-org, .me-visual[data-capa] .me-visual-emblema { display: none; }

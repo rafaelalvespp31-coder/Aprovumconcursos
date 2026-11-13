@@ -1,6 +1,6 @@
 import { fold } from "./text";
 
-/** Imagens oficiais dos órgãos mais comuns: `card` (arte 25:16 dos concursos) e `logo` (brasão quadrado do destrinche). */
+/** Imagens oficiais dos órgãos mais comuns: `card` (arte 25:16 dos concursos) `logo` (brasão quadrado) e `capa` (vertical, preenche o card do destrinche). */
 const ORGS: Array<{ slug: string; re: RegExp }> = [
   { slug: "pmerj", re: /\bpmerj\b|policia militar do estado do rio de janeiro|policia militar rj\b/ },
   { slug: "pmdf", re: /\bpmdf\b|policia militar do distrito federal/ },
@@ -9,9 +9,9 @@ const ORGS: Array<{ slug: string; re: RegExp }> = [
   { slug: "prf", re: /\bprf\b|policia rodoviaria federal/ },
 ];
 
-export function orgImageFor(...texts: Array<string | null | undefined>): { card: string; logo: string } | null {
+export function orgImageFor(...texts: Array<string | null | undefined>): { card: string; logo: string; capa: string } | null {
   const t = fold(texts.filter(Boolean).join(" "));
   if (!t) return null;
   const hit = ORGS.find((o) => o.re.test(t));
-  return hit ? { card: `/orgs/${hit.slug}-card.webp`, logo: `/orgs/${hit.slug}-logo.webp` } : null;
+  return hit ? { card: `/orgs/${hit.slug}-card.webp`, logo: `/orgs/${hit.slug}-logo.webp`, capa: `/orgs/${hit.slug}-capa.webp` } : null;
 }
