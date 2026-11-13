@@ -154,17 +154,19 @@
 .st-excluir:focus-visible { outline: 2px solid #e50914; outline-offset: 2px; }
 
 /* Orbe do Mentor: 4º espaço da barra de ferramentas */
-.st-pilula .st-mentor-wrap { display: flex; align-items: center; gap: 8px; margin-left: 2px; padding-left: 14px; border-left: 1px solid rgba(255, 255, 255, 0.18); }
+.st-pilula .st-mentor-wrap { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; align-self: stretch; margin-left: 4px; padding: 0 0 0 16px; border-left: 1px solid rgba(255, 255, 255, 0.22); }
 .st-pilula .vz-solo { width: auto !important; }
-.st-pilula .vz-solo-orb { flex: none; background: radial-gradient(circle, rgba(229, 9, 20, 0.34) 0%, rgba(229, 9, 20, 0.08) 55%, transparent 72%); }
+.st-pilula .vz-solo-orb { flex: none; background: none !important; box-shadow: none; }
 .st-pilula .vz-solo-rotulo { display: none; }
 .st-pilula .vz-solo-aviso { right: 0; top: calc(100% + 8px); z-index: 3; }
-.st-mentor-txt { cursor: pointer; }
+.st-mentor-txt { cursor: pointer; align-items: center; text-align: center; margin-top: -2px; }
+.st-mentor-txt b { display: none; }
+.st-mentor-txt small { color: rgba(255, 255, 255, 0.85); font-weight: 700; }
 @media (max-width: 639.98px) {
-  .st-pilula .st-mentor-wrap { flex-direction: column; justify-content: flex-start; gap: 0; margin: 0; padding: 0; border: 0; }
-  .st-pilula .vz-solo-orb { width: 36px !important; height: 36px !important; }
-  .st-pilula .vz-solo-orb canvas { width: 36px !important; height: 36px !important; }
-  .st-mentor-txt b { display: none; }
+  .st-pilula .st-mentor-wrap { margin: 0; padding: 0; border: 0; border-left: 1px solid rgba(255, 255, 255, 0.22); align-self: auto; }
+  .st-pilula .vz-solo-orb, .st-pilula .vz-solo-orb canvas { width: 38px !important; height: 38px !important; }
+  .st-mentor-txt small { display: none; }
+  .st-bar .st-mentor-txt b { display: block; font-size: 10px; color: rgba(255, 255, 255, 0.85); }
 }
 
 /* trecho com estrutura (tabela, lista) dentro do post-it */
@@ -197,3 +199,5 @@
 .pi-ex-termo { display: flex; align-items: center; gap: 6px; font-weight: 700; }
 .pi-ex-termo i { flex: none; width: 7px; height: 7px; background: #b9000b; transform: rotate(0deg); }
 .pi-ex-txt { display: block; padding-left: 13px; }
+/* Orbe na barra: sem borda quadrada do halo — esmaece nas bordas e flutua sobre o preto */
+.st-pilula .vz-solo-orb canvas { -webkit-mask-image: radial-gradient(circle, #000 52%, transparent 70%); mask-image: radial-gradient(circle, #000 52%, transparent 70%); transform: scale(1.3); }

@@ -424,10 +424,10 @@ export function StudyTools({
                 <Lightbulb className="size-5" aria-hidden /><span className="st-btn-txt"><b>Explicar</b><small>Tirar dúvida</small></span>
               </button>
               <button type="button" className={`st-btn ${panel === "pdf" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "pdf" ? null : "pdf"))} aria-label="Meu PDF de Revisão" aria-expanded={panel === "pdf"} title="Meu PDF de Revisão" data-testid="st-pdf">
-                <FileText className="size-5" aria-hidden /><span className="st-btn-txt"><b>Meu PDF</b><small>Revisão salva</small></span>
+                <FileText className="size-5" aria-hidden /><span className="st-btn-txt"><b>Meu PDF</b><small>Gerar revisão</small></span>
               </button>
               <div className="st-mentor-wrap">
-                {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={44} onClose={() => setPanel(null)} /> : <VozOrbRepouso size={44} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+                {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={50} onClose={() => setPanel(null)} /> : <VozOrbRepouso size={50} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
                 <span className="st-btn-txt st-mentor-txt" aria-hidden onClick={() => { if (panel !== "mentor") { currentCapture(); setPanel("mentor"); } }}><b>Mentor</b><small>Falar com o Mentor</small></span>
               </div>
             </div>
