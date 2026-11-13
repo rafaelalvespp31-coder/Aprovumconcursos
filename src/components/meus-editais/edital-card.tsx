@@ -69,10 +69,11 @@ export function EditalCard({ c, index }: { c: Card; index: number }) {
       ? { k: "Última atividade", v: dt(p.lastActivity) }
       : { k: "Enviado em", v: dt(c.createdAt) };
   const StIcon = st.icon;
-  const capa = orgImageFor(c.contestName, c.roleName, c.title)?.capa ?? null;
+  const org = orgImageFor(c.contestName, c.roleName, c.title);
+  const capa = org?.capa ?? null;
 
   return (
-    <article className="me-card me-in" style={{ ["--d" as string]: `${0.12 + index * 0.07}s` }} data-tone={st.tone} aria-labelledby={`ed-${c.id}`}>
+    <article className="me-card me-in" data-capa={capa ? 1 : undefined} style={{ ["--d" as string]: `${0.12 + index * 0.07}s`, ...(org ? { ["--fundo" as string]: `url(${org.card})` } : {}) }} data-tone={st.tone} aria-labelledby={`ed-${c.id}`}>
       <Link href={ready ? detail : `/aprovum-ai/${c.id}`} className="me-visual" data-capa={capa ? 1 : undefined} style={{ ["--arte" as string]: `url(${capa ?? `/meus-editais/ref-disc-${(index % 4) + 1}.webp`})` }} aria-label={`Abrir ${c.title}`} tabIndex={-1}>
         <span className="me-visual-org" style={{ ["--n" as string]: Math.max(6, longest) }}>
           {lines.map((l, i) => <span key={i} data-ultima={i === lines.length - 1 && lines.length > 1 ? 1 : undefined}>{l}</span>)}

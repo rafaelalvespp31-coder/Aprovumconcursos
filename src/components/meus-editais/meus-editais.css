@@ -241,3 +241,13 @@
 /* Órgão com imagem oficial: a arte preenche o card inteiro (sem texto nem brasão por cima). */
 .me-visual[data-capa] { background: linear-gradient(0deg, rgba(0, 0, 0, .55) 0, transparent 26%), var(--arte) center 35% / cover no-repeat, #141418; }
 .me-visual[data-capa] .me-visual-org, .me-visual[data-capa] .me-visual-emblema { display: none; }
+
+/* Fundo do card inteiro = a imagem do órgão, escurecida para o texto continuar legível. */
+.me-card[data-capa] { background: linear-gradient(90deg, rgba(5, 7, 12, .5) 0, rgba(5, 7, 12, .8) 34%, rgba(5, 7, 12, .86) 100%), var(--fundo) center / cover no-repeat, #0b0d12; }
+.me-card[data-capa] .me-info h2, .me-card[data-capa] .me-info h2 a, .me-card[data-capa] .me-cargo b, .me-card[data-capa] .me-meta b { color: #fff; }
+.me-card[data-capa] .me-contagem, .me-card[data-capa] .me-meta, .me-card[data-capa] .me-meta-sec, .me-card[data-capa] .me-contagem span { color: rgba(255, 255, 255, .86); }
+.me-card[data-capa] .me-contagem i { color: rgba(255, 255, 255, .5); }
+.me-card[data-capa] .me-contagem svg, .me-card[data-capa] .me-meta svg { color: #ff5566; }
+.me-card[data-capa] .me-progresso .me-ring { filter: drop-shadow(0 0 8px rgba(255, 255, 255, .25)); }
+.me-card[data-capa] .me-ring-fundo { stroke: rgba(255, 255, 255, .22); }
+.me-card[data-capa] .me-ring-miolo b, .me-card[data-capa] .me-ring-miolo small { color: #fff; }
