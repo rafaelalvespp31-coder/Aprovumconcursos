@@ -85,24 +85,19 @@ export async function listTrailProgress(): Promise<Record<string, { done: number
   return out;
 }
 
-/** Tempo de estudo registrado: soma do tempo gasto nas respostas do aluno (segundos). */
+/** Tempo de estudo registrado: soma do tempo gasto nas respostas do aluno (segundos). Somado no banco. */
 export async function getStudySeconds(): Promise<number> {
   const db = await createUserClient();
-  const { data } = await db.from("answer_attempts").select("time_spent_seconds").eq("user_id", await myId()).not("time_spent_seconds", "is", null).limit(50000);
-  return ((data ?? []) as Array<{ time_spent_seconds: number | null }>).reduce((s, a) => s + (a.time_spent_seconds ?? 0), 0);
+  const { data } = await db.rpc("my_study_seconds");
+  return Number(data ?? 0);
 }
 
 /** Tempo de estudo por semana nas últimas `weeks` semanas (segundos; a última posição é a semana atual). */
 export async function getStudyWeeks(weeks = 4): Promise<number[]> {
   const db = await createUserClient();
-  const now = Date.now();
-  const since = new Date(now - weeks * 7 * 86_400_000).toISOString();
-  const { data } = await db.from("answer_attempts").select("time_spent_seconds, created_at").eq("user_id", await myId()).not("time_spent_seconds", "is", null).gte("created_at", since).limit(20000);
+  const { data } = await db.rpc("my_study_weeks", { p_weeks: weeks });
   const out = Array.from({ length: weeks }, () => 0);
-  for (const a of (data ?? []) as Array<{ time_spent_seconds: number | null; created_at: string }>) {
-    const idx = weeks - 1 - Math.floor((now - new Date(a.created_at).getTime()) / (7 * 86_400_000));
-    if (idx >= 0 && idx < weeks) out[idx]! += a.time_spent_seconds ?? 0;
-  }
+  for (const r of (data ?? []) as Array<{ idx: number; seconds: number }>) if (r.idx >= 0 && r.idx < weeks) out[r.idx]! += Number(r.seconds);
   return out;
 }
 
