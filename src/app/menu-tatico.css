@@ -351,3 +351,14 @@ dialog.mt-gaveta[data-saindo]::backdrop { animation: mtFundoSair 0.24s ease both
 .mt .sub-assuntos { margin-top: 0; margin-bottom: 0; }
 .mt .mt-compactos { gap: 0; margin-top: 0; }
 .mt .mt-arvore { margin-top: 0; }
+
+/* ===== Abrir/fechar o menu do computador: suave e leve (só transform/opacity; nada de animar largura nem sombra) ===== */
+
+@keyframes mtDeskSurgir { from { opacity: 0; transform: translate3d(-28px, 0, 0); } to { opacity: 1; transform: translate3d(0, 0, 0); } }
+@keyframes mtDeskSair { to { opacity: 0; transform: translate3d(-32px, 0, 0); } }
+.mt-desk { animation: mtDeskSurgir 0.28s cubic-bezier(0.22, 0.8, 0.25, 1) both; will-change: transform, opacity; }
+.mt-aside-saindo .mt-desk { animation: mtDeskSair 0.2s cubic-bezier(0.4, 0, 1, 1) both; pointer-events: none; }
+/* sem entrada escalonada de cada cartão na abertura e sem brilho pulsando em loop (repintava o menu o tempo todo) */
+.mt-desk .mt-nav > *, .mt-desk .mt-nav > .contents > * { animation: none; }
+.mt-desk .mt-card[aria-current="page"], .mt-desk .mt-card.is-dentro { animation: none; }
+@media (prefers-reduced-motion: reduce) { .mt-desk, .mt-aside-saindo .mt-desk { animation: none; } }

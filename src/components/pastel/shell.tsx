@@ -129,7 +129,18 @@ export function PastelShell({
   const [estudosAberto, setEstudosAberto] = useStored("na:menu-estudos-aberto", true);
   const [evolucaoAberta, setEvolucaoAberta] = useStored("na:menu-evolucao-aberta", false);
   const [collapsed, setCollapsedStored] = useStored("na:sidebar-recolhida", false);
-  const toggleCollapsed = () => setCollapsedStored(!collapsed);
+  // Recolher: o menu desliza para fora (só transform/opacity, na GPU) e só depois a largura vira 0 (um único recálculo de layout).
+  // Antes a largura era animada por 700 ms e a página inteira era recalculada a cada quadro, o que travava.
+  const [saindo, setSaindo] = useState(false);
+  const toggleCollapsed = () => {
+    if (saindo) return;
+    if (collapsed || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return setCollapsedStored(!collapsed);
+    setSaindo(true);
+    window.setTimeout(() => {
+      setCollapsedStored(true);
+      setSaindo(false);
+    }, 200);
+  };
   const [toast, setToast] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const menuRef = useRef<HTMLDialogElement>(null);
@@ -203,7 +214,7 @@ export function PastelShell({
         <div className="relative flex min-h-screen w-full max-w-[100vw]">
           {/* Barra lateral (desktop) */}
           <aside
-            className={`sticky top-0 z-30 hidden h-screen shrink-0 flex-col transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:flex ${collapsed ? "w-0 overflow-hidden" : "w-[304px] xl:w-[324px]"}`}
+            className={`sticky top-0 z-30 hidden h-screen shrink-0 flex-col lg:flex ${collapsed ? "w-0 overflow-hidden" : "w-[304px] xl:w-[324px]"} ${saindo ? "mt-aside-saindo" : ""}`}
             style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
           >
             {!collapsed && (
