@@ -83,7 +83,7 @@ export function EditalCard({ c, index }: { c: Card; index: number }) {
       </Link>
 
       <div className="me-info">
-        <h2 id={`ed-${c.id}`}><Link href={ready ? detail : `/aprovum-ai/${c.id}`}>{c.title}</Link></h2>
+        <h2 id={`ed-${c.id}`}><Link href={ready ? detail : `/aprovum-ai/${c.id}`}>{org?.nome ?? c.title}</Link></h2>
         {c.roleName ? (
           <p className="me-cargo"><span><Briefcase aria-hidden />CARGO</span><b>{c.roleName}</b></p>
         ) : ready ? (

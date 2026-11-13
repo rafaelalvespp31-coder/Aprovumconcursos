@@ -248,3 +248,9 @@
   .vc-edit { grid-template-columns: repeat(2, minmax(0, 1fr)); left: calc(var(--u) * 898); right: calc(var(--u) * 46); top: calc(var(--u) * 48); max-height: calc(var(--u) * 524); overflow-y: auto; box-shadow: 0 12px 32px rgba(0,0,0,.6); }
   .vc-ask { width: min(360px, 40vw); }
 }
+
+/* Órgão com imagem oficial: ela é o fundo do card inteiro (escurecida para o texto continuar legível). */
+.vc[data-capa] { background: linear-gradient(180deg, rgba(6,8,12,.5) 0%, rgba(6,8,12,.72) 45%, rgba(6,8,12,.88) 100%), var(--capa) center 30% / cover no-repeat, #08090c; }
+@container (min-width: 900px) {
+  .vc[data-capa] { background: linear-gradient(90deg, rgba(6,8,12,.45) 0%, rgba(6,8,12,.78) 38%, rgba(6,8,12,.9) 100%), var(--arte) center / cover no-repeat, #08090c; }
+}

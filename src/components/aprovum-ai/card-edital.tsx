@@ -5,6 +5,7 @@ import { useActionState, useState } from "react";
 import { ArrowRight, Briefcase, CalendarClock, CalendarDays, Info, Landmark, Zap } from "lucide-react";
 import type { PreparationTree } from "@/server/services/edital-view";
 import { DeletePrep } from "./delete-prep";
+import { orgImageFor } from "@/domain/edital/org-images";
 import { orgInitials } from "./org-emblem";
 import "./card-edital.css";
 
@@ -37,7 +38,9 @@ export function CardEdital({ tree, save, start, editing = false }: Props) {
   const started = !!(prep.stats as { studyFolderId?: string }).studyFolderId;
   const base = `/meu-concurso/${prep.id}`;
   const created = new Date(prep.createdAt).toLocaleDateString("pt-BR");
-  const { apoio, destaque } = splitName(prep.title);
+  const org = orgImageFor(prep.contestName, prep.roleName, prep.title);
+  const nomeOrgao = org?.nome ?? prep.title;
+  const { apoio, destaque } = splitName(nomeOrgao);
   const sigla = orgInitials(prep.contestName ?? prep.title);
   const pct = Math.max(0, Math.min(100, totals.pct));
   const semAulas = totals.lessonsAvailable === 0;
@@ -46,7 +49,7 @@ export function CardEdital({ tree, save, start, editing = false }: Props) {
 
   return (
     <div className="vc-wrap" data-testid="card-edital">
-      <article className="vc" aria-label={`Edital ${prep.title}`}>
+      <article className="vc" aria-label={`Edital ${nomeOrgao}`} data-capa={org ? 1 : undefined} style={org ? { ["--capa" as string]: `url(${org.capa})`, ["--arte" as string]: `url(${org.card})` } : undefined}>
         <div className="vc-frame" aria-hidden />
         <div className="vc-glow" aria-hidden />
         <span className="vc-sr">Concurso público</span>
