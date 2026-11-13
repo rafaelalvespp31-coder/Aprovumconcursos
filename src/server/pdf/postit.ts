@@ -65,6 +65,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   const italic = await doc.embedFont(StandardFonts.HelveticaOblique);
   const boldItalic = await doc.embedFont(StandardFonts.HelveticaBoldOblique);
   const logo = await doc.embedPng(b64(LOGO_ESCURA_PNG));
+  const logoClara = await doc.embedPng(await readFile(path.join(process.cwd(), "public", "pdf", "logo-clara.png")));
   const charset = new Set(regular.getCharacterSet());
   const [W, H] = A4;
   const innerW = W - M.left - M.right;
@@ -150,11 +151,14 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       for (let v = 0; v < 5; v++) page.drawRectangle({ x: 0, y: y - fh, width: A4[0], height: (fh * (5 - v)) / 10, color: rgb(0, 0, 0), opacity: 0.07 });
       page.drawRectangle({ x: 0, y: y - fh - 1.2, width: A4[0], height: 1.2, color: RED });
       page.drawRectangle({ x: 0, y, width: A4[0], height: 1.2, color: RED });
-      const tag = `ASSUNTO ${String(it.n).padStart(2, "0")}`;
-      const tw = bold.widthOfTextAtSize(tag, 8.5) + 22;
-      page.drawRectangle({ x: M.left, y: y - fh / 2 - 9, width: tw, height: 18, color: rgb(0, 0, 0), opacity: 0.78 });
-      page.drawRectangle({ x: M.left, y: y - fh / 2 - 9, width: 3.5, height: 18, color: RED });
-      page.drawText(tag, { x: M.left + 12, y: y - fh / 2 - 3, size: 8.5, font: bold, color: WHITE });
+      // Logo APROVUM no centro da faixa, sobre um véu radial suave: faz parte da arte.
+      const lh = Math.min(38, fh * 0.5), lw = (lh * logoClara.width) / logoClara.height;
+      const cx = A4[0] / 2, cy = y - fh / 2;
+      for (let v = 0; v < 22; v++) {
+        const k = 1 - v / 22;
+        page.drawEllipse({ x: cx, y: cy, xScale: (lw / 2 + 46) * k + 10, yScale: (lh / 2 + 18) * k + 6, color: rgb(0, 0, 0), opacity: 0.035 });
+      }
+      page.drawImage(logoClara, { x: cx - lw / 2, y: cy - lh / 2, width: lw, height: lh });
       y -= fh + 8;
     }
     const quoteLines = wrap(regular, clean(it.quote), QS, innerW - 40);
