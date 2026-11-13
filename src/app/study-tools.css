@@ -164,7 +164,6 @@
 .st-mentor-txt small { color: rgba(255, 255, 255, 0.85); font-weight: 700; }
 @media (max-width: 639.98px) {
   .st-pilula .st-mentor-wrap { margin: 0; padding: 0; border: 0; border-left: 1px solid rgba(255, 255, 255, 0.22); align-self: auto; }
-  .st-pilula .vz-solo-orb, .st-pilula .vz-solo-orb canvas { width: 38px !important; height: 38px !important; }
   .st-mentor-txt small { display: none; }
   .st-bar .st-mentor-txt b { display: block; font-size: 10px; color: rgba(255, 255, 255, 0.85); }
 }
@@ -199,5 +198,38 @@
 .pi-ex-termo { display: flex; align-items: center; gap: 6px; font-weight: 700; }
 .pi-ex-termo i { flex: none; width: 7px; height: 7px; background: #b9000b; transform: rotate(0deg); }
 .pi-ex-txt { display: block; padding-left: 13px; }
-/* Orbe na barra: sem borda quadrada do halo — esmaece nas bordas e flutua sobre o preto */
-.st-pilula .vz-solo-orb canvas { -webkit-mask-image: radial-gradient(circle, #000 52%, transparent 70%); mask-image: radial-gradient(circle, #000 52%, transparent 70%); transform: scale(1.3); }
+/* Orbe na barra: sem borda quadrada do halo. O canvas tem a esfera em (50%, 27px) — máscara e escala partem desse ponto */
+.st-pilula .vz-solo-orb canvas { -webkit-mask-image: radial-gradient(circle 31px at 50% 27px, #000 55%, transparent 100%); mask-image: radial-gradient(circle 31px at 50% 27px, #000 55%, transparent 100%); transform-origin: 50% 27px; transform: scale(1.2); }
+/* Mentor: moldura vermelha com luz girando */
+@property --st-ang { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+@keyframes st-gira { to { --st-ang: 360deg; } }
+.st-pilula .st-mentor-wrap { position: relative; margin-left: 6px; padding: 4px 16px 3px; border: 1.5px solid transparent; border-radius: 16px; background: linear-gradient(#0d0708, #0d0708) padding-box, conic-gradient(from var(--st-ang), #e50914, rgba(229, 9, 20, 0.25) 30%, #ff6a5e 52%, rgba(229, 9, 20, 0.25) 75%, #e50914) border-box; box-shadow: 0 0 18px -5px rgba(229, 9, 20, 0.7); align-self: center; animation: st-gira 5s linear infinite; transition: transform 200ms, box-shadow 200ms; cursor: pointer; }
+.st-pilula .st-mentor-wrap:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 0 26px -2px rgba(229, 9, 20, 0.95); animation-duration: 2s; }
+.st-pilula .st-mentor-wrap::before { content: ""; position: absolute; left: 50%; top: 4px; width: 46px; height: 46px; translate: -50% 0; border-radius: 999px; border: 1px solid rgba(255, 90, 80, 0.5); animation: st-onda 2.8s ease-out infinite; pointer-events: none; }
+@keyframes st-onda { 0% { scale: 0.8; opacity: 0.9; } 100% { scale: 1.7; opacity: 0; } }
+.st-mentor-txt { align-items: center; text-align: center; width: 100%; }
+
+/* Botões: elevam, acendem um traço vermelho embaixo e o ícone ganha vida */
+.st-btn { overflow: visible; animation: st-entra 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+.st-pilula > .st-btn:nth-child(2) { animation-delay: 70ms; }
+.st-pilula > .st-btn:nth-child(3) { animation-delay: 140ms; }
+@keyframes st-entra { from { opacity: 0; transform: translateY(8px) scale(0.9); } to { opacity: 1; transform: none; } }
+.st-btn::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 3px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, transparent, #ff3b44, transparent); transform: scaleX(0); transition: transform 220ms; }
+.st-btn:hover::after, .st-btn.is-on::after { transform: scaleX(1); }
+.st-btn:hover { transform: translateY(-2px); background: rgba(255, 255, 255, 0.07); }
+.st-btn svg { transition: transform 240ms cubic-bezier(0.34, 1.56, 0.64, 1), filter 240ms; }
+.st-btn:hover svg { transform: scale(1.18) rotate(-8deg); filter: drop-shadow(0 0 6px rgba(255, 90, 80, 0.8)); }
+.st-btn[data-testid="st-explicar"]:hover svg { filter: drop-shadow(0 0 7px rgba(255, 217, 26, 0.9)); color: #ffd91a; }
+.st-btn.is-on { background: linear-gradient(180deg, rgba(229, 9, 20, 0.9), rgba(160, 6, 14, 0.9)); box-shadow: 0 0 18px -2px rgba(229, 9, 20, 0.7); }
+.st-btn.is-on .st-btn-txt small { color: rgba(255, 255, 255, 0.85); }
+.st-btn:active { transform: scale(0.95); }
+.st-badge { animation: st-pop 2.4s ease-in-out infinite; }
+@keyframes st-pop { 0%, 85%, 100% { scale: 1; } 92% { scale: 1.25; } }
+/* fio de luz correndo na base da barra */
+.st-bar { position: relative; }
+.st-bar::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent 0 30%, #ff3b44 50%, transparent 70% 100%) 0 0 / 200% 100%; animation: st-fio 3.6s linear infinite; pointer-events: none; }
+@keyframes st-fio { from { background-position: 200% 0; } to { background-position: -100% 0; } }
+@media (prefers-reduced-motion: reduce) { .st-btn, .st-badge, .st-bar::after, .st-pilula .st-mentor-wrap, .st-pilula .st-mentor-wrap::before { animation: none; } }
+@media (hover: none) { .st-btn:hover { transform: none; } }
+@media (max-width: 639.98px) { .st-pilula .st-mentor-wrap { margin: 0 2px; padding: 3px 4px 2px; border-radius: 12px; } .st-pilula .st-mentor-wrap::before { top: 3px; width: 38px; height: 38px; } .st-btn::after { left: 8px; right: 8px; } }
+.st-pilula .vz-solo-orb canvas { filter: brightness(1.7) saturate(1.25); }
