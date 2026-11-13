@@ -40,7 +40,6 @@ export function CardEdital({ tree, save, start, editing = false }: Props) {
   const created = new Date(prep.createdAt).toLocaleDateString("pt-BR");
   const org = orgImageFor(prep.contestName, prep.roleName, prep.title);
   const nomeOrgao = org?.nome ?? prep.title;
-  const { apoio, destaque } = splitName(nomeOrgao);
   const sigla = orgInitials(prep.contestName ?? prep.title);
   const pct = Math.max(0, Math.min(100, totals.pct));
   const semAulas = totals.lessonsAvailable === 0;
@@ -60,10 +59,8 @@ export function CardEdital({ tree, save, start, editing = false }: Props) {
             {/* eslint-disable-next-line @next/next/no-img-element -- brasão do próprio edital (data URL) */}
             {prep.orgLogo ? <img src={prep.orgLogo} alt={`Símbolo de ${prep.contestName ?? prep.title}`} /> : <b aria-hidden style={{ ["--n" as string]: sigla.length }}>{sigla}</b>}
           </span>
-          <div className="vc-nome" style={{ ["--a" as string]: Math.max(apoio.length, 1), ["--b" as string]: Math.max(destaque.length, 1) }}>
-            {apoio && <p className="vc-apoio">{apoio}</p>}
-            <h1 className="vc-destaque">{destaque}</h1>
-            <p className="vc-tag" aria-hidden>CONQUISTE SUA VAGA!</p>
+          <div className="vc-nome">
+            <h1 className="vc-orgao">{nomeOrgao}</h1>
           </div>
         </header>
 

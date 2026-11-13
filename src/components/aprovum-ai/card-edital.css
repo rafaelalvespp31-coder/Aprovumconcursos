@@ -254,3 +254,8 @@
 @container (min-width: 900px) {
   .vc[data-capa] { background: linear-gradient(90deg, rgba(6,8,12,.45) 0%, rgba(6,8,12,.78) 38%, rgba(6,8,12,.9) 100%), var(--arte) center / cover no-repeat, #08090c; }
 }
+
+/* Só o nome do órgão, inteiro e com o mesmo estilo (sem palavra em destaque nem frase extra) */
+.vc-orgao { font: 800 calc(var(--u) * 46) / 1.12 "Chakra Petch", sans-serif; letter-spacing: .01em; color: #fff; text-wrap: balance; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; line-clamp: 3; overflow: hidden; text-shadow: 0 calc(var(--u) * 3) calc(var(--u) * 6) rgba(0, 0, 0, .75); }
+@container (max-width: 899px) { .vc-orgao { font-size: clamp(22px, 7vw, 34px); } }

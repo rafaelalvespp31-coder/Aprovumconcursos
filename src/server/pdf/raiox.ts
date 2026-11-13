@@ -523,7 +523,7 @@ async function drawCover(d: Doc, data: RaioX, who: string | null) {
   d.spaced("RAIO-X DO EDITAL", MX, 238, 10, d.f.bold, rgb(1, 0.23, 0.25), 3.2);
   d.rect(MX, 230, 54, 2.4, RED);
   let y = 208;
-  for (const l of d.wrap(ex.name, 24, CW, d.f.bold, 3)) { d.text(l, MX, y, 24, d.f.bold, WHITE); y -= 28; }
+  for (const l of d.wrap(orgImageFor(ex.name, ex.organ)?.nome ?? ex.organ ?? ex.name, 24, CW, d.f.bold, 3)) { d.text(l, MX, y, 24, d.f.bold, WHITE); y -= 28; }
   d.text("Diagnóstico estratégico: notas de corte, incidência, mapa de calor e direcionamento.", MX, y - 4, 9.5, d.f.regular, rgb(0.8, 0.8, 0.84));
   const edYears = [...ex.editions].map((e) => e.year).sort((a, b) => b - a);
   const items = [
@@ -727,7 +727,8 @@ function planoSection(d: Doc, toc: TocItem[], n: number, plano: ReturnType<typeo
 export async function renderRaioXPdf(data: RaioX, opts: { student?: string | null; syllabus?: SyllabusDiscipline[] } = {}): Promise<Uint8Array> {
   const d = await Doc.create();
   const { exam, heat, comparison } = data;
-  d.pdf.setTitle(`Raio-X do edital — ${exam.name} — APROVUM`);
+  const orgao = orgImageFor(exam.name, exam.organ)?.nome ?? exam.organ ?? exam.name; // só o nome do órgão, nada além
+  d.pdf.setTitle(`Raio-X do edital — ${orgao} — APROVUM`);
   d.pdf.setAuthor("APROVUM");
   d.pdf.setProducer("APROVUM");
   const logo = await d.pdf.embedPng(b64(LOGO_ESCURA_PNG));
@@ -1070,6 +1071,6 @@ export async function renderRaioXPdf(data: RaioX, opts: { student?: string | nul
     note(d, "Vermelho forte = assunto que mais cai. Cinza = cai pouco. Estude primeiro o vermelho, mas não abandone o cinza: o edital inteiro continua valendo.", { size: 8.5 });
   }
 
-  drawChrome(d, logo, exam.name);
+  drawChrome(d, logo, orgao);
   return d.pdf.save();
 }
