@@ -35,6 +35,17 @@ const RED_SOFT = rgb(0.995, 0.93, 0.925);
 const AMBER = rgb(0.96, 0.6, 0.06);
 const GREEN = rgb(0.13, 0.6, 0.38);
 
+const DARK_TXT = rgb(0.04, 0.04, 0.05); // texto escuro sobre cor clara (não muda com o tema)
+const mix = (a: RGB, b: RGB, k: number) => rgb(a.red + (b.red - a.red) * k, a.green + (b.green - a.green) * k, a.blue + (b.blue - a.blue) * k);
+/** Cor de fundo da imagem de cada órgão: é a cor da página. */
+const ORG_THEME: Record<string, { page: RGB; dark: boolean }> = {
+  prf: { page: rgb(0.047, 0.098, 0.173), dark: true },
+  pmerj: { page: rgb(0.04, 0.085, 0.1), dark: true },
+  pmdf: { page: rgb(0.03, 0.1, 0.25), dark: true },
+  pcmg: { page: rgb(0.925, 0.935, 0.95), dark: false },
+  pcdf: { page: rgb(0.895, 0.88, 0.825), dark: false },
+};
+
 const HEAT_COLOR: Record<Heat, RGB> = { muito_alta: RED, alta: rgb(0.95, 0.38, 0.12), moderada: AMBER, baixa: rgb(0.66, 0.66, 0.7), sem_dados: rgb(0.85, 0.85, 0.88) };
 const PALETTE = [RED, GRAPHITE, AMBER, rgb(0.45, 0.45, 0.5), RED_DARK, rgb(0.93, 0.5, 0.45), rgb(0.7, 0.7, 0.74), rgb(0.26, 0.26, 0.31)];
 const LIGHT_TEXT = new Set<RGB>([AMBER, rgb(0.7, 0.7, 0.74), rgb(0.93, 0.5, 0.45)]);
@@ -55,6 +66,20 @@ class Doc {
   page!: PDFPage;
   /** Imagem do órgão: fundo translúcido que preenche a página inteira. */
   bg: PDFImage | null = null;
+  /** Tema da página (cor de fundo do órgão). No tema escuro, textos e cartões são remapeados. */
+  theme: { page: RGB; dark: boolean } | null = null;
+  private tx = new Map<RGB, RGB>();
+  private fl = new Map<RGB, RGB>();
+  setTheme(t: { page: RGB; dark: boolean } | null) {
+    this.theme = t;
+    this.tx.clear(); this.fl.clear();
+    if (!t?.dark) return;
+    const w = rgb(1, 1, 1), k = rgb(0, 0, 0);
+    this.tx.set(INK, rgb(0.97, 0.98, 1)).set(GRAPHITE, rgb(0.86, 0.89, 0.94)).set(MUTED, rgb(0.7, 0.75, 0.84)).set(FAINT, rgb(0.56, 0.62, 0.72)).set(GREEN, rgb(0.35, 0.87, 0.58)).set(RED, rgb(1, 0.33, 0.3));
+    this.fl.set(SOFT, mix(t.page, w, 0.1)).set(WHITE, mix(t.page, w, 0.06)).set(LINE, mix(t.page, w, 0.24)).set(RED_SOFT, mix(t.page, rgb(0.9, 0.1, 0.1), 0.28)).set(INK, mix(t.page, k, 0.5));
+  }
+  tc(c: RGB) { return this.tx.get(c) ?? c; }
+  fc(c: RGB) { return this.fl.get(c) ?? c; }
   y = 0;
   private set = new Set<number>();
 
@@ -104,7 +129,7 @@ class Doc {
   }
   text(s: string, x: number, y: number, size: number, font: PDFFont, color: RGB, p: PDFPage = this.page) {
     const t = this.clean(s);
-    if (t) p.drawText(t, { x, y, size, font, color });
+    if (t) p.drawText(t, { x, y, size, font, color: this.tc(color) });
   }
   right(s: string, xr: number, y: number, size: number, font: PDFFont, color: RGB) {
     this.text(s, xr - this.w(s, size, font), y, size, font, color);
@@ -115,26 +140,27 @@ class Doc {
   spaced(s: string, x: number, y: number, size: number, font: PDFFont, color: RGB, sp: number, p: PDFPage = this.page) {
     let cx = x;
     for (const ch of this.clean(s)) {
-      p.drawText(ch, { x: cx, y, size, font, color });
+      p.drawText(ch, { x: cx, y, size, font, color: this.tc(color) });
       cx += font.widthOfTextAtSize(ch, size) + sp;
     }
     return cx - x;
   }
   rect(x: number, y: number, w: number, h: number, color: RGB, o: { border?: RGB; bw?: number; opacity?: number } = {}) {
-    this.page.drawRectangle({ x, y, width: Math.max(0, w), height: Math.max(0, h), color, borderColor: o.border, borderWidth: o.border ? (o.bw ?? 0.6) : 0, opacity: o.opacity });
+    this.page.drawRectangle({ x, y, width: Math.max(0, w), height: Math.max(0, h), color: this.fc(color), borderColor: o.border && this.fc(o.border), borderWidth: o.border ? (o.bw ?? 0.6) : 0, opacity: o.opacity });
   }
   /** Retângulo com cantos arredondados (aproximado por SVG). */
   card(x: number, y: number, w: number, h: number, color: RGB, r = 8, border?: RGB) {
     const rr = Math.min(r, w / 2, h / 2);
     const d = `M ${rr} 0 H ${w - rr} Q ${w} 0 ${w} ${rr} V ${h - rr} Q ${w} ${h} ${w - rr} ${h} H ${rr} Q 0 ${h} 0 ${h - rr} V ${rr} Q 0 0 ${rr} 0 Z`;
-    this.page.drawSvgPath(d, { x, y: y + h, color, borderColor: border, borderWidth: border ? 0.6 : 0 });
+    this.page.drawSvgPath(d, { x, y: y + h, color: this.fc(color), borderColor: border && this.fc(border), borderWidth: border ? 0.6 : 0 });
   }
   line(x1: number, y1: number, x2: number, y2: number, color: RGB, t = 0.6, dash?: number[]) {
-    this.page.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: t, color, dashArray: dash });
+    this.page.drawLine({ start: { x: x1, y: y1 }, end: { x: x2, y: y2 }, thickness: t, color: this.fc(color), dashArray: dash });
   }
   newPage() {
     this.page = this.pdf.addPage([W, H]);
-    this.paintBg(this.page, 0.2);
+    if (this.theme) this.page.drawRectangle({ x: 0, y: 0, width: W, height: H, color: this.theme.page });
+    this.paintBg(this.page, this.theme?.dark ? 0.22 : 0.14);
     this.y = H - TOP;
   }
   /** Preenche a página toda (corte central, sem distorcer) com a imagem do órgão, translúcida. */
@@ -272,7 +298,7 @@ function treemap(d: Doc, items: Array<{ name: string; value: number; pct: number
     const x = MX + t.x + 1.5, w = t.w - 3, hh = t.h - 3;
     const y = top - t.y - t.h + 1.5;
     d.card(x, y, w, hh, it.color, 8);
-    const fg = LIGHT_TEXT.has(it.color) ? INK : WHITE;
+    const fg = LIGHT_TEXT.has(it.color) ? DARK_TXT : WHITE;
     if (w > 54 && hh > 30) {
       const lines = d.wrap(it.name, w > 120 ? 10 : 8.5, w - 16, d.f.bold, hh > 70 ? 3 : 2);
       const fs = w > 120 ? 10 : 8.5;
@@ -297,7 +323,7 @@ function composition(d: Doc, rows: Array<{ label: string; parts: Array<{ name: s
       const w = (p.pct / 100) * trackW;
       if (w <= 0) continue;
       d.rect(x, y, w, barH, colorOf(p.name), { border: WHITE, bw: 1 });
-      if (w > 28) d.center(`${num(p.pct, 0)}%`, x + w / 2, y + 7, 8, d.f.bold, LIGHT_TEXT.has(colorOf(p.name)) ? INK : WHITE);
+      if (w > 28) d.center(`${num(p.pct, 0)}%`, x + w / 2, y + 7, 8, d.f.bold, LIGHT_TEXT.has(colorOf(p.name)) ? DARK_TXT : WHITE);
       x += w;
     }
     d.y -= barH + 9;
@@ -506,19 +532,20 @@ function drawChrome(d: Doc, logo: Awaited<ReturnType<PDFDocument["embedPng"]>>, 
   pages.forEach((p, i) => {
     if (i === 0) return;
     const lh = 24, lw = (lh * logo.width) / logo.height;
+    if (d.theme?.dark) { const keep = d.page; d.page = p; d.card(MX - 8, H - 38 - lh, lw + 16, lh + 12, rgb(1, 1, 1), 8); d.page = keep; }
     p.drawImage(logo, { x: MX, y: H - 38 - lh + 6, width: lw, height: lh });
     d.spaced("RAIO-X DO EDITAL", W - MX - d.w("RAIO-X DO EDITAL", 6.5, d.f.bold) - 16 * 0.5, H - 36, 6.5, d.f.bold, RED, 1.4, p);
     const t = d.fit(title, 8, 230);
     d.text(t, W - MX - d.w(t, 8), H - 49, 8, d.f.regular, MUTED, p);
     p.drawRectangle({ x: MX, y: H - 70, width: 46, height: 2, color: RED });
-    p.drawLine({ start: { x: MX + 50, y: H - 69 }, end: { x: W - MX, y: H - 69 }, thickness: 0.6, color: LINE });
-    p.drawLine({ start: { x: MX, y: 46 }, end: { x: W - MX, y: 46 }, thickness: 0.6, color: LINE });
+    p.drawLine({ start: { x: MX + 50, y: H - 69 }, end: { x: W - MX, y: H - 69 }, thickness: 0.6, color: d.fc(LINE) });
+    p.drawLine({ start: { x: MX, y: 46 }, end: { x: W - MX, y: 46 }, thickness: 0.6, color: d.fc(LINE) });
     const sl = d.spaced("///", MX, 30, 8, d.f.bold, RED, 0, p);
     d.spaced("APROVUM", MX + sl + 6, 30, 7.5, d.f.bold, INK, 1.6, p);
     d.text("Sua preparação. Seu próximo cargo.", MX + sl + 70, 30, 6.5, d.f.regular, MUTED, p);
     const label = `${i + 1} / ${pages.length}`;
     const lw2 = d.w(label, 8, d.f.bold);
-    p.drawRectangle({ x: W - MX - lw2 - 14, y: 25, width: lw2 + 14, height: 15, color: INK });
+    p.drawRectangle({ x: W - MX - lw2 - 14, y: 25, width: lw2 + 14, height: 15, color: d.theme?.dark ? RED : INK });
     p.drawText(label, { x: W - MX - lw2 - 7, y: 29.5, size: 8, font: d.f.bold, color: WHITE });
   });
 }
@@ -544,13 +571,14 @@ function syllabusSection(d: Doc, toc: TocItem[], n: number, disciplines: Syllabu
   sectionPage(d, toc, n, "Conteúdo programático", `Tudo o que o edital cobra: ${disciplines.length} disciplinas e ${total} assuntos, na ordem do edital.`, null);
   kpis(d, [{ v: String(disciplines.length), l: "Disciplinas" }, { v: String(total), l: "Assuntos do edital" }, { v: String(disciplines.reduce((a, x) => a + x.topics.filter((t) => t.hasLesson).length, 0)), l: "Com aula na APROVUM" }]);
   const DISC_COLORS = [rgb(0.882, 0.024, 0), rgb(0.11, 0.36, 0.78), rgb(0.1, 0.55, 0.36), rgb(0.85, 0.5, 0.04), rgb(0.5, 0.2, 0.7), rgb(0.05, 0.5, 0.55), rgb(0.3, 0.33, 0.4), rgb(0.45, 0.28, 0.15), rgb(0.2, 0.25, 0.6)]; // tópicos e subtópicos usam a cor da matéria em tom claro
-  const tint = (c: RGB, k: number) => rgb(1 - (1 - c.red) * k, 1 - (1 - c.green) * k, 1 - (1 - c.blue) * k);
+  const dark = !!d.theme?.dark;
+  const tint = (c: RGB, k: number) => (dark ? mix(d.theme!.page, c, Math.min(1, k * 1.5 + 0.08)) : rgb(1 - (1 - c.red) * k, 1 - (1 - c.green) * k, 1 - (1 - c.blue) * k));
   disciplines.forEach((disc, di) => {
     const col = DISC_COLORS[di % DISC_COLORS.length]!;
     if (di > 0) { if (d.y < H * 0.5 || disc.topics.length > 6) d.newPage(); else d.y -= 14; } // matéria grande abre página própria; as curtas se seguem, separadas pela faixa colorida
     const h = 38;
     d.card(MX, d.y - h, CW, h, col, 9);
-    d.card(MX + 8, d.y - h + 7, 24, 24, WHITE, 6);
+    d.card(MX + 8, d.y - h + 7, 24, 24, rgb(1, 1, 1), 6);
     d.center(String(di + 1), MX + 20, d.y - 23, 12, d.f.bold, col);
     d.text(d.fit(disc.name.toUpperCase(), 13, CW - 170, d.f.bold), MX + 42, d.y - 23, 13, d.f.bold, WHITE);
     d.right(`${disc.topics.length} assunto${disc.topics.length === 1 ? "" : "s"}`, W - MX - 12, d.y - 22.5, 8.5, d.f.bold, WHITE);
@@ -560,7 +588,7 @@ function syllabusSection(d: Doc, toc: TocItem[], n: number, disciplines: Syllabu
     const minDepth = Math.min(...disc.topics.map((t) => t.depth));
     const counters: number[] = [];
     let prev = -1;
-    const deep = rgb(col.red * 0.55, col.green * 0.55, col.blue * 0.55);
+    const deep = dark ? mix(col, rgb(1, 1, 1), 0.82) : rgb(col.red * 0.55, col.green * 0.55, col.blue * 0.55);
     const sub = (label: string, text: string, level: number, lesson: boolean | null) => {
       const ind = 22 + (level - 1) * 16;
       const il = d.wrap(text, 8.5, CW - ind - 44 - label.length * 4 - (lesson === null ? 0 : 50), d.f.regular, 5);
@@ -568,7 +596,7 @@ function syllabusSection(d: Doc, toc: TocItem[], n: number, disciplines: Syllabu
       d.ensure(ih + 4);
       d.card(MX + ind, d.y - ih, CW - ind, ih, tint(col, 0.1), 6, tint(col, 0.4));
       d.rect(MX + ind, d.y - ih + 5, 3, ih - 10, col);
-      d.text(label, MX + ind + 10, d.y - 12, 7, d.f.bold, col);
+      d.text(label, MX + ind + 10, d.y - 12, 7, d.f.bold, dark ? deep : col);
       il.forEach((l, k) => d.text(l, MX + ind + 22 + label.length * 4, d.y - 12 - k * 11, 8.5, d.f.regular, GRAPHITE));
       if (lesson !== null) d.right(lesson ? "COM AULA" : "SEM AULA", W - MX - 8, d.y - 12, 6, d.f.bold, lesson ? GREEN : FAINT);
       d.y -= ih + 3;
@@ -696,6 +724,7 @@ export async function renderRaioXPdf(data: RaioX, opts: { student?: string | nul
   const toc: TocItem[] = [];
 
   await drawCover(d, data, opts.student ?? null);
+  d.setTheme(org ? (ORG_THEME[org.slug] ?? null) : null); // daqui em diante o desenho é síncrono: o tema não vaza entre PDFs
   d.newPage(); // página 2: índice e resumo (preenchida no final)
   const summaryPage = d.page;
 
@@ -857,7 +886,7 @@ export async function renderRaioXPdf(data: RaioX, opts: { student?: string | nul
             const share = qn === null ? 0 : (qn / (den.get(yr) || 1)) * 100;
             const x = MX + nameW + 62 + i * 38;
             d.card(x, y - 3, 34, 18, qn === null ? SOFT : heatCell(share / peak), 4);
-            d.center(qn === null ? "-" : String(qn), x + 17, y + 3, 8.5, d.f.bold, qn === null ? FAINT : share / peak > 0.55 ? WHITE : INK);
+            d.center(qn === null ? "-" : String(qn), x + 17, y + 3, 8.5, d.f.bold, qn === null ? FAINT : share / peak > 0.55 ? WHITE : DARK_TXT);
           });
           d.right(`${num(c.meanShare)}%`, W - MX - 4, y + 3, 9, d.f.bold, INK);
           d.y -= 22;

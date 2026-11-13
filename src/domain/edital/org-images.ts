@@ -9,9 +9,9 @@ const ORGS: Array<{ slug: string; nome: string; re: RegExp }> = [
   { slug: "prf", nome: "Polícia Rodoviária Federal", re: /\bprf\b|policia rodoviaria federal/ },
 ];
 
-export function orgImageFor(...texts: Array<string | null | undefined>): { card: string; logo: string; capa: string; nome: string } | null {
+export function orgImageFor(...texts: Array<string | null | undefined>): { card: string; logo: string; capa: string; nome: string; slug: string } | null {
   const t = fold(texts.filter(Boolean).join(" "));
   if (!t) return null;
   const hit = ORGS.find((o) => o.re.test(t));
-  return hit ? { card: `/orgs/${hit.slug}-card.webp`, logo: `/orgs/${hit.slug}-logo.webp`, capa: `/orgs/${hit.slug}-capa.webp`, nome: hit.nome } : null;
+  return hit ? { card: `/orgs/${hit.slug}-card.webp`, logo: `/orgs/${hit.slug}-logo.webp`, capa: `/orgs/${hit.slug}-capa.webp`, nome: hit.nome, slug: hit.slug } : null;
 }
