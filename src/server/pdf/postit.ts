@@ -82,7 +82,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   const fundo = await doc.embedJpg(await readFile(path.join(process.cwd(), "public", "pdf", "fundo-caveira.jpg")));
   const paintBg = (p: PDFPage) => {
     p.drawRectangle({ x: 0, y: 0, width: A4[0], height: A4[1], color: rgb(0.02, 0.0, 0.0) });
-    p.drawImage(fundo, { x: 0, y: 0, width: A4[0], height: A4[1], opacity: 0.58 });
+    p.drawImage(fundo, { x: 0, y: 0, width: A4[0], height: A4[1], opacity: 0.34 });
   };
   const newPage = () => { page = doc.addPage(A4); paintBg(page); y = H - M.top; };
 
