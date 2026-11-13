@@ -75,15 +75,25 @@ export function ContestCard({ contests, serverDays }: { contests: ContestView[];
   const art = useRef<HTMLSpanElement>(null);
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const n = contests.length;
+  // Altura mínima = a maior já vista (fechado): trocar de concurso não encolhe/estica o card nem empurra a página.
+  const [minH, setMinH] = useState(0);
+  const openRef = useRef(false);
   // Card largo (faixa inteira no desktop): todas as informações já ficam à mostra.
   useEffect(() => {
     const el = root.current;
     if (!el || typeof ResizeObserver === "undefined") return;
-    const ro = new ResizeObserver(([e]) => setWide((e?.contentRect.width ?? 0) >= 900));
+    let lastW = 0;
+    const ro = new ResizeObserver(([e]) => {
+      const w = Math.round(e?.contentRect.width ?? 0);
+      setWide(w >= 900);
+      if (Math.abs(w - lastW) > 2) { lastW = w; setMinH(0); return; }
+      if (!openRef.current) setMinH((m) => Math.max(m, Math.ceil(e?.target.getBoundingClientRect().height ?? 0)));
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
   const showDet = open || wide;
+  useEffect(() => { openRef.current = open; }, [open]);
 
   useEffect(() => {
     // Relógio só no navegador (evita diferença entre servidor e cliente); 1 batida por segundo.
@@ -158,6 +168,7 @@ export function ContestCard({ contests, serverDays }: { contests: ContestView[];
       ref={root}
       className={`cl-card cl-wide cc ccx ${wide ? "is-wide" : ""}`}
       data-testid="proximos-concursos"
+      style={{ minHeight: !open && minH ? minH : undefined, overflowAnchor: "none" }}
       onPointerMove={onMove}
       onPointerEnter={(e) => e.pointerType === "mouse" && setPaused(true)}
       onPointerLeave={onLeave}
