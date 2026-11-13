@@ -236,3 +236,9 @@
 
 /* Na aula o Mentor já está na barra de ferramentas: some o flutuante (menos uma animação pesada na tela) */
 body:has(.st-bar) .mentor-flut { display: none !important; }
+
+/* Bolinha de status do Mentor: vermelha piscando = ligado; cinza = desligado. */
+.st-mentor-led { position: absolute; top: 7px; right: 8px; z-index: 4; width: 10px; height: 10px; border-radius: 999px; background: #8b8b90; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25); pointer-events: none; }
+.st-mentor-wrap[data-ligado="1"] .st-mentor-led { background: #ff1e12; box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35), 0 0 10px 2px rgba(255, 30, 18, 0.85); animation: st-led-pisca 1s ease-in-out infinite; }
+@keyframes st-led-pisca { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.25; transform: scale(0.8); } }
+@media (prefers-reduced-motion: reduce) { .st-mentor-wrap[data-ligado="1"] .st-mentor-led { animation: none; } }

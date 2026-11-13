@@ -426,7 +426,9 @@ export function StudyTools({
               <button type="button" className={`st-btn ${panel === "pdf" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "pdf" ? null : "pdf"))} aria-label="Meu PDF de Revisão" aria-expanded={panel === "pdf"} title="Meu PDF de Revisão" data-testid="st-pdf">
                 <FileText className="size-5" aria-hidden /><span className="st-btn-txt"><b>Meu PDF</b><small>Gerar revisão</small></span>
               </button>
-              <div className="st-mentor-wrap">
+              <div className="st-mentor-wrap" data-ligado={panel === "mentor" ? "1" : "0"}>
+                {/* Indicador: vermelho piscando = Mentor ligado; cinza = desligado. */}
+                <span className="st-mentor-led" role="img" aria-label={panel === "mentor" ? "Mentor ligado" : "Mentor desligado"} data-testid="mentor-led" />
                 {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={46} onClose={() => setPanel(null)} /> : <VozOrbRepouso size={46} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
                 <span className="st-btn-txt st-mentor-txt" aria-hidden onClick={() => { if (panel !== "mentor") { currentCapture(); setPanel("mentor"); } }}><b>Mentor</b><small>Falar com o Mentor</small></span>
               </div>
