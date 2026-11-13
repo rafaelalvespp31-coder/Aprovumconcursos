@@ -8,8 +8,10 @@ const URL = "/dev/galeria/aula";
 
 async function abrirModulo(page: Page, n = 1) {
   await page.goto(URL);
-  await page.getByRole("navigation", { name: "Páginas da aula" }).getByRole("button", { name: `Módulo ${n}` }).click();
-  await expect(page.locator(".ap-secao").first()).toBeVisible();
+  const btn = page.getByRole("navigation", { name: "Páginas da aula" }).getByRole("button", { name: `Módulo ${n}` });
+  await btn.scrollIntoViewIfNeeded();
+  await btn.click();
+  await expect(page.locator(".ap-secao").first()).toBeVisible({ timeout: 15000 });
 }
 
 /** No celular a folha de post-its cobre a barra: fecha antes de usar outra ferramenta. */
@@ -100,6 +102,23 @@ test.describe("barra de estudo e post-its", () => {
     await expect(page.getByTestId("st-versoes").locator("li")).toHaveCount(1);
   });
 
+  test("tocar na barra e selecionar cola o post-it ao lado da folha", async ({ page, isMobile }) => {
+    await abrirModulo(page);
+    await page.getByTestId("st-postit").click();
+    await expect(page.getByTestId("st-dica")).toBeVisible();
+    await selecionar(page, await primeiroTrecho(page));
+    await expect(page.getByTestId("postit-card")).toBeVisible();
+    await expect(page.getByTestId("st-dica")).toHaveCount(0);
+    if (!isMobile) {
+      // selinho na margem da folha, fora do texto
+      await page.keyboard.press("Escape");
+      const aba = page.getByTestId("postit-aba");
+      await expect(aba).toBeVisible();
+      const [a, t] = await Promise.all([aba.boundingBox(), page.locator(".ap-secao").first().boundingBox()]);
+      expect(a!.x).toBeGreaterThanOrEqual(t!.x + t!.width - 2);
+    }
+  });
+
   test("seleção em duas seções é recusada", async ({ page }) => {
     await abrirModulo(page);
     await page.evaluate(() => {
@@ -126,15 +145,27 @@ test.describe("barra de estudo e post-its", () => {
     await expect(page.getByTestId("explicar-resposta")).toContainText("Explicação de exemplo");
   });
 
-  test("Mentor abre direto no painel de voz, sem sair da aula", async ({ page }) => {
-    await page.route("**/api/mentor/voz", (route) =>
-      route.fulfill({ json: { status: { available: false, reason: "plano", limit: 180, left: 0 } } }),
-    );
+  test("Mentor abre só a orbe animada, sem cartão, e não sai da aula", async ({ page }) => {
+    let body: { study?: { lessonId?: string; lesson?: string } } = {};
+    await page.route("**/api/mentor/voz", async (route) => {
+      const req = route.request();
+      if (req.method() === "POST") {
+        body = req.postDataJSON();
+        return route.fulfill({ status: 403, json: { error: "x", code: "plan_limit" } });
+      }
+      return route.fulfill({ json: { status: { available: true, limit: 180, left: 180 } } });
+    });
+    await page.context().grantPermissions(["microphone"]).catch(() => {});
     await page.goto(URL);
+    // Na galeria o Mentor global não some como na aula real (/aula/…); aqui só tiramos do caminho.
+    await page.addStyleTag({ content: ".mentor-flut{display:none!important}" });
     await page.getByTestId("st-mentor").click();
-    await expect(page.getByTestId("st-painel-mentor")).toBeVisible();
+    await expect(page.getByTestId("mentor-orb-solo")).toBeVisible();
+    await expect(page.getByTestId("st-painel-mentor")).toHaveCount(0);
+    await expect(page.getByTestId("voz-iniciar")).toHaveCount(0);
     await expect(page).toHaveURL(/\/dev\/galeria\/aula/);
-    await page.getByRole("button", { name: "Fechar painel" }).click();
-    await expect(page.getByTestId("st-dock")).toBeVisible();
+    await expect.poll(() => body.study?.lessonId ?? "", { timeout: 4000 }).toMatch(/[0-9a-f-]{36}|^$/);
+    await page.getByTestId("st-mentor").click();
+    await expect(page.getByTestId("mentor-orb-solo")).toHaveCount(0);
   });
 });

@@ -21,9 +21,7 @@ export interface StudyApi {
 }
 const realApi: StudyApi = { create: createPostitAction, updateNote: updatePostitNoteAction, remove: deletePostitAction, generatePdf: generatePostitPdfAction };
 type Panel = null | "lista" | "pdf" | "mentor";
-type Mode = "wide" | "compact";
 
-const RAIL_GAP = 10;
 const FRESH_MS = 12_000;
 const fmt = (iso: string) => new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" });
 
@@ -51,22 +49,29 @@ export function StudyTools({
   const [postits, setPostits] = useState<PostitView[]>(() => sortPostits(initialPostits));
   const [pdfs, setPdfs] = useState<PdfInfo[]>(initialPdfs);
   const [panel, setPanel] = useState<Panel>(null);
-  const [mode, setMode] = useState<Mode>("compact");
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [armed, setArmed] = useState(false);
   const [focusId, setFocusId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ text: string; tone: "ok" | "erro" } | null>(null);
   const [busyPdf, setBusyPdf] = useState(false);
 
   const postitsRef = useRef(postits);
   const lastCap = useRef<Capture | null>(null);
+  const createRef = useRef<(c: Capture) => Promise<void>>(async () => {});
   const rangesRef = useRef(new Map<string, Range>());
   const els = useRef(new Map<string, HTMLElement>());
-  const modeRef = useRef<Mode>("compact");
+  const popRef = useRef<HTMLDivElement | null>(null);
+  const armedRef = useRef(false);
+  const openRef = useRef<string | null>(null);
+  const armT = useRef<ReturnType<typeof setTimeout> | null>(null);
   const panelRef = useRef<Panel>(null);
   const focusRef = useRef<string | null>(null);
   const raf = useRef(0);
   useEffect(() => { postitsRef.current = postits; }, [postits]);
   useEffect(() => { panelRef.current = panel; }, [panel]);
   useEffect(() => { focusRef.current = focusId; }, [focusId]);
+  useEffect(() => { armedRef.current = armed; }, [armed]);
+  useEffect(() => { openRef.current = openId; }, [openId]);
 
   const say = useCallback((text: string, tone: "ok" | "erro" = "ok") => {
     setToast({ text, tone });
@@ -89,40 +94,40 @@ export function StudyTools({
     css.highlights.set("postit-foco", new H(...foco));
   }, []);
 
+  /**
+   * Os post-its ficam "colados" na margem direita da folha, na altura do trecho: um selinho de papel
+   * dentro da folga da folha (nunca sobre o texto). Aberto, o post-it cresce ao lado do selinho.
+   * Celular: sem selinhos (tocar no trecho marcado abre a lista).
+   */
   const layout = useCallback(() => {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
-    const sec = document.querySelector(".ap-secao");
-    const contentRight = sec ? sec.getBoundingClientRect().right : vw / 2;
-    const left = contentRight + 18;
-    const avail = vw - left - 84;
-    const next: Mode = vw >= 1024 && avail >= 230 ? "wide" : "compact";
-    if (next !== modeRef.current) {
-      modeRef.current = next;
-      setMode(next);
-    }
-    const list = postitsRef.current;
+    const folha = document.querySelector(".ap-folha") ?? document.querySelector(".ap-secao");
+    const fr = folha?.getBoundingClientRect();
+    const stubX = fr ? Math.min(fr.right - 38, vw - 70) : vw - 100;
+    const small = vw < 768;
     let cursor = 76;
-    list.forEach((p) => {
+    for (const p of postitsRef.current) {
       const el = els.current.get(p.id);
-      if (!el) return;
+      if (!el) continue;
       const r = rangesRef.current.get(p.id);
       const rect = r?.getBoundingClientRect();
-      const visible = !!rect && rect.bottom > 70 && rect.top < vh - 40;
-      if (!visible || !rect) { el.style.display = "none"; return; }
+      const visible = !small && !!rect && rect.bottom > 70 && rect.top < vh - 40;
+      if (!visible || !rect) { el.style.display = "none"; continue; }
+      const y = Math.max(rect.top - 2, cursor);
+      if (y > vh - 56) { el.style.display = "none"; continue; }
       el.style.display = "";
-      const h = el.offsetHeight || 40;
-      let y = Math.max(rect.top - 6, cursor);
-      if (y + h > vh - 16) { el.style.display = "none"; return; }
-      if (next === "wide") {
-        el.style.width = `${Math.min(290, avail)}px`;
-        el.style.transform = `translate(${left}px, ${y}px)`;
-      } else {
-        y = Math.max(rect.top - 2, cursor);
-        el.style.transform = `translate(${vw - 92}px, ${y}px)`;
+      el.style.transform = `translate(${stubX}px, ${y}px)`;
+      cursor = y + 38;
+      if (p.id === openRef.current && popRef.current) {
+        const pop = popRef.current;
+        const w = Math.min(240, vw - 24);
+        const left = Math.min(stubX + 6, vw - w - 12);
+        const h = pop.offsetHeight || 220;
+        pop.style.width = `${w}px`;
+        pop.style.transform = `translate(${Math.max(12, left)}px, ${Math.min(Math.max(70, y - 6), Math.max(70, vh - h - 12))}px)`;
       }
-      cursor = y + h + RAIL_GAP;
-    });
+    }
   }, []);
 
   const refresh = useCallback(() => {
@@ -145,7 +150,7 @@ export function StudyTools({
   useEffect(() => {
     const t = setTimeout(refresh, 60);
     return () => clearTimeout(t);
-  }, [postits, refresh, panel, mode]);
+  }, [postits, refresh, panel, openId]);
 
   useEffect(() => { paint(); }, [focusId, paint]);
 
@@ -180,10 +185,21 @@ export function StudyTools({
         const r = readSelection();
         if (r && "cap" in r) lastCap.current = r.cap;
       }, 150);
+      // Modo post-it ligado: quando a seleção "assenta" (soltou o mouse/dedo), o post-it é colado.
+      if (armedRef.current) {
+        if (armT.current) clearTimeout(armT.current);
+        armT.current = setTimeout(() => {
+          const r = readSelection();
+          if (!r) return;
+          if ("error" in r) return say(r.error, "erro");
+          setArmed(false);
+          void createRef.current(r.cap);
+        }, 450);
+      }
     };
     document.addEventListener("selectionchange", on);
-    return () => { clearTimeout(t); document.removeEventListener("selectionchange", on); };
-  }, []);
+    return () => { clearTimeout(t); if (armT.current) clearTimeout(armT.current); document.removeEventListener("selectionchange", on); };
+  }, [say]);
 
   /** Seleção viva ou, se o toque na barra a desfez, a última de poucos segundos atrás. */
   const currentCapture = useCallback((): { cap?: Capture; error?: string } => {
@@ -200,7 +216,8 @@ export function StudyTools({
     if (!p.sectionId) return;
     window.dispatchEvent(new CustomEvent("aprovum:ir-secao", { detail: { sectionId: p.sectionId } }));
     setFocusId(p.id);
-    if (modeRef.current === "compact") setPanel(null);
+    if (window.innerWidth < 768) setPanel(null);
+    setOpenId(null);
     let tries = 0;
     const go = () => {
       refresh();
@@ -235,15 +252,18 @@ export function StudyTools({
     setFocusId(real.id);
     say(r.duplicate ? "Esse trecho já tinha um post-it." : "Post-it criado.");
     setTimeout(() => setFocusId((f) => (f === real.id ? null : f)), 2600);
-    if (modeRef.current === "compact" && !r.duplicate) setPanel("lista");
+    if (window.innerWidth < 768) { if (!r.duplicate) setPanel("lista"); } else setOpenId(real.id);
   }, [lessonId, say, sortPostits, api]);
 
+  useEffect(() => { createRef.current = createFromCapture; }, [createFromCapture]);
+
   const onPostitButton = () => {
+    if (armedRef.current) return setArmed(false);
     const { cap, error } = currentCapture();
     if (cap) return void createFromCapture(cap);
     if (error) return say(error, "erro");
-    if (postitsRef.current.length) setPanel((p) => (p === "lista" ? null : "lista"));
-    else say("Selecione um trecho da aula e toque em Post-it para marcá-lo.");
+    setPanel(null);
+    setArmed(true);
   };
 
   // Botão "Post-it" que aparece junto da seleção (ao lado de "Explicar").
@@ -282,7 +302,7 @@ export function StudyTools({
         try { inside = r.isPointInRange(pos.node, pos.offset); } catch { inside = false; }
         if (inside) {
           setFocusId(id);
-          if (modeRef.current === "compact") setPanel("lista");
+          if (window.innerWidth < 768) setPanel("lista"); else setOpenId(id);
           setTimeout(() => setFocusId((f) => (f === id ? null : f)), 3200);
           return;
         }
@@ -311,7 +331,7 @@ export function StudyTools({
   };
 
   // ---------- Mentor ----------
-  const getStudy = useCallback((): StudyContext => {
+  const getStudy = useCallback((): StudyContext & { lessonId: string } => {
     const { cap } = currentCapture();
     let section = cap?.sectionTitle ?? "";
     if (!section) {
@@ -319,12 +339,24 @@ export function StudyTools({
         if (el.getBoundingClientRect().bottom > 120) { section = (el.querySelector("h2, h3")?.textContent ?? "").trim(); break; }
       }
     }
-    return { subject, lesson: lessonTitle, section, selection: cap?.quote ?? null, around: cap?.around ?? null };
-  }, [currentCapture, lessonTitle, subject]);
+    return { subject, lesson: lessonTitle, section, selection: cap?.quote ?? null, around: cap?.around ?? null, lessonId };
+  }, [currentCapture, lessonTitle, subject, lessonId]);
 
   const explain = () => {
     window.dispatchEvent(new CustomEvent("aprovum:explicar"));
   };
+
+  useEffect(() => {
+    if (!openId && !armed) return;
+    const key = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpenId(null); setArmed(false); } };
+    const down = (e: PointerEvent) => {
+      const t = e.target as Element | null;
+      if (openRef.current && !t?.closest("[data-st-pop], .st-nota")) setOpenId(null);
+    };
+    window.addEventListener("keydown", key);
+    document.addEventListener("pointerdown", down);
+    return () => { window.removeEventListener("keydown", key); document.removeEventListener("pointerdown", down); };
+  }, [openId, armed]);
 
   useEffect(() => {
     if (!panel) return;
@@ -335,13 +367,12 @@ export function StudyTools({
 
   const setEl = (id: string) => (el: HTMLElement | null) => { if (el) els.current.set(id, el); else els.current.delete(id); };
   const count = postits.filter((p) => !p.pending).length;
-  const onlyOpenSide = panel === "lista";
 
   return (
     <>
       <div className="st-dock" data-st data-testid="st-dock">
         <div className="st-pilula" role="toolbar" aria-label="Ferramentas de estudo">
-          <button type="button" className={`st-btn ${panel === "lista" ? "is-on" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={onPostitButton} aria-label="Post-it de revisão" data-tip="Post-it: selecione um trecho e toque aqui" data-testid="st-postit">
+          <button type="button" className={`st-btn ${armed || panel === "lista" ? "is-on" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={onPostitButton} aria-label="Post-it de revisão" data-tip="Post-it: toque e selecione o trecho" data-testid="st-postit">
             <StickyNote className="size-5" aria-hidden />
             {count > 0 && <span className="st-badge" aria-hidden>{count}</span>}
           </button>
@@ -352,30 +383,41 @@ export function StudyTools({
             <FileText className="size-5" aria-hidden />
           </button>
         </div>
-        <button type="button" className={`st-mentor ${panel === "mentor" ? "is-on" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={() => { currentCapture(); setPanel((p) => (p === "mentor" ? null : "mentor")); }} aria-label="Falar com o Mentor por voz" aria-expanded={panel === "mentor"} data-tip="Mentor por voz" data-testid="st-mentor">
-          <MentorIcone size={50} />
-        </button>
+        <div className="st-mentor-wrap">
+          <button type="button" className={`st-mentor ${panel === "mentor" ? "is-on" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={() => { currentCapture(); setPanel((p) => (p === "mentor" ? null : "mentor")); }} aria-label="Falar com o Mentor por voz" aria-expanded={panel === "mentor"} data-tip="Mentor por voz" data-testid="st-mentor">
+            <MentorIcone size={50} />
+          </button>
+          {panel === "mentor" && <MentorVoz getStudy={getStudy} autoStart orbOnly onClose={() => setPanel(null)} />}
+        </div>
       </div>
 
-      {/* Post-its ao lado do trecho (com espaço) ou abas numeradas (sem espaço) */}
-      {!onlyOpenSide && postits.length > 0 && (
-        <div className={`st-trilho is-${mode}`} data-st aria-label="Post-its desta aula" data-testid="st-trilho">
+      {/* Post-its colados na margem da folha, na altura do trecho */}
+      {postits.length > 0 && (
+        <div className="st-trilho" data-st aria-label="Post-its desta aula" data-testid="st-trilho">
           {postits.map((p, i) => (
             <div key={p.id} ref={setEl(p.id)} className="st-item" style={{ display: "none" }}>
-              {mode === "wide" ? (
-                <PostitCard p={p} n={i + 1} focused={focusId === p.id} inRail onNote={saveNote} onDelete={remove} onGo={goTo} />
-              ) : (
-                <button type="button" className={`st-aba ${focusId === p.id ? "is-foco" : ""}`} onClick={() => { setFocusId(p.id); setPanel("lista"); }} aria-label={`Abrir post-it ${i + 1}`} data-testid="postit-aba">{i + 1}</button>
-              )}
+              <button type="button" className={`st-nota ${focusId === p.id || openId === p.id ? "is-foco" : ""} ${p.pending ? "is-pendente" : ""}`} onClick={() => { setFocusId(p.id); setOpenId((o) => (o === p.id ? null : p.id)); }} aria-expanded={openId === p.id} aria-label={`Post-it ${i + 1}: ${p.quote.slice(0, 60)}`} title={p.note || p.quote.slice(0, 80)} data-testid="postit-aba">{i + 1}</button>
             </div>
           ))}
         </div>
       )}
+      {openId && postits.some((p) => p.id === openId) && window.innerWidth >= 768 && (
+        <div ref={popRef} className="st-pop" data-st-pop data-st data-testid="st-pop">
+          {postits.map((p, i) => p.id === openId && <PostitCard key={p.id} p={p} n={i + 1} focused={false} inRail onNote={saveNote} onDelete={async (id) => { const ok = await remove(id); if (ok) setOpenId(null); return ok; }} onGo={goTo} />)}
+        </div>
+      )}
+      {armed && (
+        <div className="st-dica" role="status" data-st data-testid="st-dica">
+          <span>Selecione o trecho na leitura: o post-it é colado ao lado da folha.</span>
+          {count > 0 && <button type="button" onClick={() => { setArmed(false); setPanel("lista"); }}>Meus post-its ({count})</button>}
+          <button type="button" onClick={() => setArmed(false)}>Cancelar</button>
+        </div>
+      )}
 
-      {panel && (
+      {(panel === "lista" || panel === "pdf") && (
         <div className={`st-painel is-${panel}`} role="dialog" aria-modal="false" aria-label={panel === "lista" ? "Post-its da aula" : panel === "pdf" ? "Meu PDF de Revisão" : "Mentor por voz"} data-st data-testid={`st-painel-${panel}`}>
           <div className="st-painel-topo">
-            <h2>{panel === "lista" ? `Post-its desta aula${count ? ` (${count})` : ""}` : panel === "pdf" ? "Meu PDF de Revisão" : "Mentor APROVUM"}</h2>
+            <h2>{panel === "lista" ? `Post-its desta aula${count ? ` (${count})` : ""}` : "Meu PDF de Revisão"}</h2>
             <button type="button" className="st-fechar" onClick={() => setPanel(null)} aria-label="Fechar painel"><X className="size-4" aria-hidden /></button>
           </div>
           <div className="st-painel-corpo">
@@ -414,8 +456,7 @@ export function StudyTools({
                 )}
               </div>
             )}
-            {panel === "mentor" && <div className="st-mentor-corpo"><MentorVoz getStudy={getStudy} autoStart /></div>}
-          </div>
+                      </div>
         </div>
       )}
 

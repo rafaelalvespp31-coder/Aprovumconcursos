@@ -9,6 +9,11 @@ import { sanitizeStudyContext } from "@/domain/mentor/study-context";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+const lessonIdOf = (s: unknown): string | null => {
+  const v = s && typeof s === "object" ? (s as { lessonId?: unknown }).lessonId : null;
+  return typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v) ? v : null;
+};
+
 const noStore = { "Cache-Control": "no-store" };
 
 /** Situação do Mentor por voz para este aluno (plano e segundos que restam hoje). */
@@ -35,7 +40,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Pedido inválido." }, { status: 400, headers: noStore });
   }
   try {
-    if (body.action === "start") return NextResponse.json({ session: await startVoice(user.id, sanitizeStudyContext(body.study)) }, { headers: noStore });
+    if (body.action === "start") return NextResponse.json({ session: await startVoice(user.id, sanitizeStudyContext(body.study), lessonIdOf(body.study)) }, { headers: noStore });
     if (body.action === "end") return NextResponse.json(await endVoice(user.id, body.seconds, body.transcript && typeof body.transcript === "object" ? body.transcript : undefined), { headers: noStore });
     return NextResponse.json({ error: "Pedido inválido." }, { status: 400, headers: noStore });
   } catch (e) {
