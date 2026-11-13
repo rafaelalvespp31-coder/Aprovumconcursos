@@ -5,6 +5,7 @@
  */
 import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
 import { LOGO_ESCURA_PNG } from "./logos";
+import { parseExplanation } from "@/domain/study/explanation-format";
 import type { PostitPdfSnapshot } from "./postit-types";
 
 const A4: [number, number] = [595.28, 841.89];
@@ -245,25 +246,46 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       y -= nH;
     }
     if (it.explanation) {
-      const exLines = wrap(regular, clean(it.explanation), NS, innerW - 28);
+      // Explicação em tópicos: cada assunto separado (quadradinho + nome em cima, explicação embaixo).
+      type Row = { t: string; bold?: boolean; icon?: boolean; indent: number; h: number };
+      const LHX = NS * LH;
+      const rows: Row[] = [];
+      const parts = parseExplanation(clean(it.explanation));
+      parts.forEach((pt, pi) => {
+        if (pi > 0 && (pt.kind === "item" || parts[pi - 1]!.kind === "item")) rows.push({ t: "", indent: 0, h: 5 });
+        if (pt.kind === "p") {
+          for (const l of wrap(regular, pt.text, NS, innerW - 28)) rows.push({ t: l, indent: 0, h: LHX });
+        } else {
+          if (pt.term) {
+            wrap(bold, pt.term, NS + 0.5, innerW - 44).forEach((l, k) => rows.push({ t: l, bold: true, icon: k === 0, indent: 14, h: LHX }));
+            for (const l of wrap(regular, pt.text, NS, innerW - 44)) rows.push({ t: l, indent: 14, h: LHX });
+          } else wrap(regular, pt.text, NS, innerW - 44).forEach((l, k) => rows.push({ t: l, icon: k === 0, indent: 14, h: LHX }));
+        }
+      });
       let k = 0;
       let first = true;
-      while (k < exLines.length) {
+      while (k < rows.length) {
         const head = first ? 22 : 8;
-        if (y - head - NS * LH - 12 < M.bottom) newPage();
-        const fit = Math.max(1, Math.floor((y - head - M.bottom - 8) / (NS * LH)));
-        const chunk = exLines.slice(k, k + fit);
-        const h = head + chunk.length * NS * LH + 8;
+        if (y - head - LHX - 12 < M.bottom) newPage();
+        const room = y - head - M.bottom - 8;
+        let used = 0;
+        let cnt = 0;
+        while (k + cnt < rows.length && (cnt === 0 || used + rows[k + cnt]!.h <= room)) used += rows[k + cnt++]!.h;
+        const chunk = rows.slice(k, k + cnt);
+        const h = head + used + 8;
         page.drawRectangle({ x: M.left, y: y - h + 4, width: innerW, height: h, color: EXPL_BG });
         page.drawRectangle({ x: M.left, y: y - h + 4, width: 2.5, height: h, color: EXPL_BAR });
-        if (first) {
-          page.drawText("EXPLICAÇÃO", { x: M.left + 14, y: y - 12, size: 7.5, font: bold, color: WHITE });
+        if (first) page.drawText("EXPLICAÇÃO", { x: M.left + 14, y: y - 12, size: 7.5, font: bold, color: WHITE });
+        let yy = y - head;
+        for (const r of chunk) {
+          if (r.t) page.drawText(r.t, { x: M.left + 14 + r.indent, y: yy - 2 - NS + 4, size: r.bold ? NS + 0.5 : NS, font: r.bold ? bold : regular, color: WHITE });
+          if (r.icon) page.drawRectangle({ x: M.left + 14, y: yy - 2 - NS + 4 + 1.2, width: 5, height: 5, color: WHITE });
+          yy -= r.h;
         }
-        chunk.forEach((l, j) => page.drawText(l, { x: M.left + 14, y: y - head - 2 - j * NS * LH - NS + 4, size: NS, font: regular, color: WHITE }));
         y -= h;
-        k += chunk.length;
+        k += cnt;
         first = false;
-        if (k < exLines.length) newPage();
+        if (k < rows.length) newPage();
       }
     }
     y -= 18;

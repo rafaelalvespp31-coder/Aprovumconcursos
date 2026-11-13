@@ -173,3 +173,11 @@
 .pi-card .pi-explica b { display: block; font-family: Inter, sans-serif; font-size: 9.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: #b9000b; }
 .pi-card .pi-explica p { margin: 2px 0 0; white-space: pre-line; max-height: 160px; overflow-y: auto; }
 .pi-card .pi-trecho.is-rico { font-size: 14.5px; }
+
+/* explicação em tópicos dentro do post-it */
+.pi-card .pi-explica { max-height: 190px; overflow-y: auto; }
+.pi-card .pi-explica p { margin: 2px 0 0; }
+.pi-ex-item { margin-top: 5px; }
+.pi-ex-termo { display: flex; align-items: center; gap: 6px; font-weight: 700; }
+.pi-ex-termo i { flex: none; width: 7px; height: 7px; background: #b9000b; transform: rotate(0deg); }
+.pi-ex-txt { display: block; padding-left: 13px; }

@@ -70,8 +70,13 @@ test.describe("barra de estudo e post-its", () => {
       const t = document.createElement("table");
       t.innerHTML = "<thead><tr><th>Quadro</th><th>Regra</th></tr></thead><tbody><tr><td>Alfa</td><td>Primeira regra</td></tr><tr><td>Beta</td><td>Segunda regra</td></tr></tbody>";
       sec.querySelector("p")!.after(t);
+      // Botões da página (Esclarecer/Anotar…) logo depois da tabela: não podem entrar no trecho.
+      const barra = document.createElement("div");
+      barra.innerHTML = "<button type='button'>Esclarecer</button><button type='button'>Anotar</button>";
+      t.after(barra);
       const r = document.createRange();
-      r.selectNodeContents(t);
+      r.setStartBefore(t);
+      r.setEndAfter(barra);
       const s = window.getSelection()!;
       s.removeAllRanges();
       s.addRange(r);
@@ -82,6 +87,8 @@ test.describe("barra de estudo e post-its", () => {
     await expect(card.getByTestId("postit-tabela").locator("tr")).toHaveCount(3);
     await expect(card.getByTestId("postit-tabela").locator("th")).toHaveCount(2);
     await expect(card.getByTestId("postit-tabela").locator("td").nth(3)).toHaveText("Segunda regra");
+    await expect(card.getByTestId("postit-trecho")).not.toContainText("Esclarecer");
+    await expect(page.getByTestId("st-aviso")).not.toContainText("não foi encontrado");
   });
 
   test("criar, anotar, ir ao trecho, excluir com confirmação", async ({ page }) => {

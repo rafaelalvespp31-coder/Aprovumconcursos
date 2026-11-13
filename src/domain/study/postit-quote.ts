@@ -42,5 +42,18 @@ export function findQuoteSection(quote: string, sections: QuoteSection[], prefer
     const p = sections.find((s) => s.id === preferredId);
     if (p && has(p)) return p;
   }
-  return sections.find(has) ?? null;
+  const found = sections.find(has);
+  if (found) return found;
+  // Texto renderizado nem sempre é idêntico ao markdown (tabelas, realces): vale se CADA linha do trecho existe na seção.
+  const lines = quote.split("\n").map(matchKey).filter((k) => k.length >= 2);
+  if (lines.length < 2) return null;
+  const all = (s: QuoteSection) => {
+    const hay = s.bodies.map(matchKey).join("") + matchKey(s.title);
+    return lines.every((l) => hay.includes(l));
+  };
+  if (preferredId) {
+    const p = sections.find((s) => s.id === preferredId);
+    if (p && all(p)) return p;
+  }
+  return sections.find(all) ?? null;
 }

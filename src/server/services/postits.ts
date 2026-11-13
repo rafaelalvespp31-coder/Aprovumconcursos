@@ -9,6 +9,7 @@ import { POSTIT_NOTE_MAX, POSTIT_QUOTE_MAX, POSTIT_QUOTE_MIN, cleanPostitText, f
 import { disciplineLabel } from "@/ai/pedagogy";
 import { explainCacheKey } from "@/domain/study/explain-cache";
 import { matchKey } from "@/domain/study/postit-quote";
+import { hasBullets, wantsItemized } from "@/domain/study/explanation-format";
 import { isRichStructure, sanitizeStructure, structureMatchesQuote, type QuoteBlock } from "@/domain/study/postit-structure";
 import { getAIProvider, aiEnabled } from "@/ai";
 import { explainSelection } from "@/ai/services";
@@ -137,9 +138,9 @@ async function cachedExplanation(quote: string, around: string): Promise<string>
   const admin = createAdminClient();
   const flat = quote.replace(/\s+/g, " ").trim();
   const byKey = await admin.from("selection_explanations").select("meaning").eq("key", explainCacheKey(flat, around)).maybeSingle();
-  if (byKey.data?.meaning) return String(byKey.data.meaning).slice(0, 1500);
+  if (byKey.data?.meaning) return String(byKey.data.meaning).slice(0, 3500);
   const bySel = await admin.from("selection_explanations").select("meaning").eq("selection", flat.slice(0, 600)).limit(1).maybeSingle();
-  return bySel.data?.meaning ? String(bySel.data.meaning).slice(0, 1500) : "";
+  return bySel.data?.meaning ? String(bySel.data.meaning).slice(0, 3500) : "";
 }
 
 /**
@@ -147,7 +148,7 @@ async function cachedExplanation(quote: string, around: string): Promise<string>
  * explicados agora, com a mesma IA e o mesmo cache do modo Explicar. Falha de IA não impede o PDF.
  */
 async function ensureExplanations(userId: string, lessonId: string, lessonTitle: string, list: Postit[]): Promise<Postit[]> {
-  const missing = list.filter((p) => !p.explanation).slice(0, 12);
+  const missing = list.filter((p) => !p.explanation || (wantsItemized(p.quote) && !hasBullets(p.explanation))).slice(0, 12);
   if (!missing.length) return list;
   const admin = createAdminClient();
   const secs = await admin.from("lesson_sections").select("id, body_markdown").eq("lesson_id", lessonId);
@@ -161,13 +162,13 @@ async function ensureExplanations(userId: string, lessonId: string, lessonTitle:
   await Promise.all(missing.map(async (p) => {
     try {
       const ctx = around(p);
-      let meaning = await cachedExplanation(p.quote, ctx);
+      let meaning = p.explanation ? "" : await cachedExplanation(p.quote, ctx); // já tem texto corrido de vários itens: refaz em tópicos
       if (!meaning && aiEnabled("estudos")) {
         meaning = await explainSelection(getAIProvider("estudos"), { lessonTitle, selection: p.quote.slice(0, 4000), around: ctx });
         const flat = p.quote.replace(/\s+/g, " ").trim();
-        await admin.from("selection_explanations").upsert({ key: explainCacheKey(flat, ctx), selection: flat.slice(0, 600), meaning: meaning.slice(0, 900) }, { onConflict: "key" }).then(() => undefined, () => undefined);
+        await admin.from("selection_explanations").upsert({ key: explainCacheKey(flat, ctx), selection: flat.slice(0, 600), meaning: meaning.slice(0, 2500) }, { onConflict: "key" }).then(() => undefined, () => undefined);
       }
-      meaning = meaning.slice(0, 1500);
+      meaning = meaning.slice(0, 3500);
       if (!meaning) return;
       const up = await admin.from("lesson_postits").update({ explanation: meaning }).eq("id", p.id).eq("user_id", userId);
       if (!up.error) got.set(p.id, meaning);
@@ -186,7 +187,7 @@ export async function attachExplanation(userId: string, lessonId: string, select
   const r = await admin.from("lesson_postits").select("id, quote").eq("user_id", userId).eq("lesson_id", lessonId).eq("status", "ativo");
   const ids = ((r.data ?? []) as Array<{ id: string; quote: string }>).filter((x) => matchKey(x.quote) === key).map((x) => x.id);
   if (!ids.length) return [];
-  await admin.from("lesson_postits").update({ explanation: meaning.slice(0, 1500) }).in("id", ids).eq("user_id", userId);
+  await admin.from("lesson_postits").update({ explanation: meaning.slice(0, 3500) }).in("id", ids).eq("user_id", userId);
   return ids;
 }
 

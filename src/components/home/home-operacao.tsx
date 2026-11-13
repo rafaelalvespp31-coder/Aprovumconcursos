@@ -303,26 +303,30 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, canCu
             </div>
           </div>
 
-          <ContestCard
-            contests={contests.map((c) => ({
-              id: c.id,
-              name: c.name,
-              institution: c.institution,
-              roleName: c.roleName,
-              statusLabel: CONTEST_STATUS[c.status] ?? c.status,
-              vacancies: c.vacancies,
-              salary: c.salary,
-              examDate: c.examDate,
-              examDateConfirmed: c.examDateConfirmed,
-              infoConfirmed: c.infoConfirmed,
-              sourceName: c.sourceName,
-              sourceUrl: c.sourceUrl,
-              updatedLabel: dateBR(c.infoUpdatedAt),
-              examLabel: c.examDate ? dateBR(c.examDate) : null,
-              imageUrl: c.imageUrl,
-            }))}
-            serverDays={contests.map((c) => daysUntil(c.examDate, c.examDateConfirmed, game.today))}
-          />
+        </section>
+
+        {/* Próximos concursos: faixa de largura total, embaixo do operador e das skins */}
+        <section className="cl-concursos" aria-label="Próximos concursos">
+        <ContestCard
+          contests={contests.map((c) => ({
+            id: c.id,
+            name: c.name,
+            institution: c.institution,
+            roleName: c.roleName,
+            statusLabel: CONTEST_STATUS[c.status] ?? c.status,
+            vacancies: c.vacancies,
+            salary: c.salary,
+            examDate: c.examDate,
+            examDateConfirmed: c.examDateConfirmed,
+            infoConfirmed: c.infoConfirmed,
+            sourceName: c.sourceName,
+            sourceUrl: c.sourceUrl,
+            updatedLabel: dateBR(c.infoUpdatedAt),
+            examLabel: c.examDate ? dateBR(c.examDate) : null,
+            imageUrl: c.imageUrl,
+          }))}
+          serverDays={contests.map((c) => daysUntil(c.examDate, c.examDateConfirmed, game.today))}
+        />
         </section>
       </div>
     </div>

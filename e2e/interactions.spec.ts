@@ -443,26 +443,20 @@ test.describe("casco pastel", () => {
     await expect(nav.getByRole("link", { name: /Novo Estudo/ })).toBeVisible();
   });
 
-  test("barra lateral recolhida: ícones centralizados, dentro da barra e sem estourar", async ({ page, isMobile }) => {
+  test("barra lateral recolhida some por completo e fica só a setinha 'Abrir menu'", async ({ page, isMobile }) => {
     test.skip(isMobile, "só no computador");
     await page.setViewportSize({ width: 1440, height: 900 });
     await page.goto(`${G}/painel`);
     await page.getByRole("button", { name: "Recolher", exact: true }).click();
-    const rail = page.locator(".barra-lateral.is-rec");
-    await expect(rail).toBeVisible();
+    const abrir = page.getByTestId("abrir-menu-lateral");
+    await expect(abrir).toBeVisible();
+    await expect(abrir).toContainText("Abrir menu");
+    await expect(page.locator("aside .mt-desk")).toHaveCount(0);
     await page.waitForTimeout(900);
-    const box = (await rail.boundingBox())!;
-    expect(box.width).toBeLessThanOrEqual(70);
-    const links = page.getByRole("navigation", { name: "Principal", exact: true }).getByRole("link");
-    expect(await links.count()).toBeGreaterThanOrEqual(8);
-    for (const i of [0, 2, 7]) {
-      const b = (await links.nth(i).boundingBox())!;
-      expect(b.x).toBeGreaterThanOrEqual(box.x);
-      expect(b.x + b.width).toBeLessThanOrEqual(box.x + box.width + 0.5);
-      expect(b.width).toBeLessThanOrEqual(box.width);
-    }
-    const over = await rail.evaluate((el) => el.scrollWidth > el.clientWidth + 1 || [...el.querySelectorAll<HTMLElement>("*")].some((n) => n.getBoundingClientRect().right > el.getBoundingClientRect().right + 1));
-    expect(over).toBe(false);
+    expect((await page.locator("aside").first().boundingBox())?.width ?? 0).toBeLessThanOrEqual(1);
+    await abrir.click();
+    await expect(page.locator("aside .mt-desk")).toBeVisible();
+    await expect(abrir).toHaveCount(0);
   });
 });
 

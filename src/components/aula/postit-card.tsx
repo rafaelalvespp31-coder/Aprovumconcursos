@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { parseExplanation } from "@/domain/study/explanation-format";
 import type { QuoteBlock } from "@/domain/study/postit-structure";
 import { ArrowUpRight, Check, ChevronDown, Loader2, RotateCcw, Trash2 } from "lucide-react";
 
@@ -88,7 +89,13 @@ export function PostitCard({
       {p.explanation && (
         <div className="pi-explica" data-testid="postit-explicacao">
           <b>Explicação</b>
-          <p>{p.explanation}</p>
+          {parseExplanation(p.explanation).map((x, i) =>
+            x.kind === "item" ? (
+              <div key={i} className="pi-ex-item"><span className="pi-ex-termo"><i aria-hidden />{x.term || x.text.split(" ").slice(0, 3).join(" ")}</span>{x.term && <span className="pi-ex-txt">{x.text}</span>}</div>
+            ) : (
+              <p key={i}>{x.text}</p>
+            ),
+          )}
         </div>
       )}
 

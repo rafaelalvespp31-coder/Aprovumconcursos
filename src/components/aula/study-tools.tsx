@@ -124,11 +124,22 @@ export function StudyTools({
       cursor = y + 38;
       if (p.id === openRef.current && popRef.current) {
         const pop = popRef.current;
-        const w = Math.min(240, vw - 24);
-        const left = Math.min(stubX + 6, vw - w - 12);
+        const w = Math.min(250, vw - 24);
+        // Fora do texto: na margem direita da folha se couber (sem encostar na barra de ferramentas); senão, na esquerda; por último junto à borda direita.
+        const dock = 104;
+        const margem = !!fr && (vw - dock - fr.right >= w + 12 || fr.left >= 340 + w);
+        const left = fr && vw - dock - fr.right >= w + 12 ? fr.right + 10
+          : fr && fr.left >= 340 + w ? fr.left - w - 10
+          : vw - dock - w - 4;
         const h = pop.offsetHeight || 220;
         pop.style.width = `${w}px`;
-        pop.style.transform = `translate(${Math.max(12, left)}px, ${Math.min(Math.max(70, y - 6), Math.max(70, vh - h - 12))}px)`;
+        // Sem margem livre: o cartão fica logo abaixo do trecho marcado (ou acima, se faltar espaço), sem cobri-lo.
+        let top = Math.min(Math.max(70, y - 6), Math.max(70, vh - h - 12));
+        if (!margem) {
+          if (rect.bottom + 10 + h <= vh - 12) top = rect.bottom + 10;
+          else if (rect.top - h - 10 >= 70) top = rect.top - h - 10;
+        }
+        pop.style.translate = `${Math.max(12, left)}px ${top}px`; // `translate` (não `transform`): a animação de entrada usa transform
       }
     }
   }, []);

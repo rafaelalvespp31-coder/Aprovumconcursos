@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, Clock, ExternalLink, MapPin, Users, Wallet } from "lucide-react";
+import { AlertTriangle, Briefcase, CalendarClock, ChevronDown, ChevronLeft, ChevronRight, Clock, ExternalLink, MapPin, Users, Wallet } from "lucide-react";
 import { useCallback, useEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type PointerEvent } from "react";
 
 export interface ContestView {
@@ -67,6 +67,7 @@ function CountUp({ value }: { value: number }) {
 export function ContestCard({ contests, serverDays }: { contests: ContestView[]; serverDays: Array<number | null> }) {
   const [i, setI] = useState(0);
   const [open, setOpen] = useState(false);
+  const [wide, setWide] = useState(false);
   const [now, setNow] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
   const [dir, setDir] = useState<1 | -1>(1);
@@ -74,6 +75,15 @@ export function ContestCard({ contests, serverDays }: { contests: ContestView[];
   const art = useRef<HTMLSpanElement>(null);
   const swipe = useRef<{ x: number; y: number } | null>(null);
   const n = contests.length;
+  // Card largo (faixa inteira no desktop): todas as informações já ficam à mostra.
+  useEffect(() => {
+    const el = root.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(([e]) => setWide((e?.contentRect.width ?? 0) >= 900));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const showDet = open || wide;
 
   useEffect(() => {
     // Relógio só no navegador (evita diferença entre servidor e cliente); 1 batida por segundo.
@@ -146,7 +156,7 @@ export function ContestCard({ contests, serverDays }: { contests: ContestView[];
   return (
     <div
       ref={root}
-      className="cl-card cl-wide cc ccx"
+      className={`cl-card cl-wide cc ccx ${wide ? "is-wide" : ""}`}
       data-testid="proximos-concursos"
       onPointerMove={onMove}
       onPointerEnter={(e) => e.pointerType === "mouse" && setPaused(true)}
@@ -230,17 +240,20 @@ export function ContestCard({ contests, serverDays }: { contests: ContestView[];
           <span className="ccx-mais" aria-hidden>{open ? "Ocultar detalhes" : "Ver detalhes"}<ChevronDown className={open ? "is-up" : ""} /></span>
         </button>
 
-        <div className={`cc-det ccx-det ${open ? "is-open" : ""}`} aria-hidden={!open}>
+        <div className={`cc-det ccx-det ${showDet ? "is-open" : ""}`} aria-hidden={!showDet}>
           <div className="cc-det-in">
             <ul>
-              <li><MapPin aria-hidden /><span><small>Órgão</small>{c.institution}{c.roleName ? ` · ${c.roleName}` : ""}</span></li>
+              <li><MapPin aria-hidden /><span><small>Órgão</small>{c.institution}</span></li>
+              {c.roleName && <li><Briefcase aria-hidden /><span><small>Cargo</small>{c.roleName}</span></li>}
+              <li><Users aria-hidden /><span><small>Vagas</small>{c.vacancies != null ? `+${c.vacancies.toLocaleString("pt-BR")}` : "Não divulgadas"}</span></li>
+              <li><CalendarClock aria-hidden /><span><small>Prova</small>{c.examLabel ?? "Data não definida"}{c.examLabel && !c.examDateConfirmed ? " (não confirmada)" : ""}</span></li>
               <li><Clock aria-hidden /><span><small>Situação</small>{c.statusLabel}</span></li>
               {c.salary && <li><Wallet aria-hidden /><span><small>Remuneração</small>{c.salary}</span></li>}
             </ul>
             <div className="ccx-rodape">
               <p className="cc-fonte-l">Fonte: {c.sourceName} · atualizado em {c.updatedLabel}</p>
               {c.sourceUrl && (
-                <a href={c.sourceUrl} target="_blank" rel="noreferrer noopener" className="cc-link ccx-link" tabIndex={open ? 0 : -1} aria-label={`Fonte: ${c.sourceName}`}>
+                <a href={c.sourceUrl} target="_blank" rel="noreferrer noopener" className="cc-link ccx-link" tabIndex={showDet ? 0 : -1} aria-label={`Fonte: ${c.sourceName}`}>
                   Ver fonte <ExternalLink aria-hidden />
                 </a>
               )}

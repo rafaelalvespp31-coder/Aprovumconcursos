@@ -30,7 +30,7 @@ describe("renderPostitPdf", () => {
     const rows = Array.from({ length: 40 }, (_, i) => ({ c: [`Crime ${i + 1}`, "Pena de reclusão de 1 a 4 anos, e multa", i % 2 ? "Ação penal pública incondicionada" : "Ação penal privada"] }));
     base.items = [
       {
-        n: 1, sectionTitle: "Quadro", note: "Decorar a coluna das penas.", explanation: "Mostra cada crime com a pena e o tipo de ação.", createdAt: "2026-11-12T10:00:00.000Z",
+        n: 1, sectionTitle: "Quadro", note: "Decorar a coluna das penas.", explanation: "- Crime permanente: aquele cuja consumação se prolonga no tempo, como o sequestro.\n- Crime continuado: vários crimes da mesma espécie, em condições parecidas, tratados como um só para a pena.", createdAt: "2026-11-12T10:00:00.000Z",
         quote: "Quadro", structure: [
           { k: "h", t: "Quadro de crimes" },
           { k: "p", t: "Veja a tabela:" },

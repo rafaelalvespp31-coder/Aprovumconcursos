@@ -167,6 +167,6 @@ export type ClarificationOutput = z.infer<typeof clarificationSchema>;
 
 // ---- Explicação de um trecho selecionado na aula ---------------------------------
 export const explainSelectionSchema = z.object({
-  meaning: z.string().min(3).max(900),
+  meaning: z.string().min(3).max(2500),
 });
 export type ExplainSelectionOutput = z.infer<typeof explainSelectionSchema>;

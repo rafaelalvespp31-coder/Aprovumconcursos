@@ -39,7 +39,16 @@ export function readSelection(): ReadResult {
   if (common?.closest("input, textarea, [contenteditable=true], [data-sem-explicar], button")) return null;
   const sectionId = sectionIdOf(a);
   if (!sectionId) return null;
-  const quote = cleanQuote(sel.toString());
+  let structure: QuoteBlock[] | undefined;
+  let blocks: QuoteBlock[] = [];
+  try {
+    blocks = structureFromRange(range);
+    structure = blocks.length > 1 || (blocks[0] && blocks[0].k !== "p") ? blocks : undefined;
+  } catch {
+    blocks = [];
+  }
+  // O trecho é o texto da aula sem os botões da página (Esclarecer, Anotar…) que ficam entre os blocos.
+  const quote = cleanQuote(blocks.length ? textOfBlocks(blocks) : sel.toString());
   if (quote.length < 2) return null;
   if (quote.length > POSTIT_QUOTE_MAX_CLIENT) return { error: "Trecho enorme: marque a seção em partes." };
   const pre = document.createRange();
@@ -53,7 +62,7 @@ export function readSelection(): ReadResult {
       quote,
       quoteStart: pre.toString().length,
       around: (block.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 800),
-      structure: richStructure(range),
+      structure,
       at: Date.now(),
     },
   };
@@ -65,7 +74,9 @@ const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 export function locateRange(p: { sectionId: string; quote: string; quoteStart: number }): Range | null {
   const root = document.getElementById(`secao-${p.sectionId}`);
   if (!root) return null;
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
+    acceptNode: (n) => (n.parentElement?.closest(CHROME) ? NodeFilter.FILTER_REJECT : NodeFilter.FILTER_ACCEPT),
+  });
   const nodes: Array<{ node: Text; start: number }> = [];
   let full = "";
   while (walker.nextNode()) {
@@ -73,7 +84,8 @@ export function locateRange(p: { sectionId: string; quote: string; quoteStart: n
     nodes.push({ node: n, start: full.length });
     full += n.data;
   }
-  const tokens = p.quote.split(/\s+/).filter(Boolean).map(escapeRe);
+  // Só palavras/números: separadores como " | " das tabelas não existem no texto da página.
+  const tokens = p.quote.split(/\s+/).filter((t) => /[\p{L}\p{N}]/u.test(t)).map(escapeRe);
   if (!tokens.length || tokens.length > 40000) return null;
   let re: RegExp;
   try {
@@ -122,15 +134,6 @@ export function caretAt(x: number, y: number): { node: Node; offset: number } | 
 }
 
 // ---------------------------------------------------------------- estrutura do trecho (tabelas, listas…)
-function richStructure(range: Range): QuoteBlock[] | undefined {
-  try {
-    const b = structureFromRange(range);
-    return b.length > 1 || (b[0] && b[0].k !== "p") ? b : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
 const squash = (s: string) => s.replace(/[ \t ​]+/g, " ").replace(/ *\n */g, "\n").trim();
 const BLOCK_TAGS = new Set(["P", "DIV", "SECTION", "ARTICLE", "BLOCKQUOTE", "FIGURE", "FIGCAPTION", "DETAILS", "SUMMARY", "ASIDE", "HEADER", "FOOTER", "MAIN", "DL", "DT", "DD"]);
 
@@ -142,9 +145,23 @@ function tableOf(rows: Element[]): QuoteBlock | null {
   return out.length ? { k: "table", rows: out.map((r) => (r.h ? { h: true, c: r.c } : { c: r.c })) } : null;
 }
 
+/** Botões, ícones e textos só de leitura de tela não fazem parte do texto da aula. */
+const CHROME = "button, [data-sem-explicar], [data-st], .sr-only, svg, script, style, [aria-hidden='true']";
+function stripChrome(root: ParentNode) {
+  root.querySelectorAll(CHROME).forEach((e) => e.remove());
+}
+
+/** Texto do trecho a partir da estrutura: uma linha por bloco/linha de tabela (células separadas por " | "). */
+export function textOfBlocks(blocks: QuoteBlock[]): string {
+  return blocks
+    .map((b) => (b.k === "table" ? b.rows.map((r) => r.c.join(" | ")).join("\n") : b.t))
+    .join("\n");
+}
+
 /** Monta a estrutura (tabela, lista, títulos, parágrafos) do que está dentro do intervalo selecionado. */
 export function structureFromRange(range: Range): QuoteBlock[] {
   const root = range.cloneContents();
+  stripChrome(root);
   const out: QuoteBlock[] = [];
   let buf = "";
   const flush = () => {

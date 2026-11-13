@@ -26,4 +26,10 @@ describe("postit-quote", () => {
   it("limpa controle e espaços", () => {
     expect(cleanPostitText("  a\u0000  b \n\n\n\n c ")).toBe("a b\n\nc");
   });
+
+  it("aceita trecho em várias linhas quando cada linha existe na seção (conteúdo renderizado entre elas)", () => {
+    const secs = [{ id: "t", title: "Mapa", bodies: ["| Caput | Matar alguém |\n\nCaixa extra da página\n\n| § 1º | Privilégio |"] }];
+    expect(findQuoteSection("Caput | Matar alguém\n§ 1º | Privilégio", secs)?.id).toBe("t");
+    expect(findQuoteSection("Caput | Matar alguém\n§ 9º | Inventado", secs)).toBeNull();
+  });
 });

@@ -189,7 +189,7 @@ export async function explainSelectionAction(input: { lessonId: string; selectio
     if (!aiEnabled("estudos")) return { ok: false, error: "O explicador está temporariamente indisponível. Tente de novo mais tarde." };
     await enforceRateLimit(user.id, "explain_selection", 20);
     const meaning = await explainSelection(getAIProvider("estudos"), { lessonTitle: (data as { title: string }).title, selection: parsed.data.selection, around: parsed.data.around });
-    await admin.from("selection_explanations").upsert({ key, selection: parsed.data.selection.slice(0, 600), meaning: meaning.slice(0, 900) }, { onConflict: "key" }).then(() => undefined, () => undefined);
+    await admin.from("selection_explanations").upsert({ key, selection: parsed.data.selection.slice(0, 600), meaning: meaning.slice(0, 2500) }, { onConflict: "key" }).then(() => undefined, () => undefined);
     await attachExplanation(user.id, parsed.data.lessonId, parsed.data.selection, meaning).catch(() => undefined);
     return { ok: true, meaning };
   } catch (e) {

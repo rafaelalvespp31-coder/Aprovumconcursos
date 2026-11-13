@@ -15,6 +15,7 @@ import {
   Clock3,
   Video,
   BrainCircuit,
+  ChevronRight,
   Landmark,
   LayoutGrid,
   Crown,
@@ -199,9 +200,10 @@ export function PastelShell({
         <div className="relative flex min-h-screen w-full max-w-[100vw]">
           {/* Barra lateral (desktop) */}
           <aside
-            className={`sticky top-0 z-30 hidden h-screen shrink-0 flex-col transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:flex ${collapsed ? "w-[92px]" : "w-[304px] xl:w-[324px]"}`}
+            className={`sticky top-0 z-30 hidden h-screen shrink-0 flex-col transition-all duration-700 ease-[cubic-bezier(0.34,1.56,0.64,1)] lg:flex ${collapsed ? "w-0 overflow-hidden" : "w-[304px] xl:w-[324px]"}`}
             style={{ paddingTop: "env(safe-area-inset-top, 0px)" }}
           >
+            {!collapsed && (
             <MenuTatico
               variant="desktop"
               items={items}
@@ -219,7 +221,13 @@ export function PastelShell({
               logout={logout}
               isAula={isAula}
             />
+            )}
           </aside>
+          {collapsed && (
+            <button type="button" onClick={toggleCollapsed} className="mt-abrir max-lg:hidden" aria-label="Abrir menu lateral" data-testid="abrir-menu-lateral">
+              <ChevronRight aria-hidden /><span>Abrir menu</span>
+            </button>
+          )}
 
           <div className="min-w-0 flex-1">
             <header
