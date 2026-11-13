@@ -4,7 +4,11 @@
  * embutidas: nada lido do disco, funciona em ambiente serverless.
  * Só usa dados reais catalogados (os mesmos da tela); nada é inventado.
  */
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage, type RGB } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage, type RGB } from "pdf-lib";
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+import sharp from "sharp";
+import { orgImageFor } from "@/domain/edital/org-images";
 import type { RaioX } from "@/server/services/strategic";
 import { HEAT_LABEL, type Heat } from "@/domain/strategic/analysis";
 import { aggregateIncidence, cutoffSeries, niceScale, projectNext } from "@/domain/strategic/painel";
@@ -48,6 +52,8 @@ class Doc {
   pdf!: PDFDocument;
   f!: Fonts;
   page!: PDFPage;
+  /** Imagem do órgão: fundo translúcido que preenche a página inteira. */
+  bg: PDFImage | null = null;
   y = 0;
   private set = new Set<number>();
 
@@ -127,7 +133,15 @@ class Doc {
   }
   newPage() {
     this.page = this.pdf.addPage([W, H]);
+    this.paintBg(this.page, 0.2);
     this.y = H - TOP;
+  }
+  /** Preenche a página toda (corte central, sem distorcer) com a imagem do órgão, translúcida. */
+  paintBg(p: PDFPage, opacity: number) {
+    if (!this.bg) return;
+    const k = Math.max(W / this.bg.width, H / this.bg.height);
+    const w = this.bg.width * k, h = this.bg.height * k;
+    p.drawImage(this.bg, { x: (W - w) / 2, y: (H - h) / 2, width: w, height: h, opacity });
   }
   ensure(h: number) {
     if (this.y - h < BOTTOM) this.newPage();
@@ -490,6 +504,15 @@ export async function renderRaioXPdf(data: RaioX, opts: { student?: string | nul
   d.pdf.setAuthor("APROVUM");
   d.pdf.setProducer("APROVUM");
   const logo = await d.pdf.embedPng(b64(LOGO_ESCURA_PNG));
+  const org = orgImageFor(exam.name, exam.organ);
+  if (org) {
+    try {
+      const jpg = await sharp(await readFile(path.join(process.cwd(), "public", org.capa))).flatten({ background: "#ffffff" }).jpeg({ quality: 80 }).toBuffer();
+      d.bg = await d.pdf.embedJpg(jpg);
+    } catch {
+      d.bg = null; // o fundo é um extra: sem o arquivo, o PDF sai como antes
+    }
+  }
   const toc: TocItem[] = [];
 
   await drawCover(d, data, opts.student ?? null);
