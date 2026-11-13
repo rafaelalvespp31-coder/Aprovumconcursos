@@ -77,7 +77,16 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
 
   let page: PDFPage = doc.addPage(A4);
   let y = H - M.top;
-  const newPage = () => { page = doc.addPage(A4); y = H - M.top; };
+  // Fundo da página: degradê do azul-marinho (topo) ao azul-bebê (base), em faixas finas.
+  const NAVY = [0.04, 0.10, 0.27], BABY = [0.74, 0.87, 1.0];
+  const paintBg = (p: PDFPage) => {
+    const N = 90;
+    for (let k = 0; k < N; k++) {
+      const t = k / (N - 1), e = t * t * (3 - 2 * t); // suaviza a transição
+      p.drawRectangle({ x: 0, y: H - ((k + 1) * H) / N - 0.6, width: A4[0], height: H / N + 1.2, color: rgb(NAVY[0]! + (BABY[0]! - NAVY[0]!) * e, NAVY[1]! + (BABY[1]! - NAVY[1]!) * e, NAVY[2]! + (BABY[2]! - NAVY[2]!) * e) });
+    }
+  };
+  const newPage = () => { page = doc.addPage(A4); paintBg(page); y = H - M.top; };
 
   // Título da revisão
   const title = (t: string, size: number, font: PDFFont, color = INK, gap = 4) => {
@@ -87,6 +96,18 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
     }
     y -= gap;
   };
+  paintBg(page);
+  {
+    // Cartão branco atrás do bloco de título: texto sempre legível sobre o degradê.
+    const tl = wrap(bold, clean(s.lesson.title), 18, innerW).length;
+    const mv: string[] = [];
+    if (s.lesson.subject) mv.push(s.lesson.subject);
+    mv.push(s.lesson.title);
+    if (s.student.name) mv.push(s.student.name);
+    mv.push(fmtDate(s.generatedAt), `v${meta.pdfVersion} · ${s.items.length} post-it${s.items.length === 1 ? "" : "s"}`);
+    const h = 22 + tl * 21 + 6 + 4 + mv.reduce((a, v) => a + Math.max(1, wrap(regular, clean(v), 9.5, innerW - 70).length) * 12 + 3, 0) + 8 + 2;
+    page.drawRectangle({ x: M.left - 14, y: y - h + 6, width: innerW + 28, height: h + 6, color: rgb(1, 1, 1), opacity: 0.96, borderColor: rgb(0.7, 0.8, 0.95), borderWidth: 0.8 });
+  }
   page.drawText("MEU PDF DE REVISÃO", { x: M.left, y: y - 8, size: 8, font: bold, color: RED });
   y -= 22;
   title(s.lesson.title, 18, bold, INK, 6);
@@ -111,7 +132,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   const faixas: Awaited<ReturnType<PDFDocument["embedJpg"]>>[] = [];
   for (let f = 1; f <= 4; f++) {
     try {
-      faixas.push(await doc.embedJpg(await readFile(path.join(process.cwd(), "public", "pdf", `fina-${f}.jpg`))));
+      faixas.push(await doc.embedJpg(await readFile(path.join(process.cwd(), "public", "pdf", `quebra-${f}.jpg`))));
     } catch {
       /* sem a arte, os assuntos seguem sem a faixa */
     }
@@ -121,10 +142,12 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
     idx += 1;
     if (idx > 0 && faixas.length) {
       const fi = faixas[(idx - 1) % faixas.length]!;
-      const fh = (A4[0] * fi.height) / fi.width;
+      // Arte inteira (sem cortar em altura): 125% da largura da página, centralizada, para a faixa ficar alta e bem visível.
+      const bw = A4[0] * 1.25;
+      const fh = (bw * fi.height) / fi.width;
       if (y - fh - 12 - 18 - 30 < M.bottom) newPage();
       else y -= 6;
-      page.drawImage(fi, { x: 0, y: y - fh, width: A4[0], height: fh });
+      page.drawImage(fi, { x: -(bw - A4[0]) / 2, y: y - fh, width: bw, height: fh });
       // véu escuro embaixo (a arte "assenta" na página) e etiqueta do assunto sobre a faixa
       for (let v = 0; v < 5; v++) page.drawRectangle({ x: 0, y: y - fh, width: A4[0], height: (fh * (5 - v)) / 10, color: rgb(0, 0, 0), opacity: 0.07 });
       page.drawRectangle({ x: 0, y: y - fh - 1.2, width: A4[0], height: 1.2, color: RED });
@@ -150,7 +173,9 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       let secT = sec;
       while (bold.widthOfTextAtSize(secT, 7.5) > innerW - 34 && secT.length > 4) secT = secT.slice(0, -2);
       if (secT !== sec) secT = secT.trimEnd() + "…";
-      page.drawText(secT.toUpperCase().length === secT.length ? secT : secT, { x: M.left + 28, y: y - 12, size: 7.5, font: bold, color: MUTED });
+      // etiqueta do trecho sobre uma pílula branca: legível em qualquer ponto do degradê
+      page.drawRectangle({ x: M.left + 22, y: y - 16, width: bold.widthOfTextAtSize(secT, 7.5) + 12, height: 17, color: rgb(1, 1, 1), opacity: 0.95 });
+      page.drawText(secT, { x: M.left + 28, y: y - 12, size: 7.5, font: bold, color: MUTED });
     }
     y -= headH + 4;
     // Trecho: texto corrido ou, se o aluno marcou uma tabela/lista/títulos, a mesma estrutura da leitura.
@@ -376,6 +401,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   pages.forEach((p, idx) => {
     const lh = 22;
     const lw = (lh * logo.width) / logo.height;
+    p.drawRectangle({ x: M.left - 14, y: H - 78, width: innerW + 28, height: 54, color: rgb(1, 1, 1), opacity: 0.96, borderColor: rgb(0.7, 0.8, 0.95), borderWidth: 0.8 });
     p.drawImage(logo, { x: M.left, y: H - 34 - lh, width: lw, height: lh });
     const tag = "REVISÃO";
     p.drawText(tag, { x: W - M.right - bold.widthOfTextAtSize(tag, 7), y: H - 41, size: 7, font: bold, color: RED });
