@@ -12,7 +12,6 @@ import { ProfileForm } from "./form";
 import { PainelAdmin, type AdminItem, type AdminNote } from "./painel-admin";
 import { listRaioXRequests, studentLabel } from "@/server/services/strategic";
 import { Indicacao } from "./indicacao";
-import { Biometria } from "./biometria";
 import { getMyReferral } from "@/server/services/referral";
 import { publicEnv } from "@/lib/env";
 import { PastelProfile } from "./pastel-profile";
@@ -82,10 +81,6 @@ export default async function ProfilePage() {
           <Indicacao data={indicacao} origin={publicEnv().siteUrl} />
         </PastelCard>
       )}
-      <PastelCard noTilt className="p-6" testId="biometria-card">
-        <h2 className="mb-1 text-[13px] font-bold">Entrar com biometria</h2>
-        <Biometria />
-      </PastelCard>
       <PastelCard noTilt className="p-6" testId="plano">
         <h2 id="plano" className="mb-3 text-[13px] font-bold">Plano</h2>
         <dl className="grid grid-cols-[1fr_auto] gap-x-6 gap-y-2 text-[13px]">
