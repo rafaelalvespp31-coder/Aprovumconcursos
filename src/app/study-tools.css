@@ -243,3 +243,7 @@ body:has(.st-bar) .mentor-flut { display: none !important; }
 .pi-ex-item:not(.pi-ex-sub) { margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(185, 0, 11, 0.25); }
 .pi-ex-sub { margin-left: 14px; margin-top: 4px; }
 .pi-ex-sub .pi-ex-termo i { width: 5px; height: 5px; opacity: 0.7; }
+
+/* Explicação em negrito, com o "!" sempre à esquerda */
+.pi-ex-txt { position: relative; padding-left: 22px; font-weight: 700; }
+.pi-ex-txt::before { content: "!"; position: absolute; left: 0; top: 1px; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 99px; background: #b9000b; color: #fff; font-size: 10px; font-weight: 800; line-height: 1; }

@@ -248,8 +248,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       // Cada assunto usa uma cor própria (vermelho, azul, âmbar, verde, roxo) só na barra, no número e no título.
       const TONES = [rgb(0.85, 0.04, 0.0), rgb(0.12, 0.27, 0.65), rgb(0.72, 0.40, 0.0), rgb(0.08, 0.50, 0.28), rgb(0.47, 0.22, 0.74)];
       const CARD = rgb(0.965, 0.968, 0.975);
-      const SUBTXT = rgb(0.2, 0.2, 0.22);
-      type Row = { t: string; bold?: boolean; num?: number; sub?: boolean; indent: number; h: number; blk: number; size?: number };
+      type Row = { t: string; bold?: boolean; num?: number; sub?: boolean; def?: boolean; bang?: boolean; indent: number; h: number; blk: number; size?: number };
       const LHX = NS * LH;
       const rows: Row[] = [];
       const parts = parseExplanation(clean(it.explanation));
@@ -262,15 +261,15 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
         }
         const b0 = blk;
         if (pt.kind === "p") {
-          for (const l of wrap(regular, pt.text, NS, innerW - 36)) rows.push({ t: l, indent: 0, h: LHX, blk: b0 });
+          wrap(bold, pt.text, NS, innerW - 60).forEach((l, k) => rows.push({ t: l, bold: true, def: true, bang: k === 0, indent: 26, h: LHX, blk: b0, size: NS }));
         } else if (pt.kind === "sub") {
           rows.push({ t: "", indent: 0, h: 3, blk: b0 });
           wrap(bold, pt.term, NS + 0.5, innerW - 92).forEach((l, k) => rows.push({ t: l, bold: true, sub: k === 0, indent: 40, h: LHX, blk: b0 }));
-          for (const l of wrap(regular, pt.text, NS, innerW - 92)) rows.push({ t: l, indent: 40, h: LHX, blk: b0, size: NS });
+          wrap(bold, pt.text, NS, innerW - 96).forEach((l, k) => rows.push({ t: l, bold: true, def: true, bang: k === 0, indent: 42, h: LHX, blk: b0, size: NS }));
         } else if (pt.term) {
           wrap(bold, pt.term, NS + 2, innerW - 80).forEach((l, k) => rows.push({ t: l, bold: true, num: k === 0 ? n : undefined, indent: 26, h: LHX + 3, blk: b0, size: NS + 2 }));
-          for (const l of wrap(regular, pt.text, NS, innerW - 80)) rows.push({ t: l, indent: 26, h: LHX, blk: b0 });
-        } else wrap(regular, pt.text, NS, innerW - 80).forEach((l, k) => rows.push({ t: l, num: k === 0 ? n : undefined, indent: 26, h: LHX, blk: b0 }));
+          if (pt.text.trim()) wrap(bold, pt.text, NS, innerW - 84).forEach((l, k) => rows.push({ t: l, bold: true, def: true, bang: k === 0, indent: 28, h: LHX, blk: b0, size: NS }));
+        } else wrap(bold, pt.text, NS, innerW - 84).forEach((l, k) => rows.push({ t: l, bold: true, def: true, bang: k === 0, num: undefined, indent: 28, h: LHX, blk: b0, size: NS }));
       });
       const GAP = 7;
       const PADV = 7;
@@ -318,8 +317,13 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
               const ns = String(r.num);
               page.drawText(ns, { x: M.left + 20 - bold.widthOfTextAtSize(ns, 8) / 2, y: base + 1, size: 8, font: bold, color: WHITE });
             }
+            if (r.bang) {
+              const bx = M.left + (r.indent >= 40 ? 32 : 20);
+              page.drawCircle({ x: bx, y: base + 3.4, size: 5.6, color: tone });
+              page.drawText("!", { x: bx - bold.widthOfTextAtSize("!", 8.5) / 2, y: base + 0.6, size: 8.5, font: bold, color: WHITE });
+            }
             if (r.sub) page.drawRectangle({ x: M.left + 28, y: base + 2.2, width: 4, height: 4, color: tone });
-            if (r.t) page.drawText(r.t, { x: M.left + 8 + r.indent, y: base, size: r.size ?? (r.bold ? NS + 0.5 : NS), font: r.bold ? bold : regular, color: r.bold && r.num != null ? tone : r.bold ? INK : r.indent >= 40 ? SUBTXT : INK });
+            if (r.t) page.drawText(r.t, { x: M.left + 8 + r.indent, y: base, size: r.size ?? (r.bold ? NS + 0.5 : NS), font: r.bold ? bold : regular, color: r.def ? INK : r.bold && r.num != null ? tone : r.bold ? INK : INK });
             ry -= r.h;
           }
           yy -= boxH + GAP;
