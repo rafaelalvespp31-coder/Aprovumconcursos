@@ -247,20 +247,23 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
     }
     if (it.explanation) {
       // Explicação em tópicos: cada assunto separado (quadradinho + nome em cima, explicação embaixo).
-      type Row = { t: string; bold?: boolean; icon?: boolean; indent: number; h: number };
+      type Row = { t: string; bold?: boolean; icon?: boolean; sub?: boolean; rule?: boolean; indent: number; h: number };
       const LHX = NS * LH;
       const rows: Row[] = [];
       const parts = parseExplanation(clean(it.explanation));
       parts.forEach((pt, pi) => {
-        if (pi > 0 && (pt.kind === "item" || parts[pi - 1]!.kind === "item")) rows.push({ t: "", indent: 0, h: 5 });
+        // Cada assunto vira um bloco próprio: linha fina separadora e respiro antes de começar o próximo.
+        if (pi > 0 && pt.kind !== "sub" && (pt.kind === "item" || parts[pi - 1]!.kind !== "p")) rows.push({ t: "", rule: true, indent: 0, h: 11 });
+        else if (pi > 0 && pt.kind === "sub") rows.push({ t: "", indent: 0, h: 4 });
         if (pt.kind === "p") {
           for (const l of wrap(regular, pt.text, NS, innerW - 28)) rows.push({ t: l, indent: 0, h: LHX });
-        } else {
-          if (pt.term) {
-            wrap(bold, pt.term, NS + 0.5, innerW - 44).forEach((l, k) => rows.push({ t: l, bold: true, icon: k === 0, indent: 14, h: LHX }));
-            for (const l of wrap(regular, pt.text, NS, innerW - 44)) rows.push({ t: l, indent: 14, h: LHX });
-          } else wrap(regular, pt.text, NS, innerW - 44).forEach((l, k) => rows.push({ t: l, icon: k === 0, indent: 14, h: LHX }));
-        }
+        } else if (pt.kind === "sub") {
+          wrap(bold, pt.term, NS + 0.5, innerW - 66).forEach((l, k) => rows.push({ t: l, bold: true, sub: k === 0, indent: 28, h: LHX }));
+          for (const l of wrap(regular, pt.text, NS, innerW - 66)) rows.push({ t: l, indent: 28, h: LHX });
+        } else if (pt.term) {
+          wrap(bold, pt.term.toUpperCase(), NS + 1, innerW - 44).forEach((l, k) => rows.push({ t: l, bold: true, icon: k === 0, indent: 14, h: LHX + 1 }));
+          for (const l of wrap(regular, pt.text, NS, innerW - 44)) rows.push({ t: l, indent: 14, h: LHX });
+        } else wrap(regular, pt.text, NS, innerW - 44).forEach((l, k) => rows.push({ t: l, icon: k === 0, indent: 14, h: LHX }));
       });
       let k = 0;
       let first = true;
@@ -278,8 +281,10 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
         if (first) page.drawText("EXPLICAÇÃO", { x: M.left + 14, y: y - 12, size: 7.5, font: bold, color: WHITE });
         let yy = y - head;
         for (const r of chunk) {
+          if (r.rule) page.drawLine({ start: { x: M.left + 14, y: yy - r.h / 2 }, end: { x: M.left + innerW - 14, y: yy - r.h / 2 }, thickness: 0.5, color: rgb(1, 0.72, 0.72), opacity: 0.7 });
           if (r.t) page.drawText(r.t, { x: M.left + 14 + r.indent, y: yy - 2 - NS + 4, size: r.bold ? NS + 0.5 : NS, font: r.bold ? bold : regular, color: WHITE });
           if (r.icon) page.drawRectangle({ x: M.left + 14, y: yy - 2 - NS + 4 + 1.2, width: 5, height: 5, color: WHITE });
+          if (r.sub) page.drawRectangle({ x: M.left + 14 + 14, y: yy - 2 - NS + 4 + 1.8, width: 3.2, height: 3.2, color: rgb(1, 0.78, 0.78) });
           yy -= r.h;
         }
         y -= h;

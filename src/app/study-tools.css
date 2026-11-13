@@ -240,3 +240,6 @@ body:has(.st-bar) .mentor-flut { display: none !important; }
 /* Mentor falando: onda de voz horizontal, suave e translúcida, de ponta a ponta no fundo da barra. */
 .st-bar > .st-onda { position: absolute; left: 0; right: 0; top: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; opacity: 0.9; }
 .st-bar > *:not(.st-onda) { position: relative; z-index: 1; }
+.pi-ex-item:not(.pi-ex-sub) { margin-top: 8px; padding-top: 6px; border-top: 1px solid rgba(185, 0, 11, 0.25); }
+.pi-ex-sub { margin-left: 14px; margin-top: 4px; }
+.pi-ex-sub .pi-ex-termo i { width: 5px; height: 5px; opacity: 0.7; }

@@ -18,3 +18,18 @@ describe("explicação em tópicos", () => {
     expect(wantsItemized("Um parágrafo só")).toBe(false);
   });
 });
+
+describe("explicação com itens colados numa linha", () => {
+  it("separa cada assunto e põe o subtópico embaixo do título", () => {
+    const p = parseExplanation("- Caput: furto simples: É a forma básica do furto.- Repouso noturno: Aumento de pena à noite.- Semovente: Animal que se move sozinho.");
+    expect(p).toEqual([
+      { kind: "item", term: "Caput", text: "" },
+      { kind: "sub", term: "furto simples", text: "É a forma básica do furto." },
+      { kind: "item", term: "Repouso noturno", text: "Aumento de pena à noite." },
+      { kind: "item", term: "Semovente", text: "Animal que se move sozinho." },
+    ]);
+  });
+  it("não quebra palavras com hífen", () => {
+    expect(parseExplanation("- Ex-esposa: pessoa que foi casada.")).toEqual([{ kind: "item", term: "Ex-esposa", text: "pessoa que foi casada." }]);
+  });
+});

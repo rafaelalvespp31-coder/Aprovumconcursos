@@ -90,7 +90,9 @@ export function PostitCard({
         <div className="pi-explica" data-testid="postit-explicacao">
           <b>Explicação</b>
           {parseExplanation(p.explanation).map((x, i) =>
-            x.kind === "item" ? (
+            x.kind === "sub" ? (
+              <div key={i} className="pi-ex-item pi-ex-sub"><span className="pi-ex-termo"><i aria-hidden />{x.term}</span><span className="pi-ex-txt">{x.text}</span></div>
+            ) : x.kind === "item" ? (
               <div key={i} className="pi-ex-item"><span className="pi-ex-termo"><i aria-hidden />{x.term || x.text.split(" ").slice(0, 3).join(" ")}</span>{x.term && <span className="pi-ex-txt">{x.text}</span>}</div>
             ) : (
               <p key={i}>{x.text}</p>
