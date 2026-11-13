@@ -125,7 +125,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   }
   y -= 8;
   page.drawLine({ start: { x: M.left, y }, end: { x: W - M.right, y }, thickness: 0.6, color: LINE });
-  y -= 18;
+  y -= 12;
 
   const QS = 10.5, NS = 9.5, LH = 1.38;
   // Faixas finas decorativas (de borda a borda) separando um assunto do outro; as 4 artes se revezam.
@@ -143,10 +143,10 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
     if (idx > 0 && faixas.length) {
       const fi = faixas[(idx - 1) % faixas.length]!;
       // Arte inteira (sem cortar em altura): 125% da largura da página, centralizada, para a faixa ficar alta e bem visível.
-      const bw = A4[0] * 1.25;
+      const bw = A4[0] * 1.08;
       const fh = (bw * fi.height) / fi.width;
-      if (y - fh - 12 - 18 - 30 < M.bottom) newPage();
-      else y -= 6;
+      if (y - fh - 70 < M.bottom) newPage();
+      else y -= 2;
       page.drawImage(fi, { x: -(bw - A4[0]) / 2, y: y - fh, width: bw, height: fh });
       // véu escuro embaixo (a arte "assenta" na página) e etiqueta do assunto sobre a faixa
       for (let v = 0; v < 5; v++) page.drawRectangle({ x: 0, y: y - fh, width: A4[0], height: (fh * (5 - v)) / 10, color: rgb(0, 0, 0), opacity: 0.07 });
@@ -157,14 +157,14 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       page.drawRectangle({ x: M.left, y: y - fh / 2 - 9, width: tw, height: 18, color: rgb(0, 0, 0), opacity: 0.78 });
       page.drawRectangle({ x: M.left, y: y - fh / 2 - 9, width: 3.5, height: 18, color: RED });
       page.drawText(tag, { x: M.left + 12, y: y - fh / 2 - 3, size: 8.5, font: bold, color: WHITE });
-      y -= fh + 16;
+      y -= fh + 8;
     }
     const quoteLines = wrap(regular, clean(it.quote), QS, innerW - 40);
     const noteLines = it.note ? wrap(italic, clean(it.note), NS, innerW - 52) : [];
     const sec = it.sectionTitle ? clean(it.sectionTitle) : "";
     // Blocos longos continuam na página seguinte: desenha linha a linha com checagem de espaço.
     const headH = 18;
-    if (y - headH - 30 < M.bottom) newPage();
+    if (y - headH - 90 < M.bottom) newPage(); // evita o título do assunto sozinho no pé da página
     // Número + seção
     page.drawRectangle({ x: M.left, y: y - 16, width: 20, height: 16, color: RED });
     const ns = String(it.n);
@@ -191,10 +191,10 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
         let fit = Math.floor((y - M.bottom - 14) / lh);
         if (fit < 1 || (fit < 2 && i === 0 && lines.length > 1 && y - M.bottom < 60)) { newPage(); fit = Math.floor((y - M.bottom - 14) / lh); }
         const chunk = lines.slice(i, i + Math.max(1, fit));
-        card(y, chunk.length * lh + 10);
+        card(y, chunk.length * lh + 4);
         chunk.forEach((l, k) => page.drawText(l, { x, y: y - 1 - size - k * lh, size, font, color: INK }));
         if (bullet && i === 0) page.drawText(bullet, { x: x - 12 - (bullet.length > 1 ? bold.widthOfTextAtSize(bullet, size) - 5 : 0), y: y - 1 - size, size, font: bold, color: RED });
-        y -= chunk.length * lh + 10;
+        y -= chunk.length * lh + 4;
         i += chunk.length;
         if (i < lines.length) newPage();
       }
@@ -271,8 +271,8 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
     } else {
     let top = y;
     const startQuote = (pg: PDFPage, from: number, count: number) => {
-      pg.drawRectangle({ x: M.left, y: from - count * QS * LH - 6, width: innerW, height: count * QS * LH + 10, color: SOFT });
-      pg.drawRectangle({ x: M.left, y: from - count * QS * LH - 6, width: 2.5, height: count * QS * LH + 10, color: RED });
+      pg.drawRectangle({ x: M.left, y: from - count * QS * LH - 6, width: innerW, height: count * QS * LH + 6, color: SOFT });
+      pg.drawRectangle({ x: M.left, y: from - count * QS * LH - 6, width: 2.5, height: count * QS * LH + 6, color: RED });
     };
     let i = 0;
     while (i < quoteLines.length) {
@@ -281,7 +281,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       if (fit < 2 && i === 0 && quoteLines.length > 1 && y - M.bottom < 60) { newPage(); top = y; continue; }
       startQuote(page, y + 0, chunk.length);
       chunk.forEach((l, k) => page.drawText(l, { x: M.left + 14, y: y - 4 - QS - k * QS * LH + 3, size: QS, font: regular, color: INK }));
-      y -= chunk.length * QS * LH + 10;
+      y -= chunk.length * QS * LH + 6;
       i += chunk.length;
       if (i < quoteLines.length) newPage();
     }
@@ -327,7 +327,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
         } else wrap(bold, pt.text, NS, innerW - 84).forEach((l, k) => rows.push({ t: l, bold: true, def: true, bang: k === 0, num: undefined, indent: 28, h: LHX, blk: b0, size: NS }));
       });
       const GAP = 0; // um card só: os assuntos se encostam e são separados por linhas finas
-      const PADV = 7;
+      const PADV = 5;
       let k = 0;
       let first = true;
       while (k < rows.length) {
@@ -393,7 +393,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
         if (k < rows.length) newPage();
       }
     }
-    y -= 18;
+    y -= 10;
   }
 
   // Cabeçalho e rodapé em todas as páginas
