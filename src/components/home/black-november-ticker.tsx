@@ -9,17 +9,13 @@ export function blackNovemberActive(now: Date = new Date()): boolean {
   return mes === "11";
 }
 
-/** Caveira articulado (11 peças): pernas atrás, tronco com braço e cabeça por cima. Decorativo. */
+/** Caveira parado na pose de empurrar, encostado na lateral do card. Decorativo. */
 function CaveiraEmpurra() {
   return (
     <span className="cvr" aria-hidden data-testid="caveira-empurra">
       <span className="cvr-chao" />
-      <span className="cvr-rig">
-        <i className="cvr-far" />
-        <i className="cvr-thb"><i className="cvr-shb"><i className="cvr-btb" /></i></i>
-        <i className="cvr-thf"><i className="cvr-shf"><i className="cvr-btf" /></i></i>
-        <i className="cvr-torso"><i className="cvr-ua"><i className="cvr-fa" /></i><i className="cvr-head" /></i>
-      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element -- recorte pequeno e fixo (4x), sem otimizador para não perder nitidez */}
+      <img src="/home/caveira-empurra.webp" alt="" width={67} height={64} decoding="async" />
     </span>
   );
 }
@@ -45,7 +41,7 @@ export function BlackNovemberTicker({ href = "/plano" }: { href?: string }) {
           <strong>{p.preco}</strong>
           <small>{p.det}</small>
         </Link>,
-        // O Caveira empurra o card do Comando Supremo (rig de recorte; ver scripts/caveira-rig.py).
+        // O Caveira empurra o card do Comando Supremo (parado; ver scripts/caveira-rig.py).
         ...(p.k === "vitalicio" ? [<CaveiraEmpurra key="caveira" />] : []),
       ])}
       <span className="bnv-item bnv-frase"><Zap aria-hidden />ACESSO IMEDIATO <i>{"///"}</i> APROVUM</span>
