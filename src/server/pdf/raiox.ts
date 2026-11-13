@@ -497,7 +497,65 @@ function drawChrome(d: Doc, logo: Awaited<ReturnType<PDFDocument["embedPng"]>>, 
 
 // ---------------------------------------------------------------------------
 
-export async function renderRaioXPdf(data: RaioX, opts: { student?: string | null } = {}): Promise<Uint8Array> {
+export interface SyllabusDiscipline { name: string; topics: Array<{ code: string | null; depth: number; title: string; hasLesson: boolean }> }
+
+/** Separa "Tema: a; b; c" em tema + itens, para o conteúdo sair em tópicos e não num bloco de texto. */
+function splitItem(title: string): { head: string; items: string[] } {
+  const t = title.replace(/\s+/g, " ").trim();
+  const i = t.indexOf(":");
+  if (i > 0) {
+    const items = t.slice(i + 1).split(/\s*;\s*/).map((x) => x.trim().replace(/\.$/, "")).filter(Boolean);
+    if (items.length >= 2) return { head: t.slice(0, i), items };
+  }
+  return { head: t, items: [] };
+}
+
+/** Conteúdo programático completo do edital, por disciplina, numerado e em tópicos. */
+function syllabusSection(d: Doc, toc: TocItem[], n: number, disciplines: SyllabusDiscipline[]) {
+  const total = disciplines.reduce((a, x) => a + x.topics.length, 0);
+  sectionPage(d, toc, n, "Conteúdo programático", `Tudo o que o edital cobra: ${disciplines.length} disciplinas e ${total} assuntos, na ordem do edital.`, null);
+  kpis(d, [{ v: String(disciplines.length), l: "Disciplinas" }, { v: String(total), l: "Assuntos do edital" }, { v: String(disciplines.reduce((a, x) => a + x.topics.filter((t) => t.hasLesson).length, 0)), l: "Com aula na APROVUM" }]);
+  disciplines.forEach((disc, di) => {
+    d.ensure(70);
+    const h = 26;
+    d.card(MX, d.y - h, CW, h, INK, 7);
+    d.card(MX, d.y - h, 30, h, RED, 7);
+    d.rect(MX + 18, d.y - h, 12, h, RED);
+    d.center(String(di + 1).padStart(2, "0"), MX + 15, d.y - 17, 9.5, d.f.bold, WHITE);
+    d.text(d.fit(disc.name.toUpperCase(), 10, CW - 150, d.f.bold), MX + 40, d.y - 17, 10, d.f.bold, WHITE);
+    d.right(`${disc.topics.length} assunto${disc.topics.length === 1 ? "" : "s"}`, W - MX - 10, d.y - 16.5, 8, d.f.regular, rgb(0.78, 0.78, 0.82));
+    d.y -= h + 8;
+    if (!disc.topics.length) { note(d, "Nenhum assunto identificado nesta disciplina."); return; }
+    disc.topics.forEach((t, ti) => {
+      const indent = Math.max(0, Math.min(3, t.depth - 1)) * 14;
+      const label = `${di + 1}.${ti + 1}`;
+      const x0 = MX + 6 + indent;
+      const wTxt = CW - 66 - indent - 34;
+      const { head, items } = splitItem(t.title);
+      const hl = d.wrap(head, 9, wTxt, d.f.bold, 6);
+      const il = items.map((it) => d.wrap(it, 8.5, wTxt - 12, d.f.regular, 4));
+      const rows = hl.length + il.reduce((a, l) => a + l.length, 0);
+      const need = rows * 11.5 + 8;
+      d.ensure(Math.min(need, 90));
+      const top = d.y;
+      d.text(label, x0, top - 9.5, 7.5, d.f.bold, RED);
+      hl.forEach((l, i) => d.text(l, x0 + 34, top - 9.5 - i * 11.5, 9, d.f.bold, INK));
+      d.right(t.hasLesson ? "COM AULA" : "SEM AULA", W - MX - 6, top - 9.5, 6.5, d.f.bold, t.hasLesson ? GREEN : FAINT);
+      let y = top - 9.5 - hl.length * 11.5;
+      il.forEach((ls) => {
+        if (y - ls.length * 11.5 < BOTTOM) { d.newPage(); y = d.y - 4; }
+        d.rect(x0 + 36, y + 1.5, 3, 3, RED);
+        ls.forEach((l, k) => d.text(l, x0 + 46, y - k * 11.5, 8.5, d.f.regular, GRAPHITE));
+        y -= ls.length * 11.5;
+      });
+      d.line(MX, y - 3, W - MX, y - 3, LINE, 0.3);
+      d.y = y - 8;
+    });
+    d.y -= 10;
+  });
+}
+
+export async function renderRaioXPdf(data: RaioX, opts: { student?: string | null; syllabus?: SyllabusDiscipline[] } = {}): Promise<Uint8Array> {
   const d = await Doc.create();
   const { exam, heat, comparison } = data;
   d.pdf.setTitle(`Raio-X do edital — ${exam.name} — APROVUM`);
@@ -778,6 +836,8 @@ export async function renderRaioXPdf(data: RaioX, opts: { student?: string | nul
     d.text("Histórico não garante o que cairá na próxima prova.", MX + 16, d.y - 18, 9.5, d.f.bold, WHITE);
     d.text("Use este Raio-X para priorizar, nunca para abandonar conteúdo do edital.", MX + 16, d.y - 32, 8.5, d.f.regular, rgb(0.78, 0.78, 0.82));
   }
+
+  if (opts.syllabus?.some((x) => x.topics.length)) syllabusSection(d, toc, 7, opts.syllabus);
 
   // ---- Página 2: índice + resumo executivo + como ler
   {
