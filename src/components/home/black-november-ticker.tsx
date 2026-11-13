@@ -1,11 +1,27 @@
 import Link from "next/link";
 import { ChevronRight, Flame, Zap } from "lucide-react";
+import "./caveira-empurra.css";
 import { OFFERS, OFFER_KEYS, PLAN_NAMES, installmentOf } from "@/domain/plans/offers";
 
 /** A faixa sai do ar sozinha quando novembro acaba (horário de Brasília). */
 export function blackNovemberActive(now: Date = new Date()): boolean {
   const mes = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo", month: "2-digit" }).format(now);
   return mes === "11";
+}
+
+/** Caveira articulado (11 peças): pernas atrás, tronco com braço e cabeça por cima. Decorativo. */
+function CaveiraEmpurra() {
+  return (
+    <span className="cvr" aria-hidden data-testid="caveira-empurra">
+      <span className="cvr-chao" />
+      <span className="cvr-rig">
+        <i className="cvr-far" />
+        <i className="cvr-thb"><i className="cvr-shb"><i className="cvr-btb" /></i></i>
+        <i className="cvr-thf"><i className="cvr-shf"><i className="cvr-btf" /></i></i>
+        <i className="cvr-torso"><i className="cvr-ua"><i className="cvr-fa" /></i><i className="cvr-head" /></i>
+      </span>
+    </span>
+  );
 }
 
 /**
@@ -23,13 +39,15 @@ export function BlackNovemberTicker({ href = "/plano" }: { href?: string }) {
     <div className="bnv-trilho" key={oculto ? "b" : "a"} aria-hidden={oculto || undefined}>
       <span className="bnv-item bnv-selo"><Flame aria-hidden /><span>BLACK NOVEMBER</span></span>
       <span className="bnv-item bnv-frase">SUA APROVAÇÃO NÃO ESPERA <i>{"///"}</i> ESCOLHA SEU PLANO</span>
-      {planos.map((p) => (
+      {planos.flatMap((p) => [
         <Link key={p.k} href={href} className={`bnv-item bnv-plano bnv-${p.k}`} tabIndex={oculto ? -1 : 0} data-testid={oculto ? undefined : `bn-plano-${p.k}`}>
           <span className="bnv-nome">{p.nome}</span>
           <strong>{p.preco}</strong>
           <small>{p.det}</small>
-        </Link>
-      ))}
+        </Link>,
+        // O Caveira empurra o card do Comando Supremo (rig de recorte; ver scripts/caveira-rig.py).
+        ...(p.k === "vitalicio" ? [<CaveiraEmpurra key="caveira" />] : []),
+      ])}
       <span className="bnv-item bnv-frase"><Zap aria-hidden />ACESSO IMEDIATO <i>{"///"}</i> APROVUM</span>
     </div>
   );
