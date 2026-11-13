@@ -337,3 +337,17 @@ dialog.mt-gaveta[data-saindo]::backdrop { animation: mtFundoSair 0.24s ease both
 .mt-card-grupo .mt-txt { flex: none; }
 .mt-card-grupo .mt-pilula { margin-left: 10px; }
 .mt-movel .mt-assinatura em { font-size: clamp(8px, 2.3vw, 10.5px); }
+
+/* ===== Cartões interligados: sem vãos entre eles, bordas compartilhadas, só as pontas arredondadas ===== */
+.mt .mt-nav, .mt-movel .mt-nav, .mt-desk .mt-nav { gap: 0; padding-top: 1px; }
+.mt .mt-nav .mt-card { margin-top: -1px; border-radius: 0; }
+.mt .mt-nav > .mt-card:first-child, .mt .mt-nav > .contents:first-child > .mt-card:first-child { border-top-left-radius: var(--raio); border-top-right-radius: var(--raio); }
+.mt .mt-nav > .mt-card:last-child, .mt .mt-nav > .contents:last-child > .mt-card:last-child { border-bottom-left-radius: var(--raio); border-bottom-right-radius: var(--raio); }
+/* sem crescer no hover (não invade o vizinho); o ativo/hover fica por cima para a borda vermelha aparecer inteira */
+@media (hover: hover) { .mt .mt-nav .mt-card:hover { transform: none; z-index: 2; } }
+.mt .mt-nav .mt-card[aria-current="page"], .mt .mt-nav .mt-card.is-dentro { z-index: 2; }
+/* conteúdo aberto de um grupo e "novo estudo" encostados nos cartões, sem molduras soltas */
+.mt .mt-novo-estudo { margin: 0; border-radius: 0; }
+.mt .sub-assuntos { margin-top: 0; margin-bottom: 0; }
+.mt .mt-compactos { gap: 0; margin-top: 0; }
+.mt .mt-arvore { margin-top: 0; }
