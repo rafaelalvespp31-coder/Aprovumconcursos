@@ -17,6 +17,23 @@ describe("submenu de matérias", () => {
     expect(menu[0]!.studies.map((s) => s.title)).toEqual(["Furto", "Homicídio"]);
   });
 
+  it("estudo misto vai para a matéria predominante e os estudos ficam dentro do tópico", () => {
+    const menu = buildSubjectsMenu({
+      trails: [
+        { id: "m", title: "BÁSICOS", folder_id: null, last_studied_at: null, updated_at: "2026-10-01", catalogTopicIds: ["r1", "p1", "p2", "p3"] },
+        { id: "f", title: "Furto", folder_id: null, last_studied_at: null, updated_at: "2026-10-02", catalogTopicIds: ["d1"] },
+        { id: "g", title: "Dano", folder_id: null, last_studied_at: null, updated_at: "2026-10-03", catalogTopicIds: ["d2"] },
+      ],
+      folders: [],
+      topicDiscipline: new Map([["r1", "Raciocínio Lógico"], ["p1", "Língua Portuguesa"], ["p2", "Língua Portuguesa"], ["p3", "Língua Portuguesa"], ["d1", "Direito Penal"], ["d2", "Direito Penal"]]),
+      topicGroup: new Map([["p1", "Morfologia"], ["p2", "Morfologia"], ["d1", "Crimes contra o patrimônio"], ["d2", "Crimes contra o patrimônio"]]),
+    });
+    expect(menu.map((m) => m.name)).toEqual(["Língua Portuguesa", "Direito Penal"]);
+    expect(menu[0]!.topics).toEqual([{ name: "Morfologia", studies: [expect.objectContaining({ id: "m" })] }]);
+    expect(menu[1]!.topics).toHaveLength(1);
+    expect(menu[1]!.topics[0]!.studies.map((s) => s.title)).toEqual(["Dano", "Furto"]);
+  });
+
   it("ordem: básicas primeiro (Português, Matemática, Raciocínio Lógico, Informática), depois específicas e 'Outras'", () => {
     const nomes = ["Direito Penal", "Outras matérias", "Informática", "Raciocínio Lógico", "Direito Administrativo", "Língua Portuguesa", "Matemática", "Legislação especial"];
     const ordenado = [...nomes].sort((a, b) => subjectRank(a) - subjectRank(b) || a.localeCompare(b, "pt-BR"));

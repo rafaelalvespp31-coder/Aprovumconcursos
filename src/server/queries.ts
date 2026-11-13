@@ -708,12 +708,14 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
   const mineRows = ((mine.data ?? []) as MineRow[]).map((t) => ({ ...t, catalogTopicIds: (t.scope_summary?.catalogTopics ?? []).map((c) => c.id) }));
   const topicIds = [...new Set(mineRows.flatMap((t) => t.catalogTopicIds))];
   const topicDiscipline = new Map<string, string>();
+  const topicGroup = new Map<string, string>();
   if (topicIds.length) {
     await ensureDisciplines();
-    const { data: topics } = await createAdminClient().from("catalog_topics").select("id, discipline_mode").in("id", topicIds);
-    for (const t of (topics ?? []) as Array<{ id: string; discipline_mode: string }>) {
+    const { data: topics } = await createAdminClient().from("catalog_topics").select("id, discipline_mode, topic_group").in("id", topicIds);
+    for (const t of (topics ?? []) as Array<{ id: string; discipline_mode: string; topic_group: string | null }>) {
       const label = disciplineLabel(t.discipline_mode as string);
       if (label) topicDiscipline.set(t.id, label);
+      if (t.topic_group) topicGroup.set(t.id, t.topic_group);
     }
   }
   return {
@@ -731,6 +733,7 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
       trails: mineRows,
       folders: (folders.data ?? []) as Array<{ id: string; name: string }>,
       topicDiscipline,
+      topicGroup,
       status: new Map<string, StudyStatus>(mineRows.map((t) => [t.id, studyStatus(lessonCount.get(t.id) ?? 0, progressBy.get(t.id) ?? [])])),
     }),
   };

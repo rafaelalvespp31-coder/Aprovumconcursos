@@ -248,8 +248,8 @@ export const shellSummary: ShellSummary = {
   plan: "gratuito",
   planInfo: { label: "Recruta", tagline: "O primeiro passo da missão", until: null },
   subjects: [
-    { name: "Direito Administrativo", studies: [{ id: id(10), title: "Polícia Penal MG — Direito Administrativo", status: "andamento" }] },
-    { name: "Direito Penal", studies: [{ id: id(12), title: "Teoria do crime: fato típico", status: "concluido" }, { id: id(13), title: "Homicídio (CP, art. 121)", status: "nao_iniciado" }] },
-    { name: "Direito Processual Penal", studies: [{ id: id(14), title: "Inquérito policial (CPP, arts. 4º a 23)", status: "andamento" }] },
+    { name: "Direito Administrativo", studies: [{ id: id(10), title: "Polícia Penal MG — Direito Administrativo", status: "andamento" }], topics: [{ name: null, studies: [{ id: id(10), title: "Polícia Penal MG — Direito Administrativo", status: "andamento" }] }] },
+    { name: "Direito Penal", studies: [{ id: id(12), title: "Teoria do crime: fato típico", status: "concluido" }, { id: id(13), title: "Homicídio (CP, art. 121)", status: "nao_iniciado" }], topics: [{ name: "Teoria Geral do Crime", studies: [{ id: id(12), title: "Teoria do crime: fato típico", status: "concluido" }] }, { name: "Crimes contra a vida", studies: [{ id: id(13), title: "Homicídio (CP, art. 121)", status: "nao_iniciado" }] }] },
+    { name: "Direito Processual Penal", studies: [{ id: id(14), title: "Inquérito policial (CPP, arts. 4º a 23)", status: "andamento" }], topics: [{ name: "Investigação criminal", studies: [{ id: id(14), title: "Inquérito policial (CPP, arts. 4º a 23)", status: "andamento" }] }] },
   ],
 };

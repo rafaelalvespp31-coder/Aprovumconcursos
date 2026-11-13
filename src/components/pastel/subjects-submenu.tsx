@@ -44,6 +44,13 @@ export function SubjectsSubmenu({
   // A galeria tem uma única página de estudo de exemplo.
   const studyHref = (id: string) => (base ? `${base}/trilha` : `/trilhas/${id}`);
   const toggle = (name: string) => setOpen(open.includes(name) ? open.filter((n) => n !== name) : [...open, name]);
+  const estudo = (s: SubjectMenuItem["studies"][number]) => (
+    <Link href={studyHref(s.id)} onClick={onNavigate} aria-current={path === `/trilhas/${s.id}` ? "page" : undefined} data-status={s.status}>
+      <span className="sub-assunto-status" aria-hidden />
+      <span className="sub-assunto-titulo">{s.title}</span>
+      <span className="sr-only"> — {STATUS_LABEL[s.status]}</span>
+    </Link>
+  );
   return (
     <ul className={`sub-materias sub-materias-${variant}`} aria-label="Matérias que você estuda" data-testid={`submenu-materias-${variant}`}>
       {subjects.map((m) => {
@@ -59,15 +66,21 @@ export function SubjectsSubmenu({
             </button>
             {isOpen && (
               <ul className="sub-assuntos">
-                {m.studies.map((s) => (
-                  <li key={s.id}>
-                    <Link href={studyHref(s.id)} onClick={onNavigate} aria-current={path === `/trilhas/${s.id}` ? "page" : undefined} data-status={s.status}>
-                      <span className="sub-assunto-status" aria-hidden />
-                      <span className="sub-assunto-titulo">{s.title}</span>
-                      <span className="sr-only"> — {STATUS_LABEL[s.status]}</span>
-                    </Link>
-                  </li>
-                ))}
+                {m.topics.map((tp) => {
+                  const key = `${m.name}::${tp.name ?? ""}`;
+                  if (tp.name === null) return tp.studies.map((s) => <li key={s.id}>{estudo(s)}</li>);
+                  const tOpen = open.includes(key) || tp.studies.some((s) => path === `/trilhas/${s.id}`);
+                  return (
+                    <li key={key}>
+                      <button type="button" className="sub-topico" aria-expanded={tOpen} onClick={() => toggle(key)}>
+                        <span className="sub-topico-nome">{tp.name}</span>
+                        <span className="sub-materia-qtd">{tp.studies.length}</span>
+                        <ChevronDown className={`size-3 shrink-0 transition-transform ${tOpen ? "rotate-180" : ""}`} aria-hidden />
+                      </button>
+                      {tOpen && <ul className="sub-subtopicos">{tp.studies.map((s) => <li key={s.id}>{estudo(s)}</li>)}</ul>}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </li>
