@@ -9,6 +9,8 @@ import { POSTIT_NOTE_MAX, POSTIT_QUOTE_MAX, POSTIT_QUOTE_MIN, cleanPostitText, f
 import { disciplineLabel } from "@/ai/pedagogy";
 import { explainCacheKey } from "@/domain/study/explain-cache";
 import { matchKey } from "@/domain/study/postit-quote";
+import { getAIProvider, aiEnabled } from "@/ai";
+import { explainSelection } from "@/ai/services";
 import type { PostitPdfSnapshot } from "../pdf/postit-types";
 
 export interface Postit {
@@ -133,6 +135,42 @@ async function cachedExplanation(quote: string, around: string): Promise<string>
   return bySel.data?.meaning ? String(bySel.data.meaning).slice(0, 1500) : "";
 }
 
+/**
+ * Todo post-it vai ao PDF com a explicação do trecho. Os que ainda não têm (o aluno só marcou o texto) são
+ * explicados agora, com a mesma IA e o mesmo cache do modo Explicar. Falha de IA não impede o PDF.
+ */
+async function ensureExplanations(userId: string, lessonId: string, lessonTitle: string, list: Postit[]): Promise<Postit[]> {
+  const missing = list.filter((p) => !p.explanation).slice(0, 12);
+  if (!missing.length) return list;
+  const admin = createAdminClient();
+  const secs = await admin.from("lesson_sections").select("id, body_markdown").eq("lesson_id", lessonId);
+  const bodies = new Map(((secs.data ?? []) as Array<{ id: string; body_markdown: string }>).map((s) => [s.id, s.body_markdown]));
+  const around = (p: Postit) => {
+    const body = (p.sectionId && bodies.get(p.sectionId)) || "";
+    const at = body.toLowerCase().indexOf(p.quote.slice(0, 40).toLowerCase());
+    return at < 0 ? "" : body.slice(Math.max(0, at - 400), at + p.quote.length + 400);
+  };
+  const got = new Map<string, string>();
+  await Promise.all(missing.map(async (p) => {
+    try {
+      const ctx = around(p);
+      let meaning = await cachedExplanation(p.quote, ctx);
+      if (!meaning && aiEnabled("estudos")) {
+        meaning = await explainSelection(getAIProvider("estudos"), { lessonTitle, selection: p.quote.slice(0, 600), around: ctx });
+        const flat = p.quote.replace(/\s+/g, " ").trim();
+        await admin.from("selection_explanations").upsert({ key: explainCacheKey(flat, ctx), selection: flat.slice(0, 600), meaning: meaning.slice(0, 900) }, { onConflict: "key" }).then(() => undefined, () => undefined);
+      }
+      meaning = meaning.slice(0, 1500);
+      if (!meaning) return;
+      const up = await admin.from("lesson_postits").update({ explanation: meaning }).eq("id", p.id).eq("user_id", userId);
+      if (!up.error) got.set(p.id, meaning);
+    } catch {
+      /* sem explicação: o post-it segue no PDF só com o trecho e a anotação */
+    }
+  }));
+  return list.map((p) => (got.has(p.id) ? { ...p, explanation: got.get(p.id)! } : p));
+}
+
 /** Chamado pelo modo Explicar: guarda a explicação nos post-its ativos do mesmo trecho nesta aula. */
 export async function attachExplanation(userId: string, lessonId: string, selection: string, meaning: string): Promise<string[]> {
   const key = matchKey(selection);
@@ -187,6 +225,17 @@ export async function listPostitPdfs(lessonId: string): Promise<PostitPdfInfo[]>
   }));
 }
 
+/** Exclui uma versão do PDF de revisão do próprio aluno (os post-its não são afetados). */
+export async function deletePostitPdf(userId: string, idIn: string): Promise<void> {
+  const id = z.uuid().parse(idIn);
+  await enforceRateLimit(userId, "postit_pdf_delete", 30, 60);
+  const admin = createAdminClient();
+  const r = await admin.from("postit_pdfs").delete().eq("id", id).eq("user_id", userId).select("id, lesson_id");
+  if (r.error) throw new Error(`excluir PDF de revisão: ${r.error.message}`);
+  if (!(r.data ?? []).length) throw new UserFacingError("PDF não encontrado.", "not_found");
+  await auditLog(admin, { actorId: userId, userId, action: "postit_pdf.deleted", entity: "postit_pdfs", entityId: id, meta: { lessonId: (r.data![0] as { lesson_id: string }).lesson_id } });
+}
+
 /**
  * Gera o "Meu PDF de Revisão": só post-its ativos desta aula, na ordem da aula, sem alterar
  * nenhuma palavra. Cada geração é uma versão nova; se nada mudou desde a última, devolve a
@@ -207,8 +256,9 @@ export async function createPostitPdf(userId: string, lessonIdIn: string): Promi
   } | null;
   if (!lesson) throw new UserFacingError("Aula não encontrada.", "not_found");
 
-  const postits = await listPostits(lessonId);
+  let postits = await listPostits(lessonId);
   if (!postits.length) throw new UserFacingError("Você ainda não tem post-its ativos nesta aula. Marque trechos da leitura para montar o seu PDF.", "empty");
+  postits = await ensureExplanations(userId, lesson.id, lesson.title, postits);
 
   const admin = createAdminClient();
   const prof = await admin.from("profiles").select("display_name").eq("id", userId).maybeSingle();

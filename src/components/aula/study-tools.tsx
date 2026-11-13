@@ -1,11 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileText, Lightbulb, Loader2, StickyNote, X } from "lucide-react";
+import { Download, FileText, Lightbulb, Loader2, StickyNote, Trash2, X } from "lucide-react";
 import { VozOrbRepouso } from "@/components/mentor/voz-orb-solo";
 import { MentorVoz } from "@/components/mentor/mentor-voz";
 import type { StudyContext } from "@/domain/mentor/study-context";
-import { createPostitAction, deletePostitAction, generatePostitPdfAction, updatePostitNoteAction } from "@/app/(app)/aula/[id]/postit-actions";
+import { createPostitAction, deletePostitAction, deletePostitPdfAction, generatePostitPdfAction, updatePostitNoteAction } from "@/app/(app)/aula/[id]/postit-actions";
 import { PostitCard, type PostitView } from "./postit-card";
 import { matchKey } from "@/domain/study/postit-quote";
 import { caretAt, locateRange, readSelection, type Capture } from "./postit-dom";
@@ -19,8 +19,9 @@ export interface StudyApi {
   updateNote: (id: string, note: string) => Promise<{ ok: true; postit: PostitDto } | { ok: false; error: string }>;
   remove: typeof deletePostitAction;
   generatePdf: typeof generatePostitPdfAction;
+  removePdf: typeof deletePostitPdfAction;
 }
-const realApi: StudyApi = { create: createPostitAction, updateNote: updatePostitNoteAction, remove: deletePostitAction, generatePdf: generatePostitPdfAction };
+const realApi: StudyApi = { create: createPostitAction, updateNote: updatePostitNoteAction, remove: deletePostitAction, generatePdf: generatePostitPdfAction, removePdf: deletePostitPdfAction };
 type Panel = null | "lista" | "pdf" | "mentor";
 
 const FRESH_MS = 12_000;
@@ -55,6 +56,7 @@ export function StudyTools({
   const [focusId, setFocusId] = useState<string | null>(null);
   const [toast, setToast] = useState<{ text: string; tone: "ok" | "erro" } | null>(null);
   const [busyPdf, setBusyPdf] = useState(false);
+  const [pdfSel, setPdfSel] = useState<string | null>(null);
 
   const postitsRef = useRef(postits);
   const lastCap = useRef<Capture | null>(null);
@@ -327,6 +329,14 @@ export function StudyTools({
   }, []);
 
   // ---------- PDF ----------
+  const removePdf = async (id: string) => {
+    if (pdfSel !== id) { setPdfSel(id); return; }
+    setPdfSel(null);
+    const r = await api.removePdf(id, lessonId);
+    if (!r.ok) return say(r.error, "erro");
+    setPdfs(r.pdfs);
+    say("PDF excluído.");
+  };
   const generatePdf = async () => {
     if (busyPdf) return;
     setBusyPdf(true);
@@ -395,9 +405,9 @@ export function StudyTools({
           <button type="button" className={`st-btn ${panel === "pdf" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "pdf" ? null : "pdf"))} aria-label="Meu PDF de Revisão" aria-expanded={panel === "pdf"} data-tip="Meu PDF de Revisão" data-testid="st-pdf">
             <FileText className="size-5" aria-hidden />
           </button>
-        </div>
-        <div className="st-mentor-wrap" data-tip="Mentor por voz: toque na orbe e fale">
-          {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly onClose={() => setPanel(null)} /> : <VozOrbRepouso onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+          <div className="st-mentor-wrap" data-tip="Mentor por voz: toque na orbe e fale">
+            {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={72} onClose={() => setPanel(null)} /> : <VozOrbRepouso size={72} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+          </div>
         </div>
       </div>
 
@@ -446,7 +456,7 @@ export function StudyTools({
             )}
             {panel === "pdf" && (
               <div className="st-pdf">
-                <p className="st-pdf-txt">Reúne <b>só os seus post-its ativos</b> desta aula, na ordem da leitura, com o trecho, a sua anotação e a seção de origem. Nada é resumido nem reescrito.</p>
+                <p className="st-pdf-txt">Reúne <b>só os seus post-its ativos</b> desta aula, na ordem da leitura, com o trecho, a sua anotação, a explicação do trecho e a seção de origem. Nada é resumido nem reescrito.</p>
                 <button type="button" className="st-cta" onClick={generatePdf} disabled={busyPdf || count === 0} data-testid="st-gerar-pdf">
                   {busyPdf ? <><Loader2 className="size-4 animate-spin" aria-hidden /> Gerando…</> : <><FileText className="size-4" aria-hidden /> {pdfs.length ? "Gerar nova versão" : "Gerar meu PDF"} · {count} post-it{count === 1 ? "" : "s"}</>}
                 </button>
@@ -458,7 +468,12 @@ export function StudyTools({
                       {pdfs.map((v) => (
                         <li key={v.id}>
                           <span><b>v{v.pdfVersion}</b> · {fmt(v.createdAt)} · {v.items} post-it{v.items === 1 ? "" : "s"}</span>
-                          <a href={`/api/pdf/revisao/${v.id}`} download className="st-baixar" aria-label={`Baixar versão ${v.pdfVersion}`}><Download className="size-4" aria-hidden /> Baixar</a>
+                          <span className="st-acoes">
+                            <a href={`/api/pdf/revisao/${v.id}`} download className="st-baixar" aria-label={`Baixar versão ${v.pdfVersion}`}><Download className="size-4" aria-hidden /> Baixar</a>
+                            <button type="button" className={`st-excluir ${pdfSel === v.id ? "is-conf" : ""}`} onClick={() => void removePdf(v.id)} onBlur={() => setPdfSel((c) => (c === v.id ? null : c))} aria-label={pdfSel === v.id ? `Confirmar exclusão da versão ${v.pdfVersion}` : `Excluir versão ${v.pdfVersion}`} data-testid="st-pdf-excluir">
+                              <Trash2 className="size-4" aria-hidden />{pdfSel === v.id && " Excluir?"}
+                            </button>
+                          </span>
                         </li>
                       ))}
                     </ul>

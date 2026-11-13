@@ -32,6 +32,12 @@ const demoApi: StudyApi = {
     mem.splice(i, 1);
     return { ok: true, deleted: true as const };
   },
+  async removePdf(id: string) {
+    const i = pdfs.findIndex((x) => x.id === id);
+    if (i < 0) return { ok: false, error: "PDF não encontrado." };
+    pdfs.splice(i, 1);
+    return { ok: true, pdfs: [...pdfs] };
+  },
   async generatePdf() {
     if (!mem.length) return { ok: false, error: "Você ainda não tem post-its ativos nesta aula." };
     const hash = JSON.stringify(mem.map((m) => [m.quote, m.note]));

@@ -100,6 +100,13 @@ test.describe("barra de estudo e post-its", () => {
     await page.getByTestId("st-gerar-pdf").click();
     await expect(page.getByTestId("st-aviso")).toContainText("Nada mudou");
     await expect(page.getByTestId("st-versoes").locator("li")).toHaveCount(1);
+    await page.addStyleTag({ content: ".mentor-flut{display:none!important}" });
+    // Excluir a versão: pede confirmação (um toque arma, o segundo exclui).
+    await page.getByTestId("st-pdf-excluir").click();
+    await expect(page.getByTestId("st-versoes").locator("li")).toHaveCount(1);
+    await page.getByTestId("st-pdf-excluir").click();
+    await expect(page.getByTestId("st-versoes")).toHaveCount(0);
+    await expect(page.getByTestId("st-aviso")).toContainText("PDF excluído");
   });
 
   test("tocar na barra e selecionar cola o post-it ao lado da folha", async ({ page, isMobile }) => {

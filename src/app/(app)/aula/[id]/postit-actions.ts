@@ -3,7 +3,7 @@
 import { requireUser } from "@/server/auth";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
-import { createPostit, createPostitPdf, deletePostit, listPostitPdfs, updatePostitNote, type CreatePostitInput, type Postit, type PostitPdfInfo } from "@/server/services/postits";
+import { createPostit, createPostitPdf, deletePostit, deletePostitPdf, listPostitPdfs, updatePostitNote, type CreatePostitInput, type Postit, type PostitPdfInfo } from "@/server/services/postits";
 
 type R<T> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -42,5 +42,13 @@ export async function generatePostitPdfAction(lessonId: string): Promise<R<{ id:
   return guard("pdf", async () => {
     const r = await createPostitPdf(user.id, lessonId);
     return { ...r, pdfs: await listPostitPdfs(lessonId) };
+  });
+}
+
+export async function deletePostitPdfAction(id: string, lessonId: string): Promise<R<{ pdfs: PostitPdfInfo[] }>> {
+  const user = await requireUser();
+  return guard("pdf_delete", async () => {
+    await deletePostitPdf(user.id, id);
+    return { pdfs: await listPostitPdfs(lessonId) };
   });
 }
