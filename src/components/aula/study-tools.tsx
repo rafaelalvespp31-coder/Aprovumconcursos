@@ -417,17 +417,18 @@ export function StudyTools({
             <div className="st-bar-rotulo" aria-hidden><Wrench className="size-4" /><span className="st-rot-l">Barra de ferramentas</span><span className="st-rot-c">Ferramentas</span></div>
             <div className="st-pilula" role="toolbar" aria-label="Barra de ferramentas de estudo">
               <button type="button" className={`st-btn ${armed || panel === "lista" ? "is-on" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={onPostitButton} aria-label="Post-it de revisão" title="Post-it: toque e selecione o trecho" data-testid="st-postit">
-                <StickyNote className="size-5" aria-hidden /><span className="st-btn-txt">Post-it</span>
+                <StickyNote className="size-5" aria-hidden /><span className="st-btn-txt"><b>Post-it</b><small>Marcar trecho</small></span>
                 {count > 0 && <span className="st-badge" aria-hidden>{count}</span>}
               </button>
               <button type="button" className="st-btn" onMouseDown={(e) => e.preventDefault()} onClick={explain} aria-label="Explicar o trecho selecionado" title="Explicar com IA: selecione uma palavra ou trecho" data-testid="st-explicar">
-                <Lightbulb className="size-5" aria-hidden /><span className="st-btn-txt">Explicar</span>
+                <Lightbulb className="size-5" aria-hidden /><span className="st-btn-txt"><b>Explicar</b><small>Tirar dúvida</small></span>
               </button>
               <button type="button" className={`st-btn ${panel === "pdf" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "pdf" ? null : "pdf"))} aria-label="Meu PDF de Revisão" aria-expanded={panel === "pdf"} title="Meu PDF de Revisão" data-testid="st-pdf">
-                <FileText className="size-5" aria-hidden /><span className="st-btn-txt">Meu PDF</span>
+                <FileText className="size-5" aria-hidden /><span className="st-btn-txt"><b>Meu PDF</b><small>Revisão salva</small></span>
               </button>
               <div className="st-mentor-wrap">
                 {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={44} onClose={() => setPanel(null)} /> : <VozOrbRepouso size={44} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+                <span className="st-btn-txt st-mentor-txt" aria-hidden onClick={() => { if (panel !== "mentor") { currentCapture(); setPanel("mentor"); } }}><b>Mentor</b><small>Falar com o Mentor</small></span>
               </div>
             </div>
           </div>
