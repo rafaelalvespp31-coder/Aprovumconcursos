@@ -4,6 +4,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore
 import { createPortal } from "react-dom";
 import { Download, FileText, Lightbulb, Loader2, StickyNote, Trash2, Wrench, X } from "lucide-react";
 import { VozOrbRepouso } from "@/components/mentor/voz-orb-solo";
+import type { Bands } from "@/components/mentor/voz-orbe";
+import { VozOnda } from "./voz-onda";
 import { MentorVoz } from "@/components/mentor/mentor-voz";
 import type { StudyContext } from "@/domain/mentor/study-context";
 import { createPostitAction, deletePostitAction, deletePostitPdfAction, generatePostitPdfAction, updatePostitNoteAction } from "@/app/(app)/aula/[id]/postit-actions";
@@ -53,6 +55,7 @@ export function StudyTools({
   const [pdfs, setPdfs] = useState<PdfInfo[]>(initialPdfs);
   const [panel, setPanel] = useState<Panel>(null);
   const [mentorFala, setMentorFala] = useState(false);
+  const levelRef = useRef<(() => Bands) | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [armed, setArmed] = useState(false);
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -415,6 +418,7 @@ export function StudyTools({
       {(() => {
         const barra = (
           <div ref={barRef} className={`st-bar ${host ? "" : "is-solta"}`} data-st data-testid="st-dock">
+            <VozOnda level={levelRef} active={panel === "mentor" && mentorFala} />
             <div className="st-bar-rotulo" aria-hidden><Wrench className="size-4" /><span className="st-rot-l">Barra de ferramentas</span><span className="st-rot-c">Ferramentas</span></div>
             <div className="st-pilula" role="toolbar" aria-label="Barra de ferramentas de estudo">
               <button type="button" className={`st-btn ${armed || panel === "lista" ? "is-on" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={onPostitButton} aria-label="Post-it de revisão" title="Post-it: toque e selecione o trecho" data-testid="st-postit">
@@ -427,10 +431,8 @@ export function StudyTools({
               <button type="button" className={`st-btn ${panel === "pdf" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "pdf" ? null : "pdf"))} aria-label="Meu PDF de Revisão" aria-expanded={panel === "pdf"} title="Meu PDF de Revisão" data-testid="st-pdf">
                 <FileText className="size-5" aria-hidden /><span className="st-btn-txt"><b>Meu PDF</b><small>Gerar revisão</small></span>
               </button>
-              <div className="st-mentor-wrap" data-fala={panel === "mentor" && mentorFala ? "1" : undefined}>
-                {/* Filtro do "chiado": deforma a borda fina em ruído de voz enquanto o Mentor fala. */}
-                <svg width="0" height="0" aria-hidden focusable="false" style={{ position: "absolute" }}><filter id="st-chiado" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.03 0.9" numOctaves="2" result="n"><animate attributeName="baseFrequency" values="0.03 0.9;0.07 0.55;0.02 1.1;0.06 0.7;0.03 0.9" dur="0.42s" repeatCount="indefinite" calcMode="discrete" /></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G" /></filter></svg>
-                {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={46} onSpeaking={setMentorFala} onClose={() => { setMentorFala(false); setPanel(null); }} /> : <VozOrbRepouso size={46} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+              <div className="st-mentor-wrap">
+                {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={46} onSpeaking={setMentorFala} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setPanel(null); }} /> : <VozOrbRepouso size={46} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
                 <span className="st-btn-txt st-mentor-txt" aria-hidden onClick={() => { if (panel !== "mentor") { currentCapture(); setPanel("mentor"); } }}><b>Mentor</b><small>Falar com o Mentor</small></span>
               </div>
             </div>
