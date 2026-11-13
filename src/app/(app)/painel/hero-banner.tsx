@@ -27,8 +27,6 @@ export function HeroBanner({ name, extra = [] }: { name: string | null; extra?: 
             data-banner-main
           />
           <div className="ph-veu" aria-hidden />
-          <div className="ph-faixa ph-faixa-a" aria-hidden />
-          <div className="ph-faixa ph-faixa-b" aria-hidden />
           <div className="ph-mira" aria-hidden />
 
           <div className="ph-conteudo">

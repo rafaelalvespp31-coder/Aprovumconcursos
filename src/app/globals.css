@@ -1856,9 +1856,6 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .ph-arte { position: absolute; top: 0; left: 53%; height: 100%; width: auto; max-width: none; transform: translateX(-50%); object-fit: cover;
   -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 22%, #000 80%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0%, #000 22%, #000 80%, transparent 100%); }
 .ph-veu { position: absolute; inset: 0; background: linear-gradient(90deg, rgba(8,9,11,0.94) 0%, rgba(8,9,11,0.6) 32%, rgba(8,9,11,0) 50%, rgba(8,9,11,0.5) 72%, rgba(8,9,11,0.94) 100%); }
-.ph-faixa { position: absolute; top: -30%; height: 160%; transform: rotate(28deg); pointer-events: none; }
-.ph-faixa-a { left: 66%; width: 2.2cqw; background: linear-gradient(180deg, transparent, rgba(229, 9, 20, 0.9) 35%, rgba(185, 0, 11, 0.9) 70%, transparent); filter: drop-shadow(0 0 10px rgba(229, 9, 20, 0.45)); }
-.ph-faixa-b { left: 30%; width: 0.3cqw; background: linear-gradient(180deg, transparent, rgba(229, 9, 20, 0.7), transparent); }
 .ph-mira { position: absolute; left: 47%; bottom: 20%; width: 0.75cqw; height: 0.75cqw; border-radius: 999px; background: #E50914; box-shadow: 0 0 10px rgba(229, 9, 20, 0.9); }
 .ph-conteudo { position: relative; z-index: 1; display: grid; height: 100%; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2cqw; padding: 3.2cqw 3.6cqw 5cqw; }
 .ph-titulo { font-size: 4.6cqw; font-weight: 800; line-height: 1.05; letter-spacing: -0.02em; color: #fff; }
@@ -1880,7 +1877,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   .ph-conteudo { padding: 4cqw 5cqw 7.5cqw; }
   .ph-titulo { font-size: 7.2cqw; }
   .ph-sub { margin-top: 1.4cqw; max-width: 58cqw; font-size: 3.6cqw; }
-  .ph-desc, .ph-lema-texto, .ph-mira, .ph-faixa-b { display: none; }
+  .ph-desc, .ph-lema-texto, .ph-mira { display: none; }
   .ph-lema { justify-content: flex-end; }
   .ph-logo { width: 22cqw; }
   .painel-hero .br-controles { bottom: 2cqw; }
