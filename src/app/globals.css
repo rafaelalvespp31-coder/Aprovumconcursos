@@ -4305,3 +4305,12 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
   .cl-concursos { padding: 0; }
   .cl-concursos .ccx, .cl-concursos > * { margin: 0; border-radius: 0; }
 }
+
+/* Modo estudo/aula com o menu recolhido: só uma lingueta fina na borda (a seta); o nome aparece ao passar o mouse. Não cobre o texto. */
+.mt-abrir.mt-abrir-fino { top: 62%; gap: 0; padding: 14px 3px 14px 1px; border-radius: 0 8px 8px 0; opacity: 0.55; width: 18px; overflow: hidden; transition: width 0.2s ease, opacity 0.2s ease, transform 0.2s ease; }
+.mt-abrir.mt-abrir-fino span { display: none; }
+.mt-abrir.mt-abrir-fino svg { width: 14px; height: 14px; animation: none; }
+@media (hover: hover) {
+  .mt-abrir.mt-abrir-fino:hover, .mt-abrir.mt-abrir-fino:focus-visible { width: 96px; opacity: 1; padding: 8px 10px 8px 3px; transform: none; }
+  .mt-abrir.mt-abrir-fino:hover span, .mt-abrir.mt-abrir-fino:focus-visible span { display: inline; white-space: nowrap; }
+}

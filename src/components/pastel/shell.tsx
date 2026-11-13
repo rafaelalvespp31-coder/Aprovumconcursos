@@ -238,7 +238,7 @@ export function PastelShell({
             )}
           </aside>
           {collapsed && (
-            <button type="button" onClick={toggleCollapsed} className="mt-abrir max-lg:hidden" aria-label="Abrir menu lateral" data-testid="abrir-menu-lateral">
+            <button type="button" onClick={toggleCollapsed} className={`mt-abrir max-lg:hidden ${isAula || isStudy || isNovoEstudo ? "mt-abrir-fino" : ""}`} aria-label="Abrir menu lateral" data-testid="abrir-menu-lateral">
               <ChevronRight aria-hidden /><span>Abrir menu</span>
             </button>
           )}
