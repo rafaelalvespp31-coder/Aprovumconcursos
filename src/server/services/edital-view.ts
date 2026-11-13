@@ -2,6 +2,7 @@ import "server-only";
 import { createAdminClient } from "../supabase";
 import { disciplineLabel } from "@/ai/pedagogy";
 import { UserFacingError } from "./trails";
+import { orgImageFor } from "@/domain/edital/org-images";
 import { displayTitle } from "@/domain/edital/info";
 import { backfillInfo, refreshMatchesIfStale } from "./edital";
 import type { PrepStats, PrepStatus, PrepSummary } from "./edital";
@@ -49,7 +50,7 @@ const summaryOf = (r: Row): PrepSummary => ({
   title: displayTitle((r.contest_name as string | null) ?? null, r.file_name as string),
   contestName: (r.contest_name as string | null) ?? null,
   roleName: (r.role_name as string | null) ?? null,
-  orgLogo: (r.org_logo as string | null) ?? null,
+  orgLogo: orgImageFor(r.contest_name as string | null, r.role_name as string | null, r.file_name as string)?.logo ?? (r.org_logo as string | null) ?? null,
   board: (r.board as string | null) ?? null,
   year: (r.contest_year as number | null) ?? null,
   fileName: r.file_name as string,

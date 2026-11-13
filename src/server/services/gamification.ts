@@ -3,6 +3,7 @@ import sharp from "sharp";
 import { z } from "zod";
 import { createAdminClient, createUserClient } from "@/server/supabase";
 import { UFS, inferUf } from "@/domain/concursos";
+import { orgImageFor } from "@/domain/edital/org-images";
 import { computeMentor } from "@/server/services/mentor";
 import { lessonPct } from "@/domain/mentor/engine";
 import { UserFacingError } from "@/server/services/trails";
@@ -213,7 +214,7 @@ const toContest = (c: ContestRow): Contest => ({
   id: c.id, name: c.name, institution: c.institution, roleName: c.role_name, status: c.status, vacancies: c.vacancies,
   salary: c.salary, examDate: c.exam_date, examDateConfirmed: c.exam_date_confirmed, infoConfirmed: c.info_confirmed,
   sourceName: c.source_name, sourceUrl: c.source_url, infoUpdatedAt: c.info_updated_at,
-  imageUrl: c.image_path ? createAdminClient().storage.from("concursos").getPublicUrl(c.image_path).data.publicUrl : null,
+  imageUrl: orgImageFor(c.name, c.institution, c.orgao)?.card ?? (c.image_path ? createAdminClient().storage.from("concursos").getPublicUrl(c.image_path).data.publicUrl : null),
   uf: c.uf, orgao: c.orgao, banca: c.banca, education: c.education, city: c.city, location: c.location, description: c.description,
   registrationStart: c.registration_start, registrationEnd: c.registration_end, detailUrl: c.detail_url, featured: c.featured, forecast: c.forecast,
 });

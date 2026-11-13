@@ -1,4 +1,5 @@
 import "server-only";
+import { orgImageFor } from "@/domain/edital/org-images";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { createAdminClient } from "../supabase";
@@ -116,7 +117,7 @@ const toSummary = (r: Row): PrepSummary => ({
   roleOptions: Array.isArray(r.role_options) ? (r.role_options as unknown[]).filter((x): x is string => typeof x === "string") : [],
   contentChars: typeof r.programmatic_text === "string" ? r.programmatic_text.length : 0,
   ...(r.status === "conferencia" && typeof r.programmatic_text === "string" ? { programmaticText: r.programmatic_text } : {}),
-  orgLogo: (r.org_logo as string | null) ?? null,
+  orgLogo: orgImageFor(r.contest_name as string | null, r.role_name as string | null, r.file_name as string)?.logo ?? (r.org_logo as string | null) ?? null,
   board: (r.board as string | null) ?? null,
   year: (r.contest_year as number | null) ?? null,
   fileName: r.file_name as string,
