@@ -18,8 +18,6 @@ const LINE = rgb(0.85, 0.85, 0.86);
 const SOFT = rgb(0.965, 0.965, 0.97);
 const WHITE = rgb(1, 1, 1);
 const NOTE_BG = rgb(1, 0.965, 0.72);
-const EXPL_BG = RED;
-const EXPL_BAR = rgb(0.42, 0, 0);
 const NOTE_LINE = rgb(0.92, 0.82, 0.3);
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
@@ -246,48 +244,88 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       y -= nH;
     }
     if (it.explanation) {
-      // Explicação em tópicos: cada assunto separado (quadradinho + nome em cima, explicação embaixo).
-      type Row = { t: string; bold?: boolean; icon?: boolean; sub?: boolean; rule?: boolean; indent: number; h: number };
+      // Explicação visual: um cartão claro por assunto, com número colorido, título em destaque e definição embaixo.
+      // Cada assunto usa uma cor própria (vermelho, azul, âmbar, verde, roxo) só na barra, no número e no título.
+      const TONES = [rgb(0.85, 0.04, 0.0), rgb(0.12, 0.27, 0.65), rgb(0.72, 0.40, 0.0), rgb(0.08, 0.50, 0.28), rgb(0.47, 0.22, 0.74)];
+      const CARD = rgb(0.965, 0.968, 0.975);
+      const SUBTXT = rgb(0.2, 0.2, 0.22);
+      type Row = { t: string; bold?: boolean; num?: number; sub?: boolean; indent: number; h: number; blk: number; size?: number };
       const LHX = NS * LH;
       const rows: Row[] = [];
       const parts = parseExplanation(clean(it.explanation));
-      parts.forEach((pt, pi) => {
-        // Cada assunto vira um bloco próprio: linha fina separadora e respiro antes de começar o próximo.
-        if (pi > 0 && pt.kind !== "sub" && (pt.kind === "item" || parts[pi - 1]!.kind !== "p")) rows.push({ t: "", rule: true, indent: 0, h: 11 });
-        else if (pi > 0 && pt.kind === "sub") rows.push({ t: "", indent: 0, h: 4 });
+      let blk = -1;
+      let n = 0;
+      parts.forEach((pt) => {
+        if (pt.kind !== "sub") {
+          blk += 1;
+          if (pt.kind === "item") n += 1;
+        }
+        const b0 = blk;
         if (pt.kind === "p") {
-          for (const l of wrap(regular, pt.text, NS, innerW - 28)) rows.push({ t: l, indent: 0, h: LHX });
+          for (const l of wrap(regular, pt.text, NS, innerW - 36)) rows.push({ t: l, indent: 0, h: LHX, blk: b0 });
         } else if (pt.kind === "sub") {
-          wrap(bold, pt.term, NS + 0.5, innerW - 66).forEach((l, k) => rows.push({ t: l, bold: true, sub: k === 0, indent: 28, h: LHX }));
-          for (const l of wrap(regular, pt.text, NS, innerW - 66)) rows.push({ t: l, indent: 28, h: LHX });
+          rows.push({ t: "", indent: 0, h: 3, blk: b0 });
+          wrap(bold, pt.term, NS + 0.5, innerW - 92).forEach((l, k) => rows.push({ t: l, bold: true, sub: k === 0, indent: 40, h: LHX, blk: b0 }));
+          for (const l of wrap(regular, pt.text, NS, innerW - 92)) rows.push({ t: l, indent: 40, h: LHX, blk: b0, size: NS });
         } else if (pt.term) {
-          wrap(bold, pt.term.toUpperCase(), NS + 1, innerW - 44).forEach((l, k) => rows.push({ t: l, bold: true, icon: k === 0, indent: 14, h: LHX + 1 }));
-          for (const l of wrap(regular, pt.text, NS, innerW - 44)) rows.push({ t: l, indent: 14, h: LHX });
-        } else wrap(regular, pt.text, NS, innerW - 44).forEach((l, k) => rows.push({ t: l, icon: k === 0, indent: 14, h: LHX }));
+          wrap(bold, pt.term, NS + 2, innerW - 80).forEach((l, k) => rows.push({ t: l, bold: true, num: k === 0 ? n : undefined, indent: 26, h: LHX + 3, blk: b0, size: NS + 2 }));
+          for (const l of wrap(regular, pt.text, NS, innerW - 80)) rows.push({ t: l, indent: 26, h: LHX, blk: b0 });
+        } else wrap(regular, pt.text, NS, innerW - 80).forEach((l, k) => rows.push({ t: l, num: k === 0 ? n : undefined, indent: 26, h: LHX, blk: b0 }));
       });
+      const GAP = 7;
+      const PADV = 7;
       let k = 0;
       let first = true;
       while (k < rows.length) {
-        const head = first ? 22 : 8;
-        if (y - head - LHX - 12 < M.bottom) newPage();
-        const room = y - head - M.bottom - 8;
+        const head = first ? 26 : 6;
+        if (y - head - LHX - 2 * PADV - 10 < M.bottom) newPage();
+        const room = y - head - M.bottom - 10;
         let used = 0;
         let cnt = 0;
-        while (k + cnt < rows.length && (cnt === 0 || used + rows[k + cnt]!.h <= room)) used += rows[k + cnt++]!.h;
-        const chunk = rows.slice(k, k + cnt);
-        const h = head + used + 8;
-        page.drawRectangle({ x: M.left, y: y - h + 4, width: innerW, height: h, color: EXPL_BG });
-        page.drawRectangle({ x: M.left, y: y - h + 4, width: 2.5, height: h, color: EXPL_BAR });
-        if (first) page.drawText("EXPLICAÇÃO", { x: M.left + 14, y: y - 12, size: 7.5, font: bold, color: WHITE });
-        let yy = y - head;
-        for (const r of chunk) {
-          if (r.rule) page.drawLine({ start: { x: M.left + 14, y: yy - r.h / 2 }, end: { x: M.left + innerW - 14, y: yy - r.h / 2 }, thickness: 0.5, color: rgb(1, 0.72, 0.72), opacity: 0.7 });
-          if (r.t) page.drawText(r.t, { x: M.left + 14 + r.indent, y: yy - 2 - NS + 4, size: r.bold ? NS + 0.5 : NS, font: r.bold ? bold : regular, color: WHITE });
-          if (r.icon) page.drawRectangle({ x: M.left + 14, y: yy - 2 - NS + 4 + 1.2, width: 5, height: 5, color: WHITE });
-          if (r.sub) page.drawRectangle({ x: M.left + 14 + 14, y: yy - 2 - NS + 4 + 1.8, width: 3.2, height: 3.2, color: rgb(1, 0.78, 0.78) });
-          yy -= r.h;
+        let lastBlk = -1;
+        while (k + cnt < rows.length) {
+          const r = rows[k + cnt]!;
+          const extra = r.blk !== lastBlk ? (cnt === 0 ? 2 * PADV : 2 * PADV + GAP) : 0;
+          if (cnt > 0 && used + extra + r.h > room) break;
+          used += extra + r.h;
+          lastBlk = r.blk;
+          cnt += 1;
         }
-        y -= h;
+        const chunk = rows.slice(k, k + cnt);
+        if (first) {
+          page.drawRectangle({ x: M.left, y: y - 18, width: innerW, height: 18, color: INK });
+          page.drawRectangle({ x: M.left, y: y - 18, width: 4, height: 18, color: RED });
+          page.drawText("EXPLICAÇÃO", { x: M.left + 14, y: y - 12.5, size: 8, font: bold, color: WHITE });
+          page.drawText("assunto por assunto", { x: M.left + innerW - 14 - regular.widthOfTextAtSize("assunto por assunto", 7.5), y: y - 12.3, size: 7.5, font: regular, color: rgb(0.8, 0.8, 0.82) });
+        }
+        let yy = y - head;
+        let i = 0;
+        while (i < chunk.length) {
+          const bi = chunk[i]!.blk;
+          let j = i;
+          let hh = 0;
+          while (j < chunk.length && chunk[j]!.blk === bi) hh += chunk[j++]!.h;
+          const tone = TONES[bi % TONES.length]!;
+          const boxH = hh + 2 * PADV;
+          page.drawRectangle({ x: M.left, y: yy - boxH, width: innerW, height: boxH, color: CARD, borderColor: rgb(0.86, 0.87, 0.9), borderWidth: 0.6 });
+          page.drawRectangle({ x: M.left, y: yy - boxH, width: 4, height: boxH, color: tone });
+          let ry = yy - PADV;
+          for (let q = i; q < j; q++) {
+            const r = chunk[q]!;
+            const base = ry - NS - 1;
+            if (r.num != null) {
+              page.drawCircle({ x: M.left + 20, y: base + 3.6, size: 7.4, color: tone });
+              const ns = String(r.num);
+              page.drawText(ns, { x: M.left + 20 - bold.widthOfTextAtSize(ns, 8) / 2, y: base + 1, size: 8, font: bold, color: WHITE });
+            }
+            if (r.sub) page.drawRectangle({ x: M.left + 28, y: base + 2.2, width: 4, height: 4, color: tone });
+            if (r.t) page.drawText(r.t, { x: M.left + 8 + r.indent, y: base, size: r.size ?? (r.bold ? NS + 0.5 : NS), font: r.bold ? bold : regular, color: r.bold && r.num != null ? tone : r.bold ? INK : r.indent >= 40 ? SUBTXT : INK });
+            ry -= r.h;
+          }
+          yy -= boxH + GAP;
+          i = j;
+        }
+        y = yy + GAP;
         k += cnt;
         first = false;
         if (k < rows.length) newPage();
