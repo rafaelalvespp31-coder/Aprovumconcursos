@@ -122,9 +122,11 @@
 .st-aviso.is-erro { background: #b9000b; }
 @media (min-width: 1024px) { .st-aviso { bottom: 32px; } }
 
-/* Mentor por voz na aula: só a orbe, ao lado da bolinha */
+/* Mentor na aula: a própria orbe (sem cartão), com etiqueta */
 .st-mentor-wrap { position: relative; }
-.vz-solo { position: absolute; right: calc(100% + 6px); top: 50%; translate: 0 -50%; display: flex; flex-direction: column; align-items: center; width: 150px; pointer-events: none; }
-.vz-solo-orb { position: relative; width: 150px; height: 150px; pointer-events: auto; border-radius: 999px; overflow: visible; }
-.vz-solo-orb:focus-visible { outline: 2px solid #e50914; outline-offset: 4px; }
-.vz-solo-aviso { margin: -4px 0 0; max-width: 190px; padding: 6px 10px; border-radius: 10px; background: #111; color: #fff; font-size: 12px; font-weight: 600; text-align: center; pointer-events: auto; }
+.vz-solo { position: relative; display: flex; flex-direction: column; align-items: center; width: 96px; }
+.vz-solo-orb { position: relative; display: block; width: 96px; height: 96px; border-radius: 999px; background: none; border: 0; padding: 0; cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.vz-solo-orb canvas { pointer-events: none; }
+.vz-solo-orb:focus-visible { outline: 2px solid #e50914; outline-offset: 2px; }
+.vz-solo-rotulo { margin-top: -6px; padding: 2px 9px; border-radius: 999px; background: #0a0a0a; color: #fff; border: 1px solid rgba(229, 9, 20, 0.8); font-size: 10px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4); white-space: nowrap; pointer-events: none; }
+.vz-solo-aviso { position: absolute; right: calc(100% + 4px); top: 18px; width: max-content; max-width: 170px; margin: 0; padding: 6px 10px; border-radius: 10px; background: #111; color: #fff; font-size: 12px; font-weight: 600; box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4); pointer-events: none; }

@@ -166,7 +166,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       lessonTitle={lesson.title}
       subject={lesson.study_trails.scope_summary?.subject ?? (discipline && discipline !== "outra" ? disciplineLabel(discipline) ?? null : null)}
       sectionOrder={sections.map((s) => s.id)}
-      initialPostits={postits.map((p) => ({ id: p.id, sectionId: p.sectionId, sectionTitle: p.sectionTitle, quote: p.quote, quoteStart: p.quoteStart, note: p.note, createdAt: p.createdAt }))}
+      initialPostits={postits.map((p) => ({ id: p.id, sectionId: p.sectionId, sectionTitle: p.sectionTitle, quote: p.quote, quoteStart: p.quoteStart, note: p.note, explanation: p.explanation, createdAt: p.createdAt }))}
       initialPdfs={postitPdfs}
     />
     <LessonReader

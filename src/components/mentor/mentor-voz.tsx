@@ -97,7 +97,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     return { f0, voiced, vol: gate(Math.max(o.vol, m.vol)), low: gate(Math.max(o.low, m.low)), mid: gate(Math.max(o.mid, m.mid)), high: gate(Math.max(o.high, m.high)), me: gate(o.vol), mic: gate(m.vol) };
   }, []);
 
-  const carregar = useCallback(async () => {
+  const carregar = useCallback(async (force = false) => {
     try {
       const r = await fetch("/api/mentor/voz", { cache: "no-store" });
       const j = (await r.json()) as { status?: Status; error?: string };
@@ -106,14 +106,16 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       setLimit(s.limit);
       setLeft(s.left);
       setUnlimited(!!s.unlimited);
-      setFase(!s.available ? (s.reason === "plano" ? "plano" : "indisponivel") : s.left <= 0 ? "esgotado" : "pronto");
+      const next: Fase = !s.available ? (s.reason === "plano" ? "plano" : "indisponivel") : s.left <= 0 ? "esgotado" : "pronto";
+      setFase((f) => (force || f === "carregando" ? next : f));
     } catch {
       setMsg("Não foi possível carregar o Mentor por voz.");
-      setFase("erro");
+      setFase((f) => (force || f === "carregando" ? "erro" : f));
     }
   }, []);
 
   useEffect(() => {
+    void fetch("/voz-worklet.js").catch(() => undefined); // aquece o cache: a conversa começa mais rápido
     // eslint-disable-next-line react-hooks/set-state-in-effect -- carga inicial do saldo de voz
     void carregar();
   }, [carregar]);
@@ -243,16 +245,26 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     const r = ref.current;
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("mic");
-      // O microfone é pedido antes de gastar o tempo do dia.
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
+      // Microfone e liberação da conversa andam juntos (responde mais rápido). Se o microfone falhar,
+      // a reserva de tempo é devolvida na hora (seconds: 0).
+      const startReq = fetch("/api/mentor/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "start", study: getStudy?.() ?? undefined }) });
+      const [micR, resR] = await Promise.allSettled([
+        navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }),
+        startReq,
+      ]);
+      const parse = async () => (resR.status === "fulfilled" ? ((await resR.value.json().catch(() => ({}))) as { session?: { token: string; model: string; voice: string; left: number; limit: number; unlimited?: boolean }; error?: string; code?: string }) : {});
+      const j = await parse();
+      if (micR.status === "rejected") {
+        if (j.session) void fetch("/api/mentor/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "end", seconds: 0 }) }).catch(() => undefined);
+        throw micR.reason;
+      }
+      const stream = micR.value;
       r.stream = stream;
-      const res = await fetch("/api/mentor/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "start", study: getStudy?.() ?? undefined }) });
-      const j = (await res.json()) as { session?: { token: string; model: string; voice: string; left: number; limit: number; unlimited?: boolean }; error?: string; code?: string };
-      if (!res.ok || !j.session) {
+      if (resR.status !== "fulfilled" || !resR.value.ok || !j.session) {
         stream.getTracks().forEach((t) => t.stop());
         r.stream = null;
         setMsg(j.error ?? "Não foi possível iniciar agora.");
-        if (j.code === "plan_limit") void carregar();
+        if (j.code === "plan_limit") void carregar(true);
         else setFase("pronto");
         return;
       }
@@ -341,12 +353,12 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   // Aberto por um clique do aluno (bolinha da aula): começa assim que o saldo carrega, uma vez só.
   const autoFeito = useRef(false);
   useEffect(() => {
-    if (!autoStart || autoFeito.current || fase !== "pronto") return;
+    if (!autoStart || autoFeito.current) return;
     autoFeito.current = true;
     void iniciar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStart, fase]);
+  }, [autoStart]);
 
-  if (orbOnly) return <VozOrbSolo fase={fase} msg={msg} level={nivel} onStart={() => void iniciar()} onClose={() => onClose?.()} />;
+  if (orbOnly) return <VozOrbSolo fase={fase} speaking={speaking} msg={msg} level={nivel} onStart={() => void iniciar()} onClose={() => onClose?.()} />;
   return <VozView fase={fase} left={left} limit={limit} unlimited={unlimited} speaking={speaking} msg={msg} level={nivel} base={base} onStart={() => void iniciar()} onStop={() => void encerrar("usuario")} />;
 }

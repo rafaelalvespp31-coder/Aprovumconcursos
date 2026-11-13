@@ -7,6 +7,8 @@ import { auditLog, logEvent } from "../observability";
 import { practiceToMarkdown } from "@/domain/content/practice";
 import { POSTIT_NOTE_MAX, POSTIT_QUOTE_MAX, POSTIT_QUOTE_MIN, cleanPostitText, findQuoteSection, type QuoteSection } from "@/domain/study/postit-quote";
 import { disciplineLabel } from "@/ai/pedagogy";
+import { explainCacheKey } from "@/domain/study/explain-cache";
+import { matchKey } from "@/domain/study/postit-quote";
 import type { PostitPdfSnapshot } from "../pdf/postit-types";
 
 export interface Postit {
@@ -17,6 +19,8 @@ export interface Postit {
   quote: string;
   quoteStart: number;
   note: string;
+  /** Explicação (modo Explicar) deste trecho, quando o aluno pediu. */
+  explanation: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -27,11 +31,11 @@ export interface PostitPdfInfo {
   items: number;
 }
 
-const COLS = "id, lesson_id, section_id, section_title, quote, quote_start, note, created_at, updated_at";
-type Row = { id: string; lesson_id: string; section_id: string | null; section_title: string | null; quote: string; quote_start: number; note: string; created_at: string; updated_at: string };
+const COLS = "id, lesson_id, section_id, section_title, quote, quote_start, note, explanation, created_at, updated_at";
+type Row = { id: string; lesson_id: string; section_id: string | null; section_title: string | null; quote: string; quote_start: number; note: string; explanation: string | null; created_at: string; updated_at: string };
 const toPostit = (r: Row): Postit => ({
   id: r.id, lessonId: r.lesson_id, sectionId: r.section_id, sectionTitle: r.section_title, quote: r.quote,
-  quoteStart: r.quote_start, note: r.note, createdAt: r.created_at, updatedAt: r.updated_at,
+  quoteStart: r.quote_start, note: r.note, explanation: r.explanation ?? "", createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
 const createSchema = z.object({
@@ -40,6 +44,7 @@ const createSchema = z.object({
   quote: z.string().min(1).max(POSTIT_QUOTE_MAX * 2),
   quoteStart: z.number().int().min(0).max(1_000_000).default(0),
   note: z.string().max(POSTIT_NOTE_MAX * 2).default(""),
+  around: z.string().max(2000).optional(),
 });
 export type CreatePostitInput = z.input<typeof createSchema>;
 
@@ -109,7 +114,35 @@ export async function createPostit(userId: string, input: CreatePostitInput): Pr
     await logEvent("postit.create_failed", { lessonId: lesson.id, error: ins.error.message });
     throw new Error(`criar post-it: ${ins.error.message}`);
   }
-  return { postit: toPostit(ins.data as Row), duplicate: false };
+  const created = toPostit(ins.data as Row);
+  const expl = await cachedExplanation(quote, p.around ?? "");
+  if (expl) {
+    const up = await createAdminClient().from("lesson_postits").update({ explanation: expl }).eq("id", created.id).eq("user_id", userId);
+    if (!up.error) created.explanation = expl;
+  }
+  return { postit: created, duplicate: false };
+}
+
+/** Explicação já gerada para este trecho (cache do modo Explicar): sem nova chamada de IA. */
+async function cachedExplanation(quote: string, around: string): Promise<string> {
+  const admin = createAdminClient();
+  const flat = quote.replace(/\s+/g, " ").trim();
+  const byKey = await admin.from("selection_explanations").select("meaning").eq("key", explainCacheKey(flat, around)).maybeSingle();
+  if (byKey.data?.meaning) return String(byKey.data.meaning).slice(0, 1500);
+  const bySel = await admin.from("selection_explanations").select("meaning").eq("selection", flat.slice(0, 600)).limit(1).maybeSingle();
+  return bySel.data?.meaning ? String(bySel.data.meaning).slice(0, 1500) : "";
+}
+
+/** Chamado pelo modo Explicar: guarda a explicação nos post-its ativos do mesmo trecho nesta aula. */
+export async function attachExplanation(userId: string, lessonId: string, selection: string, meaning: string): Promise<string[]> {
+  const key = matchKey(selection);
+  if (key.length < 2 || !meaning) return [];
+  const admin = createAdminClient();
+  const r = await admin.from("lesson_postits").select("id, quote").eq("user_id", userId).eq("lesson_id", lessonId).eq("status", "ativo");
+  const ids = ((r.data ?? []) as Array<{ id: string; quote: string }>).filter((x) => matchKey(x.quote) === key).map((x) => x.id);
+  if (!ids.length) return [];
+  await admin.from("lesson_postits").update({ explanation: meaning.slice(0, 1500) }).in("id", ids).eq("user_id", userId);
+  return ids;
 }
 
 export async function updatePostitNote(userId: string, idIn: string, noteIn: string): Promise<Postit> {
@@ -186,7 +219,7 @@ export async function createPostitPdf(userId: string, lessonIdIn: string): Promi
     generatedAt: new Date().toISOString(),
     student: { name: (prof.data?.display_name as string | null | undefined) ?? null },
     lesson: { id: lesson.id, title: lesson.title, subject: subject ?? null, trailTitle: trail?.title ?? null },
-    items: postits.map((p, i) => ({ n: i + 1, sectionTitle: p.sectionTitle, quote: p.quote, note: p.note, createdAt: p.createdAt })),
+    items: postits.map((p, i) => ({ n: i + 1, sectionTitle: p.sectionTitle, quote: p.quote, note: p.note, explanation: p.explanation, createdAt: p.createdAt })),
   };
   const hash = hashOf(snapshot);
 

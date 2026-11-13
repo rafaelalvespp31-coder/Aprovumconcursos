@@ -12,6 +12,7 @@ const snap = (n: number): PostitPdfSnapshot => ({
     sectionTitle: i % 2 ? "Etapas da custódia" : "Conceito",
     quote: `A cadeia de custódia é o conjunto de procedimentos — rastreabilidade, idoneidade e não-contaminação (ação ${i + 1}). `.repeat(i === 2 ? 30 : 1).trim(),
     note: i % 2 ? "Cai muito: lembrar das 10 etapas do art. 158-B do CPP." : "",
+    explanation: i % 3 === 0 ? "Significa o registro de todo o caminho percorrido pelo vestígio, da coleta ao descarte, para garantir que a prova não foi alterada. ".repeat(i === 3 ? 12 : 1).trim() : "",
     createdAt: "2026-11-12T10:00:00.000Z",
   })),
 });

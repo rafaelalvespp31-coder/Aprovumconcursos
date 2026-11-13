@@ -17,6 +17,7 @@ import { explainSelection } from "@/ai/services";
 import { enforceRateLimit } from "@/server/services/trails";
 import { createAdminClient } from "@/server/supabase";
 import { explainCacheKey } from "@/domain/study/explain-cache";
+import { attachExplanation } from "@/server/services/postits";
 
 export async function generateLessonAction(lessonId: string) {
   const user = await requireUser();
@@ -182,12 +183,14 @@ export async function explainSelectionAction(input: { lessonId: string; selectio
     const hit = await admin.from("selection_explanations").select("meaning, hits").eq("key", key).maybeSingle().then((r) => r.data as { meaning: string; hits: number } | null, () => null);
     if (hit?.meaning) {
       void admin.from("selection_explanations").update({ hits: hit.hits + 1, last_used_at: new Date().toISOString() }).eq("key", key).then(() => undefined, () => undefined);
+      await attachExplanation(user.id, parsed.data.lessonId, parsed.data.selection, hit.meaning).catch(() => undefined);
       return { ok: true, meaning: hit.meaning };
     }
     if (!aiEnabled("estudos")) return { ok: false, error: "O explicador está temporariamente indisponível. Tente de novo mais tarde." };
     await enforceRateLimit(user.id, "explain_selection", 20);
     const meaning = await explainSelection(getAIProvider("estudos"), { lessonTitle: (data as { title: string }).title, selection: parsed.data.selection, around: parsed.data.around });
     await admin.from("selection_explanations").upsert({ key, selection: parsed.data.selection.slice(0, 600), meaning: meaning.slice(0, 900) }, { onConflict: "key" }).then(() => undefined, () => undefined);
+    await attachExplanation(user.id, parsed.data.lessonId, parsed.data.selection, meaning).catch(() => undefined);
     return { ok: true, meaning };
   } catch (e) {
     if (e instanceof UserFacingError) return { ok: false, error: e.message };

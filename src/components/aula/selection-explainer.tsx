@@ -65,6 +65,7 @@ export function SelectionExplainer({ lessonId, explain }: { lessonId: string; ex
     const slow = new Promise<{ ok: false; error: string }>((res) => setTimeout(() => res({ ok: false, error: "Demorou demais para responder. Tente de novo." }), 45_000));
     const r = await Promise.race([explain({ lessonId, selection: b.text, around: b.around }), slow]).catch(() => ({ ok: false as const, error: "Sem conexão. Tente de novo." }));
     if (id !== seq.current) return;
+    if (r.ok) window.dispatchEvent(new CustomEvent("aprovum:explicado", { detail: { selection: b.text, meaning: r.meaning } }));
     setBalloon({ ...at, text: b.text, state: r.ok ? "ok" : "erro", body: r.ok ? r.meaning : r.error });
   };
 

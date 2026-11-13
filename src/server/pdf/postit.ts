@@ -17,6 +17,7 @@ const LINE = rgb(0.85, 0.85, 0.86);
 const SOFT = rgb(0.965, 0.965, 0.97);
 const WHITE = rgb(1, 1, 1);
 const NOTE_BG = rgb(1, 0.965, 0.72);
+const EXPL_BG = rgb(0.94, 0.95, 0.97);
 const NOTE_LINE = rgb(0.92, 0.82, 0.3);
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
@@ -148,6 +149,27 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       page.drawText("MINHA ANOTAÇÃO", { x: M.left + 22, y: y - 10, size: 6.5, font: bold, color: MUTED });
       noteLines.forEach((l, k) => page.drawText(l, { x: M.left + 22, y: y - 22 - k * NS * LH, size: NS, font: italic, color: INK }));
       y -= nH + 6;
+    }
+    // Explicação do trecho (modo Explicar), logo abaixo do post-it
+    if (it.explanation) {
+      const exLines = wrap(regular, clean(it.explanation), NS, innerW - 40);
+      let k = 0;
+      let first = true;
+      while (k < exLines.length) {
+        const head = first ? 22 : 8;
+        if (y - head - NS * LH - 12 < M.bottom) newPage();
+        const fit = Math.max(1, Math.floor((y - head - M.bottom - 8) / (NS * LH)));
+        const chunk = exLines.slice(k, k + fit);
+        const h = head + chunk.length * NS * LH + 8;
+        page.drawRectangle({ x: M.left + 12, y: y - h + 4, width: innerW - 12, height: h, color: EXPL_BG });
+        page.drawRectangle({ x: M.left + 12, y: y - h + 4, width: 2, height: h, color: RED });
+        if (first) page.drawText("EXPLICAÇÃO DO TRECHO", { x: M.left + 24, y: y - 11, size: 6.5, font: bold, color: MUTED });
+        chunk.forEach((l, j) => page.drawText(l, { x: M.left + 24, y: y - head - 2 - j * NS * LH - NS + 4, size: NS, font: regular, color: INK }));
+        y -= h + 4;
+        k += chunk.length;
+        first = false;
+        if (k < exLines.length) newPage();
+      }
     }
     y -= 14;
   }

@@ -10,6 +10,8 @@ export interface PostitView {
   quote: string;
   quoteStart: number;
   note: string;
+  /** Explicação do modo Explicar para este trecho (vai para o PDF). */
+  explanation?: string;
   createdAt: string;
   /** Ainda sendo salvo no servidor (otimista). */
   pending?: boolean;
@@ -78,6 +80,13 @@ export function PostitCard({
         <button type="button" className="pi-link" onClick={() => setFull((v) => !v)} aria-expanded={full}>
           <ChevronDown className={`size-3.5 transition-transform ${full ? "rotate-180" : ""}`} aria-hidden /> {full ? "Recolher trecho" : "Ver trecho completo"}
         </button>
+      )}
+
+      {p.explanation && (
+        <div className="pi-explica" data-testid="postit-explicacao">
+          <b>Explicação</b>
+          <p>{p.explanation}</p>
+        </div>
       )}
 
       <label className="pi-nota">

@@ -1,6 +1,6 @@
 "use client";
 
-import { VozOrbe, type Bands } from "./voz-orbe";
+import { SILENCE, VozOrbe, type Bands } from "./voz-orbe";
 import type { Conexao } from "./skull-orb-fx";
 import type { Fase } from "./voz-view";
 
@@ -8,21 +8,48 @@ const AVISO: Partial<Record<Fase, string>> = {
   plano: "Mentor por voz: planos pagos",
   esgotado: "Seus 3 minutos de hoje acabaram",
   indisponivel: "Voz indisponível agora",
-  erro: "Não foi possível conectar. Toque para tentar",
 };
+const ORB = 96;
 
-/** Só a orbe animada (sem cartão): reage à voz; tocar nela encerra a conversa. */
-export function VozOrbSolo({ fase, msg, level, onStart, onClose }: { fase: Fase; msg: string | null; level: () => Bands; onStart: () => void; onClose: () => void }) {
+const rotulo = (fase: Fase, speaking: boolean) =>
+  fase === "ao-vivo" ? (speaking ? "Mentor falando" : "Mentor ouvindo") : fase === "conectando" ? "Conectando…" : "Mentor";
+
+/**
+ * O Mentor na barra de estudo: a própria orbe animada (sem cartão ao redor), com a etiqueta "Mentor"
+ * para o aluno saber quem é. Ativa, reage à voz; tocar encerra. Parada, tocar inicia a conversa.
+ */
+export function VozOrbSolo({
+  fase, speaking = false, msg, level, onStart, onClose,
+}: {
+  fase: Fase;
+  speaking?: boolean;
+  msg: string | null;
+  level: () => Bands;
+  onStart: () => void;
+  onClose: () => void;
+}) {
   const conn: Conexao = fase === "ao-vivo" ? "live" : fase === "conectando" ? "connecting" : fase === "erro" ? "error" : "off";
-  const aviso = fase === "erro" && msg ? msg : AVISO[fase];
-  const act = fase === "erro" || fase === "encerrada" || fase === "pronto" ? onStart : onClose;
+  const aviso = fase === "erro" && msg ? msg : msg && fase === "pronto" ? msg : AVISO[fase];
+  const parado = fase === "erro" || fase === "encerrada" || fase === "pronto";
   return (
     <div className="vz-solo" data-testid="mentor-orb-solo" data-fase={fase}>
-      <button type="button" className="vz-solo-orb" onClick={act} aria-label={fase === "ao-vivo" ? "Encerrar conversa com o Mentor" : fase === "erro" || fase === "pronto" || fase === "encerrada" ? "Falar com o Mentor" : "Fechar o Mentor"}>
-        <VozOrbe level={level} dim={fase === "plano" || fase === "indisponivel" || fase === "carregando" || fase === "esgotado"} size={150} conn={conn} />
+      <button type="button" className="vz-solo-orb" onClick={parado ? onStart : onClose} aria-label={fase === "ao-vivo" ? "Encerrar a conversa com o Mentor" : parado ? "Falar com o Mentor" : "Fechar o Mentor"}>
+        <VozOrbe level={level} dim={fase === "plano" || fase === "indisponivel" || fase === "esgotado"} size={ORB} conn={conn} />
       </button>
+      <span className="vz-solo-rotulo" aria-live="polite">{rotulo(fase, speaking)}</span>
       {aviso && <p className="vz-solo-aviso" role="status">{aviso}</p>}
-      <span className="sr-only" aria-live="polite">{fase === "ao-vivo" ? "Mentor ouvindo. Pode falar." : fase === "conectando" ? "Conectando ao Mentor." : ""}</span>
+    </div>
+  );
+}
+
+/** Orbe parada (antes de tocar): mesma aparência, sem áudio. */
+export function VozOrbRepouso({ onStart }: { onStart: () => void }) {
+  return (
+    <div className="vz-solo" data-testid="mentor-orb-repouso">
+      <button type="button" className="vz-solo-orb" onClick={onStart} aria-label="Falar com o Mentor por voz" data-testid="st-mentor">
+        <VozOrbe level={() => SILENCE} size={ORB} conn="off" />
+      </button>
+      <span className="vz-solo-rotulo">Mentor</span>
     </div>
   );
 }

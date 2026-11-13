@@ -2,15 +2,16 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Download, FileText, Lightbulb, Loader2, StickyNote, X } from "lucide-react";
-import { MentorIcone } from "@/components/mentor/mentor-icone";
+import { VozOrbRepouso } from "@/components/mentor/voz-orb-solo";
 import { MentorVoz } from "@/components/mentor/mentor-voz";
 import type { StudyContext } from "@/domain/mentor/study-context";
 import { createPostitAction, deletePostitAction, generatePostitPdfAction, updatePostitNoteAction } from "@/app/(app)/aula/[id]/postit-actions";
 import { PostitCard, type PostitView } from "./postit-card";
+import { matchKey } from "@/domain/study/postit-quote";
 import { caretAt, locateRange, readSelection, type Capture } from "./postit-dom";
 
 type PdfInfo = { id: string; pdfVersion: number; createdAt: string; items: number };
-type PostitDto = { id: string; sectionId: string | null; sectionTitle: string | null; quote: string; quoteStart: number; note: string; createdAt: string };
+type PostitDto = { explanation?: string; id: string; sectionId: string | null; sectionTitle: string | null; quote: string; quoteStart: number; note: string; createdAt: string };
 
 /** Contrato com o servidor. Na galeria de design entra uma versão em memória; no app, as ações reais. */
 export interface StudyApi {
@@ -238,13 +239,13 @@ export function StudyTools({
     setPostits((l) => sortPostits([...l, tmp]));
     window.getSelection()?.removeAllRanges();
     lastCap.current = null;
-    const r = await api.create({ lessonId, sectionId: cap.sectionId, quote: cap.quote, quoteStart: cap.quoteStart, note: "" });
+    const r = await api.create({ lessonId, sectionId: cap.sectionId, quote: cap.quote, quoteStart: cap.quoteStart, note: "", around: cap.around });
     if (!r.ok) {
       setPostits((l) => l.filter((x) => x.id !== tmp.id));
       say(r.error, "erro");
       return;
     }
-    const real: PostitView = { id: r.postit.id, sectionId: r.postit.sectionId, sectionTitle: r.postit.sectionTitle, quote: r.postit.quote, quoteStart: r.postit.quoteStart, note: r.postit.note, createdAt: r.postit.createdAt };
+    const real: PostitView = { id: r.postit.id, sectionId: r.postit.sectionId, sectionTitle: r.postit.sectionTitle, quote: r.postit.quote, quoteStart: r.postit.quoteStart, note: r.postit.note, explanation: r.postit.explanation, createdAt: r.postit.createdAt };
     setPostits((l) => {
       const without = l.filter((x) => x.id !== tmp.id && x.id !== real.id);
       return sortPostits([...without, real]);
@@ -287,6 +288,18 @@ export function StudyTools({
     say("Post-it excluído. O texto da aula não mudou.");
     return true;
   }, [say, api]);
+
+  // O modo Explicar acabou de explicar um trecho: se ele tem post-it, a explicação passa a valer nele (e no PDF).
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ selection?: string; meaning?: string }>).detail;
+      if (!d?.selection || !d.meaning) return;
+      const k = matchKey(d.selection);
+      setPostits((l) => l.map((x) => (matchKey(x.quote) === k ? { ...x, explanation: d.meaning } : x)));
+    };
+    window.addEventListener("aprovum:explicado", on);
+    return () => window.removeEventListener("aprovum:explicado", on);
+  }, []);
 
   // Toque no trecho marcado abre o post-it.
   useEffect(() => {
@@ -383,11 +396,8 @@ export function StudyTools({
             <FileText className="size-5" aria-hidden />
           </button>
         </div>
-        <div className="st-mentor-wrap">
-          <button type="button" className={`st-mentor ${panel === "mentor" ? "is-on" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={() => { currentCapture(); setPanel((p) => (p === "mentor" ? null : "mentor")); }} aria-label="Falar com o Mentor por voz" aria-expanded={panel === "mentor"} data-tip="Mentor por voz" data-testid="st-mentor">
-            <MentorIcone size={50} />
-          </button>
-          {panel === "mentor" && <MentorVoz getStudy={getStudy} autoStart orbOnly onClose={() => setPanel(null)} />}
+        <div className="st-mentor-wrap" data-tip="Mentor por voz: toque na orbe e fale">
+          {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly onClose={() => setPanel(null)} /> : <VozOrbRepouso onStart={() => { currentCapture(); setPanel("mentor"); }} />}
         </div>
       </div>
 

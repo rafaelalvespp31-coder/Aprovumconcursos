@@ -119,6 +119,17 @@ test.describe("barra de estudo e post-its", () => {
     }
   });
 
+  test("a explicação do trecho acompanha o post-it (antes ou depois de criá-lo)", async ({ page }) => {
+    await abrirModulo(page);
+    const trecho = await primeiroTrecho(page);
+    await selecionar(page, trecho);
+    await expect(page.getByTestId("explicar-botao")).toBeVisible();
+    await page.getByTestId("st-explicar").click();
+    await expect(page.getByTestId("explicar-resposta")).toContainText("Explicação de exemplo");
+    await page.getByTestId("st-postit").click();
+    await expect(page.getByTestId("postit-explicacao")).toContainText("Explicação de exemplo");
+  });
+
   test("seleção em duas seções é recusada", async ({ page }) => {
     await abrirModulo(page);
     await page.evaluate(() => {
@@ -161,11 +172,14 @@ test.describe("barra de estudo e post-its", () => {
     await page.addStyleTag({ content: ".mentor-flut{display:none!important}" });
     await page.getByTestId("st-mentor").click();
     await expect(page.getByTestId("mentor-orb-solo")).toBeVisible();
+    await expect(page.getByTestId("mentor-orb-solo")).toContainText(/mentor|conectando/i);
     await expect(page.getByTestId("st-painel-mentor")).toHaveCount(0);
     await expect(page.getByTestId("voz-iniciar")).toHaveCount(0);
     await expect(page).toHaveURL(/\/dev\/galeria\/aula/);
     await expect.poll(() => body.study?.lessonId ?? "", { timeout: 4000 }).toMatch(/[0-9a-f-]{36}|^$/);
-    await page.getByTestId("st-mentor").click();
-    await expect(page.getByTestId("mentor-orb-solo")).toHaveCount(0);
+    // Sem microfone real na galeria a sessão falha: tocar na orbe tenta de novo (nunca abre cartão).
+    await page.getByTestId("mentor-orb-solo").locator("button").click();
+    await expect(page.getByTestId("st-painel-mentor")).toHaveCount(0);
+    await expect(page.getByTestId("mentor-orb-solo")).toBeVisible();
   });
 });
