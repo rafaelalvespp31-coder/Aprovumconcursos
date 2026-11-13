@@ -535,7 +535,7 @@ function splitItem(title: string): { head: string; items: string[] } {
     const items = t.slice(i + 1).split(/\s*;\s*/).map((x) => x.trim().replace(/\.$/, "")).filter(Boolean);
     if (items.length >= 2) return { head: t.slice(0, i), items };
   }
-  return { head: t, items: [] };
+  return { head: t.replace(/\s*:$/, ""), items: [] };
 }
 
 /** Conteúdo programático completo do edital, por disciplina, numerado e em tópicos. */
@@ -556,32 +556,47 @@ function syllabusSection(d: Doc, toc: TocItem[], n: number, disciplines: Syllabu
     d.right(`${disc.topics.length} assunto${disc.topics.length === 1 ? "" : "s"}`, W - MX - 12, d.y - 22.5, 8.5, d.f.bold, WHITE);
     d.y -= h + 12;
     if (!disc.topics.length) { note(d, "Nenhum assunto identificado nesta disciplina."); return; }
-    disc.topics.forEach((t, ti) => {
-      const indent = Math.max(0, Math.min(2, t.depth - 1)) * 12;
-      const x0 = MX + indent, wCard = CW - indent;
+    // Hierarquia do edital: o nível mais raso da matéria é TÓPICO (N.1, N.2…); o que vem mais fundo é SUBTÓPICO do tópico acima (N.1.1, N.1.1.1…).
+    const minDepth = Math.min(...disc.topics.map((t) => t.depth));
+    const counters: number[] = [];
+    let prev = -1;
+    const deep = rgb(col.red * 0.55, col.green * 0.55, col.blue * 0.55);
+    const sub = (label: string, text: string, level: number, lesson: boolean | null) => {
+      const ind = 22 + (level - 1) * 16;
+      const il = d.wrap(text, 8.5, CW - ind - 44 - label.length * 4 - (lesson === null ? 0 : 50), d.f.regular, 5);
+      const ih = il.length * 11 + 9;
+      d.ensure(ih + 4);
+      d.card(MX + ind, d.y - ih, CW - ind, ih, tint(col, 0.1), 6, tint(col, 0.4));
+      d.rect(MX + ind, d.y - ih + 5, 3, ih - 10, col);
+      d.text(label, MX + ind + 10, d.y - 12, 7, d.f.bold, col);
+      il.forEach((l, k) => d.text(l, MX + ind + 22 + label.length * 4, d.y - 12 - k * 11, 8.5, d.f.regular, GRAPHITE));
+      if (lesson !== null) d.right(lesson ? "COM AULA" : "SEM AULA", W - MX - 8, d.y - 12, 6, d.f.bold, lesson ? GREEN : FAINT);
+      d.y -= ih + 3;
+    };
+    disc.topics.forEach((t) => {
+      const level = Math.max(0, Math.min(t.depth - minDepth, prev + 1, 3));
+      prev = level;
+      counters.length = level + 1;
+      counters[level] = (counters[level] ?? 0) + 1;
+      const label = [di + 1, ...counters].join(".");
       const { head, items } = splitItem(t.title);
-      const hl = d.wrap(head.toUpperCase(), 11.5, wCard - 124, d.f.bold, 5);
-      const hh = hl.length * 15 + 16;
-      d.ensure(hh + (items.length ? 40 : 6));
-      const deep = rgb(col.red * 0.55, col.green * 0.55, col.blue * 0.55);
-      d.card(x0, d.y - hh, wCard, hh, tint(col, 0.3), 9, tint(col, 0.55));
-      d.rect(x0, d.y - hh + 7, 4.5, hh - 14, col);
-      d.card(x0 + 12, d.y - 24, 38, 16, col, 5);
-      d.center(`${di + 1}.${ti + 1}`, x0 + 31, d.y - 19.5, 8.5, d.f.bold, WHITE);
-      hl.forEach((l, k) => d.text(l, x0 + 60, d.y - 20 - k * 15, 11.5, d.f.bold, deep));
-      d.right(t.hasLesson ? "COM AULA" : "SEM AULA", x0 + wCard - 10, d.y - 19, 7, d.f.bold, deep);
-      d.y -= hh + 3;
-      items.forEach((it, ii) => {
-        const il = d.wrap(it, 8.5, wCard - 66, d.f.regular, 4);
-        const ih = il.length * 11 + 9;
-        d.ensure(ih + 4);
-        d.card(x0 + 22, d.y - ih, wCard - 22, ih, tint(col, 0.1), 6, tint(col, 0.4));
-        d.rect(x0 + 22, d.y - ih + 5, 3, ih - 10, tint(col, 1));
-        d.text(`${di + 1}.${ti + 1}.${ii + 1}`, x0 + 32, d.y - 12, 7, d.f.bold, col);
-        il.forEach((l, k) => d.text(l, x0 + 62, d.y - 12 - k * 11, 8.5, d.f.regular, GRAPHITE));
-        d.y -= ih + 3;
-      });
-      d.y -= 5;
+      if (level === 0) {
+        d.y -= 4;
+        const hl = d.wrap(head.toUpperCase(), 11.5, CW - 124, d.f.bold, 5);
+        const hh = hl.length * 15 + 16;
+        d.ensure(hh + 40);
+        d.card(MX, d.y - hh, CW, hh, tint(col, 0.3), 9, tint(col, 0.55));
+        d.rect(MX, d.y - hh + 7, 4.5, hh - 14, col);
+        d.card(MX + 12, d.y - 24, 38, 16, col, 5);
+        d.center(label, MX + 31, d.y - 19.5, 8.5, d.f.bold, WHITE);
+        hl.forEach((l, k) => d.text(l, MX + 60, d.y - 20 - k * 15, 11.5, d.f.bold, deep));
+        d.right(t.hasLesson ? "COM AULA" : "SEM AULA", W - MX - 10, d.y - 19, 7, d.f.bold, deep);
+        d.y -= hh + 3;
+      } else {
+        sub(label, head, level, t.hasLesson);
+      }
+      items.forEach((it, ii) => sub(`${label}.${ii + 1}`, it, Math.min(level + 1, 4), null));
+      if (items.length) counters[level + 1] = items.length; // subtópicos seguintes continuam a numeração depois dos itens
     });
   });
 }
