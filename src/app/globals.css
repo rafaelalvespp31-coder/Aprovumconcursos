@@ -4364,3 +4364,26 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
   }
 }
 @media (prefers-reduced-motion: reduce) { .cl-banner, .bnv, .cl-a, .cl-card, .skins, .cl-concursos .ccx { transition: none; } }
+
+/* ===== Bordas em relevo (3D): luz no topo/esquerda, sombra embaixo/direita, aro vermelho fino ===== */
+@media (min-width: 1024px) {
+  .cl-banner, .bnv, .cl-a, .cl-card, .skins, .cl-concursos .ccx {
+    outline: 1px solid rgba(225, 6, 0, 0.5);
+    outline-offset: -1px;
+    box-shadow:
+      inset 2px 2px 0 -1px rgba(255, 255, 255, 0.7),
+      inset 3px 3px 5px -2px rgba(255, 255, 255, 0.35),
+      inset -2px -2px 0 -1px rgba(0, 0, 0, 0.55),
+      inset -4px -4px 7px -3px rgba(0, 0, 0, 0.5);
+  }
+  .cl-banner:hover, .bnv:hover, .cl-a:hover, .cl-card:hover, .skins:hover, .cl-concursos .ccx:hover,
+  .cl-card:focus-within, .skins:focus-within, .cl-a:focus-within, .cl-concursos .ccx:focus-within {
+    outline-color: #ff3b44;
+    box-shadow:
+      inset 2px 2px 0 -1px rgba(255, 255, 255, 0.85),
+      inset 4px 4px 8px -2px rgba(255, 255, 255, 0.45),
+      inset -2px -2px 0 -1px rgba(0, 0, 0, 0.7),
+      inset -5px -5px 10px -3px rgba(0, 0, 0, 0.6),
+      0 0 18px -4px rgba(255, 30, 30, 0.7);
+  }
+}
