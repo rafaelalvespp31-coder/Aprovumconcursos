@@ -4289,3 +4289,19 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 @media (max-width: 560px) { .bnv-cta { padding: 0; width: 38px; justify-content: center; margin: 12px 9px 12px 0; } .bnv-selo { padding: 8px 14px; font-size: 14px; } }
 @media (prefers-reduced-motion: reduce) { .bnv-selo::after { animation: none; } }
 .bnv-cta { animation: none; }
+
+/* ===== Painel (computador): menu, banner, faixa, palco, cartões, skins e concursos num bloco só, sem vãos nem fundo branco aparecendo ===== */
+@media (min-width: 1024px) {
+  main:has(.cl-banner) { background: #0a0a0b; }
+  .clw { background: #0a0a0b; }
+  .mt-desk { margin: 0; border-radius: 0; border-top: 0; border-bottom: 0; border-left: 0; }
+}
+@media (min-width: 1100px) {
+  .cl { align-items: stretch; }
+  .cl-stage { display: flex; flex-direction: column; }
+  .cl-stage > .skins, .skins { margin-top: 0; border-radius: 0; flex: none; }
+  .cl-low { position: static; padding: 0; gap: 0; grid-auto-rows: minmax(min-content, 1fr); align-content: stretch; align-items: stretch; }
+  .cl-low > .cl-card { height: 100%; }
+  .cl-concursos { padding: 0; }
+  .cl-concursos .ccx, .cl-concursos > * { margin: 0; border-radius: 0; }
+}
