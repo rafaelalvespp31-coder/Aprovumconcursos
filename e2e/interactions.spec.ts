@@ -1168,7 +1168,7 @@ test.describe("aula em formato apostila (igual ao PDF), dividida em módulos", (
     await pages(page).getByRole("button", { name: /Revisão e fontes/ }).click();
     await expect(page.getByRole("cell", { name: "STF, Súmula 473", exact: false })).toBeVisible();
     await expect(page.getByRole("cell", { name: "Não verificada" })).toHaveCount(0);
-    await expect(page.locator("section#pdf").getByRole("heading", { name: "PDF deste conteúdo" })).toBeVisible();
+    await expect(page.locator("section#pdf").getByRole("heading", { name: "Mapa mental da aula" })).toBeVisible();
     await noHorizontalScroll(page);
   });
 

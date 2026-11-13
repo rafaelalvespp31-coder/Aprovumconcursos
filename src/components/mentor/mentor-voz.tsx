@@ -6,6 +6,7 @@ import type { Bands } from "./voz-orbe";
 import { isFarewell } from "@/domain/mentor/voice";
 import { detectPitch } from "@/domain/mentor/pitch";
 import { VozView, type Fase } from "./voz-view";
+import type { StudyContext } from "@/domain/mentor/study-context";
 
 type Status = { available: boolean; reason?: "plano" | "indisponivel"; limit: number; left: number; unlimited?: boolean };
 
@@ -29,7 +30,7 @@ const fromB64 = (b64: string) => {
  * com o Google usando um token de uso único criado pelo servidor; o servidor controla o limite
  * diário (3 min) e a instrução do Mentor.
  */
-export function MentorVoz({ base = "" }: { base?: string }) {
+export function MentorVoz({ base = "", getStudy, autoStart = false }: { base?: string; /** Contexto da aula lido no instante em que a conversa começa. */ getStudy?: () => StudyContext | null; /** Começa sozinho assim que o saldo de voz carrega (aberto por um clique do aluno). */ autoStart?: boolean }) {
   const [fase, setFase] = useState<Fase>("carregando");
   const [left, setLeft] = useState(0);
   const [limit, setLimit] = useState(180);
@@ -244,7 +245,7 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       // O microfone é pedido antes de gastar o tempo do dia.
       const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } });
       r.stream = stream;
-      const res = await fetch("/api/mentor/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "start" }) });
+      const res = await fetch("/api/mentor/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "start", study: getStudy?.() ?? undefined }) });
       const j = (await res.json()) as { session?: { token: string; model: string; voice: string; left: number; limit: number; unlimited?: boolean }; error?: string; code?: string };
       if (!res.ok || !j.session) {
         stream.getTracks().forEach((t) => t.stop());
@@ -335,6 +336,15 @@ export function MentorVoz({ base = "" }: { base?: string }) {
       setFase("pronto");
     }
   };
+
+  // Aberto por um clique do aluno (bolinha da aula): começa assim que o saldo carrega, uma vez só.
+  const autoFeito = useRef(false);
+  useEffect(() => {
+    if (!autoStart || autoFeito.current || fase !== "pronto") return;
+    autoFeito.current = true;
+    void iniciar();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart, fase]);
 
   return <VozView fase={fase} left={left} limit={limit} unlimited={unlimited} speaking={speaking} msg={msg} level={nivel} base={base} onStart={() => void iniciar()} onStop={() => void encerrar("usuario")} />;
 }

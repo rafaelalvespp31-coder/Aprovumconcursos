@@ -4,6 +4,7 @@ import { getSessionUser } from "@/server/auth";
 import { endVoice, getVoiceStatus, startVoice } from "@/server/services/mentor-voice";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
+import { sanitizeStudyContext } from "@/domain/mentor/study-context";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -27,14 +28,14 @@ export async function POST(req: NextRequest) {
   if (!sameOrigin(req)) return NextResponse.json({ error: "Origem não permitida." }, { status: 403 });
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sessão expirada. Entre novamente." }, { status: 401, headers: noStore });
-  let body: { action?: unknown; seconds?: unknown; transcript?: { student?: unknown; mentor?: unknown } };
+  let body: { action?: unknown; study?: unknown; seconds?: unknown; transcript?: { student?: unknown; mentor?: unknown } };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Pedido inválido." }, { status: 400, headers: noStore });
   }
   try {
-    if (body.action === "start") return NextResponse.json({ session: await startVoice(user.id) }, { headers: noStore });
+    if (body.action === "start") return NextResponse.json({ session: await startVoice(user.id, sanitizeStudyContext(body.study)) }, { headers: noStore });
     if (body.action === "end") return NextResponse.json(await endVoice(user.id, body.seconds, body.transcript && typeof body.transcript === "object" ? body.transcript : undefined), { headers: noStore });
     return NextResponse.json({ error: "Pedido inválido." }, { status: 400, headers: noStore });
   } catch (e) {

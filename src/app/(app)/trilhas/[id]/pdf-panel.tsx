@@ -14,7 +14,7 @@ import { dispensarFeedbackAction, enviarFeedbackAction } from "@/app/(app)/aula/
  * níveis. Cada geração cria uma nova versão; as anteriores continuam disponíveis até o
  * aluno excluí-las (com confirmação).
  */
-export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs, mindMapHref, feedback }: { trailId: string; ready: boolean; unitsDone: number; unitsTotal: number; pdfs: StudyPdfItem[]; mindMapHref?: string; feedback?: { lessonId: string } }) {
+export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs, mindMapHref, feedback, somenteMapa = false }: { somenteMapa?: boolean; trailId: string; ready: boolean; unitsDone: number; unitsTotal: number; pdfs: StudyPdfItem[]; mindMapHref?: string; feedback?: { lessonId: string } }) {
   const [state, action, pending] = useActionState<PdfState, FormData>(createPdfAction.bind(null, trailId), {});
   const router = useRouter();
   // Avaliação da aula (antes de gerar PDF/mapa mental). Pular não bloqueia nada.
@@ -53,17 +53,19 @@ export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs, mindMapH
     <section id="pdf" className="scroll-mt-6 rounded-lg border border-linha bg-superficie p-5" aria-labelledby="pdf-titulo">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <h2 id="pdf-titulo" className="t-h3">PDF deste conteúdo</h2>
+          <h2 id="pdf-titulo" className="t-h3">{somenteMapa ? "Mapa mental da aula" : "PDF deste conteúdo"}</h2>
           <p className="mt-1 t-small text-tinta-suave">
-            Teoria completa no escopo estudado, dispositivos e fontes, exemplos e pegadinhas, as questões que você respondeu com gabarito e comentários, seus erros e os pontos de revisão.
+            {somenteMapa
+              ? "Um mapa mental desta aula, para revisar de uma vez. Para guardar só o que você marcou, use o botão Meu PDF de Revisão, na barra de ferramentas da leitura."
+              : "Teoria completa no escopo estudado, dispositivos e fontes, exemplos e pegadinhas, as questões que você respondeu com gabarito e comentários, seus erros e os pontos de revisão."}
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <form ref={formRef} action={action} onSubmit={(e) => interceptar(e, () => formRef.current?.requestSubmit())}>
+          {!somenteMapa && <form ref={formRef} action={action} onSubmit={(e) => interceptar(e, () => formRef.current?.requestSubmit())}>
             <Button type="submit" disabled={!ready || pending}>
               <Icon name="download" className="size-4" /> {pending ? "Gerando…" : pdfs.length ? "Gerar nova versão" : "Gerar PDF"}
             </Button>
-          </form>
+          </form>}
           {mindMapHref &&
             (ready ? (
               <a
@@ -85,14 +87,14 @@ export function PdfPanel({ trailId, ready, unitsDone, unitsTotal, pdfs, mindMapH
       </div>
       {!ready && (
         <p className="mt-3 t-small text-tinta-suave">
-          {mindMapHref ? "PDF e mapa mental liberados" : "Liberado"} após a aprovação nos três níveis (fácil, médio e difícil) de todas as unidades: {unitsDone} de {unitsTotal} concluída(s).
+          {somenteMapa ? "Mapa mental liberado" : mindMapHref ? "PDF e mapa mental liberados" : "Liberado"} após a aprovação nos três níveis (fácil, médio e difícil) de todas as unidades: {unitsDone} de {unitsTotal} concluída(s).
         </p>
       )}
-      {state.error && <div className="mt-3"><Notice tone="erro">{state.error}</Notice></div>}
-      {state.created && !deleted && <div className="mt-3"><Notice tone="sucesso">PDF versão {state.created} gerado. Ele está na lista abaixo.</Notice></div>}
-      {deleted && <div className="mt-3"><Notice tone="sucesso">PDF versão {deleted.version} excluído.</Notice></div>}
-      {delError && <div className="mt-3"><Notice tone="erro">{delError}</Notice></div>}
-      {pdfs.length > 0 && (
+      {!somenteMapa && state.error && <div className="mt-3"><Notice tone="erro">{state.error}</Notice></div>}
+      {!somenteMapa && state.created && !deleted && <div className="mt-3"><Notice tone="sucesso">PDF versão {state.created} gerado. Ele está na lista abaixo.</Notice></div>}
+      {!somenteMapa && deleted && <div className="mt-3"><Notice tone="sucesso">PDF versão {deleted.version} excluído.</Notice></div>}
+      {!somenteMapa && delError && <div className="mt-3"><Notice tone="erro">{delError}</Notice></div>}
+      {!somenteMapa && pdfs.length > 0 && (
         <ul className="mt-4 divide-y divide-linha rounded-md border border-linha">
           {pdfs.map((p) => (
             <li key={p.id} className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 t-small">

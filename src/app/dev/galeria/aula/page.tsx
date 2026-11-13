@@ -3,6 +3,7 @@ import { Notice } from "@/components/ui";
 import { reader } from "../fixtures";
 import { PdfPanel } from "@/app/(app)/trilhas/[id]/pdf-panel";
 import { SubtopicJump } from "@/components/aula/subtopic-search";
+import { StudyToolsDemo } from "./study-tools-demo";
 
 // Exemplo: aula de um tópico com vários subtópicos (dados de exemplo, nada é gravado).
 const S = (n: number) =>
@@ -67,10 +68,13 @@ const subtopics = [
 export default async function Page({ searchParams }: { searchParams: Promise<{ pronto?: string }> }) {
   const ready = (await searchParams).pronto === "1";
   return (
+    <>
+    <StudyToolsDemo lessonId={reader.lesson.id} lessonTitle={reader.lesson.title} sectionOrder={reader.sections.map((s) => s.id)} />
     <LessonReader
       {...reader}
       pdf={
         <PdfPanel
+          somenteMapa
           trailId={reader.lesson.trailId}
           ready={ready}
           unitsDone={ready ? 6 : 2}
@@ -86,5 +90,6 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ p
         </Notice>
       }
     />
+    </>
   );
 }

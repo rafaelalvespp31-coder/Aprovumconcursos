@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { getLatestJob, getLessonForStudy, getNextInSubject, getTrailPlan, listStudyPdfs } from "@/server/queries";
-import { ensureDisciplines } from "@/server/services/disciplines";
+import { getLatestJob, getLessonForStudy, getNextInSubject, getTrailPlan } from "@/server/queries";
 import { PdfPanel } from "@/app/(app)/trilhas/[id]/pdf-panel";
+import { ensureDisciplines } from "@/server/services/disciplines";
 import { Button, ButtonLink, Notice, Tag } from "@/components/ui";
 import { JobRunner, type PublicJob } from "@/components/job-runner";
 import { STATE_LABELS } from "@/domain/progress/state-machine";
@@ -15,6 +15,8 @@ import { getTopicSiblings } from "@/server/topic-siblings";
 import { logEvent } from "@/server/observability";
 import { SubtopicJump } from "@/components/aula/subtopic-search";
 import { SelectionExplainer } from "@/components/aula/selection-explainer";
+import { StudyTools } from "@/components/aula/study-tools";
+import { listPostitPdfs, listPostits } from "@/server/services/postits";
 import { requireUser } from "@/server/auth";
 import { claimDailyLesson } from "@/server/services/plans";
 
@@ -120,10 +122,14 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
   const fb = await deveMostrarFeedback(me.id, id).catch(() => null);
   const notTaught = nodes.filter((n) => !n.taught);
   const discipline = lesson.study_trails.discipline_mode;
-  const [nextInSubject, plan, pdfs, banner, siblingsInTopic] = await Promise.all([
+  const [nextInSubject, plan, postits, postitPdfs, banner, siblingsInTopic] = await Promise.all([
     getNextInSubject(lesson.trail_id, next ? { id: next.id, title: next.title } : null).catch(() => null),
     getTrailPlan(lesson.trail_id).catch(() => []),
-    listStudyPdfs(lesson.trail_id).catch(() => []),
+    listPostits(id).catch(async (e) => {
+      await logEvent("aula.postits_failed", { error: (e as Error).message });
+      return [];
+    }),
+    listPostitPdfs(id).catch(() => []),
     lessonBannerUrl(lesson.catalog_topic_id as string | null, discipline).catch(() => null),
     getTopicSiblings(lesson.catalog_topic_id as string | null).catch(async (e) => {
       await logEvent("aula.topic_siblings_failed", { error: (e as Error).message });
@@ -155,6 +161,14 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
   return (
     <>
     <SelectionExplainer lessonId={id} explain={explainSelectionAction} />
+    <StudyTools
+      lessonId={id}
+      lessonTitle={lesson.title}
+      subject={lesson.study_trails.scope_summary?.subject ?? (discipline && discipline !== "outra" ? disciplineLabel(discipline) ?? null : null)}
+      sectionOrder={sections.map((s) => s.id)}
+      initialPostits={postits.map((p) => ({ id: p.id, sectionId: p.sectionId, sectionTitle: p.sectionTitle, quote: p.quote, quoteStart: p.quoteStart, note: p.note, createdAt: p.createdAt }))}
+      initialPdfs={postitPdfs}
+    />
     <LessonReader
       lesson={{
         id,
@@ -189,7 +203,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       nextLabel={nextInSubject?.label ?? null}
       notices={notices}
       topicSearch={siblingsInTopic ? <SubtopicJump group={siblingsInTopic.group} items={siblingsInTopic.items} /> : null}
-      pdf={<PdfPanel trailId={lesson.trail_id} ready={units.length > 0 && unitsDone === units.length} unitsDone={unitsDone} unitsTotal={units.length} pdfs={pdfs} mindMapHref={`/api/mapa-mental/${id}`} feedback={fb?.perguntar ? { lessonId: id } : undefined} />}
+      pdf={<PdfPanel somenteMapa trailId={lesson.trail_id} ready={units.length > 0 && unitsDone === units.length} unitsDone={unitsDone} unitsTotal={units.length} pdfs={[]} mindMapHref={`/api/mapa-mental/${id}`} feedback={fb?.perguntar ? { lessonId: id } : undefined} />}
       feedbackAula={fb?.perguntar ? { lessonId: id } : null}
       position={idx >= 0 ? { index: idx, total: siblings.length } : null}
       moduleTitle={lesson.learning_modules?.title ?? null}

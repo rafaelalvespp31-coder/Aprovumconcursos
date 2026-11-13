@@ -538,6 +538,32 @@ export function LessonReader(props: ReaderProps) {
     </>
   );
 
+  /** Abre o módulo da seção (se liberado) e rola até ela. Também atende os post-its (evento aprovum:ir-secao). */
+  const goToSection = (id: string, quote?: string) => {
+    const mi = modules.findIndex((m) => m.sections.some((s) => s.id === id));
+    if (mi >= 0 && !isUnlocked({ kind: "modulo", index: mi })) {
+      setLockMsg(`Este trecho está no Módulo ${mi + 1}: conclua os módulos anteriores para abri-lo.`);
+      return;
+    }
+    if (mi >= 0) setStoredPage(pageKey({ kind: "modulo", index: mi }));
+    setTimeout(() => {
+      document.getElementById(sectionDomId(id))?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (quote !== undefined) window.dispatchEvent(new CustomEvent("aprovum:secao-aberta", { detail: { sectionId: id } }));
+    }, 80);
+  };
+  const goRef = useRef(goToSection);
+  useEffect(() => {
+    goRef.current = goToSection;
+  });
+  useEffect(() => {
+    const on = (e: Event) => {
+      const d = (e as CustomEvent<{ sectionId?: string }>).detail;
+      if (d?.sectionId) goRef.current(d.sectionId, "");
+    };
+    window.addEventListener("aprovum:ir-secao", on);
+    return () => window.removeEventListener("aprovum:ir-secao", on);
+  }, []);
+
   return (
     <div className="ap" id="apostila">
       {lockMsg && (
@@ -601,15 +627,7 @@ export function LessonReader(props: ReaderProps) {
         annotations={annotations}
         onGo={(id) => {
           notesRef.current?.close();
-          if (id) {
-            const mi = modules.findIndex((m) => m.sections.some((s) => s.id === id));
-            if (mi >= 0 && !isUnlocked({ kind: "modulo", index: mi })) {
-              setLockMsg(`Esta anotação está no Módulo ${mi + 1}: conclua os módulos anteriores para abri-lo.`);
-              return;
-            }
-            if (mi >= 0) setStoredPage(pageKey({ kind: "modulo", index: mi }));
-            setTimeout(() => document.getElementById(sectionDomId(id))?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
-          }
+          if (id) goToSection(id);
         }}
         onChange={(a, removed) => setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : list.map((x) => (x.id === a.id ? a : x))))}
       />

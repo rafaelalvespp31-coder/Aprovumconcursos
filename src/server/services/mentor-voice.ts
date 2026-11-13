@@ -1,4 +1,5 @@
 import "server-only";
+import { studyContextInstruction, type StudyContext } from "@/domain/mentor/study-context";
 import { GoogleGenAI, Modality } from "@google/genai";
 import { createAdminClient } from "../supabase";
 import { logEvent } from "../observability";
@@ -124,7 +125,7 @@ export interface VoiceSession {
 }
 
 /** Libera uma conversa: confere plano e saldo do dia, reserva o tempo e cria o token efêmero. */
-export async function startVoice(userId: string): Promise<VoiceSession> {
+export async function startVoice(userId: string, study?: StudyContext | null): Promise<VoiceSession> {
   const admin = await isAdminUser(userId);
   const plan = await getMyPlan(userId);
   if (!admin && !plan.unlimited) throw new UserFacingError("O Mentor por voz é exclusivo dos planos pagos.", "plan_limit");
@@ -133,7 +134,7 @@ export async function startVoice(userId: string): Promise<VoiceSession> {
   await enforceRateLimit(userId, "mentor_voz", 6, 60);
 
   const base = await personalPrompt(userId);
-  const instruction = admin ? base.replace(STUDENT_TIME_RULE, ADMIN_TIME_RULE) : base; // antes de reservar o tempo: a leitura dos dados não gasta os 3 minutos
+  const instruction = (admin ? base.replace(STUDENT_TIME_RULE, ADMIN_TIME_RULE) : base) + studyContextInstruction(study ?? null); // antes de reservar o tempo: a leitura dos dados não gasta os 3 minutos
   const now = new Date();
   let left = ADMIN_VOICE_SECONDS;
   if (!admin) {
