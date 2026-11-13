@@ -543,43 +543,45 @@ function syllabusSection(d: Doc, toc: TocItem[], n: number, disciplines: Syllabu
   const total = disciplines.reduce((a, x) => a + x.topics.length, 0);
   sectionPage(d, toc, n, "Conteúdo programático", `Tudo o que o edital cobra: ${disciplines.length} disciplinas e ${total} assuntos, na ordem do edital.`, null);
   kpis(d, [{ v: String(disciplines.length), l: "Disciplinas" }, { v: String(total), l: "Assuntos do edital" }, { v: String(disciplines.reduce((a, x) => a + x.topics.filter((t) => t.hasLesson).length, 0)), l: "Com aula na APROVUM" }]);
+  const DISC_COLORS = [rgb(0.882, 0.024, 0), rgb(0.11, 0.36, 0.78), rgb(0.1, 0.55, 0.36), rgb(0.85, 0.5, 0.04), rgb(0.5, 0.2, 0.7), rgb(0.05, 0.5, 0.55), rgb(0.82, 0.18, 0.45), rgb(0.3, 0.33, 0.4)];
+  const tint = (c: RGB, k: number) => rgb(1 - (1 - c.red) * k, 1 - (1 - c.green) * k, 1 - (1 - c.blue) * k);
   disciplines.forEach((disc, di) => {
-    d.ensure(70);
-    const h = 26;
-    d.card(MX, d.y - h, CW, h, INK, 7);
-    d.card(MX, d.y - h, 30, h, RED, 7);
-    d.rect(MX + 18, d.y - h, 12, h, RED);
-    d.center(String(di + 1).padStart(2, "0"), MX + 15, d.y - 17, 9.5, d.f.bold, WHITE);
-    d.text(d.fit(disc.name.toUpperCase(), 10, CW - 150, d.f.bold), MX + 40, d.y - 17, 10, d.f.bold, WHITE);
-    d.right(`${disc.topics.length} assunto${disc.topics.length === 1 ? "" : "s"}`, W - MX - 10, d.y - 16.5, 8, d.f.regular, rgb(0.78, 0.78, 0.82));
-    d.y -= h + 8;
+    const col = DISC_COLORS[di % DISC_COLORS.length]!;
+    if (di > 0) { if (d.y < H * 0.5 || disc.topics.length > 6) d.newPage(); else d.y -= 14; } // matéria grande abre página própria; as curtas se seguem, separadas pela faixa colorida
+    const h = 38;
+    d.card(MX, d.y - h, CW, h, col, 9);
+    d.card(MX + 8, d.y - h + 7, 24, 24, WHITE, 6);
+    d.center(String(di + 1), MX + 20, d.y - 23, 12, d.f.bold, col);
+    d.text(d.fit(disc.name.toUpperCase(), 13, CW - 170, d.f.bold), MX + 42, d.y - 23, 13, d.f.bold, WHITE);
+    d.right(`${disc.topics.length} assunto${disc.topics.length === 1 ? "" : "s"}`, W - MX - 12, d.y - 22.5, 8.5, d.f.bold, WHITE);
+    d.y -= h + 12;
     if (!disc.topics.length) { note(d, "Nenhum assunto identificado nesta disciplina."); return; }
     disc.topics.forEach((t, ti) => {
-      const indent = Math.max(0, Math.min(3, t.depth - 1)) * 14;
-      const label = `${di + 1}.${ti + 1}`;
-      const x0 = MX + 6 + indent;
-      const wTxt = CW - 66 - indent - 34;
+      const indent = Math.max(0, Math.min(2, t.depth - 1)) * 12;
+      const x0 = MX + indent, wCard = CW - indent;
       const { head, items } = splitItem(t.title);
-      const hl = d.wrap(head, 9, wTxt, d.f.bold, 6);
-      const il = items.map((it) => d.wrap(it, 8.5, wTxt - 12, d.f.regular, 4));
-      const rows = hl.length + il.reduce((a, l) => a + l.length, 0);
-      const need = rows * 11.5 + 8;
-      d.ensure(Math.min(need, 90));
-      const top = d.y;
-      d.text(label, x0, top - 9.5, 7.5, d.f.bold, RED);
-      hl.forEach((l, i) => d.text(l, x0 + 34, top - 9.5 - i * 11.5, 9, d.f.bold, INK));
-      d.right(t.hasLesson ? "COM AULA" : "SEM AULA", W - MX - 6, top - 9.5, 6.5, d.f.bold, t.hasLesson ? GREEN : FAINT);
-      let y = top - 9.5 - hl.length * 11.5;
-      il.forEach((ls) => {
-        if (y - ls.length * 11.5 < BOTTOM) { d.newPage(); y = d.y - 4; }
-        d.rect(x0 + 36, y + 1.5, 3, 3, RED);
-        ls.forEach((l, k) => d.text(l, x0 + 46, y - k * 11.5, 8.5, d.f.regular, GRAPHITE));
-        y -= ls.length * 11.5;
+      const hl = d.wrap(head, 9.5, wCard - 100, d.f.bold, 5);
+      const hh = hl.length * 12 + 14;
+      d.ensure(hh + (items.length ? 40 : 6));
+      d.card(x0, d.y - hh, wCard, hh, RED_SOFT, 8, rgb(0.95, 0.75, 0.74));
+      d.rect(x0, d.y - hh + 6, 4, hh - 12, RED);
+      d.card(x0 + 10, d.y - 19, 34, 14, RED, 4);
+      d.center(`${di + 1}.${ti + 1}`, x0 + 27, d.y - 15, 7.5, d.f.bold, WHITE);
+      hl.forEach((l, k) => d.text(l, x0 + 52, d.y - 15 - k * 12, 9.5, d.f.bold, INK));
+      d.right(t.hasLesson ? "COM AULA" : "SEM AULA", x0 + wCard - 10, d.y - 15, 6.5, d.f.bold, t.hasLesson ? GREEN : FAINT);
+      d.y -= hh + 3;
+      items.forEach((it, ii) => {
+        const il = d.wrap(it, 8.5, wCard - 66, d.f.regular, 4);
+        const ih = il.length * 11 + 9;
+        d.ensure(ih + 4);
+        d.card(x0 + 22, d.y - ih, wCard - 22, ih, WHITE, 6, rgb(0.93, 0.62, 0.6));
+        d.rect(x0 + 22, d.y - ih + 5, 3, ih - 10, tint(col, 1));
+        d.text(`${di + 1}.${ti + 1}.${ii + 1}`, x0 + 32, d.y - 12, 7, d.f.bold, RED);
+        il.forEach((l, k) => d.text(l, x0 + 62, d.y - 12 - k * 11, 8.5, d.f.regular, GRAPHITE));
+        d.y -= ih + 3;
       });
-      d.line(MX, y - 3, W - MX, y - 3, LINE, 0.3);
-      d.y = y - 8;
+      d.y -= 5;
     });
-    d.y -= 10;
   });
 }
 
