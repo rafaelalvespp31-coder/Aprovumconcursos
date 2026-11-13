@@ -66,6 +66,9 @@ class Doc {
   page!: PDFPage;
   /** Imagem do órgão: fundo translúcido que preenche a página inteira. */
   bg: PDFImage | null = null;
+  /** Faixas decorativas de ponta a ponta que separam seções e matérias (revezam entre as 4 artes). */
+  breaks: PDFImage[] = [];
+  private breakIdx = 0;
   /** Tema da página (cor de fundo do órgão). No tema escuro, textos e cartões são remapeados. */
   theme: { page: RGB; dark: boolean } | null = null;
   private tx = new Map<RGB, RGB>();
@@ -173,6 +176,20 @@ class Doc {
   ensure(h: number) {
     if (this.y - h < BOTTOM) this.newPage();
   }
+  /** Faixa decorativa preenchendo a página na horizontal (sangrada, de borda a borda), com filete vermelho embaixo. */
+  band() {
+    const img = this.breaks.length ? this.breaks[this.breakIdx++ % this.breaks.length]! : null;
+    if (!img) return;
+    const h = (W * img.height) / img.width;
+    this.ensure(h + 70);
+    const top = this.y;
+    this.page.drawImage(img, { x: 0, y: top - h, width: W, height: h });
+    // véu escuro nas pontas e embaixo para a faixa "assentar" na página sem competir com o texto
+    for (let i = 0; i < 6; i++) this.page.drawRectangle({ x: 0, y: top - h, width: W, height: (h * (6 - i)) / 14, color: rgb(0, 0, 0), opacity: 0.045 });
+    this.page.drawRectangle({ x: 0, y: top - h - 1.6, width: W, height: 1.6, color: RED });
+    this.page.drawRectangle({ x: 0, y: top, width: W, height: 0.8, color: RED });
+    this.y = top - h - 14;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -184,6 +201,7 @@ interface TocItem { n: number; title: string; what: string; page: number }
 function sectionPage(d: Doc, toc: TocItem[], n: number, title: string, question: string, insight: string | null) {
   d.newPage();
   toc.push({ n, title, what: question, page: d.pdf.getPageCount() });
+  d.band();
   const y = d.y;
   const h = 60;
   d.card(MX, y - h, CW, h, INK, 12);
@@ -576,6 +594,7 @@ function syllabusSection(d: Doc, toc: TocItem[], n: number, disciplines: Syllabu
   disciplines.forEach((disc, di) => {
     const col = DISC_COLORS[di % DISC_COLORS.length]!;
     if (di > 0) { if (d.y < H * 0.5 || disc.topics.length > 6) d.newPage(); else d.y -= 14; } // matéria grande abre página própria; as curtas se seguem, separadas pela faixa colorida
+    if (di > 0) d.band();
     const h = 38;
     d.card(MX, d.y - h, CW, h, col, 9);
     d.card(MX + 8, d.y - h + 7, 24, 24, rgb(1, 1, 1), 6);
@@ -719,6 +738,13 @@ export async function renderRaioXPdf(data: RaioX, opts: { student?: string | nul
       d.bg = await d.pdf.embedJpg(jpg);
     } catch {
       d.bg = null; // o fundo é um extra: sem o arquivo, o PDF sai como antes
+    }
+  }
+  for (let i = 1; i <= 4; i++) {
+    try {
+      d.breaks.push(await d.pdf.embedJpg(await readFile(path.join(process.cwd(), "public", "pdf", `quebra-${i}.jpg`))));
+    } catch {
+      /* sem a arte, a seção abre sem a faixa */
     }
   }
   const toc: TocItem[] = [];
