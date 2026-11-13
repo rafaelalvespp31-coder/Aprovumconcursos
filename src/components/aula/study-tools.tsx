@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Download, FileText, Lightbulb, Loader2, StickyNote, Trash2, Wrench, X } from "lucide-react";
 import { VozOrbRepouso } from "@/components/mentor/voz-orb-solo";
@@ -67,8 +67,7 @@ export function StudyTools({
   const popRef = useRef<HTMLDivElement | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
   // A barra entra no cabeçalho fixo da página (logo abaixo da logo); sem cabeçalho, fica solta no topo.
-  const [host, setHost] = useState<Element | null>(null);
-  useEffect(() => { setHost(document.querySelector(".mv-cabecalho")); }, []);
+  const host = useSyncExternalStore(() => () => {}, () => document.querySelector(".mv-cabecalho"), () => null);
   const armedRef = useRef(false);
   const openRef = useRef<string | null>(null);
   const armT = useRef<ReturnType<typeof setTimeout> | null>(null);
