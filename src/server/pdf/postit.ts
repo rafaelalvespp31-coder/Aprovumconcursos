@@ -123,11 +123,18 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       const fi = faixas[(idx - 1) % faixas.length]!;
       const fh = (A4[0] * fi.height) / fi.width;
       if (y - fh - 12 - 18 - 30 < M.bottom) newPage();
-      else y -= 4;
+      else y -= 6;
       page.drawImage(fi, { x: 0, y: y - fh, width: A4[0], height: fh });
-      page.drawRectangle({ x: 0, y: y - fh - 0.9, width: A4[0], height: 0.9, color: RED });
-      page.drawRectangle({ x: 0, y, width: A4[0], height: 0.9, color: RED });
-      y -= fh + 14;
+      // véu escuro embaixo (a arte "assenta" na página) e etiqueta do assunto sobre a faixa
+      for (let v = 0; v < 5; v++) page.drawRectangle({ x: 0, y: y - fh, width: A4[0], height: (fh * (5 - v)) / 10, color: rgb(0, 0, 0), opacity: 0.07 });
+      page.drawRectangle({ x: 0, y: y - fh - 1.2, width: A4[0], height: 1.2, color: RED });
+      page.drawRectangle({ x: 0, y, width: A4[0], height: 1.2, color: RED });
+      const tag = `ASSUNTO ${String(it.n).padStart(2, "0")}`;
+      const tw = bold.widthOfTextAtSize(tag, 8.5) + 22;
+      page.drawRectangle({ x: M.left, y: y - fh / 2 - 9, width: tw, height: 18, color: rgb(0, 0, 0), opacity: 0.78 });
+      page.drawRectangle({ x: M.left, y: y - fh / 2 - 9, width: 3.5, height: 18, color: RED });
+      page.drawText(tag, { x: M.left + 12, y: y - fh / 2 - 3, size: 8.5, font: bold, color: WHITE });
+      y -= fh + 16;
     }
     const quoteLines = wrap(regular, clean(it.quote), QS, innerW - 40);
     const noteLines = it.note ? wrap(italic, clean(it.note), NS, innerW - 52) : [];
