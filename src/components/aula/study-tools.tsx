@@ -52,6 +52,7 @@ export function StudyTools({
   const [postits, setPostits] = useState<PostitView[]>(() => sortPostits(initialPostits));
   const [pdfs, setPdfs] = useState<PdfInfo[]>(initialPdfs);
   const [panel, setPanel] = useState<Panel>(null);
+  const [mentorFala, setMentorFala] = useState(false);
   const [openId, setOpenId] = useState<string | null>(null);
   const [armed, setArmed] = useState(false);
   const [focusId, setFocusId] = useState<string | null>(null);
@@ -426,10 +427,10 @@ export function StudyTools({
               <button type="button" className={`st-btn ${panel === "pdf" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "pdf" ? null : "pdf"))} aria-label="Meu PDF de Revisão" aria-expanded={panel === "pdf"} title="Meu PDF de Revisão" data-testid="st-pdf">
                 <FileText className="size-5" aria-hidden /><span className="st-btn-txt"><b>Meu PDF</b><small>Gerar revisão</small></span>
               </button>
-              <div className="st-mentor-wrap" data-ligado={panel === "mentor" ? "1" : "0"}>
-                {/* Indicador: vermelho piscando = Mentor ligado; cinza = desligado. */}
-                <span className="st-mentor-led" role="img" aria-label={panel === "mentor" ? "Mentor ligado" : "Mentor desligado"} data-testid="mentor-led" />
-                {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={46} onClose={() => setPanel(null)} /> : <VozOrbRepouso size={46} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+              <div className="st-mentor-wrap" data-fala={panel === "mentor" && mentorFala ? "1" : undefined}>
+                {/* Filtro do "chiado": deforma a borda fina em ruído de voz enquanto o Mentor fala. */}
+                <svg width="0" height="0" aria-hidden focusable="false" style={{ position: "absolute" }}><filter id="st-chiado" x="-10%" y="-10%" width="120%" height="120%"><feTurbulence type="fractalNoise" baseFrequency="0.03 0.9" numOctaves="2" result="n"><animate attributeName="baseFrequency" values="0.03 0.9;0.07 0.55;0.02 1.1;0.06 0.7;0.03 0.9" dur="0.42s" repeatCount="indefinite" calcMode="discrete" /></feTurbulence><feDisplacementMap in="SourceGraphic" in2="n" scale="4" xChannelSelector="R" yChannelSelector="G" /></filter></svg>
+                {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={46} onSpeaking={setMentorFala} onClose={() => { setMentorFala(false); setPanel(null); }} /> : <VozOrbRepouso size={46} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
                 <span className="st-btn-txt st-mentor-txt" aria-hidden onClick={() => { if (panel !== "mentor") { currentCapture(); setPanel("mentor"); } }}><b>Mentor</b><small>Falar com o Mentor</small></span>
               </div>
             </div>
