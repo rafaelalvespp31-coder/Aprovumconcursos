@@ -8,6 +8,7 @@ import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFP
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import sharp from "sharp";
+import { buildPlano } from "@/domain/strategic/plano";
 import { orgImageFor } from "@/domain/edital/org-images";
 import type { RaioX } from "@/server/services/strategic";
 import { HEAT_LABEL, type Heat } from "@/domain/strategic/analysis";
@@ -417,6 +418,33 @@ function table(d: Doc, head: string[], widths: number[], rows: string[][], o: { 
   d.y -= 12;
 }
 
+/** Tabela com quebra de linha nas células (nada é cortado com reticências). */
+function wrapTable(d: Doc, head: string[], widths: number[], rows: string[][], o: { boldCol?: number; maxLines?: number } = {}) {
+  const lh = 10.5;
+  const drawHead = () => {
+    d.ensure(40);
+    d.card(MX, d.y - 19, CW, 19, INK, 5);
+    let x = MX + 8;
+    head.forEach((h, i) => { d.text(h.toUpperCase(), x, d.y - 12.5, 7, d.f.bold, WHITE); x += widths[i]! * CW; });
+    d.y -= 19;
+  };
+  drawHead();
+  rows.forEach((r, ri) => {
+    const cells = r.map((c, i) => d.wrap(c, 8.5, widths[i]! * CW - 12, o.boldCol === i ? d.f.bold : d.f.regular, o.maxLines ?? 4));
+    const h = Math.max(...cells.map((c) => c.length)) * lh + 9;
+    if (d.y - h < BOTTOM) { d.newPage(); drawHead(); }
+    if (ri % 2 === 1) d.rect(MX, d.y - h, CW, h, SOFT);
+    let x = MX + 8;
+    cells.forEach((ls, i) => {
+      const bold = o.boldCol === i;
+      ls.forEach((l, k) => d.text(l, x, d.y - 12 - k * lh, 8.5, bold ? d.f.bold : d.f.regular, bold ? RED : GRAPHITE));
+      x += widths[i]! * CW;
+    });
+    d.y -= h;
+  });
+  d.y -= 12;
+}
+
 function chipsList(d: Doc, items: string[]) {
   let x = MX;
   d.ensure(24);
@@ -553,6 +581,82 @@ function syllabusSection(d: Doc, toc: TocItem[], n: number, disciplines: Syllabu
     });
     d.y -= 10;
   });
+}
+
+/** Plano de estudo "modo gabarito": meta, regras duras, tempo por disciplina, fases, rotina, cronograma e a visão do examinador. */
+function planoSection(d: Doc, toc: TocItem[], n: number, plano: ReturnType<typeof buildPlano>) {
+  sectionPage(d, toc, n, "Plano de estudo: modo gabarito", `${plano.weeks} semanas, ${plano.hoursPerWeek} h por semana de referência, montado a partir do que a banca cobra.`, `Meta: ${plano.targetPct}% de acerto. ${plano.targetWhy}`);
+  kpis(d, [{ v: `${plano.targetPct}%`, l: "Meta de acerto na prova" }, { v: String(plano.weeks), l: "Semanas de preparação" }, { v: `${plano.hoursPerWeek} h`, l: "Horas por semana (referência)" }]);
+  note(d, "Se você tem menos ou mais semanas até a prova, mantenha as proporções das fases e reduza ou amplie o cronograma. Ajuste as horas por semana na mesma proporção: o plano não aceita estudar menos do que o método pede.", { size: 8, color: FAINT });
+
+  chartTitle(d, "1. Regras inegociáveis", "Quem negocia estas regras negocia a aprovação.", 120);
+  plano.rules.forEach((r, i) => {
+    const ls = d.wrap(r, 9, CW - 30, d.f.regular, 3);
+    d.ensure(ls.length * 12 + 10);
+    d.card(MX, d.y - 14, 18, 14, RED, 4);
+    d.center(String(i + 1), MX + 9, d.y - 10.5, 8, d.f.bold, WHITE);
+    ls.forEach((l, k) => d.text(l, MX + 26, d.y - 10 - k * 12, 9, d.f.regular, INK));
+    d.y -= Math.max(18, ls.length * 12 + 6);
+  });
+  d.y -= 8;
+
+  chartTitle(d, "2. Tempo e meta por disciplina", "Peso real nas provas anteriores, com folga para as disciplinas pequenas, que decidem o desempate. A: peso alto. B: médio. C: baixo.", 140);
+  wrapTable(d, ["Disciplina", "Peso na prova", "Nível", "% do tempo", "Horas/sem.", "Meta de acerto"], [0.34, 0.14, 0.08, 0.14, 0.14, 0.16],
+    plano.disciplines.map((x) => [x.name, `${num(x.pct)}%`, x.tier, `${num(x.timePct)}%`, num(x.hours), `${x.goalPct}%`]), { boldCol: 0 });
+  note(d, "Horas/sem.: 80% do tempo total vai para estas disciplinas; os 20% restantes são de revisão do caderno de erros e simulados.", { size: 8, color: FAINT });
+
+  chartTitle(d, "3. As quatro fases", "Cada fase tem um critério de saída. Não cumpriu, não avançou.", 150);
+  for (const f of plano.phases) {
+    const gl = d.wrap(f.goal, 8.5, CW - 28, d.f.regular, 4);
+    const sl = d.wrap(`Divisão do tempo: ${f.split}.`, 8.5, CW - 28, d.f.regular, 2);
+    const el = d.wrap(`Para avançar: ${f.exit}`, 8.5, CW - 28, d.f.bold, 3);
+    const rl = f.rules.flatMap((r) => d.wrap(`- ${r}`, 8.5, CW - 28, d.f.regular, 2));
+    const h = 30 + (gl.length + sl.length + el.length + rl.length) * 11.5 + 8;
+    d.ensure(h + 8);
+    d.card(MX, d.y - h, CW, h, SOFT, 10);
+    d.rect(MX, d.y - h + 8, 3.5, h - 16, RED);
+    d.spaced(`FASE ${f.n}  -  SEMANAS ${f.weeks[0]} A ${f.weeks[1]}`, MX + 16, d.y - 14, 7, d.f.bold, RED, 1.2);
+    d.text(f.name, MX + 16, d.y - 27, 10.5, d.f.bold, INK);
+    let y = d.y - 40;
+    for (const l of gl) { d.text(l, MX + 16, y, 8.5, d.f.regular, GRAPHITE); y -= 11.5; }
+    for (const l of sl) { d.text(l, MX + 16, y, 8.5, d.f.regular, MUTED); y -= 11.5; }
+    for (const l of el) { d.text(l, MX + 16, y, 8.5, d.f.bold, INK); y -= 11.5; }
+    for (const l of rl) { d.text(l, MX + 16, y, 8.5, d.f.regular, GRAPHITE); y -= 11.5; }
+    d.y -= h + 8;
+  }
+
+  chartTitle(d, "4. Rotina semanal padrão", "De segunda a sexta, 5 h por dia; sábado é prova, domingo é revisão e planejamento.", 140);
+  for (const r of plano.routine) {
+    const ls = r.blocks.flatMap((b) => d.wrap(b, 8.5, CW - 96, d.f.regular, 3));
+    const h = Math.max(26, ls.length * 11.5 + 12);
+    d.ensure(h + 6);
+    d.card(MX, d.y - h, 78, h, INK, 8);
+    d.center(r.day.toUpperCase(), MX + 39, d.y - h / 2 - 3, 8, d.f.bold, WHITE);
+    ls.forEach((l, k) => d.text(l, MX + 90, d.y - 12 - k * 11.5, 8.5, d.f.regular, GRAPHITE));
+    d.line(MX + 84, d.y - h - 3, W - MX, d.y - h - 3, LINE, 0.3);
+    d.y -= h + 6;
+  }
+  d.y -= 6;
+
+  chartTitle(d, "5. Revisão espaçada", "O que não é revisado é esquecido. Marque a data no dia em que estudou.", 110);
+  wrapTable(d, ["Quando", "O que fazer"], [0.22, 0.78], plano.review.map((r) => [r.when, r.what]), { boldCol: 0 });
+
+  chartTitle(d, "6. Cronograma semana a semana", "Foco principal da semana (as disciplinas giram pela fila de prioridade), meta de questões e checkpoint.", 120);
+  wrapTable(d, ["Sem.", "Fase", "Foco da semana", "Questões", "Checkpoint"], [0.07, 0.13, 0.34, 0.1, 0.36], plano.schedule.map((s) => [String(s.week), s.phase, s.focus.join(" + ") || "Revisão geral", `${s.questions}+`, s.checkpoint]), { boldCol: 0 });
+  note(d, "Questões: mínimo por semana, sempre comentadas. Contar questão feita no chute como feita é enganar o próprio plano.", { size: 8, color: FAINT });
+
+  chartTitle(d, "7. Como o examinador pensa (e como derrotá-lo)", "A prova é desenhada para separar quem decorou de quem entendeu.", 120);
+  plano.examiner.forEach((t) => {
+    const ls = d.wrap(t, 9, CW - 18, d.f.regular, 5);
+    d.ensure(ls.length * 12 + 8);
+    d.rect(MX, d.y - 8, 4, 4, RED);
+    ls.forEach((l, k) => d.text(l, MX + 12, d.y - 8 - k * 12, 9, d.f.regular, INK));
+    d.y -= ls.length * 12 + 6;
+  });
+  d.y -= 8;
+
+  chartTitle(d, "8. Gatilhos de correção", "Quando o número falha, o plano muda na hora.", 110);
+  wrapTable(d, ["Se acontecer", "Faça"], [0.36, 0.64], plano.triggers.map((t) => [t.signal, t.action]), { boldCol: 0 });
 }
 
 export async function renderRaioXPdf(data: RaioX, opts: { student?: string | null; syllabus?: SyllabusDiscipline[] } = {}): Promise<Uint8Array> {
@@ -838,6 +942,20 @@ export async function renderRaioXPdf(data: RaioX, opts: { student?: string | nul
   }
 
   if (opts.syllabus?.some((x) => x.topics.length)) syllabusSection(d, toc, 7, opts.syllabus);
+
+  {
+    const sy = opts.syllabus?.filter((x) => x.topics.length) ?? [];
+    const disciplines = agg.rows.length ? agg.rows.map((r) => ({ name: r.name, pct: r.pct })) : sy.map((x) => ({ name: x.name, pct: 100 / sy.length }));
+    if (disciplines.length) {
+      const latest = [...exam.cutoffs].sort((a, b) => b.editionYear - a.editionYear)[0];
+      const lastPct = latest?.maxScore ? (latest.score / latest.maxScore) * 100 : series && series.unit === "%" ? series.points[series.points.length - 1]!.value : null;
+      const plano = buildPlano({
+        disciplines, lastCutPct: lastPct, projectedCutPct: proj && series?.unit === "%" ? proj.value : null,
+        targets: exam.recommendations.slice(0, 6).map((r) => ({ subject: r.subject ?? null, topic: r.topic, priority: PRIO[r.priority as keyof typeof PRIO] ?? String(r.priority), why: r.justification ?? "" })),
+      });
+      planoSection(d, toc, opts.syllabus?.some((x) => x.topics.length) ? 8 : 7, plano);
+    }
+  }
 
   // ---- Página 2: índice + resumo executivo + como ler
   {
