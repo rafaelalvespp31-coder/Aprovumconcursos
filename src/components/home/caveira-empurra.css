@@ -21,11 +21,16 @@
 .bnv-brasa { position: absolute; inset: 0; background-image: radial-gradient(1.2px 1.2px at 12% 70%, rgba(255, 179, 71, 0.7), transparent 70%), radial-gradient(1px 1px at 31% 45%, rgba(255, 122, 47, 0.6), transparent 70%), radial-gradient(1.3px 1.3px at 47% 75%, rgba(255, 210, 122, 0.6), transparent 70%), radial-gradient(1px 1px at 63% 55%, rgba(255, 138, 61, 0.6), transparent 70%), radial-gradient(1.1px 1.1px at 78% 72%, rgba(255, 179, 71, 0.6), transparent 70%), radial-gradient(1px 1px at 91% 50%, rgba(255, 106, 42, 0.5), transparent 70%); background-size: 340px 100%; opacity: 0.55; }
 .bnv-cta { align-self: center; height: 46px; margin-top: 0; margin-bottom: 0; }
 
-/* ===== Loop contínuo: cada trilho ocupa ao menos a largura da tela, então só um ciclo aparece por vez e a emenda some ===== */
-.bnv .bnv-trilho { min-width: 100vw; justify-content: space-evenly; }
-.bnv .bnv-esteira { animation-duration: 36s; animation-timing-function: linear; animation-iteration-count: infinite; }
-@media (min-width: 1200px) { .bnv .bnv-esteira { animation-duration: 48s; } }
-@media (max-width: 560px) { .bnv .bnv-esteira { animation-duration: 30s; } }
+/* ===== Loop perfeito: dois trilhos idênticos e vãos iguais (inclusive na emenda); a esteira anda exatamente 1 trilho por ciclo ===== */
+.bnv .bnv-trilho { min-width: 100vw; justify-content: space-between; padding-left: 0; padding-right: 0; gap: 14px; }
+.bnv .bnv-fim { flex: none; width: 0; height: 1px; padding: 0; margin: 0; }
+.bnv .bnv-esteira { will-change: transform; backface-visibility: hidden; animation: bnv-corre2 40s linear infinite; animation-play-state: running !important; }
+@keyframes bnv-corre2 { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
+@media (min-width: 1200px) { .bnv .bnv-esteira { animation-duration: 54s; } }
+@media (max-width: 560px) { .bnv .bnv-esteira { animation-duration: 32s; } }
+/* Nada de blur de fundo em itens que se movem: era o que fazia a faixa engasgar. */
+.bnv .bnv-plano { -webkit-backdrop-filter: none; backdrop-filter: none; }
+@media (prefers-reduced-motion: reduce) { .bnv .bnv-esteira { animation: none; } }
 
 /* ===== COMANDO SUPREMO: card todo dourado, como ouro maciço ===== */
 .bnv .bnv-plano.bnv-vitalicio {

@@ -55,6 +55,8 @@ export function BlackNovemberTicker({ href = "/plano" }: { href?: string }) {
         ...(p.k === "vitalicio" ? [<CaveiraEmpurra key="caveira" />] : []),
       ])}
       <span className="bnv-item bnv-frase"><Zap aria-hidden />ACESSO IMEDIATO <i>{"///"}</i> APROVUM</span>
+      {/* Item sem largura: com space-between, o vão da emenda fica igual aos demais e o loop não mostra "costura". */}
+      <span className="bnv-fim" aria-hidden />
     </div>
   );
   return (
