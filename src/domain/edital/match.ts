@@ -40,6 +40,8 @@ interface Indexed {
 export interface CatalogIndex {
   items: Indexed[];
   idf: Map<string, number>;
+  /** Palavras presentes em muitas aulas ("crimes", "contra", "direito"): sozinhas não identificam assunto nenhum. */
+  weak: Set<string>;
   n: number;
 }
 
@@ -57,7 +59,9 @@ export function buildIndex(catalog: readonly CatalogEntry[]): CatalogIndex {
   const n = Math.max(1, items.length);
   const idf = new Map<string, number>();
   for (const [t, c] of df) idf.set(t, Math.log(1 + n / (1 + c)));
-  return { items, idf, n };
+  const weak = new Set<string>();
+  if (n >= 50) for (const [t, c] of df) if (c / n > 0.04) weak.add(t);
+  return { items, idf, weak, n };
 }
 
 const weight = (idx: CatalogIndex, t: string) => idx.idf.get(t) ?? Math.log(1 + idx.n); // palavra que o catálogo não tem pesa o máximo
@@ -102,13 +106,21 @@ function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null,
     const lawHit = !!it.entry.lawCode && it.entry.articles.some((a) => arts.includes(a)) && new RegExp(`\\b${it.entry.lawCode}\\b`, "i").test(clauseText);
     const matched = clause.all.filter((t) => it.union.has(t)).length;
     if (!exact && !lawHit && matched < Math.min(2, clause.all.length)) continue;
+    // Casar só por palavras genéricas ("crimes contra…") liga aulas de outro assunto: exige ao menos uma palavra específica em comum.
+    const strongMatched = clause.all.filter((t) => it.union.has(t) && !idx.weak.has(t)).length;
+    const hasStrong = clause.all.some((t) => !idx.weak.has(t));
+    if (!exact && !lawHit && hasStrong && strongMatched < 1) continue;
+    // Assunto feito só de palavras genéricas ("crimes contra a fé pública"): só liga se o nome da aula for praticamente o mesmo.
+    if (!exact && !lawHit && !hasStrong && rName < 0.85) continue;
     const base = exact || lawHit ? 1 : Math.max(rName, 0.85 * rUnion);
     // Hierarquia: o tópico do edital onde o assunto está deve ter a ver com o tópico da aula no catálogo.
     // Sem nenhuma palavra em comum, é outro contexto: pesa menos e nunca vira "completa" só por parecer.
     let otherContext = false;
     if (parentTok?.all.length && it.entry.group) {
       const g = tokensOf(it.entry.group);
-      if (g.all.length) otherContext = !parentTok.all.some((t) => g.set.has(t)) && !g.all.some((t) => parentTok.set.has(t));
+      const gs = g.all.filter((t) => !idx.weak.has(t));
+      const ps = parentTok.all.filter((t) => !idx.weak.has(t));
+      if (gs.length && ps.length) otherContext = !ps.some((t) => g.set.has(t)) && !gs.some((t) => parentTok.set.has(t));
     }
     const score = base * factor * (otherContext ? 0.85 : 1);
     if (score < 0.3) continue;

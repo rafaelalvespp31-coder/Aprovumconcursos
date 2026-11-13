@@ -60,3 +60,22 @@ describe("vinculação do edital com o catálogo", () => {
     expect(new Set(a.links.map((l) => l.catalogId)).size).toBe(a.links.length);
   });
 });
+
+describe("palavras genéricas não ligam aulas de outro assunto", () => {
+  const filler = Array.from({ length: 60 }, (_, i) => e(`f${i}`, `Crimes contra assunto${i} qualquer${i}`, "direito_penal", "Crimes contra o patrimônio"));
+  const cat = buildIndex([
+    ...filler,
+    { ...e("furto", "Furto", "direito_penal", "Crimes contra o patrimônio"), aliases: ["crimes contra o patrimônio"] },
+  ]);
+  it("'Crimes contra a dignidade sexual' não vira Furto", () => {
+    const r = matchTopic(cat, "Crimes contra a dignidade sexual", "direito_penal", "Direito Penal");
+    expect(r.links.map((l) => l.catalogId)).not.toContain("furto");
+  });
+  it("'Crimes contra a fé pública' também não vira Furto", () => {
+    const r = matchTopic(cat, "Crimes contra a fé pública", "direito_penal", "Direito Penal");
+    expect(r.links.map((l) => l.catalogId)).not.toContain("furto");
+  });
+  it("'Furto' continua ligando", () => {
+    expect(matchTopic(cat, "Furto", "direito_penal", null).links[0]!.catalogId).toBe("furto");
+  });
+});
