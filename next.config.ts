@@ -48,6 +48,11 @@ const nextConfig: NextConfig = {
   async headers() {
     return [
       { source: "/:path*", headers: securityHeaders },
+      // Arquivos estáticos pesados (imagens, avatares, fontes, áudio): ficam no aparelho e abrem na hora nas visitas seguintes.
+      {
+        source: "/:dir(images|avatar|home|plano|concursos|depoimentos|banner-estudo|estudo|mentor|postit|fonts|audio|modelos|visao-geral|cadastro|meus-editais|card-edital|redacao)/:path*",
+        headers: [{ key: "Cache-Control", value: "public, max-age=604800, stale-while-revalidate=2592000" }],
+      },
       {
         source: "/sw.js",
         headers: [

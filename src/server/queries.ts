@@ -681,7 +681,7 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
   const db = await createUserClient();
   // Sempre filtra pelo próprio aluno: contas de equipe também leem dados de outros (RLS "admin le").
   const me = (await getSessionUser())?.id ?? "00000000-0000-0000-0000-000000000000";
-  const [profile, stats, trails, questions, reviews, mine, folders, myLessons, myProgress, notebooks, sub] = await Promise.all([
+  const [profile, stats, trails, questions, reviews, mine, folders, myLessons, myProgress, notebooks, sub, xpLevel] = await Promise.all([
     db.from("profiles").select("display_name").eq("id", me).maybeSingle(),
     getStudyStats(),
     db.from("study_trails").select("id", { count: "exact", head: true }).eq("user_id", me).is("archived_at", null),
@@ -693,11 +693,11 @@ export async function getShellSummary(email: string | null): Promise<ShellSummar
     db.from("learning_progress").select("trail_id, state, levels_passed, reading_completed_at").eq("user_id", me).limit(5000),
     db.from("question_notebooks").select("id", { count: "exact", head: true }).eq("user_id", me),
     db.from("subscriptions").select("plan_id, status, current_period_end, billing_period").eq("user_id", me).maybeSingle(),
+    myXpLevel(db, me),
   ]);
   const subRow = sub.data as { plan_id: string; status: string; current_period_end: string | null; billing_period: string | null } | null;
   const eff = effectivePlan(subRow ? { planId: subRow.plan_id, status: subRow.status, currentPeriodEnd: subRow.current_period_end } : null);
   const g = computeGamification(stats);
-  const xpLevel = await myXpLevel(db, me);
   const lessonCount = new Map<string, number>();
   for (const l of (myLessons.data ?? []) as Array<{ trail_id: string }>) lessonCount.set(l.trail_id, (lessonCount.get(l.trail_id) ?? 0) + 1);
   const progressBy = new Map<string, Array<{ state: string; levels_passed: number; reading_completed_at: string | null }>>();

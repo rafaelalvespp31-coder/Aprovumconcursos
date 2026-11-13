@@ -18,15 +18,18 @@ export default async function AppLayout({
   children: React.ReactNode;
 }) {
   const user = await requireUser();
-  const [summary, disciplines] = await Promise.all([
+  // Tudo em paralelo (antes: resumo, depois administrador, depois promoção, um esperando o outro).
+  // Degustação global: concede (idempotente, no banco) e decide a popup. Nunca para administradores.
+  const [summary, disciplines, promo] = await Promise.all([
     getShellSummary(user.email ?? null),
     ensureDisciplines(),
+    isAdmin().then((adm) =>
+      adm ? null : ensurePromo(user.id).catch(async (e) => {
+        await logEvent("promo.ensure_failed", { error: (e as Error).message });
+        return null;
+      }),
+    ),
   ]);
-  // Degustação global: concede (idempotente, no banco) e decide a popup. Nunca para administradores.
-  const promo = (await isAdmin()) ? null : await ensurePromo(user.id).catch(async (e) => {
-    await logEvent("promo.ensure_failed", { error: (e as Error).message });
-    return null;
-  });
   return (
     <DisciplinesSync list={disciplines}>
       <PastelShell
