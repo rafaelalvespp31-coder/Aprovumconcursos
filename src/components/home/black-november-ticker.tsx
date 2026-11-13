@@ -21,7 +21,7 @@ export function BlackNovemberTicker({ href = "/plano" }: { href?: string }) {
   const resumo = `Black November APROVUM. ${planos.map((p) => `${p.nome}: ${p.preco}, ${p.det}`).join(". ")}.`;
   const trilho = (oculto: boolean) => (
     <div className="bnv-trilho" key={oculto ? "b" : "a"} aria-hidden={oculto || undefined}>
-      <span className="bnv-item bnv-selo"><Flame aria-hidden />BLACK <b>NOVEMBER</b></span>
+      <span className="bnv-item bnv-selo"><Flame aria-hidden /><span>BLACK NOVEMBER</span></span>
       <span className="bnv-item bnv-frase">SUA APROVAÇÃO NÃO ESPERA <i>{"///"}</i> ESCOLHA SEU PLANO</span>
       {planos.map((p) => (
         <Link key={p.k} href={href} className={`bnv-item bnv-plano bnv-${p.k}`} tabIndex={oculto ? -1 : 0} data-testid={oculto ? undefined : `bn-plano-${p.k}`}>

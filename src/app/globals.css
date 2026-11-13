@@ -4278,3 +4278,30 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 /* medalhas: palavras inteiras, sem quebrar no meio, mesmo na coluna estreita */
 .cl-medals, .cl-medals * { overflow-wrap: normal; word-break: normal; }
 .cl-medal > span:last-child { font-size: clamp(9.5px, 0.8vw, 12px); line-height: 1.2; }
+
+/* ---- Black November: versão minimalista e moderna (bordas suaves, selo amarelo cheio) ---- */
+.bnv { border-radius: 18px; border: 1px solid rgba(255, 255, 255, 0.08); background: radial-gradient(120% 220% at 0% 0%, rgba(255, 209, 26, 0.10), transparent 45%), linear-gradient(90deg, #08080a, #0d0809 60%, #170607); box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06); }
+.bnv::before, .bnv::after { height: 1px; opacity: 1; animation: none; background: linear-gradient(90deg, transparent, rgba(255, 209, 26, 0.55) 30%, rgba(255, 42, 31, 0.55) 70%, transparent); }
+.bnv-janela { padding: 0; }
+.bnv-trilho { gap: 14px; padding: 10px 7px; }
+.bnv-selo { position: relative; overflow: hidden; gap: 8px; padding: 9px 18px; border-radius: 999px; transform: none; background: linear-gradient(135deg, #ffe45c, #ffc400 55%, #ffab00); color: #140f00; font: 900 15px/1 "Barlow Condensed", Inter, sans-serif; letter-spacing: 0.14em; box-shadow: 0 0 0 1px rgba(255, 228, 92, 0.5), 0 6px 22px -4px rgba(255, 196, 0, 0.65); }
+.bnv-selo::after { content: ""; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.65) 50%, transparent 65%); transform: translateX(-120%); animation: bnv-brilho 3.6s ease-in-out infinite; }
+@keyframes bnv-brilho { 0%, 55% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+.bnv-selo svg { width: 16px; height: 16px; color: #c2260c; fill: #ff5a1f; }
+.bnv-frase { font: 600 11.5px/1 "Chakra Petch", Inter, sans-serif; letter-spacing: 0.22em; color: rgba(255, 255, 255, 0.72); }
+.bnv-frase i { color: #ffc400; opacity: 0.9; }
+.bnv-frase svg { color: #ffc400; }
+.bnv-plano { gap: 4px; padding: 8px 16px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.1); background: linear-gradient(180deg, rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.02)); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+.bnv-plano:hover, .bnv-plano:focus-visible { transform: translateY(-2px); border-color: rgba(255, 196, 0, 0.7); background: rgba(255, 196, 0, 0.1); box-shadow: 0 8px 22px -8px rgba(255, 196, 0, 0.55); }
+.bnv-nome { font-size: 10px; letter-spacing: 0.2em; color: rgba(255, 255, 255, 0.55); }
+.bnv-plano strong { font-size: 19px; font-style: normal; color: #fff; }
+.bnv-plano small { font-size: 10.5px; color: rgba(255, 255, 255, 0.5); }
+.bnv-semestral, .bnv-vitalicio { border-color: rgba(255, 255, 255, 0.1); }
+.bnv-semestral .bnv-nome { color: #ff6b61; }
+.bnv-vitalicio { border-color: rgba(255, 196, 0, 0.35); }
+.bnv-vitalicio strong, .bnv-vitalicio .bnv-nome { color: #ffd84a; }
+.bnv-cta { margin: 9px 9px 9px 0; padding: 0 18px; border-radius: 999px; border: 0; background: #fff; color: #0a0a0b; font-weight: 800; letter-spacing: 0.06em; box-shadow: 0 6px 20px -6px rgba(255, 255, 255, 0.5); }
+.bnv-cta:hover { background: #ffc400; }
+@media (max-width: 560px) { .bnv-cta { padding: 0; width: 38px; justify-content: center; margin: 12px 9px 12px 0; } .bnv-selo { padding: 8px 14px; font-size: 14px; } }
+@media (prefers-reduced-motion: reduce) { .bnv-selo::after { animation: none; } }
+.bnv-cta { animation: none; }
