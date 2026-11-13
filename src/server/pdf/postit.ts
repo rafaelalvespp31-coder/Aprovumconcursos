@@ -271,12 +271,12 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
           if (pt.text.trim()) wrap(bold, pt.text, NS, innerW - 84).forEach((l, k) => rows.push({ t: l, bold: true, def: true, bang: k === 0, indent: 28, h: LHX, blk: b0, size: NS }));
         } else wrap(bold, pt.text, NS, innerW - 84).forEach((l, k) => rows.push({ t: l, bold: true, def: true, bang: k === 0, num: undefined, indent: 28, h: LHX, blk: b0, size: NS }));
       });
-      const GAP = 7;
+      const GAP = 0; // um card só: os assuntos se encostam e são separados por linhas finas
       const PADV = 7;
       let k = 0;
       let first = true;
       while (k < rows.length) {
-        const head = first ? 26 : 6;
+        const head = first ? 18 : 0;
         if (y - head - LHX - 2 * PADV - 10 < M.bottom) newPage();
         const room = y - head - M.bottom - 10;
         let used = 0;
@@ -284,7 +284,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
         let lastBlk = -1;
         while (k + cnt < rows.length) {
           const r = rows[k + cnt]!;
-          const extra = r.blk !== lastBlk ? (cnt === 0 ? 2 * PADV : 2 * PADV + GAP) : 0;
+          const extra = r.blk !== lastBlk ? 2 * PADV : 0;
           if (cnt > 0 && used + extra + r.h > room) break;
           used += extra + r.h;
           lastBlk = r.blk;
@@ -306,7 +306,8 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
           while (j < chunk.length && chunk[j]!.blk === bi) hh += chunk[j++]!.h;
           const tone = TONES[bi % TONES.length]!;
           const boxH = hh + 2 * PADV;
-          page.drawRectangle({ x: M.left, y: yy - boxH, width: innerW, height: boxH, color: CARD, borderColor: rgb(0.86, 0.87, 0.9), borderWidth: 0.6 });
+          page.drawRectangle({ x: M.left, y: yy - boxH, width: innerW, height: boxH, color: CARD });
+          if (i > 0) page.drawLine({ start: { x: M.left, y: yy }, end: { x: M.left + innerW, y: yy }, thickness: 0.8, color: rgb(0.72, 0.74, 0.8) });
           page.drawRectangle({ x: M.left, y: yy - boxH, width: 4, height: boxH, color: tone });
           let ry = yy - PADV;
           for (let q = i; q < j; q++) {
@@ -329,6 +330,8 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
           yy -= boxH + GAP;
           i = j;
         }
+        // moldura única em volta de todos os assuntos
+        page.drawRectangle({ x: M.left, y: yy, width: innerW, height: y - head - yy, borderColor: rgb(0.55, 0.57, 0.64), borderWidth: 0.9 });
         y = yy + GAP;
         k += cnt;
         first = false;
