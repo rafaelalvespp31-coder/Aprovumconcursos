@@ -77,14 +77,12 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
 
   let page: PDFPage = doc.addPage(A4);
   let y = H - M.top;
-  // Fundo da página: degradê do azul-marinho (topo) ao azul-bebê (base), em faixas finas.
-  const NAVY = [0.04, 0.10, 0.27], BABY = [0.74, 0.87, 1.0];
+  // Fundo da página: arte da caveira cobrindo a folha inteira (HD), translúcida
+  // sobre preto para não competir com os cartões.
+  const fundo = await doc.embedJpg(await readFile(path.join(process.cwd(), "public", "pdf", "fundo-caveira.jpg")));
   const paintBg = (p: PDFPage) => {
-    const N = 90;
-    for (let k = 0; k < N; k++) {
-      const t = k / (N - 1), e = t * t * (3 - 2 * t); // suaviza a transição
-      p.drawRectangle({ x: 0, y: H - ((k + 1) * H) / N - 0.6, width: A4[0], height: H / N + 1.2, color: rgb(NAVY[0]! + (BABY[0]! - NAVY[0]!) * e, NAVY[1]! + (BABY[1]! - NAVY[1]!) * e, NAVY[2]! + (BABY[2]! - NAVY[2]!) * e) });
-    }
+    p.drawRectangle({ x: 0, y: 0, width: A4[0], height: A4[1], color: rgb(0.02, 0.0, 0.0) });
+    p.drawImage(fundo, { x: 0, y: 0, width: A4[0], height: A4[1], opacity: 0.62 });
   };
   const newPage = () => { page = doc.addPage(A4); paintBg(page); y = H - M.top; };
 
