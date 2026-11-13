@@ -43,6 +43,8 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // As artes dos PDFs (fundo, faixas, logo) são lidas do disco na hora de gerar: garante que entram no pacote da função.
+  outputFileTracingIncludes: { "/api/pdf/**": ["./public/pdf/**"], "/api/**": ["./public/pdf/**"] },
   // Upload de aulas e questões (PDF/.txt) no painel da equipe; a Vercel aceita até ~4,5 MB por requisição.
   experimental: { serverActions: { bodySizeLimit: "13mb" } },
   async headers() {

@@ -65,7 +65,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   const italic = await doc.embedFont(StandardFonts.HelveticaOblique);
   const boldItalic = await doc.embedFont(StandardFonts.HelveticaBoldOblique);
   const logo = await doc.embedPng(b64(LOGO_ESCURA_PNG));
-  const logoClara = await doc.embedPng(await readFile(path.join(process.cwd(), "public", "pdf", "logo-clara.png")));
+  const logoClara = await readFile(path.join(process.cwd(), "public", "pdf", "logo-clara.png")).then((b) => doc.embedPng(b)).catch(() => null);
   const charset = new Set(regular.getCharacterSet());
   const [W, H] = A4;
   const innerW = W - M.left - M.right;
@@ -80,10 +80,10 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   let y = H - M.top;
   // Fundo da página: arte da caveira cobrindo a folha inteira (HD), translúcida
   // sobre preto para não competir com os cartões.
-  const fundo = await doc.embedJpg(await readFile(path.join(process.cwd(), "public", "pdf", "fundo-caveira.jpg")));
+  const fundo = await readFile(path.join(process.cwd(), "public", "pdf", "fundo-caveira.jpg")).then((b) => doc.embedJpg(b)).catch(() => null);
   const paintBg = (p: PDFPage) => {
     p.drawRectangle({ x: 0, y: 0, width: A4[0], height: A4[1], color: rgb(0.02, 0.0, 0.0) });
-    p.drawImage(fundo, { x: 0, y: 0, width: A4[0], height: A4[1], opacity: 0.34 });
+    if (fundo) p.drawImage(fundo, { x: 0, y: 0, width: A4[0], height: A4[1], opacity: 0.34 });
   };
   const newPage = () => { page = doc.addPage(A4); paintBg(page); y = H - M.top; };
 
@@ -152,13 +152,13 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       page.drawRectangle({ x: 0, y: y - fh - 1.2, width: A4[0], height: 1.2, color: RED });
       page.drawRectangle({ x: 0, y, width: A4[0], height: 1.2, color: RED });
       // Logo APROVUM no centro da faixa, sobre um véu radial suave: faz parte da arte.
-      const lh = Math.min(38, fh * 0.5), lw = (lh * logoClara.width) / logoClara.height;
+      const lh = Math.min(38, fh * 0.5), lw = logoClara ? (lh * logoClara.width) / logoClara.height : 0;
       const cx = A4[0] / 2, cy = y - fh / 2;
       for (let v = 0; v < 22; v++) {
         const k = 1 - v / 22;
         page.drawEllipse({ x: cx, y: cy, xScale: (lw / 2 + 46) * k + 10, yScale: (lh / 2 + 18) * k + 6, color: rgb(0, 0, 0), opacity: 0.035 });
       }
-      page.drawImage(logoClara, { x: cx - lw / 2, y: cy - lh / 2, width: lw, height: lh });
+      if (logoClara) page.drawImage(logoClara, { x: cx - lw / 2, y: cy - lh / 2, width: lw, height: lh });
       y -= fh + 8;
     }
     const quoteLines = wrap(regular, clean(it.quote), QS, innerW - 40);
