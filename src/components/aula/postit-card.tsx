@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import type { QuoteBlock } from "@/domain/study/postit-structure";
 import { ArrowUpRight, Check, ChevronDown, Loader2, RotateCcw, Trash2 } from "lucide-react";
 
 export interface PostitView {
@@ -8,6 +9,8 @@ export interface PostitView {
   sectionId: string | null;
   sectionTitle: string | null;
   quote: string;
+  /** Tabela, lista… do trecho, igual à leitura. */
+  structure?: QuoteBlock[] | null;
   quoteStart: number;
   note: string;
   /** Explicação do modo Explicar para este trecho (vai para o PDF). */
@@ -67,7 +70,7 @@ export function PostitCard({
     return () => clearTimeout(t);
   }, [state]);
 
-  const long = p.quote.length > 140;
+  const long = p.quote.length > 140 || !!p.structure;
   return (
     <article className={`pi-card ${focused ? "is-foco" : ""} ${inRail ? "is-lateral" : ""} ${n % 2 ? "" : "is-par"}`} data-testid="postit-card" data-pending={p.pending ? "1" : undefined} data-st>
       <header className="pi-topo">
@@ -75,7 +78,7 @@ export function PostitCard({
         <span className="pi-secao" title={p.sectionTitle ?? undefined}>{p.sectionTitle || "Aula"}</span>
       </header>
 
-      <blockquote className={`pi-trecho ${full ? "is-aberto" : ""}`} data-testid="postit-trecho">{p.quote}</blockquote>
+      <blockquote className={`pi-trecho ${full ? "is-aberto" : ""} ${p.structure ? "is-rico" : ""}`} data-testid="postit-trecho">{p.structure ? <QuoteStruct blocks={p.structure} /> : p.quote}</blockquote>
       {long && (
         <button type="button" className="pi-link" onClick={() => setFull((v) => !v)} aria-expanded={full}>
           <ChevronDown className={`size-3.5 transition-transform ${full ? "rotate-180" : ""}`} aria-hidden /> {full ? "Recolher trecho" : "Ver trecho completo"}
@@ -124,5 +127,30 @@ export function PostitCard({
         )}
       </footer>
     </article>
+  );
+}
+
+/** O trecho na mesma estrutura da leitura: tabela com linhas e colunas, listas, títulos e parágrafos. */
+function QuoteStruct({ blocks }: { blocks: QuoteBlock[] }) {
+  return (
+    <>
+      {blocks.map((b, i) => {
+        if (b.k === "table") {
+          return (
+            <table key={i} className="pi-tab" data-testid="postit-tabela">
+              <tbody>
+                {b.rows.map((r, j) => (
+                  <tr key={j}>{r.c.map((c, k) => (r.h ? <th key={k}>{c}</th> : <td key={k}>{c}</td>))}</tr>
+                ))}
+              </tbody>
+            </table>
+          );
+        }
+        if (b.k === "li") return <p key={i} className="pi-li" style={{ paddingLeft: 12 + (b.d ?? 0) * 12 }}>{b.n != null ? `${b.n}. ` : "• "}{b.t}</p>;
+        if (b.k === "h") return <p key={i} className="pi-h">{b.t}</p>;
+        if (b.k === "pre") return <pre key={i} className="pi-pre">{b.t}</pre>;
+        return <p key={i} className="pi-p">{b.t}</p>;
+      })}
+    </>
   );
 }

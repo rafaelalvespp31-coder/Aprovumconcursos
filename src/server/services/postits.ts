@@ -9,6 +9,7 @@ import { POSTIT_NOTE_MAX, POSTIT_QUOTE_MAX, POSTIT_QUOTE_MIN, cleanPostitText, f
 import { disciplineLabel } from "@/ai/pedagogy";
 import { explainCacheKey } from "@/domain/study/explain-cache";
 import { matchKey } from "@/domain/study/postit-quote";
+import { isRichStructure, sanitizeStructure, structureMatchesQuote, type QuoteBlock } from "@/domain/study/postit-structure";
 import { getAIProvider, aiEnabled } from "@/ai";
 import { explainSelection } from "@/ai/services";
 import type { PostitPdfSnapshot } from "../pdf/postit-types";
@@ -19,6 +20,8 @@ export interface Postit {
   sectionId: string | null;
   sectionTitle: string | null;
   quote: string;
+  /** Estrutura do trecho (tabela, lista…) igual à da leitura; null = texto corrido. */
+  structure: QuoteBlock[] | null;
   quoteStart: number;
   note: string;
   /** Explicação (modo Explicar) deste trecho, quando o aluno pediu. */
@@ -33,10 +36,10 @@ export interface PostitPdfInfo {
   items: number;
 }
 
-const COLS = "id, lesson_id, section_id, section_title, quote, quote_start, note, explanation, created_at, updated_at";
-type Row = { id: string; lesson_id: string; section_id: string | null; section_title: string | null; quote: string; quote_start: number; note: string; explanation: string | null; created_at: string; updated_at: string };
+const COLS = "id, lesson_id, section_id, section_title, quote, quote_structure, quote_start, note, explanation, created_at, updated_at";
+type Row = { id: string; lesson_id: string; section_id: string | null; section_title: string | null; quote: string; quote_structure: unknown; quote_start: number; note: string; explanation: string | null; created_at: string; updated_at: string };
 const toPostit = (r: Row): Postit => ({
-  id: r.id, lessonId: r.lesson_id, sectionId: r.section_id, sectionTitle: r.section_title, quote: r.quote,
+  id: r.id, lessonId: r.lesson_id, sectionId: r.section_id, sectionTitle: r.section_title, quote: r.quote, structure: sanitizeStructure(r.quote_structure),
   quoteStart: r.quote_start, note: r.note, explanation: r.explanation ?? "", createdAt: r.created_at, updatedAt: r.updated_at,
 });
 
@@ -47,6 +50,7 @@ const createSchema = z.object({
   quoteStart: z.number().int().min(0).max(1_000_000).default(0),
   note: z.string().max(POSTIT_NOTE_MAX * 2).default(""),
   around: z.string().max(2000).optional(),
+  structure: z.unknown().optional(),
 });
 export type CreatePostitInput = z.input<typeof createSchema>;
 
@@ -80,7 +84,7 @@ export async function createPostit(userId: string, input: CreatePostitInput): Pr
   const quote = cleanPostitText(p.quote);
   const note = cleanPostitText(p.note);
   if (quote.length < POSTIT_QUOTE_MIN) throw new UserFacingError("Selecione um trecho do texto da aula.", "invalid");
-  if (quote.length > POSTIT_QUOTE_MAX) throw new UserFacingError(`Selecione um trecho menor (até ${POSTIT_QUOTE_MAX} caracteres).`, "too_long");
+  if (quote.length > POSTIT_QUOTE_MAX) throw new UserFacingError(`Trecho grande demais.`, "too_long");
   if (note.length > POSTIT_NOTE_MAX) throw new UserFacingError(`A anotação pode ter até ${POSTIT_NOTE_MAX} caracteres.`, "too_long");
 
   const db = await createUserClient();
@@ -96,11 +100,14 @@ export async function createPostit(userId: string, input: CreatePostitInput): Pr
   const sec = findQuoteSection(quote, sections, p.sectionId ?? null);
   if (!sec) throw new UserFacingError("Esse trecho não foi encontrado no texto desta aula. Selecione o texto diretamente na leitura.", "invalid");
 
+  // Estrutura (tabela, lista…): só vale se o texto dela é o mesmo do trecho.
+  const rich = sanitizeStructure(p.structure);
+  const structure = rich && isRichStructure(rich) && structureMatchesQuote(rich, quote) ? rich : null;
   const ins = await db
     .from("lesson_postits")
     .insert({
       lesson_id: lesson.id, trail_id: lesson.trail_id, subject_key: lesson.study_trails?.discipline_mode ?? null,
-      section_id: sec.id, section_title: sec.title.slice(0, 200), quote, quote_start: p.quoteStart, note,
+      section_id: sec.id, section_title: sec.title.slice(0, 200), quote, quote_start: p.quoteStart, note, quote_structure: structure,
     })
     .select(COLS)
     .single();
@@ -156,7 +163,7 @@ async function ensureExplanations(userId: string, lessonId: string, lessonTitle:
       const ctx = around(p);
       let meaning = await cachedExplanation(p.quote, ctx);
       if (!meaning && aiEnabled("estudos")) {
-        meaning = await explainSelection(getAIProvider("estudos"), { lessonTitle, selection: p.quote.slice(0, 600), around: ctx });
+        meaning = await explainSelection(getAIProvider("estudos"), { lessonTitle, selection: p.quote.slice(0, 4000), around: ctx });
         const flat = p.quote.replace(/\s+/g, " ").trim();
         await admin.from("selection_explanations").upsert({ key: explainCacheKey(flat, ctx), selection: flat.slice(0, 600), meaning: meaning.slice(0, 900) }, { onConflict: "key" }).then(() => undefined, () => undefined);
       }
@@ -269,7 +276,7 @@ export async function createPostitPdf(userId: string, lessonIdIn: string): Promi
     generatedAt: new Date().toISOString(),
     student: { name: (prof.data?.display_name as string | null | undefined) ?? null },
     lesson: { id: lesson.id, title: lesson.title, subject: subject ?? null, trailTitle: trail?.title ?? null },
-    items: postits.map((p, i) => ({ n: i + 1, sectionTitle: p.sectionTitle, quote: p.quote, note: p.note, explanation: p.explanation, createdAt: p.createdAt })),
+    items: postits.map((p, i) => ({ n: i + 1, sectionTitle: p.sectionTitle, quote: p.quote, ...(p.structure ? { structure: p.structure } : {}), note: p.note, explanation: p.explanation, createdAt: p.createdAt })),
   };
   const hash = hashOf(snapshot);
 

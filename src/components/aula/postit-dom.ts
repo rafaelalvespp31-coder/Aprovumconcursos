@@ -2,8 +2,10 @@
  * Ponte entre o texto renderizado da aula e os post-its: lê a seleção do aluno (com a seção e a
  * posição do trecho) e reencontra o trecho guardado no texto da página para marcá-lo.
  */
+import type { QuoteBlock } from "@/domain/study/postit-structure";
+
 export const SECTION_SELECTOR = ".ap-secao";
-export const POSTIT_QUOTE_MAX_CLIENT = 1500;
+export const POSTIT_QUOTE_MAX_CLIENT = 200_000;
 
 export interface Capture {
   sectionId: string;
@@ -11,6 +13,8 @@ export interface Capture {
   quote: string;
   quoteStart: number;
   around: string;
+  /** Tabela, lista, títulos… do trecho, quando o trecho não é só texto corrido. */
+  structure?: QuoteBlock[];
   at: number;
 }
 export type ReadResult = { cap: Capture } | { error: string } | null;
@@ -37,7 +41,7 @@ export function readSelection(): ReadResult {
   if (!sectionId) return null;
   const quote = cleanQuote(sel.toString());
   if (quote.length < 2) return null;
-  if (quote.length > POSTIT_QUOTE_MAX_CLIENT) return { error: `Trecho longo demais: selecione até ${POSTIT_QUOTE_MAX_CLIENT} caracteres.` };
+  if (quote.length > POSTIT_QUOTE_MAX_CLIENT) return { error: "Trecho enorme: marque a seção em partes." };
   const pre = document.createRange();
   pre.selectNodeContents(a);
   pre.setEnd(range.startContainer, range.startOffset);
@@ -49,6 +53,7 @@ export function readSelection(): ReadResult {
       quote,
       quoteStart: pre.toString().length,
       around: (block.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 800),
+      structure: richStructure(range),
       at: Date.now(),
     },
   };
@@ -69,7 +74,7 @@ export function locateRange(p: { sectionId: string; quote: string; quoteStart: n
     full += n.data;
   }
   const tokens = p.quote.split(/\s+/).filter(Boolean).map(escapeRe);
-  if (!tokens.length || tokens.length > 600) return null;
+  if (!tokens.length || tokens.length > 40000) return null;
   let re: RegExp;
   try {
     re = new RegExp(tokens.join("\\s*"), "gu");
@@ -114,4 +119,96 @@ export function caretAt(x: number, y: number): { node: Node; offset: number } | 
   }
   const r = d.caretRangeFromPoint?.(x, y);
   return r ? { node: r.startContainer, offset: r.startOffset } : null;
+}
+
+// ---------------------------------------------------------------- estrutura do trecho (tabelas, listas…)
+function richStructure(range: Range): QuoteBlock[] | undefined {
+  try {
+    const b = structureFromRange(range);
+    return b.length > 1 || (b[0] && b[0].k !== "p") ? b : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+const squash = (s: string) => s.replace(/[ \t ​]+/g, " ").replace(/ *\n */g, "\n").trim();
+const BLOCK_TAGS = new Set(["P", "DIV", "SECTION", "ARTICLE", "BLOCKQUOTE", "FIGURE", "FIGCAPTION", "DETAILS", "SUMMARY", "ASIDE", "HEADER", "FOOTER", "MAIN", "DL", "DT", "DD"]);
+
+function cellsOf(tr: Element): string[] {
+  return [...tr.children].filter((c) => c.tagName === "TD" || c.tagName === "TH").map((c) => squash(c.textContent ?? ""));
+}
+function tableOf(rows: Element[]): QuoteBlock | null {
+  const out = rows.map((tr) => ({ c: cellsOf(tr), h: [...tr.children].length > 0 && [...tr.children].every((c) => c.tagName === "TH") })).filter((r) => r.c.length);
+  return out.length ? { k: "table", rows: out.map((r) => (r.h ? { h: true, c: r.c } : { c: r.c })) } : null;
+}
+
+/** Monta a estrutura (tabela, lista, títulos, parágrafos) do que está dentro do intervalo selecionado. */
+export function structureFromRange(range: Range): QuoteBlock[] {
+  const root = range.cloneContents();
+  const out: QuoteBlock[] = [];
+  let buf = "";
+  const flush = () => {
+    const t = squash(buf);
+    if (t) out.push({ k: "p", t });
+    buf = "";
+  };
+  const list = (el: Element, depth: number) => {
+    const ordered = el.tagName === "OL";
+    let n = ordered ? Number(el.getAttribute("start") ?? 1) || 1 : 0;
+    for (const li of [...el.children]) {
+      if (li.tagName !== "LI") continue;
+      let own = "";
+      const nested: Element[] = [];
+      const grab = (node: Node) => {
+        if (node instanceof Element && (node.tagName === "UL" || node.tagName === "OL")) { nested.push(node); return; }
+        if (node instanceof Text) own += node.data;
+        else if (node instanceof Element && node.tagName === "BR") own += "\n";
+        else node.childNodes.forEach(grab);
+      };
+      li.childNodes.forEach(grab);
+      const t = squash(own);
+      if (t) out.push({ k: "li", t, ...(ordered ? { n } : {}), ...(depth ? { d: depth } : {}) });
+      if (ordered) n++;
+      nested.forEach((x) => list(x, depth + 1));
+    }
+  };
+  const PARTS = new Set(["THEAD", "TBODY", "TFOOT", "TR"]);
+  /** Filhos em ordem; partes de tabela vizinhas (cabeçalho + corpo) viram UMA tabela. */
+  const walkKids = (parent: Node) => {
+    const kids = [...parent.childNodes];
+    for (let i = 0; i < kids.length; i++) {
+      const k = kids[i]!;
+      if (k instanceof Element && PARTS.has(k.tagName)) {
+        const group: Element[] = [];
+        while (i < kids.length && kids[i] instanceof Element && PARTS.has((kids[i] as Element).tagName)) group.push(kids[i++] as Element);
+        i--;
+        flush();
+        const t = tableOf(group.flatMap((g) => (g.tagName === "TR" ? [g] : [...g.querySelectorAll("tr")])));
+        if (t) out.push(t);
+      } else walk(k);
+    }
+  };
+  const walk = (node: Node) => {
+    if (node instanceof Text) { buf += node.data; return; }
+    if (!(node instanceof Element)) { walkKids(node); return; }
+    const tag = node.tagName;
+    if (tag === "BR") { buf += "\n"; return; }
+    if (tag === "TABLE") { flush(); const t = tableOf([...node.querySelectorAll("tr")]); if (t) out.push(t); return; }
+    if (tag === "TD" || tag === "TH") { buf += `${node.textContent ?? ""}\n`; return; }
+    if (tag === "UL" || tag === "OL") { flush(); list(node, 0); return; }
+    if (tag === "LI") { flush(); const t = squash(node.textContent ?? ""); if (t) out.push({ k: "li", t }); return; }
+    if (/^H[1-6]$/.test(tag)) { flush(); const t = squash(node.textContent ?? ""); if (t) out.push({ k: "h", t }); return; }
+    if (tag === "PRE") { flush(); const t = (node.textContent ?? "").replace(/\s+$/, ""); if (t.trim()) out.push({ k: "pre", t }); return; }
+    if (BLOCK_TAGS.has(tag)) { flush(); walkKids(node); flush(); return; }
+    walkKids(node);
+  };
+  // Células/linhas soltas (seleção que começa e termina em células) viram uma única tabela.
+  const kids = [...root.childNodes];
+  if (kids.length && kids.every((k) => k instanceof Element && (k.tagName === "TR" || k.tagName === "TD" || k.tagName === "TH"))) {
+    const trs = kids.every((k) => (k as Element).tagName === "TR") ? (kids as Element[]) : null;
+    if (trs) { const t = tableOf(trs); if (t) out.push(t); }
+    else out.push({ k: "table", rows: [{ c: kids.map((k) => squash(k.textContent ?? "")) }] });
+  } else walkKids(root);
+  flush();
+  return out;
 }

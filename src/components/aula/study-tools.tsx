@@ -11,7 +11,7 @@ import { matchKey } from "@/domain/study/postit-quote";
 import { caretAt, locateRange, readSelection, type Capture } from "./postit-dom";
 
 type PdfInfo = { id: string; pdfVersion: number; createdAt: string; items: number };
-type PostitDto = { explanation?: string; id: string; sectionId: string | null; sectionTitle: string | null; quote: string; quoteStart: number; note: string; createdAt: string };
+type PostitDto = { structure?: PostitView["structure"]; explanation?: string; id: string; sectionId: string | null; sectionTitle: string | null; quote: string; quoteStart: number; note: string; createdAt: string };
 
 /** Contrato com o servidor. Na galeria de design entra uma versão em memória; no app, as ações reais. */
 export interface StudyApi {
@@ -237,17 +237,17 @@ export function StudyTools({
   const createFromCapture = useCallback(async (cap: Capture) => {
     const dup = postitsRef.current.find((x) => !x.pending && x.sectionId === cap.sectionId && x.quote === cap.quote && Math.abs(x.quoteStart - cap.quoteStart) < 2);
     if (dup) { setFocusId(dup.id); say("Esse trecho já tem um post-it."); return; }
-    const tmp: PostitView = { id: `tmp-${Date.now()}`, sectionId: cap.sectionId, sectionTitle: cap.sectionTitle || null, quote: cap.quote, quoteStart: cap.quoteStart, note: "", createdAt: new Date().toISOString(), pending: true };
+    const tmp: PostitView = { id: `tmp-${Date.now()}`, sectionId: cap.sectionId, sectionTitle: cap.sectionTitle || null, quote: cap.quote, structure: cap.structure ?? null, quoteStart: cap.quoteStart, note: "", createdAt: new Date().toISOString(), pending: true };
     setPostits((l) => sortPostits([...l, tmp]));
     window.getSelection()?.removeAllRanges();
     lastCap.current = null;
-    const r = await api.create({ lessonId, sectionId: cap.sectionId, quote: cap.quote, quoteStart: cap.quoteStart, note: "", around: cap.around });
+    const r = await api.create({ lessonId, sectionId: cap.sectionId, quote: cap.quote, quoteStart: cap.quoteStart, note: "", around: cap.around, structure: cap.structure });
     if (!r.ok) {
       setPostits((l) => l.filter((x) => x.id !== tmp.id));
       say(r.error, "erro");
       return;
     }
-    const real: PostitView = { id: r.postit.id, sectionId: r.postit.sectionId, sectionTitle: r.postit.sectionTitle, quote: r.postit.quote, quoteStart: r.postit.quoteStart, note: r.postit.note, explanation: r.postit.explanation, createdAt: r.postit.createdAt };
+    const real: PostitView = { id: r.postit.id, sectionId: r.postit.sectionId, sectionTitle: r.postit.sectionTitle, quote: r.postit.quote, structure: r.postit.structure ?? null, quoteStart: r.postit.quoteStart, note: r.postit.note, explanation: r.postit.explanation, createdAt: r.postit.createdAt };
     setPostits((l) => {
       const without = l.filter((x) => x.id !== tmp.id && x.id !== real.id);
       return sortPostits([...without, real]);

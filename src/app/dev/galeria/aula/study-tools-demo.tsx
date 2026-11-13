@@ -1,10 +1,11 @@
 "use client";
 
 import { StudyTools, type StudyApi } from "@/components/aula/study-tools";
+import type { QuoteBlock } from "@/domain/study/postit-structure";
 import { SelectionExplainer } from "@/components/aula/selection-explainer";
 
 /** Galeria: mesmas telas da barra de estudo, com um "servidor" em memória (nada é gravado). */
-const mem: { id: string; sectionId: string | null; sectionTitle: string | null; quote: string; quoteStart: number; note: string; explanation: string; createdAt: string }[] = [];
+const mem: { structure: QuoteBlock[] | null; id: string; sectionId: string | null; sectionTitle: string | null; quote: string; quoteStart: number; note: string; explanation: string; createdAt: string }[] = [];
 const pdfs: { id: string; pdfVersion: number; createdAt: string; items: number }[] = [];
 let lastHash = "";
 const explained = new Map<string, string>();
@@ -16,7 +17,7 @@ const demoApi: StudyApi = {
     const dup = mem.find((m) => m.sectionId === (input.sectionId ?? null) && m.quote === quote && m.quoteStart === (input.quoteStart ?? 0));
     if (dup) return { ok: true, postit: { ...dup, lessonId: input.lessonId, updatedAt: dup.createdAt }, duplicate: true };
     if (quote.length < 2) return { ok: false, error: "Selecione um trecho do texto da aula." };
-    const row = { id: crypto.randomUUID(), sectionId: input.sectionId ?? null, sectionTitle: "Seção de exemplo", quote, quoteStart: input.quoteStart ?? 0, note: input.note ?? "", explanation: explained.get(key(quote)) ?? "", createdAt: new Date().toISOString() };
+    const row = { structure: (input.structure as QuoteBlock[] | undefined) ?? null, id: crypto.randomUUID(), sectionId: input.sectionId ?? null, sectionTitle: "Seção de exemplo", quote, quoteStart: input.quoteStart ?? 0, note: input.note ?? "", explanation: explained.get(key(quote)) ?? "", createdAt: new Date().toISOString() };
     mem.push(row);
     return { ok: true, postit: { ...row, lessonId: input.lessonId, updatedAt: row.createdAt }, duplicate: false };
   },

@@ -17,7 +17,8 @@ const LINE = rgb(0.85, 0.85, 0.86);
 const SOFT = rgb(0.965, 0.965, 0.97);
 const WHITE = rgb(1, 1, 1);
 const NOTE_BG = rgb(1, 0.965, 0.72);
-const EXPL_BG = rgb(0.94, 0.95, 0.97);
+const EXPL_BG = RED;
+const EXPL_BAR = rgb(0.42, 0, 0);
 const NOTE_LINE = rgb(0.92, 0.82, 0.3);
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
@@ -123,7 +124,97 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       page.drawText(secT.toUpperCase().length === secT.length ? secT : secT, { x: M.left + 28, y: y - 12, size: 7.5, font: bold, color: MUTED });
     }
     y -= headH + 4;
-    // Trecho
+    // Trecho: texto corrido ou, se o aluno marcou uma tabela/lista/títulos, a mesma estrutura da leitura.
+    const card = (from: number, h: number) => {
+      page.drawRectangle({ x: M.left, y: from - h + 4, width: innerW, height: h, color: SOFT });
+      page.drawRectangle({ x: M.left, y: from - h + 4, width: 2.5, height: h, color: RED });
+    };
+    /** Linhas de texto dentro do cartão do trecho, continuando na página seguinte quando preciso. */
+    const textBlock = (lines: string[], font: PDFFont, size: number, x: number, bullet?: string) => {
+      const lh = size * LH;
+      let i = 0;
+      while (i < lines.length) {
+        let fit = Math.floor((y - M.bottom - 14) / lh);
+        if (fit < 1 || (fit < 2 && i === 0 && lines.length > 1 && y - M.bottom < 60)) { newPage(); fit = Math.floor((y - M.bottom - 14) / lh); }
+        const chunk = lines.slice(i, i + Math.max(1, fit));
+        card(y, chunk.length * lh + 10);
+        chunk.forEach((l, k) => page.drawText(l, { x, y: y - 1 - size - k * lh, size, font, color: INK }));
+        if (bullet && i === 0) page.drawText(bullet, { x: x - 12 - (bullet.length > 1 ? bold.widthOfTextAtSize(bullet, size) - 5 : 0), y: y - 1 - size, size, font: bold, color: RED });
+        y -= chunk.length * lh + 10;
+        i += chunk.length;
+        if (i < lines.length) newPage();
+      }
+    };
+    /** Tabela com as mesmas linhas e colunas do texto; larguras proporcionais ao conteúdo; linha de cabeçalho repetida ao mudar de página. */
+    const tableBlock = (rows: Array<{ h?: boolean; c: string[] }>) => {
+      const TS = 8.6, TLH = TS * 1.3, PAD = 3.5;
+      const cols = Math.max(...rows.map((r) => r.c.length));
+      const avail = innerW - 24;
+      const fnt = (r: { h?: boolean }) => (r.h ? bold : regular);
+      const cell = (r: { h?: boolean; c: string[] }, ci: number) => clean(r.c[ci] ?? "");
+      const natural = Array.from({ length: cols }, (_, ci) => Math.max(...rows.map((r) => fnt(r).widthOfTextAtSize(cell(r, ci).replace(/\n/g, " "), TS))) + 2 * PAD);
+      const minW = Array.from({ length: cols }, (_, ci) => Math.min(natural[ci]!, Math.max(...rows.map((r) => Math.max(0, ...cell(r, ci).split(/\s+/).map((w) => fnt(r).widthOfTextAtSize(w, TS)))) ) + 2 * PAD));
+      let widths: number[];
+      if (natural.reduce((a2, b2) => a2 + b2, 0) <= avail) {
+        const extra = (avail - natural.reduce((a2, b2) => a2 + b2, 0)) / cols;
+        widths = natural.map((w) => w + extra);
+      } else {
+        const minSum = minW.reduce((a2, b2) => a2 + b2, 0);
+        if (minSum >= avail) widths = minW.map((w) => (w * avail) / minSum);
+        else {
+          const extra = avail - minSum;
+          const wt = natural.map((w, i) => Math.max(0, w - minW[i]!));
+          const wsum = wt.reduce((a2, b2) => a2 + b2, 0) || 1;
+          widths = minW.map((w, i) => w + (extra * wt[i]!) / wsum);
+        }
+      }
+      const laid = rows.map((r) => {
+        const lines = widths.map((w, ci) => wrap(fnt(r), cell(r, ci), TS, Math.max(8, w - 2 * PAD)));
+        return { r, lines, h: Math.max(...lines.map((l) => l.length), 1) * TLH + 2 * PAD };
+      });
+      const head = laid[0]?.r.h ? laid[0] : null;
+      let i = 0;
+      while (i < laid.length) {
+        const prefix = head && i > 0 ? [head] : [];
+        let total = prefix.reduce((a2, l) => a2 + l.h, 0);
+        const room = y - M.bottom - 16;
+        const take: typeof laid = [];
+        while (i + take.length < laid.length && (take.length === 0 ? total + laid[i]!.h <= room : total + laid[i + take.length]!.h <= room)) {
+          total += laid[i + take.length]!.h;
+          take.push(laid[i + take.length]!);
+        }
+        if (!take.length) {
+          if (y < H - M.top - 4) { newPage(); continue; }
+          take.push(laid[i]!); // linha maior que a página: desenha assim mesmo
+          total += laid[i]!.h;
+        }
+        card(y, total + 10);
+        let yy = y;
+        for (const L of [...prefix, ...take]) {
+          let x = M.left + 14;
+          widths.forEach((w, ci) => {
+            page.drawRectangle({ x, y: yy - L.h, width: w, height: L.h, color: L.r.h ? rgb(0.9, 0.9, 0.92) : WHITE, borderColor: LINE, borderWidth: 0.6 });
+            L.lines[ci]!.forEach((ln, k) => page.drawText(ln, { x: x + PAD, y: yy - PAD - TS - k * TLH + 1, size: TS, font: fnt(L.r), color: INK }));
+            x += w;
+          });
+          yy -= L.h;
+        }
+        y -= total + 10;
+        i += take.length;
+        if (i < laid.length) newPage();
+      }
+    };
+    if (it.structure?.length) {
+      if (y - 40 < M.bottom) newPage();
+      for (const b of it.structure) {
+        if (b.k === "table") tableBlock(b.rows);
+        else if (b.k === "li") {
+          const ind = 26 + (b.d ?? 0) * 14;
+          textBlock(wrap(regular, clean(b.t), QS, innerW - ind - 14), regular, QS, M.left + ind, b.n != null ? `${b.n}.` : "•");
+        } else if (b.k === "h") textBlock(wrap(bold, clean(b.t), QS + 0.5, innerW - 28), bold, QS + 0.5, M.left + 14);
+        else textBlock(wrap(regular, clean(b.t), QS, innerW - 28), regular, QS, M.left + 14);
+      }
+    } else {
     let top = y;
     const startQuote = (pg: PDFPage, from: number, count: number) => {
       pg.drawRectangle({ x: M.left, y: from - count * QS * LH - 6, width: innerW, height: count * QS * LH + 10, color: SOFT });
@@ -141,6 +232,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       if (i < quoteLines.length) newPage();
     }
     void top;
+    }
     // Anotação e explicação fazem parte do mesmo cartão: blocos colados ao trecho, mesma largura e mesmo filete vermelho.
     if (noteLines.length) {
       const nH = noteLines.length * NS * LH + 24;
@@ -163,12 +255,11 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
         const chunk = exLines.slice(k, k + fit);
         const h = head + chunk.length * NS * LH + 8;
         page.drawRectangle({ x: M.left, y: y - h + 4, width: innerW, height: h, color: EXPL_BG });
-        page.drawRectangle({ x: M.left, y: y - h + 4, width: 2.5, height: h, color: RED });
+        page.drawRectangle({ x: M.left, y: y - h + 4, width: 2.5, height: h, color: EXPL_BAR });
         if (first) {
-          page.drawLine({ start: { x: M.left + 2.5, y: y + 4 }, end: { x: M.left + innerW, y: y + 4 }, thickness: 0.4, color: LINE });
-          page.drawText("EXPLICAÇÃO", { x: M.left + 14, y: y - 11, size: 6.5, font: bold, color: MUTED });
+          page.drawText("EXPLICAÇÃO", { x: M.left + 14, y: y - 12, size: 7.5, font: bold, color: WHITE });
         }
-        chunk.forEach((l, j) => page.drawText(l, { x: M.left + 14, y: y - head - 2 - j * NS * LH - NS + 4, size: NS, font: regular, color: INK }));
+        chunk.forEach((l, j) => page.drawText(l, { x: M.left + 14, y: y - head - 2 - j * NS * LH - NS + 4, size: NS, font: regular, color: WHITE }));
         y -= h;
         k += chunk.length;
         first = false;

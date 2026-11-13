@@ -1,3 +1,5 @@
+import type { QuoteBlock } from "@/domain/study/postit-structure";
+
 /** Retrato congelado do "Meu PDF de Revisão" (postit_pdfs.snapshot). */
 export interface PostitPdfSnapshot {
   schema: 1;
@@ -8,6 +10,8 @@ export interface PostitPdfSnapshot {
     n: number;
     sectionTitle: string | null;
     quote: string;
+    /** Tabela, lista, títulos… do trecho, igual à leitura. Ausente = texto corrido. */
+    structure?: QuoteBlock[];
     note: string;
     /** Explicação (modo Explicar) do trecho; vazio se o aluno não pediu. Ausente em versões antigas. */
     explanation?: string;

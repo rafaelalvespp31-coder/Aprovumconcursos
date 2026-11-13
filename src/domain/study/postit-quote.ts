@@ -5,7 +5,8 @@
  * pontuação, espaços e símbolos do markdown). Assim ninguém grava trecho inventado.
  */
 export const POSTIT_QUOTE_MIN = 2;
-export const POSTIT_QUOTE_MAX = 1500;
+/** Sem limite prático: dá para marcar a seção inteira. */
+export const POSTIT_QUOTE_MAX = 200_000;
 export const POSTIT_NOTE_MAX = 2000;
 
 /** Remove caracteres de controle e normaliza o texto para guardar/mostrar. */

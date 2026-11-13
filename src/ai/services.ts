@@ -752,7 +752,8 @@ export async function explainSelection(
   provider: AIProvider,
   ctx: { lessonTitle: string; selection: string; around: string },
 ): Promise<string> {
-  const sel = wrapUntrusted(ctx.selection.slice(0, 600), "trecho_selecionado");
+  const long = ctx.selection.length > 600;
+  const sel = wrapUntrusted(ctx.selection.slice(0, 4000), "trecho_selecionado");
   const around = wrapUntrusted(ctx.around.slice(0, 1500), "contexto_ao_redor");
   const res = await provider.generateStructured({
     task: "review_content",
@@ -763,7 +764,7 @@ export async function explainSelection(
     temperature: 0.2,
     schema: explainSelectionSchema,
     prompt: `Aula: "${ctx.lessonTitle}".
-Explique em linguagem simples, em até 3 frases curtas (máximo ~70 palavras), o que significa o trecho selecionado NESTE contexto. Se for um termo jurídico ou técnico, dê o sentido e, se ajudar, um exemplo de uma linha. Não invente números de artigos, súmulas ou julgados.
+${long ? "Explique em linguagem simples, em até 6 frases curtas (máximo ~140 palavras), o que este trecho ensina e o sentido dos termos mais difíceis dele, NESTE contexto." : "Explique em linguagem simples, em até 3 frases curtas (máximo ~70 palavras), o que significa o trecho selecionado NESTE contexto."} Se for um termo jurídico ou técnico, dê o sentido e, se ajudar, um exemplo de uma linha. Não invente números de artigos, súmulas ou julgados.
 
 ${sel.text}
 

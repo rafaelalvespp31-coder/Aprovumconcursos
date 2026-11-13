@@ -62,6 +62,28 @@ test.describe("barra de estudo e post-its", () => {
     await expect(page.getByTestId("st-painel-pdf")).toHaveCount(0);
   });
 
+  test("trecho em tabela guarda linhas e colunas (estrutura) no post-it", async ({ page }) => {
+    await abrirModulo(page);
+    // Insere uma tabela real no texto da aula (só no navegador) e seleciona as células.
+    await page.evaluate(() => {
+      const sec = document.querySelector(".ap-secao")!;
+      const t = document.createElement("table");
+      t.innerHTML = "<thead><tr><th>Quadro</th><th>Regra</th></tr></thead><tbody><tr><td>Alfa</td><td>Primeira regra</td></tr><tr><td>Beta</td><td>Segunda regra</td></tr></tbody>";
+      sec.querySelector("p")!.after(t);
+      const r = document.createRange();
+      r.selectNodeContents(t);
+      const s = window.getSelection()!;
+      s.removeAllRanges();
+      s.addRange(r);
+    });
+    await page.getByTestId("postit-botao").click();
+    const card = page.getByTestId("postit-card").first();
+    await expect(card.getByTestId("postit-tabela")).toBeVisible();
+    await expect(card.getByTestId("postit-tabela").locator("tr")).toHaveCount(3);
+    await expect(card.getByTestId("postit-tabela").locator("th")).toHaveCount(2);
+    await expect(card.getByTestId("postit-tabela").locator("td").nth(3)).toHaveText("Segunda regra");
+  });
+
   test("criar, anotar, ir ao trecho, excluir com confirmação", async ({ page }) => {
     await abrirModulo(page);
     const trecho = await primeiroTrecho(page);

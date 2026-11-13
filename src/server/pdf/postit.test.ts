@@ -24,4 +24,24 @@ describe("renderPostitPdf", () => {
     expect(bytes.length).toBeGreaterThan(5000);
     if (process.env.PDF_OUT) (await import("node:fs")).writeFileSync(process.env.PDF_OUT, bytes);
   });
+
+  it("desenha tabela, lista e título do trecho na mesma estrutura, inclusive tabela longa", async () => {
+    const base = snap(1);
+    const rows = Array.from({ length: 40 }, (_, i) => ({ c: [`Crime ${i + 1}`, "Pena de reclusão de 1 a 4 anos, e multa", i % 2 ? "Ação penal pública incondicionada" : "Ação penal privada"] }));
+    base.items = [
+      {
+        n: 1, sectionTitle: "Quadro", note: "Decorar a coluna das penas.", explanation: "Mostra cada crime com a pena e o tipo de ação.", createdAt: "2026-11-12T10:00:00.000Z",
+        quote: "Quadro", structure: [
+          { k: "h", t: "Quadro de crimes" },
+          { k: "p", t: "Veja a tabela:" },
+          { k: "table", rows: [{ h: true, c: ["Crime", "Pena", "Ação"] }, ...rows] },
+          { k: "li", t: "Primeiro item da lista", n: 1 },
+          { k: "li", t: "Subitem", n: 2, d: 1 },
+        ],
+      },
+    ];
+    const bytes = await renderPostitPdf(base, { pdfVersion: 1 });
+    expect(Buffer.from(bytes.slice(0, 5)).toString()).toBe("%PDF-");
+    if (process.env.PDF_OUT2) (await import("node:fs")).writeFileSync(process.env.PDF_OUT2, bytes);
+  });
 });
