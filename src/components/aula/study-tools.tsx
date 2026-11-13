@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Download, FileText, Lightbulb, Loader2, StickyNote, Trash2, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Download, FileText, Lightbulb, Loader2, StickyNote, Trash2, Wrench, X } from "lucide-react";
 import { VozOrbRepouso } from "@/components/mentor/voz-orb-solo";
 import { MentorVoz } from "@/components/mentor/mentor-voz";
 import type { StudyContext } from "@/domain/mentor/study-context";
@@ -64,6 +65,10 @@ export function StudyTools({
   const rangesRef = useRef(new Map<string, Range>());
   const els = useRef(new Map<string, HTMLElement>());
   const popRef = useRef<HTMLDivElement | null>(null);
+  const barRef = useRef<HTMLDivElement | null>(null);
+  // A barra entra no cabeçalho fixo da página (logo abaixo da logo); sem cabeçalho, fica solta no topo.
+  const [host, setHost] = useState<Element | null>(null);
+  useEffect(() => { setHost(document.querySelector(".mv-cabecalho")); }, []);
   const armedRef = useRef(false);
   const openRef = useRef<string | null>(null);
   const armT = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -109,13 +114,16 @@ export function StudyTools({
     const fr = folha?.getBoundingClientRect();
     const stubX = fr ? Math.min(fr.right - 38, vw - 70) : vw - 100;
     const small = vw < 768;
-    let cursor = 76;
+    // Limite de cima: logo abaixo da barra de ferramentas (que fica embaixo do cabeçalho).
+    const topo = Math.round((barRef.current?.getBoundingClientRect().bottom ?? 70) + 8);
+    document.documentElement.style.setProperty("--st-base", `${topo}px`);
+    let cursor = topo;
     for (const p of postitsRef.current) {
       const el = els.current.get(p.id);
       if (!el) continue;
       const r = rangesRef.current.get(p.id);
       const rect = r?.getBoundingClientRect();
-      const visible = !small && !!rect && rect.bottom > 70 && rect.top < vh - 40;
+      const visible = !small && !!rect && rect.bottom > topo && rect.top < vh - 40;
       if (!visible || !rect) { el.style.display = "none"; continue; }
       const y = Math.max(rect.top - 2, cursor);
       if (y > vh - 56) { el.style.display = "none"; continue; }
@@ -126,7 +134,7 @@ export function StudyTools({
         const pop = popRef.current;
         const w = Math.min(250, vw - 24);
         // Fora do texto: na margem direita da folha se couber (sem encostar na barra de ferramentas); senão, na esquerda; por último junto à borda direita.
-        const dock = 104;
+        const dock = 24;
         const margem = !!fr && (vw - dock - fr.right >= w + 12 || fr.left >= 340 + w);
         const left = fr && vw - dock - fr.right >= w + 12 ? fr.right + 10
           : fr && fr.left >= 340 + w ? fr.left - w - 10
@@ -134,10 +142,10 @@ export function StudyTools({
         const h = pop.offsetHeight || 220;
         pop.style.width = `${w}px`;
         // Sem margem livre: o cartão fica logo abaixo do trecho marcado (ou acima, se faltar espaço), sem cobri-lo.
-        let top = Math.min(Math.max(70, y - 6), Math.max(70, vh - h - 12));
+        let top = Math.min(Math.max(topo, y - 6), Math.max(topo, vh - h - 12));
         if (!margem) {
           if (rect.bottom + 10 + h <= vh - 12) top = rect.bottom + 10;
-          else if (rect.top - h - 10 >= 70) top = rect.top - h - 10;
+          else if (rect.top - h - 10 >= topo) top = rect.top - h - 10;
         }
         pop.style.translate = `${Math.max(12, left)}px ${top}px`; // `translate` (não `transform`): a animação de entrada usa transform
       }
@@ -404,23 +412,29 @@ export function StudyTools({
 
   return (
     <>
-      <div className="st-dock" data-st data-testid="st-dock">
-        <div className="st-pilula" role="toolbar" aria-label="Ferramentas de estudo">
-          <button type="button" className={`st-btn ${armed || panel === "lista" ? "is-on" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={onPostitButton} aria-label="Post-it de revisão" data-tip="Post-it: toque e selecione o trecho" data-testid="st-postit">
-            <StickyNote className="size-5" aria-hidden />
-            {count > 0 && <span className="st-badge" aria-hidden>{count}</span>}
-          </button>
-          <button type="button" className="st-btn" onMouseDown={(e) => e.preventDefault()} onClick={explain} aria-label="Explicar o trecho selecionado" data-tip="Explicar com IA: selecione uma palavra ou trecho" data-testid="st-explicar">
-            <Lightbulb className="size-5" aria-hidden />
-          </button>
-          <button type="button" className={`st-btn ${panel === "pdf" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "pdf" ? null : "pdf"))} aria-label="Meu PDF de Revisão" aria-expanded={panel === "pdf"} data-tip="Meu PDF de Revisão" data-testid="st-pdf">
-            <FileText className="size-5" aria-hidden />
-          </button>
-          <div className="st-mentor-wrap" data-tip="Mentor por voz: toque na orbe e fale">
-            {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={72} onClose={() => setPanel(null)} /> : <VozOrbRepouso size={72} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+      {(() => {
+        const barra = (
+          <div ref={barRef} className={`st-bar ${host ? "" : "is-solta"}`} data-st data-testid="st-dock">
+            <div className="st-bar-rotulo" aria-hidden><Wrench className="size-4" /><span className="st-rot-l">Barra de ferramentas</span><span className="st-rot-c">Ferramentas</span></div>
+            <div className="st-pilula" role="toolbar" aria-label="Barra de ferramentas de estudo">
+              <button type="button" className={`st-btn ${armed || panel === "lista" ? "is-on" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={onPostitButton} aria-label="Post-it de revisão" title="Post-it: toque e selecione o trecho" data-testid="st-postit">
+                <StickyNote className="size-5" aria-hidden /><span className="st-btn-txt">Post-it</span>
+                {count > 0 && <span className="st-badge" aria-hidden>{count}</span>}
+              </button>
+              <button type="button" className="st-btn" onMouseDown={(e) => e.preventDefault()} onClick={explain} aria-label="Explicar o trecho selecionado" title="Explicar com IA: selecione uma palavra ou trecho" data-testid="st-explicar">
+                <Lightbulb className="size-5" aria-hidden /><span className="st-btn-txt">Explicar</span>
+              </button>
+              <button type="button" className={`st-btn ${panel === "pdf" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "pdf" ? null : "pdf"))} aria-label="Meu PDF de Revisão" aria-expanded={panel === "pdf"} title="Meu PDF de Revisão" data-testid="st-pdf">
+                <FileText className="size-5" aria-hidden /><span className="st-btn-txt">Meu PDF</span>
+              </button>
+              <div className="st-mentor-wrap">
+                {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={44} onClose={() => setPanel(null)} /> : <VozOrbRepouso size={44} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+              </div>
+            </div>
           </div>
-        </div>
-      </div>
+        );
+        return host ? createPortal(barra, host) : barra;
+      })()}
 
       {/* Post-its colados na margem da folha, na altura do trecho */}
       {postits.length > 0 && (
