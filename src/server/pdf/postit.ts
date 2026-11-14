@@ -94,6 +94,13 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   const logoClara = await readFile(pub("logo-clara.png")).then((b) => doc.embedPng(b)).catch(() => null);
   const olho: PDFImage | null = await readFile(pub("hero-olho.jpg")).then((b) => doc.embedJpg(b)).catch(() => null);
   const soldado: PDFImage | null = await readFile(pub("soldado.jpg")).then((b) => doc.embedJpg(b)).catch(() => null);
+  const art = async (f: string) => readFile(pub(f)).then((b) => doc.embedJpg(b)).catch(() => null);
+  const A = {
+    faixa: await art("ref-faixa.jpg"),
+    pi: [await art("ref-pi-top.jpg"), await art("ref-pi-mid.jpg"), await art("ref-pi-bot.jpg")],
+    ex: [await art("ref-ex-top.jpg"), await art("ref-ex-mid.jpg"), await art("ref-ex-bot.jpg")],
+  };
+  const artOk = !!A.faixa && A.pi.every(Boolean) && A.ex.every(Boolean);
   const charset = new Set(regular.getCharacterSet());
 
   /** Mantém o texto como está; só troca o que a fonte padrão não consegue desenhar. */
@@ -382,6 +389,15 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   // ---------- Faixa numerada do assunto ----------
   const bandH = 22;
   const band = (n: number, t: string) => {
+    if (artOk) {
+      const bw = innerW + 12, bx = M.left - 6, bh = 28, sc = bw / 1520;
+      page.drawImage(A.faixa!, { x: bx, y: y - bh, width: bw, height: bh });
+      const ns = String(n).padStart(2, "0");
+      page.drawText(ns, { x: bx + 70 * sc - boldItalic.widthOfTextAtSize(ns, 17) / 2, y: y - bh / 2 - 5.5, size: 17, font: boldItalic, color: WHITE });
+      page.drawText(fit(boldItalic, clean(t), 14, bw * 0.62), { x: bx + 200 * sc, y: y - bh / 2 - 5, size: 14, font: boldItalic, color: WHITE });
+      y -= bh + 10;
+      return;
+    }
     const x = M.left - 6, w = innerW + 12, top = y;
     poly(page, chamf(x, top - bandH, w, bandH, { tl: 5, br: 10 }), { color: BLACK });
     poly(page, [[x, top], [x + 40, top], [x + 32, top - bandH], [x, top - bandH]], { color: RED });
@@ -404,7 +420,33 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
     const qHalf = !it.structure?.length ? quoteRows(it, halfW - 70) : [];
     const eHalf = hasExp ? explanationRows(it.explanation!, halfW - 24) : [];
     const sideBySide = qHalf.length > 0 && eHalf.length > 0 && Math.max(sumH(qHalf), sumH(eHalf)) + 44 + bandH + 24 <= pageRoom && Math.max(sumH(qHalf), sumH(eHalf)) < 330;
-    if (sideBySide) {
+    // Réplica da arte de referência: post-it amarelo com clipe + cartão de explicação com setas.
+    const SC = (innerW + 12) / 1536;
+    const AS = 9;
+    const piW = 510 * SC - 4, exW = 640 * SC - 6;
+    const qArt = !it.structure?.length && artOk ? textRows(it.quote, regular, AS, piW) : [];
+    const eArt = qArt.length && hasExp ? explanationRows(it.explanation!, exW) : [];
+    const artH = qArt.length ? Math.max(413 * SC, 122 * SC + Math.max(sumH(qArt), sumH(eArt)) + 28) : 0;
+    if (qArt.length && artH + 22 + 30 <= pageRoom) {
+      if (y - (28 + 10 + artH + 14) < BOTTOM) newPage();
+      band(it.n, sec);
+      const x0 = M.left - 6, hw = 768 * SC;
+      const topH = 300 * SC, botH = 103 * SC, midH = artH - topH - botH;
+      const y0 = y - 2;
+      const half = (imgs: typeof A.pi, xx: number) => {
+        page.drawImage(imgs[0]!, { x: xx, y: y0 - topH, width: hw, height: topH });
+        page.drawImage(imgs[1]!, { x: xx, y: y0 - topH - midH - 0.4, width: hw, height: midH + 0.8 });
+        page.drawImage(imgs[2]!, { x: xx, y: y0 - artH, width: hw, height: botH });
+      };
+      half(A.pi, x0);
+      if (eArt.length) half(A.ex, x0 + hw);
+      else page.drawRectangle({ x: x0 + 690 * SC, y: y0 - artH, width: 90 * SC, height: artH, color: rgb(0.995, 0.995, 1) });
+      let ry = y0 - 122 * SC;
+      for (const r of qArt) { r.draw(page, x0 + 190 * SC, ry, piW); ry -= r.h; }
+      ry = y0 - 122 * SC;
+      for (const r of eArt) { r.draw(page, x0 + 850 * SC, ry, exW); ry -= r.h; }
+      y = y0 - artH - 12;
+    } else if (sideBySide) {
       const hh = Math.max(sumH(qHalf), sumH(eHalf)) + 46, hh2 = Math.max(hh, 84);
       if (y - (bandH + 10 + hh + 12) < BOTTOM) newPage();
       band(it.n, sec);
