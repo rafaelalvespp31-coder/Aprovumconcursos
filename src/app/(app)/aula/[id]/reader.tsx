@@ -176,6 +176,7 @@ export function LessonReader(props: ReaderProps) {
   /** Seções do módulo com exemplo "Na prática" em que o aluno ainda não clicou em "Pensei — ver a resposta". */
   const practiceMissing = (i: number) => (readingDone || moduleDone(i) ? [] : modules[i]!.sections.filter((s) => hasPractice(s) && !practiceDone(practice, s.id)));
   const [gateOpen, setGateOpen] = useState<number | null>(null);
+  const [gateHidden, setGateHidden] = useState<number | null>(null);
   // Página guardada que ainda está trancada (ex.: veio de outro aparelho): abre o módulo pendente.
   const current: ApostilaPage = isUnlocked(storedP) ? storedP : firstPending >= 0 ? { kind: "modulo", index: firstPending } : pages[0]!;
   const currentIdx = pages.findIndex((p) => pageKey(p) === pageKey(current));
@@ -202,7 +203,7 @@ export function LessonReader(props: ReaderProps) {
     const missing = practiceMissing(i);
     if (missing.length) {
       setGateOpen(i);
-      document.getElementById(sectionDomId(missing[0]!.id))?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setGateHidden(null);
       return;
     }
     setGateOpen(null);
@@ -391,17 +392,20 @@ export function LessonReader(props: ReaderProps) {
         </div>
         {(() => {
           const missing = practiceMissing(i);
-          if (!missing.length) return null;
+          if (!missing.length || gateHidden === i) return null;
           const total = m.sections.filter(hasPractice).length;
           return (
-            <div className={`ap-aviso ap-trava-exemplos ${gateOpen === i ? "is-alerta" : ""}`} role={gateOpen === i ? "alert" : "status"} data-testid="trava-exemplos">
-              <p className="m-0 font-bold"><Icon name="cadeado" className="mr-1.5 inline size-4" /> Para avançar de módulo, faça o “Pensei — ver a resposta” nos exemplos “Na prática” ({total - missing.length} de {total} feitos).</p>
-              <p className="m-0 mt-1 text-[13px]">Falta em:</p>
-              <ul className="m-0 mt-1 list-disc pl-5 text-[13px]">
+            <div className={`ap-trava-exemplos ${gateOpen === i ? "is-alerta" : ""}`} role="status" data-testid="trava-exemplos">
+              <p className="ap-trava-txt">
+                <Icon name="cadeado" className="size-3.5 shrink-0" />
+                <span>Para avançar: faça o “Pensei — ver a resposta” nos exemplos ({total - missing.length}/{total}).</span>
+                <button type="button" className="ap-trava-x" aria-label="Fechar aviso" onClick={() => setGateHidden(i)} data-testid="trava-exemplos-fechar">×</button>
+              </p>
+              <div className="ap-trava-chips">
                 {missing.map((s) => (
-                  <li key={s.id}><button type="button" className="underline" onClick={() => document.getElementById(sectionDomId(s.id))?.scrollIntoView({ behavior: "smooth", block: "start" })}>{s.title}</button></li>
+                  <button key={s.id} type="button" onClick={() => document.getElementById(sectionDomId(s.id))?.scrollIntoView({ behavior: "smooth", block: "center" })}>{s.title}</button>
                 ))}
-              </ul>
+              </div>
             </div>
           );
         })()}

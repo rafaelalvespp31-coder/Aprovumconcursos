@@ -4427,6 +4427,12 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 @keyframes scheme-pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { [data-testid="conta-armada"] * { animation: none !important; } }
 
-.ap-trava-exemplos { margin: 18px 0 6px; padding: 12px 14px; border-radius: 12px; border: 2px solid #C77700; background: #FFF5E0; color: #4a3000; }
+.ap-trava-exemplos { margin: 14px 0 4px; padding: 8px 10px; border-radius: 10px; border: 1.5px solid #C77700; background: #FFF5E0; color: #4a3000; font-size: 12.5px; line-height: 1.35; }
 .ap-trava-exemplos.is-alerta { border-color: #B3261E; background: #FDECEC; color: #5a0d08; animation: ap-treme 380ms; }
-@keyframes ap-treme { 20%, 60% { transform: translateX(-5px); } 40%, 80% { transform: translateX(5px); } }
+.ap-trava-txt { display: flex; align-items: center; gap: 6px; margin: 0; font-weight: 700; }
+.ap-trava-txt > span { flex: 1; min-width: 0; }
+.ap-trava-x { flex: none; width: 28px; height: 28px; border-radius: 999px; font-size: 20px; line-height: 1; font-weight: 700; color: inherit; }
+.ap-trava-x:hover { background: rgba(0,0,0,.08); }
+.ap-trava-chips { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; max-height: 76px; overflow-y: auto; }
+.ap-trava-chips button { padding: 3px 9px; border-radius: 999px; border: 1px solid currentColor; background: rgba(255,255,255,.6); font-size: 11.5px; font-weight: 600; text-align: left; }
+@keyframes ap-treme { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
