@@ -4,6 +4,8 @@ import remarkGfm from "remark-gfm";
 import type { ElementContent } from "hast";
 import { Children, type ReactNode } from "react";
 import { isRevokedLegalLine } from "@/components/markdown";
+import { CalloutIcon, CALLOUT } from "@/components/aula/callout-icon";
+import { calloutKindOf, leadingLabelKind } from "@/domain/content/callout-kind";
 import { highlightLegal, legalLevel, legalParagraphs, splitLegalLabel } from "@/domain/content/legal-format";
 
 function textOf(n: ElementContent | undefined): string {
@@ -51,13 +53,25 @@ export function ApostilaMarkdown({ children, legal = false }: { children: string
           p: ({ node, children: c }) => {
             if (!legal) {
               const t = textOf(node as unknown as ElementContent).trim();
-              if (isLabelLine(t)) return <p className="ap-rotulo">{c}</p>;
+              const lk = leadingLabelKind(t);
+              if (isLabelLine(t)) return <p className="ap-rotulo">{lk && <CalloutIcon kind={lk} size={13} />}{c}</p>;
+              if (lk) return <p className="ap-nota" style={{ ["--tom" as string]: CALLOUT[lk].tone }}><CalloutIcon kind={lk} />{<span className="ap-nota-txt">{c}</span>}</p>;
               return <p className={mode === "ex" ? "ap-ex" : undefined}>{c}</p>;
             }
             const revoked = !!node && isRevokedLegalLine(textOf(node as unknown as ElementContent));
             return <LegalPara revoked={revoked}>{c}</LegalPara>;
           },
-          blockquote: ({ children: c }) => (legal ? <div className="ap-lei-bloco">{c}</div> : <aside className="ap-callout">{c}</aside>),
+          blockquote: ({ node, children: c }) => {
+            if (legal) return <div className="ap-lei-bloco">{c}</div>;
+            const k = calloutKindOf(textOf(node as unknown as ElementContent).trim());
+            if (!k) return <aside className="ap-callout">{c}</aside>;
+            return (
+              <aside className="ap-callout ap-callout-ico" style={{ ["--tom" as string]: CALLOUT[k].tone }}>
+                <CalloutIcon kind={k} size={18} />
+                <div className="ap-callout-corpo">{c}</div>
+              </aside>
+            );
+          },
           table: ({ children: c }) => (
             <div className="ap-tabela" role="region" aria-label="Tabela" tabIndex={0}>
               <table>{c}</table>

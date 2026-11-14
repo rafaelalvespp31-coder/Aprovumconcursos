@@ -2185,6 +2185,14 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .ap-md code { font-size: .92em; background: var(--ap-soft); padding: 0 4px; border-radius: 3px; }
 .ap-callout { margin: 14px 0; padding: 14px 18px; background: var(--ap-soft); border-left: 4px solid var(--ap-red); font-size: 15px; line-height: 1.6; }
 .ap-callout > :last-child, .ap-callout p:last-child { margin-bottom: 0; }
+.ap-ico { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 26px; height: 26px; border-radius: 999px; color: #fff; margin-right: 8px; vertical-align: middle; }
+.ap-rotulo .ap-ico { width: 20px; height: 20px; margin-right: 6px; }
+.ap-callout-ico { display: flex; align-items: flex-start; gap: 10px; border-left-color: var(--tom, var(--ap-red)); background: color-mix(in srgb, var(--tom, #B3261E) 7%, #fff); border-radius: 0 10px 10px 0; }
+.ap-callout-ico .ap-ico { margin-right: 0; margin-top: 1px; }
+.ap-callout-corpo { min-width: 0; flex: 1; }
+.ap-md .ap-nota { display: flex; align-items: flex-start; gap: 8px; padding: 9px 12px; border-radius: 10px; border-left: 4px solid var(--tom, #1F5FBF); background: color-mix(in srgb, var(--tom, #1F5FBF) 7%, #fff); }
+.ap-md .ap-nota .ap-ico { margin-right: 0; width: 24px; height: 24px; }
+.ap-nota-txt { min-width: 0; flex: 1; }
 .ap-callout-preto { border-left-color: var(--ap-ink); }
 .ap-tabela { margin: 12px 0 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .ap-tabela table { width: 100%; min-width: 420px; border-collapse: collapse; font-size: 13.5px; line-height: 1.45; }
