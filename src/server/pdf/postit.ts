@@ -12,15 +12,16 @@ import type { PostitPdfSnapshot } from "./postit-types";
 
 const A4: [number, number] = [595.28, 841.89];
 const M = { top: 112, bottom: 70, left: 54, right: 54 };
-const INK = rgb(0.04, 0.04, 0.04);
-const MUTED = rgb(0.36, 0.36, 0.38);
-const FAINT = rgb(0.55, 0.55, 0.57);
+const INK = rgb(0.99, 0.99, 0.99);
+const DARK = rgb(0.02, 0.02, 0.03);
+const MUTED = rgb(0.86, 0.86, 0.88);
+const FAINT = rgb(0.74, 0.74, 0.77);
 const RED = rgb(0.882, 0.024, 0);
-const LINE = rgb(0.85, 0.85, 0.86);
-const SOFT = rgb(0.965, 0.965, 0.97);
+const LINE = rgb(0.6, 0.22, 0.22);
+const SOFT = rgb(0.02, 0.02, 0.03);
 const WHITE = rgb(1, 1, 1);
-const NOTE_BG = rgb(1, 0.965, 0.72);
-const NOTE_LINE = rgb(0.92, 0.82, 0.3);
+const NOTE_BG = rgb(0.32, 0.22, 0.0);
+const NOTE_LINE = rgb(1, 0.78, 0.2);
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 const b64 = (s: string) => Uint8Array.from(Buffer.from(s, "base64"));
@@ -60,9 +61,9 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   doc.setProducer("APROVUM");
   doc.setCreationDate(new Date(s.generatedAt));
   doc.setLanguage("pt-BR");
-  const regular = await doc.embedFont(StandardFonts.Helvetica);
+  const regular = await doc.embedFont(StandardFonts.HelveticaBold);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const italic = await doc.embedFont(StandardFonts.HelveticaOblique);
+  const italic = await doc.embedFont(StandardFonts.HelveticaBoldOblique);
   const boldItalic = await doc.embedFont(StandardFonts.HelveticaBoldOblique);
   const logo = await doc.embedPng(b64(LOGO_ESCURA_PNG));
   const logoClara = await readFile(path.join(process.cwd(), "public", "pdf", "logo-clara.png")).then((b) => doc.embedPng(b)).catch(() => null);
@@ -105,7 +106,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
     if (s.student.name) mv.push(s.student.name);
     mv.push(fmtDate(s.generatedAt), `v${meta.pdfVersion} · ${s.items.length} post-it${s.items.length === 1 ? "" : "s"}`);
     const h = 22 + tl * 21 + 6 + 4 + mv.reduce((a, v) => a + Math.max(1, wrap(regular, clean(v), 9.5, innerW - 70).length) * 12 + 3, 0) + 8 + 2;
-    page.drawRectangle({ x: M.left - 14, y: y - h + 6, width: innerW + 28, height: h + 6, color: rgb(1, 1, 1), opacity: 0.88, borderColor: rgb(0.7, 0.8, 0.95), borderWidth: 0.8 });
+    page.drawRectangle({ x: M.left - 14, y: y - h + 6, width: innerW + 28, height: h + 6, color: DARK, opacity: 0.55, borderColor: rgb(0.75, 0.12, 0.1), borderWidth: 0.9 });
   }
   page.drawText("MEU PDF DE REVISÃO", { x: M.left, y: y - 8, size: 8, font: bold, color: RED });
   y -= 22;
@@ -176,13 +177,13 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       while (bold.widthOfTextAtSize(secT, 7.5) > innerW - 34 && secT.length > 4) secT = secT.slice(0, -2);
       if (secT !== sec) secT = secT.trimEnd() + "…";
       // etiqueta do trecho sobre uma pílula branca: legível em qualquer ponto do degradê
-      page.drawRectangle({ x: M.left + 22, y: y - 16, width: bold.widthOfTextAtSize(secT, 7.5) + 12, height: 17, color: rgb(1, 1, 1), opacity: 0.9 });
+      page.drawRectangle({ x: M.left + 22, y: y - 16, width: bold.widthOfTextAtSize(secT, 7.5) + 12, height: 17, color: DARK, opacity: 0.65 });
       page.drawText(secT, { x: M.left + 28, y: y - 12, size: 7.5, font: bold, color: MUTED });
     }
     y -= headH + 4;
     // Trecho: texto corrido ou, se o aluno marcou uma tabela/lista/títulos, a mesma estrutura da leitura.
     const card = (from: number, h: number) => {
-      page.drawRectangle({ x: M.left, y: from - h + 4, width: innerW, height: h, color: SOFT, opacity: 0.86 });
+      page.drawRectangle({ x: M.left, y: from - h + 4, width: innerW, height: h, color: SOFT, opacity: 0.5 });
       page.drawRectangle({ x: M.left, y: from - h + 4, width: 2.5, height: h, color: RED });
     };
     /** Linhas de texto dentro do cartão do trecho, continuando na página seguinte quando preciso. */
@@ -249,7 +250,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
         for (const L of [...prefix, ...take]) {
           let x = M.left + 14;
           widths.forEach((w, ci) => {
-            page.drawRectangle({ x, y: yy - L.h, width: w, height: L.h, color: L.r.h ? rgb(0.9, 0.9, 0.92) : WHITE, opacity: 0.88, borderColor: LINE, borderWidth: 0.6 });
+            page.drawRectangle({ x, y: yy - L.h, width: w, height: L.h, color: L.r.h ? rgb(0.3, 0.05, 0.05) : DARK, opacity: L.r.h ? 0.8 : 0.5, borderColor: LINE, borderWidth: 0.6 });
             L.lines[ci]!.forEach((ln, k) => page.drawText(ln, { x: x + PAD, y: yy - PAD - TS - k * TLH + 1, size: TS, font: fnt(L.r), color: INK }));
             x += w;
           });
@@ -273,7 +274,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
     } else {
     let top = y;
     const startQuote = (pg: PDFPage, from: number, count: number) => {
-      pg.drawRectangle({ x: M.left, y: from - count * QS * LH - 6, width: innerW, height: count * QS * LH + 6, color: SOFT, opacity: 0.86 });
+      pg.drawRectangle({ x: M.left, y: from - count * QS * LH - 6, width: innerW, height: count * QS * LH + 6, color: SOFT, opacity: 0.5 });
       pg.drawRectangle({ x: M.left, y: from - count * QS * LH - 6, width: 2.5, height: count * QS * LH + 6, color: RED });
     };
     let i = 0;
@@ -293,7 +294,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
     if (noteLines.length) {
       const nH = noteLines.length * NS * LH + 24;
       if (y - nH < M.bottom) newPage();
-      page.drawRectangle({ x: M.left, y: y - nH + 4, width: innerW, height: nH, color: NOTE_BG, opacity: 0.9 });
+      page.drawRectangle({ x: M.left, y: y - nH + 4, width: innerW, height: nH, color: NOTE_BG, opacity: 0.6 });
       page.drawRectangle({ x: M.left, y: y - nH + 4, width: 2.5, height: nH, color: RED });
       page.drawLine({ start: { x: M.left + 2.5, y: y + 4 }, end: { x: M.left + innerW, y: y + 4 }, thickness: 0.4, color: NOTE_LINE });
       page.drawText("MINHA ANOTAÇÃO", { x: M.left + 14, y: y - 10, size: 6.5, font: bold, color: MUTED });
@@ -303,8 +304,8 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
     if (it.explanation) {
       // Explicação visual: um cartão claro por assunto, com número colorido, título em destaque e definição embaixo.
       // Cada assunto usa uma cor própria (vermelho, azul, âmbar, verde, roxo) só na barra, no número e no título.
-      const TONES = [rgb(0.85, 0.04, 0.0), rgb(0.12, 0.27, 0.65), rgb(0.72, 0.40, 0.0), rgb(0.08, 0.50, 0.28), rgb(0.47, 0.22, 0.74)];
-      const CARD = rgb(0.965, 0.968, 0.975);
+      const TONES = [rgb(1, 0.32, 0.26), rgb(0.42, 0.65, 1), rgb(1, 0.72, 0.22), rgb(0.32, 0.88, 0.58), rgb(0.75, 0.58, 1)];
+      const CARD = rgb(0.02, 0.02, 0.03);
       type Row = { t: string; bold?: boolean; num?: number; sub?: boolean; def?: boolean; bang?: boolean; indent: number; h: number; blk: number; size?: number };
       const LHX = NS * LH;
       const rows: Row[] = [];
@@ -349,7 +350,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
         }
         const chunk = rows.slice(k, k + cnt);
         if (first) {
-          page.drawRectangle({ x: M.left, y: y - 18, width: innerW, height: 18, color: INK });
+          page.drawRectangle({ x: M.left, y: y - 18, width: innerW, height: 18, color: DARK, opacity: 0.8 });
           page.drawRectangle({ x: M.left, y: y - 18, width: 4, height: 18, color: RED });
           page.drawText("EXPLICAÇÃO", { x: M.left + 14, y: y - 12.5, size: 8, font: bold, color: WHITE });
           page.drawText("assunto por assunto", { x: M.left + innerW - 14 - regular.widthOfTextAtSize("assunto por assunto", 7.5), y: y - 12.3, size: 7.5, font: regular, color: rgb(0.8, 0.8, 0.82) });
@@ -363,8 +364,8 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
           while (j < chunk.length && chunk[j]!.blk === bi) hh += chunk[j++]!.h;
           const tone = TONES[bi % TONES.length]!;
           const boxH = hh + 2 * PADV;
-          page.drawRectangle({ x: M.left, y: yy - boxH, width: innerW, height: boxH, color: CARD, opacity: 0.86 });
-          if (i > 0) page.drawLine({ start: { x: M.left, y: yy }, end: { x: M.left + innerW, y: yy }, thickness: 0.8, color: rgb(0.72, 0.74, 0.8) });
+          page.drawRectangle({ x: M.left, y: yy - boxH, width: innerW, height: boxH, color: CARD, opacity: 0.5 });
+          if (i > 0) page.drawLine({ start: { x: M.left, y: yy }, end: { x: M.left + innerW, y: yy }, thickness: 0.8, color: rgb(0.5, 0.5, 0.56) });
           page.drawRectangle({ x: M.left, y: yy - boxH, width: 4, height: boxH, color: tone });
           let ry = yy - PADV;
           for (let q = i; q < j; q++) {
@@ -373,12 +374,12 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
             if (r.num != null) {
               page.drawCircle({ x: M.left + 20, y: base + 3.6, size: 7.4, color: tone });
               const ns = String(r.num);
-              page.drawText(ns, { x: M.left + 20 - bold.widthOfTextAtSize(ns, 8) / 2, y: base + 1, size: 8, font: bold, color: WHITE });
+              page.drawText(ns, { x: M.left + 20 - bold.widthOfTextAtSize(ns, 8) / 2, y: base + 1, size: 8, font: bold, color: DARK });
             }
             if (r.bang) {
               const bx = M.left + (r.indent >= 40 ? 32 : 20);
               page.drawCircle({ x: bx, y: base + 3.4, size: 5.6, color: tone });
-              page.drawText("!", { x: bx - bold.widthOfTextAtSize("!", 8.5) / 2, y: base + 0.6, size: 8.5, font: bold, color: WHITE });
+              page.drawText("!", { x: bx - bold.widthOfTextAtSize("!", 8.5) / 2, y: base + 0.6, size: 8.5, font: bold, color: DARK });
             }
             if (r.sub) page.drawRectangle({ x: M.left + 28, y: base + 2.2, width: 4, height: 4, color: tone });
             if (r.t) page.drawText(r.t, { x: M.left + 8 + r.indent, y: base, size: r.size ?? (r.bold ? NS + 0.5 : NS), font: r.bold ? bold : regular, color: r.def ? INK : r.bold && r.num != null ? tone : r.bold ? INK : INK });
@@ -403,8 +404,8 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   pages.forEach((p, idx) => {
     const lh = 22;
     const lw = (lh * logo.width) / logo.height;
-    p.drawRectangle({ x: M.left - 14, y: H - 78, width: innerW + 28, height: 54, color: rgb(1, 1, 1), opacity: 0.88, borderColor: rgb(0.7, 0.8, 0.95), borderWidth: 0.8 });
-    p.drawImage(logo, { x: M.left, y: H - 34 - lh, width: lw, height: lh });
+    p.drawRectangle({ x: M.left - 14, y: H - 78, width: innerW + 28, height: 54, color: DARK, opacity: 0.55, borderColor: rgb(0.75, 0.12, 0.1), borderWidth: 0.9 });
+    p.drawImage(logoClara ?? logo, { x: M.left, y: H - 34 - lh, width: logoClara ? (lh * logoClara.width) / logoClara.height : lw, height: lh });
     const tag = "REVISÃO";
     p.drawText(tag, { x: W - M.right - bold.widthOfTextAtSize(tag, 7), y: H - 41, size: 7, font: bold, color: RED });
     let t = clean(s.lesson.title);
