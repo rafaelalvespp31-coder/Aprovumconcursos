@@ -44,7 +44,7 @@ export function MentorGoalPlan({ goal, plan, name, onChange }: { goal: { contest
       {ask ? (
         <form onSubmit={(e) => { e.preventDefault(); if (text.trim() && !pending) send(); }} className="flex items-center gap-2">
           <input value={text} onChange={(e) => setText(e.target.value)} maxLength={120} placeholder="Escreva o concurso que você quer passar…" aria-label="Concurso que você quer passar" data-testid="mentor-objetivo-input"
-            className="min-h-11 min-w-0 flex-1 rounded-xl border border-[#D4D4D4] bg-white px-3 text-[14px] text-[#08090B] outline-none focus:border-[#E10600]" />
+            className="min-h-11 min-w-0 flex-1 rounded-xl border border-[#D4D4D4] bg-white px-3 text-[16px] text-[#08090B] caret-[#08090B] outline-none focus:border-[#E10600]" style={{ color: "#08090B", WebkitTextFillColor: "#08090B" }} />
           <button type="submit" disabled={pending || !text.trim()} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-[#E10600] px-3.5 text-[13px] font-bold text-white disabled:opacity-50" data-testid="mentor-objetivo-enviar">
             <Send className="h-4 w-4" aria-hidden /> {pending ? "Montando…" : "Enviar"}
           </button>

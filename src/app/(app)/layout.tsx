@@ -6,6 +6,7 @@ import { ensureDisciplines } from "@/server/services/disciplines";
 import { signOut } from "../(auth)/actions";
 import { LogoutButton } from "./logout-button";
 import { Suspense } from "react";
+import { DailyPlanReminder } from "@/components/mentor/daily-plan-reminder";
 import { MentorFloat } from "@/components/mentor/mentor-float";
 import { ensurePromo } from "@/server/services/promo";
 import { CaveiraPopup } from "@/components/promo/caveira-popup";
@@ -36,6 +37,7 @@ export default async function AppLayout({
         floating={
           <Suspense fallback={null}>
             <MentorFloat />
+            <DailyPlanReminder />
           </Suspense>
         }
         summary={summary}
