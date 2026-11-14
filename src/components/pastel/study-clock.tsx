@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Timer, Pause } from "lucide-react";
+import { reportStudyTimeAction } from "@/app/(app)/study-time-actions";
 import { formatHMS, tickClock, touchClock, type ClockState } from "@/domain/study-clock";
 
 const dayKey = () => `na:estudo-hoje:${new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })}`;
@@ -56,6 +57,19 @@ export function StudyClock() {
       clearInterval(id);
     };
   }, [key]);
+
+  // Envia o total do dia ao servidor (a cada ~90 s e ao sair da aba), para o Mentor conhecer as horas de estudo.
+  useEffect(() => {
+    let last = 0;
+    const send = () => {
+      const s = ref.current.seconds;
+      if (s > 0 && s !== last) { last = s; void reportStudyTimeAction(s).catch(() => {}); }
+    };
+    const id = setInterval(send, 90_000);
+    const vis = () => { if (document.visibilityState === "hidden") send(); };
+    document.addEventListener("visibilitychange", vis);
+    return () => { clearInterval(id); document.removeEventListener("visibilitychange", vis); };
+  }, []);
 
   // No celular o relógio entra no fluxo da página (espaço vazio no topo do conteúdo), sem cobrir banners.
   const [slot, setSlot] = useState<HTMLElement | null>(null);

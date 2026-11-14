@@ -5,7 +5,7 @@ import { Button, Field, Notice, inputClass } from "@/components/ui";
 import { formatWhatsapp } from "@/domain/contact/whatsapp";
 import { updateProfileAction, type ProfileState } from "./actions";
 
-export function ProfileForm({ displayName, dailyQuestions, weeklyLessons, avatarGender, whatsapp, motto }: { whatsapp?: string | null; motto?: string | null; displayName: string; dailyQuestions: number | null; weeklyLessons: number | null; avatarGender?: "m" | "f" | null }) {
+export function ProfileForm({ displayName, dailyQuestions, weeklyLessons, avatarGender, whatsapp, motto, birthDate }: { birthDate?: string | null; whatsapp?: string | null; motto?: string | null; displayName: string; dailyQuestions: number | null; weeklyLessons: number | null; avatarGender?: "m" | "f" | null }) {
   const [state, action, pending] = useActionState<ProfileState, FormData>(updateProfileAction, {});
   return (
     <form action={action} className="flex flex-col gap-4">
@@ -16,6 +16,9 @@ export function ProfileForm({ displayName, dailyQuestions, weeklyLessons, avatar
       </Field>
       <Field id="whatsapp" label="WhatsApp" hint="Para te adicionar ao grupo VIP. Só você e a equipe veem.">
         <input id="whatsapp" name="whatsapp" type="tel" inputMode="tel" autoComplete="tel" placeholder="(31) 99999-9999" defaultValue={formatWhatsapp(whatsapp)} maxLength={25} className={inputClass} data-testid="perfil-whatsapp" />
+      </Field>
+      <Field id="birth_date" label="Data de nascimento" hint="Opcional. O Mentor usa para te conhecer melhor e ajustar o plano de estudo. Só você e a equipe veem.">
+        <input id="birth_date" name="birth_date" type="date" defaultValue={birthDate ?? ""} min="1930-01-01" max={new Date().toISOString().slice(0, 10)} className={inputClass} data-testid="perfil-nascimento" />
       </Field>
       <Field id="motto" label="Frase no ranking" hint="Curta e livre (até 60 caracteres). Aparece ao lado do seu nome no Ranking APROVUM.">
         <input id="motto" name="motto" defaultValue={motto ?? ""} maxLength={60} placeholder="Ex.: Disciplina vence talento." className={inputClass} data-testid="perfil-frase" />

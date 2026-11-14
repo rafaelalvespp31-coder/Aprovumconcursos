@@ -99,12 +99,13 @@ export async function loadStudentFacts(userId: string, snapshot: MentorSnapshot)
   const admin = createAdminClient();
   const lines: string[] = [];
   const safe = async <T,>(f: () => PromiseLike<T>): Promise<T | null> => { try { return await f(); } catch { return null; } };
-  const [birth, avatar, secs, days, att] = await Promise.all([
+  const [birth, avatar, secs, days, att, clock] = await Promise.all([
     safe(async () => (await admin.from("profiles").select("birth_date").eq("id", userId).maybeSingle()).data as { birth_date: string | null } | null),
     safe(async () => (await admin.from("avatar_profiles").select("gender").eq("user_id", userId).maybeSingle()).data as { gender: string | null } | null),
     safe(async () => (await admin.from("answer_attempts").select("time_spent_seconds, created_at").eq("user_id", userId).not("time_spent_seconds", "is", null).gte("created_at", new Date(Date.now() - 30 * 86_400_000).toISOString()).limit(20000)).data as Array<{ time_spent_seconds: number; created_at: string }> | null),
     safe(async () => (await admin.from("gamification_activity_days").select("day").eq("user_id", userId).order("day", { ascending: false }).limit(60)).data as Array<{ day: string }> | null),
     safe(async () => (await admin.from("bank_attempts").select("is_correct, omitted").eq("user_id", userId).limit(20000)).data as Array<{ is_correct: boolean | null; omitted: boolean | null }> | null),
+    safe(async () => (await admin.from("study_time_days").select("day, seconds").eq("user_id", userId).gte("day", new Date(Date.now() - 30 * 86_400_000).toISOString().slice(0, 10)).limit(60)).data as Array<{ day: string; seconds: number }> | null),
   ]);
   if (birth?.birth_date) {
     const b = new Date(`${birth.birth_date}T00:00:00Z`);
@@ -129,7 +130,13 @@ export async function loadStudentFacts(userId: string, snapshot: MentorSnapshot)
     const f = (s: number) => `${Math.floor(s / 3600)}h${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}`;
     lines.push(`Tempo resolvendo questões (medido): hoje ${f(hToday)}, últimos 7 dias ${f(h7)}, últimos 30 dias ${f(total)}.`);
   }
-  const last = days?.[0]?.day;
+  if (clock?.length) {
+    const f = (x: number) => `${Math.floor(x / 3600)}h${String(Math.floor((x % 3600) / 60)).padStart(2, "0")}`;
+    const t = brDay().day;
+    const w = new Date(Date.now() - 7 * 86_400_000).toISOString().slice(0, 10);
+    lines.push(`Horas de estudo (relógio da plataforma): hoje ${f(clock.filter((r) => r.day === t).reduce((a, r) => a + r.seconds, 0))}, últimos 7 dias ${f(clock.filter((r) => r.day >= w).reduce((a, r) => a + r.seconds, 0))}, últimos 30 dias ${f(clock.reduce((a, r) => a + r.seconds, 0))}.`);
+  }
+  const last = [days?.[0]?.day, ...(clock ?? []).filter((r) => r.seconds > 0).map((r) => r.day)].filter((x): x is string => !!x).sort().at(-1);
   if (last) {
     const gap = Math.round((Date.parse(`${brDay().day}T00:00:00Z`) - Date.parse(`${last}T00:00:00Z`)) / 86_400_000);
     lines.push(gap <= 0 ? "Estudou hoje." : `Está há ${gap} ${gap === 1 ? "dia" : "dias"} sem estudar (último dia ativo: ${last}).`);

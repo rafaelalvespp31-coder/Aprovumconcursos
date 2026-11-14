@@ -350,7 +350,7 @@ export async function getProfile() {
   const db = await createUserClient();
   const me = (await getSessionUser())?.id ?? "00000000-0000-0000-0000-000000000000";
   const [p, s] = await Promise.all([
-    db.from("profiles").select("display_name, daily_questions_goal, weekly_lessons_goal, onboarding_completed, created_at, whatsapp, motto").eq("id", me).maybeSingle(),
+    db.from("profiles").select("display_name, daily_questions_goal, weekly_lessons_goal, onboarding_completed, created_at, whatsapp, motto, birth_date").eq("id", me).maybeSingle(),
     db.from("subscriptions").select("status, plan_id, current_period_end, billing_period, plans(name, max_active_trails, max_trail_builds_per_month, max_lesson_generations_per_month)").eq("user_id", me).maybeSingle(),
   ]);
   return { profile: p.data, subscription: s.data };

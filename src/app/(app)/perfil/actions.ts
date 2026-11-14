@@ -21,6 +21,7 @@ export async function updateProfileAction(_: ProfileState, form: FormData): Prom
       daily_questions_goal: optionalInt(1, 500, "Meta diária entre 1 e 500 questões."),
       weekly_lessons_goal: optionalInt(1, 100, "Meta semanal entre 1 e 100 aulas."),
       whatsapp: z.string().trim().max(25).transform((v) => (v === "" ? null : normalizeWhatsapp(v) ?? "invalid")),
+      birth_date: z.string().trim().refine((v) => v === "" || (/^\d{4}-\d{2}-\d{2}$/.test(v) && v >= "1930-01-01" && v < new Date().toISOString().slice(0, 10)), "Data de nascimento inválida.").transform((v) => (v === "" ? null : v)),
       motto: z.string().trim().max(60, "A frase do ranking tem no máximo 60 caracteres.").transform((v) => (v === "" ? null : v)),
     })
     .safeParse({
@@ -29,6 +30,7 @@ export async function updateProfileAction(_: ProfileState, form: FormData): Prom
       weekly_lessons_goal: form.get("weekly_lessons_goal") ?? "",
       whatsapp: form.get("whatsapp") ?? "",
       motto: form.get("motto") ?? "",
+      birth_date: form.get("birth_date") ?? "",
     });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message };
   if (parsed.data.whatsapp === "invalid") return { error: "WhatsApp inválido. Use o DDD e o número (ex.: (31) 99999-9999)." };
