@@ -125,10 +125,15 @@ export async function createPostit(userId: string, input: CreatePostitInput): Pr
     throw new Error(`criar post-it: ${ins.error.message}`);
   }
   const created = toPostit(ins.data as Row);
-  const expl = await cachedExplanation(quote, p.around ?? "");
-  if (expl) {
-    const up = await createAdminClient().from("lesson_postits").update({ explanation: expl }).eq("id", created.id).eq("user_id", userId);
-    if (!up.error) created.explanation = expl;
+  // Extra opcional: se falhar, o post-it já está salvo e a criação não pode falhar por causa disso.
+  try {
+    const expl = await cachedExplanation(quote, p.around ?? "");
+    if (expl) {
+      const up = await createAdminClient().from("lesson_postits").update({ explanation: expl }).eq("id", created.id).eq("user_id", userId);
+      if (!up.error) created.explanation = expl;
+    }
+  } catch (e) {
+    await logEvent("postit.explanation_skipped", { error: (e as Error).message });
   }
   return { postit: created, duplicate: false };
 }

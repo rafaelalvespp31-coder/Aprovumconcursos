@@ -24,6 +24,8 @@ export interface StudyApi {
   generatePdf: typeof generatePostitPdfAction;
   removePdf: typeof deletePostitPdfAction;
 }
+/** Mensagem que o servidor devolve para falhas inesperadas (vale tentar de novo). */
+const TRANSIENT = "Não foi possível concluir agora. Tente novamente.";
 const realApi: StudyApi = { create: createPostitAction, updateNote: updatePostitNoteAction, remove: deletePostitAction, generatePdf: generatePostitPdfAction, removePdf: deletePostitPdfAction };
 type Panel = null | "lista" | "pdf" | "mentor";
 
@@ -115,8 +117,8 @@ export function StudyTools({
     const vh = window.innerHeight;
     const folha = document.querySelector(".ap-folha") ?? document.querySelector(".ap-secao");
     const fr = folha?.getBoundingClientRect();
-    const stubX = fr ? Math.min(fr.right - 38, vw - 70) : vw - 100;
     const small = vw < 768;
+    const stubX = small ? vw - 26 : fr ? Math.min(fr.right - 38, vw - 70) : vw - 100;
     // Limite de cima: logo abaixo da barra de ferramentas (que fica embaixo do cabeçalho).
     const topo = Math.round((barRef.current?.getBoundingClientRect().bottom ?? 70) + 8);
     document.documentElement.style.setProperty("--st-base", `${topo}px`);
@@ -126,20 +128,20 @@ export function StudyTools({
       if (!el) continue;
       const r = rangesRef.current.get(p.id);
       const rect = r?.getBoundingClientRect();
-      const visible = !small && !!rect && rect.bottom > topo && rect.top < vh - 40;
+      const visible = !!rect && rect.bottom > topo && rect.top < vh - 40;
       if (!visible || !rect) { el.style.display = "none"; continue; }
       const y = Math.max(rect.top - 2, cursor);
       if (y > vh - 56) { el.style.display = "none"; continue; }
       el.style.display = "";
       el.style.transform = `translate(${stubX}px, ${y}px)`;
-      cursor = y + 38;
+      cursor = y + (small ? 26 : 38);
       if (p.id === openRef.current && popRef.current) {
         const pop = popRef.current;
-        const w = Math.min(250, vw - 24);
+        const w = Math.min(small ? 220 : 210, vw - 24);
         // Fora do texto: na margem direita da folha se couber (sem encostar na barra de ferramentas); senão, na esquerda; por último junto à borda direita.
         const dock = 24;
-        const margem = !!fr && (vw - dock - fr.right >= w + 12 || fr.left >= 340 + w);
-        const left = fr && vw - dock - fr.right >= w + 12 ? fr.right + 10
+        const margem = !small && !!fr && (vw - dock - fr.right >= w + 12 || fr.left >= 340 + w);
+        const left = small ? vw - w - 34 : fr && vw - dock - fr.right >= w + 12 ? fr.right + 10
           : fr && fr.left >= 340 + w ? fr.left - w - 10
           : vw - dock - w - 4;
         const h = pop.offsetHeight || 220;
@@ -147,7 +149,8 @@ export function StudyTools({
         // Sem margem livre: o cartão fica logo abaixo do trecho marcado (ou acima, se faltar espaço), sem cobri-lo.
         let top = Math.min(Math.max(topo, y - 6), Math.max(topo, vh - h - 12));
         if (!margem) {
-          if (rect.bottom + 10 + h <= vh - 12) top = rect.bottom + 10;
+          if (small) top = Math.min(Math.max(topo, y - 6), Math.max(topo, vh - h - 12));
+          else if (rect.bottom + 10 + h <= vh - 12) top = rect.bottom + 10;
           else if (rect.top - h - 10 >= topo) top = rect.top - h - 10;
         }
         pop.style.translate = `${Math.max(12, left)}px ${top}px`; // `translate` (não `transform`): a animação de entrada usa transform
@@ -263,7 +266,12 @@ export function StudyTools({
     setPostits((l) => sortPostits([...l, tmp]));
     window.getSelection()?.removeAllRanges();
     lastCap.current = null;
-    const r = await api.create({ lessonId, sectionId: cap.sectionId, quote: cap.quote, quoteStart: cap.quoteStart, note: "", around: cap.around, structure: cap.structure });
+    // Falha passageira (rede, servidor frio): tenta de novo sozinho, sem o aluno precisar selecionar outra vez.
+    let r = await api.create({ lessonId, sectionId: cap.sectionId, quote: cap.quote, quoteStart: cap.quoteStart, note: "", around: cap.around, structure: cap.structure }).catch(() => ({ ok: false as const, error: TRANSIENT }));
+    for (let a = 1; !r.ok && r.error === TRANSIENT && a <= 3; a++) {
+      await new Promise((res) => setTimeout(res, 500 * a));
+      r = await api.create({ lessonId, sectionId: cap.sectionId, quote: cap.quote, quoteStart: cap.quoteStart, note: "", around: cap.around, structure: cap.structure }).catch(() => ({ ok: false as const, error: TRANSIENT }));
+    }
     if (!r.ok) {
       setPostits((l) => l.filter((x) => x.id !== tmp.id));
       say(r.error, "erro");
@@ -277,7 +285,7 @@ export function StudyTools({
     setFocusId(real.id);
     say(r.duplicate ? "Esse trecho já tinha um post-it." : "Post-it criado.");
     setTimeout(() => setFocusId((f) => (f === real.id ? null : f)), 2600);
-    if (window.innerWidth < 768) { if (!r.duplicate) setPanel("lista"); } else setOpenId(real.id);
+    if (window.innerWidth >= 768) setOpenId(real.id);
   }, [lessonId, say, sortPostits, api]);
 
   useEffect(() => { createRef.current = createFromCapture; }, [createFromCapture]);
@@ -299,7 +307,11 @@ export function StudyTools({
   });
 
   const saveNote = useCallback(async (id: string, note: string): Promise<boolean> => {
-    const r = await api.updateNote(id, note);
+    let r = await api.updateNote(id, note).catch(() => ({ ok: false as const, error: TRANSIENT }));
+    for (let a = 1; !r.ok && r.error === TRANSIENT && a <= 2; a++) {
+      await new Promise((res) => setTimeout(res, 600 * a));
+      r = await api.updateNote(id, note).catch(() => ({ ok: false as const, error: TRANSIENT }));
+    }
     if (!r.ok) { say(r.error, "erro"); return false; }
     setPostits((l) => l.map((x) => (x.id === id ? { ...x, note: r.postit.note } : x)));
     return true;
@@ -339,7 +351,7 @@ export function StudyTools({
         try { inside = r.isPointInRange(pos.node, pos.offset); } catch { inside = false; }
         if (inside) {
           setFocusId(id);
-          if (window.innerWidth < 768) setPanel("lista"); else setOpenId(id);
+          setOpenId(id);
           setTimeout(() => setFocusId((f) => (f === id ? null : f)), 3200);
           return;
         }
@@ -451,7 +463,7 @@ export function StudyTools({
           ))}
         </div>
       )}
-      {openId && postits.some((p) => p.id === openId) && window.innerWidth >= 768 && (
+      {openId && postits.some((p) => p.id === openId) && (
         <div ref={popRef} className="st-pop" data-st-pop data-st data-testid="st-pop">
           {postits.map((p, i) => p.id === openId && <PostitCard key={p.id} p={p} n={i + 1} focused={false} inRail onNote={saveNote} onDelete={async (id) => { const ok = await remove(id); if (ok) setOpenId(null); return ok; }} onGo={goTo} />)}
         </div>
