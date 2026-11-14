@@ -194,17 +194,6 @@ export function StudyTools({
       const r = rangesRef.current.get(p.id);
       const rect = r?.getBoundingClientRect();
       if (!rect || (!rect.width && !rect.height)) {
-        // Post-it de outro módulo (a página atual só mostra um módulo): selinho tracejado na lateral; tocar leva até ele.
-        if (p.sectionId && !p.pending && !document.getElementById(`secao-${p.sectionId}`)) {
-          el.style.display = "";
-          el.style.position = "fixed";
-          el.dataset.tray = "1";
-          el.style.opacity = "1";
-          el.style.pointerEvents = "";
-          el.style.transform = `translate(${stubX}px, ${topo + 6 + trayN * (small ? 26 : 34)}px)`;
-          trayN++;
-          continue;
-        }
         el.style.display = "none";
         continue;
       }
