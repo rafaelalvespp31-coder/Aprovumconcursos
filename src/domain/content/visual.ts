@@ -1,3 +1,4 @@
+import { worked } from "./hand-math";
 import { z } from "zod";
 
 /**
@@ -47,6 +48,13 @@ export const schemeSchema = z.discriminatedUnion("tipo", [
     /** Períodos sobre a régua (ex.: vigência de uma lei): de/ate na mesma escala dos marcos. */
     faixas: z.array(z.object({ de: z.number().min(0), ate: z.number().min(0), rotulo: z.string().min(1).max(40), estado: z.enum(["ok", "erro", "neutro", "alerta"]).default("neutro") })).max(4).optional(),
   }),
+  z.object({
+    tipo: z.literal("conta"),
+    titulo: z.string().max(70).optional(),
+    /** Conta armada à mão, calculada pelo app a partir dos números. */
+    operacao: z.enum(["soma", "subtracao", "multiplicacao", "divisao", "mmc", "mdc"]),
+    numeros: z.array(z.number().int().min(0).max(999_999_999)).min(2).max(4),
+  }).refine((v) => worked(v.operacao, v.numeros) !== null, { message: "Números inválidos para a operação" }),
   z.object({
     tipo: z.literal("calculo"),
     titulo: z.string().max(70).optional(),

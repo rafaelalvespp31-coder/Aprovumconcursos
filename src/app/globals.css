@@ -4415,3 +4415,6 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
       0 0 18px -4px rgba(255, 30, 30, 0.7);
   }
 }
+
+@keyframes scheme-pop { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { [data-testid="conta-armada"] * { animation: none !important; } }

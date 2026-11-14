@@ -72,7 +72,7 @@ function coerceStrip(v: unknown): unknown {
 
 function coerceScheme(v: unknown): unknown {
   if (!isRec(v)) return v;
-  const tipo = closest(v.tipo, ["fluxo", "linha_tempo", "comparacao", "calculo"]);
+  const tipo = closest(v.tipo, ["fluxo", "linha_tempo", "comparacao", "calculo", "conta"]);
   const st = (s: unknown) => {
     const k = keyOf(String(s ?? "neutro"));
     if (/^(certo|correto|sim|valido|legal|permitido|pode|verdadeiro|positivo|sucesso)$/.test(k)) return "ok";
@@ -88,6 +88,9 @@ function coerceScheme(v: unknown): unknown {
     o.unidade = cut(v.unidade ?? "dias", 12);
     o.marcos = (Array.isArray(v.marcos) ? v.marcos : []).filter(isRec).slice(0, 8).map((m) => ({ ...m, em: Math.max(0, Number(m.em) || 0), ...(m.data !== undefined ? { data: cut(m.data, 24) } : {}), rotulo: cut(m.rotulo, 50), estado: st(m.estado) }));
     if (Array.isArray(v.faixas)) o.faixas = v.faixas.filter(isRec).slice(0, 4).map((f) => ({ ...f, de: Math.max(0, Number(f.de) || 0), ate: Math.max(0, Number(f.ate) || 0), rotulo: cut(f.rotulo, 40), estado: st(f.estado) }));
+  } else if (tipo === "conta") {
+    o.operacao = closest(v.operacao, ["soma", "subtracao", "multiplicacao", "divisao", "mmc", "mdc"]);
+    o.numeros = (Array.isArray(v.numeros) ? v.numeros : []).map((n) => Math.max(0, Math.round(Number(String(n).replace(/\./g, "").replace(",", ".")) || 0))).slice(0, 4);
   } else if (tipo === "calculo") {
     o.passos = (Array.isArray(v.passos) ? v.passos : []).filter(isRec).slice(0, 6).map((p) => ({ ...p, rotulo: cut(p.rotulo, 70), conta: cut(p.conta ?? p.rotulo, 70), ...(p.resultado !== undefined ? { resultado: cut(String(p.resultado), 30) } : {}), estado: st(p.estado) }));
     if (isRec(v.total)) o.total = { rotulo: cut(v.total.rotulo, 50), valor: cut(String(v.total.valor ?? ""), 40) };

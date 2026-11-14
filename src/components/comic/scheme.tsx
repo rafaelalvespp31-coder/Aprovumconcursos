@@ -1,4 +1,5 @@
 import type { Scheme, StepState } from "@/domain/content/visual";
+import { worked, type Cell, type Worked } from "@/domain/content/hand-math";
 
 /** Esquema visual da resposta: fluxo, linha do tempo ou comparação. Anima ao aparecer. */
 
@@ -19,6 +20,7 @@ export function SchemeDiagram({ scheme }: { scheme: Scheme }) {
       {scheme.tipo === "linha_tempo" && <Timeline scheme={scheme} />}
       {scheme.tipo === "comparacao" && <Compare scheme={scheme} />}
       {scheme.tipo === "calculo" && <Calc scheme={scheme} />}
+      {scheme.tipo === "conta" && <HandMath scheme={scheme} />}
     </figure>
   );
 }
@@ -172,6 +174,72 @@ function Compare({ scheme }: { scheme: Extract<Scheme, { tipo: "comparacao" }> }
           </div>
         );
       })}
+    </div>
+  );
+}
+
+const CELL_TONE: Record<NonNullable<Cell["tone"]>, string> = { res: "text-[#B3261E] font-black", dim: "text-[#1D3A8A]/45", alert: "text-[#C77700]" };
+
+function Cells({ cells, cols }: { cells: Cell[]; cols: number }) {
+  return (
+    <>
+      {Array.from({ length: cols }, (_, i) => {
+        const c = cells[i] ?? { t: "" };
+        return (
+          <span key={i} className={`relative flex h-9 items-end justify-center text-[22px] font-bold leading-none ${c.tone ? CELL_TONE[c.tone] : ""} ${c.strike ? "line-through decoration-[#B3261E] decoration-2" : ""}`}>
+            {c.top && <span className="absolute -top-0.5 left-1/2 -translate-x-1/2 text-[11px] font-black leading-none text-[#B3261E]">{c.top}</span>}
+            {c.pre && <span className="absolute left-[-2px] top-0.5 text-[11px] font-black leading-none text-[#B3261E]">{c.pre}</span>}
+            {c.t}
+          </span>
+        );
+      })}
+    </>
+  );
+}
+
+/** Conta armada como no caderno (papel pautado, tinta azul, "vai um" em vermelho) + passo a passo. */
+function HandMath({ scheme }: { scheme: Extract<Scheme, { tipo: "conta" }> }) {
+  const w: Worked | null = worked(scheme.operacao, scheme.numeros);
+  if (!w) return null;
+  const cols = Math.max(...w.rows.map((r) => r.cells.length));
+  const isDiv = !!w.side;
+  const isFat = !!w.primes;
+  const colW = isFat ? Math.max(2.2, Math.max(...w.rows.flatMap((r) => r.cells.map((c) => c.t.length))) * 1.05 + 0.9) : 1.7;
+  return (
+    <div className="flex flex-col gap-3" data-testid="conta-armada">
+      <div className="overflow-x-auto rounded-[12px] border-2 border-[#1A1A1A] bg-[#FFFDF3] px-4 py-3 shadow-[3px_3px_0_#1A1A1A] [background-image:repeating-linear-gradient(transparent,transparent_35px,#C9D6F0_35px,#C9D6F0_36px)]">
+        <div className="mx-auto flex w-fit items-start gap-0 font-mono text-[#1D3A8A]">
+          <div className="flex flex-col">
+            {w.rows.map((r, i) => (
+              <div key={i} className={`grid ${r.rule ? "border-b-[3px] border-[#1D3A8A]" : ""} ${isDiv && i === 0 ? "border-r-[3px] border-[#1D3A8A]" : ""}`} style={{ gridTemplateColumns: `repeat(${cols}, ${colW}rem)`, animation: `scheme-pop 280ms ${120 + i * 140}ms both` }}>
+                <Cells cells={r.cells} cols={cols} />
+              </div>
+            ))}
+          </div>
+          {isDiv && w.side && (
+            <div className="ml-0 flex flex-col">
+              <span className="flex h-9 min-w-[3rem] items-end border-b-[3px] border-[#1D3A8A] px-3 text-[22px] font-bold leading-none">{w.side.divisor}</span>
+              <span className="flex h-9 items-end px-3 text-[22px] font-black leading-none text-[#B3261E]">{w.side.quotient}</span>
+            </div>
+          )}
+          {isFat && w.primes && (
+            <div className="ml-1 flex flex-col border-l-[3px] border-[#1D3A8A]">
+              {w.primes.map((p, i) => (
+                <span key={i} className="flex h-9 items-end px-3 text-[22px] font-black leading-none text-[#B3261E]">{p}</span>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+      <ol className="m-0 flex list-none flex-col gap-1.5 p-0">
+        {w.steps.map((t, i) => (
+          <li key={i} className="scheme-item flex gap-2 text-[13.5px] leading-snug" style={delay(i)}>
+            <span className="flex size-5 shrink-0 items-center justify-center rounded-full border-2 border-[#1A1A1A] bg-[#1D3A8A] text-[11px] font-black text-white" aria-hidden>{i + 1}</span>
+            <span>{t}</span>
+          </li>
+        ))}
+      </ol>
+      <p className="scheme-item m-0 rounded-[10px] border-2 border-[#1A1A1A] bg-[#0D0E11] px-3 py-2.5 text-center font-mono text-[15px] font-black text-[#ff8a80] shadow-[3px_3px_0_#B3261E]" style={delay(w.steps.length)}>{w.result}</p>
     </div>
   );
 }
