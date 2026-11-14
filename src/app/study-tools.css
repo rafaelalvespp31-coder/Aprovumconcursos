@@ -262,7 +262,7 @@ body:has(.st-bar) .mentor-flut { display: none !important; }
 .th-mao { position: relative; pointer-events: auto; border: 0; background: transparent; cursor: pointer; width: 64px; height: 64px; display: grid; place-items: center; animation: th-flutua 1.1s ease-in-out infinite; -webkit-tap-highlight-color: transparent; }
 .th-emoji { font-size: 44px; line-height: 1; filter: drop-shadow(0 6px 8px rgba(0,0,0,.35)); transform-origin: 50% 90%; animation: th-acena 1.1s ease-in-out infinite; }
 .th-anel { position: absolute; top: 2px; left: 50%; width: 22px; height: 22px; margin-left: -11px; border-radius: 50%; border: 2px solid #ff3b44; animation: th-onda 1.4s ease-out infinite; }
-.th-balao { pointer-events: auto; position: relative; display: flex; flex-direction: column; gap: 2px; max-width: min(86vw, 280px); padding: 10px 28px 10px 12px; border-radius: 12px; background: #111; color: #fff; font-size: 12.5px; line-height: 1.35; border: 1px solid #ff3b44; box-shadow: 0 10px 26px rgba(0,0,0,.4); }
+.th-balao { pointer-events: auto; position: relative; display: flex; flex-direction: column; gap: 2px; max-width: min(88vw, 300px); padding: 10px 28px 10px 12px; border-radius: 12px; background: #111; color: #fff; font-size: 12.5px; line-height: 1.35; border: 1px solid #ff3b44; box-shadow: 0 10px 26px rgba(0,0,0,.4); }
 .th-balao strong { font-size: 13px; }
 .th-x { position: absolute; top: 6px; right: 6px; border: 0; background: transparent; color: #fff; opacity: .8; cursor: pointer; padding: 2px; }
 @keyframes th-flutua { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }

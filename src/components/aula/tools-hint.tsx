@@ -69,7 +69,8 @@ export function ToolsHint({ barRef }: { barRef: React.RefObject<HTMLElement | nu
       <div className="th-balao">
         <button type="button" className="th-x" onClick={() => dismiss()} aria-label="Fechar dica"><X size={14} /></button>
         <strong>Novas ferramentas de estudo!</strong>
-        <span>Selecione um trecho e use <b>Post-it</b>, <b>Tirar dúvida</b> e <b>Gerar revisão</b> aqui na barra.</span>
+        <span><b>Mentor:</b> converse com ele e tire suas dúvidas em tempo real, enquanto estuda.</span>
+        <span>Selecione um trecho e use <b>Post-it</b>, <b>Tirar dúvida</b> e <b>Gerar revisão</b>.</span>
       </div>
     </div>,
     document.body,
