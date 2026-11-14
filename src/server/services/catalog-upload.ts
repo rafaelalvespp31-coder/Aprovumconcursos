@@ -368,7 +368,6 @@ function analyzeEnrich(text: string, lesson: EnrichLesson) {
   if (text.length > 200_000) throw new UserFacingError("Texto grande demais.", "invalid_input");
   const p = parseEnrichment(text, lesson);
   const next = applyEnrichment(lesson, p);
-  if (next.sections.length > 30) p.errors.push("A aula já tem 30 seções (o máximo): não cabe a seção de flashcards.");
   const st = enrichStatus(next);
   return { p, next, st };
 }

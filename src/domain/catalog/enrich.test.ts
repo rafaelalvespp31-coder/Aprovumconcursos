@@ -56,7 +56,7 @@ describe("completar aula com exemplos visuais e flashcards", () => {
     expect(p).not.toContain("1. Resumo para revisão");
   });
 
-  it("liga cada bloco à seção pelo título e põe os flashcards depois do resumo", () => {
+  it("liga cada bloco à seção pelo título e põe os flashcards no fim, depois do resumo e do checklist", () => {
     const r = parseEnrichment(reply, lesson);
     expect(r.errors).toEqual([]);
     expect(r.examples.map((e) => e.index).sort()).toEqual([0, 1]);
@@ -64,7 +64,7 @@ describe("completar aula com exemplos visuais e flashcards", () => {
     expect(r.warnings.some((w) => w.includes("Visão geral") && w.includes("tirinha"))).toBe(true);
     const out = applyEnrichment(lesson, r);
     expect(out.sections).toHaveLength(5);
-    expect(out.sections[3]).toMatchObject({ kind: "flashcards", title: "Flashcards de revisão", module: "Revisão final" });
+    expect(out.sections[4]).toMatchObject({ kind: "flashcards", title: "Flashcards de revisão", module: "Revisão final" });
     const c = extractPractice(out.sections[1]!.bodyMarkdown).cases[0]!;
     expect(c.strip?.length).toBe(1);
     expect(c.stamp?.tone).toBe("alerta");

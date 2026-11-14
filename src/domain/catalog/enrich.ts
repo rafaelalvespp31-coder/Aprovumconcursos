@@ -182,7 +182,7 @@ export function parseEnrichment(raw: string, lesson: EnrichLesson): EnrichParse 
   return { examples, flashcards, flashCount, errors, warnings };
 }
 
-/** Aplica os blocos na aula (sem mexer no resto). A seção de flashcards entra logo depois do Resumo. */
+/** Aplica os blocos na aula (sem mexer no resto). A seção de flashcards entra no fim da aula, no módulo "Revisão final", depois do resumo e do checklist. */
 export function applyEnrichment<L extends EnrichLesson>(lesson: L, p: EnrichParse): L {
   const sections = lesson.sections.map((s) => ({ ...s }));
   for (const e of p.examples) sections[e.index]!.bodyMarkdown = `${sections[e.index]!.bodyMarkdown.trimEnd()}\n\n${e.block}`;
@@ -190,10 +190,14 @@ export function applyEnrichment<L extends EnrichLesson>(lesson: L, p: EnrichPars
     const existing = sections.findIndex((s) => s.kind === "flashcards");
     if (existing >= 0) sections[existing]!.bodyMarkdown = p.flashcards;
     else {
-      const ri = sections.map((s) => s.kind).lastIndexOf("resumo");
+      // Fica no fim da aula, no módulo "Revisão final", depois do resumo e do checklist (a revisão em cartões fecha o estudo).
+      const kinds = sections.map((s) => s.kind);
+      const ri = Math.max(kinds.lastIndexOf("resumo"), kinds.lastIndexOf("checklist"));
       const anchor = ri >= 0 ? ri : sections.length - 1;
       const a = sections[anchor]!;
-      const flash: EnrichSection = { kind: "flashcards", title: FLASH_TITLE, bodyMarkdown: p.flashcards, nodeKeys: [...a.nodeKeys].slice(0, 40), ...(a.module ? { module: a.module } : {}) };
+      const hasModules = sections.some((s) => s.module);
+      const module = hasModules ? (ri >= 0 && a.module ? a.module : "Revisão final") : undefined;
+      const flash: EnrichSection = { kind: "flashcards", title: FLASH_TITLE, bodyMarkdown: p.flashcards, nodeKeys: [...a.nodeKeys].slice(0, 40), ...(module ? { module } : {}) };
       sections.splice(anchor + 1, 0, flash);
     }
   }
