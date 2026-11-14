@@ -26,3 +26,12 @@ describe("texto legal organizado", () => {
     expect(p.find((x) => x.t === "24 horas")?.k).toBe("r");
   });
 });
+
+describe("pena no mesmo card", () => {
+  it("anexa a pena ao dispositivo anterior", () => {
+    const md = "**Art. 159, § 1º:** Se o sequestro dura mais de 24 horas:\n\n**Pena:** reclusão, de doze a vinte anos.\n\n**Art. 159, § 2º:** Se resulta lesão grave:\n\n**Pena:** reclusão, de dezesseis a vinte e quatro anos.";
+    const ps = legalParagraphs(md).split("\n\n");
+    expect(ps).toHaveLength(2);
+    expect(ps[0]).toContain("⁂PENA⁂**Pena:** reclusão, de doze a vinte anos.");
+  });
+});

@@ -6,7 +6,7 @@ import { Children, type ReactNode } from "react";
 import { isRevokedLegalLine } from "@/components/markdown";
 import { CalloutIcon, CALLOUT } from "@/components/aula/callout-icon";
 import { calloutKindOf, leadingLabelKind } from "@/domain/content/callout-kind";
-import { highlightLegal, legalLevel, legalParagraphs, splitLegalLabel } from "@/domain/content/legal-format";
+import { PENA_MARK, highlightLegal, legalLevel, legalParagraphs, splitLegalLabel } from "@/domain/content/legal-format";
 
 function textOf(n: ElementContent | undefined): string {
   if (!n) return "";
@@ -102,16 +102,28 @@ function LegalPara({ children, revoked }: { children: ReactNode; revoked: boolea
   if (plain !== null && /^Art\.?\s*\d+[^.:]{0,8}:\s*$/i.test(plain.trim())) return <p className="ap-lei-titulo">{plain.trim().replace(/:$/, "")}</p>;
   const sp = first ? splitLegalLabel(first) : null;
   const level = sp ? legalLevel(sp.label) : "texto";
-  const body: ReactNode[] = sp ? [sp.rest, ...parts.slice(1)] : parts;
-  const rendered = body.map((x, i) =>
-    typeof x === "string" && !revoked
-      ? highlightLegal(x).map((p, j) => (p.k ? <span key={`${i}-${j}`} className={p.k === "r" ? "ap-hl-r" : "ap-hl-a"}>{p.t}</span> : p.t))
-      : x,
-  );
+  const all: ReactNode[] = sp ? [sp.rest, ...parts.slice(1)] : parts;
+  // A pena do dispositivo vem depois da marca: vira um bloco dentro do mesmo card.
+  const cut = all.findIndex((x) => typeof x === "string" && x.includes(PENA_MARK));
+  let body = all;
+  let pena: ReactNode[] = [];
+  if (cut >= 0) {
+    const [before, after] = (all[cut] as string).split(PENA_MARK);
+    body = [...all.slice(0, cut), before!.trimEnd()];
+    pena = [after!.trimStart(), ...all.slice(cut + 1)];
+  }
+  const paint = (nodes: ReactNode[], key: string) =>
+    nodes.map((x, i) =>
+      typeof x === "string" && !revoked
+        ? highlightLegal(x).map((p, j) => (p.k ? <span key={`${key}${i}-${j}`} className={p.k === "r" ? "ap-hl-r" : "ap-hl-a"}>{p.t}</span> : p.t))
+        : x,
+    );
+  const rendered = paint(body, "b");
+  const penaRendered = pena.length ? paint(pena, "p") : null;
   return (
     <p className={`ap-disp ap-disp-${level}${revoked ? " ap-revogado" : ""}`}>
       {sp && <span className="ap-disp-rot">{sp.label}</span>}
-      <span className="ap-disp-txt">{rendered}</span>
+      <span className="ap-disp-txt">{rendered}{penaRendered && <span className="ap-pena">{penaRendered}</span>}</span>
     </p>
   );
 }

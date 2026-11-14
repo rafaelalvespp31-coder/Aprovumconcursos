@@ -4,6 +4,9 @@
  * exceção, quem faz), sem dizer ao aluno o que é "importante": a cor só guia o olho.
  */
 const LABEL = /^(Art\.?\s*\d+[.\d]*\s*[º°o]?(?:\s*-\s*[A-Z])?\s*[.:–-]?|§\s*\d+[.\d]*\s*[º°o]?(?:\s*-\s*[A-Z])?|Par[áa]grafo [úu]nico\.?|[IVXLC]{1,6}\s*[-–—.]|[a-z]\)|\d{1,2}\s*[-–.)])(?=\s|$)/i;
+/** Marca (invisível ao aluno) entre o dispositivo e a sua pena. */
+export const PENA_MARK = "⁂PENA⁂";
+const PENA = /^(?:\*\*|__)?\s*penas?\b\s*(?:\*\*|__)?\s*[:–—-]/i;
 const TITLE = /^Art\.?\s*\d+[^.:]{0,8}:\s*$/i;
 
 export type LegalLevel = "titulo" | "artigo" | "paragrafo" | "inciso" | "alinea" | "texto";
@@ -33,6 +36,8 @@ export function legalParagraphs(md: string): string {
     if (!l) { prevBlank = true; continue; }
     const starts = LABEL.test(l) || TITLE.test(l);
     const last = out.at(-1);
+    // A pena fica no mesmo card do dispositivo que ela pune (nunca solta, em card próprio).
+    if (PENA.test(l) && last !== undefined && !TITLE.test(last)) { out[out.length - 1] = `${last} ${PENA_MARK}${l}`; prevBlank = false; continue; }
     if (!starts && !prevBlank && last !== undefined && !TITLE.test(last)) out[out.length - 1] = `${last} ${l}`;
     else out.push(l);
     prevBlank = false;

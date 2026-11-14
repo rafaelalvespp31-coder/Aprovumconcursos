@@ -2222,6 +2222,8 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .ap-lei .ap-disp-inciso .ap-disp-rot { color: #3d6fc4; }
 .ap-lei .ap-disp-alinea { margin-left: 42px; border-left-color: #c3c7ce; background: #fafafb; }
 .ap-lei .ap-disp-alinea .ap-disp-rot { color: #6b7080; }
+.ap-lei .ap-pena { display: block; margin-top: 7px; padding: 6px 10px; border-radius: 8px; border-left: 3px solid #b3261e; background: rgba(179, 38, 30, .09); font-weight: 800; font-style: italic; }
+.ap-lei .ap-pena strong { color: #8a0303; }
 .ap-lei .ap-hl-r { font-weight: 800; color: #b3261e; }
 .ap-lei .ap-hl-a { font-weight: 700; color: #1f5fbf; }
 .ap-lei .ap-revogado { color: var(--ap-faint); text-decoration: line-through; text-decoration-color: rgba(225,6,0,.5); }
