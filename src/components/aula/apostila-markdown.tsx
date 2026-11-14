@@ -20,11 +20,42 @@ function textOf(n: ElementContent | undefined): string {
  * quadrado vermelho, listas numeradas em vermelho, tabelas com cabeçalho preto e filete
  * vermelho, citações como caixas cinza com barra vermelha. HTML bruto não é interpretado.
  */
+/** Lei seca: o título do assunto ("Art. 2º — Abolitio criminis…") e todos os dispositivos dele (caput, §, incisos) formam UM card só. */
+const HEAD_LINE = /^(?:#{1,6}\s+\S|\*\*\s*(?:Art\.?\s*\d|\d+\.)[^*]*\*\*\s*$)/;
+function legalGroups(md: string): Array<{ head: string | null; body: string }> {
+  const groups: Array<{ head: string | null; body: string[] }> = [{ head: null, body: [] }];
+  for (const raw of md.split("\n")) {
+    const l = raw.replace(/^>\s?/, "").trim();
+    if (HEAD_LINE.test(l)) groups.push({ head: l, body: [] });
+    else groups.at(-1)!.body.push(raw);
+  }
+  return groups.map((g) => ({ head: g.head, body: g.body.join("\n").trim() })).filter((g) => g.head || g.body);
+}
+
 export function ApostilaMarkdown({ children, legal = false }: { children: string; legal?: boolean }) {
+  if (!legal) return <div className="ap-md"><MdInner legal={false}>{children}</MdInner></div>;
+  const groups = legalGroups(children);
+  return (
+    <div className="ap-md ap-lei">
+      {groups.map((g, i) =>
+        g.head && g.body ? (
+          <section key={i} className="ap-lei-card">
+            <MdInner legal>{g.head}</MdInner>
+            <div className="ap-lei-corpo"><MdInner legal>{g.body}</MdInner></div>
+          </section>
+        ) : (
+          <MdInner key={i} legal>{g.head ?? g.body}</MdInner>
+        ),
+      )}
+    </div>
+  );
+}
+
+function MdInner({ children, legal = false }: { children: string; legal?: boolean }) {
   // Quem está no bloco de exemplo/caso (parágrafos em itálico) até o próximo título.
   let mode: "ex" | null = null;
   return (
-    <div className={legal ? "ap-md ap-lei" : "ap-md"}>
+    <>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         skipHtml
@@ -81,7 +112,7 @@ export function ApostilaMarkdown({ children, legal = false }: { children: string
       >
         {legal ? legalParagraphs(children) : limparMatematica(children)}
       </ReactMarkdown>
-    </div>
+    </>
   );
 }
 
