@@ -8,7 +8,7 @@ import type { Bands } from "@/components/mentor/voz-orbe";
 import { VozOnda } from "./voz-onda";
 import { MentorVoz } from "@/components/mentor/mentor-voz";
 import type { StudyContext } from "@/domain/mentor/study-context";
-import { createPostitAction, deletePostitAction, deletePostitPdfAction, generatePostitPdfAction, updatePostitNoteAction } from "@/app/(app)/aula/[id]/postit-actions";
+import { createPostitAction, deletePostitAction, listPostitsAction, deletePostitPdfAction, generatePostitPdfAction, updatePostitNoteAction } from "@/app/(app)/aula/[id]/postit-actions";
 import { PostitCard, type PostitView } from "./postit-card";
 import { matchKey } from "@/domain/study/postit-quote";
 import { caretAt, locateRange, readSelection, type Capture } from "./postit-dom";
@@ -19,6 +19,8 @@ type PostitDto = { structure?: PostitView["structure"]; explanation?: string; id
 /** Contrato com o servidor. Na galeria de design entra uma versão em memória; no app, as ações reais. */
 export interface StudyApi {
   create: typeof createPostitAction;
+  /** Lista fresca do servidor (reabrir a aula sempre mostra os post-its salvos). Opcional na galeria. */
+  list?: (lessonId: string) => Promise<{ ok: true; postits: PostitDto[] } | { ok: false; error: string }>;
   updateNote: (id: string, note: string) => Promise<{ ok: true; postit: PostitDto } | { ok: false; error: string }>;
   remove: typeof deletePostitAction;
   generatePdf: typeof generatePostitPdfAction;
@@ -26,10 +28,18 @@ export interface StudyApi {
 }
 /** Mensagem que o servidor devolve para falhas inesperadas (vale tentar de novo). */
 const TRANSIENT = "Não foi possível concluir agora. Tente novamente.";
-const realApi: StudyApi = { create: createPostitAction, updateNote: updatePostitNoteAction, remove: deletePostitAction, generatePdf: generatePostitPdfAction, removePdf: deletePostitPdfAction };
+const realApi: StudyApi = { create: createPostitAction, list: listPostitsAction, updateNote: updatePostitNoteAction, remove: deletePostitAction, generatePdf: generatePostitPdfAction, removePdf: deletePostitPdfAction };
 type Panel = null | "lista" | "pdf" | "mentor";
 
 const FRESH_MS = 12_000;
+const toView = (p: PostitDto): PostitView => ({ id: p.id, sectionId: p.sectionId, sectionTitle: p.sectionTitle, quote: p.quote, structure: p.structure ?? null, quoteStart: p.quoteStart, note: p.note, explanation: p.explanation, createdAt: p.createdAt });
+const cacheKey = (lessonId: string) => `na:postits:${lessonId}`;
+function readCache(lessonId: string): PostitView[] {
+  try {
+    const v = JSON.parse(window.localStorage.getItem(cacheKey(lessonId)) ?? "[]");
+    return Array.isArray(v) ? (v as PostitView[]).filter((x) => x && typeof x.id === "string" && typeof x.quote === "string") : [];
+  } catch { return []; }
+}
 const fmt = (iso: string) => new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" });
 
 /**
@@ -54,6 +64,27 @@ export function StudyTools({
     [rank],
   );
   const [postits, setPostits] = useState<PostitView[]>(() => sortPostits(initialPostits));
+
+  // Post-its ficam salvos: cópia no aparelho (aparece na hora ao voltar) + lista fresca do servidor (vale a do servidor).
+  useEffect(() => {
+    const cached = readCache(lessonId);
+    if (cached.length) setPostits((cur) => sortPostits([...cur, ...cached.filter((c) => !cur.some((x) => x.id === c.id))]));
+    let alive = true;
+    const sync = async () => {
+      if (!api.list) return;
+      const r = await api.list(lessonId).catch(() => null);
+      if (!alive || !r || !r.ok) return;
+      setPostits((cur) => sortPostits([...r.postits.map(toView).map((p) => ({ ...(cur.find((x) => x.id === p.id) ?? {}), ...p })), ...cur.filter((x) => x.pending)]));
+    };
+    void sync();
+    const vis = () => { if (document.visibilityState === "visible") void sync(); };
+    window.addEventListener("pageshow", sync);
+    document.addEventListener("visibilitychange", vis);
+    return () => { alive = false; window.removeEventListener("pageshow", sync); document.removeEventListener("visibilitychange", vis); };
+  }, [lessonId, api, sortPostits]);
+  useEffect(() => {
+    try { window.localStorage.setItem(cacheKey(lessonId), JSON.stringify(postits.filter((p) => !p.pending))); } catch {}
+  }, [lessonId, postits]);
   const [pdfs, setPdfs] = useState<PdfInfo[]>(initialPdfs);
   const [panel, setPanel] = useState<Panel>(null);
   const [mentorFala, setMentorFala] = useState(false);

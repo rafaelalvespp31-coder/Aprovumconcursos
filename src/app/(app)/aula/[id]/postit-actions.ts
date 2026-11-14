@@ -3,7 +3,7 @@
 import { requireUser } from "@/server/auth";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
-import { createPostit, createPostitPdf, deletePostit, deletePostitPdf, listPostitPdfs, updatePostitNote, type CreatePostitInput, type Postit, type PostitPdfInfo } from "@/server/services/postits";
+import { createPostit, createPostitPdf, listPostits, deletePostit, deletePostitPdf, listPostitPdfs, updatePostitNote, type CreatePostitInput, type Postit, type PostitPdfInfo } from "@/server/services/postits";
 
 type R<T> = ({ ok: true } & T) | { ok: false; error: string };
 
@@ -22,6 +22,11 @@ async function guard<T>(what: string, fn: () => Promise<T>): Promise<R<T extends
 export async function createPostitAction(input: CreatePostitInput): Promise<R<{ postit: Postit; duplicate: boolean }>> {
   const user = await requireUser();
   return guard("create", () => createPostit(user.id, input));
+}
+
+export async function listPostitsAction(lessonId: string): Promise<R<{ postits: Postit[] }>> {
+  await requireUser();
+  return guard("list", async () => ({ postits: await listPostits(lessonId) }));
 }
 
 export async function updatePostitNoteAction(id: string, note: string): Promise<R<{ postit: Postit }>> {
