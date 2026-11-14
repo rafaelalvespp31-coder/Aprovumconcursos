@@ -9,6 +9,8 @@ import { MentorPriorities } from "./mentor-priorities";
 import { MentorVoz } from "./mentor-voz";
 import { MentorIcone } from "./mentor-icone";
 import { VozView } from "./voz-view";
+import { MentorGoalPlan } from "./mentor-goal-plan";
+import type { StudyPlan } from "@/domain/mentor/plan";
 import { SILENCE } from "./voz-orbe";
 import type { MentorPanelState } from "./types";
 
@@ -20,7 +22,7 @@ const KEY_OPEN = "aprovum_mentor_aberto";
 const KEY_TAB = "aprovum_mentor_aba";
 
 type Pos = { dx: number; dy: number };
-type Tab = "prioridades" | "voz";
+type Tab = "plano" | "prioridades" | "voz";
 
 const read = <T,>(k: string, fallback: T): T => {
   try {
@@ -66,10 +68,11 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
   const [loadedData, setData] = useState<MentorPanelState | null>(null);
   const data = demo ?? loadedData;
   const [loadId, setLoadId] = useState(0);
+  const [goalOv, setGoalOv] = useState<{ goal: { contest: string } | null; plan: StudyPlan | null } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   // Lembrados no navegador (lidos só no cliente; no servidor nada é desenhado).
   const [open, setOpen] = useState(() => (typeof window === "undefined" ? false : read<boolean>(KEY_OPEN, false)));
-  const [tab, setTab] = useState<Tab>(() => (typeof window === "undefined" ? "prioridades" : read<string>(KEY_TAB, "prioridades") === "voz" ? "voz" : "prioridades"));
+  const [tab, setTab] = useState<Tab>(() => (typeof window === "undefined" ? "plano" : read<string>(KEY_TAB, "plano") === "voz" ? "voz" : read<string>(KEY_TAB, "plano") === "prioridades" ? "prioridades" : "plano"));
   const [savedPos, setPos] = useState<Pos | null>(() => (typeof window === "undefined" ? null : read<Pos | null>(KEY_POS, null)));
   const pos = clamp(savedPos ?? defaultPos(vw), vw, vh);
   const [teaser, setTeaser] = useState(false);
@@ -290,9 +293,9 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
 
           {data?.state === "ok" && (
             <div className="mentor-abas" role="tablist" aria-label="Seções do Mentor">
-              {(["prioridades", "voz"] as const).map((t) => (
+              {(["plano", "prioridades", "voz"] as const).map((t) => (
                 <button key={t} type="button" role="tab" id={`mentor-aba-${t}`} aria-selected={tab === t} aria-controls={`mentor-sec-${t}`} onClick={() => setTabSaved(t)} className={tab === t ? "is-on" : ""}>
-                  {t === "prioridades" ? `Prioridades${pending ? ` (${pending})` : ""}` : "Voz"}
+                  {t === "plano" ? "Meu plano" : t === "prioridades" ? `Prioridades${pending ? ` (${pending})` : ""}` : "Voz"}
                 </button>
               ))}
               {refreshing && <span className="ml-auto self-center pr-1 text-[11px] text-[#64666D]">Atualizando…</span>}
@@ -325,6 +328,9 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
               </div>
             ) : (
               <>
+                <section id="mentor-sec-plano" role="tabpanel" aria-labelledby="mentor-aba-plano" hidden={tab !== "plano"}>
+                  <MentorGoalPlan goal={goalOv ? goalOv.goal : (data.goal ?? null)} plan={goalOv ? goalOv.plan : (data.plan ?? null)} name={data.name} onChange={(g, p) => setGoalOv({ goal: g, plan: p })} />
+                </section>
                 <section id="mentor-sec-prioridades" role="tabpanel" aria-labelledby="mentor-aba-prioridades" hidden={tab !== "prioridades"}>
                   {data.name && <p className="mb-2 text-[12.5px] text-[#64666D]">Olá, {data.name}. Isto é o que mais importa agora:</p>}
                   <MentorPriorities

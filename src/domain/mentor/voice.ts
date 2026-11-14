@@ -43,6 +43,22 @@ export const VOICE_PERSONAL_RULES = [
   "Cite só números e nomes que estejam nos dados. Se algo não constar, diga que ainda não tem dado sobre isso. Nunca invente desempenho, nota ou histórico.",
 ].join(" ");
 
+/** Regras do Mentor quando o aluno já disse qual concurso quer passar: tudo gira em torno dele. */
+export const VOICE_GOAL_RULES = [
+  "O aluno informou o concurso que quer passar (abaixo). A partir daí você é o MENTOR DESSE CONCURSO: toda orientação — aulas, foco, plano, questões, revisões — serve para ele ser aprovado nele.",
+  "Quando pedir o que estudar, o plano ou a rotina: diga o que estudar HOJE e na semana, por dia: matérias, aulas, quantas horas, quantas questões e quais dias são de questões, revisão e simulado. Use o PLANO SEMANAL e os DADOS reais do aluno (pontos fracos, aulas a revisar, dias sem estudar, tempo diário); adapte e justifique com os números dele.",
+  "Se o aluno estiver há dias sem estudar, cobre com firmeza e respeito e proponha uma retomada realista. Se a prova tiver data, fale em dias restantes. Nunca invente edital, conteúdo programático, data ou número: se não souber, diga e peça para conferir no edital.",
+].join(" ");
+
+export function buildGoalContext(contest: string | null, planText: string | null, facts: readonly string[]): string {
+  const parts: string[] = [];
+  if (contest) parts.push(`CONCURSO QUE O ALUNO QUER PASSAR: ${clean(contest, 120)}.`);
+  else parts.push("O aluno ainda NÃO disse qual concurso quer passar: ao cumprimentá-lo no início, depois do nome, pergunte numa frase: \"já sabe qual concurso você quer ser aprovado?\". Se ele pedir plano ou orientação de estudo, pergunte primeiro qual concurso e cargo, e use o que ele responder.");
+  if (facts.length) parts.push(`MAIS DADOS REAIS DO ALUNO: ${facts.map((f) => clean(f, 400)).join(" ")}`);
+  if (planText) parts.push(clean(planText, 3500));
+  return parts.join(" ");
+}
+
 export interface VoiceContest {
   name: string;
   institution: string;

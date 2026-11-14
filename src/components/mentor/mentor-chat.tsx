@@ -1,4 +1,5 @@
 "use client";
+import type { StudyPlan } from "@/domain/mentor/plan";
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -18,6 +19,7 @@ export function MentorChat({
   result,
   visible,
   lessons,
+  plan = null,
   base = "",
   compact = false,
   onNavigate,
@@ -25,6 +27,7 @@ export function MentorChat({
   result: MentorResult;
   visible: VisibleRecommendation[];
   lessons: MentorLesson[];
+  plan?: StudyPlan | null;
   base?: string;
   compact?: boolean;
   onNavigate?: () => void;
@@ -41,7 +44,7 @@ export function MentorChat({
   const ask = (q: string) => {
     const question = q.trim().slice(0, 300);
     if (!question) return;
-    const reply = answer(question, { result, visible, lessons });
+    const reply = answer(question, { result, visible, lessons, plan });
     setMsgs((m) => [...m, { id: nextId.current++, from: "aluno" as const, text: question }, { id: nextId.current++, from: "mentor" as const, text: reply.text.join("\n"), reply }].slice(-MAX_MESSAGES));
     setText("");
   };

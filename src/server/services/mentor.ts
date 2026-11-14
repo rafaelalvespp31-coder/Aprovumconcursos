@@ -8,6 +8,9 @@ import { createAdminClient, createUserClient } from "../supabase";
 import { auditLog, logEvent } from "../observability";
 import { listNotebooks } from "./notebooks";
 import { UserFacingError, enforceRateLimit } from "./trails";
+import { loadGoalPlan } from "./mentor-goal";
+import type { MentorGoal } from "./mentor-goal";
+import type { StudyPlan } from "@/domain/mentor/plan";
 
 /**
  * Mentor APROVUM — acesso aos dados e persistência.
@@ -167,6 +170,8 @@ export interface MentorView {
   result: MentorResult;
   visible: VisibleRecommendation[];
   lessons: MentorLesson[];
+  goal: MentorGoal | null;
+  plan: StudyPlan | null;
 }
 
 /**
@@ -227,7 +232,8 @@ export async function computeMentor(userId: string): Promise<MentorView> {
     const r = await admin.from("mentor_recommendations").update({ status: "nova", dismissed_at: null, resolved_at: null }).eq("user_id", userId).in("id", rec.toReactivate);
     if (r.error) throw new Error(r.error.message);
   }
-  return { name, result, visible: rec.visible, lessons: snapshot.lessons };
+  const gp = await loadGoalPlan(userId, snapshot, result);
+  return { name, result, visible: rec.visible, lessons: snapshot.lessons, goal: gp.goal, plan: gp.plan };
 }
 
 const idSchema = z.uuid();

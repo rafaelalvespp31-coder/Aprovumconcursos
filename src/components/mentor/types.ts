@@ -1,5 +1,6 @@
 import type { MentorLesson, MentorResult } from "@/domain/mentor/engine";
 import type { VisibleRecommendation } from "@/domain/mentor/history";
+import type { StudyPlan } from "@/domain/mentor/plan";
 
 /** Dados do Mentor como chegam ao navegador (uma vez por carregamento; o chat responde em cima deles). */
 export interface MentorData {
@@ -9,6 +10,9 @@ export interface MentorData {
   lessons: MentorLesson[];
   /** Raio-X publicados ainda não abertos pelo aluno. */
   notices?: MentorNotice[];
+  /** Concurso que o aluno quer passar (resposta dele ao Mentor) e o plano semanal feito para ele. */
+  goal?: { contest: string } | null;
+  plan?: StudyPlan | null;
 }
 
 export interface MentorNotice {

@@ -4,9 +4,11 @@
  * Puro: mesma pergunta + mesmos dados → mesma resposta.
  */
 import { normalizeText } from "@/domain/catalog/match";
+import { planAsText, WEEKDAYS, type StudyPlan } from "./plan";
 import { lessonAfter, type MentorLesson, type MentorResult, type Recommendation } from "./engine";
 
 export const MENTOR_INTENTS = [
+  "plano",
   "porque",
   "depois_aula",
   "revisoes",
@@ -24,6 +26,7 @@ export type MentorIntent = (typeof MENTOR_INTENTS)[number];
 
 /** Perguntas rápidas (botões no chat). */
 export const QUICK_QUESTIONS: Array<{ label: string; text: string }> = [
+  { label: "Meu plano de estudo", text: "Qual é o meu plano de estudo?" },
   { label: "O que estudar hoje?", text: "O que devo estudar hoje?" },
   { label: "O que está pendente?", text: "O que está pendente?" },
   { label: "Onde estou errando mais?", text: "Em quais assuntos estou errando mais?" },
@@ -38,6 +41,7 @@ const has = (t: string, ...words: string[]) => words.some((w) => t.includes(w));
 export function detectIntent(raw: string): MentorIntent {
   const t = ` ${normalizeText(raw)} `;
   if (!t.trim()) return "fallback";
+  if (has(t, "plano", "rotina", "cronograma", "quantas horas", "todo dia", "todos os dias", "quais dias", "semana")) return "plano";
   if (has(t, " por que ", " porque ", " por qual motivo", " motivo", " razao", " justifica")) return "porque";
   if (has(t, "depois de concluir", "depois que eu concluir", "depois de terminar", "depois dessa aula", "depois desta aula", "proxima aula", "o que vem depois")) return "depois_aula";
   if (has(t, "revis")) return "revisoes";
@@ -65,6 +69,8 @@ export interface ChatContext {
   /** As recomendações apresentadas agora (já sem as dispensadas). */
   visible: Recommendation[];
   lessons: MentorLesson[];
+  /** Plano semanal para o concurso do aluno (quando ele já disse qual é). */
+  plan?: StudyPlan | null;
 }
 
 const asItem = (r: Recommendation) => ({ title: r.explanation, detail: r.reason, href: r.href, actionLabel: r.actionLabel });
@@ -77,6 +83,17 @@ export function answer(raw: string, ctx: ChatContext): MentorReply {
   const reply = (text: string[], items: MentorReply["items"] = []): MentorReply => ({ intent, text, items });
 
   switch (intent) {
+    case "plano": {
+      const plan = ctx.plan;
+      if (!plan) return reply(["Para montar o seu plano eu preciso saber o concurso: abra a aba “Meu plano” e me diga qual concurso você quer passar. Aí eu defino os dias, as horas e as questões."]);
+      const wd = new Date().getDay();
+      const hoje = plan.days.find((d) => d.weekday === wd);
+      const fmt = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padStart(2, "0") : ""}` : `${m} min`);
+      const head = [`Plano para ${plan.contest}: ${fmt(plan.weeklyMinutes)} por semana e ${plan.weeklyQuestions} questões.`, ...plan.notes];
+      const items = (hoje ? [hoje] : []).concat(plan.days.filter((d) => d !== hoje)).map((d) => ({ title: `${d.weekday === wd ? "Hoje — " : ""}${WEEKDAYS[d.weekday]}: ${d.theme}`, detail: `${fmt(d.minutes)} · ${d.questions} questões — ${d.blocks.map((b) => `${b.subject} (${fmt(b.minutes)})`).join(", ")}` }));
+      void planAsText;
+      return reply(head, items);
+    }
     case "hoje": {
       if (result.insufficientData) return reply([NO_DATA]);
       if (!visible.length) return reply(["Você não tem pendências agora. Escolha um novo assunto em Estudos ou resolva um caderno de questões."]);

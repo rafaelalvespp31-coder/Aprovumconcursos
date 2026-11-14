@@ -7,6 +7,8 @@ import { getRaioXNotices } from "@/server/services/raiox-notice";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
 import type { MentorPanelState } from "@/components/mentor/types";
+import { setMentorGoal } from "@/server/services/mentor-goal";
+import type { StudyPlan } from "@/domain/mentor/plan";
 
 /** Mentor flutuante: a identidade vem só da sessão; sem sessão, avisa (sem dados). */
 export async function mentorPanelAction(): Promise<MentorPanelState> {
@@ -15,7 +17,7 @@ export async function mentorPanelAction(): Promise<MentorPanelState> {
   try {
     const m = await computeMentor(user.id);
     const notices = await getRaioXNotices(user.id).catch(() => []);
-    return { state: "ok", name: m.name, result: m.result, visible: m.visible, lessons: m.lessons, notices: notices.map((n) => ({ prepId: n.prepId, title: n.title, href: n.href })) };
+    return { state: "ok", name: m.name, result: m.result, visible: m.visible, lessons: m.lessons, goal: m.goal ? { contest: m.goal.contest } : null, plan: m.plan, notices: notices.map((n) => ({ prepId: n.prepId, title: n.title, href: n.href })) };
   } catch (e) {
     await logEvent("mentor.panel_failed", { error: (e as Error).message });
     return { state: "erro" };
@@ -34,6 +36,21 @@ export async function mentorStatusAction(id: string, status: "visualizada" | "di
     if (e instanceof UserFacingError) return { ok: false, error: e.message };
     if (e instanceof ZodError) return { ok: false, error: "Recomendação inválida." };
     await logEvent("mentor.status_failed", { error: (e as Error).message });
+    return { ok: false, error: "Não foi possível salvar agora. Tente de novo." };
+  }
+}
+
+/** O aluno responde "qual concurso você quer passar?": guarda e devolve o plano novo. Vazio remove o foco. */
+export async function setMentorGoalAction(contest: string): Promise<{ ok: true; goal: { contest: string } | null; plan: StudyPlan | null } | { ok: false; error: string }> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Sua sessão expirou. Entre novamente." };
+  try {
+    await setMentorGoal(user.id, contest);
+    const m = await computeMentor(user.id);
+    return { ok: true, goal: m.goal ? { contest: m.goal.contest } : null, plan: m.plan };
+  } catch (e) {
+    if (e instanceof UserFacingError) return { ok: false, error: e.message };
+    await logEvent("mentor.goal_failed", { error: (e as Error).message });
     return { ok: false, error: "Não foi possível salvar agora. Tente de novo." };
   }
 }

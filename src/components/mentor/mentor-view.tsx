@@ -6,6 +6,9 @@ import type { VisibleRecommendation } from "@/domain/mentor/history";
 import type { MentorNotice } from "./types";
 import { MentorChat } from "./mentor-chat";
 import { MentorPriorities } from "./mentor-priorities";
+import { MentorGoalPlan } from "./mentor-goal-plan";
+import type { StudyPlan } from "@/domain/mentor/plan";
+import { useState } from "react";
 
 /** Página do Mentor em tela cheia: as prioridades (com o motivo) e o assistente guiado lado a lado. */
 export function MentorView({
@@ -14,6 +17,8 @@ export function MentorView({
   visible,
   lessons,
   notices = [],
+  goal: goal0 = null,
+  plan: plan0 = null,
   base = "",
   demo = false,
 }: {
@@ -22,9 +27,12 @@ export function MentorView({
   visible: VisibleRecommendation[];
   lessons: MentorLesson[];
   notices?: MentorNotice[];
+  goal?: { contest: string } | null;
+  plan?: StudyPlan | null;
   base?: string;
   demo?: boolean;
 }) {
+  const [gp, setGp] = useState<{ goal: { contest: string } | null; plan: StudyPlan | null }>({ goal: goal0, plan: plan0 });
   return (
     <div className="flex flex-col gap-5" data-testid="mentor-pagina">
       <header className="pc p-5">
@@ -39,6 +47,10 @@ export function MentorView({
         </p>
       </header>
 
+      <section className="pc p-5" aria-label="Seu concurso e plano de estudo">
+        <MentorGoalPlan goal={gp.goal} plan={gp.plan} name={name} onChange={(g, p) => setGp({ goal: g, plan: p })} />
+      </section>
+
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)]">
         <section className="pc p-5" aria-labelledby="mentor-prioridades">
           <h2 id="mentor-prioridades" className="mb-3 text-[15px] font-bold text-[#08090B]">
@@ -50,7 +62,7 @@ export function MentorView({
           <h2 id="mentor-chat" className="mb-1 text-[15px] font-bold text-[#08090B]">
             Converse com o Mentor
           </h2>
-          <MentorChat result={result} visible={visible} lessons={lessons} base={base} />
+          <MentorChat result={result} visible={visible} lessons={lessons} plan={gp.plan} base={base} />
         </section>
       </div>
     </div>
