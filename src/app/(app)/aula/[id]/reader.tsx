@@ -6,6 +6,8 @@ import { Markdown } from "@/components/markdown";
 import { extractPractice, type PracticeCase } from "@/domain/content/practice";
 import { PracticeCard } from "@/components/practice-card";
 import { Flashcards, parseFlashcards } from "@/components/flashcards";
+import { TreeMapCard } from "@/components/tree-map";
+import { splitTreeMap } from "@/domain/content/tree-map";
 import { Icon, type IconName } from "@/components/icons";
 import { Button, Notice, Tag, inputClass } from "@/components/ui";
 import { SaveIndicator, type SaveState } from "@/components/interactive";
@@ -658,12 +660,19 @@ function ApostilaSection({
   const cases = ownCases.length ? ownCases : (s.practice ?? []);
   const flash = s.kind === "flashcards" && parseFlashcards(md).length > 0;
   const legal = s.kind === "texto_legal";
+  const tree = s.kind === "esquema" || /mapa mental/i.test(s.title) ? splitTreeMap(md) : null;
   return (
     <section id={sectionDomId(s.id)} className="ap-secao" aria-labelledby={`h-${s.id}`}>
       <h3 id={`h-${s.id}`} className="ap-sub">
         {s.title}
       </h3>
-      {flash ? <Flashcards markdown={md} /> : md.trim() ? <ApostilaMarkdown legal={legal}>{md}</ApostilaMarkdown> : null}
+      {flash ? <Flashcards markdown={md} /> : tree ? (
+        <>
+          {tree.before && <ApostilaMarkdown legal={legal}>{tree.before}</ApostilaMarkdown>}
+          <TreeMapCard root={tree.root} nodes={tree.nodes} />
+          {tree.after && <ApostilaMarkdown legal={legal}>{tree.after}</ApostilaMarkdown>}
+        </>
+      ) : md.trim() ? <ApostilaMarkdown legal={legal}>{md}</ApostilaMarkdown> : null}
       {legal && <p className="ap-nota">Confira sempre a redação vigente no Portal da Legislação do Planalto.</p>}
       {cases.length > 0 && (
         <div className="ap-pratica">
