@@ -112,6 +112,10 @@ export function StudyTools({
    * dentro da folga da folha (nunca sobre o texto). Aberto, o post-it cresce ao lado do selinho.
    * Celular: sem selinhos (tocar no trecho marcado abre a lista).
    */
+  // Selinhos e cartão aberto ficam no <body>, em coordenadas do documento: rolam junto com o texto, sem tremer.
+  const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
+  const toBody = (n: React.ReactNode) => (mounted ? createPortal(n, document.body) : null);
+
   const layout = useCallback(() => {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -122,19 +126,21 @@ export function StudyTools({
     // Limite de cima: logo abaixo da barra de ferramentas (que fica embaixo do cabeçalho).
     const topo = Math.round((barRef.current?.getBoundingClientRect().bottom ?? 70) + 8);
     document.documentElement.style.setProperty("--st-base", `${topo}px`);
-    let cursor = topo;
+    // Coordenadas do DOCUMENTO (não da tela): o selinho rola junto com o texto, sem recalcular a cada rolagem.
+    const sx = window.scrollX;
+    const sy = window.scrollY;
+    let cursor = 0;
     for (const p of postitsRef.current) {
       const el = els.current.get(p.id);
       if (!el) continue;
       const r = rangesRef.current.get(p.id);
       const rect = r?.getBoundingClientRect();
-      const visible = !!rect && rect.bottom > topo && rect.top < vh - 40;
-      if (!visible || !rect) { el.style.display = "none"; continue; }
-      const y = Math.max(rect.top - 2, cursor);
-      if (y > vh - 56) { el.style.display = "none"; continue; }
+      if (!rect || (!rect.width && !rect.height)) { el.style.display = "none"; continue; }
+      const yDoc = Math.max(rect.top + sy - 2, cursor);
+      const y = yDoc - sy; // mesma altura, em coordenadas da tela (só para posicionar o cartão aberto)
       el.style.display = "";
-      el.style.transform = `translate(${stubX}px, ${y}px)`;
-      cursor = y + (small ? 26 : 38);
+      el.style.transform = `translate(${stubX + sx}px, ${yDoc}px)`;
+      cursor = yDoc + (small ? 26 : 38);
       if (p.id === openRef.current && popRef.current) {
         const pop = popRef.current;
         const w = Math.min(small ? 220 : 210, vw - 24);
@@ -153,7 +159,7 @@ export function StudyTools({
           else if (rect.bottom + 10 + h <= vh - 12) top = rect.bottom + 10;
           else if (rect.top - h - 10 >= topo) top = rect.top - h - 10;
         }
-        pop.style.translate = `${Math.max(12, left)}px ${top}px`; // `translate` (não `transform`): a animação de entrada usa transform
+        pop.style.translate = `${Math.max(12, left) + sx}px ${top + sy}px`; // `translate` (não `transform`): a animação de entrada usa transform
       }
     }
   }, []);
@@ -188,14 +194,12 @@ export function StudyTools({
     const main = document.querySelector("main");
     const mo = main ? new MutationObserver(soon) : null;
     mo?.observe(main!, { childList: true, subtree: true });
-    window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", soon);
     window.addEventListener("aprovum:secao-aberta", soon);
     return () => {
       clearTimeout(t);
       mo?.disconnect();
       cancelAnimationFrame(raf.current);
-      window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", soon);
       window.removeEventListener("aprovum:secao-aberta", soon);
       const css = (window as unknown as { CSS?: { highlights?: Map<string, unknown> } }).CSS;
@@ -454,19 +458,19 @@ export function StudyTools({
       })()}
 
       {/* Post-its colados na margem da folha, na altura do trecho */}
-      {postits.length > 0 && (
+      {postits.length > 0 && toBody(
         <div className="st-trilho" data-st aria-label="Post-its desta aula" data-testid="st-trilho">
           {postits.map((p, i) => (
             <div key={p.id} ref={setEl(p.id)} className="st-item" style={{ display: "none" }}>
               <button type="button" className={`st-nota ${focusId === p.id || openId === p.id ? "is-foco" : ""} ${p.pending ? "is-pendente" : ""}`} onClick={() => { setFocusId(p.id); setOpenId((o) => (o === p.id ? null : p.id)); }} aria-expanded={openId === p.id} aria-label={`Post-it ${i + 1}: ${p.quote.slice(0, 60)}`} title={p.note || p.quote.slice(0, 80)} data-testid="postit-aba">{i + 1}</button>
             </div>
           ))}
-        </div>
+        </div>,
       )}
-      {openId && postits.some((p) => p.id === openId) && (
+      {openId && postits.some((p) => p.id === openId) && toBody(
         <div ref={popRef} className="st-pop" data-st-pop data-st data-testid="st-pop">
           {postits.map((p, i) => p.id === openId && <PostitCard key={p.id} p={p} n={i + 1} focused={false} inRail onNote={saveNote} onDelete={async (id) => { const ok = await remove(id); if (ok) setOpenId(null); return ok; }} onGo={goTo} />)}
-        </div>
+        </div>,
       )}
       {armed && (
         <div className="st-dica" role="status" data-st data-testid="st-dica">

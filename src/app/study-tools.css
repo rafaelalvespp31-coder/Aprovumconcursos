@@ -51,8 +51,8 @@
   .st-badge { top: 0; right: calc(50% - 20px); }
 }
 /* ---------------------------------------------------------------- post-its colados na margem da folha */
-.st-trilho { position: fixed; inset: 0; z-index: 52; pointer-events: none; }
-.st-item { position: fixed; left: 0; top: 0; pointer-events: auto; will-change: transform; }
+.st-trilho { position: absolute; left: 0; top: 0; width: 0; height: 0; z-index: 52; pointer-events: none; overflow: visible; }
+.st-item { position: absolute; left: 0; top: 0; pointer-events: auto; }
 .st-nota { display: grid; place-items: center; width: 34px; height: 34px; padding: 3px 5px 0 0; background: url("/postit/papel.webp") center / 100% 100% no-repeat; color: #4a3b00; font-size: 12px; font-weight: 800; filter: drop-shadow(0 2px 2px rgba(70, 50, 0, 0.35)); transform: rotate(-3deg); transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1), filter 160ms; animation: st-cola 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 .st-nota:hover, .st-nota.is-foco { transform: rotate(0) scale(1.18); filter: drop-shadow(0 5px 6px rgba(70, 50, 0, 0.45)); }
 .st-nota:focus-visible { outline: 2px solid #e50914; outline-offset: 2px; }
@@ -66,7 +66,7 @@
 .is-lateral .pi-rodape { min-height: 26px; }
 .is-lateral .pi-icone { width: 28px; height: 28px; }
 .is-lateral .pi-secao { font-size: 9.5px; }
-.st-pop { position: fixed; left: 0; top: 0; z-index: 57; will-change: transform; animation: st-cola 220ms ease-out both; }
+.st-pop { position: absolute; left: 0; top: 0; z-index: 57; animation: st-cola 220ms ease-out both; }
 .st-dica { position: fixed; z-index: 79; left: 50%; translate: -50% 0; top: calc(var(--st-base, 70px) + 6px); display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px 12px; max-width: min(92vw, 520px); padding: 10px 14px; border-radius: 14px; background: #111; color: #fff; font-size: 13px; font-weight: 600; box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4); border: 1px solid rgba(255, 217, 26, 0.6); }
 .st-dica button { min-height: 32px; padding: 0 10px; border-radius: 9px; background: rgba(255, 255, 255, 0.14); font-weight: 700; }
 .st-dica button:focus-visible { outline: 2px solid #ffd91a; }
