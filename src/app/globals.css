@@ -2194,12 +2194,20 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .ap-md .ap-nota .ap-ico { margin-right: 0; width: 24px; height: 24px; }
 .ap-nota-txt { min-width: 0; flex: 1; }
 .ap-callout-preto { border-left-color: var(--ap-ink); }
-.ap-tabela { margin: 12px 0 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.ap-tabela { margin: 12px 0 16px; overflow-x: auto; -webkit-overflow-scrolling: touch; border: 2px solid #1a1a1a; border-radius: 10px; }
 .ap-tabela table { width: 100%; min-width: 420px; border-collapse: collapse; font-size: 13.5px; line-height: 1.45; }
-.ap-tabela thead th { background: var(--ap-ink); color: #fff; text-align: left; font-weight: 700; padding: 9px 10px; border-bottom: 3px solid var(--ap-red); }
-.ap-tabela td { padding: 9px 10px; border-bottom: 1px solid var(--ap-line); vertical-align: top; }
-.ap-tabela tbody tr:nth-child(even) td { background: var(--ap-zebra); }
-.ap-tabela td:first-child { font-weight: 700; }
+.ap-tabela thead th { background: var(--ap-ink); color: #fff; text-align: left; font-weight: 800; padding: 9px 10px; border-bottom: 3px solid var(--ap-red); border-right: 1px solid rgba(255,255,255,.22); }
+.ap-tabela thead th:last-child { border-right: 0; }
+.ap-tabela td { padding: 10px 10px; border-bottom: 2px solid #1a1a1a; border-right: 1px solid #b9bcc4; vertical-align: top; background: var(--lin, #fff); }
+.ap-tabela td:last-child { border-right: 0; }
+.ap-tabela tbody tr:last-child td { border-bottom: 0; }
+.ap-tabela td:first-child { font-weight: 800; border-left: 5px solid var(--lin-bar, #1a1a1a); }
+/* cada assunto (linha) numa cor clarinha própria */
+.ap-tabela tbody tr:nth-child(5n+1) { --lin: #FDECEC; --lin-bar: #D93025; }
+.ap-tabela tbody tr:nth-child(5n+2) { --lin: #EAF2FE; --lin-bar: #1F5FBF; }
+.ap-tabela tbody tr:nth-child(5n+3) { --lin: #E9F7EF; --lin-bar: #1E8E5A; }
+.ap-tabela tbody tr:nth-child(5n+4) { --lin: #FFF5E0; --lin-bar: #C77700; }
+.ap-tabela tbody tr:nth-child(5n+5) { --lin: #F3ECFC; --lin-bar: #8A3FC4; }
 .ap-lei { margin: 6px 0 4px; padding: 4px 0 4px 20px; font-size: 15px; line-height: 1.6; color: #1a1a1a; }
 .ap-lei { padding-left: 0; }
 .ap-lei p { margin: 0; }
