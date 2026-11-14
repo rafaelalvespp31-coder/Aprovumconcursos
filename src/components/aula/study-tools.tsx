@@ -9,6 +9,7 @@ import { VozOnda } from "./voz-onda";
 import { MentorVoz } from "@/components/mentor/mentor-voz";
 import type { StudyContext } from "@/domain/mentor/study-context";
 import { createPostitAction, deletePostitAction, listPostitsAction, deletePostitPdfAction, generatePostitPdfAction, updatePostitNoteAction } from "@/app/(app)/aula/[id]/postit-actions";
+import { ToolsHint } from "./tools-hint";
 import { PostitCard, type PostitView } from "./postit-card";
 import { matchKey } from "@/domain/study/postit-quote";
 import { caretAt, locateRange, readSelection, type Capture } from "./postit-dom";
@@ -534,6 +535,8 @@ export function StudyTools({
       })()}
 
       {/* Post-its colados na margem da folha, na altura do trecho */}
+      <ToolsHint barRef={barRef} />
+
       {postits.length > 0 && toBody(
         <div className="st-trilho" data-st aria-label="Post-its desta aula" data-testid="st-trilho">
           {postits.map((p, i) => (
