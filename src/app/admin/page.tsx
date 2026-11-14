@@ -16,22 +16,7 @@ export default async function AdminHome() {
       <section className="mt-4 rounded-xl border border-[#E10600]/40 bg-superficie p-5" data-testid="admin-total-alunos">
         <p className="t-tiny font-semibold uppercase tracking-wide text-tinta-fraca">Alunos cadastrados na plataforma</p>
         <p className="mt-1 text-5xl font-extrabold tabular-nums">{c.total}</p>
-        <p className="mt-1 t-small text-tinta-suave">Total de contas de alunos criadas, somando planos pagos e gratuitos.</p>
-        <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {(
-            [
-              ["Pagos ativos", c.pagos],
-              ["Gratuitos", c.gratuitos],
-              ["Vencendo em 7 dias", c.vencendo],
-              ["Expirados", c.expirados],
-            ] as const
-          ).map(([label, n]) => (
-            <div key={label} className="rounded-lg border border-linha p-3">
-              <dt className="t-tiny font-semibold uppercase tracking-wide text-tinta-fraca">{label}</dt>
-              <dd className="mt-1 text-2xl font-extrabold tabular-nums">{n}</dd>
-            </div>
-          ))}
-        </dl>
+        <p className="mt-1 t-small text-tinta-suave">Total de contas de alunos criadas.</p>
         <Link href="/admin/alunos" className="mt-4 inline-block t-small font-semibold text-destaque underline-offset-2 hover:underline">Ver todos os alunos →</Link>
       </section>
       <p className="mt-4 t-small"><Link href="/admin/catalogo" className="font-semibold text-destaque underline-offset-2 hover:underline">Ir para o Catálogo →</Link></p>
