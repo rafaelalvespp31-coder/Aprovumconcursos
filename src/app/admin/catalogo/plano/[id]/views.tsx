@@ -38,8 +38,7 @@ export async function PlanView({ id, base, admin }: { id: string; base: string; 
       <section className="rounded-lg border border-linha p-4 t-small" aria-labelledby="como">
         <h2 id="como" className="font-semibold">Como catalogar cada subtópico</h2>
         <ol className="mt-2 list-decimal pl-5 text-tinta-suave">
-          <li>Clique em <strong>Copiar comando</strong> no subtópico (ou em <strong>Catalogar</strong>, que abre o painel com o comando pronto).</li>
-          <li>Aula grande? Use o <strong>Comando 1</strong> (a aula) e, na mesma conversa, o <strong>Comando 2</strong> (as questões); cole as duas respostas nos dois campos de “Catalogar aula”.</li>
+          <li>Clique em <strong>Novo Comando Completo</strong> no subtópico (ou em <strong>Catalogar</strong>, que abre o painel com o comando pronto). É um comando só, com aula e questões.</li>
           <li>Cole na IA e copie a resposta inteira (peça “continue” se ela vier cortada).</li>
           <li>Cole em <strong>Catalogar aula</strong>: a aula já entra no tópico certo, na ordem do número. Aqui ela passa de “Pendente” para “Rascunho” ou “Publicado”.</li>
         </ol>

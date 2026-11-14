@@ -77,7 +77,7 @@ export function BulkForm({ prompt, topicLabel, base, admin, actions }: {
           <>
             <p className="mt-1 t-small text-tinta-suave">Tópico <strong>{topicLabel}</strong>: um comando só, com todos os subtópicos. Cole na IA; ele entrega uma aula por subtópico (digite “próximo” se ele parar). Junte todas as respostas em um único arquivo .txt.</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Button variant="secundario" onClick={copy}>{copied ? "Comando copiado ✓" : "Copiar comando-mestre"}</Button>
+              <Button variant="secundario" onClick={copy}>{copied ? "Comando copiado ✓" : "Copiar Novo Comando Completo"}</Button>
               <Button variant="discreto" onClick={download}>Baixar (.txt)</Button>
             </div>
             <p className="mt-2 t-tiny text-tinta-fraca">{prompt.length.toLocaleString("pt-BR")} caracteres.</p>

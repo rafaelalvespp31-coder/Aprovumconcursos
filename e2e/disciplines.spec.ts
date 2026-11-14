@@ -87,14 +87,14 @@ test("plano de tópicos: um comando só, completo, mesmo para aula grande", asyn
   const grande = page.getByTestId("sub-grande");
   await expect(grande).not.toContainText("Aula grande");
   await expect(grande.getByTestId("copiar-comando-1")).toHaveCount(0);
-  await grande.getByRole("button", { name: "Copiar comando completo" }).click();
+  await grande.getByRole("button", { name: "Novo Comando Completo" }).click();
   await expect(grande.getByRole("button", { name: "✓ Copiado" })).toBeVisible();
   const c = await page.evaluate(() => navigator.clipboard.readText());
   expect(c).toContain("=== AULA ===");
   expect(c).toContain("=== QUESTÕES: FÁCIL ===");
   expect(c).toContain("2.1.19 Item 19 do edital");
-  expect(c).toContain("não há limite de módulos nem de seções");
+  expect(c).toContain("NOVO COMANDO COMPLETO");
   const pequeno = page.getByTestId("sub-pequeno");
-  await expect(pequeno.getByRole("button", { name: "Copiar comando completo" })).toBeVisible();
+  await expect(pequeno.getByRole("button", { name: "Novo Comando Completo" })).toBeVisible();
   expect(browserName).toBe("chromium");
 });

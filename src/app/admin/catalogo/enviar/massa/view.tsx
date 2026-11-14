@@ -8,7 +8,7 @@ export async function BulkUploadView({ searchParams, base, admin }: { searchPara
   const sp = await searchParams;
   const plano = typeof sp.plano === "string" ? sp.plano : null;
   const gi = typeof sp.topico === "string" && /^\d{1,3}$/.test(sp.topico) ? Number(sp.topico) : null;
-  const master = plano && gi !== null ? await topicMasterPromptFor(plano, gi) : null;
+  const master = plano && gi !== null ? await topicMasterPromptFor(plano, gi, true) : null;
   const topics = plano && !master ? await planTopicsOf(plano) : null;
   const plans = !plano ? await listOutlines() : [];
   return (
@@ -17,7 +17,7 @@ export async function BulkUploadView({ searchParams, base, admin }: { searchPara
         <Link href={`${base}/enviar`} className="t-small text-destaque underline underline-offset-2">Catalogar aula</Link>
         <h1 className="mt-1 t-h1">Catalogar em massa (um tópico por vez)</h1>
         <p className="mt-1 max-w-3xl t-small text-tinta-suave">
-          Copie o comando-mestre do tópico, peça as aulas de todos os subtópicos à IA, junte tudo num arquivo .txt e envie aqui. Você confere cada aula e, ao clicar em <strong>Publicar</strong>, o sistema cataloga tudo no tópico certo: quem tem 10 questões por nível vai ao ar, as demais entram como rascunho, e subtópico que já existe é atualizado, nunca duplicado.
+          Copie o Novo Comando Completo do tópico, peça as aulas de todos os subtópicos à IA, junte tudo num arquivo .txt e envie aqui. Você confere cada aula e, ao clicar em <strong>Publicar</strong>, o sistema cataloga tudo no tópico certo: quem tem 10 questões por nível vai ao ar, as demais entram como rascunho, e subtópico que já existe é atualizado, nunca duplicado.
         </p>
       </div>
       {master && (
@@ -33,7 +33,7 @@ export async function BulkUploadView({ searchParams, base, admin }: { searchPara
             {topics.topics.map((t) => (
               <li key={t.gi} className="flex flex-wrap items-center justify-between gap-2 py-2">
                 <span>{t.label} <span className="t-tiny text-tinta-fraca">· {t.subtopics} subtópico(s)</span></span>
-                <Link href={`${base}/enviar/massa?plano=${plano}&topico=${t.gi}`} className="font-semibold text-destaque underline underline-offset-2">Gerar comando-mestre</Link>
+                <Link href={`${base}/enviar/massa?plano=${plano}&topico=${t.gi}`} className="font-semibold text-destaque underline underline-offset-2">Gerar Novo Comando Completo</Link>
               </li>
             ))}
           </ul>
