@@ -5,7 +5,7 @@
  * - Nunca armazena respostas de API, ações (POST) nem páginas de conta.
  * - Cache privado é apagado no logout (mensagem "clear-private").
  */
-const VERSION = "v2"; // v2: identidade APROVUM (ícones novos)
+const VERSION = "v3"; // v3: ícone do app = logo AV com caveira
 const STATIC_CACHE = `na-static-${VERSION}`;
 const LESSON_CACHE = `na-aulas-${VERSION}`;
 const PRECACHE = ["/offline", "/icons/icon-192.png", "/icons/aprovum-mark.png", "/manifest.webmanifest"];
