@@ -25,7 +25,7 @@ export default async function AdminLayout({
         <header className="border-b border-linha bg-superficie">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-5 py-3">
             <div className="flex items-center gap-3">
-              <Logo href="/admin/catalogo" />
+              <Logo href="/admin" />
               <span className="rounded-full bg-tinta px-2 py-0.5 t-tiny font-semibold text-white">
                 Equipe
               </span>
