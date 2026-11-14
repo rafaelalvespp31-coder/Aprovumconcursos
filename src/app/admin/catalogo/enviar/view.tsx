@@ -2,6 +2,7 @@ import Link from "next/link";
 import { DEFAULT_MODEL_SLUG, listModelTopics, modelPrompt } from "@/server/services/catalog-upload";
 import { importLessonUploadAction, previewLessonUploadAction, removeBannerAction, saveBannerAction } from "../actions";
 import { LessonUploadForm } from "./upload-form";
+import { CopyPrompt } from "../plano/[id]/plan-tools";
 import { subtopicPrompt } from "@/server/services/outlines";
 
 /** Catalogar aula (colar texto). Mesma tela para o administrador e para o sócio liberado (sem banners das matérias). */
@@ -33,6 +34,9 @@ export async function UploadLessonView({ searchParams, base, admin }: { searchPa
           <p className="mt-1 text-tinta-suave">
             Do plano “{plan.planTitle}”. É um comando só, completo (aula e questões): copie, cole na IA e cole a resposta aqui. A aula cresce conforme o assunto (mais módulos quando for grande) e entra no tópico automaticamente.{" "}
             <Link href={`${base}/enviar`} className="font-semibold text-destaque underline underline-offset-2">Usar o comando-mestre</Link>
+          </p>
+          <p className="mt-2">
+            <CopyPrompt prompt={plan.novo} name={`novo-${plan.label.replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 40)}`} label="Copiar Novo Comando Completo" testId="copiar-novo-comando" primary />
           </p>
         </div>
       )}

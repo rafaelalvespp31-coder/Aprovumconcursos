@@ -8,6 +8,7 @@ import type { BulkPreview, BulkResult } from "@/server/services/catalog-bulk";
 import type { AdminResult } from "../../actions";
 import { OutlineForm } from "../outline-form";
 import { buildSubtopicPrompt } from "@/domain/catalog/subtopic-prompt";
+import { buildNovoComandoCompleto } from "@/domain/catalog/novo-comando-completo";
 import type { OutlineItem, OutlineSubtopic } from "@/domain/catalog/topic-group";
 
 /**
@@ -17,9 +18,11 @@ import type { OutlineItem, OutlineSubtopic } from "@/domain/catalog/topic-group"
 export function SubtopicCommands({ disciplineMode, group, sub }: { disciplineMode: string; group: OutlineItem; sub: OutlineSubtopic }) {
   const name = (sub.code ?? sub.title).replace(/[^\p{L}\p{N}]+/gu, "-").slice(0, 40);
   const [whole] = useState(() => buildSubtopicPrompt({ disciplineMode, group, sub }));
+  const [novo] = useState(() => buildNovoComandoCompleto({ disciplineMode, group, subs: [sub] }));
   return (
     <span className="inline-flex flex-wrap items-center gap-2" data-testid="comandos-subtopico">
       <CopyPrompt prompt={whole} name={name} label="Copiar comando completo" primary />
+      <CopyPrompt prompt={novo} name={`novo-${name}`} label="Novo Comando Completo" testId="copiar-novo-comando" />
     </span>
   );
 }
@@ -209,6 +212,7 @@ export function HidePublished({ publicados, children }: { publicados: number; ch
 export function TopicBulk({ outlineId, gi, label }: { outlineId: string; gi: number; label: string }) {
   const router = useRouter();
   const [copied, setCopied] = useState<"" | "ok" | "erro">("");
+  const [copiedNovo, setCopiedNovo] = useState<"" | "ok" | "erro">("");
   const [fileName, setFileName] = useState("");
   const [text, setText] = useState("");
   const [preview, setPreview] = useState<BulkPreview | null>(null);
@@ -218,21 +222,23 @@ export function TopicBulk({ outlineId, gi, label }: { outlineId: string; gi: num
   const [publishing, setPublishing] = useState(false);
   const input = useRef<HTMLInputElement>(null);
 
-  const copy = () => {
+  const copyWith = (novo: boolean) => {
     setError(null);
     start(async () => {
-      const r = await topicMasterPromptAction(outlineId, gi);
+      const r = await topicMasterPromptAction(outlineId, gi, novo);
       if (!r.ok) { setError(r.error); return; }
-      try { await navigator.clipboard.writeText(r.prompt); setCopied("ok"); setTimeout(() => setCopied(""), 2500); }
+      const mark = novo ? setCopiedNovo : setCopied;
+      try { await navigator.clipboard.writeText(r.prompt); mark("ok"); setTimeout(() => mark(""), 2500); }
       catch {
         const url = URL.createObjectURL(new Blob([r.prompt], { type: "text/plain;charset=utf-8" }));
         const a = document.createElement("a");
-        a.href = url; a.download = `comando-mestre-topico-${gi + 1}.txt`; a.click();
+        a.href = url; a.download = `${novo ? "novo-comando-completo" : "comando-mestre"}-topico-${gi + 1}.txt`; a.click();
         setTimeout(() => URL.revokeObjectURL(url), 2000);
-        setCopied("erro");
+        mark("erro");
       }
     });
   };
+  const copy = () => copyWith(false);
   const onFile = async (f: File | undefined) => {
     if (!f) return;
     setError(null); setPreview(null); setResult(null);
@@ -259,6 +265,9 @@ export function TopicBulk({ outlineId, gi, label }: { outlineId: string; gi: num
     <div className="mt-3 flex flex-col items-start gap-2" data-testid="topico-massa" aria-label={`Catalogar o tópico ${label} em massa`}>
       <Button type="button" variant="primario" onClick={copy} disabled={pending && !preview} data-testid="copiar-comando-mestre">
         {copied === "ok" ? "Comando-mestre copiado ✓" : copied === "erro" ? "Baixei o comando-mestre (.txt)" : "Copiar comando-mestre do tópico"}
+      </Button>
+      <Button type="button" variant="primario" onClick={() => copyWith(true)} disabled={pending && !preview} data-testid="copiar-novo-comando-topico">
+        {copiedNovo === "ok" ? "Novo Comando Completo copiado ✓" : copiedNovo === "erro" ? "Baixei o Novo Comando Completo (.txt)" : "Copiar Novo Comando Completo do tópico"}
       </Button>
       <input ref={input} type="file" accept=".txt,text/plain" hidden onChange={(e) => onFile(e.target.files?.[0])} data-testid="topico-arquivo" />
       <Button type="button" variant="secundario" onClick={() => input.current?.click()} disabled={pending} data-testid="enviar-aulas-txt">

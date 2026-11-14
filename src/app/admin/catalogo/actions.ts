@@ -108,9 +108,9 @@ export async function importBulkUploadAction(text: string, fileName: string): Pr
 }
 
 /** Comando-mestre de um tópico do plano (carregado só quando o botão é clicado, para a página não ficar pesada). */
-export async function topicMasterPromptAction(outlineId: string, gi: number): Promise<{ ok: true; prompt: string } | { ok: false; error: string }> {
+export async function topicMasterPromptAction(outlineId: string, gi: number, novo = false): Promise<{ ok: true; prompt: string } | { ok: false; error: string }> {
   await requireCatalogEditor();
-  const r = await topicMasterPromptFor(z.string().uuid().parse(outlineId), z.number().int().min(0).max(999).parse(gi));
+  const r = await topicMasterPromptFor(z.string().uuid().parse(outlineId), z.number().int().min(0).max(999).parse(gi), z.boolean().parse(novo));
   return r ? { ok: true, prompt: r.prompt } : { ok: false, error: "Tópico sem subtópicos ou não encontrado." };
 }
 

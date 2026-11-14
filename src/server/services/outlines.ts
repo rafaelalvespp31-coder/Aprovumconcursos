@@ -2,6 +2,7 @@ import "server-only";
 import { isDisciplineSlug } from "@/ai/pedagogy";
 import { buildTopicMasterPrompt } from "@/domain/catalog/topic-master";
 import { buildSubtopicPrompt } from "@/domain/catalog/subtopic-prompt";
+import { buildNovoComandoCompleto } from "@/domain/catalog/novo-comando-completo";
 import { findAllCatalogFor, parseOutline, type Outline, type OutlineStatus } from "@/domain/catalog/topic-group";
 import { findPlanDuplicates, type PlanDuplicates } from "@/domain/catalog/plan-duplicates";
 import { createAdminClient } from "../supabase";
@@ -130,7 +131,7 @@ export async function planView(outline: OutlineRow): Promise<PlanView> {
 }
 
 /** Comando de um subtópico do plano (para abrir direto em "Catalogar aula"). */
-export async function subtopicPrompt(outlineId: string, ref: string): Promise<{ prompt: string; label: string; planTitle: string } | null> {
+export async function subtopicPrompt(outlineId: string, ref: string): Promise<{ prompt: string; novo: string; label: string; planTitle: string } | null> {
   const o = await getOutline(outlineId);
   const m = ref.match(/^(\d{1,3})-(\d{1,3})$/);
   if (!o || !m) return null;
@@ -139,16 +140,16 @@ export async function subtopicPrompt(outlineId: string, ref: string): Promise<{ 
   const s = g?.subtopics[Number(m[2])];
   if (!g || !s) return null;
   const input = { disciplineMode: o.disciplineMode, group: g, sub: s };
-  return { prompt: buildSubtopicPrompt(input), label: `${s.code ? `${s.code} ` : ""}${s.title}`, planTitle: o.title };
+  return { prompt: buildSubtopicPrompt(input), novo: buildNovoComandoCompleto({ disciplineMode: o.disciplineMode, group: g, subs: [s] }), label: `${s.code ? `${s.code} ` : ""}${s.title}`, planTitle: o.title };
 }
 
 /** Comando-mestre de um tópico do plano (todos os subtópicos de uma vez). */
-export async function topicMasterPromptFor(outlineId: string, gi: number): Promise<{ prompt: string; label: string; planTitle: string; subtopics: number } | null> {
+export async function topicMasterPromptFor(outlineId: string, gi: number, novo = false): Promise<{ prompt: string; label: string; planTitle: string; subtopics: number } | null> {
   const o = await getOutline(outlineId);
   if (!o || !Number.isInteger(gi)) return null;
   const g = parseOutline(o.sourceText).groups[gi];
   if (!g || !g.subtopics.length) return null;
-  return { prompt: buildTopicMasterPrompt({ disciplineMode: o.disciplineMode, group: g }), label: `${g.code ? `${g.code}. ` : ""}${g.title}`, planTitle: o.title, subtopics: g.subtopics.length };
+  return { prompt: novo ? buildNovoComandoCompleto({ disciplineMode: o.disciplineMode, group: g, subs: g.subtopics }) : buildTopicMasterPrompt({ disciplineMode: o.disciplineMode, group: g }), label: `${g.code ? `${g.code}. ` : ""}${g.title}`, planTitle: o.title, subtopics: g.subtopics.length };
 }
 
 /** Tópicos do plano (para escolher qual catalogar em massa). */

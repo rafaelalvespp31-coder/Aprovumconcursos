@@ -90,7 +90,7 @@ export function splitFacets(title: string): string[] {
 }
 
 /** Itens do subtópico, com as facetas enumeradas no título separadas em itens próprios. */
-function expandItems(sub: OutlineSubtopic): Array<{ code: string | null; title: string }> {
+export function expandItems(sub: OutlineSubtopic): Array<{ code: string | null; title: string }> {
   const raw = sub.items.length ? sub.items : [{ code: sub.code ? `${sub.code}.1` : null, title: sub.title }];
   const out: Array<{ code: string | null; title: string }> = [];
   for (const it of raw) {
