@@ -73,7 +73,7 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
 
   /** Mantém o texto como está; só troca o que a fonte padrão não consegue desenhar. */
   const clean = (t: string) =>
-    [...t.normalize("NFC").replace(/[→⇒]/g, "->").replace(/[←⇐]/g, "<-").replace(/≥/g, ">=").replace(/≤/g, "<=").replace(/≠/g, "!=").replace(/[−‐‑]/g, "-").replace(/ /g, " ")]
+    [...t.replace(/%u([0-9a-fA-F]{4})/g, (_, h: string) => String.fromCharCode(parseInt(h, 16))).normalize("NFC").replace(/[→⇒]/g, "->").replace(/[←⇐]/g, "<-").replace(/≥/g, ">=").replace(/≤/g, "<=").replace(/≠/g, "!=").replace(/[−‐‑]/g, "-").replace(/ /g, " ")]
       .map((ch) => (ch === "\n" || charset.has(ch.codePointAt(0)!) ? ch : "?"))
       .join("");
 
@@ -84,7 +84,9 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   const fundo = await readFile(path.join(process.cwd(), "public", "pdf", "fundo-caveira.jpg")).then((b) => doc.embedJpg(b)).catch(() => null);
   const paintBg = (p: PDFPage) => {
     p.drawRectangle({ x: 0, y: 0, width: A4[0], height: A4[1], color: rgb(0.02, 0.0, 0.0) });
-    if (fundo) p.drawImage(fundo, { x: 0, y: 0, width: A4[0], height: A4[1], opacity: 0.34 });
+    if (fundo) p.drawImage(fundo, { x: 0, y: 0, width: A4[0], height: A4[1], opacity: 0.1 });
+    // Borda da página
+    p.drawRectangle({ x: 14, y: 14, width: A4[0] - 28, height: A4[1] - 28, borderColor: rgb(0.75, 0.12, 0.1), borderWidth: 1.2, opacity: 0, borderOpacity: 0.9 });
   };
   const newPage = () => { page = doc.addPage(A4); paintBg(page); y = H - M.top; };
 

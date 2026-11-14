@@ -157,7 +157,7 @@ export function StudyTools({
     const bottom = Math.min(vh, document.querySelector(".bn-wrap")?.getBoundingClientRect().top ?? vh);
     const sy = window.scrollY;
     for (const el of els.current.values()) {
-      if (el.style.display === "none") continue;
+      if (el.style.display === "none" || el.dataset.tray) continue;
       const vy = Number(el.dataset.y ?? 0) - sy;
       const h = 36;
       const k = Math.max(0, Math.min(1, Math.min((vy + h - top) / 28, (bottom - vy) / 28)));
@@ -187,12 +187,29 @@ export function StudyTools({
     const sx = window.scrollX;
     const sy = window.scrollY;
     let cursor = 0;
+    let trayN = 0;
     for (const p of postitsRef.current) {
       const el = els.current.get(p.id);
       if (!el) continue;
       const r = rangesRef.current.get(p.id);
       const rect = r?.getBoundingClientRect();
-      if (!rect || (!rect.width && !rect.height)) { el.style.display = "none"; continue; }
+      if (!rect || (!rect.width && !rect.height)) {
+        // Post-it de outro módulo (a página atual só mostra um módulo): selinho tracejado na lateral; tocar leva até ele.
+        if (p.sectionId && !p.pending && !document.getElementById(`secao-${p.sectionId}`)) {
+          el.style.display = "";
+          el.style.position = "fixed";
+          el.dataset.tray = "1";
+          el.style.opacity = "1";
+          el.style.pointerEvents = "";
+          el.style.transform = `translate(${stubX}px, ${topo + 6 + trayN * (small ? 26 : 34)}px)`;
+          trayN++;
+          continue;
+        }
+        el.style.display = "none";
+        continue;
+      }
+      el.style.position = "";
+      delete el.dataset.tray;
       const yDoc = Math.max(rect.top + sy - 2, cursor);
       const y = yDoc - sy; // mesma altura, em coordenadas da tela (só para posicionar o cartão aberto)
       el.style.display = "";
@@ -223,7 +240,8 @@ export function StudyTools({
     clip();
   }, [clip]);
 
-  const refresh = useCallback(() => {
+  const retryRef = useRef(0);
+  const refresh = useCallback((): void => {
     const map = new Map<string, Range>();
     for (const p of postitsRef.current) {
       if (!p.sectionId) continue;
@@ -233,6 +251,9 @@ export function StudyTools({
     rangesRef.current = map;
     paint();
     layout();
+    // Seção já na tela mas o trecho ainda não achado (texto acabou de montar): tenta de novo.
+    const faltando = postitsRef.current.some((p) => p.sectionId && !p.pending && !map.has(p.id) && document.getElementById(`secao-${p.sectionId}`));
+    if (faltando && retryRef.current < 4) { retryRef.current++; setTimeout(refresh, 300 * retryRef.current); } else if (!faltando) retryRef.current = 0;
   }, [paint, layout]);
 
   const schedule = useCallback(() => {
@@ -252,7 +273,7 @@ export function StudyTools({
     const soon = () => { clearTimeout(t); t = setTimeout(refresh, 120); };
     const main = document.querySelector("main");
     const mo = main ? new MutationObserver(soon) : null;
-    mo?.observe(main!, { childList: true, subtree: true });
+    mo?.observe(main!, { childList: true, subtree: true, attributes: true, attributeFilter: ["data-pagina", "hidden"] });
     window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", soon);
     window.addEventListener("aprovum:secao-aberta", soon);
@@ -523,7 +544,7 @@ export function StudyTools({
         <div className="st-trilho" data-st aria-label="Post-its desta aula" data-testid="st-trilho">
           {postits.map((p, i) => (
             <div key={p.id} ref={setEl(p.id)} className="st-item" style={{ display: "none" }}>
-              <button type="button" className={`st-nota ${focusId === p.id || openId === p.id ? "is-foco" : ""} ${p.pending ? "is-pendente" : ""}`} onClick={() => { setFocusId(p.id); setOpenId((o) => (o === p.id ? null : p.id)); }} aria-expanded={openId === p.id} aria-label={`Post-it ${i + 1}: ${p.quote.slice(0, 60)}`} title={p.note || p.quote.slice(0, 80)} data-testid="postit-aba">{i + 1}</button>
+              <button type="button" className={`st-nota ${focusId === p.id || openId === p.id ? "is-foco" : ""} ${p.pending ? "is-pendente" : ""}`} onClick={() => { if (els.current.get(p.id)?.dataset.tray) { goTo(p); return; } setFocusId(p.id); setOpenId((o) => (o === p.id ? null : p.id)); }} aria-expanded={openId === p.id} aria-label={`Post-it ${i + 1}: ${p.quote.slice(0, 60)}`} title={p.note || p.quote.slice(0, 80)} data-testid="postit-aba">{i + 1}</button>
             </div>
           ))}
         </div>,

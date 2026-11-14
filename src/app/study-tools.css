@@ -254,3 +254,5 @@ body:has(.st-bar) .mentor-flut { display: none !important; }
 /* Explicação em negrito, com o "!" sempre à esquerda */
 .pi-ex-txt { position: relative; padding-left: 22px; font-weight: 700; }
 .pi-ex-txt::before { content: "!"; position: absolute; left: 0; top: 1px; display: grid; place-items: center; width: 15px; height: 15px; border-radius: 99px; background: #b9000b; color: #fff; font-size: 10px; font-weight: 800; line-height: 1; }
+
+.st-item[data-tray] .st-nota { border-style: dashed; opacity: .85; }
