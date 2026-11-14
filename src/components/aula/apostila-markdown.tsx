@@ -2,7 +2,9 @@ import ReactMarkdown from "react-markdown";
 import { limparMatematica } from "@/domain/lesson/math-text";
 import remarkGfm from "remark-gfm";
 import type { ElementContent } from "hast";
+import { Children, type ReactNode } from "react";
 import { isRevokedLegalLine } from "@/components/markdown";
+import { highlightLegal, legalLevel, legalParagraphs, splitLegalLabel } from "@/domain/content/legal-format";
 
 function textOf(n: ElementContent | undefined): string {
   if (!n) return "";
@@ -36,8 +38,11 @@ export function ApostilaMarkdown({ children, legal = false }: { children: string
           h2: ({ children: c }) => <h4 className="ap-md-h">{c}</h4>,
           h3: ({ children: c }) => <h4 className="ap-md-h">{c}</h4>,
           h4: ({ children: c }) => <h4 className="ap-md-h">{c}</h4>,
-          p: ({ node, children: c }) =>
-            legal && node && isRevokedLegalLine(textOf(node as unknown as ElementContent)) ? <p className="ap-revogado">{c}</p> : <p>{c}</p>,
+          p: ({ node, children: c }) => {
+            if (!legal) return <p>{c}</p>;
+            const revoked = !!node && isRevokedLegalLine(textOf(node as unknown as ElementContent));
+            return <LegalPara revoked={revoked}>{c}</LegalPara>;
+          },
           blockquote: ({ children: c }) => (legal ? <div className="ap-lei-bloco">{c}</div> : <aside className="ap-callout">{c}</aside>),
           table: ({ children: c }) => (
             <div className="ap-tabela" role="region" aria-label="Tabela" tabIndex={0}>
@@ -46,17 +51,30 @@ export function ApostilaMarkdown({ children, legal = false }: { children: string
           ),
         }}
       >
-        {legal ? legalLines(children) : limparMatematica(children)}
+        {legal ? legalParagraphs(children) : limparMatematica(children)}
       </ReactMarkdown>
     </div>
   );
 }
 
-/** No texto legal cada linha é um dispositivo: mantém as quebras de linha como no PDF. */
-function legalLines(md: string): string {
-  return md
-    .split("\n")
-    .map((l) => l.replace(/^>\s?/, ""))
-    .filter((l) => l.trim())
-    .join("\n\n");
+/** Um dispositivo da lei: rótulo (Art./§/inciso) à esquerda e texto com as partes-chave coloridas. */
+function LegalPara({ children, revoked }: { children: ReactNode; revoked: boolean }) {
+  const parts = Children.toArray(children);
+  const first = typeof parts[0] === "string" ? (parts[0] as string) : "";
+  const plain = parts.every((x) => typeof x === "string") ? parts.join("") : null;
+  if (plain !== null && /^Art\.?\s*\d+[^.:]{0,8}:\s*$/i.test(plain.trim())) return <p className="ap-lei-titulo">{plain.trim().replace(/:$/, "")}</p>;
+  const sp = first ? splitLegalLabel(first) : null;
+  const level = sp ? legalLevel(sp.label) : "texto";
+  const body: ReactNode[] = sp ? [sp.rest, ...parts.slice(1)] : parts;
+  const rendered = body.map((x, i) =>
+    typeof x === "string" && !revoked
+      ? highlightLegal(x).map((p, j) => (p.k ? <span key={`${i}-${j}`} className={p.k === "r" ? "ap-hl-r" : "ap-hl-a"}>{p.t}</span> : p.t))
+      : x,
+  );
+  return (
+    <p className={`ap-disp ap-disp-${level}${revoked ? " ap-revogado" : ""}`}>
+      {sp && <span className="ap-disp-rot">{sp.label}</span>}
+      <span className="ap-disp-txt">{rendered}</span>
+    </p>
+  );
 }
