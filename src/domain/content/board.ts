@@ -37,7 +37,7 @@ export interface LessonBoard {
   examples: { items: BoardExample[]; sectionId: string | null };
   traps: { items: Array<{ head: string; rest: string }>; sectionId: string | null };
   keyPoints: string[];
-  mindmap: { center: string; branches: Array<{ label: string; items: string[] }> };
+  mindmap: { center: string; branches: Array<{ label: string; hint?: string; items: string[] }> };
 }
 
 const CONCEPT_KINDS = ["explicacao", "introducao", "conceitos_fundamentais", "aprofundamento"];
@@ -245,7 +245,17 @@ export function buildLessonBoard(input: {
 
   // Mapa mental (sempre derivado do conteúdo acima)
   const short = (s: string) => clip(plain(s), 46);
-  const branches: Array<{ label: string; items: string[] }> = [];
+  const HINT: Record<string, string> = {
+    Conceito: "O que é: a ideia central do assunto.",
+    Temas: "Os grandes blocos que a aula percorre.",
+    Elementos: "As peças que formam o assunto.",
+    Lei: "O que o texto da lei manda ou proíbe.",
+    "Diferenças": "Como não confundir com figuras parecidas.",
+    Exemplos: "Casos práticos para fixar a regra.",
+    "Atenção": "Pegadinhas que a banca costuma cobrar.",
+    Resumo: "O que precisa estar na ponta da língua.",
+  };
+  const branches: Array<{ label: string; hint?: string; items: string[] }> = [];
   if (concept) branches.push({ label: "Conceito", items: [short(splitHeadRest(concept.markdown).head)] });
   if (scheme.items.length) branches.push({ label: scheme.source === "temas" ? "Temas" : "Elementos", items: scheme.items.slice(0, 4).map((i) => short(i.label)) });
   if (lawItems.length) branches.push({ label: "Lei", items: lawItems.slice(0, 3).map((i) => short(`${i.marker ?? ""} ${i.text}`)) });
@@ -265,7 +275,7 @@ export function buildLessonBoard(input: {
     examples,
     traps,
     keyPoints,
-    mindmap: { center: (t.lead ? `${t.lead} ${t.highlight}` : t.highlight).toLocaleUpperCase("pt-BR"), branches: branches.slice(0, 6) },
+    mindmap: { center: (t.lead ? `${t.lead} ${t.highlight}` : t.highlight).toLocaleUpperCase("pt-BR"), branches: branches.slice(0, 6).map((x) => ({ ...x, hint: HINT[x.label] })) },
   };
 }
 

@@ -1519,8 +1519,10 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .al-mapa > .al-mapa-ramo { flex: 1 1 calc(50% - 5px); }
 .al-mapa-linhas { display: none; }
 .al-mapa-centro { order: -1; flex: 0 0 100%; align-self: center; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 96px; padding: 14px 22px; border-radius: 48px; hyphens: auto; background: var(--preto); color: #fff; text-align: center; font-size: 12.5px; font-weight: 800; line-height: 1.15; box-shadow: 0 0 0 5px #fff, 0 0 0 6px var(--borda); overflow-wrap: break-word; }
-.al-mapa-ramo { padding: 9px 11px; border-radius: 8px; border: 1px solid #F2C4C6; background: #fff; font-size: 11.5px; line-height: 1.35; color: var(--cinza); }
-.al-mapa-rotulo { font-size: 11.5px; font-weight: 800; text-transform: uppercase; color: var(--vermelho); }
+.al-mapa-ramo { padding: 9px 11px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--tom, #B3261E) 35%, #fff); border-top: 3px solid var(--tom, #B3261E); background: color-mix(in srgb, var(--tom, #B3261E) 6%, #fff); box-shadow: 0 1px 2px rgba(0,0,0,.06); font-size: 11.5px; line-height: 1.35; color: var(--cinza); }
+.al-mapa-rotulo { display: flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 800; text-transform: uppercase; color: var(--tom, var(--vermelho)); }
+.al-mapa-icone { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 999px; background: var(--tom, var(--vermelho)); color: #fff; flex: none; }
+.al-mapa-dica { margin: 3px 0 0; font-size: 10.5px; font-style: italic; color: var(--cinza); opacity: .85; }
 .al-mapa-ramo ul { margin: 3px 0 0; padding-left: 14px; list-style: disc; }
 
 @container (min-width: 330px) {

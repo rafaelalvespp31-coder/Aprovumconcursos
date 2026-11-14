@@ -547,7 +547,10 @@ function BoardTable({ headers, rows, firstRed = false }: { headers: string[]; ro
 }
 
 /** Mapa mental: nó central e até seis ramos, ligados por linhas (SVG). No celular, ramos em lista. */
-export function MindMap({ center, branches }: { center: string; branches: Array<{ label: string; items: string[] }> }) {
+const BRANCH_ICON: Record<string, typeof Network> = { Conceito: Lightbulb, Temas: BookOpen, Elementos: ListChecks, Lei: Gavel, "Diferenças": Crosshair, Exemplos: NotebookPen, "Atenção": AlertTriangle, Resumo: Target };
+const BRANCH_TONE: Record<string, string> = { Conceito: "#B3261E", Temas: "#1F5FBF", Elementos: "#1F5FBF", Lei: "#2A2D33", "Diferenças": "#8A3FC4", Exemplos: "#1E8E5A", "Atenção": "#C77700", Resumo: "#B3261E" };
+
+export function MindMap({ center, branches }: { center: string; branches: Array<{ label: string; hint?: string; items: string[] }> }) {
   const slots = ["a", "b", "c", "d", "e", "f"];
   const pos: Record<string, [number, number]> = { a: [16.6, 16.6], b: [83.3, 16.6], c: [16.6, 50], d: [83.3, 50], e: [16.6, 83.3], f: [83.3, 83.3] };
   return (
@@ -563,8 +566,12 @@ export function MindMap({ center, branches }: { center: string; branches: Array<
         <span>{center}</span>
       </div>
       {branches.map((b, i) => (
-        <div key={b.label} className="al-mapa-ramo" style={{ gridArea: slots[i] }}>
-          <p className="al-mapa-rotulo">{b.label}</p>
+        <div key={b.label} className="al-mapa-ramo" style={{ gridArea: slots[i], ["--tom" as string]: BRANCH_TONE[b.label] ?? "#B3261E" }}>
+          <p className="al-mapa-rotulo">
+            <span className="al-mapa-icone" aria-hidden>{(() => { const I = BRANCH_ICON[b.label] ?? Network; return <I className="size-3.5" />; })()}</span>
+            {b.label}
+          </p>
+          {b.hint && <p className="al-mapa-dica">{b.hint}</p>}
           <ul>
             {b.items.map((it, j) => (
               <li key={j}>{it}</li>
