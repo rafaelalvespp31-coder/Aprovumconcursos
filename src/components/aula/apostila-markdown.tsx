@@ -19,6 +19,8 @@ function textOf(n: ElementContent | undefined): string {
  * vermelho, citações como caixas cinza com barra vermelha. HTML bruto não é interpretado.
  */
 export function ApostilaMarkdown({ children, legal = false }: { children: string; legal?: boolean }) {
+  // Quem está no bloco de exemplo/caso (parágrafos em itálico) até o próximo título.
+  let mode: "ex" | null = null;
   return (
     <div className={legal ? "ap-md ap-lei" : "ap-md"}>
       <ReactMarkdown
@@ -34,12 +36,24 @@ export function ApostilaMarkdown({ children, legal = false }: { children: string
             );
           },
           img: () => null,
-          h1: ({ children: c }) => <h4 className="ap-md-h">{c}</h4>,
-          h2: ({ children: c }) => <h4 className="ap-md-h">{c}</h4>,
-          h3: ({ children: c }) => <h4 className="ap-md-h">{c}</h4>,
-          h4: ({ children: c }) => <h4 className="ap-md-h">{c}</h4>,
+          h1: ({ children: c }) => { mode = null; return <h4 className="ap-md-h">{c}</h4>; },
+          h2: ({ children: c }) => { mode = null; return <h4 className="ap-md-h">{c}</h4>; },
+          h3: ({ children: c }) => { mode = null; return <h4 className="ap-md-h">{c}</h4>; },
+          h4: ({ node, children: c }) => { mode = /exemplo|caso/i.test(textOf(node as unknown as ElementContent)) ? "ex" : null; return <h4 className="ap-md-h">{c}</h4>; },
+          ol: ({ start, children: c }) => (
+            <ol start={start ?? undefined} style={start && start > 1 ? { counterReset: `ap-ol ${start - 1}` } : undefined}>{c}</ol>
+          ),
+          li: ({ node, children: c }) => {
+            const t = textOf(node as unknown as ElementContent).trim();
+            if (!legal && isHeadingItem(t)) { mode = /exemplo|caso/i.test(t) ? "ex" : null; return <li className="ap-li-titulo">{c}</li>; }
+            return <li>{c}</li>;
+          },
           p: ({ node, children: c }) => {
-            if (!legal) return <p>{c}</p>;
+            if (!legal) {
+              const t = textOf(node as unknown as ElementContent).trim();
+              if (isLabelLine(t)) return <p className="ap-rotulo">{c}</p>;
+              return <p className={mode === "ex" ? "ap-ex" : undefined}>{c}</p>;
+            }
             const revoked = !!node && isRevokedLegalLine(textOf(node as unknown as ElementContent));
             return <LegalPara revoked={revoked}>{c}</LegalPara>;
           },
@@ -55,6 +69,15 @@ export function ApostilaMarkdown({ children, legal = false }: { children: string
       </ReactMarkdown>
     </div>
   );
+}
+
+/** Item de lista em CAIXA ALTA e curto ("4. EXEMPLO PRÁTICO"): é título de bloco, não item comum. */
+function isHeadingItem(t: string): boolean {
+  return t.length > 3 && t.length <= 60 && !/[a-zà-ú]/.test(t) && /[A-ZÀ-Ú]{3}/.test(t);
+}
+/** Linha curta que só rotula o que vem depois ("Enunciado:", "Resolução:", "ATENÇÃO:"). */
+function isLabelLine(t: string): boolean {
+  return t.length <= 40 && /^[^.!?]+:$/.test(t);
 }
 
 /** Um dispositivo da lei: rótulo (Art./§/inciso) à esquerda e texto com as partes-chave coloridas. */

@@ -2168,7 +2168,11 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .ap-md p { margin: 0 0 10px; }
 .ap-md strong { font-weight: 700; color: #8a0303; }
 .ap-tabela thead strong { color: #fff; }
-.ap-md em { font-style: italic; }
+.ap-md em { font-style: italic; color: #3d4a66; }
+.ap-md .ap-li-titulo { margin: 18px 0 6px; padding: 8px 12px 8px 30px; border-radius: 10px; background: #0d0e11; color: #fff; font-weight: 800; letter-spacing: .03em; font-size: 14px; }
+.ap-md .ap-li-titulo::before { left: 10px; top: 8px; color: #ff6b6b; }
+.ap-md .ap-rotulo { margin: 12px 0 4px; font-size: 12.5px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: #1f5fbf; }
+.ap-md .ap-ex { padding-left: 12px; border-left: 3px solid #f2c4c6; font-style: italic; color: #2b2f38; }
 .ap-md ul { margin: 6px 0 12px; padding: 0; list-style: none; }
 .ap-md ul > li { position: relative; padding-left: 20px; margin: 4px 0; }
 .ap-md ul > li::before { content: ""; position: absolute; left: 4px; top: .62em; width: 7px; height: 7px; background: var(--ap-red); }
