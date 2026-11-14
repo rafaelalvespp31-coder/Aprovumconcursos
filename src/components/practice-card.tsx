@@ -6,15 +6,25 @@ import { Markdown } from "./markdown";
 import type { PracticeCase } from "@/domain/content/practice";
 import { ComicStrip } from "./comic/strip";
 import { SchemeDiagram } from "./comic/scheme";
+import { EMPTY_PRACTICE, usePracticeProgress, type PracticeState } from "./aula/practice-progress";
 
 /**
  * Card "Na prática": o assunto que acabou de ser ensinado aplicado a um caso concreto.
  * Fluxo: situação → pense → ver resposta → "entendi" (ou reler a explicação).
  */
-export function PracticeCard({ cases, onReread }: { cases: PracticeCase[]; onReread?: () => void }) {
-  const [idx, setIdx] = useState(0);
-  const [open, setOpen] = useState<Set<number>>(new Set());
-  const [got, setGot] = useState<Set<number>>(new Set());
+export function PracticeCard({ cases, onReread, progressKey }: { cases: PracticeCase[]; onReread?: () => void; progressKey?: string }) {
+  // Com `progressKey`, o que o aluno já fez fica gravado (reabrir a aula não repete); sem ele, só na tela.
+  const store = usePracticeProgress();
+  const saved: PracticeState | undefined = progressKey && store ? store.progress[progressKey] : undefined;
+  const [local, setLocal] = useState<PracticeState>(EMPTY_PRACTICE);
+  const st = progressKey && store ? saved ?? EMPTY_PRACTICE : local;
+  const save = (next: PracticeState) => (progressKey && store ? store.update(progressKey, next) : setLocal(next));
+  const idx = Math.min(st.i, Math.max(0, cases.length - 1));
+  const open = new Set(st.o);
+  const got = new Set(st.g);
+  const setIdx = (i: number) => save({ ...st, i });
+  const setOpen = (f: (s: Set<number>) => Set<number>) => save({ ...st, o: [...f(open)] });
+  const setGot = (f: (s: Set<number>) => Set<number>) => save({ ...st, g: [...f(got)] });
   if (!cases.length) return null;
   const c = cases[Math.min(idx, cases.length - 1)]!;
   const revealed = open.has(idx);

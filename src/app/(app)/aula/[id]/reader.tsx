@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Markdown } from "@/components/markdown";
 import { extractPractice, type PracticeCase } from "@/domain/content/practice";
 import { PracticeCard } from "@/components/practice-card";
@@ -23,6 +23,7 @@ import { dispensarFeedbackAction, enviarFeedbackAction } from "./feedback-action
 import { LessonTreePortal, type BoardOutlineItem } from "@/components/aula/lesson-board";
 import { ApostilaMarkdown } from "@/components/aula/apostila-markdown";
 import { ApostilaQuestion } from "@/components/aula/apostila-question";
+import { PracticeCtx, practiceDone, type PracticeProgress, type PracticeState } from "@/components/aula/practice-progress";
 import { apostilaPages, groupIntoModules, pageKey, type ApostilaPage } from "@/domain/content/apostila";
 
 export interface ReaderSection {
@@ -164,6 +165,17 @@ export function LessonReader(props: ReaderProps) {
   const isUnlocked = (p: ApostilaPage) =>
     p.kind === "modulo" ? readingDone || p.index === 0 || moduleDone(p.index - 1) : p.kind === "questoes" ? theoryDone || context === "revisao" : true;
   const firstPending = modules.findIndex((_, i) => !moduleDone(i));
+
+  // "Pensei — ver a resposta": fica gravado por seção; e é o mínimo para concluir o módulo.
+  const [practice, setPractice] = useStored<PracticeProgress>(`na:pratica:${lesson.id}`, {});
+  const practiceRef = useRef(practice);
+  practiceRef.current = practice;
+  const updatePractice = useCallback((key: string, next: PracticeState) => setPractice({ ...practiceRef.current, [key]: next }), [setPractice]);
+  const practiceCtx = useMemo(() => ({ progress: practice, update: updatePractice }), [practice, updatePractice]);
+  const hasPractice = (s: ReaderSection) => (extractPractice(s.body_markdown).cases.length || s.practice?.length || 0) > 0;
+  /** Seções do módulo com exemplo "Na prática" em que o aluno ainda não clicou em "Pensei — ver a resposta". */
+  const practiceMissing = (i: number) => (readingDone || moduleDone(i) ? [] : modules[i]!.sections.filter((s) => hasPractice(s) && !practiceDone(practice, s.id)));
+  const [gateOpen, setGateOpen] = useState<number | null>(null);
   // Página guardada que ainda está trancada (ex.: veio de outro aparelho): abre o módulo pendente.
   const current: ApostilaPage = isUnlocked(storedP) ? storedP : firstPending >= 0 ? { kind: "modulo", index: firstPending } : pages[0]!;
   const currentIdx = pages.findIndex((p) => pageKey(p) === pageKey(current));
@@ -186,6 +198,14 @@ export function LessonReader(props: ReaderProps) {
 
   /** Conclui o módulo: marca as seções como lidas e abre a próxima página. */
   const concludeModule = (i: number) => {
+    // Trava: antes de avançar, cada exemplo "Na prática" precisa ter ao menos o "Pensei — ver a resposta".
+    const missing = practiceMissing(i);
+    if (missing.length) {
+      setGateOpen(i);
+      document.getElementById(sectionDomId(missing[0]!.id))?.scrollIntoView({ behavior: "smooth", block: "start" });
+      return;
+    }
+    setGateOpen(null);
     const nextSeen = new Set([...seen, ...modules[i]!.sections.map((s) => s.id)]);
     setSeenList([...nextSeen]);
     // Navega direto (o módulo acabou de ser concluído; o estado ainda não foi atualizado).
@@ -369,11 +389,27 @@ export function LessonReader(props: ReaderProps) {
             />
           ))}
         </div>
+        {(() => {
+          const missing = practiceMissing(i);
+          if (!missing.length) return null;
+          const total = m.sections.filter(hasPractice).length;
+          return (
+            <div className={`ap-aviso ap-trava-exemplos ${gateOpen === i ? "is-alerta" : ""}`} role={gateOpen === i ? "alert" : "status"} data-testid="trava-exemplos">
+              <p className="m-0 font-bold"><Icon name="cadeado" className="mr-1.5 inline size-4" /> Para avançar de módulo, faça o “Pensei — ver a resposta” nos exemplos “Na prática” ({total - missing.length} de {total} feitos).</p>
+              <p className="m-0 mt-1 text-[13px]">Falta em:</p>
+              <ul className="m-0 mt-1 list-disc pl-5 text-[13px]">
+                {missing.map((s) => (
+                  <li key={s.id}><button type="button" className="underline" onClick={() => document.getElementById(sectionDomId(s.id))?.scrollIntoView({ behavior: "smooth", block: "start" })}>{s.title}</button></li>
+                ))}
+              </ul>
+            </div>
+          );
+        })()}
         <div className="ap-fim">
           <button type="button" className="ap-btn ap-btn-contorno" onClick={() => goIdx(currentIdx - 1)}>
             <Icon name="setaEsquerda" className="size-4" /> <span className="sr-only sm:not-sr-only">Anterior</span>
           </button>
-          <button type="button" className="ap-btn ap-btn-vermelho" disabled={completing} onClick={() => concludeModule(i)} data-testid={`concluir-modulo-${i + 1}`}>
+          <button type="button" className="ap-btn ap-btn-vermelho" disabled={completing} aria-disabled={practiceMissing(i).length > 0 || undefined} style={practiceMissing(i).length > 0 ? { opacity: 0.55 } : undefined} onClick={() => concludeModule(i)} data-testid={`concluir-modulo-${i + 1}`}>
             {completing ? "Salvando…" : last ? "Concluir a teoria e ir às questões" : `Concluir e ir ao Módulo ${i + 2}`} <Icon name="setaDireita" className="size-4" />
           </button>
         </div>
@@ -567,6 +603,7 @@ export function LessonReader(props: ReaderProps) {
   }, []);
 
   return (
+    <PracticeCtx.Provider value={practiceCtx}>
     <div className="ap" id="apostila">
       {lockMsg && (
         <p role="alert" className="ap-aviso" data-testid="trava-modulo">
@@ -634,6 +671,7 @@ export function LessonReader(props: ReaderProps) {
         onChange={(a, removed) => setAnnotations((list) => (removed ? list.filter((x) => x.id !== a.id) : list.map((x) => (x.id === a.id ? a : x))))}
       />
     </div>
+    </PracticeCtx.Provider>
   );
 }
 
@@ -676,7 +714,7 @@ function ApostilaSection({
       {legal && <p className="ap-nota">Confira sempre a redação vigente no Portal da Legislação do Planalto.</p>}
       {cases.length > 0 && (
         <div className="ap-pratica">
-          <PracticeCard cases={cases} onReread={() => document.getElementById(sectionDomId(s.id))?.scrollIntoView({ behavior: "smooth", block: "start" })} />
+          <PracticeCard progressKey={s.id} cases={cases} onReread={() => document.getElementById(sectionDomId(s.id))?.scrollIntoView({ behavior: "smooth", block: "start" })} />
         </div>
       )}
       <SectionActions section={s} lessonId={lessonId} annotations={annotations} clarifications={clarifications} onAnnotation={onAnnotation} />
