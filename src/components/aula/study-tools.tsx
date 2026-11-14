@@ -153,7 +153,12 @@ export function StudyTools({
    */
   const clip = useCallback(() => {
     const vh = window.innerHeight;
-    const top = Math.round((barRef.current?.getBoundingClientRect().bottom ?? 70));
+    let top = Math.round((barRef.current?.getBoundingClientRect().bottom ?? 70));
+    // Qualquer cabeçalho/barra fixa ou grudada no topo também esconde o selinho que passa por baixo.
+    for (const el of document.querySelectorAll("header, .lp-header, [data-st-topo]")) {
+      const cs = getComputedStyle(el);
+      if (cs.position === "fixed" || cs.position === "sticky") top = Math.max(top, Math.round(el.getBoundingClientRect().bottom));
+    }
     const bottom = Math.min(vh, document.querySelector(".bn-wrap")?.getBoundingClientRect().top ?? vh);
     const sy = window.scrollY;
     for (const el of els.current.values()) {
@@ -247,8 +252,8 @@ export function StudyTools({
 
   const schedule = useCallback(() => {
     cancelAnimationFrame(raf.current);
-    raf.current = requestAnimationFrame(clip);
-  }, [clip]);
+    raf.current = requestAnimationFrame(() => { layout(); clip(); });
+  }, [clip, layout]);
 
   useEffect(() => {
     const t = setTimeout(refresh, 60);
