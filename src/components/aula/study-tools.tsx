@@ -116,6 +116,32 @@ export function StudyTools({
   const mounted = useSyncExternalStore(() => () => {}, () => true, () => false);
   const toBody = (n: React.ReactNode) => (mounted ? createPortal(n, document.body) : null);
 
+  /**
+   * Os selinhos rolam com o texto (coordenadas do documento). Aqui só se esconde o que passou por baixo
+   * da barra de ferramentas (em cima) ou do menu inferior: some aos poucos, junto com o texto.
+   */
+  const clip = useCallback(() => {
+    const vh = window.innerHeight;
+    const top = Math.round((barRef.current?.getBoundingClientRect().bottom ?? 70));
+    const bottom = Math.min(vh, document.querySelector(".bn-wrap")?.getBoundingClientRect().top ?? vh);
+    const sy = window.scrollY;
+    for (const el of els.current.values()) {
+      if (el.style.display === "none") continue;
+      const vy = Number(el.dataset.y ?? 0) - sy;
+      const h = 36;
+      const k = Math.max(0, Math.min(1, Math.min((vy + h - top) / 28, (bottom - vy) / 28)));
+      el.style.opacity = String(k);
+      el.style.pointerEvents = k < 0.2 ? "none" : "";
+    }
+    const pop = popRef.current;
+    if (pop) {
+      const r = pop.getBoundingClientRect();
+      const cutTop = Math.max(0, top - r.top);
+      const cutBottom = Math.max(0, r.bottom - bottom);
+      pop.style.clipPath = cutTop || cutBottom ? `inset(${cutTop}px -20px ${cutBottom}px -20px)` : "";
+    }
+  }, []);
+
   const layout = useCallback(() => {
     const vw = window.innerWidth;
     const vh = window.innerHeight;
@@ -140,6 +166,7 @@ export function StudyTools({
       const y = yDoc - sy; // mesma altura, em coordenadas da tela (só para posicionar o cartão aberto)
       el.style.display = "";
       el.style.transform = `translate(${stubX + sx}px, ${yDoc}px)`;
+      el.dataset.y = String(yDoc);
       cursor = yDoc + (small ? 26 : 38);
       if (p.id === openRef.current && popRef.current) {
         const pop = popRef.current;
@@ -162,7 +189,8 @@ export function StudyTools({
         pop.style.translate = `${Math.max(12, left) + sx}px ${top + sy}px`; // `translate` (não `transform`): a animação de entrada usa transform
       }
     }
-  }, []);
+    clip();
+  }, [clip]);
 
   const refresh = useCallback(() => {
     const map = new Map<string, Range>();
@@ -178,8 +206,8 @@ export function StudyTools({
 
   const schedule = useCallback(() => {
     cancelAnimationFrame(raf.current);
-    raf.current = requestAnimationFrame(layout);
-  }, [layout]);
+    raf.current = requestAnimationFrame(clip);
+  }, [clip]);
 
   useEffect(() => {
     const t = setTimeout(refresh, 60);
@@ -194,12 +222,14 @@ export function StudyTools({
     const main = document.querySelector("main");
     const mo = main ? new MutationObserver(soon) : null;
     mo?.observe(main!, { childList: true, subtree: true });
+    window.addEventListener("scroll", schedule, { passive: true });
     window.addEventListener("resize", soon);
     window.addEventListener("aprovum:secao-aberta", soon);
     return () => {
       clearTimeout(t);
       mo?.disconnect();
       cancelAnimationFrame(raf.current);
+      window.removeEventListener("scroll", schedule);
       window.removeEventListener("resize", soon);
       window.removeEventListener("aprovum:secao-aberta", soon);
       const css = (window as unknown as { CSS?: { highlights?: Map<string, unknown> } }).CSS;
