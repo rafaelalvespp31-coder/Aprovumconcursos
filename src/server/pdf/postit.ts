@@ -75,7 +75,7 @@ function chamf(x: number, y: number, w: number, h: number, c: { tl?: number; tr?
 }
 
 type Row = { h: number; draw: (p: PDFPage, x: number, top: number, w: number) => void; head?: Row; isHead?: boolean };
-type CardSpec = { label: string; glyph: string; tone: Color; fill: Color; rows: Row[]; border?: Color };
+type CardSpec = { label: string; glyph: string; tone: Color; fill: Color; rows: Row[]; border?: Color; postit?: boolean };
 
 export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: number }): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
@@ -300,23 +300,46 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
 
   /** Cartão (moldura, etiqueta e linhas) numa posição; devolve a altura usada. */
   const drawCard = (c: CardSpec, chunk: Row[], x: number, w: number, first: boolean, hOverride?: number): number => {
-    const headH = first ? 28 : 14;
-    const h = hOverride ?? headH + sumH(chunk) + 10;
+    const headH = first ? 30 : 14;
+    const h = Math.max(hOverride ?? headH + sumH(chunk) + 12, c.postit ? 84 : 0);
     const top = y;
-    poly(page, chamf(x, top - h, w, h, { tr: 10, bl: 10 }), { color: c.fill, border: c.border ?? rgb(0.8, 0.22, 0.2), bw: 0.9 });
-    page.drawRectangle({ x: x + 0.45, y: top - h + 10, width: 2.2, height: Math.max(0, h - 20), color: c.tone });
+    const xo = c.postit ? 58 : 12;
+    const tabX = c.postit ? x + 40 : x + 8;
+    if (c.postit) {
+      const yb = top - h;
+      // sombra + papel amarelo com canto dobrado (post-it colado)
+      poly(page, [[x + 4, top - 4], [x + w + 3, top - 7], [x + w + 3, yb + 10], [x + w - 14, yb - 3], [x + 5, yb - 2]], { color: BLACK, opacity: 0.16 });
+      poly(page, [[x, top - 3], [x + w, top], [x + w, yb + 16], [x + w - 16, yb], [x + 2, yb + 1]], { color: rgb(1, 0.87, 0.36), border: rgb(0.9, 0.7, 0.2), bw: 0.6 });
+      poly(page, [[x + w, yb + 16], [x + w - 16, yb], [x + w - 13, yb + 14]], { color: rgb(0.93, 0.72, 0.22) });
+      for (let i = 0; i < 6; i++) page.drawRectangle({ x: x + 3, y: yb + 2 + i * 3, width: w - 22, height: 3, color: rgb(1, 0.78, 0.2), opacity: 0.05 * (6 - i) });
+      // lâmpada + filete vertical
+      const bx = x + 26, by = top - 58;
+      page.drawCircle({ x: bx, y: by + 6, size: 9, borderColor: INK, borderWidth: 1.6 });
+      page.drawRectangle({ x: bx - 4.5, y: by - 7, width: 9, height: 3, color: INK });
+      page.drawRectangle({ x: bx - 3.5, y: by - 11, width: 7, height: 2.4, color: INK });
+      page.drawLine({ start: { x: bx - 2, y: by - 2 }, end: { x: bx - 2, y: by + 6 }, thickness: 1, color: INK });
+      page.drawLine({ start: { x: bx + 2, y: by - 2 }, end: { x: bx + 2, y: by + 6 }, thickness: 1, color: INK });
+      for (const [dx, dy] of [[-15, 8], [15, 8], [-13, 16], [13, 16], [0, 20]] as const) page.drawLine({ start: { x: bx + dx * 0.78, y: by + 6 + dy * 0.6 }, end: { x: bx + dx, y: by + 6 + dy }, thickness: 1, color: INK });
+      page.drawLine({ start: { x: x + 46, y: top - 14 }, end: { x: x + 46, y: top - h + 14 }, thickness: 1, color: INK });
+      // clipe vermelho
+      page.drawSvgPath("M10,34 L10,8 A6,6 0 0 1 22,8 L22,36 A9,9 0 0 1 4,36 L4,12", { x: x + 4, y: top + 22, borderColor: RED, borderWidth: 2.1 });
+    } else {
+      poly(page, chamf(x, top - h, w, h, { tr: 10, bl: 10 }), { color: c.fill, border: c.border ?? rgb(0.8, 0.22, 0.2), bw: 1.1 });
+      poly(page, chamf(x + 4, top - h + 4, w - 8, h - 8, { tr: 8, bl: 8 }), { border: rgb(0.82, 0.83, 0.87), bw: 0.5 });
+      page.drawRectangle({ x: x + 0.45, y: top - h + 10, width: 2.2, height: Math.max(0, h - 20), color: c.tone });
+    }
     if (first) {
       const lw = boldItalic.widthOfTextAtSize(c.label, 9.5);
       const tw = 34 + lw + 16, ty = top + 5;
-      poly(page, [[x + 8, ty], [x + 8 + tw, ty], [x + 8 + tw - 10, ty - 19], [x + 8, ty - 19]], { color: c.tone === RED ? RED_D : c.tone, border: c.tone, bw: 0.8 });
-      page.drawCircle({ x: x + 8 + 14, y: ty - 9.5, size: 8, color: WHITE });
-      page.drawText(c.glyph, { x: x + 8 + 14 - bold.widthOfTextAtSize(c.glyph, 10) / 2, y: ty - 13, size: 10, font: bold, color: c.tone });
-      page.drawText(c.label, { x: x + 8 + 30, y: ty - 13, size: 9.5, font: boldItalic, color: WHITE });
+      poly(page, [[tabX, ty], [tabX + tw, ty], [tabX + tw - 10, ty - 19], [tabX, ty - 19]], { color: c.tone === RED ? RED_D : c.tone, border: c.tone, bw: 0.8 });
+      page.drawCircle({ x: tabX + 14, y: ty - 9.5, size: 8, color: WHITE });
+      page.drawText(c.glyph, { x: tabX + 14 - bold.widthOfTextAtSize(c.glyph, 10) / 2, y: ty - 13, size: 10, font: bold, color: c.tone });
+      page.drawText(c.label, { x: tabX + 30, y: ty - 13, size: 9.5, font: boldItalic, color: WHITE });
     } else {
       page.drawText("continuação", { x: x + w - 14 - italic.widthOfTextAtSize("continuação", 7), y: top - 10, size: 7, font: italic, color: GRAY });
     }
     let ry = top - headH;
-    for (const r of chunk) { r.draw(page, x + 12, ry, w - 24); ry -= r.h; }
+    for (const r of chunk) { r.draw(page, x + xo, ry, w - xo - 12); ry -= r.h; }
     return h;
   };
 
@@ -328,10 +351,10 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
     let i = 0;
     let first = true;
     while (i < rows.length) {
-      let headH = first ? 28 : 14;
-      const whole = headH + sumH(rows.slice(i)) + 10;
+      let headH = first ? 30 : 14;
+      const whole = headH + sumH(rows.slice(i)) + 12;
       if (first && whole > y - BOTTOM && whole <= pageRoom) newPage(); // cartão que cabe numa página nunca é partido
-      let room = y - BOTTOM - headH - 10;
+      let room = y - BOTTOM - headH - 12;
       let take: Row[] = [];
       let used = 0;
       const pre = i > 0 && rows[i]!.head && !rows[i]!.isHead ? rows[i]!.head! : null;
@@ -347,7 +370,6 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
       }
       // evita deixar uma linha órfã no pé da página
       if (take.length === 1 && i + 1 < rows.length && y < TOP_NEXT - 4 && first) { newPage(); continue; }
-      headH = first ? 28 : 14;
       const chunk = pre ? [pre, ...take] : take;
       const h = drawCard(c, chunk, x, w, first);
       y -= h + 10;
@@ -358,50 +380,53 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   };
 
   // ---------- Faixa numerada do assunto ----------
-  const bandH = 32;
+  const bandH = 22;
   const band = (n: number, t: string) => {
     const x = M.left - 6, w = innerW + 12, top = y;
-    poly(page, chamf(x, top - bandH, w, bandH, { tl: 6, br: 14 }), { color: BLACK });
-    poly(page, [[x, top], [x + 48, top], [x + 38, top - bandH], [x, top - bandH]], { color: RED });
-    poly(page, [[x + 48, top], [x + 52, top], [x + 42, top - bandH], [x + 38, top - bandH]], { color: rgb(0.95, 0.3, 0.28) });
+    poly(page, chamf(x, top - bandH, w, bandH, { tl: 5, br: 10 }), { color: BLACK });
+    poly(page, [[x, top], [x + 40, top], [x + 32, top - bandH], [x, top - bandH]], { color: RED });
+    poly(page, [[x + 40, top], [x + 43, top], [x + 35, top - bandH], [x + 32, top - bandH]], { color: rgb(0.95, 0.3, 0.28) });
     const ns = String(n).padStart(2, "0");
-    page.drawText(ns, { x: x + 20 - boldItalic.widthOfTextAtSize(ns, 17) / 2, y: top - 22, size: 17, font: boldItalic, color: WHITE });
-    page.drawText(fit(boldItalic, clean(t), 13, w - 150), { x: x + 62, y: top - 21, size: 13, font: boldItalic, color: WHITE });
-    for (let i = 0; i < 3; i++) poly(page, [[x + w - 56 + i * 10, top], [x + w - 50 + i * 10, top], [x + w - 64 + i * 10, top - bandH], [x + w - 70 + i * 10, top - bandH]], { color: RED });
-    y -= bandH + 10;
+    page.drawText(ns, { x: x + 16 - boldItalic.widthOfTextAtSize(ns, 13) / 2, y: top - 16, size: 13, font: boldItalic, color: WHITE });
+    page.drawText(fit(boldItalic, clean(t), 11, w - 130), { x: x + 52, y: top - 15, size: 11, font: boldItalic, color: WHITE });
+    for (let i = 0; i < 3; i++) poly(page, [[x + w - 46 + i * 8, top], [x + w - 41 + i * 8, top], [x + w - 51 + i * 8, top - bandH], [x + w - 56 + i * 8, top - bandH]], { color: RED });
+    y -= bandH + 14;
   };
 
   // ---------- Conteúdo ----------
-  const GAP = 10;
+  const GAP = 26;
   const halfW = (innerW - GAP) / 2;
   const minRows = 2 * QS * LH;
   for (const it of s.items) {
     const sec = it.sectionTitle ? clean(it.sectionTitle) : clean(s.lesson.title);
     const hasExp = !!it.explanation?.trim();
     // lado a lado quando o trecho é texto corrido e há explicação, e os dois cabem juntos numa página
-    const qHalf = !it.structure?.length ? quoteRows(it, halfW - 24) : [];
+    const qHalf = !it.structure?.length ? quoteRows(it, halfW - 70) : [];
     const eHalf = hasExp ? explanationRows(it.explanation!, halfW - 24) : [];
-    const sideBySide = qHalf.length > 0 && eHalf.length > 0 && Math.max(sumH(qHalf), sumH(eHalf)) + 38 + bandH + 24 <= pageRoom && Math.max(sumH(qHalf), sumH(eHalf)) < 330;
+    const sideBySide = qHalf.length > 0 && eHalf.length > 0 && Math.max(sumH(qHalf), sumH(eHalf)) + 44 + bandH + 24 <= pageRoom && Math.max(sumH(qHalf), sumH(eHalf)) < 330;
     if (sideBySide) {
-      const hh = Math.max(sumH(qHalf), sumH(eHalf)) + 38;
+      const hh = Math.max(sumH(qHalf), sumH(eHalf)) + 46, hh2 = Math.max(hh, 84);
       if (y - (bandH + 10 + hh + 12) < BOTTOM) newPage();
       band(it.n, sec);
-      const conceito: CardSpec = { label: "CONCEITO", glyph: "§", tone: RED, fill: WHITE, rows: qHalf };
+      const conceito: CardSpec = { label: "CONCEITO", glyph: "§", tone: RED, fill: WHITE, rows: qHalf, postit: true };
       const expl: CardSpec = { label: "EXPLICAÇÃO", glyph: "!", tone: RED, fill: WHITE, rows: eHalf };
       const y0 = y - 8;
       y = y0;
-      drawCard(conceito, qHalf, M.left, halfW, true, hh);
+      drawCard(conceito, qHalf, M.left, halfW, true, hh2);
       y = y0;
-      drawCard(expl, eHalf, M.left + halfW + GAP, halfW, true, hh);
-      y = y0 - hh - 12;
+      drawCard(expl, eHalf, M.left + halfW + GAP, halfW, true, hh2);
+      // setas vermelhas entre o post-it e a explicação
+      const cxm = M.left + halfW + GAP / 2, cym = y0 - hh2 / 2;
+      for (let i = 0; i < 2; i++) poly(page, [[cxm - 9 + i * 8, cym + 11], [cxm - 3 + i * 8, cym + 11], [cxm + 5 + i * 8, cym], [cxm - 3 + i * 8, cym - 11], [cxm - 9 + i * 8, cym - 11], [cxm - 1 + i * 8, cym]], { color: i ? RED_D : RED });
+      y = y0 - hh2 - 12;
     } else {
-      const qRows = quoteRows(it, innerW - 24);
-      const wholeQ = 28 + sumH(qRows) + 10;
-      const firstNeed = bandH + 18 + (wholeQ <= pageRoom - bandH - 18 ? wholeQ : Math.min(sumH(qRows), minRows + 6) + 28) + 6;
+      const qRows = quoteRows(it, it.structure?.length ? innerW - 24 : innerW - 70);
+      const wholeQ = 30 + sumH(qRows) + 12;
+      const firstNeed = bandH + 22 + (wholeQ <= pageRoom - bandH - 22 ? wholeQ : Math.min(sumH(qRows), minRows + 6) + 30) + 6;
       if (y - firstNeed < BOTTOM) newPage();
       band(it.n, sec);
       y -= 8;
-      flowCard({ label: "CONCEITO", glyph: "§", tone: RED, fill: WHITE, rows: qRows });
+      flowCard({ label: "CONCEITO", glyph: "§", tone: RED, fill: WHITE, rows: qRows, postit: !it.structure?.length });
       if (hasExp) flowCard({ label: "EXPLICAÇÃO", glyph: "!", tone: RED, fill: WHITE, rows: explanationRows(it.explanation!, innerW - 24) });
     }
     if (it.note?.trim()) {
