@@ -41,8 +41,19 @@ export const schemeSchema = z.discriminatedUnion("tipo", [
   z.object({
     tipo: z.literal("linha_tempo"),
     titulo: z.string().max(70).optional(),
+    /** Unidade da régua ("dias", "anos"…); vazia = régua de eventos, sem números (mostra só "data"). */
     unidade: z.string().max(12).default("dias"),
-    marcos: z.array(z.object({ em: z.number().min(0), rotulo: z.string().min(1).max(50), estado: z.enum(["ok", "erro", "neutro", "alerta"]).default("neutro") })).min(2).max(6),
+    marcos: z.array(z.object({ em: z.number().min(0), data: z.string().max(24).optional(), rotulo: z.string().min(1).max(50), estado: z.enum(["ok", "erro", "neutro", "alerta"]).default("neutro") })).min(2).max(8),
+    /** Períodos sobre a régua (ex.: vigência de uma lei): de/ate na mesma escala dos marcos. */
+    faixas: z.array(z.object({ de: z.number().min(0), ate: z.number().min(0), rotulo: z.string().min(1).max(40), estado: z.enum(["ok", "erro", "neutro", "alerta"]).default("neutro") })).max(4).optional(),
+  }),
+  z.object({
+    tipo: z.literal("calculo"),
+    titulo: z.string().max(70).optional(),
+    passos: z.array(z.object({ rotulo: z.string().min(1).max(70), conta: z.string().min(1).max(70), resultado: z.string().max(30).optional(), estado: z.enum(["ok", "erro", "neutro", "alerta"]).default("neutro") })).min(1).max(6),
+    total: z.object({ rotulo: z.string().min(1).max(50), valor: z.string().min(1).max(40) }).optional(),
+    /** Barra proporcional das partes (ex.: pena-base + aumentos). */
+    barra: z.array(z.object({ rotulo: z.string().min(1).max(30), valor: z.number().positive(), estado: z.enum(["ok", "erro", "neutro", "alerta"]).default("neutro") })).min(2).max(5).optional(),
   }),
   z.object({
     tipo: z.literal("comparacao"),
