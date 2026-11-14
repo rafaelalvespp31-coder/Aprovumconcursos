@@ -68,7 +68,7 @@ export default async function ProfilePage() {
         <PastelCard noTilt className="p-6" testId="area-equipe">
           <h2 className="mb-1 text-[13px] font-bold">Painel do Admin</h2>
           <p className="mb-4 text-[12px] text-[#5C5C5C]">Visível só para a equipe do APROVUM.</p>
-          <PainelAdmin items={adminItems} notes={notes} />
+          <PainelAdmin items={adminItems} notes={notes} admin={!!roles.admin} />
         </PastelCard>
       )}
       <PastelCard noTilt className="p-6">

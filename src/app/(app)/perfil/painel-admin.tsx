@@ -2,13 +2,13 @@
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
-import { Bell, ChevronDown, ShieldCheck } from "lucide-react";
+import { Bell, ChevronDown, ChevronRight, ShieldCheck } from "lucide-react";
 
 export type AdminItem = { href: string; label: string; badge?: number };
 export type AdminNote = { id: string; title: string; detail: string; when: string; href: string };
 
 /** Um único botão "Painel do Admin" que abre todas as opções da equipe. */
-export function PainelAdmin({ items, notes = [] }: { items: AdminItem[]; notes?: AdminNote[] }) {
+export function PainelAdmin({ items, notes = [], admin = false }: { items: AdminItem[]; notes?: AdminNote[]; admin?: boolean }) {
   const [open, setOpen] = useState(false);
   const id = useId();
   const box = useRef<HTMLDivElement>(null);
@@ -20,6 +20,18 @@ export function PainelAdmin({ items, notes = [] }: { items: AdminItem[]; notes?:
     document.addEventListener("pointerdown", out);
     return () => { document.removeEventListener("keydown", esc); document.removeEventListener("pointerdown", out); };
   }, [open]);
+  // Administrador: o botão leva direto para a página do painel (sem abrir opções aqui).
+  if (admin) {
+    return (
+      <Link href="/admin" data-testid="painel-admin-btn"
+        className="inline-flex min-h-12 w-full items-center justify-between gap-3 rounded-xl bg-[#E10600] px-4 text-[14px] font-bold text-white active:scale-95 sm:w-auto sm:min-w-[260px]">
+        <span className="inline-flex items-center gap-2"><ShieldCheck className="h-5 w-5" aria-hidden /> Painel do Admin
+          {notes.length > 0 && <span className="inline-flex min-w-6 items-center justify-center rounded-full bg-white px-1.5 text-[12px] font-extrabold text-[#E10600]" data-testid="painel-admin-badge" aria-label={`${notes.length} notificações`}>{notes.length}</span>}
+        </span>
+        <ChevronRight className="h-5 w-5" aria-hidden />
+      </Link>
+    );
+  }
   return (
     <div ref={box}>
       <button type="button" aria-expanded={open} aria-controls={id} onClick={() => setOpen((v) => !v)} data-testid="painel-admin-btn"
