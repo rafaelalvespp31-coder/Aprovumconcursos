@@ -1,9 +1,10 @@
 /**
- * "Meu PDF de Revisão": os post-its ativos de uma aula, na ordem da aula, com a identidade do
- * APROVUM. Nada é resumido nem reescrito — o trecho e a anotação saem exatamente como o aluno
- * guardou (acentos preservados). Entrada: o retrato congelado; saída: bytes do PDF.
+ * "Meu PDF de Revisão": os post-its ativos de uma aula, na ordem da aula, com a identidade editorial do
+ * APROVUM (capa com o olho, faixas numeradas, cartões independentes, moldura e rodapé em todas as páginas).
+ * Nada é resumido nem reescrito — o trecho e a anotação saem exatamente como o aluno guardou (acentos preservados).
+ * Entrada: o retrato congelado; saída: bytes do PDF. Conteúdo (esta função recebe os dados) e apresentação (o desenho) ficam separados.
  */
-import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFPage } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb, type PDFFont, type PDFImage, type PDFPage, type Color } from "pdf-lib";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { LOGO_ESCURA_PNG } from "./logos";
@@ -11,17 +12,20 @@ import { parseExplanation } from "@/domain/study/explanation-format";
 import type { PostitPdfSnapshot } from "./postit-types";
 
 const A4: [number, number] = [595.28, 841.89];
-const M = { top: 112, bottom: 70, left: 54, right: 54 };
-const INK = rgb(0.99, 0.99, 0.99);
-const DARK = rgb(0.02, 0.02, 0.03);
-const MUTED = rgb(0.86, 0.86, 0.88);
-const FAINT = rgb(0.74, 0.74, 0.77);
-const RED = rgb(0.882, 0.024, 0);
-const LINE = rgb(0.6, 0.22, 0.22);
-const SOFT = rgb(0.02, 0.02, 0.03);
+const [W, H] = A4;
+const M = { left: 38, right: 38 };
+const BOTTOM = 66;
+const TOP_NEXT = H - 86;
+const INK = rgb(0.09, 0.09, 0.11);
+const GRAY = rgb(0.38, 0.38, 0.42);
+const BLACK = rgb(0.03, 0.03, 0.04);
+const RED = rgb(0.8, 0.07, 0.07);
+const RED_D = rgb(0.55, 0.03, 0.04);
+const LINE = rgb(0.78, 0.8, 0.83);
+const PAGE_BG = rgb(0.925, 0.93, 0.94);
 const WHITE = rgb(1, 1, 1);
-const NOTE_BG = rgb(0.32, 0.22, 0.0);
-const NOTE_LINE = rgb(1, 0.78, 0.2);
+const YELLOW = rgb(1, 0.9, 0.28);
+const AMBER = rgb(0.82, 0.5, 0.04);
 
 const fmtDate = (iso: string) => new Date(iso).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
 const b64 = (s: string) => Uint8Array.from(Buffer.from(s, "base64"));
@@ -53,6 +57,26 @@ function wrap(font: PDFFont, text: string, size: number, maxW: number): string[]
   return out;
 }
 
+
+type Pt = [number, number];
+/** Retângulo com cantos recortados na diagonal (tl, tr, br, bl). */
+function chamf(x: number, y: number, w: number, h: number, c: { tl?: number; tr?: number; br?: number; bl?: number }): Pt[] {
+  const tl = c.tl ?? 0, tr = c.tr ?? 0, br = c.br ?? 0, bl = c.bl ?? 0;
+  const top = y + h;
+  const pts: Pt[] = [];
+  pts.push([x + bl, y]);
+  pts.push([x + w - br, y]);
+  if (br) pts.push([x + w, y + br]);
+  if (tr) { pts.push([x + w, top - tr]); pts.push([x + w - tr, top]); } else pts.push([x + w, top]);
+  pts.push([x + tl, top]);
+  if (tl) pts.push([x, top - tl]);
+  if (bl) pts.push([x, y + bl]);
+  return pts;
+}
+
+type Row = { h: number; draw: (p: PDFPage, x: number, top: number, w: number) => void; head?: Row; isHead?: boolean };
+type CardSpec = { label: string; glyph: string; tone: Color; fill: Color; rows: Row[]; border?: Color };
+
 export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: number }): Promise<Uint8Array> {
   const doc = await PDFDocument.create();
   doc.setTitle(`Meu PDF de Revisão — ${s.lesson.title}`);
@@ -61,366 +85,385 @@ export async function renderPostitPdf(s: PostitPdfSnapshot, meta: { pdfVersion: 
   doc.setProducer("APROVUM");
   doc.setCreationDate(new Date(s.generatedAt));
   doc.setLanguage("pt-BR");
-  const regular = await doc.embedFont(StandardFonts.HelveticaBold);
+  const regular = await doc.embedFont(StandardFonts.Helvetica);
+  const italic = await doc.embedFont(StandardFonts.HelveticaOblique);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
-  const italic = await doc.embedFont(StandardFonts.HelveticaBoldOblique);
   const boldItalic = await doc.embedFont(StandardFonts.HelveticaBoldOblique);
-  const logo = await doc.embedPng(b64(LOGO_ESCURA_PNG));
-  const logoClara = await readFile(path.join(process.cwd(), "public", "pdf", "logo-clara.png")).then((b) => doc.embedPng(b)).catch(() => null);
+  const logoEscura = await doc.embedPng(b64(LOGO_ESCURA_PNG));
+  const pub = (f: string) => path.join(process.cwd(), "public", "pdf", f);
+  const logoClara = await readFile(pub("logo-clara.png")).then((b) => doc.embedPng(b)).catch(() => null);
+  const olho: PDFImage | null = await readFile(pub("hero-olho.jpg")).then((b) => doc.embedJpg(b)).catch(() => null);
+  const soldado: PDFImage | null = await readFile(pub("soldado.jpg")).then((b) => doc.embedJpg(b)).catch(() => null);
   const charset = new Set(regular.getCharacterSet());
-  const [W, H] = A4;
-  const innerW = W - M.left - M.right;
 
   /** Mantém o texto como está; só troca o que a fonte padrão não consegue desenhar. */
   const clean = (t: string) =>
-    [...t.replace(/%u([0-9a-fA-F]{4})/g, (_, h: string) => String.fromCharCode(parseInt(h, 16))).normalize("NFC").replace(/[→⇒]/g, "->").replace(/[←⇐]/g, "<-").replace(/≥/g, ">=").replace(/≤/g, "<=").replace(/≠/g, "!=").replace(/[−‐‑]/g, "-").replace(/ /g, " ")]
+    [...t.replace(/%u([0-9a-fA-F]{4})/g, (_, h: string) => String.fromCharCode(parseInt(h, 16))).normalize("NFC").replace(/[→⇒]/g, "->").replace(/[←⇐]/g, "<-").replace(/≥/g, ">=").replace(/≤/g, "<=").replace(/≠/g, "!=").replace(/[−‐‑]/g, "-").replace(/ /g, " ")]
       .map((ch) => (ch === "\n" || charset.has(ch.codePointAt(0)!) ? ch : "?"))
       .join("");
+  const fit = (f: PDFFont, t: string, size: number, maxW: number) => {
+    if (f.widthOfTextAtSize(t, size) <= maxW) return t;
+    let r = t;
+    while (r.length > 2 && f.widthOfTextAtSize(`${r}…`, size) > maxW) r = r.slice(0, -1);
+    return `${r.trimEnd()}…`;
+  };
+
+  const poly = (p: PDFPage, pts: Pt[], o: { color?: Color; opacity?: number; border?: Color; bw?: number }) => {
+    const d = pts.map(([x, y], i) => `${i ? "L" : "M"}${x.toFixed(2)},${(H - y).toFixed(2)}`).join(" ") + " Z";
+    p.drawSvgPath(d, { x: 0, y: H, color: o.color, opacity: o.opacity, borderColor: o.border, borderWidth: o.bw ?? 0 });
+  };
+
+  // ---------- Moldura da página (todas as páginas) ----------
+  const frame = (p: PDFPage) => {
+    p.drawRectangle({ x: 0, y: 0, width: W, height: H, color: PAGE_BG });
+    const inner = chamf(14, 14, W - 28, H - 28, { tl: 16, br: 16 });
+    poly(p, inner, { color: rgb(0.995, 0.995, 1), border: RED, bw: 1.6 });
+    // linha fina interna + cantos pretos
+    poly(p, chamf(19, 19, W - 38, H - 38, { tl: 13, br: 13 }), { border: rgb(0.86, 0.87, 0.9), bw: 0.5 });
+    p.drawRectangle({ x: 14, y: H - 14 - 3, width: 46, height: 3, color: BLACK });
+    p.drawRectangle({ x: W - 14 - 46, y: 14, width: 46, height: 3, color: BLACK });
+    p.drawRectangle({ x: W - 14 - 3, y: H - 14 - 46, width: 3, height: 46, color: BLACK });
+  };
 
   let page: PDFPage = doc.addPage(A4);
-  let y = H - M.top;
-  // Fundo da página: arte da caveira cobrindo a folha inteira (HD), translúcida
-  // sobre preto para não competir com os cartões.
-  const fundo = await readFile(path.join(process.cwd(), "public", "pdf", "fundo-caveira.jpg")).then((b) => doc.embedJpg(b)).catch(() => null);
-  const paintBg = (p: PDFPage) => {
-    p.drawRectangle({ x: 0, y: 0, width: A4[0], height: A4[1], color: rgb(0.02, 0.0, 0.0) });
-    if (fundo) p.drawImage(fundo, { x: 0, y: 0, width: A4[0], height: A4[1], opacity: 0.1 });
-    // Borda da página
-    p.drawRectangle({ x: 14, y: 14, width: A4[0] - 28, height: A4[1] - 28, borderColor: rgb(0.75, 0.12, 0.1), borderWidth: 1.2, opacity: 0, borderOpacity: 0.9 });
-  };
-  const newPage = () => { page = doc.addPage(A4); paintBg(page); y = H - M.top; };
+  frame(page);
+  let y = TOP_NEXT;
+  const newPage = () => { page = doc.addPage(A4); frame(page); y = TOP_NEXT; };
+  const innerW = W - M.left - M.right;
 
-  // Título da revisão
-  const title = (t: string, size: number, font: PDFFont, color = INK, gap = 4) => {
-    for (const l of wrap(font, clean(t), size, innerW)) {
-      page.drawText(l, { x: M.left, y: y - size, size, font, color });
-      y -= size + 3;
-    }
-    y -= gap;
-  };
-  paintBg(page);
+  // ---------- Capa (só na página 1) ----------
   {
-    // Cartão branco atrás do bloco de título: texto sempre legível sobre o degradê.
-    const tl = wrap(bold, clean(s.lesson.title), 18, innerW).length;
-    const mv: string[] = [];
-    if (s.lesson.subject) mv.push(s.lesson.subject);
-    mv.push(s.lesson.title);
-    if (s.student.name) mv.push(s.student.name);
-    mv.push(fmtDate(s.generatedAt), `v${meta.pdfVersion} · ${s.items.length} post-it${s.items.length === 1 ? "" : "s"}`);
-    const h = 22 + tl * 21 + 6 + 4 + mv.reduce((a, v) => a + Math.max(1, wrap(regular, clean(v), 9.5, innerW - 70).length) * 12 + 3, 0) + 8 + 2;
-    page.drawRectangle({ x: M.left - 14, y: y - h + 6, width: innerW + 28, height: h + 6, color: DARK, opacity: 0.55, borderColor: rgb(0.75, 0.12, 0.1), borderWidth: 0.9 });
+    const hx = 14, hTop = H - 14, hH = 232, hW = W - 28;
+    poly(page, chamf(hx, hTop - hH, hW, hH, { tl: 16 }), { color: BLACK });
+    if (olho) {
+      const ih = hH, iw = (ih * olho.width) / olho.height;
+      page.drawImage(olho, { x: W - 14 - iw, y: hTop - ih, width: iw, height: ih });
+    }
+    // véu vermelho inferior (transição para a faixa de dados)
+    for (let i = 0; i < 8; i++) page.drawRectangle({ x: hx, y: hTop - hH, width: hW, height: 3 * (8 - i), color: BLACK, opacity: 0.08 });
+    // cantos fora do recorte
+    page.drawRectangle({ x: W - 14 - 16, y: hTop - 16, width: 16, height: 16, color: PAGE_BG, opacity: 0 });
+    poly(page, [[W - 14, hTop], [W - 14 - 16, hTop], [W - 14, hTop - 16]], { color: PAGE_BG });
+    poly(page, chamf(14, 14, W - 28, H - 28, { tl: 16, br: 16 }), { border: RED, bw: 1.6 });
+    // logo + etiqueta
+    if (logoClara) {
+      const lh = 30, lw = (lh * logoClara.width) / logoClara.height;
+      page.drawImage(logoClara, { x: 32, y: hTop - 14 - lh, width: lw, height: lh });
+    }
+    const pillW = bold.widthOfTextAtSize("MEU PDF DE REVISÃO", 10) + 44;
+    poly(page, [[32, hTop - 72], [32 + pillW, hTop - 72], [32 + pillW - 10, hTop - 94], [32, hTop - 94]], { color: RED_D, border: RED, bw: 1 });
+    page.drawCircle({ x: 46, y: hTop - 83, size: 6, borderColor: WHITE, borderWidth: 1.3 });
+    page.drawCircle({ x: 46, y: hTop - 83, size: 1.6, color: WHITE });
+    page.drawText("MEU PDF DE REVISÃO", { x: 58, y: hTop - 86.5, size: 10, font: boldItalic, color: WHITE });
+    // título da aula: grande, branco e vermelho (última linha)
+    const T = clean(s.lesson.title).toUpperCase();
+    const maxW = 292;
+    let size = 40;
+    let lines = wrap(boldItalic, T, size, maxW);
+    while ((lines.length > 4 || lines.length * size * 1.04 > 96 || lines.some((l) => boldItalic.widthOfTextAtSize(l, size) > maxW)) && size > 15) { size -= 1.5; lines = wrap(boldItalic, T, size, maxW); }
+    lines = lines.slice(0, 4);
+    const lhT = size * 1.04;
+    let ty = hTop - 104 - size;
+    lines.forEach((l, i) => {
+      const last = i === lines.length - 1 && lines.length > 1;
+      page.drawText(l, { x: 33, y: ty - 1.5, size, font: boldItalic, color: BLACK, opacity: 0.6 });
+      page.drawText(l, { x: 32, y: ty, size, font: boldItalic, color: last ? rgb(0.95, 0.12, 0.1) : WHITE });
+      ty -= lhT;
+    });
+    // detalhes: barras vermelhas
+    for (let i = 0; i < 3; i++) poly(page, [[32 + i * 9, hTop - hH + 8], [32 + i * 9 + 5, hTop - hH + 8], [32 + i * 9 + 11, hTop - hH + 20], [32 + i * 9 + 6, hTop - hH + 20]], { color: RED });
   }
-  page.drawText("MEU PDF DE REVISÃO", { x: M.left, y: y - 8, size: 8, font: bold, color: RED });
-  y -= 22;
-  title(s.lesson.title, 18, bold, INK, 6);
-  const metaLines: Array<[string, string]> = [];
-  if (s.lesson.subject) metaLines.push(["Matéria", s.lesson.subject]);
-  metaLines.push(["Aula", s.lesson.title]);
-  if (s.student.name) metaLines.push(["Aluno(a)", s.student.name]);
-  metaLines.push(["Data", fmtDate(s.generatedAt)]);
-  metaLines.push(["Versão", `v${meta.pdfVersion} · ${s.items.length} post-it${s.items.length === 1 ? "" : "s"}`]);
-  for (const [k, v] of metaLines) {
-    page.drawText(clean(k.toUpperCase()), { x: M.left, y: y - 8, size: 6.5, font: bold, color: FAINT });
-    const lines = wrap(regular, clean(v), 9.5, innerW - 70);
-    lines.forEach((l, i) => page.drawText(l, { x: M.left + 70, y: y - 9 - i * 12, size: 9.5, font: regular, color: INK }));
-    y -= Math.max(1, lines.length) * 12 + 3;
-  }
-  y -= 8;
-  page.drawLine({ start: { x: M.left, y }, end: { x: W - M.right, y }, thickness: 0.6, color: LINE });
-  y -= 12;
 
-  const QS = 10.5, NS = 9.5, LH = 1.38;
-  // Faixas finas decorativas (de borda a borda) separando um assunto do outro; as 4 artes se revezam.
-  const faixas: Awaited<ReturnType<PDFDocument["embedJpg"]>>[] = [];
-  for (let f = 1; f <= 4; f++) {
-    try {
-      faixas.push(await doc.embedJpg(await readFile(path.join(process.cwd(), "public", "pdf", `quebra-${f}.jpg`))));
-    } catch {
-      /* sem a arte, os assuntos seguem sem a faixa */
-    }
+  // ---------- Painel de identificação ----------
+  {
+    const px = 26, pw = W - 52, ph = 54, py = H - 14 - 232 - ph / 2 - 8;
+    poly(page, chamf(px, py, pw, ph, { tl: 10, br: 10 }), { color: WHITE, border: RED, bw: 1.3 });
+    poly(page, chamf(px + 3, py + 3, pw - 6, ph - 6, { tl: 8, br: 8 }), { border: LINE, bw: 0.4 });
+    type Cell = { k: string; v: string; icon: (p: PDFPage, cx: number, cy: number) => void };
+    const ico = {
+      book: (p: PDFPage, cx: number, cy: number) => { p.drawRectangle({ x: cx - 10, y: cy - 7, width: 9, height: 14, color: INK }); p.drawRectangle({ x: cx + 1, y: cy - 7, width: 9, height: 14, color: INK }); p.drawLine({ start: { x: cx, y: cy - 7 }, end: { x: cx, y: cy + 7 }, thickness: 1, color: WHITE }); },
+      screen: (p: PDFPage, cx: number, cy: number) => { p.drawRectangle({ x: cx - 10, y: cy - 6, width: 20, height: 13, color: INK }); poly(p, [[cx - 3, cy - 3], [cx + 4, cy + 0.5], [cx - 3, cy + 4]], { color: RED }); p.drawRectangle({ x: cx - 5, y: cy - 9, width: 10, height: 2, color: INK }); },
+      user: (p: PDFPage, cx: number, cy: number) => { p.drawCircle({ x: cx, y: cy + 3.5, size: 4.5, color: INK }); p.drawEllipse({ x: cx, y: cy - 6, xScale: 8, yScale: 5, color: INK }); },
+      cal: (p: PDFPage, cx: number, cy: number) => { p.drawRectangle({ x: cx - 9, y: cy - 8, width: 18, height: 16, color: INK }); p.drawRectangle({ x: cx - 9, y: cy + 3, width: 18, height: 5, color: RED }); for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) p.drawRectangle({ x: cx - 6 + i * 4.5, y: cy - 6 + j * 4.5, width: 2.6, height: 2.6, color: WHITE }); },
+      ver: (p: PDFPage, cx: number, cy: number) => { p.drawCircle({ x: cx, y: cy, size: 8, borderColor: INK, borderWidth: 2.2 }); poly(p, [[cx + 3, cy + 9], [cx + 11, cy + 8], [cx + 6, cy + 1]], { color: WHITE }); poly(p, [[cx + 4, cy + 10], [cx + 12, cy + 7], [cx + 7, cy + 3]], { color: INK }); },
+    };
+    const cells: Cell[] = [];
+    if (s.lesson.subject) cells.push({ k: "MATÉRIA", v: s.lesson.subject, icon: ico.book });
+    cells.push({ k: "AULA", v: s.lesson.title, icon: ico.screen });
+    if (s.student.name) cells.push({ k: "ALUNO(A)", v: s.student.name, icon: ico.user });
+    cells.push({ k: "DATA", v: fmtDate(s.generatedAt), icon: ico.cal });
+    cells.push({ k: "VERSÃO", v: `v${meta.pdfVersion} · ${s.items.length} post-it${s.items.length === 1 ? "" : "s"}`, icon: ico.ver });
+    const cw = (pw - 24) / cells.length;
+    cells.forEach((c, i) => {
+      const cx = px + 12 + i * cw;
+      if (i > 0) page.drawLine({ start: { x: cx - 2, y: py + 9 }, end: { x: cx - 2, y: py + ph - 9 }, thickness: 0.9, color: RED });
+      c.icon(page, cx + 14, py + ph / 2);
+      const tx = cx + 30, tw = cw - 36;
+      page.drawText(c.k, { x: tx, y: py + ph - 18, size: 6.8, font: bold, color: INK });
+      const ls = wrap(regular, clean(c.v), 7.6, tw).slice(0, 2);
+      if ((wrap(regular, clean(c.v), 7.6, tw)).length > 2) ls[1] = fit(regular, ls[1] ?? "", 7.6, tw);
+      ls.forEach((l, k) => page.drawText(l, { x: tx, y: py + ph - 28.5 - k * 9, size: 7.6, font: regular, color: INK }));
+    });
+    y = py - 20;
   }
-  let idx = -1;
-  for (const it of s.items) {
-    idx += 1;
-    if (idx > 0 && faixas.length) {
-      const fi = faixas[(idx - 1) % faixas.length]!;
-      // Arte inteira (sem cortar em altura): 125% da largura da página, centralizada, para a faixa ficar alta e bem visível.
-      const bw = A4[0] * 1.08;
-      const fh = (bw * fi.height) / fi.width;
-      if (y - fh - 70 < M.bottom) newPage();
-      else y -= 2;
-      page.drawImage(fi, { x: -(bw - A4[0]) / 2, y: y - fh, width: bw, height: fh });
-      // véu escuro embaixo (a arte "assenta" na página) e etiqueta do assunto sobre a faixa
-      for (let v = 0; v < 5; v++) page.drawRectangle({ x: 0, y: y - fh, width: A4[0], height: (fh * (5 - v)) / 10, color: rgb(0, 0, 0), opacity: 0.07 });
-      page.drawRectangle({ x: 0, y: y - fh - 1.2, width: A4[0], height: 1.2, color: RED });
-      page.drawRectangle({ x: 0, y, width: A4[0], height: 1.2, color: RED });
-      // Logo APROVUM no centro da faixa, sobre um véu radial suave: faz parte da arte.
-      const lh = Math.min(38, fh * 0.5), lw = logoClara ? (lh * logoClara.width) / logoClara.height : 0;
-      const cx = A4[0] / 2, cy = y - fh / 2;
-      for (let v = 0; v < 22; v++) {
-        const k = 1 - v / 22;
-        page.drawEllipse({ x: cx, y: cy, xScale: (lw / 2 + 46) * k + 10, yScale: (lh / 2 + 18) * k + 6, color: rgb(0, 0, 0), opacity: 0.035 });
-      }
-      if (logoClara) page.drawImage(logoClara, { x: cx - lw / 2, y: cy - lh / 2, width: lw, height: lh });
-      y -= fh + 8;
+
+  // ---------- Peças de desenho ----------
+  const LH = 1.38;
+  const textRows = (txt: string, font: PDFFont, size: number, w: number, o: { color?: Color; x0?: number; marker?: (p: PDFPage, x: number, top: number) => void; hl?: boolean; gapTop?: number } = {}): Row[] => {
+    const x0 = o.x0 ?? 0;
+    const lines = wrap(font, clean(txt), size, w - x0);
+    return lines.map((l, i) => ({
+      h: size * LH + (i === 0 ? (o.gapTop ?? 0) : 0),
+      draw: (p, x, top) => {
+        const t0 = top - (i === 0 ? (o.gapTop ?? 0) : 0);
+        if (o.marker && i === 0) o.marker(p, x, t0);
+        if (o.hl) p.drawRectangle({ x: x + x0 - 1.5, y: t0 - size - 2.2, width: font.widthOfTextAtSize(l, size) + 3, height: size + 3.4, color: YELLOW });
+        p.drawText(l, { x: x + x0, y: t0 - size - 1, size, font, color: o.color ?? INK });
+      },
+    }));
+  };
+  const redDot = (p: PDFPage, x: number, top: number, size: number, glyph?: string) => {
+    p.drawCircle({ x: x + 6, y: top - size / 2 - 1.2, size: 5.4, color: RED });
+    if (glyph) p.drawText(glyph, { x: x + 6 - bold.widthOfTextAtSize(glyph, 7.5) / 2, y: top - size / 2 - 3.8, size: 7.5, font: bold, color: WHITE });
+  };
+  const bulletSq = (p: PDFPage, x: number, top: number, size: number, ind: number) => p.drawRectangle({ x: x + ind, y: top - size / 2 - 3, width: 4, height: 4, color: RED });
+
+  const QS = 10;
+  const quoteRows = (it: PostitPdfSnapshot["items"][number], w: number): Row[] => {
+    if (!it.structure?.length) return textRows(it.quote, regular, QS, w);
+    const out: Row[] = [];
+    for (const b of it.structure) {
+      if (b.k === "table") out.push(...tableRows(b.rows, w));
+      else if (b.k === "li") {
+        const ind = 4 + (b.d ?? 0) * 12;
+        out.push(...textRows(b.t, regular, QS, w, { x0: ind + 14, marker: (p, x, top) => { if (b.n != null) p.drawText(`${b.n}.`, { x: x + ind, y: top - QS - 1, size: QS, font: bold, color: RED }); else bulletSq(p, x, top, QS, ind) } }));
+      } else if (b.k === "h") out.push(...textRows(b.t, bold, QS + 0.5, w, { gapTop: 3 }));
+      else out.push(...textRows(b.t, regular, QS, w));
     }
-    const quoteLines = wrap(regular, clean(it.quote), QS, innerW - 40);
-    const noteLines = it.note ? wrap(italic, clean(it.note), NS, innerW - 52) : [];
-    const sec = it.sectionTitle ? clean(it.sectionTitle) : "";
-    // Blocos longos continuam na página seguinte: desenha linha a linha com checagem de espaço.
-    const headH = 18;
-    if (y - headH - 90 < M.bottom) newPage(); // evita o título do assunto sozinho no pé da página
-    // Número + seção
-    page.drawRectangle({ x: M.left, y: y - 16, width: 20, height: 16, color: RED });
-    const ns = String(it.n);
-    page.drawText(ns, { x: M.left + 10 - bold.widthOfTextAtSize(ns, 8.5) / 2, y: y - 12, size: 8.5, font: bold, color: WHITE });
-    if (sec) {
-      let secT = sec;
-      while (bold.widthOfTextAtSize(secT, 7.5) > innerW - 34 && secT.length > 4) secT = secT.slice(0, -2);
-      if (secT !== sec) secT = secT.trimEnd() + "…";
-      // etiqueta do trecho sobre uma pílula branca: legível em qualquer ponto do degradê
-      page.drawRectangle({ x: M.left + 22, y: y - 16, width: bold.widthOfTextAtSize(secT, 7.5) + 12, height: 17, color: DARK, opacity: 0.65 });
-      page.drawText(secT, { x: M.left + 28, y: y - 12, size: 7.5, font: bold, color: MUTED });
+    return out;
+  };
+  /** Tabela com as mesmas linhas e colunas do texto; larguras proporcionais; cabeçalho repetido ao mudar de página. */
+  const tableRows = (rows: Array<{ h?: boolean; c: string[] }>, avail: number): Row[] => {
+    const TS = 8.4, TLH = TS * 1.3, PAD = 3.5;
+    const cols = Math.max(...rows.map((r) => r.c.length));
+    const fnt = (r: { h?: boolean }) => (r.h ? bold : regular);
+    const cell = (r: { h?: boolean; c: string[] }, ci: number) => clean(r.c[ci] ?? "");
+    const natural = Array.from({ length: cols }, (_, ci) => Math.max(...rows.map((r) => fnt(r).widthOfTextAtSize(cell(r, ci).replace(/\n/g, " "), TS))) + 2 * PAD);
+    const minW = Array.from({ length: cols }, (_, ci) => Math.min(natural[ci]!, Math.max(...rows.map((r) => Math.max(0, ...cell(r, ci).split(/\s+/).map((w) => fnt(r).widthOfTextAtSize(w, TS))))) + 2 * PAD));
+    const sum = (a: number[]) => a.reduce((x, z) => x + z, 0);
+    let widths: number[];
+    if (sum(natural) <= avail) widths = natural.map((w) => w + (avail - sum(natural)) / cols);
+    else if (sum(minW) >= avail) widths = minW.map((w) => (w * avail) / sum(minW));
+    else {
+      const wt = natural.map((w, i) => Math.max(0, w - minW[i]!));
+      widths = minW.map((w, i) => w + ((avail - sum(minW)) * wt[i]!) / (sum(wt) || 1));
     }
-    y -= headH + 4;
-    // Trecho: texto corrido ou, se o aluno marcou uma tabela/lista/títulos, a mesma estrutura da leitura.
-    const card = (from: number, h: number) => {
-      page.drawRectangle({ x: M.left, y: from - h + 4, width: innerW, height: h, color: SOFT, opacity: 0.5 });
-      page.drawRectangle({ x: M.left, y: from - h + 4, width: 2.5, height: h, color: RED });
-    };
-    /** Linhas de texto dentro do cartão do trecho, continuando na página seguinte quando preciso. */
-    const textBlock = (lines: string[], font: PDFFont, size: number, x: number, bullet?: string) => {
-      const lh = size * LH;
-      let i = 0;
-      while (i < lines.length) {
-        let fit = Math.floor((y - M.bottom - 14) / lh);
-        if (fit < 1 || (fit < 2 && i === 0 && lines.length > 1 && y - M.bottom < 60)) { newPage(); fit = Math.floor((y - M.bottom - 14) / lh); }
-        const chunk = lines.slice(i, i + Math.max(1, fit));
-        card(y, chunk.length * lh + 4);
-        chunk.forEach((l, k) => page.drawText(l, { x, y: y - 1 - size - k * lh, size, font, color: INK }));
-        if (bullet && i === 0) page.drawText(bullet, { x: x - 12 - (bullet.length > 1 ? bold.widthOfTextAtSize(bullet, size) - 5 : 0), y: y - 1 - size, size, font: bold, color: RED });
-        y -= chunk.length * lh + 4;
-        i += chunk.length;
-        if (i < lines.length) newPage();
-      }
-    };
-    /** Tabela com as mesmas linhas e colunas do texto; larguras proporcionais ao conteúdo; linha de cabeçalho repetida ao mudar de página. */
-    const tableBlock = (rows: Array<{ h?: boolean; c: string[] }>) => {
-      const TS = 8.6, TLH = TS * 1.3, PAD = 3.5;
-      const cols = Math.max(...rows.map((r) => r.c.length));
-      const avail = innerW - 24;
-      const fnt = (r: { h?: boolean }) => (r.h ? bold : regular);
-      const cell = (r: { h?: boolean; c: string[] }, ci: number) => clean(r.c[ci] ?? "");
-      const natural = Array.from({ length: cols }, (_, ci) => Math.max(...rows.map((r) => fnt(r).widthOfTextAtSize(cell(r, ci).replace(/\n/g, " "), TS))) + 2 * PAD);
-      const minW = Array.from({ length: cols }, (_, ci) => Math.min(natural[ci]!, Math.max(...rows.map((r) => Math.max(0, ...cell(r, ci).split(/\s+/).map((w) => fnt(r).widthOfTextAtSize(w, TS)))) ) + 2 * PAD));
-      let widths: number[];
-      if (natural.reduce((a2, b2) => a2 + b2, 0) <= avail) {
-        const extra = (avail - natural.reduce((a2, b2) => a2 + b2, 0)) / cols;
-        widths = natural.map((w) => w + extra);
-      } else {
-        const minSum = minW.reduce((a2, b2) => a2 + b2, 0);
-        if (minSum >= avail) widths = minW.map((w) => (w * avail) / minSum);
-        else {
-          const extra = avail - minSum;
-          const wt = natural.map((w, i) => Math.max(0, w - minW[i]!));
-          const wsum = wt.reduce((a2, b2) => a2 + b2, 0) || 1;
-          widths = minW.map((w, i) => w + (extra * wt[i]!) / wsum);
-        }
-      }
-      const laid = rows.map((r) => {
-        const lines = widths.map((w, ci) => wrap(fnt(r), cell(r, ci), TS, Math.max(8, w - 2 * PAD)));
-        return { r, lines, h: Math.max(...lines.map((l) => l.length), 1) * TLH + 2 * PAD };
-      });
-      const head = laid[0]?.r.h ? laid[0] : null;
-      let i = 0;
-      while (i < laid.length) {
-        const prefix = head && i > 0 ? [head] : [];
-        let total = prefix.reduce((a2, l) => a2 + l.h, 0);
-        const room = y - M.bottom - 16;
-        const take: typeof laid = [];
-        while (i + take.length < laid.length && (take.length === 0 ? total + laid[i]!.h <= room : total + laid[i + take.length]!.h <= room)) {
-          total += laid[i + take.length]!.h;
-          take.push(laid[i + take.length]!);
-        }
-        if (!take.length) {
-          if (y < H - M.top - 4) { newPage(); continue; }
-          take.push(laid[i]!); // linha maior que a página: desenha assim mesmo
-          total += laid[i]!.h;
-        }
-        card(y, total + 10);
-        let yy = y;
-        for (const L of [...prefix, ...take]) {
-          let x = M.left + 14;
+    const mk = (r: { h?: boolean; c: string[] }, zebra: boolean): Row => {
+      const lines = widths.map((w, ci) => wrap(fnt(r), cell(r, ci), TS, Math.max(8, w - 2 * PAD)));
+      const h = Math.max(...lines.map((l) => l.length), 1) * TLH + 2 * PAD;
+      return {
+        h, isHead: !!r.h,
+        draw: (p, x, top) => {
+          let cx = x;
           widths.forEach((w, ci) => {
-            page.drawRectangle({ x, y: yy - L.h, width: w, height: L.h, color: L.r.h ? rgb(0.3, 0.05, 0.05) : DARK, opacity: L.r.h ? 0.8 : 0.5, borderColor: LINE, borderWidth: 0.6 });
-            L.lines[ci]!.forEach((ln, k) => page.drawText(ln, { x: x + PAD, y: yy - PAD - TS - k * TLH + 1, size: TS, font: fnt(L.r), color: INK }));
-            x += w;
+            p.drawRectangle({ x: cx, y: top - h, width: w, height: h, color: r.h ? BLACK : zebra ? rgb(0.955, 0.957, 0.965) : WHITE, borderColor: r.h ? RED : LINE, borderWidth: 0.6 });
+            lines[ci]!.forEach((ln, k) => p.drawText(ln, { x: cx + PAD, y: top - PAD - TS - k * TLH + 1, size: TS, font: fnt(r), color: r.h ? WHITE : INK }));
+            cx += w;
           });
-          yy -= L.h;
-        }
-        y -= total + 10;
-        i += take.length;
-        if (i < laid.length) newPage();
-      }
+        },
+      };
     };
-    if (it.structure?.length) {
-      if (y - 40 < M.bottom) newPage();
-      for (const b of it.structure) {
-        if (b.k === "table") tableBlock(b.rows);
-        else if (b.k === "li") {
-          const ind = 26 + (b.d ?? 0) * 14;
-          textBlock(wrap(regular, clean(b.t), QS, innerW - ind - 14), regular, QS, M.left + ind, b.n != null ? `${b.n}.` : "•");
-        } else if (b.k === "h") textBlock(wrap(bold, clean(b.t), QS + 0.5, innerW - 28), bold, QS + 0.5, M.left + 14);
-        else textBlock(wrap(regular, clean(b.t), QS, innerW - 28), regular, QS, M.left + 14);
-      }
+    const headRow = rows[0]?.h ? mk(rows[0], false) : undefined;
+    return rows.map((r, i) => { const row = mk(r, i % 2 === 0); if (headRow && !r.h) row.head = headRow; return row; });
+  };
+
+  const NS = 9.4;
+  const explanationRows = (text: string, w: number): Row[] => {
+    const out: Row[] = [];
+    let n = 0;
+    for (const pt of parseExplanation(clean(text))) {
+      if (pt.kind === "item") n += 1;
+      if (pt.kind === "p") out.push(...textRows(pt.text, regular, NS, w, { x0: 18, marker: (p, x, top) => redDot(p, x, top, NS, "!") }));
+      else if (pt.kind === "sub") {
+        out.push(...textRows(pt.term, bold, NS + 0.5, w, { x0: 22, gapTop: 3, marker: (p, x, top) => bulletSq(p, x, top, NS, 12) }));
+        if (pt.text.trim()) out.push(...textRows(pt.text, regular, NS, w, { x0: 22 }));
+      } else if (pt.term) {
+        const nn = n;
+        out.push(...textRows(pt.term, bold, NS + 1.5, w, { x0: 18, hl: true, gapTop: 4, marker: (p, x, top) => redDot(p, x, top, NS + 1.5, String(nn)) }));
+        if (pt.text.trim()) out.push(...textRows(pt.text, regular, NS, w, { x0: 18 }));
+      } else out.push(...textRows(pt.text, regular, NS, w, { x0: 18 }));
+    }
+    return out;
+  };
+
+  const sumH = (rows: Row[]) => rows.reduce((a, r) => a + r.h, 0);
+
+  /** Cartão (moldura, etiqueta e linhas) numa posição; devolve a altura usada. */
+  const drawCard = (c: CardSpec, chunk: Row[], x: number, w: number, first: boolean, hOverride?: number): number => {
+    const headH = first ? 28 : 14;
+    const h = hOverride ?? headH + sumH(chunk) + 10;
+    const top = y;
+    poly(page, chamf(x, top - h, w, h, { tr: 10, bl: 10 }), { color: c.fill, border: c.border ?? rgb(0.8, 0.22, 0.2), bw: 0.9 });
+    page.drawRectangle({ x: x + 0.45, y: top - h + 10, width: 2.2, height: Math.max(0, h - 20), color: c.tone });
+    if (first) {
+      const lw = boldItalic.widthOfTextAtSize(c.label, 9.5);
+      const tw = 34 + lw + 16, ty = top + 5;
+      poly(page, [[x + 8, ty], [x + 8 + tw, ty], [x + 8 + tw - 10, ty - 19], [x + 8, ty - 19]], { color: c.tone === RED ? RED_D : c.tone, border: c.tone, bw: 0.8 });
+      page.drawCircle({ x: x + 8 + 14, y: ty - 9.5, size: 8, color: WHITE });
+      page.drawText(c.glyph, { x: x + 8 + 14 - bold.widthOfTextAtSize(c.glyph, 10) / 2, y: ty - 13, size: 10, font: bold, color: c.tone });
+      page.drawText(c.label, { x: x + 8 + 30, y: ty - 13, size: 9.5, font: boldItalic, color: WHITE });
     } else {
-    let top = y;
-    const startQuote = (pg: PDFPage, from: number, count: number) => {
-      pg.drawRectangle({ x: M.left, y: from - count * QS * LH - 6, width: innerW, height: count * QS * LH + 6, color: SOFT, opacity: 0.5 });
-      pg.drawRectangle({ x: M.left, y: from - count * QS * LH - 6, width: 2.5, height: count * QS * LH + 6, color: RED });
-    };
+      page.drawText("continuação", { x: x + w - 14 - italic.widthOfTextAtSize("continuação", 7), y: top - 10, size: 7, font: italic, color: GRAY });
+    }
+    let ry = top - headH;
+    for (const r of chunk) { r.draw(page, x + 12, ry, w - 24); ry -= r.h; }
+    return h;
+  };
+
+  /** Cartão de largura total, dividindo-se entre páginas só quando é maior que a página. */
+  const pageRoom = TOP_NEXT - BOTTOM;
+  const flowCard = (c: CardSpec, x = M.left, w = innerW) => {
+    const rows = c.rows;
+    if (!rows.length) return;
     let i = 0;
-    while (i < quoteLines.length) {
-      const fit = Math.max(1, Math.floor((y - M.bottom - 12) / (QS * LH)));
-      const chunk = quoteLines.slice(i, i + fit);
-      if (fit < 2 && i === 0 && quoteLines.length > 1 && y - M.bottom < 60) { newPage(); top = y; continue; }
-      startQuote(page, y + 0, chunk.length);
-      chunk.forEach((l, k) => page.drawText(l, { x: M.left + 14, y: y - 4 - QS - k * QS * LH + 3, size: QS, font: regular, color: INK }));
-      y -= chunk.length * QS * LH + 6;
-      i += chunk.length;
-      if (i < quoteLines.length) newPage();
-    }
-    void top;
-    }
-    // Anotação e explicação fazem parte do mesmo cartão: blocos colados ao trecho, mesma largura e mesmo filete vermelho.
-    if (noteLines.length) {
-      const nH = noteLines.length * NS * LH + 24;
-      if (y - nH < M.bottom) newPage();
-      page.drawRectangle({ x: M.left, y: y - nH + 4, width: innerW, height: nH, color: NOTE_BG, opacity: 0.6 });
-      page.drawRectangle({ x: M.left, y: y - nH + 4, width: 2.5, height: nH, color: RED });
-      page.drawLine({ start: { x: M.left + 2.5, y: y + 4 }, end: { x: M.left + innerW, y: y + 4 }, thickness: 0.4, color: NOTE_LINE });
-      page.drawText("MINHA ANOTAÇÃO", { x: M.left + 14, y: y - 10, size: 6.5, font: bold, color: MUTED });
-      noteLines.forEach((l, k) => page.drawText(l, { x: M.left + 14, y: y - 22 - k * NS * LH, size: NS, font: italic, color: INK }));
-      y -= nH;
-    }
-    if (it.explanation) {
-      // Explicação visual: um cartão claro por assunto, com número colorido, título em destaque e definição embaixo.
-      // Cada assunto usa uma cor própria (vermelho, azul, âmbar, verde, roxo) só na barra, no número e no título.
-      const TONES = [rgb(1, 0.32, 0.26), rgb(0.42, 0.65, 1), rgb(1, 0.72, 0.22), rgb(0.32, 0.88, 0.58), rgb(0.75, 0.58, 1)];
-      const CARD = rgb(0.02, 0.02, 0.03);
-      type Row = { t: string; bold?: boolean; num?: number; sub?: boolean; def?: boolean; bang?: boolean; indent: number; h: number; blk: number; size?: number };
-      const LHX = NS * LH;
-      const rows: Row[] = [];
-      const parts = parseExplanation(clean(it.explanation));
-      let blk = -1;
-      let n = 0;
-      parts.forEach((pt) => {
-        if (pt.kind !== "sub") {
-          blk += 1;
-          if (pt.kind === "item") n += 1;
-        }
-        const b0 = blk;
-        if (pt.kind === "p") {
-          wrap(bold, pt.text, NS, innerW - 60).forEach((l, k) => rows.push({ t: l, bold: true, def: true, bang: k === 0, indent: 26, h: LHX, blk: b0, size: NS }));
-        } else if (pt.kind === "sub") {
-          rows.push({ t: "", indent: 0, h: 3, blk: b0 });
-          wrap(bold, pt.term, NS + 0.5, innerW - 92).forEach((l, k) => rows.push({ t: l, bold: true, sub: k === 0, indent: 40, h: LHX, blk: b0 }));
-          wrap(bold, pt.text, NS, innerW - 96).forEach((l, k) => rows.push({ t: l, bold: true, def: true, bang: k === 0, indent: 42, h: LHX, blk: b0, size: NS }));
-        } else if (pt.term) {
-          wrap(bold, pt.term, NS + 2, innerW - 80).forEach((l, k) => rows.push({ t: l, bold: true, num: k === 0 ? n : undefined, indent: 26, h: LHX + 3, blk: b0, size: NS + 2 }));
-          if (pt.text.trim()) wrap(bold, pt.text, NS, innerW - 84).forEach((l, k) => rows.push({ t: l, bold: true, def: true, bang: k === 0, indent: 28, h: LHX, blk: b0, size: NS }));
-        } else wrap(bold, pt.text, NS, innerW - 84).forEach((l, k) => rows.push({ t: l, bold: true, def: true, bang: k === 0, num: undefined, indent: 28, h: LHX, blk: b0, size: NS }));
-      });
-      const GAP = 0; // um card só: os assuntos se encostam e são separados por linhas finas
-      const PADV = 5;
-      let k = 0;
-      let first = true;
-      while (k < rows.length) {
-        const head = first ? 18 : 0;
-        if (y - head - LHX - 2 * PADV - 10 < M.bottom) newPage();
-        const room = y - head - M.bottom - 10;
-        let used = 0;
-        let cnt = 0;
-        let lastBlk = -1;
-        while (k + cnt < rows.length) {
-          const r = rows[k + cnt]!;
-          const extra = r.blk !== lastBlk ? 2 * PADV : 0;
-          if (cnt > 0 && used + extra + r.h > room) break;
-          used += extra + r.h;
-          lastBlk = r.blk;
-          cnt += 1;
-        }
-        const chunk = rows.slice(k, k + cnt);
-        if (first) {
-          page.drawRectangle({ x: M.left, y: y - 18, width: innerW, height: 18, color: DARK, opacity: 0.8 });
-          page.drawRectangle({ x: M.left, y: y - 18, width: 4, height: 18, color: RED });
-          page.drawText("EXPLICAÇÃO", { x: M.left + 14, y: y - 12.5, size: 8, font: bold, color: WHITE });
-          page.drawText("assunto por assunto", { x: M.left + innerW - 14 - regular.widthOfTextAtSize("assunto por assunto", 7.5), y: y - 12.3, size: 7.5, font: regular, color: rgb(0.8, 0.8, 0.82) });
-        }
-        let yy = y - head;
-        let i = 0;
-        while (i < chunk.length) {
-          const bi = chunk[i]!.blk;
-          let j = i;
-          let hh = 0;
-          while (j < chunk.length && chunk[j]!.blk === bi) hh += chunk[j++]!.h;
-          const tone = TONES[bi % TONES.length]!;
-          const boxH = hh + 2 * PADV;
-          page.drawRectangle({ x: M.left, y: yy - boxH, width: innerW, height: boxH, color: CARD, opacity: 0.5 });
-          if (i > 0) page.drawLine({ start: { x: M.left, y: yy }, end: { x: M.left + innerW, y: yy }, thickness: 0.8, color: rgb(0.5, 0.5, 0.56) });
-          page.drawRectangle({ x: M.left, y: yy - boxH, width: 4, height: boxH, color: tone });
-          let ry = yy - PADV;
-          for (let q = i; q < j; q++) {
-            const r = chunk[q]!;
-            const base = ry - NS - 1;
-            if (r.num != null) {
-              page.drawCircle({ x: M.left + 20, y: base + 3.6, size: 7.4, color: tone });
-              const ns = String(r.num);
-              page.drawText(ns, { x: M.left + 20 - bold.widthOfTextAtSize(ns, 8) / 2, y: base + 1, size: 8, font: bold, color: DARK });
-            }
-            if (r.bang) {
-              const bx = M.left + (r.indent >= 40 ? 32 : 20);
-              page.drawCircle({ x: bx, y: base + 3.4, size: 5.6, color: tone });
-              page.drawText("!", { x: bx - bold.widthOfTextAtSize("!", 8.5) / 2, y: base + 0.6, size: 8.5, font: bold, color: DARK });
-            }
-            if (r.sub) page.drawRectangle({ x: M.left + 28, y: base + 2.2, width: 4, height: 4, color: tone });
-            if (r.t) page.drawText(r.t, { x: M.left + 8 + r.indent, y: base, size: r.size ?? (r.bold ? NS + 0.5 : NS), font: r.bold ? bold : regular, color: r.def ? INK : r.bold && r.num != null ? tone : r.bold ? INK : INK });
-            ry -= r.h;
-          }
-          yy -= boxH + GAP;
-          i = j;
-        }
-        // moldura única em volta de todos os assuntos
-        page.drawRectangle({ x: M.left, y: yy, width: innerW, height: y - head - yy, borderColor: rgb(0.55, 0.57, 0.64), borderWidth: 0.9 });
-        y = yy + GAP;
-        k += cnt;
-        first = false;
-        if (k < rows.length) newPage();
+    let first = true;
+    while (i < rows.length) {
+      let headH = first ? 28 : 14;
+      const whole = headH + sumH(rows.slice(i)) + 10;
+      if (first && whole > y - BOTTOM && whole <= pageRoom) newPage(); // cartão que cabe numa página nunca é partido
+      let room = y - BOTTOM - headH - 10;
+      let take: Row[] = [];
+      let used = 0;
+      const pre = i > 0 && rows[i]!.head && !rows[i]!.isHead ? rows[i]!.head! : null;
+      if (pre) used += pre.h;
+      while (i + take.length < rows.length && (used + rows[i + take.length]!.h <= room || take.length === 0 && used + rows[i]!.h <= room)) {
+        used += rows[i + take.length]!.h;
+        take.push(rows[i + take.length]!);
       }
+      if (!take.length) {
+        if (y < TOP_NEXT - 4) { newPage(); continue; }
+        take = [rows[i]!];
+        room = 1e9;
+      }
+      // evita deixar uma linha órfã no pé da página
+      if (take.length === 1 && i + 1 < rows.length && y < TOP_NEXT - 4 && first) { newPage(); continue; }
+      headH = first ? 28 : 14;
+      const chunk = pre ? [pre, ...take] : take;
+      const h = drawCard(c, chunk, x, w, first);
+      y -= h + 10;
+      i += take.length;
+      first = false;
+      if (i < rows.length) newPage();
     }
-    y -= 10;
+  };
+
+  // ---------- Faixa numerada do assunto ----------
+  const bandH = 32;
+  const band = (n: number, t: string) => {
+    const x = M.left - 6, w = innerW + 12, top = y;
+    poly(page, chamf(x, top - bandH, w, bandH, { tl: 6, br: 14 }), { color: BLACK });
+    poly(page, [[x, top], [x + 48, top], [x + 38, top - bandH], [x, top - bandH]], { color: RED });
+    poly(page, [[x + 48, top], [x + 52, top], [x + 42, top - bandH], [x + 38, top - bandH]], { color: rgb(0.95, 0.3, 0.28) });
+    const ns = String(n).padStart(2, "0");
+    page.drawText(ns, { x: x + 20 - boldItalic.widthOfTextAtSize(ns, 17) / 2, y: top - 22, size: 17, font: boldItalic, color: WHITE });
+    page.drawText(fit(boldItalic, clean(t), 13, w - 150), { x: x + 62, y: top - 21, size: 13, font: boldItalic, color: WHITE });
+    for (let i = 0; i < 3; i++) poly(page, [[x + w - 56 + i * 10, top], [x + w - 50 + i * 10, top], [x + w - 64 + i * 10, top - bandH], [x + w - 70 + i * 10, top - bandH]], { color: RED });
+    y -= bandH + 10;
+  };
+
+  // ---------- Conteúdo ----------
+  const GAP = 10;
+  const halfW = (innerW - GAP) / 2;
+  const minRows = 2 * QS * LH;
+  for (const it of s.items) {
+    const sec = it.sectionTitle ? clean(it.sectionTitle) : clean(s.lesson.title);
+    const hasExp = !!it.explanation?.trim();
+    // lado a lado quando o trecho é texto corrido e há explicação, e os dois cabem juntos numa página
+    const qHalf = !it.structure?.length ? quoteRows(it, halfW - 24) : [];
+    const eHalf = hasExp ? explanationRows(it.explanation!, halfW - 24) : [];
+    const sideBySide = qHalf.length > 0 && eHalf.length > 0 && Math.max(sumH(qHalf), sumH(eHalf)) + 38 + bandH + 24 <= pageRoom && Math.max(sumH(qHalf), sumH(eHalf)) < 330;
+    if (sideBySide) {
+      const hh = Math.max(sumH(qHalf), sumH(eHalf)) + 38;
+      if (y - (bandH + 10 + hh + 12) < BOTTOM) newPage();
+      band(it.n, sec);
+      const conceito: CardSpec = { label: "CONCEITO", glyph: "§", tone: RED, fill: WHITE, rows: qHalf };
+      const expl: CardSpec = { label: "EXPLICAÇÃO", glyph: "!", tone: RED, fill: WHITE, rows: eHalf };
+      const y0 = y - 8;
+      y = y0;
+      drawCard(conceito, qHalf, M.left, halfW, true, hh);
+      y = y0;
+      drawCard(expl, eHalf, M.left + halfW + GAP, halfW, true, hh);
+      y = y0 - hh - 12;
+    } else {
+      const qRows = quoteRows(it, innerW - 24);
+      const wholeQ = 28 + sumH(qRows) + 10;
+      const firstNeed = bandH + 18 + (wholeQ <= pageRoom - bandH - 18 ? wholeQ : Math.min(sumH(qRows), minRows + 6) + 28) + 6;
+      if (y - firstNeed < BOTTOM) newPage();
+      band(it.n, sec);
+      y -= 8;
+      flowCard({ label: "CONCEITO", glyph: "§", tone: RED, fill: WHITE, rows: qRows });
+      if (hasExp) flowCard({ label: "EXPLICAÇÃO", glyph: "!", tone: RED, fill: WHITE, rows: explanationRows(it.explanation!, innerW - 24) });
+    }
+    if (it.note?.trim()) {
+      const nRows = textRows(it.note, boldItalic, 9.6, innerW - 24);
+      if (y - 60 < BOTTOM) newPage();
+      y -= sideBySide ? 0 : 0;
+      flowCard({ label: "MINHA ANOTAÇÃO", glyph: "+", tone: AMBER, fill: rgb(1, 0.975, 0.86), border: rgb(0.88, 0.66, 0.2), rows: nRows });
+    }
+    y -= 6;
   }
 
-  // Cabeçalho e rodapé em todas as páginas
+  // ---------- Resumo e dicas (assuntos revisados + anotações do aluno) ----------
+  if (s.items.length) {
+    const lines: Array<{ t: string; note: boolean }> = [];
+    s.items.slice(0, 7).forEach((it) => lines.push({ t: `${String(it.n).padStart(2, "0")} — ${it.sectionTitle ? clean(it.sectionTitle) : clean(s.lesson.title)}`, note: false }));
+    const notes = s.items.filter((it) => it.note?.trim());
+    if (notes.length) lines.push({ t: `${notes.length} anotação(ões) sua(s) neste material: releia antes da prova.`, note: true });
+    const bh = Math.max(112, 52 + lines.length * 17);
+    if (y - bh - 16 < BOTTOM) newPage();
+    const x = M.left - 6, w = innerW + 12, top = y;
+    poly(page, chamf(x, top - bh, w, bh, { tl: 12, br: 12 }), { color: BLACK });
+    if (soldado) {
+      const sh = bh - 4, sw = (sh * soldado.width) / soldado.height;
+      page.drawImage(soldado, { x: x + 2, y: top - bh + 2, width: Math.min(sw, 120), height: sh, opacity: 0.95 });
+      for (let i = 0; i < 20; i++) page.drawRectangle({ x: x + 2 + Math.min(sw, 120) - 20 + i, y: top - bh + 2, width: 1.2, height: sh, color: BLACK, opacity: i / 20 });
+    }
+    poly(page, chamf(x, top - bh, w, bh, { tl: 12, br: 12 }), { border: RED, bw: 1.2 });
+    const tx = x + 132;
+    poly(page, [[tx - 6, top - 10], [tx + 150, top - 10], [tx + 138, top - 32], [tx - 6, top - 32]], { color: RED_D, border: RED, bw: 0.8 });
+    page.drawText("RESUMO E DICAS", { x: tx + 6, y: top - 26, size: 12, font: boldItalic, color: WHITE });
+    lines.forEach((l, i) => {
+      const ly = top - 52 - i * 17;
+      poly(page, [[tx, ly + 3], [tx + 8, ly + 3], [tx + 12, ly - 1.5], [tx + 8, ly - 6], [tx, ly - 6], [tx + 4, ly - 1.5]], { color: RED });
+      page.drawText(fit(l.note ? italic : bold, l.t, 9.3, w - 132 - 40), { x: tx + 20, y: ly - 4, size: 9.3, font: l.note ? italic : bold, color: l.note ? rgb(1, 0.9, 0.4) : WHITE });
+    });
+    y -= bh + 10;
+  }
+
+  // ---------- Cabeçalho (páginas 2+), rodapé e paginação (todas) ----------
   const pages = doc.getPages();
   pages.forEach((p, idx) => {
-    const lh = 22;
-    const lw = (lh * logo.width) / logo.height;
-    p.drawRectangle({ x: M.left - 14, y: H - 78, width: innerW + 28, height: 54, color: DARK, opacity: 0.55, borderColor: rgb(0.75, 0.12, 0.1), borderWidth: 0.9 });
-    p.drawImage(logoClara ?? logo, { x: M.left, y: H - 34 - lh, width: logoClara ? (lh * logoClara.width) / logoClara.height : lw, height: lh });
-    const tag = "REVISÃO";
-    p.drawText(tag, { x: W - M.right - bold.widthOfTextAtSize(tag, 7), y: H - 41, size: 7, font: bold, color: RED });
-    let t = clean(s.lesson.title);
-    while (regular.widthOfTextAtSize(t, 8) > 230 && t.length > 4) t = t.slice(0, -2);
-    if (t !== clean(s.lesson.title)) t = t.trimEnd() + "…";
-    p.drawText(t, { x: W - M.right - regular.widthOfTextAtSize(t, 8), y: H - 54, size: 8, font: regular, color: MUTED });
-    p.drawRectangle({ x: M.left, y: H - 70, width: 46, height: 2, color: RED });
-    p.drawLine({ start: { x: M.left + 50, y: H - 69 }, end: { x: W - M.right, y: H - 69 }, thickness: 0.6, color: LINE });
-    p.drawLine({ start: { x: M.left, y: 48 }, end: { x: W - M.right, y: 48 }, thickness: 0.6, color: LINE });
-    p.drawText("///", { x: M.left, y: 32, size: 8, font: boldItalic, color: RED });
-    p.drawText("APROVUM  ·  Meu PDF de Revisão", { x: M.left + 22, y: 32, size: 7, font: bold, color: INK });
-    const num = `${idx + 1} / ${pages.length}`;
-    p.drawText(num, { x: W - M.right - bold.widthOfTextAtSize(num, 8), y: 32, size: 8, font: bold, color: INK });
+    if (idx > 0) {
+      const lh = 30, lw = (lh * logoEscura.width) / logoEscura.height;
+      p.drawImage(logoEscura, { x: 32, y: H - 28 - lh, width: lw, height: lh });
+      const bx = W - 38 - 214, by = H - 62, bw = 214, bh = 34;
+      poly(p, chamf(bx, by, bw, bh, { tl: 10 }), { color: BLACK, border: RED, bw: 1 });
+      p.drawText("REVISÃO ESTRATÉGICA", { x: bx + 14, y: by + bh - 13, size: 8, font: boldItalic, color: rgb(0.96, 0.2, 0.18) });
+      p.drawText(fit(boldItalic, clean(s.lesson.title), 9, bw - 26), { x: bx + 14, y: by + 8, size: 9, font: boldItalic, color: WHITE });
+      p.drawRectangle({ x: 32, y: H - 71, width: 60, height: 2.4, color: RED });
+      p.drawLine({ start: { x: 96, y: H - 70 }, end: { x: W - 32, y: H - 70 }, thickness: 0.6, color: LINE });
+    }
+    // rodapé
+    const fx = 26, fw = W - 52, fy = 22, fh = 28;
+    poly(p, chamf(fx, fy, fw, fh, { tl: 8, br: 8 }), { color: BLACK, border: RED, bw: 1 });
+    if (logoClara) {
+      const lh = 17, lw = (lh * logoClara.width) / logoClara.height;
+      p.drawImage(logoClara, { x: fx + 10, y: fy + (fh - lh) / 2, width: lw, height: lh });
+    }
+    p.drawText("MEU PDF DE REVISÃO", { x: fx + 160, y: fy + 10, size: 8, font: bold, color: rgb(0.85, 0.86, 0.9) });
+    const num = `${String(idx + 1).padStart(2, "0")} / ${String(pages.length).padStart(2, "0")}`;
+    p.drawText(num, { x: fx + fw - 16 - boldItalic.widthOfTextAtSize(num, 13), y: fy + 8.5, size: 13, font: boldItalic, color: WHITE });
+    p.drawText("///", { x: fx + fw - 16 - boldItalic.widthOfTextAtSize(num, 13) - 30, y: fy + 9, size: 11, font: boldItalic, color: RED });
   });
   return doc.save();
 }
