@@ -4464,3 +4464,13 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
   .ap-lei .ap-lei-corpo .ap-disp-inciso { margin-left: 10px; }
   .ap-lei .ap-lei-corpo .ap-disp-alinea { margin-left: 20px; }
 }
+
+/* Lei seca v3: cabeçalho do card e faixa da norma (valem para título em h4 ou em parágrafo) */
+.ap-lei .ap-lei-card { margin: 22px 0 26px; border: 2px solid #b3261e; border-radius: 16px; box-shadow: 0 8px 22px rgba(138, 27, 20, 0.14); }
+.ap-lei .ap-lei-cab { background: linear-gradient(90deg, #7d1710, #b3261e); padding: 13px 16px; }
+.ap-lei .ap-lei-cab .ap-md-h, .ap-lei .ap-lei-cab p, .ap-lei .ap-lei-cab .ap-disp { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: #fff; font-size: 16px; font-weight: 800; line-height: 1.35; }
+.ap-lei .ap-lei-cab .ap-disp-rot, .ap-lei .ap-lei-cab strong, .ap-lei .ap-lei-cab .ap-disp-txt, .ap-lei .ap-lei-cab span { color: #fff; }
+.ap-lei .ap-lei-faixa { margin: 26px 0 6px; padding: 11px 16px; border-radius: 12px; border-left: 6px solid #e10600; background: #0d0e11; }
+.ap-lei .ap-lei-faixa .ap-md-h, .ap-lei .ap-lei-faixa p, .ap-lei .ap-lei-faixa .ap-disp { margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; color: #fff; font-size: 15px; font-weight: 800; }
+.ap-lei .ap-lei-faixa .ap-disp-rot, .ap-lei .ap-lei-faixa strong, .ap-lei .ap-lei-faixa .ap-disp-txt, .ap-lei .ap-lei-faixa span { color: #fff; }
+.ap-lei .ap-lei-corpo { padding: 14px; gap: 10px; background: #fff; }

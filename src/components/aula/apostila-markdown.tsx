@@ -40,11 +40,11 @@ export function ApostilaMarkdown({ children, legal = false }: { children: string
       {groups.map((g, i) =>
         g.head && g.body ? (
           <section key={i} className="ap-lei-card">
-            <MdInner legal>{g.head}</MdInner>
+            <div className="ap-lei-cab"><MdInner legal>{g.head}</MdInner></div>
             <div className="ap-lei-corpo"><MdInner legal>{g.body}</MdInner></div>
           </section>
         ) : (
-          <MdInner key={i} legal>{g.head ?? g.body}</MdInner>
+          <div key={i} className={g.head ? "ap-lei-faixa" : undefined}><MdInner legal>{g.head ?? g.body}</MdInner></div>
         ),
       )}
     </div>
