@@ -4,7 +4,7 @@ import { lockScroll } from "@/lib/scroll-lock";
 import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ArrowRight, Check, CheckCircle2, Play, Star, Trophy, X, Heart, Sparkles, Quote } from "lucide-react";
+import { ArrowRight, Check, CheckCircle2, Play, Trophy, X, Heart, Sparkles, Quote } from "lucide-react";
 import { TESTIMONIAL_CATEGORIES, formatCount, formatDuration, videoSource, type Founder, type StoryQuote, type Testimonial, type TestimonialCategory } from "@/domain/testimonials";
 import { TrimmedImg } from "./trimmed-img";
 import { UF_NAME } from "@/domain/concursos";
@@ -219,15 +219,15 @@ export function DepoimentosView({ items, stories }: { items: Testimonial[]; stor
 
 function Indicadores({ stats }: { stats: StoriesView["stats"] }) {
   const ref = useRef<HTMLUListElement>(null);
-  const students = stats.students ?? stats.studentsReal;
-  const approved = stats.approved ?? stats.approvedReal;
+  // Só números reais (contados no banco). Valores digitados à mão e "satisfação" não são mais exibidos.
+  const students = stats.studentsReal;
+  const approved = stats.approvedReal;
   const a = useCountUp(students, ref);
   const b = useCountUp(approved, ref);
   return (
     <ul className="dp-ind" ref={ref} data-testid="indicadores" data-rv>
       <li><Trophy aria-hidden /><b data-testid="ind-alunos">{students > 0 ? formatCount(a) : "—"}</b><span>Alunos</span></li>
       <li><CheckCircle2 aria-hidden /><b data-testid="ind-aprovados">{approved > 0 ? formatCount(b) : "—"}</b><span>Aprovados</span></li>
-      <li><Star aria-hidden /><b data-testid="ind-satisfacao">{stats.satisfaction ?? "—"}</b><span>Satisfação</span></li>
     </ul>
   );
 }

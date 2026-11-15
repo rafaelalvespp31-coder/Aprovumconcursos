@@ -37,7 +37,7 @@ export default async function Home() {
     <div className="lp">
       <div className="lp-textura" aria-hidden />
       <LandingHeader loggedIn={!!user} admin={admin} />
-      <main className="lp-main">
+      <main id="conteudo" className="lp-main">
         <LandingHero primaryHref={primaryHref} primaryLabel={user ? "Começar um estudo" : "Criar conta grátis"} />
         <CareersCarousel ctaHref={primaryHref} />
         <LandingStats stats={stats} />

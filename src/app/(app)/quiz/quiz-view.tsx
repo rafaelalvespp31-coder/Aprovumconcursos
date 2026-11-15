@@ -55,7 +55,7 @@ const lawName = (code: string | null) =>
 
 const FRASES = [
   "O que hoje é esforço, amanhã é conquista.",
-  "Literalidade é ponto garantido na prova.",
+  "Literalidade costuma ser cobrada na prova.",
   "Cada lacuna acertada é um passo rumo à posse.",
   "Disciplina hoje, resultado amanhã.",
 ];
@@ -658,7 +658,7 @@ export function QuizView({
                           }`}
                         >
                           <GripVertical
-                            className="h-4 w-4 shrink-0 text-white/40 max-sm:hidden"
+                            className="h-4 w-4 shrink-0 text-white/60 max-sm:hidden"
                             aria-hidden
                           />
                           <span className="min-w-0">{w}</span>
@@ -1144,7 +1144,7 @@ function StreakCard({
         {streak.last7.map((on, i) => (
           <li
             key={i}
-            className={`flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-black ${i === today ? (on ? "bg-white text-[#B10400]" : "border-2 border-dashed border-white text-white") : on ? "bg-black/40 text-white" : "bg-black/15 text-white/40"}`}
+            className={`flex h-8 w-8 items-center justify-center rounded-full text-[12px] font-black ${i === today ? (on ? "bg-white text-[#B10400]" : "border-2 border-dashed border-white text-white") : on ? "bg-black/40 text-white" : "bg-black/15 text-white/60"}`}
           >
             {i === today ? (
               on ? (

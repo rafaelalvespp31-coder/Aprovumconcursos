@@ -80,7 +80,7 @@ export function CadastroForm({ refInicial = "" }: { refInicial?: string }) {
   const valid = {
     name: f.name.trim().length >= 2,
     gender: f.gender !== "",
-    whatsapp: normalizeWhatsapp(f.whatsapp) !== null,
+    whatsapp: f.whatsapp.trim() === "" || normalizeWhatsapp(f.whatsapp) !== null,
     email: EMAIL.test(f.email.trim()),
     password: pwScore === 3,
     consent: f.consent,
@@ -176,11 +176,11 @@ export function CadastroForm({ refInicial = "" }: { refInicial?: string }) {
               <div className="cd-campo cd-in" style={{ ["--d" as string]: "0.4s" }} data-erro={eWhats ? 1 : undefined} data-ok={valid.whatsapp ? 1 : undefined}>
                 <span className="cd-icone" aria-hidden><WhatsIcon /></span>
                 <div className="cd-caixa">
-                  <label htmlFor="whatsapp">WhatsApp</label>
-                  <input id="whatsapp" name="whatsapp" data-campo="whatsapp" type="tel" autoComplete="tel-national" inputMode="tel" placeholder="(31) 99999-9999" required maxLength={16} value={f.whatsapp} onChange={(e) => set("whatsapp", maskPhone(e.target.value))} onFocus={keepVisible} aria-invalid={!!eWhats} aria-describedby={`whatsapp-dica${eWhats ? " whatsapp-erro" : ""}`} data-testid="cadastro-whatsapp" />
-                  {valid.whatsapp && <Check className="cd-ok" aria-hidden />}
+                  <label htmlFor="whatsapp">WhatsApp (opcional)</label>
+                  <input id="whatsapp" name="whatsapp" data-campo="whatsapp" type="tel" autoComplete="tel-national" inputMode="tel" placeholder="(31) 99999-9999" maxLength={16} value={f.whatsapp} onChange={(e) => set("whatsapp", maskPhone(e.target.value))} onFocus={keepVisible} aria-invalid={!!eWhats} aria-describedby={`whatsapp-dica${eWhats ? " whatsapp-erro" : ""}`} data-testid="cadastro-whatsapp" />
+                  {valid.whatsapp && f.whatsapp.trim() !== "" && <Check className="cd-ok" aria-hidden />}
                 </div>
-                <p id="whatsapp-dica" className="cd-dica"><Info aria-hidden /> Com DDD. Usaremos para te adicionar ao grupo VIP dos alunos.</p>
+                <p id="whatsapp-dica" className="cd-dica"><Info aria-hidden /> Opcional. Com DDD. Só usamos para te adicionar ao grupo dos alunos.</p>
                 <FieldError id="whatsapp" msg={eWhats} />
               </div>
 
@@ -232,7 +232,7 @@ export function CadastroForm({ refInicial = "" }: { refInicial?: string }) {
                 <input type="checkbox" name="consent" data-campo="consent" checked={f.consent} onChange={(e) => set("consent", e.target.checked)} aria-describedby={eConsent ? "consent-erro" : undefined} />
                 <span className="cd-check" aria-hidden><Check strokeWidth={3.4} /></span>
                 <span className="cd-termos-txt">
-                  <b>Li e aceito os termos de uso e a política de privacidade.</b>
+                  <b>Li e aceito os <a href="/termos" target="_blank" rel="noopener">termos de uso</a> e a <a href="/privacidade" target="_blank" rel="noopener">política de privacidade</a>.</b>
                   <small>Meus dados são usados para fornecer o serviço e posso pedir a exclusão a qualquer momento.</small>
                 </span>
               </label>
@@ -259,11 +259,12 @@ export function CadastroForm({ refInicial = "" }: { refInicial?: string }) {
         <div className="cd-dialogo-miolo">
           <button type="button" className="cd-dialogo-fechar" onClick={() => termos.current?.close()} aria-label="Fechar"><X aria-hidden /></button>
           <h2 id="cd-termos-titulo">Termos de uso e <span>privacidade</span></h2>
+          <p><a href="/termos" target="_blank" rel="noopener">Termos de uso</a> · <a href="/privacidade" target="_blank" rel="noopener">Política de privacidade</a> · <a href="/cookies" target="_blank" rel="noopener">Cookies</a> · <a href="/reembolso" target="_blank" rel="noopener">Reembolso</a></p>
           <p>Ao criar sua conta no APROVUM, você concorda com o uso dos dados informados neste cadastro apenas para fornecer o serviço:</p>
           <ul>
             <li><b>Nome e e-mail:</b> identificar sua conta, entrar na plataforma e recuperar a senha.</li>
             <li><b>Gênero:</b> definir o seu avatar.</li>
-            <li><b>WhatsApp:</b> te adicionar ao grupo VIP dos alunos.</li>
+            <li><b>WhatsApp (opcional):</b> te adicionar ao grupo dos alunos.</li>
             <li><b>Seu estudo</b> (aulas, questões e progresso): acompanhar a sua preparação.</li>
           </ul>
           <p>Cada conta é pessoal e fica conectada em um aparelho por vez. Você pode pedir a exclusão dos seus dados a qualquer momento.</p>

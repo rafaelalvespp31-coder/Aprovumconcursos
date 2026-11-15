@@ -5,7 +5,7 @@ export function LoginFooter() {
       <p>
         <span className="login-barras" aria-hidden>{"///"}</span>
         <span className="text-white/90">APROVUM</span>
-        <span aria-hidden className="text-white/40">•</span>
+        <span aria-hidden className="text-white/60">•</span>
         <span className="text-[#8FA6C8]">Preparação de alto desempenho</span>
       </p>
       <span className="login-rodape-linha" aria-hidden />

@@ -157,7 +157,7 @@ export function LandingContentPreview({ demo, nodes, segments }: { demo: string;
           <div className="mt-4">
             <div className="flex items-baseline justify-between gap-3">
               <p className="font-semibold">{segments.length} itens a cobrir</p>
-              <p className="text-[12px] text-[#777]">Progresso ilustrativo</p>
+              <p className="text-[12px] text-[#595959]">Progresso ilustrativo</p>
             </div>
             <div className="mt-2">
               <CoverageRuler segments={segments} label="Cobertura do exemplo" size="lg" />
@@ -229,6 +229,10 @@ export function LandingFooter() {
         <a href="#recursos">Recursos</a>
         <Link href="/entrar">Entrar</Link>
         <Link href="/cadastro">Criar conta</Link>
+        <Link href="/privacidade">Privacidade</Link>
+        <Link href="/termos">Termos</Link>
+        <Link href="/cookies">Cookies</Link>
+        <Link href="/reembolso">Reembolso</Link>
       </nav>
       <p className="lp-rodape-copy">
         © {new Date().getFullYear()} APROVUM. Todos os direitos reservados.

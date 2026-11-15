@@ -204,7 +204,7 @@ export function GameBanner({
         <Hud label="Vidas">
           <span className="flex items-center gap-1" aria-label={`${hearts} de ${lives} vidas`}>
             {Array.from({ length: lives }, (_, i) => (
-              <Heart key={i} className={`h-5 w-5 transition-all duration-300 ${i < hearts ? "fill-[#FF3B30] text-[#FF3B30]" : "scale-90 text-white/25"}`} aria-hidden />
+              <Heart key={i} className={`h-5 w-5 transition-all duration-300 ${i < hearts ? "fill-[#FF3B30] text-[#FF3B30]" : "scale-90 text-white/60"}`} aria-hidden />
             ))}
           </span>
         </Hud>

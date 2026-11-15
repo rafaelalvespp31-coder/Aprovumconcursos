@@ -100,7 +100,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     .object({
       name: z.string().trim().min(2, "Informe seu nome.").max(80),
       gender: z.enum(["m", "f"], { error: "Escolha o gênero do seu avatar." }),
-      whatsapp: z.string().trim().refine((v) => normalizeWhatsapp(v) !== null, "Informe um WhatsApp válido com DDD."),
+      whatsapp: z.string().trim().refine((v) => v === "" || normalizeWhatsapp(v) !== null, "Informe um WhatsApp válido com DDD ou deixe em branco."),
       email,
       password,
       consent: z.literal("on", { error: "É preciso aceitar os termos e a política de privacidade." }),
@@ -109,7 +109,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     .safeParse({
       name: form.get("name"),
       gender: form.get("gender"),
-      whatsapp: form.get("whatsapp"),
+      whatsapp: form.get("whatsapp") ?? "",
       email: form.get("email"),
       password: form.get("password"),
       consent: form.get("consent"),
@@ -128,7 +128,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      data: { display_name: parsed.data.name, avatar_gender: parsed.data.gender, whatsapp: normalizeWhatsapp(parsed.data.whatsapp) },
+      data: { display_name: parsed.data.name, avatar_gender: parsed.data.gender, whatsapp: parsed.data.whatsapp ? normalizeWhatsapp(parsed.data.whatsapp) : null },
       emailRedirectTo: `${authBaseUrl()}/auth/callback?next=/painel`,
     },
   });

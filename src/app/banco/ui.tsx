@@ -3,7 +3,7 @@ import type { ReactNode } from "react";
 
 /** Primitivos do painel escuro do banco de questões (fundo escuro, detalhes vermelhos). */
 export const dInput =
-  "w-full min-h-11 rounded-md border border-white/15 bg-white/[0.06] px-3 text-[15px] text-white placeholder:text-white/35 focus:border-[#ff2a2a] focus:outline-none focus:ring-1 focus:ring-[#ff2a2a]/60 disabled:opacity-50";
+  "w-full min-h-11 rounded-md border border-white/15 bg-white/[0.06] px-3 text-[15px] text-white placeholder:text-white/60 focus:border-[#ff2a2a] focus:outline-none focus:ring-1 focus:ring-[#ff2a2a]/60 disabled:opacity-50";
 export const dTextarea = `${dInput} min-h-28 py-2 leading-relaxed`;
 export const dLabel = "mb-1 block text-[13px] font-semibold text-white/80";
 

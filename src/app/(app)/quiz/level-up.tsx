@@ -154,7 +154,7 @@ export function LevelUpDialog({
             <form className="mx-4 mb-4 rounded-[18px] border border-white/10 bg-[#141414] p-3 sm:mx-6" data-testid="ranking-frase-form" onSubmit={(e) => (e.preventDefault(), void saveMotto())}>
               <label htmlFor="ranking-frase" className="font-hud text-[12px] font-bold uppercase tracking-[0.16em] text-white/70">Sua frase no ranking</label>
               <div className="mt-2 flex gap-2">
-                <input id="ranking-frase" value={draft} maxLength={60} onChange={(e) => setMotto(e.target.value)} placeholder="Ex.: Disciplina vence talento." className="min-w-0 flex-1 rounded-[12px] border border-white/15 bg-black px-3 py-2 text-[14px] text-white placeholder:text-white/35 focus:border-[#FF3B30] focus:outline-none" data-testid="ranking-frase-input" />
+                <input id="ranking-frase" value={draft} maxLength={60} onChange={(e) => setMotto(e.target.value)} placeholder="Ex.: Disciplina vence talento." className="min-w-0 flex-1 rounded-[12px] border border-white/15 bg-black px-3 py-2 text-[14px] text-white placeholder:text-white/60 focus:border-[#FF3B30] focus:outline-none" data-testid="ranking-frase-input" />
                 <button type="submit" disabled={saving || draft === myMotto} className="font-hud rounded-[12px] bg-[#E10600] px-4 text-[13px] font-bold uppercase tracking-wide disabled:opacity-50" data-testid="ranking-frase-salvar">{saving ? "…" : "Salvar"}</button>
               </div>
               <p className="font-hud mt-1 text-[11.5px] text-white/45">Curta e livre, até 60 caracteres. Só você edita a sua.</p>
@@ -195,7 +195,7 @@ export function LevelUpDialog({
                 </li>
               ))}
             </ol>
-            <p className="font-hud mt-3 text-center text-[11.5px] text-white/40">O ranking mostra só o primeiro nome e a inicial do sobrenome.</p>
+            <p className="font-hud mt-3 text-center text-[11.5px] text-white/60">O ranking mostra só o primeiro nome e a inicial do sobrenome.</p>
           </section>
 
           <div className="sticky bottom-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A] to-transparent px-4 pb-5 pt-3 sm:px-6">

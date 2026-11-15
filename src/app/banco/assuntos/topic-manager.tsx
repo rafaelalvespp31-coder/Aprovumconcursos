@@ -53,8 +53,8 @@ function Branch({ topic, all, depth, canManage }: { topic: Topic; all: Topic[]; 
   return (
     <li>
       <div className="flex flex-wrap items-center gap-2 py-1.5" style={{ paddingLeft: depth * 18 }}>
-        <span className="text-white/30">{depth ? "└" : "•"}</span>
-        <span className={`text-[15px] ${topic.status === "ativo" ? "" : "text-white/40 line-through"}`}>{topic.name}</span>
+        <span className="text-white/60">{depth ? "└" : "•"}</span>
+        <span className={`text-[15px] ${topic.status === "ativo" ? "" : "text-white/60 line-through"}`}>{topic.name}</span>
         {topic.status !== "ativo" && <DBadge>inativo</DBadge>}
         <button type="button" onClick={() => setAdding(!adding)} className="text-[12px] font-semibold text-[#ff8080] hover:underline">+ subtópico</button>
         {canManage && (

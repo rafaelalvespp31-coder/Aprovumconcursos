@@ -29,7 +29,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
       <div className="login-cena" aria-hidden />
       <LoginHeader />
 
-      <main className="login-palco">
+      <main id="conteudo" className="login-palco">
         {/* Arte dos soldados (camada visual; não contém texto nem campos) */}
         <picture className="login-arte" aria-hidden>
           <source media="(max-width: 899px)" srcSet="/images/aprovum-login-hero-mobile.webp" />

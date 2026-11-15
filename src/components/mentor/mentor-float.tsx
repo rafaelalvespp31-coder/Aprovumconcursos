@@ -282,7 +282,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
             <h2 id="mentor-flut-titulo" className="min-w-0 flex-1 truncate text-[14.5px] font-bold text-white">
               Mentor APROVUM
             </h2>
-            {!mobile && <GripHorizontal className="h-4 w-4 text-white/40" aria-hidden />}
+            {!mobile && <GripHorizontal className="h-4 w-4 text-white/60" aria-hidden />}
             <Link href={`${base}/mentor`} onClick={() => setOpenSaved(false)} className="mentor-topo-btn" aria-label="Abrir o Mentor em tela cheia" title="Tela cheia">
               <Maximize2 className="h-4 w-4" aria-hidden />
             </Link>

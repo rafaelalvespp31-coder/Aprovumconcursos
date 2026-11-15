@@ -45,7 +45,7 @@ export default async function SignUpPage({ searchParams }: { searchParams: Promi
         </div>
       </header>
 
-      <main className="cd-palco">
+      <main id="conteudo" className="cd-palco">
         {!configured && (
           <p className="cd-aviso" role="alert">
             Autenticação não configurada: defina NEXT_PUBLIC_SUPABASE_URL e NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY.

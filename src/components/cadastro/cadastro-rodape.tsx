@@ -8,7 +8,7 @@ export function CadastroRodape() {
       <ul className="cd-garantias cd-in" style={{ ["--d" as string]: "0.85s" }}>
         <li><ShieldCheck aria-hidden /><span>Dados<br />Protegidos</span></li>
         <li><Zap aria-hidden /><span>Acesso<br />Imediato</span></li>
-        <li><Trophy aria-hidden /><span>Sua aprovação<br />mais perto!</span></li>
+        <li><Trophy aria-hidden /><span>Estudo<br />organizado</span></li>
       </ul>
       <p className="cd-ja-tem cd-in" style={{ ["--d" as string]: "0.9s" }}>
         Já tem conta? <Link href="/entrar">Entrar</Link>
