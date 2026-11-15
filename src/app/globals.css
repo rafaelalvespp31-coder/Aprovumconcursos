@@ -4507,3 +4507,17 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 .skip-link:focus { top: 8px; outline: 3px solid #E10600; }
 :where(a, button, input, select, textarea, summary, [tabindex]):focus-visible { outline: 3px solid #E10600; outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; scroll-behavior: auto !important; } }
+
+/* Perfil: carteirinha, sequência e medalhas */
+@keyframes pf-dia-in { from { opacity: 0; transform: translateY(8px) scale(0.92); } to { opacity: 1; transform: none; } }
+.pf-dia-in { animation: pf-dia-in 380ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes pf-flame { 0%, 100% { transform: scale(1) rotate(-2deg); } 50% { transform: scale(1.12) rotate(2deg); } }
+.pf-flame { animation: pf-flame 1.6s ease-in-out infinite; transform-origin: 50% 90%; }
+@keyframes pf-orb { 0%, 100% { transform: translate(0, 0); } 50% { transform: translate(-14px, 12px); } }
+.pf-orb { animation: pf-orb 7s ease-in-out infinite; }
+@keyframes pf-pulso { 0%, 100% { box-shadow: 0 0 0 0 rgba(225, 6, 0, 0.45); } 50% { box-shadow: 0 0 0 8px rgba(225, 6, 0, 0); } }
+.pf-pulso { animation: pf-pulso 2s ease-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .pf-dia-in, .pf-flame, .pf-orb, .pf-pulso { animation: none; }
+  .pf-dia-in { opacity: 1; }
+}
