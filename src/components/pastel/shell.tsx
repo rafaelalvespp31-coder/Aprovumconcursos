@@ -177,6 +177,7 @@ export function PastelShell({
   }, [items, router, shortcutsOn]);
 
   const isPainel = active?.id === "painel";
+  const isPerfilPage = active?.id === "perfil";
   const bottomActive: BottomNavId | null = path.startsWith(`${basePath}/nova-trilha`)
     ? "novo"
     : active && ["painel", "trilhas", "quiz", "questoes", "plano"].includes(active.id)
@@ -245,7 +246,7 @@ export function PastelShell({
 
           <div className="min-w-0 flex-1">
             <header
-              className={`mv-cabecalho sticky top-0 z-20 border-b backdrop-blur-[18px] ${dark ? "border-transparent bg-[#070707] text-white" : "border-black/[0.06] bg-white/75"} ${isPainel ? "max-lg:hidden" : ""}`}
+              className={`mv-cabecalho sticky top-0 z-20 border-b backdrop-blur-[18px] ${dark ? "border-transparent bg-[#070707] text-white" : "border-black/[0.06] bg-white/75"} ${isPainel || isPerfilPage ? "max-lg:hidden" : ""}`}
               style={{ top: "env(safe-area-inset-top, 0px)" }}
             >
               {isEstudos ? (
@@ -321,7 +322,7 @@ export function PastelShell({
               )}
             </header>
 
-            {isPainel && (
+            {(isPainel || isPerfilPage) && (
               <div className="fixed left-3 z-30 lg:hidden" style={{ top: "calc(env(safe-area-inset-top, 0px) + 10px)" }}>
                 <span className="flex rounded-[12px] bg-black/55 backdrop-blur-md"><MenuButton menuRef={menuRef} dark /></span>
               </div>

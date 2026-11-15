@@ -48,6 +48,7 @@ export default async function ProfilePage() {
   return (
     <PastelProfile
       p={{
+        planLabel: `${PLAN_LABELS[eff.planId]}`,
         name: profile?.display_name ?? null,
         email: user.email ?? null,
         since: (profile as { created_at?: string } | null)?.created_at ?? null,
@@ -65,15 +66,10 @@ export default async function ProfilePage() {
           <Link href="/business" className="inline-flex min-h-11 items-center rounded-xl bg-[#0A0A0A] px-4 text-[13px] font-bold text-white active:scale-95">Abrir APROVUM BUSINESS</Link>
         </PastelCard>
       )}
-      {staff && (
-        <PastelCard noTilt className="p-6" testId="area-equipe">
-          <h2 className="mb-1 text-[13px] font-bold">Painel do Admin</h2>
-          <p className="mb-4 text-[12px] text-[#5C5C5C]">Visível só para a equipe do APROVUM.</p>
-          <PainelAdmin items={adminItems} notes={notes} admin={!!roles.admin} />
-        </PastelCard>
-      )}
+      {staff && <PainelAdmin items={adminItems} notes={notes} admin={!!roles.admin} />}
       <PastelCard noTilt className="p-6">
-        <h2 className="mb-4 text-[13px] font-bold">Dados e metas</h2>
+        <h2 className="mb-1 font-[Space_Grotesk] text-[20px] font-[800] leading-tight">Dados e metas</h2>
+        <p className="mb-5 text-[12px] text-[#4D4D4D]">Edite e veja a prévia na hora. Nada muda até você salvar.</p>
         <ProfileForm birthDate={(profile as { birth_date?: string | null } | null)?.birth_date ?? null} whatsapp={(profile as { whatsapp?: string | null } | null)?.whatsapp ?? null} motto={(profile as { motto?: string | null } | null)?.motto ?? null} avatarGender={avatarGender} displayName={profile?.display_name ?? ""} dailyQuestions={profile?.daily_questions_goal ?? null} weeklyLessons={profile?.weekly_lessons_goal ?? null} />
       </PastelCard>
       <PastelCard noTilt className="p-6" testId="seus-dados-card">

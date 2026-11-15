@@ -6,6 +6,8 @@ import { PastelCard } from "@/components/pastel/card";
 import { THEMES_PER_LEVEL, type Gamification } from "@/domain/progress/gamification";
 
 export interface ProfileData {
+  /** Plano atual, para o chip do topo. */
+  planLabel?: string | null;
   name: string | null;
   email: string | null;
   /** ISO da criação da conta. */
@@ -341,6 +343,43 @@ function Conquistas({ g, ready }: { g: Gamification; ready: boolean }) {
   );
 }
 
+
+/** Topo do Perfil: faixa escura com varredura, título e atalhos vivos (nível, sequência, plano, metas). */
+function Topo({ p, ready }: { p: ProfileData; ready: boolean }) {
+  const g = p.gamification;
+  const chip = "pf-chip inline-flex min-h-11 items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 text-[12px] font-bold text-white backdrop-blur-sm transition-[transform,background-color,border-color] duration-150 ease-out hover:border-white/50 hover:bg-white/20 active:scale-[0.97]";
+  const qGoal = p.goals.dailyQuestions;
+  return (
+    <header className="pf-topo relative col-span-full overflow-hidden rounded-[28px] bg-gradient-to-br from-[#0B0B0B] via-[#1A0404] to-[#520505] py-5 pl-[68px] pr-5 text-white shadow-[0_24px_60px_-26px_rgba(225,6,0,0.55)] lg:pl-7 lg:pr-7" data-testid="perfil-topo">
+      <div className="pointer-events-none absolute inset-0 opacity-[0.13]" style={{ backgroundImage: "radial-gradient(circle at 2px 2px, white 1px, transparent 0)", backgroundSize: "18px 18px" }} aria-hidden />
+      <div className="pf-varredura pointer-events-none absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/[0.14] to-transparent" aria-hidden />
+      <div className="relative">
+        <p className="text-[10px] font-bold uppercase tracking-[0.24em] text-white/65">APROVUM · Área do aluno</p>
+        <h1 className="mt-1.5 font-[Space_Grotesk] text-[30px] font-[800] leading-none tracking-[-0.02em] lg:sr-only">Perfil</h1>
+        <p className="mt-2 hidden font-[Space_Grotesk] text-[22px] font-[800] leading-none lg:block" aria-hidden>Sua evolução em um só lugar</p>
+        <p className="mt-2 text-[12.5px] text-white/80">Seus dados, metas e conquistas.</p>
+        <div className={`mt-4 flex flex-wrap gap-2 ${ready ? "" : "opacity-0"}`}>
+          <a href="#carteirinha" className={chip}><Crown className="h-4 w-4 text-[#FF8A8A]" aria-hidden />Nível {g.level.level}</a>
+          <a href="#sequencia" className={chip}><Flame className="h-4 w-4 text-[#FF8A5C]" aria-hidden />{g.streak.current} {g.streak.current === 1 ? "dia" : "dias"} seguidos</a>
+          <a href="#metas" className={chip}><Zap className="h-4 w-4 text-[#FFD36B]" aria-hidden />{qGoal ? `${p.today.answered}/${qGoal} hoje` : `${p.today.answered} hoje`}</a>
+          {p.planLabel && <a href="#plano" className={chip}><Target className="h-4 w-4 text-[#9BE5B4]" aria-hidden />{p.planLabel}</a>}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+/** Fundo do Perfil: malha vermelha suave + grade pontilhada que segue o mouse de leve. */
+function Ambiente() {
+  return (
+    <div className="pointer-events-none absolute -inset-x-4 -top-4 -z-10 h-[620px] overflow-hidden sm:-inset-x-5 lg:-inset-x-10" aria-hidden>
+      <div className="absolute inset-0 bg-[radial-gradient(620px_circle_at_8%_0%,rgba(225,6,0,0.13),transparent_60%),radial-gradient(520px_circle_at_95%_18%,rgba(120,0,0,0.10),transparent_62%)]" />
+      <div className="absolute inset-0 opacity-[0.55]" style={{ backgroundImage: "radial-gradient(circle at 1px 1px, rgba(10,10,10,0.14) 1px, transparent 0)", backgroundSize: "22px 22px", maskImage: "linear-gradient(to bottom, black, transparent 85%)", WebkitMaskImage: "linear-gradient(to bottom, black, transparent 85%)" }} />
+      <div className="pf-orb absolute -left-24 top-24 h-72 w-72 rounded-full bg-[#E10600]/12 blur-[70px]" style={{ transform: "translate(calc(var(--px,0) * 18px), calc(var(--py,0) * 18px))" }} />
+    </div>
+  );
+}
+
 function MetaRing({ label, value, goal, ready, from, to }: { label: string; value: number; goal: number | null; ready: boolean; from: string; to: string }) {
   const pct = goal ? Math.min(100, Math.round((value / goal) * 100)) : 0;
   const v = useCountUp(value, 700);
@@ -368,13 +407,22 @@ export function PastelProfile({ p, children }: { p: ProfileData; children?: Reac
   const missingQ = qGoal ? Math.max(0, qGoal - p.today.answered) : 0;
   const missingL = lGoal ? Math.max(0, lGoal - p.weekLessonsCompleted) : 0;
 
+  const mover = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.pointerType !== "mouse" || reducedMotion()) return;
+    const r = e.currentTarget.getBoundingClientRect();
+    e.currentTarget.style.setProperty("--px", (((e.clientX - r.left) / r.width) * 2 - 1).toFixed(3));
+    e.currentTarget.style.setProperty("--py", (((e.clientY - r.top) / Math.max(r.height, 1)) * 2 - 1).toFixed(3));
+  };
+
   return (
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+    <div className="relative isolate grid grid-cols-1 gap-6 lg:grid-cols-[1.1fr_0.9fr]" onPointerMove={mover}>
+      <Ambiente />
+      <Topo p={p} ready={ready} />
       <div className="space-y-6">
-        <div data-testid="perfil-nivel">
+        <div id="carteirinha" className="scroll-mt-6" data-testid="perfil-nivel">
           <Carteirinha p={p} since={since} ready={ready} />
         </div>
-        <Sequencia g={g} ready={ready} />
+        <div id="sequencia" className="scroll-mt-6"><Sequencia g={g} ready={ready} /></div>
         <TrilhaNiveis g={g} themesPassed={p.themesPassed} />
         <Conquistas g={g} ready={ready} />
       </div>

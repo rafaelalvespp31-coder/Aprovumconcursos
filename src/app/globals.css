@@ -4521,3 +4521,10 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
   .pf-dia-in, .pf-flame, .pf-orb, .pf-pulso { animation: none; }
   .pf-dia-in { opacity: 1; }
 }
+
+/* Perfil: topo, escudo do admin */
+@keyframes pf-varredura { from { transform: translateX(-120%); } to { transform: translateX(420%); } }
+.pf-varredura { animation: pf-varredura 5.5s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+@keyframes pf-escudo { to { transform: rotate(360deg); } }
+.pf-escudo::before { content: ""; position: absolute; inset: -3px; border-radius: 21px; padding: 2px; background: conic-gradient(from 0deg, transparent 0 55%, #ff5a5a 80%, transparent); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: pf-escudo 4s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .pf-varredura, .pf-escudo::before { animation: none; } }
