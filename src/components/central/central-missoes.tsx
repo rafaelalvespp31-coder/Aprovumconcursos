@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useOptimistic, useState, useTransition } from "react";
 import { ArrowRight, Check, Crosshair, Plus } from "lucide-react";
 import type { CentralMissoes } from "@/server/services/central-missoes";
@@ -9,20 +10,22 @@ type Props = CentralMissoes & { action: (id: string | null) => Promise<{ ok: boo
 
 export function CentralMissoesView({ cards, selecionado, limite, action }: Props) {
   const [sel, setSel] = useOptimistic<string | null, string | null>(selecionado, (_, n) => n);
+  const router = useRouter();
   const [pend, start] = useTransition();
   const [erro, setErro] = useState(false);
   const total = cards.length;
   const cheio = total >= limite;
   const atual = cards.find((c) => c.id === sel) ?? null;
 
-  const alternar = (id: string) => {
-    const novo = sel === id ? null : id;
+  // Clicar no concurso o seleciona (salvo) e abre a página com todas as matérias do edital.
+  const abrir = (c: CentralMissoes["cards"][number]) => {
     setErro(false);
     start(async () => {
-      setSel(novo);
-      const r = await action(novo);
+      setSel(c.id);
+      const r = await action(c.id);
       if (!r.ok) setErro(true);
     });
+    router.push(c.href);
   };
 
   return (
@@ -46,7 +49,7 @@ export function CentralMissoesView({ cards, selecionado, limite, action }: Props
           const on = sel === c.id;
           return (
             <li key={c.id} style={{ ["--i" as string]: i }}>
-              <button type="button" className="cm-card" data-on={on ? 1 : undefined} aria-pressed={on} onClick={() => alternar(c.id)} aria-label={`${on ? "Desmarcar" : "Selecionar"} ${c.nome}`}>
+              <button type="button" className="cm-card" data-on={on ? 1 : undefined} aria-pressed={on} onClick={() => abrir(c)} aria-label={`Abrir matérias de ${c.nome}`}>
                 <span className="cm-foto" style={c.foto ? { backgroundImage: `url(${c.foto})` } : undefined} data-sem={c.foto ? undefined : 1} aria-hidden />
                 {on && <span className="cm-selo" aria-hidden><Check /></span>}
                 <span className="cm-info">

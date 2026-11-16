@@ -1,0 +1,42 @@
+.mv { --red: #e11d1d; max-width: 1100px; margin: 0 auto; padding: 16px 14px 120px; color: #111; }
+.mv-voltar { display: inline-flex; align-items: center; gap: 6px; font: 600 13px/1 Inter, sans-serif; color: #555; text-decoration: none; min-height: 44px; }
+.mv-topo { position: relative; padding: 22px; border-radius: 6px; color: #fff; overflow: hidden; background: radial-gradient(120% 120% at 100% 0%, rgba(225,29,29,.3), transparent 55%), linear-gradient(160deg, #15151a, #07070a); box-shadow: 0 0 0 1px rgba(225,29,29,.5) inset; }
+.mv-kicker { font: 700 12px/1 Inter, sans-serif; letter-spacing: .2em; color: var(--red); }
+.mv-titulo { margin-top: 8px; font: 800 clamp(24px, 4vw, 36px)/1.05 "Barlow Semi Condensed", Inter, sans-serif; text-transform: uppercase; }
+.mv-sub { margin-top: 6px; font-size: 14px; color: #b8b8c0; }
+.mv-resumo { display: flex; flex-wrap: wrap; gap: 10px 22px; margin-top: 16px; align-items: center; }
+.mv-resumo b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.mv-resumo span { font-size: 12px; color: #b8b8c0; display: block; }
+.mv-barra { display: block; height: 6px; border-radius: 3px; background: rgba(0,0,0,.14); overflow: hidden; }
+.mv-topo .mv-barra { background: rgba(255,255,255,.15); flex: 1 1 180px; }
+.mv-barra i { display: block; height: 100%; background: var(--c, var(--red)); border-radius: 3px; transition: width .5s cubic-bezier(.22,1,.36,1); }
+.mv-ferr { display: flex; flex-wrap: wrap; gap: 10px; margin: 18px 0 6px; align-items: center; }
+.mv-busca { flex: 1 1 240px; min-height: 44px; padding: 0 14px; border: 1px solid #d4d4da; border-radius: 6px; font: 500 15px Inter, sans-serif; background: #fff; }
+.mv-leg { display: flex; flex-wrap: wrap; gap: 8px 14px; font-size: 12px; color: #444; }
+.mv-leg i, .mv-chip::before { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--k); margin-right: 5px; }
+.mv-lista { display: grid; gap: 14px; margin-top: 14px; }
+.mv-disc { --c: hsl(var(--h) 72% 46%); border: 1px solid #e2e2e8; border-left: 6px solid var(--c); border-radius: 6px; background: #fff; overflow: hidden; }
+.mv-disc > summary { list-style: none; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; align-items: center; padding: 14px 16px; min-height: 64px; background: linear-gradient(90deg, hsl(var(--h) 80% 96%), #fff 60%); }
+.mv-disc > summary::-webkit-details-marker { display: none; }
+.mv-dn { font: 800 18px/1.15 "Barlow Semi Condensed", Inter, sans-serif; text-transform: uppercase; color: hsl(var(--h) 60% 28%); }
+.mv-dm { margin-top: 3px; font-size: 12px; color: #666; }
+.mv-pct { font: 800 20px/1 Inter, sans-serif; color: var(--c); font-variant-numeric: tabular-nums; text-align: right; }
+.mv-disc > summary .mv-barra { grid-column: 1 / -1; }
+.mv-seta { display: inline-block; transition: transform .2s; margin-left: 6px; }
+.mv-disc[open] .mv-seta { transform: rotate(90deg); }
+.mv-grupo { padding: 6px 16px 14px; }
+.mv-mat { margin: 14px 0 6px; font: 700 11px/1 Inter, sans-serif; letter-spacing: .14em; text-transform: uppercase; color: hsl(var(--h) 45% 36%); }
+.mv-t { display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center; padding: 10px 10px 10px calc(10px + var(--d, 0) * 18px); border-bottom: 1px solid #eee; border-left: 3px solid var(--k); margin-top: 4px; background: color-mix(in srgb, var(--k) 6%, #fff); border-radius: 3px; }
+.mv-t[data-d="0"] { font-weight: 700; }
+.mv-t[data-d]:not([data-d="0"]) { font-size: 14px; color: #333; }
+.mv-tt { min-width: 0; overflow-wrap: anywhere; }
+.mv-cod { font-variant-numeric: tabular-nums; color: #777; margin-right: 6px; font-weight: 600; }
+.mv-chip { display: inline-flex; align-items: center; font: 600 11px/1 Inter, sans-serif; color: #444; margin-top: 4px; }
+.mv-chip::before { content: ""; background: var(--k); }
+.mv-go { min-height: 44px; min-width: 44px; padding: 0 14px; border: 0; border-radius: 4px; font: 800 12px/1 Inter, sans-serif; letter-spacing: .08em; text-transform: uppercase; color: #fff; background: var(--c); cursor: pointer; }
+.mv-go[data-feito] { background: #1f9d55; }
+.mv-go:active { transform: scale(.97); }
+.mv-go:focus-visible, .mv-disc > summary:focus-visible, .mv-busca:focus-visible { outline: 2px solid #111; outline-offset: 2px; }
+.mv-vazio { padding: 30px 10px; text-align: center; color: #666; }
+@media (max-width: 640px) { .mv-t { grid-template-columns: 1fr; } .mv-go { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .mv-barra i, .mv-seta { transition: none; } }
