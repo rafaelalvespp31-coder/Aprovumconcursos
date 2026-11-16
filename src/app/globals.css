@@ -4561,11 +4561,11 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 .cm-lista { list-style: none; margin: 26px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; position: relative; }
 .cm-lista > li { animation: cm-in .35s cubic-bezier(.22,1,.36,1) both; animation-delay: calc(var(--i, 0) * 45ms); }
 @keyframes cm-in { from { opacity: 0; transform: translateY(6px); } }
-.cm-card { position: relative; display: block; width: 100%; height: 170px; padding: 0; text-align: left; overflow: hidden; cursor: pointer; color: #fff;
+.cm-card { position: relative; display: block; width: 100%; height: auto; aspect-ratio: 25 / 16; padding: 0; text-align: left; overflow: hidden; cursor: pointer; color: #fff;
   border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: #0b0b0e; transition: transform .2s cubic-bezier(.22,1,.36,1), border-color .2s, box-shadow .2s; }
-.cm-foto { position: absolute; inset: 0 0 62px 0; background: center 42% / cover no-repeat; filter: saturate(.95) contrast(1.05); transition: transform .5s cubic-bezier(.22,1,.36,1); }
+.cm-foto { position: absolute; inset: 0; background: center 42% / cover no-repeat; filter: saturate(.95) contrast(1.05); transition: transform .5s cubic-bezier(.22,1,.36,1); }
 .cm-foto[data-sem] { background: radial-gradient(90% 120% at 20% 0%, rgba(225,29,29,.35), transparent 60%), linear-gradient(160deg, #1c1c22, #09090c); }
-.cm-card::after { content: ""; position: absolute; inset: auto 0 0 0; height: 62px; background: linear-gradient(180deg, #0d0d11, #060608); border-top: 1px solid rgba(255,255,255,.1); pointer-events: none; }
+.cm-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 52%, rgba(0,0,0,.88) 100%); pointer-events: none; }
 .cm-info { position: absolute; z-index: 1; left: 12px; right: 48px; bottom: 9px; display: grid; gap: 6px; }
 .cm-sigla { font: 800 20px/1 "Barlow Semi Condensed", Inter, sans-serif; letter-spacing: .02em; text-transform: uppercase; text-shadow: 0 1px 8px #000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cm-prog { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; font: 600 11px/1 Inter, sans-serif; color: #d2d2d8; }
@@ -4579,7 +4579,7 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 .cm-card[data-on] .cm-seta { background: var(--red); border-color: var(--red); }
 .cm-card:focus-visible, .cm-novo:focus-visible, .cm-go:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
 .cm-card:active { transform: scale(.98); }
-.cm-novo { display: grid; place-items: center; align-content: center; gap: 8px; height: 170px; width: 100%; text-align: center; color: #d2d2d8; cursor: pointer; text-decoration: none;
+.cm-novo { display: grid; place-items: center; align-content: center; gap: 8px; height: auto; aspect-ratio: 25 / 16; width: 100%; text-align: center; color: #d2d2d8; cursor: pointer; text-decoration: none;
   border: 1.5px dashed rgba(255,255,255,.3); border-radius: 6px; background: rgba(0,0,0,.35); font: 700 12px/1.2 Inter, sans-serif; letter-spacing: .14em; transition: background .2s, border-color .2s, color .2s; }
 .cm-novo svg { width: 30px; height: 30px; color: var(--red); }
 .cm-novo[aria-disabled="true"] { cursor: not-allowed; opacity: .5; }
@@ -4597,7 +4597,7 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 }
 .cm-sk-l, .cm-sk-c { display: block; border-radius: 4px; background: linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.14), rgba(255,255,255,.06)); background-size: 200% 100%; animation: cm-sk 1.3s linear infinite; }
 .cm-sk-l { height: 14px; margin-top: 12px; max-width: 100%; }
-.cm-sk-c { height: 170px; border-radius: 6px; }
+.cm-sk-c { aspect-ratio: 25 / 16; border-radius: 6px; }
 @keyframes cm-sk { to { background-position: -200% 0; } }
 @media (max-width: 720px) {
   .cm-slot { padding: 10px 10px 0; }
