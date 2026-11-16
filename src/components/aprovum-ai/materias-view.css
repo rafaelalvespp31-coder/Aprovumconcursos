@@ -1,6 +1,6 @@
 .mv { --red: #e11d1d; position: relative; isolation: isolate; max-width: 1100px; margin: 0 auto; padding: 14px 14px 120px; color: #15151a; }
 .mv-voltar { display: inline-flex; align-items: center; gap: 6px; font: 700 12px/1 Inter, sans-serif; letter-spacing: .1em; text-transform: uppercase; color: #555; text-decoration: none; min-height: 44px; }
-.mv-topo { --cut: 20px; position: relative; isolation: isolate; padding: 26px 24px 22px; overflow: hidden; min-height: 250px;
+.mv-topo { color: #fff; --cut: 20px; position: relative; isolation: isolate; padding: 26px 24px 22px; overflow: hidden; min-height: 250px;
   clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
   background: radial-gradient(120% 90% at 100% 0%, rgba(225,29,29,.25), transparent 55%), linear-gradient(160deg, #15151a, #07070a 70%); box-shadow: 0 0 0 1px rgba(225,29,29,.55) inset; }
 .mv-arte { position: absolute; z-index: -1; top: 0; right: 0; bottom: 0; width: min(58%, 560px); background: var(--arte) center 40% / cover no-repeat; transform: scale(var(--z, 1)); transform-origin: right center;
