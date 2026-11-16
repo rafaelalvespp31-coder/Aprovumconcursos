@@ -14,7 +14,8 @@ export function Acompanhar({ etapa }: { etapa: string | null }) {
   const [seg, setSeg] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setSeg((s) => s + 1), 1000);
-    const r = setInterval(() => router.refresh(), 4000);
+    // Cada refresh renderiza a página inteira no servidor: 12 s e só com a aba visível, para poupar CPU.
+    const r = setInterval(() => { if (document.visibilityState === "visible") router.refresh(); }, 12_000);
     return () => {
       clearInterval(t);
       clearInterval(r);
