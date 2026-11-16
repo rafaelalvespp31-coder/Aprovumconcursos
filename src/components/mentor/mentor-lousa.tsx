@@ -6,7 +6,9 @@ import { LOUSA_H, LOUSA_W, type ItemDesenho, type LinhaLousa, type Lousa } from 
 import "./mentor-lousa.css";
 
 const COR: Record<string, string> = { azul: "#1d3a8a", preto: "#1a1a1f", vermelho: "#c62828", verde: "#1b7a43", grafite: "#1a1a1f", laranja: "#d9620b", roxo: "#6b2fa3", rosa: "#c2185b" };
-const UPS = 20; // unidades de tempo por segundo (cada letra custa ~1 unidade)
+const UPS = 20;
+const SYNC_UPS = 38; // velocidade da caneta no quadro sincronizado (rápida, mas ainda legível)
+const LEAD_CHARS = 22; // começa a escrever a linha ~1,5 s antes de o Mentor falá-la // unidades de tempo por segundo (cada letra custa ~1 unidade)
 const PAUSA = 7; // respiro entre linhas, como quem levanta o canetão
 
 /** Tempo de cada letra: espaços e pontuação demoram mais, números um pouco mais, e há uma oscilação leve e fixa (humana). */
@@ -21,7 +23,7 @@ function custoLetra(ch: string, i: number): number {
 }
 /** Texto completo escrito pela linha (o "par" junta os dois lados com um intervalo para o tracejado). */
 const totalFiguras = (l: LinhaLousa) => (l.figuras ?? []).reduce((a, g) => a + g.n, 0);
-const textoDe = (l: LinhaLousa) => (l.tipo === "par" ? `${l.texto}\u2003${l.dir ?? ""}` : l.tipo === "espaco" ? "" : l.tipo === "figuras" ? l.texto + "\u200b".repeat(totalFiguras(l) * 2) : l.tipo === "desenho" ? l.texto + "\u200b".repeat((l.rabisco?.length ?? 0) * 6) : l.texto);
+const textoDe = (l: LinhaLousa) => (l.tipo === "par" ? `${l.texto}\u2003${l.dir ?? ""}` : l.tipo === "espaco" ? "" : l.tipo === "figuras" ? l.texto + "\u200b".repeat(totalFiguras(l) * 4) : l.tipo === "desenho" ? l.texto + "\u200b".repeat((l.rabisco?.length ?? 0) * 6) : l.texto);
 const cor = (c?: string, padrao = "azul") => COR[c ?? padrao] ?? COR.azul!;
 
 /** Instante (acumulado) em que cada letra termina de ser escrita; o último valor é a duração da linha. */
@@ -132,13 +134,16 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
   const fl = useMemo(() => { let a = 0; return linhas.map((l) => { const w = l.fala.length; const o = { ini: a, w }; a += w; return o; }); }, [linhas]);
   const totalFala = fl.length ? fl[fl.length - 1]!.ini + fl[fl.length - 1]!.w : 0;
   const sincronizado = !!sync && totalFala > 0;
+  const t0L = useRef<number[]>([]);
   /** Quantas letras da linha j já foram escritas no instante `pos`. */
   const letras = (j: number) => {
     if (sincronizado) {
-      const { ini, w } = fl[j]!; const len = crono[j]!.length;
-      if (pos >= ini + w) return len;
-      if (pos <= ini || w === 0) return 0;
-      return Math.ceil(Math.min(1, ((pos - ini) / w) * 1.5) * len); // escreve um pouco à frente da fala
+      const c2 = crono[j]!;
+      if (pos > totalFala) return c2.length;
+      const ti = t0L.current[j];
+      if (ti === undefined) return 0;
+      const u = ((performance.now() - ti) / 1000) * SYNC_UPS; // a caneta corre à frente da fala: a linha já está escrita quando o Mentor a explica
+      let n2 = 0; while (n2 < c2.length && c2[n2]! <= u) n2++; return n2;
     } const c = crono[j]!; const t0 = pos - inicios[j]!; let n = 0; while (n < c.length && c[n]! <= t0) n++; return n; };
   const [pos, setPos] = useState(0);
   const [rodada, setRodada] = useState(0);
@@ -149,10 +154,19 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
   useEffect(() => {
     if (!sync || totalFala <= 0) return;
     let raf = 0;
-    const f = () => { const s = sync(); setPos(s.fim ? totalFala + 1 : s.c); if (!s.fim) raf = requestAnimationFrame(f); };
+    const f = () => {
+      const s = sync();
+      const agora = performance.now();
+      for (let j = 0; j < fl.length; j++) { // a escrita de cada linha começa um instante ANTES de o Mentor chegar nela
+        if (t0L.current[j] !== undefined) continue;
+        if (s.fim || s.c >= fl[j]!.ini - LEAD_CHARS) t0L.current[j] = agora; else break;
+      }
+      setPos(s.fim ? totalFala + 1 : s.c);
+      if (!s.fim) raf = requestAnimationFrame(f);
+    };
     raf = requestAnimationFrame(f);
     return () => cancelAnimationFrame(raf);
-  }, [sync, totalFala, rodada]);
+  }, [sync, totalFala, rodada, fl]);
 
   useEffect(() => {
     if (!vivo) return;
@@ -203,7 +217,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
           <div aria-hidden>
             {!dados && <p className="lz-l" data-t="texto"><Marcador c="#1d3a8a" /></p>}
             {linhas.map((l, j) => {
-              if (sincronizado ? pos < fl[j]!.ini : pos < inicios[j]!) return null;
+              if (sincronizado ? t0L.current[j] === undefined : pos < inicios[j]!) return null;
               const len = crono[j]!.length;
               const v = letras(j);
               const feito = v >= len;
@@ -229,7 +243,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
                 let fig: React.ReactNode = null;
                 if (l.tipo === "figuras") {
                   const todas = (l.figuras ?? []).flatMap((g, gi) => Array.from({ length: g.n }, (_, k) => ({ e: g.e, gi, k })));
-                  const vis = Math.max(0, Math.min(todas.length, Math.floor((v - nLab) / 2)));
+                  const vis = Math.max(0, Math.min(todas.length, Math.floor((v - nLab) / 4)));
                   fig = (
                     <div className="lz-fig">
                       {(l.figuras ?? []).map((g, gi) => (
@@ -240,7 +254,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
                 } else if (v >= nLab) {
                   fig = (
                     <svg className="lz-svg lz-mini" viewBox={`0 0 ${LOUSA_W} 140`} role="img" aria-label={l.texto || "Desenho"}>
-                      {(l.rabisco ?? []).map((it, i) => <Traco key={i} it={it} d={i * 0.7} />)}
+                      {(l.rabisco ?? []).map((it, i) => <Traco key={i} it={it} d={i * 0.3} />)}
                     </svg>
                   );
                 }
@@ -265,7 +279,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
             })}
             {desenho.length > 0 && (fim || (sincronizado ? pos > totalFala * 0.75 : pos > total * 0.9) || reduz.current) && (
               <svg className="lz-svg" viewBox={`0 0 ${LOUSA_W} ${LOUSA_H}`} role="img" aria-label="Desenho do exemplo" key={`d${rodada}`}>
-                {desenho.map((it, i) => <Traco key={i} it={it} d={i * 0.9} />)}
+                {desenho.map((it, i) => <Traco key={i} it={it} d={i * 0.4} />)}
               </svg>
             )}
           </div>

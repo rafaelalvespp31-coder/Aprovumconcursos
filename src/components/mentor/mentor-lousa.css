@@ -31,12 +31,12 @@
 @keyframes lz-rev { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(-6px); } }
 @keyframes lz-reta { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .lz-sub { position: absolute; left: 0; right: 0; bottom: -2px; width: 100%; height: 9px; overflow: visible; pointer-events: none; }
-.lz-sub path, .lz-mk path, .lz-mk polyline { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: lz-traco .6s cubic-bezier(.45,.05,.25,1) forwards; vector-effect: non-scaling-stroke; }
+.lz-sub path, .lz-mk path, .lz-mk polyline { fill: none; stroke: currentColor; stroke-width: 2.6; stroke-linecap: round; stroke-linejoin: round; stroke-dasharray: 1; stroke-dashoffset: 1; animation: lz-traco .35s cubic-bezier(.4,.1,.2,1) forwards; vector-effect: non-scaling-stroke; }
 .lz-mk { display: inline-block; width: 1.15em; height: 1.15em; margin-left: .35em; vertical-align: -.2em; overflow: visible; }
 .lz-marc { display: inline-block; width: 26px; height: 26px; margin-left: 4px; vertical-align: -6px; transform-origin: 3px 22px; animation: lz-escreve .3s ease-in-out infinite alternate; pointer-events: none; }
 @keyframes lz-escreve { from { transform: rotate(-4deg) translateY(0); } to { transform: rotate(6deg) translateY(-2px); } }
 .lz-svg { display: block; width: min(100%, 400px); height: auto; margin: 10px auto 0; }
-.lz-tr { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 3; stroke-dasharray: 1; stroke-dashoffset: 1; animation: lz-traco 1.1s cubic-bezier(.45,.05,.25,1) forwards; animation-delay: var(--d, 0s); }
+.lz-tr { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 3; stroke-dasharray: 1; stroke-dashoffset: 1; animation: lz-traco .5s cubic-bezier(.4,.1,.2,1) forwards; animation-delay: var(--d, 0s); }
 .lz-tx { font-family: inherit; font-size: 19px; font-weight: 700; opacity: 0; animation: lz-surge .4s ease-out forwards; animation-delay: var(--d, 0s); }
 @keyframes lz-traco { to { stroke-dashoffset: 0; } }
 @keyframes lz-surge { to { opacity: 1; } }

@@ -55,7 +55,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   const enviarParte = () => {
     const ro = roteiro.current;
     if (!ro || ro.fim || ro.pend.length === 0 || modeloTurno.current) return;
-    if (ro.n === 0 && ro.pend.length < 2 && !ro.fechado) return;
+    
     const primeiro = ro.n === 0;
     const falas = ro.pend.splice(0);
     const texto = `${falas.map((f, i) => `${ro.n + i + 1}. ${f}`).join("\n")}`;
@@ -367,7 +367,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if ((starts || replied) && (pedeLousa(r.turn) || anunciaLousa(falaTurno.current))) dispararLousa();
     if (said && onLousaRef.current && pedeLousa(r.turn)) { // dispara assim que o aluno termina o pedido, sem esperar o Mentor começar
       if (debLousa.current) clearTimeout(debLousa.current);
-      debLousa.current = setTimeout(dispararLousa, 650);
+      debLousa.current = setTimeout(dispararLousa, 350);
     }
     if (replied) r.replied.push(replied);
     const ro = roteiro.current;
