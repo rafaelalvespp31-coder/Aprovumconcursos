@@ -50,7 +50,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   const roteiro = useRef<{ total: number; chars: number; ev: { t: number; c: number }[]; fim: boolean; tFim: number; pend: string[]; n: number; fechado: boolean; contando: boolean } | null>(null);
   const modeloTurno = useRef(false); // o Mentor está gerando uma resposta (não dá para mandar o próximo trecho agora)
   const lousaOcupada = useRef(false); // há uma lousa sendo montada/narrada: não abre outra
-  const lousaAtual = useRef<{ titulo: string; linhas: LinhaLousa[] } | null>(null);
+  const lousaAtual = useRef<{ titulo: string; linhas: LinhaLousa[]; quandos: number[]; vivo: { quandos: number[]; agora: () => number } } | null>(null);
   /** Manda ao Mentor o próximo trecho do roteiro (só com ele livre; o primeiro trecho espera 2 falas para começar redondo). */
   const enviarParte = () => {
     const ro = roteiro.current;
@@ -70,15 +70,15 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (primeiro) { // vigia: se o Mentor não falar, reenvia uma vez; se ainda calar, o quadro escreve sozinho
       setTimeout(() => {
         const r1 = roteiro.current;
-        if (r1 && r1.chars === 0 && !r1.fim) { enviar(); setTimeout(() => { const r2 = roteiro.current; if (r2 && r2.chars === 0 && !r2.fim) { roteiro.current = null; const a = lousaAtual.current; if (a) onLousaRef.current?.({ mostrar: true, titulo: a.titulo, linhas: [...a.linhas], desenho: [] }, undefined); } }, 6000); }
+        if (r1 && r1.chars === 0 && !r1.fim) { enviar(); setTimeout(() => { const r2 = roteiro.current; if (r2 && r2.chars === 0 && !r2.fim) { roteiro.current = null; } }, 6000); }
       }, 6000);
     }
   };
   const publicar = () => {
     const a = lousaAtual.current;
     if (!a) return;
-    const ro = roteiro.current;
-    onLousaRef.current?.({ mostrar: true, titulo: a.titulo, linhas: [...a.linhas], desenho: [] }, ro && ro.total > 0 ? progresso : undefined);
+    // o quadro NÃO espera a voz: cada linha é escrita (rápido) assim que chega; a fala do Mentor corre em paralelo
+    onLousaRef.current?.({ mostrar: true, titulo: a.titulo, linhas: [...a.linhas], desenho: [] }, undefined, a.vivo);
   };
   /** Recebe o quadro em fluxo (NDJSON): cada linha entra no quadro e no roteiro assim que o modelo a escreve. */
   const lerFluxo = async () => {
@@ -88,7 +88,8 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       res = await fetch("/api/mentor/lousa?stream=1", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido: r.turn || falaTurno.current, study: getStudy?.() ?? undefined }) });
     } catch { res = new Response(null, { status: 500 }); }
     if (!res.ok || !res.body) { lousaOcupada.current = false; onLousaRef.current?.(null); return; }
-    const acc = { titulo: "", linhas: [] as LinhaLousa[] };
+    const quandos: number[] = [];
+    const acc = { titulo: "", linhas: [] as LinhaLousa[], quandos, vivo: { quandos, agora: () => performance.now() / 1000 } };
     lousaAtual.current = acc;
     roteiro.current = { total: 0, chars: 0, ev: [], fim: false, tFim: 0, pend: [], n: 0, fechado: false, contando: false };
     const dec = new TextDecoder();
@@ -105,6 +106,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       const ok = linhaSchema.safeParse(o);
       if (!ok.success) return;
       acc.linhas.push(ok.data);
+      acc.quandos.push(performance.now() / 1000);
       if (ok.data.fala) { ro.total += ok.data.fala.length; ro.pend.push(ok.data.fala); }
       mostrou = true;
       publicar();

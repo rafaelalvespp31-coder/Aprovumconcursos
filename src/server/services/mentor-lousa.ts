@@ -131,7 +131,7 @@ function lerLinha(bruta: string): Evento | null {
 }
 
 /** Gera o quadro em fluxo com um modelo rápido: cada linha sai assim que o modelo a escreve. Devolve quantas linhas emitiu. */
-async function gerarFluxo(pedido: string, study: StudyContext | null, emitir: (e: Evento) => void): Promise<number> {
+async function gerarFluxo(pedido: string, study: StudyContext | null, emitir: (e: Evento) => void, sinal: AbortSignal): Promise<number> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return 0;
   const p = wrapUntrusted(pedido.slice(0, 500), "pedido_do_aluno");
@@ -141,7 +141,7 @@ async function gerarFluxo(pedido: string, study: StudyContext | null, emitir: (e
   const stream = await ai.models.generateContentStream({
     model,
     contents: [{ role: "user", parts: [{ text: `${ctx ? `${ctx.text}\n\n` : ""}${p.text}` }] }],
-    config: { systemInstruction: SYSTEM_STREAM, temperature: 0.2, maxOutputTokens: 1900, thinkingConfig: { thinkingBudget: 0 }, abortSignal: AbortSignal.timeout(25_000) },
+    config: { systemInstruction: SYSTEM_STREAM, temperature: 0.2, maxOutputTokens: 1900, thinkingConfig: { thinkingBudget: 0 }, abortSignal: AbortSignal.any([sinal, AbortSignal.timeout(25_000)]) },
   });
   let buf = "";
   let n = 0;
@@ -168,28 +168,35 @@ export function lousaEmFluxo(userId: string, pedido: string, study: StudyContext
       const out = (o: unknown) => { try { ctrl.enqueue(enc.encode(`${JSON.stringify(o)}\n`)); } catch { /* cliente saiu */ } };
       const chave = chaveLousa(pedido);
       try {
-        const c = await doCache(chave);
+        // cache, limite de uso e geração começam JUNTOS: a IA já está escrevendo enquanto o banco responde
+        const abort = new AbortController();
+        const acc: Lousa = { mostrar: true, titulo: "", linhas: [], desenho: [] };
+        let cab = false;
+        let liberado = false;
+        const fila: Evento[] = [];
+        const emitir = (e: Evento) => {
+          if (!liberado) { fila.push(e); return; }
+          if (e.tipo === "cab") { cab = true; if (!e.mostrar) { out({ mostrar: false }); return; } acc.titulo = e.titulo; out({ mostrar: true, titulo: e.titulo }); return; }
+          if (!cab) { cab = true; out({ mostrar: true, titulo: "" }); }
+          acc.linhas.push(e.linha);
+          out(e.linha);
+        };
+        const cachePromise = doCache(chave);
+        const limite = enforceRateLimit(userId, "mentor_lousa", 8, 60).then(() => true, () => false);
+        const gerando = gerarFluxo(pedido, study, emitir, abort.signal).catch(async (e) => { if (!abort.signal.aborted) await logEvent("mentor.lousa.fluxo_error", { userId, error: (e as Error).message.slice(0, 300) }); return 0; });
+        const c = await cachePromise;
         if (c) {
+          abort.abort();
           out({ mostrar: true, titulo: c.titulo, cache: true });
           for (const l of c.linhas) out(l);
           out({ fim: true });
           ctrl.close();
           return;
         }
-        await enforceRateLimit(userId, "mentor_lousa", 8, 60);
-        const acc: Lousa = { mostrar: true, titulo: "", linhas: [], desenho: [] };
-        let cab = false;
-        let n = 0;
-        try {
-          n = await gerarFluxo(pedido, study, (e) => {
-            if (e.tipo === "cab") { cab = true; if (!e.mostrar) { out({ mostrar: false }); return; } acc.titulo = e.titulo; out({ mostrar: true, titulo: e.titulo }); return; }
-            if (!cab) { cab = true; out({ mostrar: true, titulo: "" }); }
-            acc.linhas.push(e.linha);
-            out(e.linha);
-          });
-        } catch (e) {
-          await logEvent("mentor.lousa.fluxo_error", { userId, error: (e as Error).message.slice(0, 300) });
-        }
+        if (!(await limite)) { abort.abort(); out({ mostrar: false }); ctrl.close(); return; }
+        liberado = true;
+        for (const e of fila.splice(0)) emitir(e);
+        const n = await gerando;
         if (n === 0 && acc.linhas.length === 0 && !cab) {
           const d = await montarLousa(userId, pedido, study); // plano C: gerador estruturado (sem fluxo)
           if (d.mostrar) { out({ mostrar: true, titulo: d.titulo }); for (const l of d.linhas) out(l); acc.linhas.push(...d.linhas); acc.titulo = d.titulo; } else out({ mostrar: false });

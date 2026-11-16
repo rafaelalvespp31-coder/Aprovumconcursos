@@ -1,7 +1,7 @@
 "use client";
 
 import { MentorLousa } from "@/components/mentor/mentor-lousa";
-import type { Lousa } from "@/domain/mentor/lousa";
+import { lousaSchema, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { Download, FileText, Lightbulb, Loader2, StickyNote, Trash2, Wrench, X } from "lucide-react";
@@ -50,6 +50,8 @@ const fmt = (iso: string) => new Date(iso).toLocaleString("pt-BR", { timeZone: "
  * Mentor por voz e "Meu PDF de Revisão". Os post-its ficam no banco (RLS); aqui só se desenha e se
  * sincroniza. Sem espaço lateral, os post-its viram abas numeradas e abrem num painel.
  */
+const LOUSA_ERRO = lousaSchema.parse({ mostrar: true, titulo: "Quadro", linhas: [{ tipo: "texto", texto: "Não consegui montar o quadro agora.", cor: "vermelho" }, { tipo: "texto", texto: "Peça de novo que eu tento outra vez!", cor: "azul" }] });
+
 export function StudyTools({
   lessonId, lessonTitle, subject, sectionOrder, initialPostits, initialPdfs, api = realApi,
 }: {
@@ -528,7 +530,7 @@ export function StudyTools({
                 <FileText className="size-5" aria-hidden /><span className="st-btn-txt"><b>Meu PDF</b><small>Gerar revisão</small></span>
               </button>
               <div className="st-mentor-wrap">
-                {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={46} onSpeaking={setMentorFala} onLousa={(dados, sync, vivo) => setLousa((a) => (dados === null ? null : dados === "pendente" ? { id: Date.now(), dados: null } : { id: a?.id ?? Date.now(), dados, sync, vivo }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setLousa(null); setPanel(null); }} /> : <VozOrbRepouso size={46} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+                {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={46} onSpeaking={setMentorFala} onLousa={(dados, sync, vivo) => setLousa((a) => (dados === null ? (a?.dados ? a : { id: a?.id ?? Date.now(), dados: LOUSA_ERRO }) : dados === "pendente" ? (a?.dados ? a : { id: Date.now(), dados: null }) : { id: a?.id ?? Date.now(), dados, sync, vivo }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setPanel(null); }} /> : <VozOrbRepouso size={46} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
                 <span className="st-btn-txt st-mentor-txt" aria-hidden onClick={() => { if (panel !== "mentor") { currentCapture(); setPanel("mentor"); } }}><b>Mentor</b><small>Falar com o Mentor</small></span>
               </div>
             </div>
@@ -537,7 +539,7 @@ export function StudyTools({
         return (
           <>
             {host ? createPortal(barra, host) : barra}
-            {lousa && panel === "mentor" && createPortal(<MentorLousa key={lousa.id} lousa={lousa.dados} sync={lousa.sync} vivo={lousa.vivo} onClose={() => setLousa(null)} />, document.body)}
+            {lousa && createPortal(<MentorLousa key={lousa.id} lousa={lousa.dados} sync={lousa.sync} vivo={lousa.vivo} onClose={() => setLousa(null)} />, document.body)}
           </>
         );
       })()}

@@ -8,8 +8,9 @@ import "./mentor-lousa.css";
 const COR: Record<string, string> = { azul: "#1d3a8a", preto: "#1a1a1f", vermelho: "#c62828", verde: "#1b7a43", grafite: "#1a1a1f", laranja: "#d9620b", roxo: "#6b2fa3", rosa: "#c2185b" };
 const UPS = 20;
 const SYNC_UPS = 38; // velocidade da caneta no quadro sincronizado (rápida, mas ainda legível)
+const VIVO_UPS = 38; // quadro ao vivo: caneta rápida, as linhas entram assim que chegam
 const LEAD_CHARS = 22; // começa a escrever a linha ~1,5 s antes de o Mentor falá-la // unidades de tempo por segundo (cada letra custa ~1 unidade)
-const PAUSA = 7; // respiro entre linhas, como quem levanta o canetão
+const PAUSA = 4; // respiro entre linhas, como quem levanta o canetão
 
 /** Tempo de cada letra: espaços e pontuação demoram mais, números um pouco mais, e há uma oscilação leve e fixa (humana). */
 function custoLetra(ch: string, i: number): number {
@@ -124,7 +125,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
     let a = 0;
     return crono.map((c, j) => {
       // ao vivo: a linha começa quando o áudio chega nela (ou quando a anterior termina de ser escrita)
-      const alvo = vivo && vivo.quandos[j] !== undefined && vivo.quandos[0] !== undefined ? UPS * (vivo.quandos[j]! - vivo.quandos[0]! - 0.2) : 0;
+      const alvo = vivo && vivo.quandos[j] !== undefined && vivo.quandos[0] !== undefined ? VIVO_UPS * (vivo.quandos[j]! - vivo.quandos[0]!) : 0;
       const x = Math.max(a, alvo);
       a = x + (c.length ? c[c.length - 1]! : 0) + PAUSA;
       return x;
@@ -171,7 +172,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
   useEffect(() => {
     if (!vivo) return;
     let raf = 0;
-    const f = () => { setPos(Math.max(0, UPS * (vivo.agora() - (vivo.quandos[0] ?? vivo.agora()) + 0.2))); raf = requestAnimationFrame(f); };
+    const f = () => { setPos(Math.max(0, VIVO_UPS * (vivo.agora() - (vivo.quandos[0] ?? vivo.agora())))); raf = requestAnimationFrame(f); };
     raf = requestAnimationFrame(f);
     return () => cancelAnimationFrame(raf);
   }, [vivo]);
@@ -199,9 +200,11 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
 
   const fim = vivo ? false : sincronizado ? pos > totalFala : pos >= total;
   // acompanha a escrita: rola o quadro para a linha atual
-  useEffect(() => { const el = placa.current; if (el && !fim) el.scrollTop = el.scrollHeight; }, [pos, fim]);
+  
 
   const ativo = sincronizado ? linhas.findIndex((_, j) => letras(j) < crono[j]!.length) : linhas.findIndex((_, j) => pos - inicios[j]! < dur(j));
+  // acompanha a escrita só quando muda a linha ativa (rolar a cada quadro trava)
+  useEffect(() => { const el = placa.current; if (el && !fim) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }); }, [ativo, linhas.length, fim]);
   const desenho = lousa.desenho;
   return (
     <aside className={`lz ${reduz.current ? "lz-pronto" : ""}`} role="dialog" aria-label={`Quadro do Mentor: ${lousa.titulo || "exemplo"}`} data-testid="mentor-lousa">
