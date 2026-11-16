@@ -29,7 +29,7 @@ function from(table: string) {
 const U = "00000000-0000-4000-8000-00000000aa01";
 const TOPIC = "00000000-0000-4000-8000-0000000000t1".replace("t", "a");
 
-vi.mock("@/server/supabase", () => ({ createAdminClient: () => ({ from }), createUserClient: async () => ({ from }) }));
+vi.mock("@/server/supabase", () => ({ createAdminClient: () => ({ from, rpc: async () => ({ data: [], error: null }) }), createUserClient: async () => ({ from }) }));
 vi.mock("@/server/auth", () => ({ requireUser: async () => ({ id: U, email: null }) }));
 vi.mock("@/server/services/plans", () => ({ assertQuota: async () => undefined }));
 vi.mock("@/server/services/disciplines", () => ({ ensureDisciplines: async () => undefined }));

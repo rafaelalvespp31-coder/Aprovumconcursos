@@ -129,6 +129,7 @@ export function QuizView({
   const [inView, setInView] = useState(false);
   const [hint, setHint] = useState(false);
   const [pageVisible, setPageVisible] = useState(true);
+  const [showAllTopics, setShowAllTopics] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   // Quando a questão apareceu (tempo de resposta registrado no servidor).
   const shownAt = useRef(0);
@@ -878,6 +879,7 @@ export function QuizView({
             <div className="mt-3 flex flex-col gap-3">
               {home.topics
                 .filter((t) => filter === "Todos" || t.discipline === filter)
+                .filter((t, i) => showAllTopics || i < 30 || t.id === topic.id)
                 .map((t) => {
                   const m = mastered.get(t.id) ?? t.mastered;
                   const done = m >= t.total;
@@ -942,6 +944,11 @@ export function QuizView({
                     </Link>
                   );
                 })}
+              {!showAllTopics && home.topics.filter((t) => filter === "Todos" || t.discipline === filter).length > 30 && (
+                <button type="button" onClick={() => setShowAllTopics(true)} className="min-h-11 rounded-[14px] bg-[#141414] px-4 text-[13px] font-bold text-white/80 ring-1 ring-white/10">
+                  Ver todos os temas
+                </button>
+              )}
             </div>
           </section>
 

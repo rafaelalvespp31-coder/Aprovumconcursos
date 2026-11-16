@@ -24,6 +24,8 @@ interface QuizTopic {
   /** Itens no formato padrão (para contar dispositivos e progresso). */
   items: ClozeItem[];
   sections: Array<{ kind: string; title: string; bodyMarkdown: string; nodeKeys: string[] }>;
+  /** Perguntas curtas (verdadeiro/falso e múltipla escolha) deste tema, em game_items. */
+  gameCount: number;
 }
 
 // Catálogo publicado em memória por alguns minutos (o conteúdo muda raramente).
@@ -34,22 +36,27 @@ async function loadTopics(): Promise<QuizTopic[]> {
   await ensureDisciplines();
   if (cache && Date.now() - cache.at < TTL) return cache.topics;
   const db = createAdminClient();
-  const { data, error } = await db.from("catalog_topics").select("id, title, discipline_mode, law_code, nodes, lesson").eq("status", "publicado").order("title");
+  const [{ data, error }, counts] = await Promise.all([
+    db.from("catalog_topics").select("id, title, discipline_mode, law_code, nodes, lesson").eq("status", "publicado").order("title"),
+    db.rpc("game_topic_counts"),
+  ]);
   if (error) throw new Error(error.message);
-  const topics = (data ?? [])
-    .map((t) => {
-      const lesson = (t.lesson ?? {}) as { sections?: QuizTopic["sections"] };
-      return {
-        id: t.id as string,
-        title: t.title as string,
-        discipline: disciplineLabel((t.discipline_mode as string) ?? "outra") ?? "Outra",
-        lawCode: (t.law_code as string | null) ?? null,
-        nodes: (t.nodes ?? []) as LawNode[],
-        items: buildAll(((t.nodes ?? []) as LawNode[]), t.id as string),
-        sections: lesson.sections ?? [],
-      };
-    })
-    .filter((t) => t.items.length > 0);
+  if (counts.error) throw new Error(counts.error.message);
+  const gameRows = (counts.data ?? []) as Array<{ topic_id: string; title: string; discipline: string; law_code: string | null; n: number }>;
+  const gameN = new Map(gameRows.map((g) => [g.topic_id, g.n]));
+  const topics: QuizTopic[] = (data ?? []).map((t) => {
+    const lesson = (t.lesson ?? {}) as { sections?: QuizTopic["sections"] };
+    return {
+      id: t.id as string,
+      title: t.title as string,
+      discipline: disciplineLabel((t.discipline_mode as string) ?? "outra") ?? "Outra",
+      lawCode: (t.law_code as string | null) ?? null,
+      nodes: (t.nodes ?? []) as LawNode[],
+      items: buildAll(((t.nodes ?? []) as LawNode[]), t.id as string),
+      sections: lesson.sections ?? [],
+      gameCount: gameN.get(t.id as string) ?? 0,
+    };
+  }).filter((t) => t.items.length > 0 || t.gameCount > 0);
   cache = { at: Date.now(), topics };
   tierCache.clear();
   return topics;
@@ -129,8 +136,11 @@ function summarize(attempts: AttemptRow[], topics: QuizTopic[]) {
       title: t.title,
       discipline: t.discipline,
       lawCode: t.lawCode,
-      total: t.items.length,
-      mastered: t.items.filter((i) => hit.has(`${t.id}:${i.nodeKey}`)).length,
+      total: t.items.length + t.gameCount,
+      mastered: Math.min(
+        t.items.length + t.gameCount,
+        t.items.filter((i) => hit.has(`${t.id}:${i.nodeKey}`)).length + (t.gameCount ? [...hit].filter((k) => k.startsWith(`${t.id}:G`)).length : 0),
+      ),
     })),
   };
 }
@@ -168,6 +178,37 @@ async function seenKeys(topicId: string): Promise<Set<string>> {
   return seen;
 }
 
+
+// ---------------------------------------------------------------------------
+// Perguntas curtas (verdadeiro/falso e múltipla escolha) no mesmo cartão do jogo: uma lacuna com banco de respostas.
+// ---------------------------------------------------------------------------
+interface GameRow {
+  key: string;
+  kind: "escolha" | "vf";
+  prompt: string;
+  subject: string;
+  explanation: string;
+  answer_true: boolean | null;
+  options: Array<{ label: string; text: string; correct: boolean }> | null;
+}
+const GAME_COLS = "key, kind, prompt, subject, explanation, answer_true, options";
+
+function gameToCloze(g: GameRow, rnd?: () => number): ClozeItem {
+  if (g.kind === "vf") {
+    return { nodeKey: g.key, context: "Verdadeiro ou falso?", parts: [{ text: `${g.prompt} ` }, { blank: 0 }], answers: [g.answer_true ? "Verdadeiro" : "Falso"], bank: ["Verdadeiro", "Falso"], ref: g.subject };
+  }
+  const opts = g.options ?? [];
+  const bank = opts.map((o) => o.text);
+  return { nodeKey: g.key, context: null, parts: [{ text: `${g.prompt} ` }, { blank: 0 }], answers: [opts.find((o) => o.correct)?.text ?? ""], bank: rnd ? shuffle(bank, rnd) : bank, ref: g.subject };
+}
+
+/** Perguntas curtas ainda não respondidas deste tema. */
+async function freshGame(topicId: string, seen: Set<string>, rnd: () => number): Promise<ClozeItem[]> {
+  const { data, error } = await createAdminClient().from("game_items").select(GAME_COLS).eq("topic_id", topicId).eq("active", true).limit(1000);
+  if (error) throw new Error(error.message);
+  return ((data ?? []) as unknown as GameRow[]).filter((g) => !seen.has(g.key)).map((g) => gameToCloze(g, rnd));
+}
+
 /**
  * Rodada no nível atual do aluno: vai até completar o nível (10 questões, ou o que falta).
  * Pergunta já respondida (certa ou errada) NUNCA volta para o mesmo aluno. Quando o tema pedido
@@ -190,9 +231,10 @@ export async function startRound(topicId: string): Promise<QuizRound> {
   for (const t of order) {
     const pool = itemsFor(t, lv.tier);
     const known = approx.get(t.id);
-    if (known && pool.every((i) => known.has(i.nodeKey))) continue;
+    if (known && !t.gameCount && pool.every((i) => known.has(i.nodeKey))) continue;
     const seen = await seenKeys(t.id);
     const f = pool.filter((i) => !seen.has(i.nodeKey));
+    if (t.gameCount) f.push(...(await freshGame(t.id, seen, seeded(`${t.id}:${Date.now()}:${Math.random()}`))));
     if (f.length) {
       topic = t;
       fresh = f;
@@ -234,7 +276,13 @@ export async function checkAnswer(topicId: string, nodeKey: string, given: strin
   // A dificuldade da questão não pode passar a do nível que o aluno já conquistou.
   const current = levelInfo(before.length);
   const tier = tierByNumber(Math.min(tierN, current.tier.tier));
-  const item = topic ? itemsFor(topic, tier).find((i) => i.nodeKey === nodeKey) : undefined;
+  let game: GameRow | null = null;
+  if (/^G\d{6}$/.test(nodeKey)) {
+    const { data, error: ge } = await createAdminClient().from("game_items").select(GAME_COLS).eq("key", nodeKey).eq("topic_id", topicId).eq("active", true).maybeSingle();
+    if (ge) throw new Error(ge.message);
+    game = (data as unknown as GameRow | null) ?? null;
+  }
+  const item = game ? gameToCloze(game) : topic ? itemsFor(topic, tier).find((i) => i.nodeKey === nodeKey) : undefined;
   if (!topic || !item) throw new UserFacingError("Questão não encontrada. Comece uma nova rodada.", "not_found");
   const results = checkCloze(item, given.slice(0, item.answers.length).map((g) => String(g ?? "").slice(0, 80)));
   const correct = results.every(Boolean);
@@ -260,7 +308,7 @@ export async function checkAnswer(topicId: string, nodeKey: string, given: strin
     totals: { xp: s.xp, todayHits: s.todayHits, mastered: s.topics.find((t) => t.id === topicId)?.mastered ?? 0 },
     level: next,
     levelUp: next.level > current.level ? { from: current, to: next } : null,
-    help: helpFor(topic, item),
+    help: game ? { explicacao: `**${game.subject}**\n\n${game.explanation}`, banca: null, dica: null } : helpFor(topic, item),
   };
 }
 
