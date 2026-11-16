@@ -4564,8 +4564,11 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 .cm-card { position: relative; display: block; width: 100%; height: auto; aspect-ratio: 25 / 16; padding: 0; text-align: left; overflow: hidden; cursor: pointer; color: #fff;
   border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: #0b0b0e; transition: transform .2s cubic-bezier(.22,1,.36,1), border-color .2s, box-shadow .2s; }
 .cm-foto { position: absolute; inset: 0; background: center 42% / cover no-repeat; filter: saturate(.95) contrast(1.05); transition: transform .5s cubic-bezier(.22,1,.36,1); }
+.cm-card[data-of] .cm-sigla { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.cm-foto[data-of] { --z: 1.5; background-position: center 40%; }
+.cm-foto { transform: scale(var(--z, 1)); }
 .cm-foto[data-sem] { background: radial-gradient(90% 120% at 20% 0%, rgba(225,29,29,.35), transparent 60%), linear-gradient(160deg, #1c1c22, #09090c); }
-.cm-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 52%, rgba(0,0,0,.88) 100%); pointer-events: none; }
+.cm-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,.92) 100%); pointer-events: none; }
 .cm-info { position: absolute; z-index: 1; left: 12px; right: 48px; bottom: 9px; display: grid; gap: 6px; }
 .cm-sigla { font: 800 20px/1 "Barlow Semi Condensed", Inter, sans-serif; letter-spacing: .02em; text-transform: uppercase; text-shadow: 0 1px 8px #000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cm-prog { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; font: 600 11px/1 Inter, sans-serif; color: #d2d2d8; }
@@ -4591,7 +4594,7 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 .cm-erro { margin-top: 10px; font-size: 13px; color: #ff8a8a; }
 @media (hover: hover) {
   .cm-card:hover { transform: translateY(-3px); border-color: rgba(225,29,29,.8); box-shadow: 0 10px 26px rgba(0,0,0,.6), 0 0 18px rgba(225,29,29,.35); }
-  .cm-card:hover .cm-foto { transform: scale(1.06); }
+  .cm-card:hover .cm-foto { transform: scale(calc(var(--z, 1) * 1.05)); }
   .cm-novo:not([aria-disabled="true"]):hover { background: rgba(255,255,255,.08); border-color: #fff; color: #fff; }
   .cm-go:not([aria-disabled="true"]):hover { filter: brightness(1.12); transform: translateY(-1px); }
 }

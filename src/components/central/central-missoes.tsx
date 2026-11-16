@@ -49,8 +49,8 @@ export function CentralMissoesView({ cards, selecionado, limite, action }: Props
           const on = sel === c.id;
           return (
             <li key={c.id} style={{ ["--i" as string]: i }}>
-              <button type="button" className="cm-card" data-on={on ? 1 : undefined} aria-pressed={on} onClick={() => abrir(c)} aria-label={`Abrir matérias de ${c.nome}`}>
-                <span className="cm-foto" style={c.foto ? { backgroundImage: `url(${c.foto})` } : undefined} data-sem={c.foto ? undefined : 1} aria-hidden />
+              <button type="button" className="cm-card" data-of={c.foto?.startsWith("/orgs/") ? 1 : undefined} data-on={on ? 1 : undefined} aria-pressed={on} onClick={() => abrir(c)} aria-label={`Abrir matérias de ${c.nome}`}>
+                <span className="cm-foto" style={c.foto ? { backgroundImage: `url(${c.foto})` } : undefined} data-sem={c.foto ? undefined : 1} data-of={c.foto?.startsWith("/orgs/") ? 1 : undefined} aria-hidden />
                 {on && <span className="cm-selo" aria-hidden><Check /></span>}
                 <span className="cm-info">
                   <span className="cm-sigla">{c.sigla}</span>
