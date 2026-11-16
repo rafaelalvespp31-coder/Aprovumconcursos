@@ -167,7 +167,7 @@ export function VozEsfera({ level, dim = false, size = 280, conn = "live" }: { l
     const calm = reduce ? 0.3 : 1;
     const mobile = window.innerWidth < 640;
     const k0 = size / BASE;
-    const NC = mobile ? 180_000 : 520_000;
+    const NC = Math.round(Math.min(1, Math.max(0.08, (size / BASE) ** 2)) * (mobile ? 180_000 : 520_000));
     let seed = (Math.random() * 2 ** 31) | 0;
     const rnd = () => {
       seed = (seed + 0x6d2b79f5) | 0;
@@ -355,7 +355,9 @@ export function VozEsfera({ level, dim = false, size = 280, conn = "live" }: { l
         gl.uniform1f(u.K, sm.k);
         gl.uniform1f(u.Px, 0.62 * k0);
         gl.uniform1f(u.Calm, calm);
-        gl.uniform1f(u.Am, am * Math.min(10, Math.max(0.6, 300_000 / (NC * q))));
+        // brilho por área: poucas partículas por pixel brilham pouco, muitas saturam em branco; mantém a densidade de referência
+        const dens = (NC * q) / (Math.PI * (0.36 * size) ** 2);
+        gl.uniform1f(u.Am, am * Math.min(6, Math.max(0.04, 8 / dens)));
         gl.uniform1f(u.Dpr, dpr);
         gl.uniformMatrix3fv(u.Rs, false, Rs);
         gl.uniformMatrix3fv(u.Rk, false, Rk);
