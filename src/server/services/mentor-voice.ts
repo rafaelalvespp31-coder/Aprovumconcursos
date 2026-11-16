@@ -119,6 +119,9 @@ async function personalPrompt(userId: string): Promise<string> {
  * Busca na internet (Google Search do Gemini Live): DESLIGADA por padrão, porque nem todo modelo de voz
  * aceita a ferramenta e, quando recusa, a conversa cai. Ligue com GEMINI_VOICE_SEARCH=1 só depois de testar.
  */
+/** A lousa abre sozinha na tela do aluno quando ele pede uma conta, exemplo ou desenho; a voz acompanha. */
+const LOUSA_RULE = `\n\nLOUSA: quando o aluno pedir para ensinar um cálculo, dar um exemplo, mostrar passo a passo ou desenhar algo, uma lousa abre na tela dele e as contas e o desenho são escritos a lápis. Avise em uma frase curta que vai anotar na lousa e explique em voz alta, passo a passo, na mesma ordem, falando os números e as operações com clareza (por exemplo "três quartos", "vezes", "raiz quadrada"). Não leia símbolos letra por letra e não repita a lousa inteira no final.`;
+
 const voiceTools = () => (process.env.GEMINI_VOICE_SEARCH === "1" ? [{ googleSearch: {} }] : undefined);
 
 export interface VoiceSession {
@@ -199,7 +202,7 @@ export async function startVoice(userId: string, study?: StudyContext | null, le
   await enforceRateLimit(userId, "mentor_voz", 6, 60);
 
   const base = await personalPrompt(userId);
-  const instruction = (admin ? base.replace(STUDENT_TIME_RULE, ADMIN_TIME_RULE) : base) + studyContextInstruction(study ?? null) + (lessonId ? await lessonBrief(userId, lessonId).catch(() => "") : ""); // antes de reservar o tempo: a leitura dos dados não gasta os 3 minutos
+  const instruction = (admin ? base.replace(STUDENT_TIME_RULE, ADMIN_TIME_RULE) : base) + LOUSA_RULE + studyContextInstruction(study ?? null) + (lessonId ? await lessonBrief(userId, lessonId).catch(() => "") : ""); // antes de reservar o tempo: a leitura dos dados não gasta os 3 minutos
   const now = new Date();
   let left = ADMIN_VOICE_SECONDS;
   if (!admin) {
