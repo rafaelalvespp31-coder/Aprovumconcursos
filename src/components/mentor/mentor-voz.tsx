@@ -61,7 +61,20 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
         if (l && rot && rot.total > 0 && ref.current.session) {
           roteiro.current = { total: rot.total, chars: 0, ev: [], fim: false, tFim: 0 };
           onLousaRef.current?.(l, progresso);
-          try { ref.current.session.sendRealtimeInput({ text: `[ROTEIRO DA LOUSA] Explique agora em voz alta, na ordem e sem pular nada, o que está sendo escrito no quadro:\n${rot.texto}` }); } catch { /* segue sem sincronia */ }
+          const texto = `[ROTEIRO DA LOUSA] Agora fale em voz alta, sem parar até o fim, cada fala abaixo, na ordem, enquanto escrevo no quadro. Comece já pela fala 1:\n${rot.texto}`;
+          const enviar = () => { try { ref.current.session?.sendRealtimeInput({ text: texto }); } catch { /* segue sem sincronia */ } };
+          // espera o aviso curto terminar (mandar no meio de uma fala o interrompe e a explicação some)
+          const t0 = Date.now();
+          const espera = setInterval(() => {
+            const c = ref.current.ctx;
+            const falando = !!c && ref.current.next - c.currentTime > 0.15;
+            if (!falando || Date.now() - t0 > 3500) { clearInterval(espera); enviar(); }
+          }, 150);
+          // vigia: se o Mentor não falar nada em 7s, reenvia uma vez; se ainda assim calar, o quadro escreve sozinho
+          setTimeout(() => {
+            const ro = roteiro.current;
+            if (ro && ro.chars === 0 && !ro.fim) { enviar(); setTimeout(() => { const r2 = roteiro.current; if (r2 && r2.chars === 0 && !r2.fim) { roteiro.current = null; onLousaRef.current?.(l, undefined); } }, 7000); }
+          }, 7000);
         } else onLousaRef.current?.(l);
       })
       .catch(() => onLousaRef.current?.(null));

@@ -1,9 +1,10 @@
 import "server-only";
 import { getAIProvider } from "@/ai";
 import { wrapUntrusted } from "@/ai/untrusted";
-import { lousaSchema, type Lousa } from "@/domain/mentor/lousa";
+import { chaveLousa, lousaSchema, semelhancaChaves, type Lousa } from "@/domain/mentor/lousa";
 import type { StudyContext } from "@/domain/mentor/study-context";
 import { logEvent } from "../observability";
+import { createAdminClient } from "../supabase";
 import { enforceRateLimit } from "./trails";
 
 const SYSTEM = `Você é o professor-caveira do APROVUM, ensinando concursos públicos. Responda SEMPRE chamando a ferramenta.
@@ -27,7 +28,47 @@ Use números e normas só se tiver certeza; não invente artigos, súmulas ou va
 const VAZIA: Lousa = { mostrar: false, titulo: "", linhas: [], desenho: [] };
 
 /** Monta a lousa do pedido do aluno (conta, exemplo ou desenho). Falha silenciosa: sem lousa, a voz segue normal. */
+const MIN_SEMELHANCA = 0.8;
+
+/** Procura uma lousa já montada para um pedido igual ou muito parecido (outro aluno, outro dia): zero token de IA. */
+async function doCache(chave: string): Promise<Lousa | null> {
+  if (chave.length < 4) return null;
+  try {
+    const db = createAdminClient();
+    let id: string | null = null;
+    const exata = await db.from("mentor_lousas_cache").select("id").eq("chave", chave).maybeSingle();
+    id = (exata.data as { id: string } | null)?.id ?? null;
+    if (!id) {
+      const { data } = await db.from("mentor_lousas_cache").select("id, chave").order("last_used_at", { ascending: false }).limit(400);
+      let melhor = 0;
+      for (const r of (data ?? []) as { id: string; chave: string }[]) {
+        const s = semelhancaChaves(chave, r.chave);
+        if (s >= MIN_SEMELHANCA && s > melhor) { melhor = s; id = r.id; }
+      }
+    }
+    if (!id) return null;
+    const { data: row } = await db.from("mentor_lousas_cache").select("dados, usos").eq("id", id).maybeSingle();
+    if (!row) return null;
+    const ok = lousaSchema.safeParse((row as { dados: unknown }).dados);
+    if (!ok.success || !ok.data.mostrar || ok.data.linhas.length === 0) return null;
+    void db.from("mentor_lousas_cache").update({ usos: ((row as { usos: number }).usos ?? 0) + 1, last_used_at: new Date().toISOString() }).eq("id", id).then(() => undefined);
+    return ok.data;
+  } catch {
+    return null;
+  }
+}
+
+async function guardar(chave: string, pedido: string, l: Lousa): Promise<void> {
+  if (chave.length < 4 || l.linhas.length < 4 || l.linhas.every((x) => !x.fala)) return; // só explicações completas e narradas
+  try {
+    await createAdminClient().from("mentor_lousas_cache").upsert({ chave, pedido: pedido.slice(0, 300), titulo: l.titulo, dados: l }, { onConflict: "chave", ignoreDuplicates: true });
+  } catch { /* cache é melhor-esforço */ }
+}
+
 export async function montarLousa(userId: string, pedido: string, study: StudyContext | null): Promise<Lousa> {
+  const chave = chaveLousa(pedido);
+  const pronta = await doCache(chave);
+  if (pronta) return pronta;
   await enforceRateLimit(userId, "mentor_lousa", 8, 60);
   const p = wrapUntrusted(pedido.slice(0, 500), "pedido_do_aluno");
   const ctx = study ? wrapUntrusted(JSON.stringify(study).slice(0, 1500), "aula_atual") : null;
@@ -43,7 +84,8 @@ export async function montarLousa(userId: string, pedido: string, study: StudyCo
       timeoutMs: 22_000,
     });
     const d = res.data;
-    return d.mostrar && d.linhas.length > 0 ? d : VAZIA;
+    if (d.mostrar && d.linhas.length > 0) { if (pedido.length <= 220) void guardar(chave, pedido, d); return d; }
+    return VAZIA;
   } catch (e) {
     await logEvent("mentor.lousa.error", { userId, error: (e as Error).message.slice(0, 300) });
     return VAZIA;

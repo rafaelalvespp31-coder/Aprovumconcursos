@@ -41,3 +41,12 @@ describe("roteiroDe", () => {
     expect(r.total).toBe("Dois mais dois.".length + "Dá quatro.".length);
   });
 });
+
+describe("chaveLousa", () => {
+  it("pedidos parecidos geram a mesma chave", async () => {
+    const { chaveLousa, semelhancaChaves } = await import("./lousa");
+    expect(chaveLousa("Me ensina regra de três")).toBe(chaveLousa("como faz regra de 3 pra mim?"));
+    expect(semelhancaChaves(chaveLousa("regra de três com maçãs"), chaveLousa("regra de 3 maçãs"))).toBeGreaterThanOrEqual(0.8);
+    expect(chaveLousa("porcentagem")).not.toBe(chaveLousa("regra de três"));
+  });
+});

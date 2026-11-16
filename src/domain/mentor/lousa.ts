@@ -63,3 +63,22 @@ export function roteiroDe(l: Lousa): { falas: string[]; total: number; texto: st
   const texto = falas.filter(Boolean).map((f, i) => `${i + 1}. ${f}`).join("\n");
   return { falas, total: falas.reduce((a, f) => a + f.length, 0), texto };
 }
+
+const PALAVRAS_VAZIAS = new Set("a o as os um uma uns umas de da do das dos em no na nos nas por para pra com e ou que me te se eu voce vc mim meu minha seu sua isso isto esse essa este esta ai la aqui so ja vai vou quero queria pode poder podia favor ensina ensinar ensine explica explicar explique mostra mostrar mostre da dar de exemplo exemplos como faz fazer faco calcula calcular conta contas passo lousa quadro desenha desenhar desenhe um uma sobre ao aos".split(" "));
+const NUMEROS: Record<string, string> = { um: "1", dois: "2", tres: "3", quatro: "4", cinco: "5", seis: "6", sete: "7", oito: "8", nove: "9", dez: "10" };
+
+/** Chave estável do pedido (sem acento, sem palavras de enchimento, números por extenso → dígitos, ordem das palavras ignorada). Pedidos parecidos geram a mesma chave. */
+export function chaveLousa(pedido: string): string {
+  const s = pedido.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9\s]/g, " ");
+  const toks = s.split(/\s+/).filter(Boolean).map((w) => NUMEROS[w] ?? w).filter((w) => !PALAVRAS_VAZIAS.has(w) || /^\d+$/.test(w));
+  return [...new Set(toks)].sort().join(" ").slice(0, 200);
+}
+
+/** Semelhança de Jaccard entre duas chaves (0 a 1). */
+export function semelhancaChaves(a: string, b: string): number {
+  const A = new Set(a.split(" ").filter(Boolean)), B = new Set(b.split(" ").filter(Boolean));
+  if (!A.size || !B.size) return 0;
+  let i = 0;
+  for (const x of A) if (B.has(x)) i++;
+  return i / (A.size + B.size - i);
+}
