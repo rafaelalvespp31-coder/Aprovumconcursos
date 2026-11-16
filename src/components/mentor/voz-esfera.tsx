@@ -6,7 +6,6 @@ import { Historia, TAU, clamp, follow, projetar, radiusAt, ringAmp } from "./esf
 
 const SRC = "/mentor/orb-esfera.webp"; // arte da caveira: só serve de mapa de densidade e cor das partículas
 const BASE = 280;
-const NR = 44; // anéis de latitude da esfera (cada anel é uma linha de micropartículas)
 
 /** Pontinho com borda suave (para ficar nítido mesmo com 1 px). */
 function sprite(r: number, g: number, b: number): HTMLCanvasElement {
@@ -24,6 +23,8 @@ function sprite(r: number, g: number, b: number): HTMLCanvasElement {
 }
 
 const smooth = (v: number) => v * v * (3 - 2 * v);
+/** Raios (px a 280 px de tamanho) das três classes de partícula da esfera: mínima, média e um pouco maior. */
+const TIER = [0.55, 0.95, 1.5];
 
 /**
  * Mentor: uma nuvem de micropartículas com duas formas. Em silêncio elas formam a caveira (desenho da
@@ -89,17 +90,33 @@ export function VozEsfera({ level, dim = false, size = 280, conn = "live" }: { l
       t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
       return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
     };
+    // Esfera: grade alinhada (anéis de latitude, pontos igualmente espaçados em cada anel). As demais partículas viram poeira solta.
+    const NR = mobile ? 44 : 56;
+    const NS = mobile ? 3400 : 5600;
     const ringPhi = (i: number) => (-0.5 + (i + 0.5) / NR) * Math.PI * 0.94;
-    for (let k = 0; k < NC; k++) {
-      // anel: mais partículas perto do equador (área da esfera)
-      let i = 0;
-      for (let tries = 0; tries < 8; tries++) {
-        i = Math.floor(rnd() * NR);
-        if (rnd() < Math.cos(ringPhi(i))) break;
+    let sumCos = 0;
+    for (let i = 0; i < NR; i++) sumCos += Math.cos(ringPhi(i));
+    const nMax = NS / sumCos;
+    const kt = new Uint8Array(NC); // tamanho: 0 mínima, 1 média, 2 um pouco maior
+    const kd = new Uint8Array(NC); // 1 = poeira
+    let slot = 0;
+    for (let i = 0; i < NR && slot < NC; i++) {
+      const m = Math.max(6, Math.round(nMax * Math.cos(ringPhi(i))));
+      for (let j = 0; j < m && slot < NS; j++) {
+        const k = slot++;
+        kr[k] = i;
+        kphi[k] = ringPhi(i);
+        kth[k] = ((j + (i % 2) * 0.5) / m) * TAU;
       }
-      kr[k] = i;
-      kphi[k] = ringPhi(i);
-      kth[k] = rnd() * TAU;
+    }
+    const NSL = slot;
+    for (let k = 0; k < NC; k++) {
+      if (k >= NSL) {
+        kd[k] = 1;
+        kr[k] = 0;
+        kphi[k] = 0;
+        kth[k] = 0;
+      }
       kcp[k] = Math.cos(kphi[k]!);
       ksp[k] = Math.sin(kphi[k]!);
       kct[k] = Math.cos(kth[k]!);
@@ -118,6 +135,8 @@ export function VozEsfera({ level, dim = false, size = 280, conn = "live" }: { l
       uz[k] = s * Math.sin(a);
       cs[k] = 0.42 + rnd() * 0.62;
       ca[k] = 0.55 + rnd() * 0.45;
+      const rt = rnd();
+      kt[k] = kd[k] ? 0 : rt < 0.5 ? 0 : rt < 0.84 ? 1 : 2;
     }
     let skullReady = false;
     const buildSkull = (img: HTMLImageElement) => {
@@ -390,7 +409,7 @@ export function VozEsfera({ level, dim = false, size = 280, conn = "live" }: { l
       ctx.globalCompositeOperation = "lighter";
       const n = Math.round(NC * q);
       const sc = k0 * 1.15;
-      const drift = 0.006 + 0.022 * sm.vol + 0.016 * sm.high;
+      const drift = 0.006 + 0.04 * sm.vol + 0.03 * sm.high;
       const scat = (0.012 * sm.vol + 0.14 * sm.burst) * calm;
       for (let k = 0; k < n; k++) {
         const e = smooth(clamp(sm.s * 1.55 - kdel[k]! * 0.55));
@@ -417,26 +436,37 @@ export function VozEsfera({ level, dim = false, size = 280, conn = "live" }: { l
         let ba = 0;
         let bs = 0;
         if (e > 0) {
-          const i = kr[k]!;
-          const r = radiusAt(kphi[k]!, kth[k]!, i, ringA[i]!, forma);
-          const dm = drift * w;
-          const sk = scat * w;
-          const p = projetar(
-            r * kcp[k]! * kct[k]! + sx * dm + ux[k]! * sk,
-            r * ksp[k]! + sy * dm + uy[k]! * sk,
-            r * kcp[k]! * kst[k]! + sz * dm + uz[k]! * sk,
-            yaw, tilt, roll, Rs,
-          );
+          let x0: number;
+          let y0: number;
+          let z0: number;
+          if (kd[k]) {
+            // poeira: enxame solto em volta, vibrando em ângulos diferentes
+            const rho = 1.02 + 0.5 * kdel[k]! + 0.12 * sx;
+            const dm = (0.05 + 0.12 * sm.vol + 0.1 * sm.high) * w;
+            x0 = ux[k]! * rho + sy * dm;
+            y0 = uy[k]! * rho + sz * dm;
+            z0 = uz[k]! * rho + sx * dm;
+          } else {
+            const i = kr[k]!;
+            const r = radiusAt(kphi[k]!, kth[k]!, i, ringA[i]!, forma);
+            const dm = drift * w;
+            const sk = scat * w;
+            x0 = r * kcp[k]! * kct[k]! + sx * dm + ux[k]! * sk;
+            y0 = r * ksp[k]! + sy * dm + uy[k]! * sk;
+            z0 = r * kcp[k]! * kst[k]! + sz * dm + uz[k]! * sk;
+          }
+          const p = projetar(x0, y0, z0, yaw, tilt, roll, Rs);
           bx = cx + p.x;
           by = cy + p.y;
           bz = p.z;
           const d = clamp((p.z + 1.25) / 2.5);
-          ba = 0.2 + 0.8 * Math.pow(d, 1.4);
-          bs = 0.55 + 0.9 * d;
-          // fio claro em espiral
-          let da2 = kth[k]! - (kphi[k]! * 3 + seam);
-          da2 -= Math.round(da2 / TAU) * TAU;
-          if (Math.abs(da2) < 0.12) bs *= -1; // marca: fio
+          ba = (0.2 + 0.8 * Math.pow(d, 1.4)) * (kd[k] ? 0.55 : 1);
+          bs = TIER[kt[k]!]! * (0.7 + 0.5 * d);
+          if (!kd[k]) {
+            let da2 = kth[k]! - (kphi[k]! * 3 + seam);
+            da2 -= Math.round(da2 / TAU) * TAU;
+            if (Math.abs(da2) < 0.1) bs *= -1; // marca: fio claro
+          }
         }
         const useB = e > 0.5 || !skullReady;
         let x: number;
@@ -455,16 +485,16 @@ export function VozEsfera({ level, dim = false, size = 280, conn = "live" }: { l
           y = by;
           a = ba;
           const seamDot = bs < 0;
-          sizeP = cs[k]! * sc * Math.abs(bs) * (1 + 0.1 * sm.vol) * (seamDot ? 1.25 : 1);
+          sizeP = k0 * Math.abs(bs) * (1 + 0.1 * sm.vol) * (seamDot ? 1.2 : 1);
           img = seamDot ? spr[8]! : bz < -0.1 ? spr[7]! : spr[6]!;
         } else {
           x = ax + (bx - ax) * e;
           y = ay + (by - ay) * e;
           a = aa + (ba - aa) * e;
-          sizeP = cs[k]! * sc * 0.9;
+          sizeP = cs[k]! * sc * (1 - e) + k0 * Math.abs(bs) * e;
           img = useB ? (bs < 0 ? spr[8]! : spr[6]!) : spr[cc[k]!]!;
         }
-        const s = sizeP * 1.6;
+        const s = sizeP * 1.5;
         ctx.globalAlpha = Math.min(1, a * am * 0.85);
         ctx.drawImage(img, x - s, y - s, s * 2, s * 2);
       }
