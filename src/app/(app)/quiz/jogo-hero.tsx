@@ -255,14 +255,12 @@ function FireEye({ left, top, width, delay }: { left: number; top: number; width
   );
 }
 
-/** Filtro de turbulência animado (uma vez por página): faz as chamas "lamberem" para cima. */
+/** Filtro de turbulência estático (uma vez por página). Animar o ruído refazia o desenho a cada quadro e travava o celular. */
 function FireFilter() {
   return (
     <svg width="0" height="0" className="absolute" aria-hidden focusable="false">
       <filter id="fogo-turbulencia" x="-30%" y="-30%" width="160%" height="160%">
         <feTurbulence type="fractalNoise" baseFrequency="0.035 0.09" numOctaves="2" seed="7" result="ruido">
-          <animate attributeName="baseFrequency" dur="2.6s" values="0.035 0.09;0.045 0.12;0.035 0.09" repeatCount="indefinite" />
-          <animate attributeName="seed" dur="0.9s" values="7;12;19;7" calcMode="discrete" repeatCount="indefinite" />
         </feTurbulence>
         <feDisplacementMap in="SourceGraphic" in2="ruido" scale="22" xChannelSelector="R" yChannelSelector="G" />
         <feGaussianBlur stdDeviation="0.8" />

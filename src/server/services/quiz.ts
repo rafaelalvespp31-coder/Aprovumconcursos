@@ -1,4 +1,5 @@
 import "server-only";
+import { cache as perRequest } from "react";
 import { disciplineLabel } from "@/ai/pedagogy";
 import { assertQuota } from "./plans";
 import { ensureDisciplines } from "./disciplines";
@@ -37,7 +38,7 @@ async function loadTopics(): Promise<QuizTopic[]> {
   if (cache && Date.now() - cache.at < TTL) return cache.topics;
   const db = createAdminClient();
   const [{ data, error }, counts] = await Promise.all([
-    db.from("catalog_topics").select("id, title, discipline_mode, law_code, nodes, lesson").eq("status", "publicado").order("title"),
+    db.from("catalog_topics").select("id, title, discipline_mode, law_code, nodes").eq("status", "publicado").order("title"),
     db.rpc("game_topic_counts"),
   ]);
   if (error) throw new Error(error.message);
@@ -45,7 +46,6 @@ async function loadTopics(): Promise<QuizTopic[]> {
   const gameRows = (counts.data ?? []) as Array<{ topic_id: string; title: string; discipline: string; law_code: string | null; n: number }>;
   const gameN = new Map(gameRows.map((g) => [g.topic_id, g.n]));
   const topics: QuizTopic[] = (data ?? []).map((t) => {
-    const lesson = (t.lesson ?? {}) as { sections?: QuizTopic["sections"] };
     return {
       id: t.id as string,
       title: t.title as string,
@@ -53,13 +53,26 @@ async function loadTopics(): Promise<QuizTopic[]> {
       lawCode: (t.law_code as string | null) ?? null,
       nodes: (t.nodes ?? []) as LawNode[],
       items: buildAll(((t.nodes ?? []) as LawNode[]), t.id as string),
-      sections: lesson.sections ?? [],
+      sections: [],
       gameCount: gameN.get(t.id as string) ?? 0,
     };
   }).filter((t) => t.items.length > 0 || t.gameCount > 0);
   cache = { at: Date.now(), topics };
   tierCache.clear();
   return topics;
+}
+
+
+// A aula completa pesa MB; só é lida (e guardada por pouco tempo) para o tema da pergunta respondida.
+const sectionsCache = new Map<string, { at: number; sections: QuizTopic["sections"] }>();
+async function sectionsOf(topicId: string): Promise<QuizTopic["sections"]> {
+  const hit = sectionsCache.get(topicId);
+  if (hit && Date.now() - hit.at < TTL) return hit.sections;
+  const { data } = await createAdminClient().from("catalog_topics").select("lesson").eq("id", topicId).maybeSingle();
+  const sections = (((data?.lesson ?? {}) as { sections?: QuizTopic["sections"] }).sections ?? []);
+  if (sectionsCache.size > 60) sectionsCache.clear();
+  sectionsCache.set(topicId, { at: Date.now(), sections });
+  return sections;
 }
 
 // Itens por dificuldade (mesmos dispositivos; lacunas, banco e apoio mudam com o nível).
@@ -115,12 +128,12 @@ interface AttemptRow {
   created_at: string;
 }
 
-async function myAttempts(): Promise<AttemptRow[]> {
+const myAttempts = perRequest(async (): Promise<AttemptRow[]> => {
   const db = await createUserClient();
   const { data, error } = await db.from("quiz_attempts").select("topic_id, node_key, correct, xp, created_at").order("created_at", { ascending: false }).limit(5000);
   if (error) throw new Error(error.message);
   return (data ?? []) as AttemptRow[];
-}
+});
 
 const todayKey = (iso: string) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 
@@ -297,7 +310,7 @@ export async function checkAnswer(topicId: string, nodeKey: string, given: strin
   // Grava só pelo servidor, depois de conferir (o aluno não grava XP direto no banco).
   const { error } = repeated ? { error: null } : await createAdminClient().from("quiz_attempts").insert({ user_id: user.id, topic_id: topicId, node_key: nodeKey, correct, xp, tier: tier.tier, response_ms: typeof responseMs === "number" && Number.isFinite(responseMs) ? Math.min(3_600_000, Math.max(0, Math.round(responseMs))) : null });
   if (error) throw new Error(error.message);
-  const after = await myAttempts();
+  const after: AttemptRow[] = repeated ? before : [{ topic_id: topicId, node_key: nodeKey, correct, xp, created_at: new Date().toISOString() }, ...before];
   const s = summarize(after, topics);
   const next = levelInfo(after.length);
   return {
@@ -308,7 +321,7 @@ export async function checkAnswer(topicId: string, nodeKey: string, given: strin
     totals: { xp: s.xp, todayHits: s.todayHits, mastered: s.topics.find((t) => t.id === topicId)?.mastered ?? 0 },
     level: next,
     levelUp: next.level > current.level ? { from: current, to: next } : null,
-    help: game ? { explicacao: `**${game.subject}**\n\n${game.explanation}`, banca: null, dica: null } : helpFor(topic, item),
+    help: game ? { explicacao: `**${game.subject}**\n\n${game.explanation}`, banca: null, dica: null } : helpFor({ ...topic, sections: await sectionsOf(topic.id) }, item),
   };
 }
 

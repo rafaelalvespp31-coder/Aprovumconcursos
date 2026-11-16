@@ -4529,3 +4529,6 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 .pf-escudo::before { content: ""; position: absolute; inset: -3px; border-radius: 21px; padding: 2px; background: conic-gradient(from 0deg, transparent 0 55%, #ff5a5a 80%, transparent); -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: pf-escudo 4s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .pf-varredura, .pf-escudo::before { animation: none; } }
 
+
+/* Modo Jogo: o filtro de distorção das chamas é caro; só em telas grandes e sem "reduzir movimento". */
+@media (max-width: 1023px), (prefers-reduced-motion: reduce) { .fogo-olho svg { filter: none !important; } }

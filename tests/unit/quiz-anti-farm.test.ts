@@ -13,6 +13,7 @@ function from(table: string) {
     gte: (c: string, v: string) => (filters.push((r) => String(r[c]) >= v), q),
     order: () => q,
     limit: () => q,
+    maybeSingle: async () => ({ data: (tables[table] ?? []).find((r) => filters.every((f) => f(r))) ?? null, error: null }),
     insert: async (row: Row) => {
       inserts.push(row);
       (tables[table] ??= []).push({ ...row, created_at: new Date().toISOString() });
