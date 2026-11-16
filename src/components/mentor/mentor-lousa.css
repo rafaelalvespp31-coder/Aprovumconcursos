@@ -10,7 +10,7 @@
 .lz-bt:hover { background: rgba(255,255,255,.12); }
 .lz-bt:focus-visible { outline: 2px solid #fff; outline-offset: -2px; }
 /* moldura de alumínio + quadro branco + bandeja do canetão */
-.lz-quadro { flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 0 10px 10px; padding: 8px; border-radius: 6px; background: linear-gradient(135deg, #e9ebee, #9aa0a8 45%, #d9dce0 70%, #8d939b); box-shadow: inset 0 0 0 1px rgba(255,255,255,.5), 0 2px 6px rgba(0,0,0,.4); }
+.lz-quadro { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; margin: 0 10px 10px; padding: 8px; border-radius: 6px; background: linear-gradient(135deg, #e9ebee, #9aa0a8 45%, #d9dce0 70%, #8d939b); box-shadow: inset 0 0 0 1px rgba(255,255,255,.5), 0 2px 6px rgba(0,0,0,.4); }
 .lz-placa { flex: 1; min-height: 0; overflow-y: auto; position: relative; padding: 14px 18px 22px; font-family: Kalam, "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive; border-radius: 3px;
   background: radial-gradient(90% 70% at 25% 0%, rgba(255,255,255,.9), transparent 70%), linear-gradient(180deg, #f6f6f2, #e9e9e3); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12), inset 0 8px 24px -10px rgba(0,0,0,.18); scrollbar-width: thin; }
 .lz-bandeja { flex: none; height: 12px; margin: 6px 22% 0; border-radius: 0 0 6px 6px; background: linear-gradient(180deg, #b7bcc3, #7f858d); position: relative; }
@@ -46,3 +46,12 @@
 .lz-sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
 @media (max-width: 720px) { .lz { width: calc(100vw - 12px); height: calc(100dvh - 150px); max-height: 640px; inset: auto 0 96px; } .lz-placa { padding: 10px 12px 18px; } .lz-bandeja { margin: 6px 12% 0; } }
 @media (prefers-reduced-motion: reduce) { .lz, .lz-marc { animation: none; } }
+
+.lz-logo { position: absolute; left: 22px; bottom: 28px; height: 15px; width: auto; opacity: .8; pointer-events: none; mix-blend-mode: multiply; }
+.lz-placa { padding-bottom: 40px; }
+.lz-nova { animation: lz-tinta .18s ease-out both; }
+@keyframes lz-tinta { from { opacity: 0; filter: blur(1.5px); } to { opacity: 1; filter: none; } }
+.lz-em { opacity: 0; transform-box: fill-box; transform-origin: 50% 80%; animation: lz-pop .55s cubic-bezier(.3,1.5,.5,1) forwards; animation-delay: var(--d, 0s); }
+@keyframes lz-pop { from { opacity: 0; transform: scale(.4) rotate(-12deg); } to { opacity: 1; transform: none; } }
+.lz-pronto .lz-em { animation: none; opacity: 1; }
+.lz-l { transition: none; }

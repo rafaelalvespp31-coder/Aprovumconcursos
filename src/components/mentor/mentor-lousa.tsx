@@ -5,12 +5,31 @@ import { RotateCcw, X } from "lucide-react";
 import { LOUSA_H, LOUSA_W, type ItemDesenho, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import "./mentor-lousa.css";
 
-const COR: Record<string, string> = { azul: "#1d3a8a", preto: "#1a1a1f", vermelho: "#c62828", verde: "#1b7a43", grafite: "#1a1a1f" };
-const CPS = 24; // letras por segundo: ritmo de quem escreve no quadro
-const PAUSA = 5; // "letras" de pausa entre linhas
+const COR: Record<string, string> = { azul: "#1d3a8a", preto: "#1a1a1f", vermelho: "#c62828", verde: "#1b7a43", grafite: "#1a1a1f", laranja: "#d9620b", roxo: "#6b2fa3", rosa: "#c2185b" };
+const UPS = 20; // unidades de tempo por segundo (cada letra custa ~1 unidade)
+const PAUSA = 7; // respiro entre linhas, como quem levanta o canetão
+
+/** Tempo de cada letra: espaços e pontuação demoram mais, números um pouco mais, e há uma oscilação leve e fixa (humana). */
+function custoLetra(ch: string, i: number): number {
+  const jit = 0.78 + ((Math.sin(i * 12.9898 + ch.charCodeAt(0) * 78.233) * 43758.5453) % 1 + 1) % 1 * 0.55;
+  if (ch === " ") return 1.5 * jit;
+  if (/[,;:]/.test(ch)) return 3.2;
+  if (/[.!?]/.test(ch)) return 4.2;
+  if (/[0-9=+\-·÷×]/.test(ch)) return 1.4 * jit;
+  if (/\p{Extended_Pictographic}/u.test(ch)) return 4;
+  return jit;
+}
+/** Texto completo escrito pela linha (o "par" junta os dois lados com um intervalo para o tracejado). */
+const textoDe = (l: LinhaLousa) => (l.tipo === "par" ? `${l.texto}\u2003${l.dir ?? ""}` : l.tipo === "espaco" ? "" : l.texto);
 const cor = (c?: string, padrao = "azul") => COR[c ?? padrao] ?? COR.azul!;
 
-const tamanho = (l: LinhaLousa) => (l.tipo === "par" ? l.texto.length + (l.dir?.length ?? 0) + 6 : l.tipo === "espaco" ? 0 : l.texto.length);
+/** Instante (acumulado) em que cada letra termina de ser escrita; o último valor é a duração da linha. */
+function cronograma(l: LinhaLousa): number[] {
+  const out: number[] = [];
+  let a = 0;
+  [...textoDe(l)].forEach((ch, i) => { a += custoLetra(ch, i); out.push(a); });
+  return out;
+}
 
 function Marcador({ c }: { c: string }) {
   return (
@@ -42,16 +61,35 @@ function Marca({ m }: { m: NonNullable<LinhaLousa["marca"]> }) {
   );
 }
 
-/** Texto com o trecho "circular" envolto num círculo (só quando já foi todo escrito). */
-function ComCirculo({ s, circular, feito }: { s: string; circular?: string; feito: boolean }) {
-  const i = circular && feito ? s.indexOf(circular) : -1;
-  if (i < 0) return <>{s}</>;
-  return <>{s.slice(0, i)}<span className="lz-ci">{circular}</span>{s.slice(i + circular!.length)}</>;
+/** Escreve as primeiras `v` letras de `s`, cada trecho com a sua caneta; o círculo só entra com a linha pronta. */
+function Escrito({ s, v, l, cor0, feito, lado }: { s: string; v: number; l: LinhaLousa; cor0: string; feito: boolean; lado?: "dir" }) {
+  const ch = [...s];
+  const cores: (string | undefined)[] = ch.map(() => undefined);
+  const circ: boolean[] = ch.map(() => false);
+  const marca = (trecho: string, f: (i: number) => void) => { const i = s.indexOf(trecho); if (i >= 0) for (let k = 0; k < [...trecho].length; k++) f(i + k); };
+  for (const r of l.realce ?? []) marca(r.trecho, (i) => { cores[i] = COR[r.cor]; });
+  if (feito && l.circular && (lado === "dir" || l.tipo !== "par")) marca(l.circular, (i) => { circ[i] = true; });
+  const out: React.ReactNode[] = [];
+  let i = 0;
+  while (i < Math.min(v, ch.length)) {
+    let j = i + 1;
+    while (j < Math.min(v, ch.length) && cores[j] === cores[i] && circ[j] === circ[i]) j++;
+    const ultimo = j === v && !feito;
+    const corpo = ch.slice(i, ultimo ? j - 1 : j).join("");
+    const nova = ultimo ? <span key={`n${j}`} className="lz-nova">{ch[j - 1]}</span> : null;
+    const st = cores[i] ? { color: cores[i] } : undefined;
+    const miolo = <>{corpo}{nova}</>;
+    out.push(circ[i] ? <span key={i} className="lz-ci" style={st}>{miolo}</span> : <span key={i} style={st}>{miolo}</span>);
+    i = j;
+  }
+  void cor0;
+  return <>{out}</>;
 }
 
 function Traco({ it, d }: { it: ItemDesenho; d: number }) {
   const c = cor("cor" in it ? it.cor : undefined, "grafite");
   const st = { ["--d" as string]: `${d}s`, stroke: c } as React.CSSProperties;
+  if (it.t === "emoji") return <text className="lz-em" x={it.x} y={it.y} fontSize={it.tam} style={{ ["--d" as string]: `${d}s` }}>{it.s}</text>;
   if (it.t === "texto") return <text className="lz-tx" x={it.x} y={it.y} style={{ ["--d" as string]: `${d}s`, fill: c }}>{it.s}</text>;
   if (it.t === "linha") {
     const ang = Math.atan2(it.y2 - it.y1, it.x2 - it.x1);
@@ -77,8 +115,12 @@ const PENDENTE: Lousa = { mostrar: true, titulo: "", linhas: [], desenho: [] };
 export function MentorLousa({ lousa: dados, onClose }: { lousa: Lousa | null; onClose: () => void }) {
   const lousa = dados ?? PENDENTE;
   const linhas = lousa.linhas;
-  const inicios = useMemo(() => { let a = 0; return linhas.map((l) => { const x = a; a += tamanho(l) + PAUSA; return x; }); }, [linhas]);
-  const total = linhas.length ? inicios[inicios.length - 1]! + tamanho(linhas[linhas.length - 1]!) + PAUSA : 0;
+  const crono = useMemo(() => linhas.map(cronograma), [linhas]);
+  const dur = (j: number) => (crono[j]!.length ? crono[j]![crono[j]!.length - 1]! : 0);
+  const inicios = useMemo(() => { let a = 0; return crono.map((c) => { const x = a; a += (c.length ? c[c.length - 1]! : 0) + PAUSA; return x; }); }, [crono]);
+  const total = linhas.length ? inicios[inicios.length - 1]! + dur(linhas.length - 1) + PAUSA : 0;
+  /** Quantas letras da linha j já foram escritas no instante `pos`. */
+  const letras = (j: number) => { const c = crono[j]!; const t0 = pos - inicios[j]!; let n = 0; while (n < c.length && c[n]! <= t0) n++; return n; };
   const [pos, setPos] = useState(0);
   const [rodada, setRodada] = useState(0);
   const reduz = useRef(false);
@@ -91,7 +133,7 @@ export function MentorLousa({ lousa: dados, onClose }: { lousa: Lousa | null; on
     const t0 = performance.now();
     let raf = 0;
     const f = (now: number) => {
-      const p = ((now - t0) / 1000) * CPS;
+      const p = ((now - t0) / 1000) * UPS;
       setPos(Math.min(total, p));
       if (p < total) raf = requestAnimationFrame(f);
     };
@@ -109,7 +151,7 @@ export function MentorLousa({ lousa: dados, onClose }: { lousa: Lousa | null; on
   // acompanha a escrita: rola o quadro para a linha atual
   useEffect(() => { const el = placa.current; if (el && !fim) el.scrollTop = el.scrollHeight; }, [pos, fim]);
 
-  const ativo = linhas.findIndex((l, j) => pos - inicios[j]! < tamanho(l));
+  const ativo = linhas.findIndex((_, j) => pos - inicios[j]! < dur(j));
   const desenho = lousa.desenho;
   return (
     <aside className={`lz ${reduz.current ? "lz-pronto" : ""}`} role="dialog" aria-label={`Quadro do Mentor: ${lousa.titulo || "exemplo"}`} data-testid="mentor-lousa">
@@ -126,27 +168,26 @@ export function MentorLousa({ lousa: dados, onClose }: { lousa: Lousa | null; on
             {!dados && <p className="lz-l" data-t="texto"><Marcador c="#1d3a8a" /></p>}
             {linhas.map((l, j) => {
               if (pos < inicios[j]!) return null;
-              const len = tamanho(l);
-              const v = Math.max(0, Math.min(len, Math.floor(pos - inicios[j]!)));
+              const len = crono[j]!.length;
+              const v = letras(j);
               const feito = v >= len;
               const c = cor(l.cor, l.tipo === "conta" || l.tipo === "nota" ? "preto" : "azul");
               const pen = ativo === j && <Marcador c={c} />;
               const st = { ["--n" as string]: l.nivel, ["--c" as string]: c } as React.CSSProperties;
               if (l.tipo === "espaco") return <div key={j} className="lz-l" data-t="espaco" />;
               if (l.tipo === "par") {
-                const e = Math.min(v, l.texto.length);
-                const d = Math.max(0, v - l.texto.length - 4);
+                const nE = [...l.texto].length;
                 return (
                   <div key={j} className="lz-l" data-t="par" style={st}>
                     <div className="lz-par">
-                      <span>{l.texto.slice(0, e)}</span>
-                      {v > l.texto.length ? <i /> : <i style={{ visibility: "hidden" }} />}
-                      <span>{feito ? <ComCirculo s={l.dir ?? ""} circular={l.circular} feito /> : (l.dir ?? "").slice(0, d)}{pen}</span>
+                      <span><Escrito s={l.texto} v={v} l={l} cor0={c} feito={feito} /></span>
+                      <i style={{ visibility: v > nE ? "visible" : "hidden" }} />
+                      <span><Escrito s={l.dir ?? ""} v={Math.max(0, v - nE - 1)} l={l} cor0={c} feito={feito} lado="dir" />{pen}</span>
                     </div>
                   </div>
                 );
               }
-              const txt = <ComCirculo s={l.texto.slice(0, v)} circular={l.circular} feito={feito} />;
+              const txt = <Escrito s={l.texto} v={v} l={l} cor0={c} feito={feito} />;
               return (
                 <p key={j} className="lz-l" data-t={l.tipo} style={st}>
                   <span className={l.caixa && feito ? "lz-cx" : "lz-w"}>
@@ -165,6 +206,8 @@ export function MentorLousa({ lousa: dados, onClose }: { lousa: Lousa | null; on
             )}
           </div>
         </div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img className="lz-logo" src="/images/aprovum-logo-escura.png" alt="" aria-hidden />
         <div className="lz-bandeja" aria-hidden />
       </div>
     </aside>
