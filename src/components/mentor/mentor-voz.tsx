@@ -46,6 +46,26 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   useEffect(() => { onLousaRef.current = onLousa; });
   const lousaTurno = useRef(false);
   const falaTurno = useRef("");
+  const debLousa = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const dispararLousa = () => {
+    const r = ref.current;
+    if (debLousa.current) { clearTimeout(debLousa.current); debLousa.current = null; }
+    if (lousaTurno.current || !onLousaRef.current || (roteiro.current && !roteiro.current.fim)) return;
+    lousaTurno.current = true;
+    onLousaRef.current("pendente");
+    void fetch("/api/mentor/lousa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido: r.turn || falaTurno.current, study: getStudy?.() ?? undefined }) })
+      .then((x) => (x.ok ? (x.json() as Promise<{ lousa?: Lousa }>) : null))
+      .then((j) => {
+        const l = j?.lousa?.mostrar ? j.lousa : null;
+        const rot = l ? roteiroDe(l) : null;
+        if (l && rot && rot.total > 0 && ref.current.session) {
+          roteiro.current = { total: rot.total, chars: 0, ev: [], fim: false, tFim: 0 };
+          onLousaRef.current?.(l, progresso);
+          try { ref.current.session.sendRealtimeInput({ text: `[ROTEIRO DA LOUSA] Explique agora em voz alta, na ordem e sem pular nada, o que está sendo escrito no quadro:\n${rot.texto}` }); } catch { /* segue sem sincronia */ }
+        } else onLousaRef.current?.(l);
+      })
+      .catch(() => onLousaRef.current?.(null));
+  };
   /** Roteiro em andamento: eventos (instante de reprodução → caracteres falados) para o quadro seguir a voz. */
   const roteiro = useRef<{ total: number; chars: number; ev: { t: number; c: number }[]; fim: boolean; tFim: number } | null>(null);
   const progresso = () => {
@@ -253,21 +273,10 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     // Lousa: abre na hora (quando o aluno pede uma conta/exemplo/desenho ou o Mentor diz que vai anotar) e
     // monta o conteúdo em paralelo à fala; o quadro já aparece escrevendo e recebe o texto quando chega.
     if (replied) falaTurno.current += replied;
-    if (!lousaTurno.current && onLousaRef.current && (!roteiro.current || roteiro.current.fim) && (starts || replied) && (pedeLousa(r.turn) || anunciaLousa(falaTurno.current))) {
-      lousaTurno.current = true;
-      onLousaRef.current("pendente");
-      void fetch("/api/mentor/lousa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido: r.turn || falaTurno.current, study: getStudy?.() ?? undefined }) })
-        .then((x) => (x.ok ? (x.json() as Promise<{ lousa?: Lousa }>) : null))
-        .then((j) => {
-          const l = j?.lousa?.mostrar ? j.lousa : null;
-          const rot = l ? roteiroDe(l) : null;
-          if (l && rot && rot.total > 0 && ref.current.session) {
-            roteiro.current = { total: rot.total, chars: 0, ev: [], fim: false, tFim: 0 };
-            onLousaRef.current?.(l, progresso);
-            try { ref.current.session.sendRealtimeInput({ text: `[ROTEIRO DA LOUSA] Explique agora em voz alta, na ordem e sem pular nada, o que está sendo escrito no quadro:\n${rot.texto}` }); } catch { /* segue sem sincronia */ }
-          } else onLousaRef.current?.(l);
-        })
-        .catch(() => onLousaRef.current?.(null));
+    if ((starts || replied) && (pedeLousa(r.turn) || anunciaLousa(falaTurno.current))) dispararLousa();
+    if (said && onLousaRef.current && pedeLousa(r.turn)) { // dispara assim que o aluno termina o pedido, sem esperar o Mentor começar
+      if (debLousa.current) clearTimeout(debLousa.current);
+      debLousa.current = setTimeout(dispararLousa, 650);
     }
     if (replied) r.replied.push(replied);
     const ro = roteiro.current;

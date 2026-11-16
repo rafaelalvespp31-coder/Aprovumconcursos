@@ -120,7 +120,7 @@ async function personalPrompt(userId: string): Promise<string> {
  * aceita a ferramenta e, quando recusa, a conversa cai. Ligue com GEMINI_VOICE_SEARCH=1 só depois de testar.
  */
 /** A lousa abre sozinha na tela do aluno quando ele pede uma conta, exemplo ou desenho; a voz acompanha. */
-const LOUSA_RULE = `\n\nLOUSA: quando o aluno pedir para ensinar um cálculo, dar um exemplo, mostrar passo a passo ou desenhar algo, uma lousa abre na tela dele. Responda SÓ com uma frase curta avisando que vai anotar na lousa (ex.: "Vou montar o exemplo na lousa, um instante.") e PARE de falar. Logo depois chegará uma mensagem começando com [ROTEIRO DA LOUSA], com as falas em ordem. Então explique em voz alta exatamente esse roteiro, na mesma ordem e com as palavras bem próximas, uma fala após a outra, num ritmo calmo de professor escrevendo no quadro; não pule nem acrescente passos e não leia os números das falas. Ao terminar, diga uma frase curta de fechamento e pergunte se ficou claro.`;
+const LOUSA_RULE = `\n\nLOUSA: quando o aluno pedir para ensinar um cálculo, dar um exemplo, mostrar passo a passo ou desenhar algo, uma lousa abre na tela dele. Responda SÓ com uma frase MUITO curta (no máximo 6 palavras, ex.: "Já anoto na lousa!") e PARE de falar. Logo depois chegará uma mensagem começando com [ROTEIRO DA LOUSA], com as falas em ordem. Então explique em voz alta exatamente esse roteiro, na mesma ordem e com as palavras bem próximas, uma fala após a outra, num ritmo calmo de professor escrevendo no quadro; não pule nem acrescente passos e não leia os números das falas. Ao terminar, diga uma frase curta de fechamento e pergunte se ficou claro.`;
 
 const voiceTools = () => (process.env.GEMINI_VOICE_SEARCH === "1" ? [{ googleSearch: {} }] : undefined);
 
