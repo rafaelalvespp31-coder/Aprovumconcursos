@@ -22,6 +22,7 @@ import { ADMIN_TIME_RULE, STUDENT_TIME_RULE, VOICE_DAILY_SECONDS, VOICE_PERSONAL
  */
 
 const DEFAULT_MODEL = "gemini-3.8-live";
+const RETIRED_LIVE = /^gemini-(3\.1-flash-live-preview|2\.5-flash-native-audio-preview|live-2\.5|2\.0-flash-live)/;
 /** Voz masculina e firme (professor). Troque pela variável GEMINI_VOICE: Algenib, Orus, Charon, Alnilam, Sadaltager… */
 const DEFAULT_VOICE = "Algenib";
 
@@ -211,7 +212,9 @@ export async function startVoice(userId: string, study?: StudyContext | null, le
     if (mark.error) throw new Error(mark.error.message);
   }
 
-  const model = process.env.GEMINI_LIVE_MODEL?.trim() || DEFAULT_MODEL;
+  // Modelos de voz aposentados pelo Google (17/11/2026) são ignorados: se a variável de ambiente ainda aponta para um deles, usa o atual.
+  const envModel = process.env.GEMINI_LIVE_MODEL?.trim();
+  const model = envModel && !RETIRED_LIVE.test(envModel) ? envModel : DEFAULT_MODEL;
   const voice = process.env.GEMINI_VOICE?.trim() || DEFAULT_VOICE;
   try {
     const client = new GoogleGenAI({ apiKey, httpOptions: { apiVersion: "v1alpha" } });
