@@ -3,7 +3,7 @@ import { missaoVisual } from "./missao";
 
 describe("missaoVisual", () => {
   it("reconhece órgãos com foto", () => {
-    expect(missaoVisual("Polícia Rodoviária Federal")).toEqual({ sigla: "PRF", foto: "/missoes/prf.webp" });
+    expect(missaoVisual("Polícia Rodoviária Federal")).toMatchObject({ sigla: "PRF", foto: "/orgs/prf-card.webp" });
     expect(missaoVisual("Concurso PMERJ 2025")).toMatchObject({ sigla: "PMRJ" });
     expect(missaoVisual("Polícia Penal de Minas Gerais")).toMatchObject({ foto: "/missoes/pp.webp" });
     expect(missaoVisual("Guarda Civil Municipal de BH")).toMatchObject({ sigla: "GCM" });

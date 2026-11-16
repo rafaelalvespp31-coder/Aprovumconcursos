@@ -2,9 +2,9 @@ import { CentralMissoesView } from "@/components/central/central-missoes";
 
 /** Só galeria: dados de exemplo para conferir o visual (a ação não grava nada). */
 const cards = [
-  { id: "1", sigla: "PRF", nome: "PRF", foto: "/missoes/prf.webp", pct: 42, href: "#", pronto: true },
-  { id: "2", sigla: "PMRJ", nome: "PMRJ", foto: "/missoes/pmrj.webp", pct: 18, href: "#", pronto: true },
-  { id: "3", sigla: "PCMG", nome: "PCMG", foto: "/missoes/pcmg.webp", pct: 0, href: "#", pronto: true },
+  { id: "1", sigla: "PRF", nome: "PRF", foto: "/orgs/prf-card.webp", pct: 42, href: "#", pronto: true },
+  { id: "2", sigla: "PMRJ", nome: "PMRJ", foto: "/orgs/pmerj-card.webp", pct: 18, href: "#", pronto: true },
+  { id: "3", sigla: "PCMG", nome: "PCMG", foto: "/orgs/pcmg-card.webp", pct: 0, href: "#", pronto: true },
   { id: "4", sigla: "POLÍCIA PENAL", nome: "Polícia Penal", foto: "/missoes/pp.webp", pct: 67, href: "#", pronto: true },
   { id: "5", sigla: "GCM", nome: "GCM", foto: "/missoes/gcm.webp", pct: null, href: "#", pronto: false },
 ];

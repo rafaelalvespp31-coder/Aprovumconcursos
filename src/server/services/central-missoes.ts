@@ -31,7 +31,8 @@ export async function loadCentralMissoes(userId: string): Promise<CentralMissoes
     const v = missaoVisual(c.contestName, c.roleName, c.title);
     const p = c.progress;
     const pronto = c.status === "concluido";
-    const href = !pronto ? `/aprovum-ai/${c.id}` : p?.nextLessonId ? `/aula/${p.nextLessonId}` : c.studyFolderId ? `/trilhas#pasta-${c.studyFolderId}` : `/meu-concurso/${c.id}?aba=visao`;
+    // "Vamos estudar" abre todas as matérias do edital, organizadas, para o aluno escolher por onde começar.
+    const href = pronto ? `/meu-concurso/${c.id}?aba=aulas` : `/aprovum-ai/${c.id}`;
     return { id: c.id, sigla: v.sigla, nome: c.contestName ?? c.title, foto: v.foto, pct: pronto && p ? Math.round(p.pct) : null, href, pronto };
   });
   const id = (sel.data?.preparation_id as string | undefined) ?? null;
