@@ -72,7 +72,10 @@ function Traco({ it, d }: { it: ItemDesenho; d: number }) {
  * Quadro branco do Mentor: abre quando o aluno pede uma conta, um exemplo ou um desenho. Um professor "escreve" de
  * cima para baixo, letra por letra, com recuos, sublinhados, caixas, círculos e setas, e depois traça o desenho.
  */
-export function MentorLousa({ lousa, onClose }: { lousa: Lousa; onClose: () => void }) {
+const PENDENTE: Lousa = { mostrar: true, titulo: "", linhas: [], desenho: [] };
+
+export function MentorLousa({ lousa: dados, onClose }: { lousa: Lousa | null; onClose: () => void }) {
+  const lousa = dados ?? PENDENTE;
   const linhas = lousa.linhas;
   const inicios = useMemo(() => { let a = 0; return linhas.map((l) => { const x = a; a += tamanho(l) + PAUSA; return x; }); }, [linhas]);
   const total = linhas.length ? inicios[inicios.length - 1]! + tamanho(linhas[linhas.length - 1]!) + PAUSA : 0;
@@ -112,7 +115,7 @@ export function MentorLousa({ lousa, onClose }: { lousa: Lousa; onClose: () => v
     <aside className={`lz ${reduz.current ? "lz-pronto" : ""}`} role="dialog" aria-label={`Quadro do Mentor: ${lousa.titulo || "exemplo"}`} data-testid="mentor-lousa">
       <div className="lz-topo">
         <span className="lz-kicker">QUADRO</span>
-        <span className="lz-titulo">{lousa.titulo}</span>
+        <span className="lz-titulo">{lousa.titulo || (dados ? "" : "Preparando…")}</span>
         <button type="button" className="lz-bt" onClick={() => setRodada((r) => r + 1)} aria-label="Escrever de novo" title="Escrever de novo"><RotateCcw size={18} aria-hidden /></button>
         <button type="button" className="lz-bt" onClick={onClose} aria-label="Fechar quadro"><X size={20} aria-hidden /></button>
       </div>
@@ -120,6 +123,7 @@ export function MentorLousa({ lousa, onClose }: { lousa: Lousa; onClose: () => v
         <div className="lz-placa" ref={placa} key={rodada} onClick={() => setPos(total)}>
           <ol className="lz-sr">{linhas.map((l, i) => <li key={i}>{[l.texto, l.dir].filter(Boolean).join(" — ")}</li>)}</ol>
           <div aria-hidden>
+            {!dados && <p className="lz-l" data-t="texto"><Marcador c="#1d3a8a" /></p>}
             {linhas.map((l, j) => {
               if (pos < inicios[j]!) return null;
               const len = tamanho(l);
@@ -154,9 +158,9 @@ export function MentorLousa({ lousa, onClose }: { lousa: Lousa; onClose: () => v
                 </p>
               );
             })}
-            {desenho.length > 0 && (fim || pos > total * 0.35 || reduz.current) && (
+            {desenho.length > 0 && (fim || pos > total * 0.9 || reduz.current) && (
               <svg className="lz-svg" viewBox={`0 0 ${LOUSA_W} ${LOUSA_H}`} role="img" aria-label="Desenho do exemplo" key={`d${rodada}`}>
-                {desenho.map((it, i) => <Traco key={i} it={it} d={i * 0.55} />)}
+                {desenho.map((it, i) => <Traco key={i} it={it} d={i * 0.9} />)}
               </svg>
             )}
           </div>

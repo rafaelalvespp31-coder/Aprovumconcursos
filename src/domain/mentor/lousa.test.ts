@@ -21,3 +21,12 @@ describe("lousaSchema", () => {
     expect(lousaSchema.safeParse({ mostrar: true, linhas: [], desenho: [{ t: "svg", raw: "<script>" }] }).success).toBe(false);
   });
 });
+
+describe("anunciaLousa", () => {
+  it("detecta o Mentor anunciando que vai anotar", async () => {
+    const { anunciaLousa } = await import("./lousa");
+    expect(anunciaLousa("Vou anotar na lousa pra você ver")).toBe(true);
+    expect(anunciaLousa("Olha aqui no quadro")).toBe(true);
+    expect(anunciaLousa("Boa pergunta, vamos revisar o artigo quinto")).toBe(false);
+  });
+});

@@ -44,3 +44,9 @@ export type Lousa = z.infer<typeof lousaSchema>;
 export type ItemDesenho = z.infer<typeof itemDesenho>;
 export const LOUSA_W = 400;
 export const LOUSA_H = 260;
+
+/** O Mentor anuncia, falando, que vai anotar/escrever/desenhar no quadro ("vou anotar na lousa", "olha aqui no quadro"). */
+export function anunciaLousa(fala: string): boolean {
+  const s = fala.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return /\b(lousa|quadro)\b/.test(s) || /\bvou (te )?(anotar|escrever|desenhar|rabiscar|montar|mostrar (a|o) (conta|calculo|exemplo))/.test(s) || /\bdeixa eu (anotar|escrever|desenhar)/.test(s);
+}

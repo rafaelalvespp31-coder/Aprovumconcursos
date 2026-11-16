@@ -91,7 +91,7 @@ export function StudyTools({
   const [pdfs, setPdfs] = useState<PdfInfo[]>(initialPdfs);
   const [panel, setPanel] = useState<Panel>(null);
   const [mentorFala, setMentorFala] = useState(false);
-  const [lousa, setLousa] = useState<{ id: number; dados: Lousa } | null>(null);
+  const [lousa, setLousa] = useState<{ id: number; dados: Lousa | null } | null>(null);
   const levelRef = useRef<(() => Bands) | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [armed, setArmed] = useState(false);
@@ -528,7 +528,7 @@ export function StudyTools({
                 <FileText className="size-5" aria-hidden /><span className="st-btn-txt"><b>Meu PDF</b><small>Gerar revisão</small></span>
               </button>
               <div className="st-mentor-wrap">
-                {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={46} onSpeaking={setMentorFala} onLousa={(dados) => setLousa({ id: Date.now(), dados })} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setLousa(null); setPanel(null); }} /> : <VozOrbRepouso size={46} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+                {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={46} onSpeaking={setMentorFala} onLousa={(dados) => setLousa((a) => (dados === null ? null : dados === "pendente" ? (a ?? { id: Date.now(), dados: null }) : { id: a?.id ?? Date.now(), dados }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setLousa(null); setPanel(null); }} /> : <VozOrbRepouso size={46} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
                 <span className="st-btn-txt st-mentor-txt" aria-hidden onClick={() => { if (panel !== "mentor") { currentCapture(); setPanel("mentor"); } }}><b>Mentor</b><small>Falar com o Mentor</small></span>
               </div>
             </div>
