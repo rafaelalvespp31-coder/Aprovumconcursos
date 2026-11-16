@@ -264,20 +264,33 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     };
   }, [encerrar]);
 
-  const tocar = (b64: string) => {
+  /** Fila de reprodução com colchão (jitter buffer): junta blocos pequenos e agenda sem folga entre eles. */
+  const pend = useRef<{ f: Float32Array[]; n: number; timer: ReturnType<typeof setTimeout> | null }>({ f: [], n: 0, timer: null });
+  const LEAD = 0.14; // colchão ao (re)começar a falar
+  const flushFala = () => {
     const r = ref.current;
+    const q = pend.current;
+    if (q.timer) { clearTimeout(q.timer); q.timer = null; }
     const ctx = r.ctx;
-    if (!ctx) return;
-    const pcm = new Int16Array(fromB64(b64));
-    const f = new Float32Array(pcm.length);
-    for (let i = 0; i < pcm.length; i++) f[i] = pcm[i]! / 0x8000;
-    const buf = ctx.createBuffer(1, f.length, OUT_RATE);
-    buf.copyToChannel(f, 0);
+    if (!ctx || q.n === 0) { q.f = []; q.n = 0; return; }
+    const all = new Float32Array(q.n);
+    let o = 0;
+    for (const c of q.f) { all.set(c, o); o += c.length; }
+    q.f = []; q.n = 0;
+    const buf = ctx.createBuffer(1, all.length, OUT_RATE);
+    buf.copyToChannel(all, 0);
     const src = ctx.createBufferSource();
     src.buffer = buf;
     src.connect(r.aOut ?? ctx.destination);
     if (r.aF0) src.connect(r.aF0);
-    const at = Math.max(r.next, ctx.currentTime + 0.02);
+    const agora = ctx.currentTime;
+    let at = r.next;
+    if (at < agora + 0.01) { // fila vazia (começo da fala ou falta de áudio): recompõe o colchão em vez de tocar emendando
+      at = agora + LEAD;
+      const m = Math.min(all.length, 96); // rampa curtíssima: sem estalo no início
+      for (let i = 0; i < m; i++) all[i] = all[i]! * (i / m);
+      buf.copyToChannel(all, 0);
+    }
     src.start(at);
     r.next = at + buf.duration;
     r.sources.add(src);
@@ -286,6 +299,17 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       r.sources.delete(src);
       if (r.sources.size === 0) setSpeaking(false);
     };
+  };
+  const tocar = (b64: string) => {
+    const r = ref.current;
+    if (!r.ctx) return;
+    const pcm = new Int16Array(fromB64(b64));
+    const f = new Float32Array(pcm.length);
+    for (let i = 0; i < pcm.length; i++) f[i] = pcm[i]! / 0x8000;
+    const q = pend.current;
+    q.f.push(f); q.n += f.length;
+    if (q.n >= OUT_RATE * 0.12) flushFala(); // ~120 ms por bloco
+    else if (!q.timer) q.timer = setTimeout(flushFala, 45);
   };
 
   const onMessage = (m: LiveServerMessage) => {
@@ -301,6 +325,8 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       });
       r.sources.clear();
       r.next = 0;
+      if (pend.current.timer) clearTimeout(pend.current.timer);
+      pend.current = { f: [], n: 0, timer: null };
       setSpeaking(false);
     }
     const said = m.serverContent?.inputTranscription?.text;
@@ -384,7 +410,9 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       r.bye = false;
       r.next = 0;
 
-      const ctx = new AudioContext();
+      // 24 kHz = a taxa da voz do Mentor: os blocos encaixam sem reamostrar um a um (sem estalos nem "engasgos")
+      let ctx: AudioContext;
+      try { ctx = new AudioContext({ sampleRate: OUT_RATE, latencyHint: "playback" }); } catch { ctx = new AudioContext(); }
       r.ctx = ctx;
       const aOut = ctx.createAnalyser();
       aOut.fftSize = 256;

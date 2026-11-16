@@ -1,6 +1,6 @@
 import "server-only";
 import { studyContextInstruction, type StudyContext } from "@/domain/mentor/study-context";
-import { GoogleGenAI, Modality, Type } from "@google/genai";
+import { EndSensitivity, GoogleGenAI, Modality, StartSensitivity, Type } from "@google/genai";
 import { createAdminClient } from "../supabase";
 import { logEvent } from "../observability";
 import { getMyPlan } from "./plans";
@@ -253,7 +253,7 @@ export async function startVoice(userId: string, study?: StudyContext | null, le
         uses: 1,
         expireTime: new Date(now.getTime() + (left + VOICE_TOKEN_GRACE_SECONDS) * 1000).toISOString(),
         newSessionExpireTime: new Date(now.getTime() + 60_000).toISOString(),
-        liveConnectConstraints: { model, config: { responseModalities: [Modality.AUDIO], inputAudioTranscription: {}, outputAudioTranscription: {}, contextWindowCompression: { slidingWindow: {} }, systemInstruction: instruction, tools: voiceTools(), speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } } },
+        liveConnectConstraints: { model, config: { responseModalities: [Modality.AUDIO], inputAudioTranscription: {}, outputAudioTranscription: {}, contextWindowCompression: { slidingWindow: {} }, systemInstruction: instruction, tools: voiceTools(), temperature: 0.7, speechConfig: { languageCode: "pt-BR", voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } }, realtimeInputConfig: { automaticActivityDetection: { startOfSpeechSensitivity: StartSensitivity.START_SENSITIVITY_LOW, endOfSpeechSensitivity: EndSensitivity.END_SENSITIVITY_LOW, prefixPaddingMs: 120, silenceDurationMs: 650 } } } },
         httpOptions: { apiVersion: "v1alpha" },
       },
     });
