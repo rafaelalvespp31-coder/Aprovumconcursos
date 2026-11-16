@@ -84,6 +84,7 @@ export function QuizView({
   dailyGoal,
   previewLevelUp,
   previewRanking,
+  extra,
 }: {
   home: QuizHome;
   initialRound: QuizRound;
@@ -92,6 +93,8 @@ export function QuizView({
   /** Só na galeria: abre o popup de nível ao carregar. */
   previewLevelUp?: { from: QuizLevel; to: QuizLevel };
   previewRanking?: RankingRow[];
+  /** Bloco logo abaixo da abertura (ex.: entrada do Desafio rápido). */
+  extra?: React.ReactNode;
 }) {
   const [round, setRound] = useState(initialRound);
   const [level, setLevel] = useState<QuizLevel>(initialRound.level);
@@ -348,6 +351,7 @@ export function QuizView({
         }
       />
       <div className="relative mx-auto max-w-[1180px]">
+        {extra}
         <GameBanner
           topicTitle={topic.title}
           discipline={topic.discipline}
