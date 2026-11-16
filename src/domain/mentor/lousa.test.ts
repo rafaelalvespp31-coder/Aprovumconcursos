@@ -2,13 +2,16 @@ import { describe, expect, it } from "vitest";
 import { lousaSchema, pedeLousa } from "./lousa";
 
 describe("pedeLousa", () => {
-  it("detecta pedidos de conta, exemplo e desenho", () => {
-    expect(pedeLousa("me ensina como calcular porcentagem")).toBe(true);
-    expect(pedeLousa("dá um exemplo de regra de três")).toBe(true);
+  it("abre só quando o aluno pede quadro, lousa ou desenho", () => {
+    expect(pedeLousa("escreve no quadro a regra de três pra mim")).toBe(true);
     expect(pedeLousa("desenha um triângulo retângulo pra mim")).toBe(true);
-    expect(pedeLousa("explica passo a passo essa equação")).toBe(true);
+    expect(pedeLousa("me dá um exemplo desenhado de porcentagem")).toBe(true);
+    expect(pedeLousa("usa a lousa pra explicar isso")).toBe(true);
   });
-  it("ignora conversa comum e falas curtas", () => {
+  it("ignora pedidos de explicação e exemplo falado", () => {
+    expect(pedeLousa("me ensina como calcular porcentagem")).toBe(false);
+    expect(pedeLousa("dá um exemplo de regra de três")).toBe(false);
+    expect(pedeLousa("explica passo a passo essa equação")).toBe(false);
     expect(pedeLousa("tudo bem com você hoje")).toBe(false);
     expect(pedeLousa("ok")).toBe(false);
   });
@@ -26,7 +29,7 @@ describe("anunciaLousa", () => {
   it("detecta o Mentor anunciando que vai anotar", async () => {
     const { anunciaLousa } = await import("./lousa");
     expect(anunciaLousa("Vou anotar na lousa pra você ver")).toBe(true);
-    expect(anunciaLousa("Olha aqui no quadro")).toBe(true);
+    expect(anunciaLousa("Olha aqui na lousa")).toBe(true);
     expect(anunciaLousa("Boa pergunta, vamos revisar o artigo quinto")).toBe(false);
   });
 });

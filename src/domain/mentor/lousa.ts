@@ -1,7 +1,7 @@
 import { z } from "zod";
 
-/** Pedidos que costumam pedir uma demonstração (conta, exemplo, esquema, desenho). Barato e roda no navegador. */
-const GATILHO = /(ensin|explic|mostr|exempl|calcul|\bconta\b|\bcontas\b|resolv|resolu|desenh|esquem|passo a passo|como (faz|fa[çc]o|se faz|resolve|calcula|funciona)|f[óo]rmula|equa[çc][ãa]o|regra de tr[êe]s|porcentag|probabilidad|fra[çc][ãa]o|\bmapa\b|diagrama|gr[áa]fico|quadro|lousa|desenvolv|demonstr)/i;
+/** Só abre o quadro quando o aluno pede explicitamente para escrever/desenhar/mostrar no quadro; explicar e dar exemplo falado não abre. */
+const GATILHO = /(\bquadro\b|\blousa\b|desenh|rabisc|ilustr|\bescrev(a|e|er|endo)\b|\banot(a|e|ar|ando)\b|exemplo (escrito|desenhado)|mostr\w+ (por escrito|desenhando|na tela)|passo a passo (escrito|no quadro))/i;
 export const pedeLousa = (fala: string): boolean => fala.trim().length >= 8 && GATILHO.test(fala);
 
 const COR = z.enum(["grafite", "vermelho", "azul", "verde", "laranja", "roxo", "rosa"]);
@@ -58,7 +58,7 @@ export const LOUSA_H = 260;
 /** O Mentor anuncia, falando, que vai anotar/escrever/desenhar no quadro ("vou anotar na lousa", "olha aqui no quadro"). */
 export function anunciaLousa(fala: string): boolean {
   const s = fala.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  return /\b(lousa|quadro)\b/.test(s) || /\bvou (te )?(anotar|escrever|desenhar|rabiscar|montar|mostrar (a|o) (conta|calculo|exemplo))/.test(s) || /\bdeixa eu (anotar|escrever|desenhar)/.test(s);
+  return /\b(na|a|pra) lousa\b/.test(s) || /\bvou (te )?(anotar|escrever|desenhar|rabiscar|montar|mostrar (a|o) (conta|calculo|exemplo))/.test(s) || /\bdeixa eu (anotar|escrever|desenhar)/.test(s);
 }
 
 /** Roteiro falado, na ordem das linhas: o Mentor lê isto enquanto o quadro vai sendo escrito no mesmo ritmo. */

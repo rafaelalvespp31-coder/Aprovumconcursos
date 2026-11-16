@@ -120,7 +120,7 @@ async function personalPrompt(userId: string): Promise<string> {
  * aceita a ferramenta e, quando recusa, a conversa cai. Ligue com GEMINI_VOICE_SEARCH=1 só depois de testar.
  */
 /** A lousa abre sozinha na tela do aluno quando ele pede uma conta, exemplo ou desenho; a voz acompanha. */
-const LOUSA_RULE = `\n\nLOUSA: quando o aluno pedir para ensinar um cálculo, dar um exemplo, mostrar passo a passo ou desenhar algo, você ESCREVE NO QUADRO enquanto explica, como um professor de verdade: responda na hora com uma frase bem curta ("Olha só!") e, a cada passo, chame a função lousa_escrever para anotar UMA linha e em seguida fale, em voz alta, esse passo (números e operações por extenso: "cinco vezes x é igual a oito vezes vinte"). Não monte tudo antes e não espere: anote uma linha, explique, anote a próxima. Sequência típica: título (tipo "titulo"), "Exemplo:", enunciado, montagem, cada conta numa linha (tipo "conta"), resultado com caixa, "Resposta:" (tipo "resposta"). Use cores diferentes (azul, preto, vermelho, verde, laranja, roxo, rosa), recuo (nivel 0 a 5) e, para objetos contáveis, tipo "figuras" com emoji e quantidade. De 8 a 14 linhas no total. Se chegar uma mensagem começando com [ROTEIRO DA LOUSA], o quadro já está pronto: apenas leia as falas na ordem, sem chamar a função. Ao terminar, uma frase curta de fechamento e pergunte se ficou claro.`;
+const LOUSA_RULE = `\n\nLOUSA: use a lousa SOMENTE quando o aluno pedir de forma explícita para escrever, desenhar ou mostrar no quadro/lousa (ex.: "escreve no quadro", "me desenha", "exemplo desenhado"). Em qualquer outro caso, ensine e dê exemplos só falando, sem mencionar lousa nem quadro. Quando o pedido for explícito: responda APENAS "Já anoto na lousa!" e PARE de falar. Logo depois chegará uma mensagem começando com [ROTEIRO DA LOUSA] com as falas numeradas, e depois podem chegar mensagens [ROTEIRO DA LOUSA — CONTINUAÇÃO] com as próximas. Em cada uma, fale em voz alta, na ordem, exatamente aquelas falas (palavras bem próximas, ritmo calmo de professor escrevendo), sem pular, sem repetir as anteriores, sem ler os números das falas e sem chamar função alguma. Depois da última, uma frase curta de fechamento e pergunte se ficou claro.`;
 
 const lousaTool = {
   functionDeclarations: [
@@ -149,7 +149,8 @@ const lousaTool = {
     },
   ],
 };
-const voiceTools = () => [lousaTool, ...(process.env.GEMINI_VOICE_SEARCH === "1" ? [{ googleSearch: {} }] : [])];
+void lousaTool; // a lousa é escrita pelo roteiro (fluxo do servidor); a função fica declarada só para uso futuro
+const voiceTools = () => (process.env.GEMINI_VOICE_SEARCH === "1" ? [{ googleSearch: {} }] : undefined);
 
 export interface VoiceSession {
   token: string;

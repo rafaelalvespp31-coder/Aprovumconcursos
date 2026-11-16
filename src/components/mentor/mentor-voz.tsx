@@ -1,6 +1,6 @@
 "use client";
 
-import { anunciaLousa, linhaDeChamada, pedeLousa, roteiroDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
+import { anunciaLousa, linhaSchema, pedeLousa, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
@@ -44,75 +44,94 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   const [msg, setMsg] = useState<string | null>(null);
   const onLousaRef = useRef(onLousa);
   useEffect(() => { onLousaRef.current = onLousa; });
-  const lousaTurno = useRef(false);
   const falaTurno = useRef("");
   const debLousa = useRef<ReturnType<typeof setTimeout> | null>(null);
-  /** Quadro escrito ao vivo pelo próprio Mentor (função lousa_escrever): cada linha entra no instante em que o áudio chega nela. */
-  const vivo = useRef<{ linhas: LinhaLousa[]; quandos: number[] } | null>(null);
-  const fallbackLousa = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const iniciarRoteiro = (l: Lousa) => {
-    const rot = roteiroDe(l);
-    if (rot.total > 0 && ref.current.session) {
-      roteiro.current = { total: rot.total, chars: 0, ev: [], fim: false, tFim: 0 };
-      onLousaRef.current?.(l, progresso);
-      const texto = `[ROTEIRO DA LOUSA] O quadro já está pronto na tela. Agora fale em voz alta, sem parar até o fim, cada fala abaixo, na ordem, sem chamar função alguma. Comece já pela fala 1:\n${rot.texto}`;
-      const enviar = () => { try { ref.current.session?.sendRealtimeInput({ text: texto }); } catch { /* segue sem sincronia */ } };
-      const t0 = Date.now();
-      const espera = setInterval(() => { // não interrompe o aviso curto que ainda está tocando
-        const c = ref.current.ctx;
-        const falando = !!c && ref.current.next - c.currentTime > 0.15;
-        if (!falando || Date.now() - t0 > 2500) { clearInterval(espera); enviar(); }
-      }, 120);
-      setTimeout(() => { // vigia: se o Mentor não falar, reenvia uma vez; se ainda calar, o quadro escreve sozinho
-        const ro = roteiro.current;
-        if (ro && ro.chars === 0 && !ro.fim) { enviar(); setTimeout(() => { const r2 = roteiro.current; if (r2 && r2.chars === 0 && !r2.fim) { roteiro.current = null; onLousaRef.current?.(l, undefined); } }, 6000); }
+  /** Roteiro em andamento: eventos (instante de reprodução → caracteres falados) para o quadro seguir a voz. */
+  const roteiro = useRef<{ total: number; chars: number; ev: { t: number; c: number }[]; fim: boolean; tFim: number; pend: string[]; n: number; fechado: boolean; contando: boolean } | null>(null);
+  const modeloTurno = useRef(false); // o Mentor está gerando uma resposta (não dá para mandar o próximo trecho agora)
+  const lousaOcupada = useRef(false); // há uma lousa sendo montada/narrada: não abre outra
+  const lousaAtual = useRef<{ titulo: string; linhas: LinhaLousa[] } | null>(null);
+  /** Manda ao Mentor o próximo trecho do roteiro (só com ele livre; o primeiro trecho espera 2 falas para começar redondo). */
+  const enviarParte = () => {
+    const ro = roteiro.current;
+    if (!ro || ro.fim || ro.pend.length === 0 || modeloTurno.current) return;
+    if (ro.n === 0 && ro.pend.length < 2 && !ro.fechado) return;
+    const primeiro = ro.n === 0;
+    const falas = ro.pend.splice(0);
+    const texto = `${falas.map((f, i) => `${ro.n + i + 1}. ${f}`).join("\n")}`;
+    ro.n += falas.length;
+    ro.contando = true;
+    const msg = primeiro
+      ? `[ROTEIRO DA LOUSA] O quadro está sendo escrito na tela. Fale agora em voz alta, na ordem, sem pular nada e sem chamar função alguma, estas falas:\n${texto}`
+      : `[ROTEIRO DA LOUSA — CONTINUAÇÃO] Continue de onde parou, sem repetir as anteriores:\n${texto}`;
+    const enviar = () => { try { ref.current.session?.sendRealtimeInput({ text: msg }); } catch { /* sessão fechando */ } };
+    modeloTurno.current = true;
+    enviar();
+    if (primeiro) { // vigia: se o Mentor não falar, reenvia uma vez; se ainda calar, o quadro escreve sozinho
+      setTimeout(() => {
+        const r1 = roteiro.current;
+        if (r1 && r1.chars === 0 && !r1.fim) { enviar(); setTimeout(() => { const r2 = roteiro.current; if (r2 && r2.chars === 0 && !r2.fim) { roteiro.current = null; const a = lousaAtual.current; if (a) onLousaRef.current?.({ mostrar: true, titulo: a.titulo, linhas: [...a.linhas], desenho: [] }, undefined); } }, 6000); }
       }, 6000);
-    } else onLousaRef.current?.(l);
+    }
   };
-  const buscarLousa = (cacheSo: boolean) => {
+  const publicar = () => {
+    const a = lousaAtual.current;
+    if (!a) return;
+    const ro = roteiro.current;
+    onLousaRef.current?.({ mostrar: true, titulo: a.titulo, linhas: [...a.linhas], desenho: [] }, ro && ro.total > 0 ? progresso : undefined);
+  };
+  /** Recebe o quadro em fluxo (NDJSON): cada linha entra no quadro e no roteiro assim que o modelo a escreve. */
+  const lerFluxo = async () => {
     const r = ref.current;
-    return fetch(`/api/mentor/lousa${cacheSo ? "?cache=1" : ""}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido: r.turn || falaTurno.current, study: getStudy?.() ?? undefined }) })
-      .then((x) => (x.ok ? (x.json() as Promise<{ lousa?: Lousa }>) : null))
-      .then((j) => (j?.lousa?.mostrar ? j.lousa : null))
-      .catch(() => null);
+    let res: Response;
+    try {
+      res = await fetch("/api/mentor/lousa?stream=1", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido: r.turn || falaTurno.current, study: getStudy?.() ?? undefined }) });
+    } catch { res = new Response(null, { status: 500 }); }
+    if (!res.ok || !res.body) { lousaOcupada.current = false; onLousaRef.current?.(null); return; }
+    const acc = { titulo: "", linhas: [] as LinhaLousa[] };
+    lousaAtual.current = acc;
+    roteiro.current = { total: 0, chars: 0, ev: [], fim: false, tFim: 0, pend: [], n: 0, fechado: false, contando: false };
+    const dec = new TextDecoder();
+    const reader = res.body.getReader();
+    let buf = "";
+    let mostrou = false;
+    const tratar = (linha: string) => {
+      let o: Record<string, unknown>;
+      try { o = JSON.parse(linha) as Record<string, unknown>; } catch { return; }
+      const ro = roteiro.current;
+      if (!ro) return;
+      if ("mostrar" in o) { if (o.mostrar !== true) { roteiro.current = null; lousaAtual.current = null; lousaOcupada.current = false; onLousaRef.current?.(null); } else acc.titulo = typeof o.titulo === "string" ? o.titulo : ""; return; }
+      if (o.fim) { ro.fechado = true; if (ro.total === 0 && acc.linhas.length > 0) { roteiro.current = null; lousaOcupada.current = false; publicar(); } else enviarParte(); return; }
+      const ok = linhaSchema.safeParse(o);
+      if (!ok.success) return;
+      acc.linhas.push(ok.data);
+      if (ok.data.fala) { ro.total += ok.data.fala.length; ro.pend.push(ok.data.fala); }
+      mostrou = true;
+      publicar();
+      enviarParte();
+    };
+    try {
+      for (;;) {
+        const { value, done } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i: number;
+        while ((i = buf.indexOf("\n")) >= 0) { const l = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (l) tratar(l); }
+      }
+      if (buf.trim()) tratar(buf.trim());
+    } catch { /* fluxo caiu: segue com o que chegou */ }
+    const ro = roteiro.current;
+    if (ro && !ro.fechado) { ro.fechado = true; enviarParte(); }
+    if (!mostrou && !roteiro.current) lousaOcupada.current = false;
+    if (!mostrou && roteiro.current) { roteiro.current = null; lousaOcupada.current = false; onLousaRef.current?.(null); }
   };
   const dispararLousa = () => {
     if (debLousa.current) { clearTimeout(debLousa.current); debLousa.current = null; }
-    if (lousaTurno.current || !onLousaRef.current || (roteiro.current && !roteiro.current.fim)) return;
-    lousaTurno.current = true;
-    vivo.current = null;
+    if (lousaOcupada.current || !onLousaRef.current) return;
+    lousaOcupada.current = true;
     onLousaRef.current("pendente");
-    // 1) explicação já guardada (outro aluno)? vem em milissegundos e sem IA.
-    void buscarLousa(true).then((c) => {
-      if (vivo.current) return;
-      if (c) { iniciarRoteiro(c); return; }
-      // 2) o Mentor escreve ao vivo (função lousa_escrever); se não escrever nada em 4,5 s, gera o quadro no servidor.
-      fallbackLousa.current = setTimeout(() => {
-        if (vivo.current) return;
-        void buscarLousa(false).then((l) => { if (vivo.current) return; if (l) iniciarRoteiro(l); else onLousaRef.current?.(null); });
-      }, 4500);
-    });
+    void lerFluxo();
   };
-  const aoChamarFuncao = (calls: { id?: string; name?: string; args?: Record<string, unknown> }[]) => {
-    const r = ref.current;
-    for (const c of calls) {
-      if (c.name !== "lousa_escrever") continue;
-      const l = linhaDeChamada(c.args ?? {});
-      if (l && onLousaRef.current && r.ctx) {
-        if (fallbackLousa.current) { clearTimeout(fallbackLousa.current); fallbackLousa.current = null; }
-        lousaTurno.current = true;
-        if (!vivo.current) vivo.current = { linhas: [], quandos: [] };
-        const v = vivo.current;
-        v.linhas.push(l);
-        v.quandos.push(Math.max(r.next, r.ctx.currentTime)); // entra quando o áudio já enfileirado terminar = quando ele começa a falar desse passo
-        const ctx = r.ctx;
-        onLousaRef.current({ mostrar: true, titulo: v.linhas.find((x) => x.tipo === "titulo")?.texto ?? "", linhas: [...v.linhas], desenho: [] }, undefined, { quandos: v.quandos, agora: () => ctx.currentTime });
-      }
-    }
-    try { r.session?.sendToolResponse({ functionResponses: calls.filter((c) => c.name === "lousa_escrever").map((c) => ({ id: c.id, name: c.name, response: { ok: true } })) }); } catch { /* sessão fechada */ }
-  };
-  /** Roteiro em andamento: eventos (instante de reprodução → caracteres falados) para o quadro seguir a voz. */
-  const roteiro = useRef<{ total: number; chars: number; ev: { t: number; c: number }[]; fim: boolean; tFim: number } | null>(null);
   const progresso = () => {
     const ro = roteiro.current; const ctx = ref.current.ctx;
     if (!ro || !ctx) return { c: 0, fim: false };
@@ -313,7 +332,6 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   };
 
   const onMessage = (m: LiveServerMessage) => {
-    if (m.toolCall?.functionCalls?.length) aoChamarFuncao(m.toolCall.functionCalls);
     const r = ref.current;
     if (m.serverContent?.interrupted) {
       r.sources.forEach((s) => {
@@ -338,6 +356,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     // Despedida: quando o Mentor começa a responder, a fala do aluno já terminou; se ela for uma
     // despedida, deixa o Mentor se despedir e encerra a conversa em seguida.
     const starts = !!replied || (m.serverContent?.modelTurn?.parts ?? []).some((p) => p.inlineData?.data);
+    if (starts) modeloTurno.current = true;
     if (starts && !r.bye && isFarewell(r.turn)) {
       r.bye = true;
       r.byeTimer = setTimeout(() => void encerrar("usuario"), 15000); // rede de segurança
@@ -352,12 +371,15 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     }
     if (replied) r.replied.push(replied);
     const ro = roteiro.current;
-    const contar = !!(replied && ro && !ro.fim);
+    const contar = !!(replied && ro && ro.contando && !ro.fim);
     if (contar) ro!.chars = Math.min(ro!.total, ro!.chars + replied!.length);
     if (m.serverContent?.turnComplete) {
-      lousaTurno.current = false;
       falaTurno.current = "";
-      if (ro && !ro.fim && ro.chars > 0) { ro.fim = true; ro.tFim = Math.max(r.next, r.ctx?.currentTime ?? 0); } // narração terminou: fecha o quadro no fim do áudio
+      modeloTurno.current = false;
+      if (ro && ro.contando && !ro.fim) {
+        if (ro.fechado && ro.pend.length === 0) { ro.fim = true; ro.tFim = Math.max(r.next, r.ctx?.currentTime ?? 0); lousaOcupada.current = false; } // última fala dita: o quadro se completa no fim do áudio
+        else enviarParte(); // ainda há trechos chegando: manda o próximo assim que o Mentor fica livre
+      } else if (ro && !ro.contando) enviarParte(); // terminou o aviso curto: começa a narração
       if (r.bye) {
         const falta = r.ctx ? Math.max(0, r.next - r.ctx.currentTime) : 0;
         if (r.byeTimer) clearTimeout(r.byeTimer);
@@ -409,6 +431,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       r.turn = "";
       r.bye = false;
       r.next = 0;
+      roteiro.current = null; lousaOcupada.current = false; modeloTurno.current = false;
 
       // 24 kHz = a taxa da voz do Mentor: os blocos encaixam sem reamostrar um a um (sem estalos nem "engasgos")
       let ctx: AudioContext;

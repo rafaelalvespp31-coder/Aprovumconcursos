@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { sameOrigin } from "@/server/http";
 import { getSessionUser } from "@/server/auth";
-import { lousaDoCache, montarLousa } from "@/server/services/mentor-lousa";
+import { lousaDoCache, lousaEmFluxo, montarLousa } from "@/server/services/mentor-lousa";
 import { UserFacingError } from "@/server/services/trails";
 import { sanitizeStudyContext } from "@/domain/mentor/study-context";
 import { pedeLousa } from "@/domain/mentor/lousa";
@@ -24,6 +24,9 @@ export async function POST(req: NextRequest) {
   }
   const pedido = typeof body.pedido === "string" ? body.pedido.replace(/\s+/g, " ").trim().slice(0, 500) : "";
   if (!pedeLousa(pedido)) return NextResponse.json({ lousa: { mostrar: false } }, { headers: noStore });
+  if (req.nextUrl.searchParams.get("stream") === "1") {
+    return new Response(lousaEmFluxo(user.id, pedido, sanitizeStudyContext(body.study)), { headers: { "Content-Type": "application/x-ndjson; charset=utf-8", "Cache-Control": "no-store, no-transform", "X-Accel-Buffering": "no" } });
+  }
   if (req.nextUrl.searchParams.get("cache") === "1") return NextResponse.json({ lousa: await lousaDoCache(pedido) }, { headers: noStore });
   try {
     return NextResponse.json({ lousa: await montarLousa(user.id, pedido, sanitizeStudyContext(body.study)) }, { headers: noStore });
