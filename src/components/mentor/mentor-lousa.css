@@ -55,3 +55,9 @@
 @keyframes lz-pop { from { opacity: 0; transform: scale(.4) rotate(-12deg); } to { opacity: 1; transform: none; } }
 .lz-pronto .lz-em { animation: none; opacity: 1; }
 .lz-l { transition: none; }
+
+.lz-fig { display: grid; gap: 4px; margin: 4px 0 8px; }
+.lz-fig-g { display: flex; flex-wrap: wrap; gap: 2px 6px; min-height: 1.3em; font-size: clamp(26px, 4vw, 40px); line-height: 1.15; }
+.lz-fig-e { display: inline-block; animation: lz-pop .45s cubic-bezier(.3,1.5,.5,1) both; }
+.lz-pronto .lz-fig-e { animation: none; }
+.lz-mini { margin: 4px 0 8px; width: min(100%, 420px); }

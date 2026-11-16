@@ -21,7 +21,7 @@ export const itemDesenho = z.discriminatedUnion("t", [
 const COR_TEXTO = z.enum(["azul", "preto", "vermelho", "verde", "laranja", "roxo", "rosa"]);
 export const linhaSchema = z.object({
   /** titulo: grande, no topo; texto: explicação; conta: expressão matemática; resposta: fecho; nota: observação pequena; par: "esq ----- dir" (regra de três, tabelas); espaco: respiro. */
-  tipo: z.enum(["titulo", "texto", "conta", "resposta", "nota", "par", "espaco"]),
+  tipo: z.enum(["titulo", "texto", "conta", "resposta", "nota", "par", "espaco", "figuras", "desenho"]),
   texto: z.string().trim().max(120).default(""),
   /** Só em "par": o lado direito. */
   dir: z.string().trim().max(60).optional(),
@@ -35,6 +35,10 @@ export const linhaSchema = z.object({
   marca: z.enum(["ok", "estrela", "seta_baixo", "seta_dir"]).optional(),
   /** O que o professor diz em voz alta enquanto escreve esta linha (uma ou duas frases curtas). Vazio em título e espaços. */
   fala: z.string().trim().max(260).default(""),
+  /** tipo "figuras": grupos de emojis desenhados um a um (ex.: 5 maçãs, 8 maçãs) — mostra a quantidade do problema. */
+  figuras: z.array(z.object({ e: z.string().trim().min(1).max(8), n: z.number().int().min(1).max(12) })).max(4).optional(),
+  /** tipo "desenho": mini-quadro 400x140 desenhado traço a traço junto com esta linha (texto = legenda). */
+  rabisco: z.array(itemDesenho).max(10).optional(),
   /** Trechos escritos com outra caneta (cor diferente do resto da linha). */
   realce: z.array(z.object({ trecho: z.string().trim().min(1).max(40), cor: COR_TEXTO })).max(4).optional(),
 });

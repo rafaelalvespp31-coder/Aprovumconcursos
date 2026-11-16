@@ -20,7 +20,8 @@ function custoLetra(ch: string, i: number): number {
   return jit;
 }
 /** Texto completo escrito pela linha (o "par" junta os dois lados com um intervalo para o tracejado). */
-const textoDe = (l: LinhaLousa) => (l.tipo === "par" ? `${l.texto}\u2003${l.dir ?? ""}` : l.tipo === "espaco" ? "" : l.texto);
+const totalFiguras = (l: LinhaLousa) => (l.figuras ?? []).reduce((a, g) => a + g.n, 0);
+const textoDe = (l: LinhaLousa) => (l.tipo === "par" ? `${l.texto}\u2003${l.dir ?? ""}` : l.tipo === "espaco" ? "" : l.tipo === "figuras" ? l.texto + "\u200b".repeat(totalFiguras(l) * 2) : l.tipo === "desenho" ? l.texto + "\u200b".repeat((l.rabisco?.length ?? 0) * 6) : l.texto);
 const cor = (c?: string, padrao = "azul") => COR[c ?? padrao] ?? COR.azul!;
 
 /** Instante (acumulado) em que cada letra termina de ser escrita; o último valor é a duração da linha. */
@@ -202,6 +203,34 @@ export function MentorLousa({ lousa: dados, sync, onClose }: { lousa: Lousa | nu
                       <i style={{ visibility: v > nE ? "visible" : "hidden" }} />
                       <span><Escrito s={l.dir ?? ""} v={Math.max(0, v - nE - 1)} l={l} cor0={c} feito={feito} lado="dir" />{pen}</span>
                     </div>
+                  </div>
+                );
+              }
+              const nLab = [...l.texto].length;
+              if (l.tipo === "figuras" || l.tipo === "desenho") {
+                const rotulo = <Escrito s={l.texto} v={Math.min(v, nLab)} l={l} cor0={c} feito={v >= nLab} />;
+                let fig: React.ReactNode = null;
+                if (l.tipo === "figuras") {
+                  const todas = (l.figuras ?? []).flatMap((g, gi) => Array.from({ length: g.n }, (_, k) => ({ e: g.e, gi, k })));
+                  const vis = Math.max(0, Math.min(todas.length, Math.floor((v - nLab) / 2)));
+                  fig = (
+                    <div className="lz-fig">
+                      {(l.figuras ?? []).map((g, gi) => (
+                        <div key={gi} className="lz-fig-g">{todas.slice(0, vis).filter((x) => x.gi === gi).map((x) => <span key={x.k} className="lz-fig-e">{x.e}</span>)}</div>
+                      ))}
+                    </div>
+                  );
+                } else if (v >= nLab) {
+                  fig = (
+                    <svg className="lz-svg lz-mini" viewBox={`0 0 ${LOUSA_W} 140`} role="img" aria-label={l.texto || "Desenho"}>
+                      {(l.rabisco ?? []).map((it, i) => <Traco key={i} it={it} d={i * 0.7} />)}
+                    </svg>
+                  );
+                }
+                return (
+                  <div key={j} className="lz-l" data-t="rotulo" style={st}>
+                    <div>{rotulo}{!feito && pen}</div>
+                    {fig}
                   </div>
                 );
               }
