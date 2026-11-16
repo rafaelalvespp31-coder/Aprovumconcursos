@@ -23,6 +23,7 @@ uniform vec2 uCen;
 uniform float uA[${NA}];
 out vec3 vCol;
 out float vA;
+out float vSoft;
 float h(float x){ return fract(sin(x*127.1+311.7)*43758.5453); }
 void main(){
   float d0 = aR.x, p1 = aR.y*6.2831, p2 = aR.z*6.2831;
@@ -60,15 +61,25 @@ void main(){
   float m = smoothstep(d0*0.5, d0*0.5+0.5, uS);
   vec3 pos = mix(sk, sp, m) + dir2*sin(3.14159*m)*0.55*(0.4+aR.w);
   float dep = clamp((pos.z+1.25)/2.5, 0.0, 1.0);
-  float persp = 1.0 + pos.z*0.09;
+  float persp = 1.0 / (1.0 - clamp(pos.z, -1.2, 1.2)*0.30);
   gl_Position = vec4(uCen + vec2(pos.x*uSc.x, pos.y*uSc.y)*persp, 0.0, 1.0);
   float tier = aR.w < 0.5 ? 0.6 : (aR.w < 0.84 ? 1.0 : 1.55);
-  gl_PointSize = max(1.0, tier*uPx*uDpr*(0.75+0.5*dep));
+  vec3 nS = normalize(uRs*aSp);
+  vec3 L = normalize(vec3(-0.55, 0.65, 0.75));
+  float dif = max(dot(nS, L), 0.0);
+  float spec = pow(max(dot(reflect(-L, nS), vec3(0.0,0.0,1.0)), 0.0), 24.0);
+  float rim = pow(1.0 - abs(nS.z), 2.5);
+  float face = smoothstep(-0.35, 0.45, nS.z);
+  float lit = (0.28 + 0.95*dif + 0.55*rim + 1.4*spec) * mix(0.32, 1.0, face);
+  float fog = mix(0.5, 1.0, dep);
+  float foc = abs(pos.z - 0.1);
+  vSoft = smoothstep(0.55, 1.15, foc);
+  gl_PointSize = max(1.0, tier*uPx*uDpr*persp*(0.5+0.7*dep)*(1.0+0.45*vSoft));
 
   vec3 cs3 = aC.rgb;
   vec3 ce = mix(vec3(0.62,0.07,0.09), vec3(1.0,0.24,0.2), dep) + vec3(0.0, 0.1, 0.08)*uHigh*(0.3+aR.w*0.7);
-  vCol = mix(cs3, ce, m);
-  float aSph = (0.16 + 0.55*pow(dep,1.4)) * (0.55 + 0.5*aR.w);
+  vCol = mix(cs3, ce*(0.45+0.75*lit)+vec3(1.0,0.4,0.3)*spec*0.5, m);
+  float aSph = (0.12 + 0.5*pow(dep,1.3)) * (0.55 + 0.5*aR.w) * fog * (1.0 - 0.45*vSoft);
   vA = mix(aC.a, aSph, m) * uAm;
 }`;
 
@@ -76,12 +87,13 @@ const FS = `#version 300 es
 precision mediump float;
 in vec3 vCol;
 in float vA;
+in float vSoft;
 out vec4 o;
 void main(){
   vec2 q = gl_PointCoord*2.0-1.0;
   float r = dot(q,q);
   if (r > 1.0) discard;
-  float a = (1.0 - r)*vA;
+  float a = pow(1.0 - r, mix(1.6, 0.8, vSoft))*vA;
   vec3 c = vCol*a;
   o = vec4(c, max(c.r, max(c.g, c.b)));
 }`;
