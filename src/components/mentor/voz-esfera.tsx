@@ -76,11 +76,11 @@ void main(){
   vSoft = smoothstep(0.55, 1.15, foc);
   gl_PointSize = max(1.0, tier*uPx*uDpr*persp*(0.5+0.7*dep)*(1.0+0.45*vSoft));
 
-  vec3 cs3 = aC.rgb;
+  vec3 cs3 = vec3(aC.r, aC.g*0.3, aC.b*0.26);
   vec3 ce = mix(vec3(0.62,0.07,0.09), vec3(1.0,0.24,0.2), dep) + vec3(0.0, 0.1, 0.08)*uHigh*(0.3+aR.w*0.7);
   vCol = mix(cs3, ce*(0.45+0.75*lit)+vec3(1.0,0.4,0.3)*spec*0.5, m);
   float aSph = (0.12 + 0.5*pow(dep,1.3)) * (0.55 + 0.5*aR.w) * fog * (1.0 - 0.45*vSoft);
-  vA = mix(aC.a, aSph, m) * uAm;
+  vA = mix(aC.a*0.7, aSph, m) * uAm;
 }`;
 
 const FS = `#version 300 es

@@ -212,7 +212,6 @@
 @keyframes st-gira { to { --st-ang: 360deg; } }
 .st-pilula .st-mentor-wrap { position: relative; margin-left: 6px; padding: 4px 16px 3px; border: 1.5px solid transparent; border-radius: 16px; background: linear-gradient(#0d0708, #0d0708) padding-box, conic-gradient(from var(--st-ang), #e50914, rgba(229, 9, 20, 0.25) 30%, #ff6a5e 52%, rgba(229, 9, 20, 0.25) 75%, #e50914) border-box; box-shadow: 0 0 18px -5px rgba(229, 9, 20, 0.7); align-self: center; animation: st-gira 5s linear infinite; transition: transform 200ms, box-shadow 200ms; cursor: pointer; }
 .st-pilula .st-mentor-wrap:hover { transform: translateY(-2px) scale(1.03); box-shadow: 0 0 26px -2px rgba(229, 9, 20, 0.95); animation-duration: 2s; }
-.st-pilula .st-mentor-wrap::before { content: ""; position: absolute; left: 50%; top: 4px; width: 46px; height: 46px; translate: -50% 0; border-radius: 999px; border: 1px solid rgba(255, 90, 80, 0.5); animation: st-onda 2.8s ease-out infinite; pointer-events: none; }
 @keyframes st-onda { 0% { scale: 0.8; opacity: 0.9; } 100% { scale: 1.7; opacity: 0; } }
 .st-mentor-txt { align-items: center; text-align: center; width: 100%; }
 
