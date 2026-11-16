@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, Crosshair } from "lucide-react";
+import { orgImageFor } from "@/domain/edital/org-images";
 import { StartStudyDialog, type StartTheme } from "@/app/(app)/nova-trilha/start-dialog";
 import { materiaOf, materiaOrder } from "@/domain/strategic/materias";
 import { fold } from "@/domain/edital/text";
@@ -47,21 +48,26 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
     if (!ids.length) return;
     setTheme({ id: ids[0]!, title: t.title, discipline: disciplina, ...(ids.length > 1 ? { ids } : {}) });
   };
+  const org = orgImageFor(prep.contestName, prep.roleName, prep.title);
+  const nome = prep.contestName ?? prep.title;
+  const cargo = prep.roleName && fold(prep.roleName) !== fold(nome) ? prep.roleName.replace(/^./, (c) => c.toUpperCase()) : null;
+  const pctGeral = Math.round(totals.pct);
 
   return (
     <main className="mv" data-testid="materias-edital">
       <Link href="/painel" className="mv-voltar"><ChevronLeft size={16} aria-hidden /> Voltar ao painel</Link>
       <header className="mv-topo">
-        <p className="mv-kicker">MATÉRIAS DO EDITAL</p>
-        <h1 className="mv-titulo">{prep.contestName ?? prep.title}</h1>
-        {prep.roleName && <p className="mv-sub">{prep.roleName}</p>}
+        <div className="mv-arte" data-of={org ? 1 : undefined} style={{ ["--arte" as string]: `url(${org?.card ?? "/missoes/soldado.webp"})` }} aria-hidden />
+        <p className="mv-kicker"><Crosshair size={16} aria-hidden /> MATÉRIAS DO EDITAL</p>
+        <h1 className="mv-titulo">{nome}</h1>
+        {cargo && <p className="mv-sub">{cargo}</p>}
         <div className="mv-resumo">
-          <div><b>{disciplines.length}</b><span>matérias</span></div>
-          <div><b>{totals.topics}</b><span>tópicos</span></div>
-          <div><b>{totals.lessonsAvailable}</b><span>aulas disponíveis</span></div>
-          <div><b>{Math.round(totals.pct)}%</b><span>concluído</span></div>
-          <span className="mv-barra" role="progressbar" aria-valuenow={Math.round(totals.pct)} aria-valuemin={0} aria-valuemax={100} aria-label="Progresso geral"><i style={{ width: `${totals.pct}%` }} /></span>
+          <div className="mv-kpi"><b>{disciplines.length}</b><span>matérias</span></div>
+          <div className="mv-kpi"><b>{totals.topics}</b><span>tópicos</span></div>
+          <div className="mv-kpi"><b>{totals.lessonsAvailable}</b><span>aulas</span></div>
+          <div className="mv-kpi"><b>{pctGeral}%</b><span>concluído</span></div>
         </div>
+        <span className="mv-barra mv-geral" role="progressbar" aria-valuenow={pctGeral} aria-valuemin={0} aria-valuemax={100} aria-label="Progresso geral"><i style={{ width: `${totals.pct}%` }} /></span>
       </header>
 
       <div className="mv-ferr">
@@ -77,42 +83,65 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
         <p className="mv-vazio">Nenhum tópico encontrado para “{q}”.</p>
       ) : (
         <div className="mv-lista">
-          {blocos.map(({ d, hue, materias, n }) => (
+          {blocos.map(({ d, hue, materias, n }, di) => (
             <details key={d.id} className="mv-disc" style={{ ["--h" as string]: hue }} open={!!nq || undefined}>
               <summary>
+                <span className="mv-num" aria-hidden>{di + 1}</span>
                 <div>
-                  <div className="mv-dn">{d.name} <ChevronRight className="mv-seta" size={16} aria-hidden /></div>
+                  <div className="mv-dn">{d.name} <ChevronRight className="mv-seta" size={18} aria-hidden /></div>
                   <div className="mv-dm">{d.doneCount}/{d.topics.length} tópicos concluídos · {n} exibidos</div>
                 </div>
-                <div className="mv-pct">{Math.round(d.pct)}%</div>
-                <span className="mv-barra"><i style={{ width: `${d.pct}%` }} /></span>
+                <span className="mv-anel" style={{ ["--p" as string]: Math.round(d.pct) }} role="img" aria-label={`${Math.round(d.pct)}% concluído`}><b>{Math.round(d.pct)}%</b></span>
               </summary>
               <div className="mv-grupo">
-                {materias.map(([materia, ts]) => (
-                  <section key={materia}>
-                    {materias.length > 1 && <h3 className="mv-mat">{materia}</h3>}
-                    {ts.map((t, i) => {
-                      const sk = statusKey(t);
-                      const filhos: TreeTopic[] = [];
-                      for (let j = i + 1; j < ts.length && ts[j]!.depth > t.depth; j++) filhos.push(ts[j]!);
-                      const tem = t.lessons.length > 0 || filhos.some((f) => f.lessons.length > 0);
-                      return (
-                        <div key={t.id} className="mv-t" data-d={Math.min(t.depth, 3)} style={{ ["--k" as string]: STATUS[sk]!.cor, ["--d" as string]: Math.min(t.depth, 3) }}>
-                          <div className="mv-tt">
-                            {t.code && <span className="mv-cod">{t.code}</span>}
-                            {t.title}
-                            <div><span className="mv-chip">{STATUS[sk]!.label}{t.lessons.length > 0 ? ` · ${t.lessons.length} aula${t.lessons.length > 1 ? "s" : ""}` : ""}</span></div>
-                          </div>
-                          {tem && (
-                            <button type="button" className="mv-go" data-feito={t.done ? 1 : undefined} onClick={() => estudar(t, d.name, t.depth === 0 ? filhos : [])}>
-                              {t.done ? "Revisar" : "Estudar"}
-                            </button>
-                          )}
-                        </div>
-                      );
-                    })}
-                  </section>
-                ))}
+                {materias.map(([materia, ts]) => {
+                  // tópico (nível 0) e seus subtópicos ficam num bloco só; o resto da lista segue em sequência
+                  const blocosT: Array<{ t: TreeTopic; subs: TreeTopic[] }> = [];
+                  for (const t of ts) {
+                    const last = blocosT[blocosT.length - 1];
+                    if (t.depth > 0 && last) last.subs.push(t);
+                    else blocosT.push({ t, subs: [] });
+                  }
+                  return (
+                    <section key={materia}>
+                      {materias.length > 1 && <h3 className="mv-mat">{materia}</h3>}
+                      {blocosT.map(({ t, subs }) => {
+                        const sk = statusKey(t);
+                        const tem = t.lessons.length > 0 || subs.some((f) => f.lessons.length > 0);
+                        return (
+                          <article key={t.id} className="mv-tp" style={{ ["--k" as string]: STATUS[sk]!.cor }}>
+                            <div className="mv-th">
+                              <span className="mv-cod">{t.code ?? "•"}</span>
+                              <div className="mv-tt">
+                                {t.title}
+                                <div><span className="mv-chip">{STATUS[sk]!.label}{t.lessons.length > 0 ? ` · ${t.lessons.length} aula${t.lessons.length > 1 ? "s" : ""}` : ""}</span></div>
+                              </div>
+                              {tem && (
+                                <button type="button" className="mv-go" data-feito={t.done ? 1 : undefined} onClick={() => estudar(t, d.name, subs)}>
+                                  {t.done ? "Revisar tudo" : subs.length ? "Estudar tópico" : "Estudar"}
+                                </button>
+                              )}
+                            </div>
+                            {subs.length > 0 && (
+                              <ul className="mv-subs" aria-label={`Subtópicos de ${t.title}`}>
+                                <li className="mv-subs-t" aria-hidden>Subtópicos · {subs.length}</li>
+                                {subs.map((s) => {
+                                  const ssk = statusKey(s);
+                                  return (
+                                    <li key={s.id} className="mv-st" style={{ ["--k" as string]: STATUS[ssk]!.cor }}>
+                                      <span>{s.code && <span className="mv-stc">{s.code}</span>}{s.title}</span>
+                                      {s.lessons.length > 0 && <button type="button" className="mv-go" data-sub data-feito={s.done ? 1 : undefined} onClick={() => estudar(s, d.name, [])}>{s.done ? "Revisar" : "Estudar"}</button>}
+                                    </li>
+                                  );
+                                })}
+                              </ul>
+                            )}
+                          </article>
+                        );
+                      })}
+                    </section>
+                  );
+                })}
               </div>
             </details>
           ))}

@@ -14,7 +14,7 @@ const disciplines = [
   disc("4", "Raciocínio Lógico", [tp("k", "1", 0, "Proposições e conectivos", "completa")]),
 ];
 const tree: PreparationTree = {
-  prep: { id: "x", title: "PRF", contestName: "Polícia Rodoviária Federal", roleName: "Policial Rodoviário Federal", orgLogo: null, board: null, year: 2025, fileName: "edital.pdf", fileSize: 1, pageCount: 1, status: "concluido", step: 5, error: null, stats: {}, createdAt: "2026-01-01" },
+  prep: { id: "x", title: "PRF", contestName: "PRF", roleName: "prf", orgLogo: null, board: null, year: 2025, fileName: "edital.pdf", fileSize: 1, pageCount: 1, status: "concluido", step: 5, error: null, stats: {}, createdAt: "2026-01-01" },
   disciplines,
   totals: { topics: 12, done: 2, pct: 17, lessonsAvailable: 9, lessonsDone: 2, pending: 3, questionsAnswered: 0 },
 };
