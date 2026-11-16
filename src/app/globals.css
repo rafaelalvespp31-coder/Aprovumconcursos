@@ -4532,3 +4532,82 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 
 /* Modo Jogo: o filtro de distorção das chamas é caro; só em telas grandes e sem "reduzir movimento". */
 @media (max-width: 1023px), (prefers-reduced-motion: reduce) { .fogo-olho svg { filter: none !important; } }
+
+/* ===================== Central de Missões (Painel) ===================== */
+.cm-slot { padding: 14px 14px 0; }
+.cm { --cut: 22px; --red: #e11d1d; position: relative; isolation: isolate; color: #fff; padding: 28px 28px 22px; border-radius: 2px;
+  clip-path: polygon(var(--cut) 0, calc(100% - var(--cut)) 0, 100% var(--cut), 100% calc(100% - var(--cut)), calc(100% - var(--cut)) 100%, var(--cut) 100%, 0 calc(100% - var(--cut)), 0 var(--cut));
+  background:
+    repeating-linear-gradient(45deg, rgba(255,255,255,.028) 0 2px, transparent 2px 5px),
+    repeating-linear-gradient(-45deg, rgba(0,0,0,.35) 0 2px, transparent 2px 5px),
+    radial-gradient(120% 90% at 100% 0%, rgba(225,29,29,.22), transparent 55%),
+    linear-gradient(160deg, #15151a, #07070a 70%);
+  box-shadow: 0 0 0 1px rgba(225,29,29,.55) inset; }
+.cm::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; box-shadow: inset 0 0 60px rgba(225,29,29,.12); }
+.cm-arte { position: absolute; z-index: -1; top: 0; right: 0; bottom: 0; width: min(46%, 520px); background: url(/missoes/soldado.webp) right center / cover no-repeat; opacity: .8;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 38%); mask-image: linear-gradient(90deg, transparent, #000 38%); pointer-events: none; }
+.cm-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; flex-wrap: wrap; position: relative; }
+.cm-kicker { display: inline-flex; align-items: center; gap: 8px; font: 700 13px/1 Inter, sans-serif; letter-spacing: .22em; color: var(--red); }
+.cm-kicker svg { width: 18px; height: 18px; }
+.cm-titulo { margin-top: 10px; font: 800 clamp(26px, 3.4vw, 40px)/1.05 "Barlow Semi Condensed", Inter, sans-serif; letter-spacing: .01em; text-transform: uppercase; }
+.cm-titulo em, .cm-foco em { font-style: normal; color: var(--red); text-shadow: 0 0 18px rgba(225,29,29,.55); }
+.cm-desc { margin-top: 10px; max-width: 420px; font-size: 14px; line-height: 1.45; color: #b8b8c0; }
+.cm-ativos { display: grid; gap: 6px; min-width: 190px; padding: 12px 16px; background: rgba(0,0,0,.55); border: 1px solid rgba(255,255,255,.14); border-radius: 4px; backdrop-filter: blur(4px); }
+.cm-ativos-k { font: 700 11px/1 Inter, sans-serif; letter-spacing: .16em; color: #c9c9d1; }
+.cm-ativos-n { font: 600 22px/1 Inter, sans-serif; color: #8d8d96; font-variant-numeric: tabular-nums; }
+.cm-ativos-n b { color: #fff; font-size: 28px; }
+.cm-barra { display: block; height: 4px; border-radius: 2px; background: rgba(255,255,255,.14); overflow: hidden; }
+.cm-barra i { display: block; height: 100%; background: var(--red); box-shadow: 0 0 8px rgba(225,29,29,.8); transition: width .5s cubic-bezier(.22,1,.36,1); }
+.cm-lista { list-style: none; margin: 26px 0 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; position: relative; }
+.cm-lista > li { animation: cm-in .35s cubic-bezier(.22,1,.36,1) both; animation-delay: calc(var(--i, 0) * 45ms); }
+@keyframes cm-in { from { opacity: 0; transform: translateY(6px); } }
+.cm-card { position: relative; display: block; width: 100%; height: 128px; padding: 0; text-align: left; overflow: hidden; cursor: pointer; color: #fff;
+  border: 1px solid rgba(255,255,255,.16); border-radius: 6px; background: #0b0b0e; transition: transform .2s cubic-bezier(.22,1,.36,1), border-color .2s, box-shadow .2s; }
+.cm-foto { position: absolute; inset: 0; background: center / cover no-repeat; filter: saturate(.95) contrast(1.05); transition: transform .5s cubic-bezier(.22,1,.36,1); }
+.cm-foto[data-sem] { background: radial-gradient(90% 120% at 20% 0%, rgba(225,29,29,.35), transparent 60%), linear-gradient(160deg, #1c1c22, #09090c); }
+.cm-card::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(0,0,0,.25), rgba(0,0,0,.82)); pointer-events: none; }
+.cm-info { position: absolute; z-index: 1; left: 12px; right: 48px; bottom: 10px; display: grid; gap: 6px; }
+.cm-sigla { font: 800 20px/1 "Barlow Semi Condensed", Inter, sans-serif; letter-spacing: .02em; text-transform: uppercase; text-shadow: 0 1px 8px #000; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cm-prog { display: grid; grid-template-columns: 1fr auto; gap: 4px 8px; font: 600 11px/1 Inter, sans-serif; color: #d2d2d8; }
+.cm-prog-v { color: #fff; font-variant-numeric: tabular-nums; }
+.cm-prog .cm-barra { grid-column: 1 / -1; }
+.cm-seta { position: absolute; z-index: 1; right: 10px; bottom: 10px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: rgba(0,0,0,.6); border: 1px solid rgba(255,255,255,.3); }
+.cm-seta svg { width: 15px; height: 15px; }
+.cm-selo { position: absolute; z-index: 2; top: 8px; right: 8px; display: grid; place-items: center; width: 24px; height: 24px; border-radius: 50%; background: var(--red); box-shadow: 0 0 14px rgba(225,29,29,.9); }
+.cm-selo svg { width: 14px; height: 14px; stroke-width: 3; }
+.cm-card[data-on] { border-color: var(--red); box-shadow: 0 0 0 1px var(--red), 0 0 22px rgba(225,29,29,.55); }
+.cm-card[data-on] .cm-seta { background: var(--red); border-color: var(--red); }
+.cm-card:focus-visible, .cm-novo:focus-visible, .cm-go:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.cm-card:active { transform: scale(.98); }
+.cm-novo { display: grid; place-items: center; align-content: center; gap: 8px; height: 128px; width: 100%; text-align: center; color: #d2d2d8; cursor: pointer; text-decoration: none;
+  border: 1.5px dashed rgba(255,255,255,.3); border-radius: 6px; background: rgba(0,0,0,.35); font: 700 12px/1.2 Inter, sans-serif; letter-spacing: .14em; transition: background .2s, border-color .2s, color .2s; }
+.cm-novo svg { width: 30px; height: 30px; color: var(--red); }
+.cm-novo[aria-disabled="true"] { cursor: not-allowed; opacity: .5; }
+.cm-rodape { margin-top: 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; padding-top: 18px; border-top: 1px solid rgba(255,255,255,.1); position: relative; }
+.cm-foco { font: 800 clamp(18px, 2.2vw, 26px)/1.1 "Barlow Semi Condensed", Inter, sans-serif; letter-spacing: .03em; }
+.cm-go { display: inline-flex; align-items: center; justify-content: center; gap: 10px; min-height: 48px; padding: 0 34px; font: 800 15px/1 Inter, sans-serif; letter-spacing: .14em; color: #fff; text-decoration: none; background: linear-gradient(180deg, #f02a2a, #b30f0f);
+  clip-path: polygon(14px 0, 100% 0, calc(100% - 14px) 100%, 0 100%); box-shadow: 0 0 24px rgba(225,29,29,.5); transition: transform .2s, filter .2s; }
+.cm-go[aria-disabled="true"] { filter: grayscale(1) brightness(.5); cursor: not-allowed; box-shadow: none; }
+.cm-erro { margin-top: 10px; font-size: 13px; color: #ff8a8a; }
+@media (hover: hover) {
+  .cm-card:hover { transform: translateY(-3px); border-color: rgba(225,29,29,.8); box-shadow: 0 10px 26px rgba(0,0,0,.6), 0 0 18px rgba(225,29,29,.35); }
+  .cm-card:hover .cm-foto { transform: scale(1.06); }
+  .cm-novo:not([aria-disabled="true"]):hover { background: rgba(255,255,255,.08); border-color: #fff; color: #fff; }
+  .cm-go:not([aria-disabled="true"]):hover { filter: brightness(1.12); transform: translateY(-1px); }
+}
+.cm-sk-l, .cm-sk-c { display: block; border-radius: 4px; background: linear-gradient(90deg, rgba(255,255,255,.06), rgba(255,255,255,.14), rgba(255,255,255,.06)); background-size: 200% 100%; animation: cm-sk 1.3s linear infinite; }
+.cm-sk-l { height: 14px; margin-top: 12px; max-width: 100%; }
+.cm-sk-c { height: 128px; border-radius: 6px; }
+@keyframes cm-sk { to { background-position: -200% 0; } }
+@media (max-width: 720px) {
+  .cm-slot { padding: 10px 10px 0; }
+  .cm { --cut: 16px; padding: 20px 14px 18px; }
+  .cm-arte { width: 100%; opacity: .28; -webkit-mask-image: linear-gradient(180deg, #000, transparent 70%); mask-image: linear-gradient(180deg, #000, transparent 70%); }
+  .cm-ativos { width: 100%; }
+  .cm-sigla { font-size: 16px; }
+  .cm-lista { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .cm-novo { grid-column: auto; }
+  .cm-rodape { flex-direction: column; align-items: stretch; text-align: center; }
+  .cm-go { width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .cm-lista > li, .cm-sk-l, .cm-sk-c, .cm-foto, .cm-barra i { animation: none; transition: none; } }

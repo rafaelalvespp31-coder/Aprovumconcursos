@@ -60,6 +60,8 @@ export interface HomeOperacaoProps {
   selectSkin?: SelectSkin;
   /** Só galeria/testes. */
   mannequin?: boolean;
+  /** Central de Missões (editais do aluno), logo acima de "Continuar estudando". */
+  central?: ReactNode;
 }
 
 function T({ box, className = "", children, testId, title }: { box: CSSProperties; className?: string; children: ReactNode; testId?: string; title?: string }) {
@@ -70,7 +72,7 @@ function T({ box, className = "", children, testId, title }: { box: CSSPropertie
   );
 }
 
-export function HomeOperacao({ name, data, avatar, request, requestAction, canCustomize, ackLevels, mannequin, skins = [], selectSkin }: HomeOperacaoProps) {
+export function HomeOperacao({ name, data, avatar, request, requestAction, canCustomize, ackLevels, mannequin, skins = [], selectSkin, central }: HomeOperacaoProps) {
   const { game, performance: perf, continueLesson: cont, contests, insights, top } = data;
   const rank = rankFor(game.level);
   const pct = levelPct(game);
@@ -232,6 +234,8 @@ export function HomeOperacao({ name, data, avatar, request, requestAction, canCu
         </div>
 
         {/* ============================ Estudos, conquistas e concursos */}
+        {central && <div className="cm-slot">{central}</div>}
+
         <section className="cl-low" aria-label="Seus estudos">
           <div className="cl-card cl-cont" data-testid="continuar-estudando" title={cont ? `Última atividade: ${dateBR(cont.at)}${cont.module ? ` · ${cont.module}` : ""}` : undefined}>
             <h3 className="cl-h">CONTINUAR ESTUDANDO</h3>

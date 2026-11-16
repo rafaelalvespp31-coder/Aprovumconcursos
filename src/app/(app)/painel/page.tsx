@@ -10,6 +10,9 @@ import { ackLevelUpsAction, requestAvatarAction, selectSkinAction } from "./avat
 import { getMyPlan } from "@/server/services/plans";
 import { logEvent } from "@/server/observability";
 import { getActivePromo } from "@/server/services/promo";
+import { Suspense } from "react";
+import { CentralMissoes } from "@/components/central/central-missoes-server";
+import { CentralMissoesSkeleton } from "@/components/central/central-missoes";
 import { PremiumIndicador } from "@/components/promo/premium-indicador";
 
 export const metadata = { title: "Painel" };
@@ -52,6 +55,7 @@ export default async function DashboardPage() {
         skins={avatar?.skins ?? []}
         selectSkin={selectSkinAction}
         ackLevels={ackLevelUpsAction}
+        central={<Suspense fallback={<CentralMissoesSkeleton />}><CentralMissoes userId={me.id} /></Suspense>}
       />
     </>
   );
