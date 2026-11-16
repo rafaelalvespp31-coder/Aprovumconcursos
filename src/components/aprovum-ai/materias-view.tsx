@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Crosshair } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, Crosshair } from "lucide-react";
 import { orgImageFor } from "@/domain/edital/org-images";
 import { StartStudyDialog, type StartTheme } from "@/app/(app)/nova-trilha/start-dialog";
 import { materiaOf, materiaOrder } from "@/domain/strategic/materias";
@@ -105,38 +105,44 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
                   return (
                     <section key={materia}>
                       {materias.length > 1 && <h3 className="mv-mat">{materia}</h3>}
-                      {blocosT.map(({ t, subs }) => {
+                      {blocosT.map(({ t, subs }, ti) => {
                         const sk = statusKey(t);
                         const tem = t.lessons.length > 0 || subs.some((f) => f.lessons.length > 0);
+                        const st = STATUS[sk]!;
                         return (
-                          <article key={t.id} className="mv-tp" style={{ ["--k" as string]: STATUS[sk]!.cor }}>
-                            <div className="mv-th">
-                              <span className="mv-cod">{t.code ?? "•"}</span>
-                              <div className="mv-tt">
-                                {t.title}
-                                <div><span className="mv-chip">{STATUS[sk]!.label}{t.lessons.length > 0 ? ` · ${t.lessons.length} aula${t.lessons.length > 1 ? "s" : ""}` : ""}</span></div>
-                              </div>
-                              {tem && (
-                                <button type="button" className="mv-go" data-feito={t.done ? 1 : undefined} onClick={() => estudar(t, d.name, subs)}>
-                                  {t.done ? "Revisar tudo" : subs.length ? "Estudar tópico" : "Estudar"}
-                                </button>
+                          <details key={t.id} className="mv-tp" open style={{ ["--k" as string]: st.cor }}>
+                            <summary className="mv-th">
+                              <span className="mv-tn">Tópico {ti + 1}</span>
+                              <span className="mv-tl">
+                                <ChevronRight className="mv-tseta" size={16} aria-hidden />
+                                <span className="mv-tt">{t.code && <span className="mv-cod">{t.code}.</span>} {t.title}</span>
+                              </span>
+                              <span className="mv-pill">{t.done && <Check size={14} aria-hidden />}{st.label}</span>
+                            </summary>
+                            <ul className="mv-subs" aria-label={`Conteúdo do tópico ${ti + 1}`}>
+                              {subs.length === 0 && t.lessons.map((l) => (
+                                <li key={l.catalogId} className="mv-st" style={{ ["--k" as string]: l.done ? "#1f9d55" : st.cor }}>
+                                  <span className="mv-ck" data-ok={l.done ? 1 : undefined} aria-hidden>{l.done && <Check size={14} />}</span>
+                                  <span className="mv-sl"><span className="mv-sn">{l.title}</span><span className="mv-sm">{l.done ? "Concluída" : l.pct > 0 ? `${Math.round(l.pct)}% estudado` : "Aula disponível"}</span></span>
+                                  <button type="button" className="mv-go" data-sub data-feito={l.done ? 1 : undefined} onClick={() => setTheme({ id: l.catalogId, title: l.title, discipline: d.name })}>{l.done ? "Revisar" : "Estudar"}</button>
+                                </li>
+                              ))}
+                              {subs.map((s) => {
+                                const ssk = statusKey(s);
+                                return (
+                                  <li key={s.id} className="mv-st" style={{ ["--k" as string]: STATUS[ssk]!.cor }}>
+                                    <span className="mv-ck" data-ok={s.done ? 1 : undefined} aria-hidden>{s.done && <Check size={14} />}</span>
+                                    <span className="mv-sl"><span className="mv-sn">{s.code && <span className="mv-stc">{s.code}</span>}{s.title}</span><span className="mv-sm">{STATUS[ssk]!.label}{s.lessons.length > 0 ? ` · ${s.lessons.length} aula${s.lessons.length > 1 ? "s" : ""}` : ""}</span></span>
+                                    {s.lessons.length > 0 && <button type="button" className="mv-go" data-sub data-feito={s.done ? 1 : undefined} onClick={() => estudar(s, d.name, [])}>{s.done ? "Revisar" : "Estudar"}</button>}
+                                  </li>
+                                );
+                              })}
+                              {tem && subs.length > 0 && (
+                                <li className="mv-tudo"><button type="button" className="mv-go" data-feito={t.done ? 1 : undefined} onClick={() => estudar(t, d.name, subs)}>{t.done ? "Revisar tópico inteiro" : "Estudar tópico inteiro"}</button></li>
                               )}
-                            </div>
-                            {subs.length > 0 && (
-                              <ul className="mv-subs" aria-label={`Subtópicos de ${t.title}`}>
-                                <li className="mv-subs-t" aria-hidden>Subtópicos · {subs.length}</li>
-                                {subs.map((s) => {
-                                  const ssk = statusKey(s);
-                                  return (
-                                    <li key={s.id} className="mv-st" style={{ ["--k" as string]: STATUS[ssk]!.cor }}>
-                                      <span>{s.code && <span className="mv-stc">{s.code}</span>}{s.title}</span>
-                                      {s.lessons.length > 0 && <button type="button" className="mv-go" data-sub data-feito={s.done ? 1 : undefined} onClick={() => estudar(s, d.name, [])}>{s.done ? "Revisar" : "Estudar"}</button>}
-                                    </li>
-                                  );
-                                })}
-                              </ul>
-                            )}
-                          </article>
+                              {subs.length === 0 && t.lessons.length === 0 && <li className="mv-vz">Sem aula disponível para este tópico ainda.</li>}
+                            </ul>
+                          </details>
                         );
                       })}
                     </section>
