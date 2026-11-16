@@ -156,7 +156,6 @@ export function VozEsfera({ level, dim = false, size = 280, conn = "live" }: { l
     const mobile = window.innerWidth < 640;
     const k0 = size / BASE;
     const NC = mobile ? 180_000 : 520_000;
-    const NE = Math.round(NC * 0.012); // partículas dos olhos
     let seed = (Math.random() * 2 ** 31) | 0;
     const rnd = () => {
       seed = (seed + 0x6d2b79f5) | 0;
@@ -234,15 +233,6 @@ export function VozEsfera({ level, dim = false, size = 280, conn = "live" }: { l
           const a = Math.min(1, 0.1 + 0.55 * bright) * (0.7 + 0.3 * rnd()) * (back ? 0.45 : 1);
           cc[k * 4] = r; cc[k * 4 + 1] = g; cc[k * 4 + 2] = b;
           cc[k * 4 + 3] = Math.round(a * 255);
-        }
-        // olhos acesos: as primeiras NE partículas
-        for (let k = 0; k < NE; k++) {
-          const left = k < NE / 2;
-          sk[k * 3] = (left ? -0.17 : 0.33) + (rnd() + rnd() + rnd() - 1.5) * 0.07;
-          sk[k * 3 + 1] = -0.2 + (rnd() + rnd() + rnd() - 1.5) * 0.05;
-          sk[k * 3 + 2] = 0.7;
-          cc[k * 4] = 255; cc[k * 4 + 1] = 70 + Math.round(rnd() * 120); cc[k * 4 + 2] = 50;
-          cc[k * 4 + 3] = Math.round((0.35 + 0.3 * rnd()) * 255);
         }
       } else {
         // sem a arte: a "caveira" é a própria esfera
@@ -361,8 +351,7 @@ export function VozEsfera({ level, dim = false, size = 280, conn = "live" }: { l
         gl.uniform2f(u.Cen, 0, 1 - (2 * cy) / H);
         gl.uniform1fv(u.A, A);
         gl.bindVertexArray(vao);
-        gl.drawArrays(gl.POINTS, 0, NE);
-        gl.drawArrays(gl.POINTS, NE, Math.floor((NC - NE) * q));
+        gl.drawArrays(gl.POINTS, 0, Math.floor(NC * q));
       }
       raf = requestAnimationFrame(frame);
     };
