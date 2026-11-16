@@ -67,6 +67,11 @@ async function guardar(chave: string, pedido: string, l: Lousa): Promise<void> {
   } catch { /* cache é melhor-esforço */ }
 }
 
+/** Só o cache (sem IA): resposta em milissegundos para pedidos que outro aluno já fez. */
+export async function lousaDoCache(pedido: string): Promise<Lousa> {
+  return (await doCache(chaveLousa(pedido))) ?? VAZIA;
+}
+
 export async function montarLousa(userId: string, pedido: string, study: StudyContext | null): Promise<Lousa> {
   const chave = chaveLousa(pedido);
   const pronta = await doCache(chave);

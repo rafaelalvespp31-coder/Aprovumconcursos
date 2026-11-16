@@ -50,3 +50,13 @@ describe("chaveLousa", () => {
     expect(chaveLousa("porcentagem")).not.toBe(chaveLousa("regra de três"));
   });
 });
+
+describe("linhaDeChamada", () => {
+  it("converte a chamada de função do Mentor em linha válida", async () => {
+    const { linhaDeChamada } = await import("./lousa");
+    expect(linhaDeChamada({ tipo: "conta", texto: "5x = 160", nivel: 3, caixa: true, cor: "verde" })).toMatchObject({ tipo: "conta", texto: "5x = 160", nivel: 3, caixa: true, cor: "verde" });
+    expect(linhaDeChamada({ tipo: "figuras", texto: "5 maçãs:", emoji: "🍎", quantidade: 5 })?.figuras).toEqual([{ e: "🍎", n: 5 }]);
+    expect(linhaDeChamada({ tipo: "html", texto: "x" })).toBeNull();
+    expect(linhaDeChamada({ tipo: "conta", texto: "x", nivel: 99 })?.nivel).toBe(5);
+  });
+});

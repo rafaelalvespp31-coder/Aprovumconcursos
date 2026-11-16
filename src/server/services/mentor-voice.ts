@@ -1,6 +1,6 @@
 import "server-only";
 import { studyContextInstruction, type StudyContext } from "@/domain/mentor/study-context";
-import { GoogleGenAI, Modality } from "@google/genai";
+import { GoogleGenAI, Modality, Type } from "@google/genai";
 import { createAdminClient } from "../supabase";
 import { logEvent } from "../observability";
 import { getMyPlan } from "./plans";
@@ -120,9 +120,36 @@ async function personalPrompt(userId: string): Promise<string> {
  * aceita a ferramenta e, quando recusa, a conversa cai. Ligue com GEMINI_VOICE_SEARCH=1 só depois de testar.
  */
 /** A lousa abre sozinha na tela do aluno quando ele pede uma conta, exemplo ou desenho; a voz acompanha. */
-const LOUSA_RULE = `\n\nLOUSA: quando o aluno pedir para ensinar um cálculo, dar um exemplo, mostrar passo a passo ou desenhar algo, uma lousa abre na tela dele. Responda SÓ com uma frase MUITO curta (no máximo 6 palavras, ex.: "Já anoto na lousa!") e PARE de falar. Logo depois chegará uma mensagem começando com [ROTEIRO DA LOUSA], com as falas em ordem. Então explique em voz alta exatamente esse roteiro, na mesma ordem e com as palavras bem próximas, uma fala após a outra, num ritmo calmo de professor escrevendo no quadro; não pule nem acrescente passos e não leia os números das falas. Ao terminar, diga uma frase curta de fechamento e pergunte se ficou claro.`;
+const LOUSA_RULE = `\n\nLOUSA: quando o aluno pedir para ensinar um cálculo, dar um exemplo, mostrar passo a passo ou desenhar algo, você ESCREVE NO QUADRO enquanto explica, como um professor de verdade: responda na hora com uma frase bem curta ("Olha só!") e, a cada passo, chame a função lousa_escrever para anotar UMA linha e em seguida fale, em voz alta, esse passo (números e operações por extenso: "cinco vezes x é igual a oito vezes vinte"). Não monte tudo antes e não espere: anote uma linha, explique, anote a próxima. Sequência típica: título (tipo "titulo"), "Exemplo:", enunciado, montagem, cada conta numa linha (tipo "conta"), resultado com caixa, "Resposta:" (tipo "resposta"). Use cores diferentes (azul, preto, vermelho, verde, laranja, roxo, rosa), recuo (nivel 0 a 5) e, para objetos contáveis, tipo "figuras" com emoji e quantidade. De 8 a 14 linhas no total. Se chegar uma mensagem começando com [ROTEIRO DA LOUSA], o quadro já está pronto: apenas leia as falas na ordem, sem chamar a função. Ao terminar, uma frase curta de fechamento e pergunte se ficou claro.`;
 
-const voiceTools = () => (process.env.GEMINI_VOICE_SEARCH === "1" ? [{ googleSearch: {} }] : undefined);
+const lousaTool = {
+  functionDeclarations: [
+    {
+      name: "lousa_escrever",
+      description: "Escreve UMA linha no quadro branco do aluno, na hora. Chame uma vez por passo, logo antes de explicar esse passo em voz alta.",
+      parameters: {
+        type: Type.OBJECT,
+        properties: {
+          tipo: { type: Type.STRING, enum: ["titulo", "texto", "conta", "resposta", "nota", "par", "figuras"], description: "titulo (só o primeiro), texto (explicação/enunciado), conta (expressão), resposta (fecho), nota (observação pequena), par (duas colunas tracejadas: texto e dir), figuras (emojis contáveis)" },
+          texto: { type: Type.STRING, description: "O que fica escrito (curto, no máximo 80 caracteres)." },
+          dir: { type: Type.STRING, description: "Só em tipo par: o lado direito." },
+          nivel: { type: Type.INTEGER, description: "Recuo de 0 a 5." },
+          cor: { type: Type.STRING, enum: ["azul", "preto", "vermelho", "verde", "laranja", "roxo", "rosa"] },
+          sublinhar: { type: Type.STRING, enum: ["reta", "onda"] },
+          caixa: { type: Type.BOOLEAN, description: "Caixa em volta (resultado final)." },
+          circular: { type: Type.STRING, description: "Trecho do texto a circular (ex.: x)." },
+          marca: { type: Type.STRING, enum: ["ok", "estrela", "seta_baixo", "seta_dir"] },
+          emoji: { type: Type.STRING, description: "Só em tipo figuras: o emoji (ex.: 🍎)." },
+          quantidade: { type: Type.INTEGER, description: "Só em tipo figuras: quantos emojis (1 a 12)." },
+          realce_trecho: { type: Type.STRING, description: "Trecho da linha escrito com outra caneta." },
+          realce_cor: { type: Type.STRING, enum: ["azul", "preto", "vermelho", "verde", "laranja", "roxo", "rosa"] },
+        },
+        required: ["tipo", "texto"],
+      },
+    },
+  ],
+};
+const voiceTools = () => [lousaTool, ...(process.env.GEMINI_VOICE_SEARCH === "1" ? [{ googleSearch: {} }] : [])];
 
 export interface VoiceSession {
   token: string;

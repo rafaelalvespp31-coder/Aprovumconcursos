@@ -1,6 +1,6 @@
 "use client";
 
-import { anunciaLousa, pedeLousa, roteiroDe, type Lousa } from "@/domain/mentor/lousa";
+import { anunciaLousa, linhaDeChamada, pedeLousa, roteiroDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
@@ -32,7 +32,7 @@ const fromB64 = (b64: string) => {
  * com o Google usando um token de uso único criado pelo servidor; o servidor controla o limite
  * diário (3 min) e a instrução do Mentor.
  */
-export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = false, orbSize = 96, onClose, onSpeaking, onLevel, onLousa }: { /** Entrega a função que lê a energia do áudio (volume/graves/médios/agudos). */ onLevel?: (nivel: () => Bands) => void; /** Avisa quando o Mentor começa/para de falar (ex.: borda do card chiando). */ onSpeaking?: (falando: boolean) => void; base?: string; /** Contexto da aula lido no instante em que a conversa começa. */ getStudy?: () => (StudyContext & { lessonId?: string }) | null; /** Começa sozinho assim que o saldo de voz carrega (aberto por um clique do aluno). */ autoStart?: boolean; /** Só a orbe animada, sem cartão nem textos (toque nela para encerrar). */ orbOnly?: boolean; /** Diâmetro da orbe no modo orbOnly. */ orbSize?: number; onClose?: () => void; /** Recebe a lousa (passos e desenho) quando o aluno pede uma conta, exemplo ou esquema. */ onLousa?: (l: Lousa | "pendente" | null, sync?: () => { c: number; fim: boolean }) => void }) {
+export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = false, orbSize = 96, onClose, onSpeaking, onLevel, onLousa }: { /** Entrega a função que lê a energia do áudio (volume/graves/médios/agudos). */ onLevel?: (nivel: () => Bands) => void; /** Avisa quando o Mentor começa/para de falar (ex.: borda do card chiando). */ onSpeaking?: (falando: boolean) => void; base?: string; /** Contexto da aula lido no instante em que a conversa começa. */ getStudy?: () => (StudyContext & { lessonId?: string }) | null; /** Começa sozinho assim que o saldo de voz carrega (aberto por um clique do aluno). */ autoStart?: boolean; /** Só a orbe animada, sem cartão nem textos (toque nela para encerrar). */ orbOnly?: boolean; /** Diâmetro da orbe no modo orbOnly. */ orbSize?: number; onClose?: () => void; /** Recebe a lousa (passos e desenho) quando o aluno pede uma conta, exemplo ou esquema. */ onLousa?: (l: Lousa | "pendente" | null, sync?: () => { c: number; fim: boolean }, vivo?: { quandos: number[]; agora: () => number }) => void }) {
   const [fase, setFase] = useState<Fase>("carregando");
   const [left, setLeft] = useState(0);
   const [limit, setLimit] = useState(180);
@@ -47,37 +47,69 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   const lousaTurno = useRef(false);
   const falaTurno = useRef("");
   const debLousa = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const dispararLousa = () => {
+  /** Quadro escrito ao vivo pelo próprio Mentor (função lousa_escrever): cada linha entra no instante em que o áudio chega nela. */
+  const vivo = useRef<{ linhas: LinhaLousa[]; quandos: number[] } | null>(null);
+  const fallbackLousa = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const iniciarRoteiro = (l: Lousa) => {
+    const rot = roteiroDe(l);
+    if (rot.total > 0 && ref.current.session) {
+      roteiro.current = { total: rot.total, chars: 0, ev: [], fim: false, tFim: 0 };
+      onLousaRef.current?.(l, progresso);
+      const texto = `[ROTEIRO DA LOUSA] O quadro já está pronto na tela. Agora fale em voz alta, sem parar até o fim, cada fala abaixo, na ordem, sem chamar função alguma. Comece já pela fala 1:\n${rot.texto}`;
+      const enviar = () => { try { ref.current.session?.sendRealtimeInput({ text: texto }); } catch { /* segue sem sincronia */ } };
+      const t0 = Date.now();
+      const espera = setInterval(() => { // não interrompe o aviso curto que ainda está tocando
+        const c = ref.current.ctx;
+        const falando = !!c && ref.current.next - c.currentTime > 0.15;
+        if (!falando || Date.now() - t0 > 2500) { clearInterval(espera); enviar(); }
+      }, 120);
+      setTimeout(() => { // vigia: se o Mentor não falar, reenvia uma vez; se ainda calar, o quadro escreve sozinho
+        const ro = roteiro.current;
+        if (ro && ro.chars === 0 && !ro.fim) { enviar(); setTimeout(() => { const r2 = roteiro.current; if (r2 && r2.chars === 0 && !r2.fim) { roteiro.current = null; onLousaRef.current?.(l, undefined); } }, 6000); }
+      }, 6000);
+    } else onLousaRef.current?.(l);
+  };
+  const buscarLousa = (cacheSo: boolean) => {
     const r = ref.current;
+    return fetch(`/api/mentor/lousa${cacheSo ? "?cache=1" : ""}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido: r.turn || falaTurno.current, study: getStudy?.() ?? undefined }) })
+      .then((x) => (x.ok ? (x.json() as Promise<{ lousa?: Lousa }>) : null))
+      .then((j) => (j?.lousa?.mostrar ? j.lousa : null))
+      .catch(() => null);
+  };
+  const dispararLousa = () => {
     if (debLousa.current) { clearTimeout(debLousa.current); debLousa.current = null; }
     if (lousaTurno.current || !onLousaRef.current || (roteiro.current && !roteiro.current.fim)) return;
     lousaTurno.current = true;
+    vivo.current = null;
     onLousaRef.current("pendente");
-    void fetch("/api/mentor/lousa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido: r.turn || falaTurno.current, study: getStudy?.() ?? undefined }) })
-      .then((x) => (x.ok ? (x.json() as Promise<{ lousa?: Lousa }>) : null))
-      .then((j) => {
-        const l = j?.lousa?.mostrar ? j.lousa : null;
-        const rot = l ? roteiroDe(l) : null;
-        if (l && rot && rot.total > 0 && ref.current.session) {
-          roteiro.current = { total: rot.total, chars: 0, ev: [], fim: false, tFim: 0 };
-          onLousaRef.current?.(l, progresso);
-          const texto = `[ROTEIRO DA LOUSA] Agora fale em voz alta, sem parar até o fim, cada fala abaixo, na ordem, enquanto escrevo no quadro. Comece já pela fala 1:\n${rot.texto}`;
-          const enviar = () => { try { ref.current.session?.sendRealtimeInput({ text: texto }); } catch { /* segue sem sincronia */ } };
-          // espera o aviso curto terminar (mandar no meio de uma fala o interrompe e a explicação some)
-          const t0 = Date.now();
-          const espera = setInterval(() => {
-            const c = ref.current.ctx;
-            const falando = !!c && ref.current.next - c.currentTime > 0.15;
-            if (!falando || Date.now() - t0 > 3500) { clearInterval(espera); enviar(); }
-          }, 150);
-          // vigia: se o Mentor não falar nada em 7s, reenvia uma vez; se ainda assim calar, o quadro escreve sozinho
-          setTimeout(() => {
-            const ro = roteiro.current;
-            if (ro && ro.chars === 0 && !ro.fim) { enviar(); setTimeout(() => { const r2 = roteiro.current; if (r2 && r2.chars === 0 && !r2.fim) { roteiro.current = null; onLousaRef.current?.(l, undefined); } }, 7000); }
-          }, 7000);
-        } else onLousaRef.current?.(l);
-      })
-      .catch(() => onLousaRef.current?.(null));
+    // 1) explicação já guardada (outro aluno)? vem em milissegundos e sem IA.
+    void buscarLousa(true).then((c) => {
+      if (vivo.current) return;
+      if (c) { iniciarRoteiro(c); return; }
+      // 2) o Mentor escreve ao vivo (função lousa_escrever); se não escrever nada em 4,5 s, gera o quadro no servidor.
+      fallbackLousa.current = setTimeout(() => {
+        if (vivo.current) return;
+        void buscarLousa(false).then((l) => { if (vivo.current) return; if (l) iniciarRoteiro(l); else onLousaRef.current?.(null); });
+      }, 4500);
+    });
+  };
+  const aoChamarFuncao = (calls: { id?: string; name?: string; args?: Record<string, unknown> }[]) => {
+    const r = ref.current;
+    for (const c of calls) {
+      if (c.name !== "lousa_escrever") continue;
+      const l = linhaDeChamada(c.args ?? {});
+      if (l && onLousaRef.current && r.ctx) {
+        if (fallbackLousa.current) { clearTimeout(fallbackLousa.current); fallbackLousa.current = null; }
+        lousaTurno.current = true;
+        if (!vivo.current) vivo.current = { linhas: [], quandos: [] };
+        const v = vivo.current;
+        v.linhas.push(l);
+        v.quandos.push(Math.max(r.next, r.ctx.currentTime)); // entra quando o áudio já enfileirado terminar = quando ele começa a falar desse passo
+        const ctx = r.ctx;
+        onLousaRef.current({ mostrar: true, titulo: v.linhas.find((x) => x.tipo === "titulo")?.texto ?? "", linhas: [...v.linhas], desenho: [] }, undefined, { quandos: v.quandos, agora: () => ctx.currentTime });
+      }
+    }
+    try { r.session?.sendToolResponse({ functionResponses: calls.filter((c) => c.name === "lousa_escrever").map((c) => ({ id: c.id, name: c.name, response: { ok: true } })) }); } catch { /* sessão fechada */ }
   };
   /** Roteiro em andamento: eventos (instante de reprodução → caracteres falados) para o quadro seguir a voz. */
   const roteiro = useRef<{ total: number; chars: number; ev: { t: number; c: number }[]; fim: boolean; tFim: number } | null>(null);
@@ -257,6 +289,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   };
 
   const onMessage = (m: LiveServerMessage) => {
+    if (m.toolCall?.functionCalls?.length) aoChamarFuncao(m.toolCall.functionCalls);
     const r = ref.current;
     if (m.serverContent?.interrupted) {
       r.sources.forEach((s) => {

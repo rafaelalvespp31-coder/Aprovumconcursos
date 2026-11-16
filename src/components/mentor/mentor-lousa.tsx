@@ -113,12 +113,21 @@ function Traco({ it, d }: { it: ItemDesenho; d: number }) {
  */
 const PENDENTE: Lousa = { mostrar: true, titulo: "", linhas: [], desenho: [] };
 
-export function MentorLousa({ lousa: dados, sync, onClose }: { lousa: Lousa | null; /** Segue a voz: devolve quantas letras do roteiro já foram faladas. */ sync?: () => { c: number; fim: boolean }; onClose: () => void }) {
+export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lousa | null; /** Segue a voz: devolve quantas letras do roteiro já foram faladas. */ sync?: () => { c: number; fim: boolean }; /** Quadro escrito ao vivo: instante (relógio do áudio) em que cada linha começa a ser falada. */ vivo?: { quandos: number[]; agora: () => number }; onClose: () => void }) {
   const lousa = dados ?? PENDENTE;
   const linhas = lousa.linhas;
   const crono = useMemo(() => linhas.map(cronograma), [linhas]);
   const dur = (j: number) => (crono[j]!.length ? crono[j]![crono[j]!.length - 1]! : 0);
-  const inicios = useMemo(() => { let a = 0; return crono.map((c) => { const x = a; a += (c.length ? c[c.length - 1]! : 0) + PAUSA; return x; }); }, [crono]);
+  const inicios = useMemo(() => {
+    let a = 0;
+    return crono.map((c, j) => {
+      // ao vivo: a linha começa quando o áudio chega nela (ou quando a anterior termina de ser escrita)
+      const alvo = vivo && vivo.quandos[j] !== undefined && vivo.quandos[0] !== undefined ? UPS * (vivo.quandos[j]! - vivo.quandos[0]! - 0.2) : 0;
+      const x = Math.max(a, alvo);
+      a = x + (c.length ? c[c.length - 1]! : 0) + PAUSA;
+      return x;
+    });
+  }, [crono, vivo]);
   const total = linhas.length ? inicios[inicios.length - 1]! + dur(linhas.length - 1) + PAUSA : 0;
   const fl = useMemo(() => { let a = 0; return linhas.map((l) => { const w = l.fala.length; const o = { ini: a, w }; a += w; return o; }); }, [linhas]);
   const totalFala = fl.length ? fl[fl.length - 1]!.ini + fl[fl.length - 1]!.w : 0;
@@ -146,7 +155,15 @@ export function MentorLousa({ lousa: dados, sync, onClose }: { lousa: Lousa | nu
   }, [sync, totalFala, rodada]);
 
   useEffect(() => {
-    if (sincronizado) return;
+    if (!vivo) return;
+    let raf = 0;
+    const f = () => { setPos(Math.max(0, UPS * (vivo.agora() - (vivo.quandos[0] ?? vivo.agora()) + 0.2))); raf = requestAnimationFrame(f); };
+    raf = requestAnimationFrame(f);
+    return () => cancelAnimationFrame(raf);
+  }, [vivo]);
+
+  useEffect(() => {
+    if (sincronizado || vivo) return;
     if (reduz.current) { setPos(total); return; }
     setPos(0);
     const t0 = performance.now();
@@ -158,7 +175,7 @@ export function MentorLousa({ lousa: dados, sync, onClose }: { lousa: Lousa | nu
     };
     raf = requestAnimationFrame(f);
     return () => cancelAnimationFrame(raf);
-  }, [total, rodada, sincronizado]);
+  }, [total, rodada, sincronizado, vivo]);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -166,7 +183,7 @@ export function MentorLousa({ lousa: dados, sync, onClose }: { lousa: Lousa | nu
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
 
-  const fim = sincronizado ? pos > totalFala : pos >= total;
+  const fim = vivo ? false : sincronizado ? pos > totalFala : pos >= total;
   // acompanha a escrita: rola o quadro para a linha atual
   useEffect(() => { const el = placa.current; if (el && !fim) el.scrollTop = el.scrollHeight; }, [pos, fim]);
 

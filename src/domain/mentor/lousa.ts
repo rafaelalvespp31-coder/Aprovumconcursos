@@ -86,3 +86,28 @@ export function semelhancaChaves(a: string, b: string): number {
   for (const x of A) if (B.has(x)) i++;
   return i / (A.size + B.size - i);
 }
+
+/** Converte os argumentos da chamada de função "lousa_escrever" (feita pelo Mentor ao vivo) em uma linha válida do quadro. */
+export function linhaDeChamada(a: Record<string, unknown>): LinhaLousa | null {
+  const s = (k: string) => (typeof a[k] === "string" && (a[k] as string).trim() ? (a[k] as string).trim() : undefined);
+  const nv = typeof a.nivel === "number" ? Math.max(0, Math.min(5, Math.round(a.nivel))) : 0;
+  const emoji = s("emoji");
+  const q = typeof a.quantidade === "number" ? Math.max(1, Math.min(12, Math.round(a.quantidade))) : 1;
+  const raw: Record<string, unknown> = {
+    tipo: s("tipo") ?? "texto",
+    texto: s("texto") ?? "",
+    dir: s("dir"),
+    nivel: nv,
+    cor: s("cor"),
+    sublinhar: s("sublinhar"),
+    caixa: a.caixa === true ? true : undefined,
+    circular: s("circular"),
+    marca: s("marca"),
+    figuras: emoji ? [{ e: emoji, n: q }] : undefined,
+    realce: s("realce_trecho") && s("realce_cor") ? [{ trecho: s("realce_trecho"), cor: s("realce_cor") }] : undefined,
+  };
+  for (const k of Object.keys(raw)) if (raw[k] === undefined) delete raw[k];
+  if (raw.tipo === "figuras" && !raw.figuras) raw.tipo = "texto";
+  const ok = linhaSchema.safeParse(raw);
+  return ok.success ? ok.data : null;
+}
