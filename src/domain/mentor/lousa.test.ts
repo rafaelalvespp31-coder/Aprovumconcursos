@@ -15,9 +15,9 @@ describe("pedeLousa", () => {
 });
 
 describe("lousaSchema", () => {
-  it("aceita passos e desenho e rejeita primitivas desconhecidas", () => {
-    const ok = lousaSchema.safeParse({ mostrar: true, titulo: "x", passos: [{ texto: "a", conta: "1+1=2" }], desenho: [{ t: "linha", x1: 1, y1: 2, x2: 3, y2: 4 }] });
+  it("aceita linhas e desenho e rejeita primitivas desconhecidas", () => {
+    const ok = lousaSchema.safeParse({ mostrar: true, titulo: "x", linhas: [{ tipo: "conta", texto: "1+1=2" }, { tipo: "par", texto: "5 maçãs", dir: "R$ 20", circular: "20" }], desenho: [{ t: "linha", x1: 1, y1: 2, x2: 3, y2: 4 }] });
     expect(ok.success).toBe(true);
-    expect(lousaSchema.safeParse({ mostrar: true, passos: [], desenho: [{ t: "svg", raw: "<script>" }] }).success).toBe(false);
+    expect(lousaSchema.safeParse({ mostrar: true, linhas: [], desenho: [{ t: "svg", raw: "<script>" }] }).success).toBe(false);
   });
 });

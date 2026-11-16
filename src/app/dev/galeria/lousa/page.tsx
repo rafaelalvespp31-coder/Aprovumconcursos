@@ -1,23 +1,27 @@
 "use client";
 import { MentorLousa } from "@/components/mentor/mentor-lousa";
-import type { Lousa } from "@/domain/mentor/lousa";
+import { lousaSchema } from "@/domain/mentor/lousa";
 
-/** Só galeria: lousa de exemplo (conta + desenho). */
-const dados: Lousa = {
+/** Só galeria: quadro de exemplo (regra de três), como um professor escreveria. */
+const dados = lousaSchema.parse({
   mostrar: true,
-  titulo: "Teorema de Pitágoras",
-  passos: [
-    { texto: "Num triângulo retângulo, a hipotenusa é o lado maior.", conta: "a² = b² + c²" },
-    { texto: "Catetos 3 e 4: some os quadrados.", conta: "3² + 4² = 9 + 16 = 25" },
-    { texto: "Tire a raiz quadrada.", conta: "a = √25 = 5" },
+  titulo: "Regra de três",
+  linhas: [
+    { tipo: "titulo", texto: "Regra de 3", cor: "azul", sublinhar: "onda" },
+    { tipo: "texto", texto: "Exemplo:", sublinhar: "reta", cor: "preto" },
+    { tipo: "texto", texto: "Se 5 maçãs custam R$ 20,00,", nivel: 1 },
+    { tipo: "texto", texto: "quanto custam 8 maçãs?", nivel: 1, sublinhar: "reta", cor: "preto" },
+    { tipo: "texto", texto: "Montar a regra de 3:", nivel: 1 },
+    { tipo: "par", texto: "5 maçãs", dir: "R$ 20,00", nivel: 2, cor: "preto" },
+    { tipo: "par", texto: "8 maçãs", dir: "R$ x", nivel: 2, cor: "preto", circular: "x" },
+    { tipo: "texto", texto: "Multiplicar cruzado:", nivel: 2, marca: "seta_baixo" },
+    { tipo: "conta", texto: "5 · x = 8 · 20", nivel: 3 },
+    { tipo: "conta", texto: "5x = 160", nivel: 3, cor: "azul", marca: "seta_dir" },
+    { tipo: "conta", texto: "x = 160 ÷ 5", nivel: 3 },
+    { tipo: "conta", texto: "x = 32", nivel: 3, cor: "azul", caixa: true },
+    { tipo: "resposta", texto: "Resposta: 8 maçãs custam R$ 32,00.", nivel: 3, marca: "estrela" },
+    { tipo: "nota", texto: "regra de 3 direta: mais maçãs → mais custo" },
   ],
-  desenho: [
-    { t: "linha", x1: 60, y1: 210, x2: 300, y2: 210, cor: "grafite" },
-    { t: "linha", x1: 60, y1: 210, x2: 60, y2: 50, cor: "grafite" },
-    { t: "linha", x1: 60, y1: 50, x2: 300, y2: 210, cor: "vermelho", seta: true },
-    { t: "texto", x: 160, y: 232, s: "4", cor: "azul" },
-    { t: "texto", x: 32, y: 135, s: "3", cor: "azul" },
-    { t: "texto", x: 190, y: 112, s: "a = 5", cor: "vermelho" },
-  ],
-};
+  desenho: [],
+});
 export default function Page() { return <div style={{ minHeight: "100vh", background: "#eee" }}><MentorLousa lousa={dados} onClose={() => {}} /></div>; }

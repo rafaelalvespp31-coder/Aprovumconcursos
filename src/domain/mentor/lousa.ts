@@ -16,10 +16,28 @@ export const itemDesenho = z.discriminatedUnion("t", [
   z.object({ t: z.literal("texto"), x: n, y: n, s: z.string().trim().min(1).max(40), cor: COR.optional() }),
 ]);
 
+const COR_TEXTO = z.enum(["azul", "preto", "vermelho", "verde"]);
+export const linhaSchema = z.object({
+  /** titulo: grande, no topo; texto: explicação; conta: expressão matemática; resposta: fecho; nota: observação pequena; par: "esq ----- dir" (regra de três, tabelas); espaco: respiro. */
+  tipo: z.enum(["titulo", "texto", "conta", "resposta", "nota", "par", "espaco"]),
+  texto: z.string().trim().max(120).default(""),
+  /** Só em "par": o lado direito. */
+  dir: z.string().trim().max(60).optional(),
+  /** Recuo, de 0 a 5. */
+  nivel: z.number().int().min(0).max(5).default(0),
+  cor: COR_TEXTO.optional(),
+  sublinhar: z.enum(["reta", "onda"]).optional(),
+  caixa: z.boolean().optional(),
+  /** Trecho do texto (ou do lado direito) que ganha um círculo, como o "x" da regra de três. */
+  circular: z.string().trim().max(30).optional(),
+  marca: z.enum(["ok", "estrela", "seta_baixo", "seta_dir"]).optional(),
+});
+export type LinhaLousa = z.infer<typeof linhaSchema>;
+
 export const lousaSchema = z.object({
   mostrar: z.boolean(),
   titulo: z.string().trim().max(80).default(""),
-  passos: z.array(z.object({ texto: z.string().trim().min(1).max(140), conta: z.string().trim().max(90).optional() })).max(9).default([]),
+  linhas: z.array(linhaSchema).max(28).default([]),
   desenho: z.array(itemDesenho).max(30).default([]),
 });
 export type Lousa = z.infer<typeof lousaSchema>;
