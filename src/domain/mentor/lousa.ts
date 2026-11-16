@@ -33,6 +33,8 @@ export const linhaSchema = z.object({
   /** Trecho do texto (ou do lado direito) que ganha um círculo, como o "x" da regra de três. */
   circular: z.string().trim().max(30).optional(),
   marca: z.enum(["ok", "estrela", "seta_baixo", "seta_dir"]).optional(),
+  /** O que o professor diz em voz alta enquanto escreve esta linha (uma ou duas frases curtas). Vazio em título e espaços. */
+  fala: z.string().trim().max(260).default(""),
   /** Trechos escritos com outra caneta (cor diferente do resto da linha). */
   realce: z.array(z.object({ trecho: z.string().trim().min(1).max(40), cor: COR_TEXTO })).max(4).optional(),
 });
@@ -53,4 +55,11 @@ export const LOUSA_H = 260;
 export function anunciaLousa(fala: string): boolean {
   const s = fala.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   return /\b(lousa|quadro)\b/.test(s) || /\bvou (te )?(anotar|escrever|desenhar|rabiscar|montar|mostrar (a|o) (conta|calculo|exemplo))/.test(s) || /\bdeixa eu (anotar|escrever|desenhar)/.test(s);
+}
+
+/** Roteiro falado, na ordem das linhas: o Mentor lê isto enquanto o quadro vai sendo escrito no mesmo ritmo. */
+export function roteiroDe(l: Lousa): { falas: string[]; total: number; texto: string } {
+  const falas = l.linhas.map((x) => x.fala.trim());
+  const texto = falas.filter(Boolean).map((f, i) => `${i + 1}. ${f}`).join("\n");
+  return { falas, total: falas.reduce((a, f) => a + f.length, 0), texto };
 }

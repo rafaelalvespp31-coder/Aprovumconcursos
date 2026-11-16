@@ -30,3 +30,14 @@ describe("anunciaLousa", () => {
     expect(anunciaLousa("Boa pergunta, vamos revisar o artigo quinto")).toBe(false);
   });
 });
+
+describe("roteiroDe", () => {
+  it("monta o roteiro falado na ordem das linhas", async () => {
+    const { roteiroDe } = await import("./lousa");
+    const l = lousaSchema.parse({ mostrar: true, linhas: [{ tipo: "titulo", texto: "A" }, { tipo: "conta", texto: "2+2", fala: "Dois mais dois." }, { tipo: "resposta", texto: "4", fala: "Dá quatro." }], desenho: [] });
+    const r = roteiroDe(l);
+    expect(r.falas).toEqual(["", "Dois mais dois.", "Dá quatro."]);
+    expect(r.texto).toBe("1. Dois mais dois.\n2. Dá quatro.");
+    expect(r.total).toBe("Dois mais dois.".length + "Dá quatro.".length);
+  });
+});

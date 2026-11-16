@@ -112,15 +112,24 @@ function Traco({ it, d }: { it: ItemDesenho; d: number }) {
  */
 const PENDENTE: Lousa = { mostrar: true, titulo: "", linhas: [], desenho: [] };
 
-export function MentorLousa({ lousa: dados, onClose }: { lousa: Lousa | null; onClose: () => void }) {
+export function MentorLousa({ lousa: dados, sync, onClose }: { lousa: Lousa | null; /** Segue a voz: devolve quantas letras do roteiro já foram faladas. */ sync?: () => { c: number; fim: boolean }; onClose: () => void }) {
   const lousa = dados ?? PENDENTE;
   const linhas = lousa.linhas;
   const crono = useMemo(() => linhas.map(cronograma), [linhas]);
   const dur = (j: number) => (crono[j]!.length ? crono[j]![crono[j]!.length - 1]! : 0);
   const inicios = useMemo(() => { let a = 0; return crono.map((c) => { const x = a; a += (c.length ? c[c.length - 1]! : 0) + PAUSA; return x; }); }, [crono]);
   const total = linhas.length ? inicios[inicios.length - 1]! + dur(linhas.length - 1) + PAUSA : 0;
+  const fl = useMemo(() => { let a = 0; return linhas.map((l) => { const w = l.fala.length; const o = { ini: a, w }; a += w; return o; }); }, [linhas]);
+  const totalFala = fl.length ? fl[fl.length - 1]!.ini + fl[fl.length - 1]!.w : 0;
+  const sincronizado = !!sync && totalFala > 0;
   /** Quantas letras da linha j já foram escritas no instante `pos`. */
-  const letras = (j: number) => { const c = crono[j]!; const t0 = pos - inicios[j]!; let n = 0; while (n < c.length && c[n]! <= t0) n++; return n; };
+  const letras = (j: number) => {
+    if (sincronizado) {
+      const { ini, w } = fl[j]!; const len = crono[j]!.length;
+      if (pos >= ini + w) return len;
+      if (pos <= ini || w === 0) return 0;
+      return Math.ceil(Math.min(1, ((pos - ini) / w) * 1.5) * len); // escreve um pouco à frente da fala
+    } const c = crono[j]!; const t0 = pos - inicios[j]!; let n = 0; while (n < c.length && c[n]! <= t0) n++; return n; };
   const [pos, setPos] = useState(0);
   const [rodada, setRodada] = useState(0);
   const reduz = useRef(false);
@@ -128,6 +137,15 @@ export function MentorLousa({ lousa: dados, onClose }: { lousa: Lousa | null; on
   useEffect(() => { reduz.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches; }, []);
 
   useEffect(() => {
+    if (!sync || totalFala <= 0) return;
+    let raf = 0;
+    const f = () => { const s = sync(); setPos(s.fim ? totalFala + 1 : s.c); if (!s.fim) raf = requestAnimationFrame(f); };
+    raf = requestAnimationFrame(f);
+    return () => cancelAnimationFrame(raf);
+  }, [sync, totalFala, rodada]);
+
+  useEffect(() => {
+    if (sincronizado) return;
     if (reduz.current) { setPos(total); return; }
     setPos(0);
     const t0 = performance.now();
@@ -139,7 +157,7 @@ export function MentorLousa({ lousa: dados, onClose }: { lousa: Lousa | null; on
     };
     raf = requestAnimationFrame(f);
     return () => cancelAnimationFrame(raf);
-  }, [total, rodada]);
+  }, [total, rodada, sincronizado]);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -147,11 +165,11 @@ export function MentorLousa({ lousa: dados, onClose }: { lousa: Lousa | null; on
     return () => window.removeEventListener("keydown", k);
   }, [onClose]);
 
-  const fim = pos >= total;
+  const fim = sincronizado ? pos > totalFala : pos >= total;
   // acompanha a escrita: rola o quadro para a linha atual
   useEffect(() => { const el = placa.current; if (el && !fim) el.scrollTop = el.scrollHeight; }, [pos, fim]);
 
-  const ativo = linhas.findIndex((_, j) => pos - inicios[j]! < dur(j));
+  const ativo = sincronizado ? linhas.findIndex((_, j) => letras(j) < crono[j]!.length) : linhas.findIndex((_, j) => pos - inicios[j]! < dur(j));
   const desenho = lousa.desenho;
   return (
     <aside className={`lz ${reduz.current ? "lz-pronto" : ""}`} role="dialog" aria-label={`Quadro do Mentor: ${lousa.titulo || "exemplo"}`} data-testid="mentor-lousa">
@@ -167,7 +185,7 @@ export function MentorLousa({ lousa: dados, onClose }: { lousa: Lousa | null; on
           <div aria-hidden>
             {!dados && <p className="lz-l" data-t="texto"><Marcador c="#1d3a8a" /></p>}
             {linhas.map((l, j) => {
-              if (pos < inicios[j]!) return null;
+              if (sincronizado ? pos < fl[j]!.ini : pos < inicios[j]!) return null;
               const len = crono[j]!.length;
               const v = letras(j);
               const feito = v >= len;
@@ -199,7 +217,7 @@ export function MentorLousa({ lousa: dados, onClose }: { lousa: Lousa | null; on
                 </p>
               );
             })}
-            {desenho.length > 0 && (fim || pos > total * 0.9 || reduz.current) && (
+            {desenho.length > 0 && (fim || (sincronizado ? pos > totalFala * 0.75 : pos > total * 0.9) || reduz.current) && (
               <svg className="lz-svg" viewBox={`0 0 ${LOUSA_W} ${LOUSA_H}`} role="img" aria-label="Desenho do exemplo" key={`d${rodada}`}>
                 {desenho.map((it, i) => <Traco key={i} it={it} d={i * 0.9} />)}
               </svg>

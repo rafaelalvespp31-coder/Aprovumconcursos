@@ -24,4 +24,8 @@ const dados = lousaSchema.parse({
   ],
   desenho: [{ t: "emoji", x: 20, y: 60, s: "🍎", tam: 44 }, { t: "emoji", x: 70, y: 60, s: "🍎", tam: 44 }, { t: "emoji", x: 120, y: 60, s: "🍎", tam: 44 }, { t: "texto", x: 180, y: 50, s: "= R$ 12", cor: "rosa" }],
 });
-export default function Page() { return <div style={{ minHeight: "100vh", background: "#eee" }}><MentorLousa lousa={dados} onClose={() => {}} /></div>; }
+const falas = ["", "Vamos ver um exemplo.", "Se cinco maçãs custam vinte reais,", "quanto custam oito maçãs?", "Primeiro, montamos a regra de três.", "Cinco maçãs estão para vinte reais,", "assim como oito maçãs estão para x.", "Agora multiplicamos cruzado.", "Cinco vezes x é igual a oito vezes vinte.", "Isso dá cinco x igual a cento e sessenta.", "Dividimos por cinco.", "E o x vale trinta e dois.", "Então oito maçãs custam trinta e dois reais.", "Lembre: mais maçãs, mais custo."];
+const comFala = { ...dados, linhas: dados.linhas.map((l, i) => ({ ...l, fala: falas[i] ?? "" })) };
+const t0 = typeof performance !== "undefined" ? performance.now() : 0;
+const sync = () => { const c = ((performance.now() - t0) / 1000) * 14; const tot = comFala.linhas.reduce((a, l) => a + l.fala.length, 0); return { c: Math.min(c, tot), fim: c > tot + 14 }; };
+export default function Page() { return <div style={{ minHeight: "100vh", background: "#eee" }}><MentorLousa lousa={comFala} sync={sync} onClose={() => {}} /></div>; }

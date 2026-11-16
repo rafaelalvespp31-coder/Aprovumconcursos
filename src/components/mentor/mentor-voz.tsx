@@ -1,6 +1,6 @@
 "use client";
 
-import { anunciaLousa, pedeLousa, type Lousa } from "@/domain/mentor/lousa";
+import { anunciaLousa, pedeLousa, roteiroDe, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
@@ -32,7 +32,7 @@ const fromB64 = (b64: string) => {
  * com o Google usando um token de uso único criado pelo servidor; o servidor controla o limite
  * diário (3 min) e a instrução do Mentor.
  */
-export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = false, orbSize = 96, onClose, onSpeaking, onLevel, onLousa }: { /** Entrega a função que lê a energia do áudio (volume/graves/médios/agudos). */ onLevel?: (nivel: () => Bands) => void; /** Avisa quando o Mentor começa/para de falar (ex.: borda do card chiando). */ onSpeaking?: (falando: boolean) => void; base?: string; /** Contexto da aula lido no instante em que a conversa começa. */ getStudy?: () => (StudyContext & { lessonId?: string }) | null; /** Começa sozinho assim que o saldo de voz carrega (aberto por um clique do aluno). */ autoStart?: boolean; /** Só a orbe animada, sem cartão nem textos (toque nela para encerrar). */ orbOnly?: boolean; /** Diâmetro da orbe no modo orbOnly. */ orbSize?: number; onClose?: () => void; /** Recebe a lousa (passos e desenho) quando o aluno pede uma conta, exemplo ou esquema. */ onLousa?: (l: Lousa | "pendente" | null) => void }) {
+export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = false, orbSize = 96, onClose, onSpeaking, onLevel, onLousa }: { /** Entrega a função que lê a energia do áudio (volume/graves/médios/agudos). */ onLevel?: (nivel: () => Bands) => void; /** Avisa quando o Mentor começa/para de falar (ex.: borda do card chiando). */ onSpeaking?: (falando: boolean) => void; base?: string; /** Contexto da aula lido no instante em que a conversa começa. */ getStudy?: () => (StudyContext & { lessonId?: string }) | null; /** Começa sozinho assim que o saldo de voz carrega (aberto por um clique do aluno). */ autoStart?: boolean; /** Só a orbe animada, sem cartão nem textos (toque nela para encerrar). */ orbOnly?: boolean; /** Diâmetro da orbe no modo orbOnly. */ orbSize?: number; onClose?: () => void; /** Recebe a lousa (passos e desenho) quando o aluno pede uma conta, exemplo ou esquema. */ onLousa?: (l: Lousa | "pendente" | null, sync?: () => { c: number; fim: boolean }) => void }) {
   const [fase, setFase] = useState<Fase>("carregando");
   const [left, setLeft] = useState(0);
   const [limit, setLimit] = useState(180);
@@ -46,6 +46,22 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   useEffect(() => { onLousaRef.current = onLousa; });
   const lousaTurno = useRef(false);
   const falaTurno = useRef("");
+  /** Roteiro em andamento: eventos (instante de reprodução → caracteres falados) para o quadro seguir a voz. */
+  const roteiro = useRef<{ total: number; chars: number; ev: { t: number; c: number }[]; fim: boolean; tFim: number } | null>(null);
+  const progresso = () => {
+    const ro = roteiro.current; const ctx = ref.current.ctx;
+    if (!ro || !ctx) return { c: 0, fim: false };
+    const now = ctx.currentTime;
+    if (ro.fim && now >= ro.tFim) return { c: ro.total, fim: true };
+    let c0 = 0, t0 = -Infinity;
+    for (const e of ro.ev) {
+      const ini = Math.max(t0, e.t - (e.c - c0) / 13); // fala ~13 letras/s
+      if (now < ini) return { c: c0, fim: false };
+      if (now < e.t) return { c: c0 + ((e.c - c0) * (now - ini)) / Math.max(0.05, e.t - ini), fim: false };
+      c0 = e.c; t0 = e.t;
+    }
+    return { c: Math.min(ro.total, c0), fim: false };
+  };
 
   const ref = useRef<{
     session: Session | null;
@@ -237,18 +253,30 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     // Lousa: abre na hora (quando o aluno pede uma conta/exemplo/desenho ou o Mentor diz que vai anotar) e
     // monta o conteúdo em paralelo à fala; o quadro já aparece escrevendo e recebe o texto quando chega.
     if (replied) falaTurno.current += replied;
-    if (!lousaTurno.current && onLousaRef.current && (starts || replied) && (pedeLousa(r.turn) || anunciaLousa(falaTurno.current))) {
+    if (!lousaTurno.current && onLousaRef.current && (!roteiro.current || roteiro.current.fim) && (starts || replied) && (pedeLousa(r.turn) || anunciaLousa(falaTurno.current))) {
       lousaTurno.current = true;
       onLousaRef.current("pendente");
       void fetch("/api/mentor/lousa", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido: r.turn || falaTurno.current, study: getStudy?.() ?? undefined }) })
         .then((x) => (x.ok ? (x.json() as Promise<{ lousa?: Lousa }>) : null))
-        .then((j) => onLousaRef.current?.(j?.lousa?.mostrar ? j.lousa : null))
+        .then((j) => {
+          const l = j?.lousa?.mostrar ? j.lousa : null;
+          const rot = l ? roteiroDe(l) : null;
+          if (l && rot && rot.total > 0 && ref.current.session) {
+            roteiro.current = { total: rot.total, chars: 0, ev: [], fim: false, tFim: 0 };
+            onLousaRef.current?.(l, progresso);
+            try { ref.current.session.sendRealtimeInput({ text: `[ROTEIRO DA LOUSA] Explique agora em voz alta, na ordem e sem pular nada, o que está sendo escrito no quadro:\n${rot.texto}` }); } catch { /* segue sem sincronia */ }
+          } else onLousaRef.current?.(l);
+        })
         .catch(() => onLousaRef.current?.(null));
     }
     if (replied) r.replied.push(replied);
+    const ro = roteiro.current;
+    const contar = !!(replied && ro && !ro.fim);
+    if (contar) ro!.chars = Math.min(ro!.total, ro!.chars + replied!.length);
     if (m.serverContent?.turnComplete) {
       lousaTurno.current = false;
       falaTurno.current = "";
+      if (ro && !ro.fim && ro.chars > 0) { ro.fim = true; ro.tFim = Math.max(r.next, r.ctx?.currentTime ?? 0); } // narração terminou: fecha o quadro no fim do áudio
       if (r.bye) {
         const falta = r.ctx ? Math.max(0, r.next - r.ctx.currentTime) : 0;
         if (r.byeTimer) clearTimeout(r.byeTimer);
@@ -259,6 +287,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     for (const p of m.serverContent?.modelTurn?.parts ?? []) {
       if (p.inlineData?.data && (p.inlineData.mimeType ?? "").startsWith("audio/")) tocar(p.inlineData.data);
     }
+    if (contar && ro && r.ctx) ro.ev.push({ t: Math.max(r.next, r.ctx.currentTime), c: ro.chars });
   };
 
   const iniciar = async () => {
