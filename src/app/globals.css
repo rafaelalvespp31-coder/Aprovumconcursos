@@ -4641,3 +4641,11 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
   .cm-go { width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .cm-lista > li, .cm-sk-l, .cm-sk-c, .cm-foto, .cm-barra i { animation: none; transition: none; } }
+
+/* Central de Missões no desktop: embaixo do palco/skins (coluna da esquerda), enchendo o vão; os cartões ficam na coluna da direita. */
+@media (min-width: 1100px) {
+  .cl > .cl-stage { grid-column: 1; grid-row: 1; }
+  .cm-slot { grid-column: 1; grid-row: 2; padding: 12px 0 0; min-width: 0; container-type: inline-size; }
+  .cl > .cl-low { grid-column: 2; grid-row: 1 / span 2; }
+  .cl > .cl-concursos { grid-row: 3; }
+}

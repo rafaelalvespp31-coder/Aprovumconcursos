@@ -1,12 +1,13 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { HomeOperacao } from "@/components/home/home-operacao";
 import { defaultAvatar } from "@/domain/avatar/catalog";
 import type { HomeData } from "@/server/services/gamification";
 import { demoAvatarItems } from "../avatar-fixtures";
 
 /** Galeria: Home com dados de EXEMPLO (só aqui; nada é gravado). `vazio` = aluno novo, sem histórico. */
-export function DemoHome({ mannequin, gender, level, empty, levelUp, canCustomize = true }: { canCustomize?: boolean; mannequin: boolean; gender: "m" | "f"; level: number; empty: boolean; levelUp: boolean }) {
+export function DemoHome({ mannequin, gender, level, empty, levelUp, canCustomize = true, central }: { central?: ReactNode; canCustomize?: boolean; mannequin: boolean; gender: "m" | "f"; level: number; empty: boolean; levelUp: boolean }) {
   const achievements = [
     ["primeiro_combate", "Primeiro Combate", "caveira", "Responder 1 questão válida"],
     ["atirador_elite", "Atirador de Elite", "estrela", "≥ 90% em um simulado"],
@@ -57,6 +58,7 @@ export function DemoHome({ mannequin, gender, level, empty, levelUp, canCustomiz
       mannequin={mannequin}
       request={null}
       canCustomize={canCustomize}
+      central={central}
       skins={canCustomize ? [{ id: "d1", thumb: "/avatar/ui/palco-fundo.webp", active: true }, { id: "d2", thumb: "/mentor/caveira.webp", active: false }] : []}
       selectSkin={async () => ({ ok: true })}
       ackLevels={async () => {}}
