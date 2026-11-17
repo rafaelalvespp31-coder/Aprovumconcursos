@@ -16,7 +16,7 @@ export interface EstadoDitado {
   W: number; ncols: number; colW: number; margem: number;
   y: number; // cursor vertical do cabeçalho
   colY: number[]; rowTop: number; col: number; caixas: number; temCaixa: boolean;
-  mmc?: Mmc; frase?: Frase; cenas: Record<number, Cena>; camadas: number; pirY: number; so: boolean; yL: number; yR: number; ym: number; linhasTab: { y: number; a: string; b: string }[]; corConta: number; marcos: number; resumo: boolean; resumoY: number; yTempo?: number; itens: ItemDesenho[];
+  mmc?: Mmc; frase?: Frase; cenas: Record<number, Cena>; camadas: number; pirY: number; so: boolean; yL: number; yR: number; ym: number; linhasTab: { y: number; a: string; b: string }[]; corConta: number; marcos: number; resumo: boolean; resumoY: number; yTempo?: number; grade?: { y: number; n: number; x0: number; w: number }; itens: ItemDesenho[];
 }
 
 /** `so`: copia só os traços, sem letras. Padrão: o quadro mostra o que foi DITADO como desenho (rótulos, números, contas), nunca a conversa do professor. */
@@ -55,7 +55,7 @@ const NUM_PALAVRA = /^(?:(?:n[ºo°]\s*)?\d+(?!\d|\.\d)|um|uma|dois|duas|tr[eê]
 /** Aplica um comando ditado. Devolve false se a frase não for um comando (conversa do professor: ignorada). `atraso` = segundos até o áudio chegar nela. */
 export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): boolean {
   const f = frase.replace(/\s+/g, " ").replace(/[*_`]/g, "").trim();
-  const m = /^(t[ií]tulo|subt[ií]tulo|linha do tempo|marco|caixa|item|ponto|t[oó]pico|exemplo|destaque|aten[cç][aã]o|cuidado|resumo|seta|tabela|linha|cruzar|conta|passo|resposta|mmc|mdc|arma(?:da|r)|divis[aã]o|frase|sujeito|predicado|verbo|n[uú]cleo|complemento|adjunto|camada|cadeia|coluna|pessoa|v[ií]tima|arma|objeto)\b[\s:,.\-–]*(.*)$/i.exec(f);
+  const m = /^(t[ií]tulo|subt[ií]tulo|linha do tempo|marco|caixa|item|ponto|t[oó]pico|exemplo|destaque|aten[cç][aã]o|cuidado|resumo|seta|tabela|linha|cruzar|conta|passo|resposta|mmc|mdc|arma(?:da|r)|divis[aã]o|frase|sujeito|predicado|verbo|n[uú]cleo|complemento|adjunto|camada|cadeia|grade|c[eé]lula|coluna|pessoa|v[ií]tima|arma|objeto)\b[\s:,.\-–]*(.*)$/i.exec(f);
   if (!m) {
     const it0: ItemDesenho[] = []; const ok = conversaEnsino(e, f, Math.max(0, atraso), it0); e.itens.push(...it0);
     return ok || naturalDitado(e, f, atraso);
@@ -74,6 +74,22 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
   if ((cmd === "conta" || cmd === "passo") && mmcFalado(e, resto, d)) return true; // "Conta: 12 dividido por 2 dá 6…" vira a tabela do MMC, não frase solta
   if (MATEMATICA.has(cmd)) { if (!matematica(e, cmd, resto, d, it)) return true; e.itens.push(...it); e.ym = Math.max(e.ym, e.yL, e.yR); return true; }
   if (e.so && (cmd === "titulo" || cmd === "subtitulo" || cmd === "item" || cmd === "ponto" || cmd === "topico" || cmd === "exemplo" || cmd === "destaque" || cmd === "atencao" || cmd === "cuidado")) return true; // só letras: não entra no quadro
+  if (cmd === "grade" || cmd === "celula") {
+    const cels = resto.split("|").map((s) => s.trim()).filter(Boolean).slice(0, 4);
+    if (!cels.length) return true;
+    if (cmd === "grade") e.grade = { y: Math.max(e.y + 8, e.ym > 0 ? e.ym + 8 : 0), n: cels.length, x0: e.margem, w: e.W - e.margem * 2 };
+    const g = e.grade;
+    if (!g) return true;
+    const cab = cmd === "grade", tam = cab ? 22 : 19, cwid = g.w / g.n, max = Math.min(38, Math.max(8, Math.floor((cwid - 16) / cw(tam))));
+    const ls = cels.map((c) => quebra(cab ? c.toUpperCase() : c, max).slice(0, 5));
+    const h = Math.max(...ls.map((l) => l.length)) * (tam + 6) + 14;
+    ls.forEach((col, i) => col.forEach((l, j) => push(tx(g.x0 + i * cwid + 8, g.y + 6 + tam + j * (tam + 6), l, cab ? "azul" : i === 0 ? "verde" : "grafite", tam, d + j * passo))));
+    push(lin(g.x0, g.y + h, g.x0 + g.w, g.y + h, "grafite", d + 0.3));
+    for (let i = 1; i < g.n; i++) push(lin(g.x0 + i * cwid, g.y, g.x0 + i * cwid, g.y + h, "grafite", d + 0.3));
+    g.y += h; e.ym = Math.max(e.ym, g.y);
+    e.itens.push(...it);
+    return true;
+  }
   if (cmd === "titulo") {
     if (!resto) return true;
     const tam = largo ? 40 : 28;

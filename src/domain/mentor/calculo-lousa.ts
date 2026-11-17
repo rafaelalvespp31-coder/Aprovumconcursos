@@ -1,3 +1,4 @@
+import { roteiroDeExemplo as roteiroDeExemploTempo } from "./catalogo-lousa";
 /**
  * Exemplo de matemática da aula → conta desenhada na lousa como um humano resolve: o enunciado, a tabela de dados,
  * o cálculo passo a passo (um "=" embaixo do outro) e a resposta numa caixa. Também vale para MMC/MDC e regra de três.
@@ -109,12 +110,35 @@ const frases = (s: string) => limpa(s).split(/(?<=[.!?])\s+(?=[A-ZÀ-Ú0-9“"])
 
 /** Qualquer exemplo em texto (sem conta) → sequência didática: contexto, passos numerados e a conclusão em destaque. */
 export function roteiroDeTexto(titulo: string, texto: string): string[] | null {
-  const fs = frases(texto).slice(0, 7);
+  const fs = frases(texto).slice(0, 8);
   if (fs.length < 2) return null;
-  const out = [cmd("Título", corta(limpa(titulo).replace(/\.$/, "") || "Exemplo", 40))];
-  out.push(cmd("Exemplo", corta(fs[0]!, 150)));
+  const tit = cmd("Título", corta(limpa(titulo).replace(/\.$/, "") || "Exemplo", 40));
+  // datas e meses → linha do tempo
+  const comData = fs.filter((f) => /\b(1[5-9]\d\d|20\d\d)\b|\b(janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\b/i.test(f));
+  if (comData.length >= 2) {
+    const MES = "janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro";
+    const lideradas = comData.map((f) => {
+      const m = new RegExp(`(?:\\b(?:em|no|na)\\s+)?((?:\\d{1,2}\\s+de\\s+)?(?:${MES})(?:\\s+de\\s+\\d{4})?|\\b\\d{4}\\b)`, "i").exec(f);
+      if (!m) return f;
+      const resto = (f.slice(0, m.index) + f.slice(m.index + m[0].length)).replace(/\s+/g, " ").replace(/\s+([,.;])/g, "$1").trim().replace(/^[,;\s]+/, "");
+      return `${m[1]} — ${resto.charAt(0).toUpperCase()}${resto.slice(1)}`;
+    });
+    const r = roteiroDeExemploTempo(lideradas, corta(limpa(titulo), 40));
+    if (r) return r;
+  }
+  // "X é/significa Y" → tabela termo × significado
+  const defs = fs.map((f) => /^(.{3,40}?)\s+(?:é|são|significa|consiste em|chama-se|denomina-se)\s+(.{8,})$/i.exec(f)).filter((m): m is RegExpExecArray => !!m && m[2]!.trim().split(/\s+/).length >= 3 && !/^\S+(?:ad|id)[oa]s?\b/i.test(m[2]!.trim()));
+  if (defs.length >= 2) return [tit, "Grade: Termo | Significado", ...defs.map((m) => cmd("Célula", `${corta(m[1]!, 30)} | ${corta(m[2]!, 90)}`))];
+  // "X, enquanto/já Y" → duas colunas comparando
+  const comp = fs.map((f) => /^(.{8,}?)[,;]?\s+(?:enquanto|j[áa]|por outro lado|ao passo que)\s+(.{8,})$/i.exec(f)).filter((m): m is RegExpExecArray => !!m);
+  if (comp.length >= 1) return [tit, cmd("Exemplo", corta(fs[0]!, 150)), "Grade: Num caso | No outro caso", ...comp.map((m) => cmd("Célula", `${corta(m[1]!, 80)} | ${corta(m[2]!.replace(/[.!]+$/, ""), 80)}`)), ...(fs.length > comp.length + 1 ? [cmd("Destaque", corta(fs.at(-1)!, 150))] : [])];
   const meio = fs.slice(1, -1), fim = fs.at(-1)!;
-  meio.forEach((f, i) => { out.push(cmd("Caixa", `Passo ${i + 1}`)); out.push(cmd("Item", corta(f, 120))); });
+  const out = [tit, cmd("Exemplo", corta(fs[0]!, 150))];
+  if (meio.length >= 3) {
+    // sequência longa → tabela etapa × o que acontece
+    out.push("Grade: Etapa | O que acontece");
+    meio.forEach((f, i) => out.push(cmd("Célula", `${i + 1}ª etapa | ${corta(f, 100)}`)));
+  } else meio.forEach((f, i) => { out.push(cmd("Caixa", `Passo ${i + 1}`)); out.push(cmd("Item", corta(f, 120))); });
   out.push(cmd(meio.length ? "Destaque" : "Item", corta(fim, 150)));
   return out.length >= 4 ? out : null;
 }

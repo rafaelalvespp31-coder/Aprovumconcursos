@@ -85,3 +85,15 @@ describe("exemplos sem conta", () => {
     expect(r.at(-1)).toMatch(/^Destaque: O resultado é 36/);
   });
 });
+
+describe("exemplo de texto com elementos visuais", () => {
+  it("definições viram tabela; datas viram linha do tempo; comparação vira colunas", () => {
+    const d = roteiroDeTexto("Termos", "Três termos aparecem. Furto é a subtração de coisa alheia móvel sem violência. Roubo é a subtração mediante violência ou grave ameaça.")!;
+    expect(d).toContain("Grade: Termo | Significado");
+    const t = roteiroDeTexto("Prazo", "Uma pena é aplicada em 2020. Em março de 2021 o réu recorre. Em novembro de 2022 o tribunal julga.")!;
+    expect(t).toContain("Linha do tempo:");
+    const c = roteiroDeTexto("Comparação", "Dois crimes parecidos. João pega o celular sem ninguém ver, enquanto Pedro puxa a bolsa e ameaça. Logo, furto e roubo.")!;
+    expect(c).toContain("Grade: Num caso | No outro caso");
+    expect(roteiroDeTexto("Etapas", "Há um processo. O órgão publica o edital. A proposta vencedora é declarada. O contrato é assinado.")).not.toContain("Grade: Termo | Significado");
+  });
+});
