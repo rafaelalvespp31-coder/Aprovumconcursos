@@ -252,7 +252,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
   useEffect(() => {
     if (!vivo || fase < 2 || baseVivo === null) return;
     let raf = 0;
-    const f = () => { setPos(Math.max(0, VIVO_UPS * (vivo.agora() - baseVivo))); raf = requestAnimationFrame(f); };
+    const f = () => { const v = Math.max(0, Math.floor(VIVO_UPS * (vivo.agora() - baseVivo))); setPos((a) => (a === v ? a : v)); raf = requestAnimationFrame(f); }; // só re-renderiza quando o traço avança de fato
     raf = requestAnimationFrame(f);
     return () => cancelAnimationFrame(raf);
   }, [vivo, fase, baseVivo]);
