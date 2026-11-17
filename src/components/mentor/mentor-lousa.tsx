@@ -183,18 +183,19 @@ const PENDENTE: Lousa = { mostrar: true, titulo: "", linhas: [], desenho: [] };
 export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClose }: { lousa: Lousa | null; /** Salva a lousa nas Ferramentas; devolve se deu certo. */ onSalvar?: () => Promise<boolean>; jaSalva?: boolean; /** Segue a voz: devolve quantas letras do roteiro já foram faladas. */ sync?: () => { c: number; fim: boolean }; /** Quadro escrito ao vivo: instante (relógio do áudio) em que cada linha começa a ser falada. */ vivo?: { quandos: number[]; agora: () => number }; onClose: () => void }) {
   const lousa = dados ?? PENDENTE;
   const linhas = lousa.linhas;
+  const [baseVivo, setBaseVivo] = useState<number | null>(null);
   const crono = useMemo(() => linhas.map(cronograma), [linhas]);
   const dur = (j: number) => (crono[j]!.length ? crono[j]![crono[j]!.length - 1]! : 0);
   const inicios = useMemo(() => {
     let a = 0;
     return crono.map((c, j) => {
       // ao vivo: a linha começa quando o áudio chega nela (ou quando a anterior termina de ser escrita)
-      const alvo = vivo && vivo.quandos[j] !== undefined && vivo.quandos[0] !== undefined ? VIVO_UPS * (vivo.quandos[j]! - vivo.quandos[0]!) : 0;
+      const alvo = vivo && baseVivo !== null && vivo.quandos[j] !== undefined ? VIVO_UPS * Math.max(0, vivo.quandos[j]! - baseVivo) : 0;
       const x = Math.max(a, alvo);
       a = x + (c.length ? c[c.length - 1]! : 0) + PAUSA;
       return x;
     });
-  }, [crono, vivo]);
+  }, [crono, vivo, baseVivo]);
   const total = linhas.length ? inicios[inicios.length - 1]! + dur(linhas.length - 1) + PAUSA : 0;
   const fl = useMemo(() => { let a = 0; return linhas.map((l) => { const w = l.fala.length; const o = { ini: a, w }; a += w; return o; }); }, [linhas]);
   const totalFala = fl.length ? fl[fl.length - 1]!.ini + fl[fl.length - 1]!.w : 0;
@@ -239,13 +240,14 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
   }, [sync, totalFala, rodada, fl]);
 
   useEffect(() => {
-    if (!vivo || fase < 2) return;
+    if (!vivo || fase < 2 || baseVivo === null) return;
     let raf = 0;
-    const base = vivo.agora(); // a escrita só começa depois que a caneta termina o quadro
-    const f = () => { setPos(Math.max(0, VIVO_UPS * (vivo.agora() - base))); raf = requestAnimationFrame(f); };
+    const f = () => { setPos(Math.max(0, VIVO_UPS * (vivo.agora() - baseVivo))); raf = requestAnimationFrame(f); };
     raf = requestAnimationFrame(f);
     return () => cancelAnimationFrame(raf);
-  }, [vivo, fase]);
+  }, [vivo, fase, baseVivo]);
+  // a escrita só começa depois que a caneta termina o quadro; linhas que chegam depois entram quando chegam
+  useEffect(() => { if (fase === 2 && vivo && baseVivo === null) setBaseVivo(vivo.agora()); }, [fase, vivo, baseVivo]);
 
   useEffect(() => {
     if (sincronizado || vivo || fase < 2) return;

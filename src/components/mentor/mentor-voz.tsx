@@ -51,22 +51,26 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   const modeloTurno = useRef(false); // o Mentor está gerando uma resposta (não dá para mandar o próximo trecho agora)
   const lousaOcupada = useRef(false); // há uma lousa sendo montada/narrada: não abre outra
   const lousaAtual = useRef<{ titulo: string; linhas: LinhaLousa[]; quandos: number[]; vivo: { quandos: number[]; agora: () => number } } | null>(null);
-  /** Gera o quadro em silêncio (a tela não abre em branco) e só o abre quando está TODO pronto, escrevendo suave. */
+  /** Abre a lousa na hora e escreve cada linha assim que ela chega, enquanto o Mentor explica em voz. */
   const lerFluxo = async () => {
     const r = ref.current;
+    onLousaRef.current?.("pendente");
     try {
       const res = await fetch("/api/mentor/lousa?stream=1", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido: r.turn || falaTurno.current, study: getStudy?.() ?? undefined }) });
-      if (!res.ok || !res.body) return;
+      if (!res.ok || !res.body) { onLousaRef.current?.(null); return; }
       const linhas: LinhaLousa[] = [];
+      const quandos: number[] = [];
       let titulo = "";
       let mostrar = true;
+      const agora = () => performance.now() / 1000;
+      const publicar = () => onLousaRef.current?.({ mostrar: true, titulo, linhas: [...linhas], desenho: [] }, undefined, { quandos: [...quandos], agora });
       const tratar = (linha: string) => {
         let o: Record<string, unknown>;
         try { o = JSON.parse(linha) as Record<string, unknown>; } catch { return; }
-        if ("mostrar" in o) { mostrar = o.mostrar === true; titulo = typeof o.titulo === "string" ? o.titulo : ""; return; }
+        if ("mostrar" in o) { mostrar = o.mostrar === true; titulo = typeof o.titulo === "string" ? o.titulo : ""; if (mostrar) publicar(); return; }
         if (o.fim) return;
         const ok = linhaSchema.safeParse(o);
-        if (ok.success && linhas.length < 24) linhas.push(ok.data);
+        if (ok.success && linhas.length < 24) { linhas.push(ok.data); quandos.push(agora()); publicar(); }
       };
       const dec = new TextDecoder();
       const reader = res.body.getReader();
@@ -79,18 +83,15 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
         while ((i = buf.indexOf("\n")) >= 0) { const l = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (l) tratar(l); }
       }
       if (buf.trim()) tratar(buf.trim());
-      if (!mostrar || linhas.length === 0) return;
-      // tudo pronto: abre e escreve linha por linha, de forma suave (sem ficar em branco esperando)
-      const t0 = performance.now() / 1000;
-      onLousaRef.current?.({ mostrar: true, titulo, linhas, desenho: [] }, undefined, { quandos: linhas.map(() => t0), agora: () => performance.now() / 1000 });
-    } catch { /* sem quadro desta vez: o Mentor explicou por voz */ }
+      if (!mostrar || linhas.length === 0) onLousaRef.current?.(null);
+    } catch { onLousaRef.current?.(null); }
     finally { lousaOcupada.current = false; }
   };
   const dispararLousa = () => {
     if (debLousa.current) { clearTimeout(debLousa.current); debLousa.current = null; }
     if (lousaOcupada.current || !onLousaRef.current) return;
     lousaOcupada.current = true;
-    void lerFluxo(); // sem "pendente": a lousa só aparece quando estiver pronta
+    void lerFluxo(); // abre já e escreve ao vivo
   };
   const progresso = () => {
     const ro = roteiro.current; const ctx = ref.current.ctx;
