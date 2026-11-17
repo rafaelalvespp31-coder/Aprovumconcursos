@@ -44,7 +44,30 @@ function passos(resultado: string): { contas: string[]; resposta: string } {
   return { contas, resposta };
 }
 
+/** Texto de regra de três ("16 calças gastam 24 m de tecido; 10 calças gastam quanto?") → comando que desenha o esquema do caderno. */
+export function roteiroRegraDeTres(c: CasoCalculo): string[] | null {
+  const txt = limpa(`${c.enunciado} ${c.pergunta ?? ""}`);
+  if (!/propor|regra de tr|custam|gastam|levam|pesam|rendem|produzem|fazem|percorr|enchem|trabalh/i.test(txt)) return null;
+  const nums = [...txt.matchAll(/(\d+(?:[.,]\d+)?)\s*(?:(m|km|kg|g|l|h|min|cm)\b|([A-Za-zÀ-ú]+))?/g)].filter((m) => !/^\d{4}$/.test(m[1]!));
+  if (nums.length < 3) return null;
+  const [n1, n2, n3] = nums;
+  const nome = (m: RegExpMatchArray) => (m[2] ?? m[3] ?? "").toLowerCase();
+  const stem = (s: string) => s.replace(/(s|es)$/, "").slice(0, 5);
+  if (!nome(n1!) || !nome(n3!) || stem(nome(n1!)) !== stem(nome(n3!))) return null;
+  const a = n1![1]!, b = n2![1]!, cc = n3![1]!;
+  const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const unidadeB = n2![2] ?? "";
+  // o nome da 2ª grandeza: a palavra depois da unidade ("m de tecido") ou o próprio nome
+  const apos = new RegExp(`${n2![1]!.replace(".", "\\.")}\\s*(?:m|km|kg|g|l|h|min|cm)?\\s*(?:de\\s+)?([A-Za-zÀ-ú]+)`).exec(txt)?.[1] ?? nome(n2!);
+  const nomeB = unidadeB ? `${cap(apos)} (${unidadeB})` : cap(nome(n2!) || apos);
+  const inversa = /inversamente|operários.*dias|dias.*operários|torneiras.*(?:horas|tempo)/i.test(txt);
+  const concl = /^portanto/i.test(limpa(c.resultado).split(/(?<=[.!?])\s+/).at(-1) ?? "") ? limpa(c.resultado).split(/(?<=[.!?])\s+/).at(-1)!.replace(/\.$/, "") : "";
+  return [cmd("Título", "Regra de três"), `Regra de três: ${a} | ${b} | ${cc} | ${cap(nome(n1!))} | ${nomeB} | ${inversa ? "inversa" : "direta"} | ${concl}`];
+}
+
 export function roteiroDeCaso(c: CasoCalculo): string[] | null {
+  const esquema3 = roteiroRegraDeTres(c);
+  if (esquema3) return esquema3;
   if (!ehCalculo(c.resultado)) return roteiroDeSituacao(c);
   const enun = limpa(c.enunciado), pergunta = limpa(c.pergunta ?? "");
   const out = [cmd("Título", corta(limpa(c.titulo).replace(/\.$/, ""), 40))];

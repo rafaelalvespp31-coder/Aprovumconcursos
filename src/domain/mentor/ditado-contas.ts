@@ -149,3 +149,47 @@ export function contaDesenhada(a: number, op: OpConta, b: number, x0: number, y0
   if (op === "×") return String(b).length <= 3 && String(a).length <= 5 ? produto(a, b, x0, y0, d0) : null;
   return divisao(a, b, x0, y0, d0);
 }
+
+const num = (s: string) => Number(s.replace(/\./g, "").replace(",", "."));
+const fmt = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100).replace(".", ","));
+
+export interface RegraDeTres { a: string; b: string; c: string; nomeA: string; nomeB: string; inversa: boolean; conclusao: string }
+/** Regra de três esquematizada como no caderno: tabela com setas, o raciocínio, o produto em cruz, a equação em coluna e a conclusão numa caixa. */
+export function regraDeTresDesenhada(r: RegraDeTres, x0: number, y0: number, d0: number, W: number): ContaDesenhada | null {
+  const a = num(r.a), b = num(r.b), c = num(r.c);
+  if (![a, b, c].every((v) => Number.isFinite(v) && v > 0)) return null;
+  const k = r.inversa ? c : a, P = r.inversa ? a * b : b * c, x = P / k;
+  const it: ItemDesenho[] = [];
+  const nA = r.nomeA.slice(0, 14), nB = r.nomeB.slice(0, 14), cw = 410, c1 = x0 + 64, c2 = x0 + 236, aL = x0 + 12, aR = x0 + 330;
+  let d = d0, y = y0;
+  // 1. dados e setas (as duas grandezas descem juntas)
+  it.push(tx(c1 - 20, y + 22, nA, "azul", 20, d), tx(c2 - 20, y + 22, nB, "verde", 20, d + 0.1));
+  it.push(tx(c1, y + 60, r.a, "grafite", 26, d + 0.3), tx(c2, y + 60, r.b, "grafite", 26, d + 0.4));
+  it.push(tx(c1, y + 96, r.c, "grafite", 26, d + 0.6), tx(c2, y + 96, "x", "vermelho", 26, d + 0.7));
+  it.push({ t: "linha", x1: aL, y1: y + 38, x2: aL, y2: y + 104, cor: "azul", seta: true, d: d + 0.8 }, { t: "linha", x1: aR, y1: y + 38, x2: aR, y2: y + 104, cor: "azul", seta: true, d: d + 0.8 });
+  y += 124; d += 1;
+  // 2. o raciocínio
+  const l1 = r.inversa ? `Mais ${nA.toLowerCase()}, MENOS ${nB.toLowerCase()}:` : `Menos ${nA.toLowerCase()}, MENOS ${nB.toLowerCase()}:`;
+  it.push(tx(x0 + 6, y + 18, l1.slice(0, 40), "grafite", 17, d));
+  it.push(tx(x0 + 6, y + 42, (r.inversa ? "inversamente proporcionais:" : "diretamente proporcionais:").slice(0, 40), "vermelho", 17, d + 0.3), tx(x0 + 226, y + 42, r.inversa ? "multiplica em linha" : "multiplica em cruz", "azul", 17, d + 0.6));
+  y += 64; d += 1;
+  // 3. à esquerda o cruzamento, à direita a conta em coluna
+  const xm = x0 + 206;
+  it.push(tx(aL + 2, y + 18, nA, "azul", 15, d), tx(aL + 112, y + 18, nB, "verde", 15, d + 0.1));
+  it.push(tx(aL + 6, y + 54, r.a, "grafite", 22, d + 0.2), tx(aL + 120, y + 54, r.b, "grafite", 22, d + 0.2), tx(aL + 6, y + 94, r.c, "grafite", 22, d + 0.3), tx(aL + 120, y + 94, "x", "vermelho", 22, d + 0.3));
+  if (r.inversa) it.push({ t: "linha", x1: aL + 34, y1: y + 48, x2: aL + 34, y2: y + 88, cor: "vermelho", d: d + 0.5, seta: true }, { t: "linha", x1: aL + 112, y1: y + 48, x2: aL + 112, y2: y + 88, cor: "vermelho", d: d + 0.5, seta: true });
+  else it.push({ t: "linha", x1: aL + 30, y1: y + 46, x2: aL + 114, y2: y + 86, cor: "vermelho", d: d + 0.5 }, { t: "linha", x1: aL + 30, y1: y + 88, x2: aL + 114, y2: y + 48, cor: "vermelho", d: d + 0.7 });
+  const eq1 = r.inversa ? `${r.c}x = ${r.a} · ${r.b}` : `${r.a}x = ${r.c} · ${r.b}`;
+  it.push(tx(aL, y + 138, eq1.slice(0, 22), "grafite", 20, d + 1));
+  it.push({ t: "linha", x1: xm, y1: y - 4, x2: xm, y2: y + 154, cor: "grafite", d: d + 0.3 });
+  const xr = xm + 26;
+  it.push(tx(xr, y + 40, `${fmt(k)}x = ${fmt(P)}`.slice(0, 20), "azul", 24, d + 1.2));
+  const nm = fmt(P), dn = fmt(k), wf = Math.max(nm.length, dn.length) * 14 + 8;
+  it.push(tx(xr, y + 100, "x =", "grafite", 24, d + 1.6), tx(xr + 56 + (wf - nm.length * 14) / 2, y + 84, nm, "grafite", 22, d + 1.6), { t: "linha", x1: xr + 52, y1: y + 92, x2: xr + 56 + wf, y2: y + 92, cor: "grafite", d: d + 1.7 }, tx(xr + 56 + (wf - dn.length * 14) / 2, y + 118, dn, "grafite", 22, d + 1.8));
+  it.push(tx(xr, y + 152, `x = ${fmt(x)}`.slice(0, 20), "verde", 28, d + 2.2));
+  y += 176; d += 2.6;
+  // 4. conclusão na caixa
+  const concl = (r.conclusao || `Portanto, x = ${fmt(x)}.`).slice(0, 40);
+  it.push({ t: "ret", x: x0, y, w: cw + 4, h: 40, cor: "azul", d }, tx(x0 + 14, y + 27, concl, "azul", 19, d + 0.3));
+  return { it, h: y + 52 - y0 };
+}

@@ -97,3 +97,13 @@ describe("exemplo de texto com elementos visuais", () => {
     expect(roteiroDeTexto("Etapas", "Há um processo. O órgão publica o edital. A proposta vencedora é declarada. O contrato é assinado.")).not.toContain("Grade: Termo | Significado");
   });
 });
+
+describe("regra de três esquematizada", () => {
+  it("lê o enunciado e monta o comando", () => {
+    const r = roteiroDeCaso({ titulo: "Exemplo", enunciado: "Se 16 calças gastam 24 m de tecido, quantos metros de tecido gastam 10 calças?", resultado: "16x = 10 · 24 = 240; x = 15. Portanto, gastaremos 15 m de tecido." })!;
+    expect(r[1]).toMatch(/^Regra de três: 16 \| 24 \| 10 \| Calças \| Tecido \(m\) \| direta/);
+    const e = novoDitado(true); for (const c of r) comandoDitado(e, c, 0); fimDitado(e);
+    const s = linhaDitado(e).rabisco!.filter((x) => x.t === "texto").map((x) => (x as { s: string }).s);
+    expect(s).toEqual(expect.arrayContaining(["16x = 240", "x = 15"]));
+  });
+});

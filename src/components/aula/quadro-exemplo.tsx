@@ -20,7 +20,7 @@ export function QuadroExemplo({ itens, roteiro, children }: { itens: string[]; r
     return () => io.disconnect();
   }, []);
   const tituloQ = (roteiro ?? [])[0]?.replace(/^t[ií]tulo\s*:\s*/i, "") ?? "";
-  const estreito = !!roteiro && roteiro.every((c) => /^(t[ií]tulo|armada|divis[aã]o)\s*:/i.test(c));
+  const estreito = !!roteiro && roteiro.every((c) => /^(t[ií]tulo|armada|divis[aã]o|regra de tr[eê]s)\s*:/i.test(c));
   const linha = useMemo(() => {
     const ro = roteiro ?? roteiroDeExemplo(itens);
     if (!ro) return null;
