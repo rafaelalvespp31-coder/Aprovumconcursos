@@ -25,3 +25,13 @@
 .fo-desenho{margin:8px 0}
 .fo-desenho .qe{margin:0;max-width:100%}
 @media(max-width:480px){.fo{padding:12px}.fo-eq,.fo-passos li{font-size:16px}}
+.fo-armada{font:600 20px/1.35 ui-monospace,Menlo,monospace;margin:8px 0;padding:8px 14px;background:#f6f8fb;border-radius:8px;width:max-content;max-width:100%;overflow:auto;white-space:pre}
+.fo-decomp{border-collapse:collapse;margin:8px 0;font-size:18px}
+.fo-decomp td{padding:3px 14px;text-align:right}
+.fo-decomp .fo-primo{border-left:2px solid #1b2430;font-weight:700;color:var(--tema,#2563eb);text-align:center}
+.fo-decomp tr:not(:last-child) td:not(.fo-primo){border-bottom:0}
+.fo-chave{display:inline-grid;grid-template-columns:auto auto;font-size:22px;margin:8px 0}
+.fo-dividendo{padding:2px 14px 2px 4px;border-right:2px solid #1b2430;border-bottom:2px solid #1b2430;text-align:right}
+.fo-divisor{padding:2px 14px;border-bottom:2px solid #1b2430;font-weight:700}
+.fo-quociente{grid-column:2;padding:2px 14px;font-weight:700;color:#05603a}
+.fo-vazio{display:none}

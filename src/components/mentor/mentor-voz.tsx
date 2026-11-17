@@ -230,7 +230,12 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     }
     if (trans.current) {
       const m0 = trans.current, ped = ref.current.turn || falaTurno.current;
-      void buscarCatalogo(m0, ped).then((achou) => { if (!achou && trans.current === m0 && m0.modo !== "ia") iniciarIA(m0, ped); }); // com quadro catalogado a IA nem é chamada
+      // a lousa acompanha o que o Mentor FALA (ele conhece a aula inteira); o quadro catalogado/IA só entra se, depois de alguns segundos, a fala ainda não rendeu nada para escrever
+      setTimeout(() => {
+        const g2 = trans.current;
+        if (g2 !== m0 || m0.modo === "ia" || m0.linhas.length > 0 || (m0.dit && m0.dit.itens.length > 0)) return;
+        void buscarCatalogo(m0, ped).then((achou) => { if (!achou && trans.current === m0 && m0.modo !== "ia" && m0.linhas.length === 0) iniciarIA(m0, ped); });
+      }, 7000);
     }
   };
   const progresso = () => {

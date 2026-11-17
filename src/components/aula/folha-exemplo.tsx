@@ -21,7 +21,66 @@ function Expr({ t }: { t: string }) {
   return <span className="fo-expr">{out}</span>;
 }
 
-const GRAFICOS = /^(armada|divis[aã]o|mmc|mdc|cruzar)\s*:/i;
+const PRIMOS = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31];
+
+/** MMC/MDC por decomposição simultânea: colunas de números e, ao lado, o primo que divide. */
+function Decomposicao({ nums, mdc }: { nums: number[]; mdc: boolean }) {
+  const linhas: { v: number[]; p: number | null }[] = [];
+  let atual = [...nums];
+  const usados: number[] = [];
+  for (let g = 0; g < 12 && atual.some((n) => n > 1); g++) {
+    const p = PRIMOS.find((q) => (mdc ? atual.every((n) => n % q === 0) : atual.some((n) => n % q === 0)));
+    if (!p) break;
+    linhas.push({ v: atual, p });
+    usados.push(p);
+    atual = atual.map((n) => (n % p === 0 ? n / p : n));
+  }
+  linhas.push({ v: atual, p: null });
+  const res = usados.reduce((a, b) => a * b, 1);
+  return (
+    <div className="fo-bloco">
+      <div className="fo-rotulo">{mdc ? "Dividir só pelos primos que dividem todos" : "Dividir pelos menores primos até chegar em 1"}</div>
+      <table className="fo-decomp"><tbody>{linhas.map((l, i) => <tr key={i}>{l.v.map((n, j) => <td key={j}>{n}</td>)}<td className="fo-primo">{l.p ?? ""}</td></tr>)}</tbody></table>
+      <div className="fo-eq"><span>{mdc ? "MDC" : "MMC"} = {usados.join(" × ")}</span></div>
+      <div className="fo-resp">{mdc ? "MDC" : "MMC"} = {res}</div>
+    </div>
+  );
+}
+
+/** Conta armada: colunas alinhadas, "vai um", linha do resultado; divisão com a chave e a prova. */
+function Armada({ expr }: { expr: string }) {
+  const m = /(\d+)\s*([+−\-×x·÷/:])\s*(\d+)/.exec(expr);
+  if (!m) return null;
+  const a = Number(m[1]), b = Number(m[3]), op = /\+/.test(m[2]!) ? "+" : /[−-]/.test(m[2]!) ? "−" : /[÷/:]/.test(m[2]!) ? "÷" : "×";
+  if (op === "÷") {
+    if (!b) return null;
+    const q = Math.floor(a / b), r = a % b;
+    return (
+      <div className="fo-bloco">
+        <div className="fo-chave"><span className="fo-dividendo">{a}</span><span className="fo-divisor">{b}</span><span className="fo-vazio" /><span className="fo-quociente">{q}</span></div>
+        <p className="fo-seta">Resto: <b>{r}</b></p>
+        <div className="fo-resp">Prova: {q} × {b}{r ? ` + ${r}` : ""} = {a}</div>
+      </div>
+    );
+  }
+  const r = op === "+" ? a + b : op === "−" ? a - b : a * b;
+  const w = Math.max(String(a).length, String(b).length, String(r).length) + 1;
+  const pad = (n: number | string) => String(n).padStart(w, " ");
+  let vai = "";
+  if (op === "+") {
+    const A = pad(a), B = pad(b), cs = Array<string>(w).fill(" ");
+    let c = 0;
+    for (let k = w - 1; k > 0; k--) { const s = (A[k] === " " ? 0 : Number(A[k])) + (B[k] === " " ? 0 : Number(B[k])) + c; c = s >= 10 ? 1 : 0; if (c) cs[k - 1] = "1"; }
+    vai = cs.join("");
+  }
+  const parciais = op === "×" && String(b).length > 1 ? String(b).split("").reverse().map((d, i) => `${a * Number(d)}${"0".repeat(i)}`) : [];
+  return (
+    <div className="fo-bloco">
+      <pre className="fo-armada">{vai.trim() ? `${vai}\n` : ""}{pad(a)}{"\n"}{op}{pad(b).slice(1)}{"\n"}{"─".repeat(w)}{parciais.length ? "\n" + parciais.map((x, i) => pad(x) + (i ? "" : "")).join("\n") + "\n" + "─".repeat(w) : ""}{"\n"}{pad(r)}</pre>
+      <div className="fo-resp">RESULTADO: {a} {op} {b} = {r}</div>
+    </div>
+  );
+}
 const partes = (s: string) => s.split("|").map((x) => x.trim());
 
 function RegraDeTres({ a }: { a: string[] }) {
@@ -49,7 +108,7 @@ function RegraDeTres({ a }: { a: string[] }) {
 }
 
 /** Roteiro (mesmos comandos da lousa) → folha de material didático em HTML. */
-export function FolhaExemplo({ roteiro, desenho }: { roteiro: string[]; desenho: (r: string[]) => ReactNode }) {
+export function FolhaExemplo({ roteiro }: { roteiro: string[] }) {
   const blocos: ReactNode[] = [];
   let titulo = "";
   let tab: { cab: string[]; linhas: string[][] } | null = null;
@@ -68,7 +127,9 @@ export function FolhaExemplo({ roteiro, desenho }: { roteiro: string[]; desenho:
     const nome = m[1]!.trim().toLowerCase(), corpo = m[2]!.trim();
     if (nome !== "célula" && nome !== "celula") fechaGrade();
     if (/^t[ií]tulo$/.test(nome)) { titulo = corpo; return; }
-    if (GRAFICOS.test(linha)) { fecha(); blocos.push(<div key={blocos.length} className="fo-desenho">{desenho([`Título: ${titulo}`, linha])}</div>); return; }
+    if (/^(armada|armar|divis[aã]o)$/.test(nome)) { fecha(); blocos.push(<Armada key={blocos.length} expr={corpo} />); return; }
+    if (nome === "mmc" || nome === "mdc") { fecha(); const ns = (corpo.match(/\d+/g) ?? []).map(Number).filter((n) => n > 0).slice(0, 4); if (ns.length >= 2) blocos.push(<Decomposicao key={blocos.length} nums={ns} mdc={nome === "mdc"} />); return; }
+    if (nome === "cruzar") return;
     if (nome === "passos") {
       fecha();
       const ls = partes(corpo);
