@@ -1,5 +1,7 @@
 "use client";
 
+import { QuadroExemplo } from "@/components/aula/quadro-exemplo";
+import { roteiroDeCaso } from "@/domain/mentor/calculo-lousa";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Markdown } from "@/components/markdown";
@@ -716,6 +718,7 @@ function ApostilaSection({
         </>
       ) : md.trim() ? <ApostilaMarkdown legal={legal}>{md}</ApostilaMarkdown> : null}
       {legal && <p className="ap-nota">Confira sempre a redação vigente no Portal da Legislação do Planalto.</p>}
+      {cases.map((c, i) => { const ro = roteiroDeCaso({ titulo: "Exemplo", enunciado: c.situation, pergunta: c.question, resultado: c.answer }); return ro ? <QuadroExemplo key={`q${i}`} itens={[c.situation]} roteiro={ro} /> : null; })}
       {cases.length > 0 && (
         <div className="ap-pratica">
           <PracticeCard progressKey={s.id} cases={cases} onReread={() => document.getElementById(sectionDomId(s.id))?.scrollIntoView({ behavior: "smooth", block: "start" })} />

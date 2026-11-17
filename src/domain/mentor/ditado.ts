@@ -127,8 +127,8 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
     let x: number, y: number, larg: number;
     if (e.resumo) { x = e.margem + (largo ? 130 : 0); y = e.resumoY; larg = e.W - x - e.margem; }
     else if (e.temCaixa && e.col >= 0) { x = e.margem + e.col * (e.colW + 18) + 6; y = e.colY[e.col]!; larg = e.colW - 12; }
-    else { x = e.margem; y = e.y + 8; larg = e.W - e.margem * 2; }
-    const ls = quebra(pref + resto, Math.floor(larg / cw(tam)));
+    else { x = e.margem; y = Math.max(e.y + 8, e.ym > 0 ? e.ym + 8 : 0); larg = e.W - e.margem * 2; }
+    const ls = quebra(pref + resto, Math.min(38, Math.floor(larg / cw(tam))));
     ls.forEach((l, i) => push(tx(x + (i ? 14 : 0), y + tam + i * (tam + 7), l, cor, tam, d + i * passo)));
     const nova = y + ls.length * (tam + 7) + 4;
     if (e.resumo) e.resumoY = nova;
@@ -172,7 +172,7 @@ const algarismos = (s: string) => s.replace(/\b(?:ent[aã]o|agora|ai|aí|bom|ent
 const sim = (s: string) => algarismos(s)
   .replace(/\s+(?:é|e|fica|dá)?\s*igual\s+a\s+/gi, " = ").replace(/\s+dividido\s+por\s+/gi, " ÷ ").replace(/\s+vezes\s+/gi, " · ")
   .replace(/\s+mais\s+/gi, " + ").replace(/\s+menos\s+/gi, " − ").replace(/\s+ao quadrado\b/gi, "²").replace(/\s+por\s+cento\b/gi, "%");
-const parte = (s: string) => s.split(/\s*(?:,|;|\be\b|\bpor\b|\bpara\b)\s*/i).map((x) => x.trim()).filter(Boolean);
+const parte = (s: string) => s.split(/\s*(?:(?<!\d),|,(?!\d)|;|\be\b|\bpor\b|\bpara\b)\s*/i).map((x) => x.trim()).filter(Boolean);
 
 /** Cabeça de bloco matemático: à esquerda tabelas/fatorações/contas armadas; à direita (ou embaixo, no celular) os passos da conta. */
 function cursor(e: EstadoDitado) {

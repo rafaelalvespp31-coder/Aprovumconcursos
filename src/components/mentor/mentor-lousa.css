@@ -93,9 +93,9 @@
 @media (prefers-reduced-motion: reduce) { .lz-espera-barra i { animation: none; width: 60%; } }
 
 /* exemplo da aula desenhado numa lousa (inline, dentro da apostila) */
-.qe { margin: 12px 0 16px; }
-.qe-moldura { padding: 7px; border-radius: 8px; background: linear-gradient(135deg, #e9ebee, #9aa0a8 45%, #d9dce0 70%, #8d939b); box-shadow: inset 0 0 0 1px rgba(255,255,255,.5), 0 2px 8px rgba(0,0,0,.25); }
-.qe-placa { min-height: 140px; padding: 10px 12px 14px; border-radius: 4px; font-family: Kalam, "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive; color: #1a1a1f;
+.qe { margin: 8px auto 12px; max-width: 540px; }
+.qe-moldura { padding: 4px; border-radius: 8px; background: linear-gradient(135deg, #e9ebee, #9aa0a8 45%, #d9dce0 70%, #8d939b); box-shadow: inset 0 0 0 1px rgba(255,255,255,.5), 0 2px 8px rgba(0,0,0,.25); }
+.qe-placa { min-height: 90px; padding: 6px 8px 8px; border-radius: 4px; font-family: Kalam, "Bradley Hand", "Segoe Print", "Comic Sans MS", cursive; color: #1a1a1f;
   background: radial-gradient(90% 70% at 25% 0%, rgba(255,255,255,.9), transparent 70%), linear-gradient(180deg, #f6f6f2, #e9e9e3); box-shadow: inset 0 0 0 1px rgba(0,0,0,.12); }
 .qe-svg { display: block; width: 100%; height: auto; }
 .qe-texto { margin-top: 6px; font-size: 14px; }
