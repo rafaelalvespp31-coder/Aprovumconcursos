@@ -49,7 +49,7 @@ const ondinha = (x0: number, x1: number, y: number, cor: Cor, d: number): ItemDe
   return { t: "curva", pts: pts.slice(0, 40), cor, d };
 };
 
-const NUM_PALAVRA = /^(?:(?:n[ºo°]\s*)?\d+|um|uma|dois|duas|tr[eê]s|quatro|cinco|seis)\b[\s:,.\-–]*/i;
+const NUM_PALAVRA = /^(?:(?:n[ºo°]\s*)?\d+(?!\d|\.\d)|um|uma|dois|duas|tr[eê]s|quatro|cinco|seis)\b[\s:,.\-–]*/i;
 
 /** Aplica um comando ditado. Devolve false se a frase não for um comando (conversa do professor: ignorada). `atraso` = segundos até o áudio chegar nela. */
 export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): boolean {

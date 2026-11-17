@@ -190,6 +190,26 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       } catch { ia.fim = true; }
     })();
   };
+  /** Aula aberta: o quadro pronto (tabela/comparação/casos da aula catalogada) sai do banco e vai direto para o desenho, sem esperar voz nem IA. */
+  const buscarCatalogo = (m: Trans, pedido: string): Promise<boolean> => {
+    const lessonId = getStudy?.()?.lessonId;
+    if (!lessonId) return Promise.resolve(false);
+    return fetch(`/api/mentor/lousa/aula?lessonId=${encodeURIComponent(lessonId)}&pedido=${encodeURIComponent(pedido.slice(0, 300))}&largo=${telaLarga() ? 1 : 0}`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { quadro?: { titulo: string; roteiro: string[] } | null } | null) => {
+        const q = j?.quadro;
+        if (!q || trans.current !== m || m.modo === "ia" || localTemVisual(m)) return false;
+        m.ia?.abort.abort();
+        const dit = novoDitado(telaLarga());
+        q.roteiro.forEach((c, i) => comandoDitado(dit, c, i * 0.45)); // cada comando entra no seu tempo: o quadro é escrito aos poucos, como um professor
+        m.dit = dit; m.modo = "ia"; m.ia = { abort: new AbortController(), linhas: [], titulo: q.titulo, fim: true, usando: true };
+        if (m.flush) clearTimeout(m.flush);
+        m.titulo = q.titulo; m.linhas = [linhaDitado(dit)]; m.quandos = [agoraS()];
+        if (m.timer) { clearTimeout(m.timer); m.timer = null; }
+        publicarTrans();
+        return true;
+      }).catch(() => false);
+  };
   const r0Turno = useRef("");
   const dispararLousa = () => {
     if (debLousa.current) { clearTimeout(debLousa.current); debLousa.current = null; }
@@ -205,7 +225,10 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       const tit = tituloDe(pedido);
       if (comandoDitado(g.dit, pedido, 0)) { g.titulo = tit; g.linhas = [linhaDitado(g.dit)]; g.quandos = [agoraS()]; publicarTrans(); }
     }
-    if (trans.current) iniciarIA(trans.current, ref.current.turn || falaTurno.current);
+    if (trans.current) {
+      const m0 = trans.current, ped = ref.current.turn || falaTurno.current;
+      void buscarCatalogo(m0, ped).then((achou) => { if (!achou && trans.current === m0 && m0.modo !== "ia") iniciarIA(m0, ped); }); // com quadro catalogado a IA nem é chamada
+    }
   };
   const progresso = () => {
     const ro = roteiro.current; const ctx = ref.current.ctx;
