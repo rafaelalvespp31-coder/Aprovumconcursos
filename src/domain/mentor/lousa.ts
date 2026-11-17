@@ -260,3 +260,10 @@ export function tituloDaFala(frase: string): string | null {
   const s = m?.[1]?.trim();
   return s ? s.charAt(0).toUpperCase() + s.slice(1) : null;
 }
+
+/** O pedido é de cálculo (conta, MMC, regra de três, porcentagem…)? Nesse caso a lousa mostra só números e esquemas. */
+export const pedidoDeCalculo = (fala: string): boolean => /calcul|\bconta\b|\bmmc\b|\bmdc\b|regra de tr|porcentag|\bfra[cç][aã]o|\bjuros\b|equa[cç]|\bsoma\b|subtra|multiplic|divis[aã]o|\bm[eé]dia\b|\braiz\b|pot[eê]ncia|propor[cç]/i.test(fala);
+
+/** Linha de quadro de matemática: só título, conta, resposta, figuras/desenho ou texto com número. Frase explicativa fica na voz. */
+export const linhaDeNumero = (l: { tipo: string; texto?: string }): boolean =>
+  ["titulo", "conta", "resposta", "figuras", "desenho", "espaco", "par"].includes(l.tipo) || ((l.texto ?? "").match(/\d/g) ?? []).length >= 2;

@@ -2,7 +2,7 @@
 
 import { QuadroExemplo } from "@/components/aula/quadro-exemplo";
 import { CartaoExemplo } from "@/components/aula/cartao-exemplo";
-import { montarCartao, temaDe } from "@/domain/mentor/cartao-exemplo";
+import { montarCartao, temaDe, tituloUtil } from "@/domain/mentor/cartao-exemplo";
 import { ehCalculo, roteiroDeCaso } from "@/domain/mentor/calculo-lousa";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
@@ -388,6 +388,7 @@ export function LessonReader(props: ReaderProps) {
               key={s.id}
               section={s}
               subject={props.meta?.subject}
+              lessonTitle={lesson.title}
               lessonId={lesson.id}
               annotations={annotationsBySection.get(s.id) ?? []}
               clarifications={props.clarifications.filter((c) => c.section_id === s.id)}
@@ -692,6 +693,7 @@ export function LessonReader(props: ReaderProps) {
 function ApostilaSection({
   section: s,
   subject,
+  lessonTitle,
   lessonId,
   annotations,
   clarifications,
@@ -699,6 +701,7 @@ function ApostilaSection({
 }: {
   section: ReaderSection;
   subject?: string | null;
+  lessonTitle?: string;
   lessonId: string;
   annotations: Annotation[];
   clarifications: ReaderClarification[];
@@ -721,7 +724,7 @@ function ApostilaSection({
           <TreeMapCard root={tree.root} nodes={tree.nodes} />
           {tree.after && <ApostilaMarkdown legal={legal}>{tree.after}</ApostilaMarkdown>}
         </>
-      ) : md.trim() ? <ApostilaMarkdown legal={legal} subject={subject} titulo={s.title}>{md}</ApostilaMarkdown> : null}
+      ) : md.trim() ? <ApostilaMarkdown legal={legal} subject={subject} titulo={tituloUtil(s.title, lessonTitle ?? "")}>{md}</ApostilaMarkdown> : null}
       {legal && <p className="ap-nota">Confira sempre a redação vigente no Portal da Legislação do Planalto.</p>}
       {(() => {
         const cartoes = temaDe(subject) === "matematica" ? [] : cases.filter((c) => !ehCalculo(c.answer));
@@ -729,7 +732,7 @@ function ApostilaSection({
           <>
             {cartoes.length > 0 && (
               <div className={cartoes.length > 1 ? "cx-carrossel" : undefined}>
-                {cartoes.map((c, i) => <CartaoExemplo key={`c${i}`} indice={i + 1} total={cartoes.length} c={montarCartao({ subject, titulo: s.title, corpo: s.body_markdown, situacao: c.situation, pergunta: c.question, resposta: c.answer })} />)}
+                {cartoes.map((c, i) => <CartaoExemplo key={`c${i}`} indice={i + 1} total={cartoes.length} c={montarCartao({ subject, titulo: tituloUtil(s.title, lessonTitle ?? ""), corpo: s.body_markdown, situacao: c.situation, pergunta: c.question, resposta: c.answer })} />)}
               </div>
             )}
             {cases.map((c, i) => {

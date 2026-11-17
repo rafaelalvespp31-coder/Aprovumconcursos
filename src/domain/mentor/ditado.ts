@@ -16,7 +16,7 @@ export interface EstadoDitado {
   W: number; ncols: number; colW: number; margem: number;
   y: number; // cursor vertical do cabeçalho
   colY: number[]; rowTop: number; col: number; caixas: number; temCaixa: boolean;
-  mmc?: Mmc; frase?: Frase; cenas: Record<number, Cena>; camadas: number; pirY: number; so: boolean; yL: number; yR: number; ym: number; linhasTab: { y: number; a: string; b: string }[]; corConta: number; marcos: number; resumo: boolean; resumoY: number; yTempo?: number; grade?: { y: number; n: number; x0: number; w: number }; itens: ItemDesenho[];
+  mmc?: Mmc; frase?: Frase; cenas: Record<number, Cena>; camadas: number; pirY: number; so: boolean; yL: number; yR: number; ym: number; linhasTab: { y: number; a: string; b: string }[]; corConta: number; marcos: number; resumo: boolean; resumoY: number; yTempo?: number; mat?: boolean; grade?: { y: number; n: number; x0: number; w: number }; itens: ItemDesenho[];
 }
 
 /** `so`: copia só os traços, sem letras. Padrão: o quadro mostra o que foi DITADO como desenho (rótulos, números, contas), nunca a conversa do professor. */
@@ -72,7 +72,7 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
 
   if (ENSINO.has(cmd)) { if (comandoEnsino(e, cmd, resto, d, it)) { e.itens.push(...it); return true; } }
   if ((cmd === "conta" || cmd === "passo") && mmcFalado(e, resto, d)) return true; // "Conta: 12 dividido por 2 dá 6…" vira a tabela do MMC, não frase solta
-  if (MATEMATICA.has(cmd)) { if (!matematica(e, cmd, resto, d, it)) return true; e.itens.push(...it); e.ym = Math.max(e.ym, e.yL, e.yR); return true; }
+  if (MATEMATICA.has(cmd)) { if (!matematica(e, cmd, resto, d, it)) return true; e.mat = true; e.itens.push(...it); e.ym = Math.max(e.ym, e.yL, e.yR); return true; }
   if (e.so && (cmd === "titulo" || cmd === "subtitulo" || cmd === "item" || cmd === "ponto" || cmd === "topico" || cmd === "exemplo" || cmd === "destaque" || cmd === "atencao" || cmd === "cuidado")) return true; // só letras: não entra no quadro
   if (cmd === "grade" || cmd === "celula") {
     const cels = resto.split("|").map((s) => s.trim()).filter(Boolean).slice(0, 4);
@@ -137,6 +137,7 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
     e.resumo = false;
   } else if (cmd === "item" || cmd === "ponto" || cmd === "topico" || cmd === "exemplo" || cmd === "destaque" || cmd === "atencao" || cmd === "cuidado") {
     if (!resto) return true;
+    if (e.mat && (resto.match(/\d/g) ?? []).length < 2) return true; // matemática: na lousa só número e esquema de cálculo
     const tam = largo ? 19 : 19;
     const ehEx = cmd === "exemplo", ehDest = cmd === "destaque" || cmd === "atencao" || cmd === "cuidado";
     const cor: Cor = ehDest ? "vermelho" : ehEx ? "verde" : "grafite";

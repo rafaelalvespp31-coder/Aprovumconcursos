@@ -2,7 +2,7 @@
 
 import { comandoDitado, fimDitado, frasesDe, linhaDitado, novoDitado, type EstadoDitado } from "@/domain/mentor/ditado";
 import { esquemasDe, fimTempo, novoCtx, type Ctx as EsquemaCtx } from "@/domain/mentor/esquemas";
-import { ehConversa, linhaSchema, tituloDaFala, linhaDeFala, linhaTitulo, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
+import { ehConversa, linhaSchema, tituloDaFala, linhaDeFala, linhaTitulo, pedeLousa, pedidoDeCalculo, linhaDeNumero, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
@@ -58,7 +58,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
    * Mentor fala vira uma linha escrita, no instante em que o áudio daquela frase toca.
    */
   type IA = { abort: AbortController; linhas: LinhaLousa[]; titulo: string; fim: boolean; usando: boolean };
-  type Trans = { ia?: IA; modo: "texto" | "ditado" | "ia"; dit?: EstadoDitado; esq: EsquemaCtx; flush: ReturnType<typeof setTimeout> | null; buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; t0: number; msTexto: number | null; msTraco: number | null; modo0: "texto" | "ditado"; timer: ReturnType<typeof setTimeout> | null };
+  type Trans = { soNum?: boolean; ia?: IA; modo: "texto" | "ditado" | "ia"; dit?: EstadoDitado; esq: EsquemaCtx; flush: ReturnType<typeof setTimeout> | null; buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; t0: number; msTexto: number | null; msTraco: number | null; modo0: "texto" | "ditado"; timer: ReturnType<typeof setTimeout> | null };
   const trans = useRef<Trans | null>(null);
   const agoraS = () => performance.now() / 1000;
   const publicarTrans = () => {
@@ -86,6 +86,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (!m || ehConversa(frase)) return;
     const l = linhaDeFala(frase, m.linhas.length === 0, m.linhas.length);
     if (!l) return;
+    if (m.soNum && !linhaDeNumero(l)) return; // matemática: a explicação em palavras fica só na voz
     if (!m.titulo) {
       m.titulo = tituloDaFala(frase) ?? tituloDe(r0Turno.current);
       m.linhas.push(linhaTitulo(m.titulo));
@@ -175,6 +176,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
             if ("mostrar" in o) { ia.titulo = typeof o.titulo === "string" ? o.titulo : ""; continue; }
             const ok = linhaSchema.safeParse(o); // cada linha é validada sozinha: uma quebrada não derruba o quadro
             if (!ok.success) continue;
+            if (m.soNum && !linhaDeNumero(ok.data)) continue; // matemática: sem frases explicativas
             ia.linhas.push(ok.data);
             if (!ia.usando) {
               if (localTemVisual(m) || (ia.linhas.length < 3 && !ia.linhas.some((l) => l.tipo === "desenho"))) continue; // espera ter o que mostrar
@@ -220,6 +222,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     trans.current = { modo: PEDE_DESENHO.test(ref.current.turn || falaTurno.current) ? "ditado" : "texto", dit: novoDitado(telaLarga()), esq: novoCtx(ref.current.turn || falaTurno.current), flush: null, buf: "", linhas: [], quandos: [], titulo: "", pulou: false, t0: performance.now(), msTexto: null, msTraco: null, modo0: PEDE_DESENHO.test(ref.current.turn || falaTurno.current) ? "ditado" : "texto", timer: setTimeout(() => { if (trans.current && trans.current.linhas.length === 0) { onLousaRef.current?.(null); fimTrans(); } }, 25000) };
     // o aluno já disse o que quer ("MMC de 12 e 18"): o primeiro traço sai agora, sem esperar a fala do Mentor
     const g = trans.current;
+    if (g) { g.soNum = pedidoDeCalculo(ref.current.turn || falaTurno.current); if (g.dit && g.soNum) g.dit.mat = true; }
     if (g && g.modo === "ditado" && g.dit) {
       const pedido = ref.current.turn || falaTurno.current;
       const tit = tituloDe(pedido);

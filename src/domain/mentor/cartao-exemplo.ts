@@ -76,3 +76,9 @@ export function corDoIcone(icone: string): string {
   if (icone === "BookOpen") return "#d9822b";
   return "#6d4aff";
 }
+
+const GENERICO = /^\s*(?:\d+[.)]\s*)?(mapa do subt[oó]pico|mapa mental|introdu[cç][aã]o|resumo|vis[aã]o geral|conceitos? (?:fundamentais|b[aá]sicos)|explica[cç][aã]o|aprofundamento|aplica[cç][aã]o|exemplos?|quadro comparativo|compara[cç][aã]o|fixa[cç][aã]o|revis[aã]o)\b/i;
+/** Título de seção genérico ("Mapa do subtópico", "Introdução"…) não diz nada na lousa: usa o assunto da aula. */
+export function tituloUtil(tituloSecao: string, tituloAula: string): string {
+  return GENERICO.test(tituloSecao) && tituloAula.trim() ? tituloAula.trim() : tituloSecao;
+}

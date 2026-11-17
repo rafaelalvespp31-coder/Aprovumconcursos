@@ -152,3 +152,27 @@ describe("exemplo de matemática em palavras vira esquema", () => {
     expect(d.roteiro).toHaveLength(3);
   });
 });
+
+import { linhaDeNumero, pedidoDeCalculo } from "./lousa";
+import { tituloUtil } from "./cartao-exemplo";
+describe("lousa de matemática sem texto explicativo", () => {
+  it("pedido de cálculo e linhas", () => {
+    expect(pedidoDeCalculo("faz a regra de três no quadro")).toBe(true);
+    expect(pedidoDeCalculo("explica o furto")).toBe(false);
+    expect(linhaDeNumero({ tipo: "texto", texto: "Aqui a gente divide as coisas" })).toBe(false);
+    expect(linhaDeNumero({ tipo: "texto", texto: "16 · 24 = 384" })).toBe(true);
+    expect(linhaDeNumero({ tipo: "conta", texto: "x = 15" })).toBe(true);
+  });
+  it("ditado em matemática ignora item sem número", () => {
+    const e = novoDitado(true); e.mat = true;
+    comandoDitado(e, "Item: isso é explicação em palavras", 0);
+    comandoDitado(e, "Item: 5 × 3 = 15", 0);
+    const s = linhaDitado(e).rabisco!.filter((x) => x.t === "texto").map((x) => (x as { s: string }).s);
+    expect(s.join(" ")).toContain("15");
+    expect(s.join(" ")).not.toContain("explicação");
+  });
+  it("título genérico vira o assunto da aula", () => {
+    expect(tituloUtil("Mapa do subtópico", "Regra de três simples")).toBe("Regra de três simples");
+    expect(tituloUtil("Crimes contra a honra", "Calúnia")).toBe("Crimes contra a honra");
+  });
+});
