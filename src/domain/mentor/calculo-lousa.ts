@@ -175,3 +175,31 @@ export function roteiroDeSituacao(c: CasoCalculo): string[] | null {
   out.push("Caixa: Resposta", cmd("Destaque", corta(res, 150)));
   return out;
 }
+
+/** Linha só de números e operadores ("3/5=24/x", "3x=120", "Resultado: R$ 40,00.")? */
+export function ehLinhaNumerica(l: string): boolean {
+  const s = l.trim().replace(/^(?:resultado|resposta)\s*:\s*/i, "").replace(/R\$\s*/g, "").replace(/\s+(?:reais|metros|kg|km|m|l|h|dias|horas|%)\.?$/i, "");
+  return s.length >= 3 && s.length <= 48 && /\d/.test(s) && /^[\s\dxX=+\-−×÷·*/().,%:^²³]+$/.test(s) && (/=/.test(s) || /^(?:resultado|resposta)/i.test(l.trim()));
+}
+
+/** Procura sequências de linhas numéricas no markdown e as troca por um bloco "@@calculo" que vira lousa (o texto continua em "Ver o exemplo em texto"). */
+export function agruparCalculos(md: string): string {
+  const ls = md.split("\n"), out: string[] = [];
+  let i = 0;
+  while (i < ls.length) {
+    if (!ehLinhaNumerica(ls[i]!) || /^\s*```/.test(ls[i]!)) { out.push(ls[i]!); i++; continue; }
+    const run: string[] = []; let j = i;
+    while (j < ls.length) {
+      if (ehLinhaNumerica(ls[j]!)) { run.push(ls[j]!.trim()); j++; continue; }
+      if (!ls[j]!.trim() && j + 1 < ls.length && ehLinhaNumerica(ls[j + 1]!)) { j++; continue; }
+      break;
+    }
+    if (run.filter((r) => /=/.test(r)).length >= 2) { out.push("", "```", "@@calculo", ...run, "```", ""); i = j; } else { out.push(ls[i]!); i++; }
+  }
+  return out.join("\n");
+}
+
+export function roteiroDeLinhas(linhas: string[], titulo = "Cálculo"): string[] | null {
+  const ls = linhas.map((l) => l.trim()).filter(Boolean);
+  return ls.length >= 2 ? [cmd("Título", corta(limpa(titulo) || "Cálculo", 40)), `Passos: ${ls.join(" | ")}`] : null;
+}

@@ -6,7 +6,7 @@ import { Children, type ReactNode } from "react";
 import { isRevokedLegalLine } from "@/components/markdown";
 import { CalloutIcon, CALLOUT } from "@/components/aula/callout-icon";
 import { calloutKindOf, leadingLabelKind } from "@/domain/content/callout-kind";
-import { casoDeTexto, roteiroDeCaso, roteiroDeConta, roteiroDeFatoracao, roteiroDeTexto } from "@/domain/mentor/calculo-lousa";
+import { agruparCalculos, casoDeTexto, roteiroDeCaso, roteiroDeConta, roteiroDeFatoracao, ehCalculo, ehLinhaNumerica, roteiroRegraDeTres, roteiroDeLinhas } from "@/domain/mentor/calculo-lousa";
 import { CartaoExemplo } from "@/components/aula/cartao-exemplo";
 import { montarCartao, temaDe } from "@/domain/mentor/cartao-exemplo";
 import { QuadroExemplo } from "@/components/aula/quadro-exemplo";
@@ -83,6 +83,9 @@ function MdInner({ children, legal = false, subject = null, titulo = "" }: { chi
             if (!exemploAntes || legal) return <ul>{c}</ul>;
             exemploAntes = false;
             const itens = (node?.children ?? []).filter((x): x is Extract<ElementContent, { type: "element" }> => x.type === "element" && x.tagName === "li").map((li) => textOf(li).trim());
+            const numericos = itens.filter(ehLinhaNumerica);
+            if (numericos.length >= 2) { const rl = roteiroDeLinhas(numericos, ctxTitulo); if (rl) return <QuadroExemplo itens={itens} roteiro={rl}><ul>{c}</ul></QuadroExemplo>; }
+            if (temaDe(subject) === "matematica" && !itens.some((x) => /\d/.test(x))) return <ul>{c}</ul>;
             return <QuadroExemplo itens={itens}><ul>{c}</ul></QuadroExemplo>;
           },
           ol: ({ start, children: c }) => (
@@ -94,7 +97,13 @@ function MdInner({ children, legal = false, subject = null, titulo = "" }: { chi
             return <li>{c}</li>;
           },
           pre: ({ node, children: c }) => {
-            const ro = legal ? null : roteiroDeFatoracao(textOf(node as unknown as ElementContent));
+            const txt = textOf(node as unknown as ElementContent);
+            if (!legal && txt.trim().startsWith("@@calculo")) {
+              const linhas = txt.trim().split("\n").slice(1);
+              const rc = roteiroDeLinhas(linhas, ctxTitulo);
+              return rc ? <QuadroExemplo itens={linhas} roteiro={rc}><pre className="ap-calc-texto">{linhas.join("\n")}</pre></QuadroExemplo> : <pre>{c}</pre>;
+            }
+            const ro = legal ? null : roteiroDeFatoracao(txt);
             return ro ? <QuadroExemplo itens={["MMC"]} roteiro={ro}><pre>{c}</pre></QuadroExemplo> : <pre>{c}</pre>;
           },
           p: ({ node, children: c }) => {
@@ -105,16 +114,15 @@ function MdInner({ children, legal = false, subject = null, titulo = "" }: { chi
               if (conta) return <QuadroExemplo itens={[t]} roteiro={conta}><p>{c}</p></QuadroExemplo>;
               const caso = casoDeTexto(t);
               const ro = caso && roteiroDeCaso(caso);
+              if (caso && ro && temaDe(subject) === "matematica" && !ehCalculo(caso.resultado) && !roteiroRegraDeTres(caso)) return <p className={mode === "ex" ? "ap-ex" : undefined}>{c}</p>;
               if (ro) return <QuadroExemplo itens={[t]} roteiro={ro}><p className="ap-ex">{c}</p></QuadroExemplo>;
               if (exemploAntes && !isLabelLine(t) && t.length >= 60) {
                 exemploAntes = false;
-                if (temaDe(subject) !== "matematica") {
+                if (temaDe(subject) === "matematica") { /* matemática: na lousa só números */ } else {
                   const fs = t.split(/(?<=[.!?])\s+/);
                   const regra = fs.length > 2 ? fs.slice(-1)[0]! : t;
                   return <><CartaoExemplo c={montarCartao({ subject, titulo: ctxTitulo || "Exemplo", situacao: fs.length > 2 ? fs.slice(0, -1).join(" ") : t, resposta: regra })} /><details className="qe-texto"><summary>Ver o exemplo em texto</summary><p>{c}</p></details></>;
                 }
-                const ro = roteiroDeTexto("Exemplo", t);
-                if (ro) return <QuadroExemplo itens={[t]} roteiro={ro}><p>{c}</p></QuadroExemplo>;
               }
               if (isLabelLine(t) && lk === "exemplo") exemploAntes = true;
               else if (t.length <= 70 && /^\W*(exemplo|caso)\b/i.test(t)) exemploAntes = true;
@@ -143,7 +151,7 @@ function MdInner({ children, legal = false, subject = null, titulo = "" }: { chi
           ),
         }}
       >
-        {legal ? legalParagraphs(children) : limparMatematica(children)}
+        {legal ? legalParagraphs(children) : agruparCalculos(limparMatematica(children))}
       </ReactMarkdown>
     </>
   );

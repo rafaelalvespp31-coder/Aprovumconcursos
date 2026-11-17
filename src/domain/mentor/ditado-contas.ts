@@ -191,3 +191,40 @@ export function regraDeTresDesenhada(r: RegraDeTres, x0: number, y0: number, d0:
   it.push({ t: "ret", x: x0, y, w: cw + 4, h: 40, cor: "azul", d }, tx(x0 + 14, y + 27, concl, "azul", 19, d + 0.3));
   return { it, h: y + 52 - y0 };
 }
+
+/** Cálculo resolvido linha a linha, como no caderno: frações empilhadas, setas entre os passos, X na multiplicação em cruz e o resultado numa caixa. */
+export function passosDesenhados(linhas: string[], x0: number, y0: number, d0: number): ContaDesenhada | null {
+  const ls = linhas.map((l) => l.trim().replace(/^(?:resultado|resposta)\s*:\s*/i, "").replace(/\s+/g, " ").replace(/[.;]$/, "").trim()).filter(Boolean).slice(0, 7);
+  if (ls.length < 2) return null;
+  const TAM = 26, CW = 15, it: ItemDesenho[] = [];
+  let y = y0, d = d0;
+  ls.forEach((linha, i) => {
+    const ultima = i === ls.length - 1;
+    const partes = linha.split(/(\d+(?:,\d+)?|x)\s*\/\s*(\d+(?:,\d+)?|x)/g);
+    const temFrac = partes.length > 1, alt = temFrac ? 78 : 50, yb = y + (temFrac ? 44 : 32);
+    const cor: Cor = ultima ? "verde" : i === 0 ? "azul" : "grafite";
+    let x = x0 + 26;
+    const fr: Array<{ x1: number; x2: number }> = [];
+    for (let k = 0; k < partes.length; k += 3) {
+      const t = partes[k] ?? "";
+      const vis = t.trim();
+      if (vis) { it.push(tx(x + (t.length - t.trimStart().length) * CW * 0.6, yb, vis, cor, TAM, d)); }
+      x += t.length * CW * (vis.length === t.length ? 1 : 0.85);
+      if (k + 2 < partes.length) {
+        const n = partes[k + 1]!, dn = partes[k + 2]!, w = Math.max(n.length, dn.length) * CW + 12;
+        it.push(tx(x + (w - n.length * CW) / 2, yb - 16, n, cor, TAM, d + 0.1), lin(x, yb - 8, x + w, yb - 8, "grafite", d + 0.2), tx(x + (w - dn.length * CW) / 2, yb + 22, dn, cor, TAM, d + 0.3));
+        fr.push({ x1: x, x2: x + w });
+        x += w + 4;
+      }
+    }
+    if (i === 0 && fr.length === 2 && /=/.test(linha)) {
+      const a = fr[0]!, b = fr[1]!;
+      it.push(lin(a.x2 - 2, yb - 24, b.x1 + 2, yb + 24, "vermelho", d + 0.6), lin(a.x2 - 2, yb + 24, b.x1 + 2, yb - 24, "vermelho", d + 0.8));
+    }
+    if (ultima) it.push({ t: "ret", x: x0 + 12, y: y + 2, w: Math.round(x - x0 - 4), h: alt - 8, cor: "verde", bg: true, d: d + 0.4 });
+    y += alt + 4;
+    if (!ultima) { it.push({ t: "linha", x1: x0 + 14, y1: y, x2: x0 + 14, y2: y + 14, cor: "vermelho", seta: true, d: d + 0.5 }); y += 18; }
+    d += 1;
+  });
+  return { it, h: y - y0 + 8 };
+}

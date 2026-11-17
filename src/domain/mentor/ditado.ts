@@ -1,6 +1,6 @@
 import { ehConversa } from "./lousa";
 import { comandoEnsino, conversaEnsino, fimEnsino, ENSINO, type Cena, type Frase, type Mmc } from "./ditado-ensino";
-import { contaDesenhada, regraDeTresDesenhada, type OpConta } from "./ditado-contas";
+import { contaDesenhada, passosDesenhados, regraDeTresDesenhada, type OpConta } from "./ditado-contas";
 import { linhaSchema, type ItemDesenho, type LinhaLousa } from "./lousa";
 
 /**
@@ -55,7 +55,7 @@ const NUM_PALAVRA = /^(?:(?:n[ºo°]\s*)?\d+(?!\d|\.\d)|um|uma|dois|duas|tr[eê]
 /** Aplica um comando ditado. Devolve false se a frase não for um comando (conversa do professor: ignorada). `atraso` = segundos até o áudio chegar nela. */
 export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): boolean {
   const f = frase.replace(/\s+/g, " ").replace(/[*_`]/g, "").trim();
-  const m = /^(t[ií]tulo|subt[ií]tulo|linha do tempo|marco|caixa|item|ponto|t[oó]pico|exemplo|destaque|aten[cç][aã]o|cuidado|resumo|seta|tabela|linha|cruzar|conta|passo|resposta|mmc|mdc|arma(?:da|r)|divis[aã]o|regra de tr[eê]s|frase|sujeito|predicado|verbo|n[uú]cleo|complemento|adjunto|camada|cadeia|grade|c[eé]lula|coluna|pessoa|v[ií]tima|arma|objeto)\b[\s:,.\-–]*(.*)$/i.exec(f);
+  const m = /^(t[ií]tulo|subt[ií]tulo|linha do tempo|marco|caixa|item|ponto|t[oó]pico|exemplo|destaque|aten[cç][aã]o|cuidado|resumo|seta|tabela|linha|cruzar|conta|passo|resposta|mmc|mdc|arma(?:da|r)|divis[aã]o|regra de tr[eê]s|passos|frase|sujeito|predicado|verbo|n[uú]cleo|complemento|adjunto|camada|cadeia|grade|c[eé]lula|coluna|pessoa|v[ií]tima|arma|objeto)\b[\s:,.\-–]*(.*)$/i.exec(f);
   if (!m) {
     const it0: ItemDesenho[] = []; const ok = conversaEnsino(e, f, Math.max(0, atraso), it0); e.itens.push(...it0);
     return ok || naturalDitado(e, f, atraso);
@@ -196,7 +196,7 @@ export function frasesDe(buf: string): { frases: string[]; resto: string } {
 }
 
 // ── Conta ditada, como um professor resolvendo no quadro ───────────────────────────────────────────
-const MATEMATICA = new Set(["tabela", "linha", "cruzar", "conta", "passo", "resposta", "mmc", "mdc", "armada", "armar", "divisao", "regra de tres"]);
+const MATEMATICA = new Set(["tabela", "linha", "cruzar", "conta", "passo", "resposta", "mmc", "mdc", "armada", "armar", "divisao", "regra de tres", "passos"]);
 const NUMS: Record<string, number> = { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, onze: 11, doze: 12, treze: 13, quatorze: 14, quinze: 15, dezesseis: 16, dezessete: 17, dezoito: 18, dezenove: 19, vinte: 20, trinta: 30, quarenta: 40, cinquenta: 50, sessenta: 60, setenta: 70, oitenta: 80, noventa: 90, cem: 100 };
 const algarismos = (s: string) => s.replace(/\b(?:ent[aã]o|agora|ai|aí|bom|ent[aã]o,)\b[\s,]*/gi, "").replace(/\b[a-zê]+\b/gi, (w) => { const n = NUMS[norm(w)]; return n === undefined ? w : String(n); });
 const sim = (s: string) => algarismos(s)
@@ -282,6 +282,11 @@ function matematica(e: EstadoDitado, cmd: string, resto: string, d0: number, it:
     const prod = usados.reduce((a, b) => a * b, 1);
     it.push(tx(xR, yR() + 28, `${cmd.toUpperCase()} = ${usados.join(" · ") || "1"}`.slice(0, 40), "vermelho", tam + 2, d + 0.6), tx(xR, yR() + 70, `${cmd.toUpperCase()} = ${prod}`, "verde", tam + 6, d + 0.9));
     setR(yR() + 84); if (empilha) e.yL = Math.max(e.yL, e.yR);
+  } else if (cmd === "passos") {
+    const c = passosDesenhados(resto.split("|"), xL + 4, e.yL, d);
+    if (!c) return false;
+    it.push(...c.it);
+    e.yL += c.h + 10; if (empilha) e.yR = e.yL;
   } else if (cmd === "regra de tres") {
     const p = resto.split("|").map((s) => s.trim());
     if (p.length < 5 || !p[0] || !p[1] || !p[2]) return false;

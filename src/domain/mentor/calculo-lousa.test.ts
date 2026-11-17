@@ -107,3 +107,27 @@ describe("regra de três esquematizada", () => {
     expect(s).toEqual(expect.arrayContaining(["16x = 240", "x = 15"]));
   });
 });
+
+import { agruparCalculos, ehLinhaNumerica, roteiroDeLinhas } from "./calculo-lousa";
+describe("linhas numéricas viram esquema passo a passo", () => {
+  const MD = "Exemplo resolvido:\n\n3/5=24/x\n\n3x=120\n\nx=40\n\nResultado: R$ 40,00.\n\nAtenção: cuidado.";
+  it("reconhece linhas de conta", () => {
+    expect(ehLinhaNumerica("3/5=24/x")).toBe(true);
+    expect(ehLinhaNumerica("Resultado: R$ 40,00.")).toBe(true);
+    expect(ehLinhaNumerica("Atenção: cuidado.")).toBe(false);
+  });
+  it("agrupa em bloco @@calculo", () => {
+    const o = agruparCalculos(MD);
+    expect(o).toContain("@@calculo");
+    expect(o).toContain("x=40");
+    expect(o).toContain("Atenção: cuidado.");
+  });
+  it("desenha frações empilhadas e o resultado em caixa", () => {
+    const r = roteiroDeLinhas(["3/5=24/x", "3x=120", "x=40", "Resultado: R$ 40,00."], "Regra de três")!;
+    const e = novoDitado(true); for (const c of r) comandoDitado(e, c, 0); fimDitado(e);
+    const l = linhaDitado(e).rabisco!;
+    const s = l.filter((x) => x.t === "texto").map((x) => (x as { s: string }).s);
+    expect(s).toEqual(expect.arrayContaining(["3", "5", "24", "x", "3x=120", "R$ 40,00"]));
+    expect(l.some((x) => x.t === "ret")).toBe(true);
+  });
+});
