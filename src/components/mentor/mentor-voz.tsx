@@ -2,7 +2,7 @@
 
 import { comandoDitado, fimDitado, frasesDe, linhaDitado, novoDitado, type EstadoDitado } from "@/domain/mentor/ditado";
 import { esquemasDe, fimTempo, novoCtx, type Ctx as EsquemaCtx } from "@/domain/mentor/esquemas";
-import { anunciaLousa, ehConversa, tituloDaFala, linhaDeFala, linhaTitulo, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
+import { anunciaLousa, ehConversa, linhaSchema, tituloDaFala, linhaDeFala, linhaTitulo, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
@@ -57,7 +57,8 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
    * Lousa ao vivo por TRANSCRIÇÃO: nada de chamada extra ao servidor nem função. A lousa abre no pedido e cada frase que o
    * Mentor fala vira uma linha escrita, no instante em que o áudio daquela frase toca.
    */
-  type Trans = { modo: "texto" | "ditado"; dit?: EstadoDitado; esq: EsquemaCtx; flush: ReturnType<typeof setTimeout> | null; buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; t0: number; msTexto: number | null; msTraco: number | null; modo0: "texto" | "ditado"; timer: ReturnType<typeof setTimeout> | null };
+  type IA = { abort: AbortController; linhas: LinhaLousa[]; titulo: string; fim: boolean; usando: boolean };
+  type Trans = { ia?: IA; modo: "texto" | "ditado" | "ia"; dit?: EstadoDitado; esq: EsquemaCtx; flush: ReturnType<typeof setTimeout> | null; buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; t0: number; msTexto: number | null; msTraco: number | null; modo0: "texto" | "ditado"; timer: ReturnType<typeof setTimeout> | null };
   const trans = useRef<Trans | null>(null);
   const agoraS = () => performance.now() / 1000;
   const publicarTrans = () => {
@@ -72,10 +73,12 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     const m = trans.current;
     if (!m) return;
     if (m.timer) clearTimeout(m.timer);
+    if (m.ia?.usando && !m.ia.fim && performance.now() - m.t0 < 45000) { m.timer = setTimeout(fimTrans, 1500); return; } // a IA ainda está escrevendo
+    m.ia?.abort.abort();
     trans.current = null;
     lousaOcupada.current = false;
     if (m.msTexto !== null || m.msTraco !== null) void fetch("/api/mentor/lousa/tempo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ modo: m.modo0, largo: telaLarga(), ms_texto: m.msTexto, ms_traco: m.msTraco, ms_fim: Math.min(300000, Math.round(performance.now() - m.t0)) }) }).catch(() => undefined);
-    if (m.linhas.length >= 4 || (m.dit && m.dit.itens.length >= 6)) void fetch("/api/mentor/lousa/salvas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lousa: { mostrar: true, titulo: m.titulo, linhas: m.linhas, desenho: [] } }) }).catch(() => undefined);
+    if (m.modo !== "ia" && (m.linhas.length >= 4 || (m.dit && m.dit.itens.length >= 6))) void fetch("/api/mentor/lousa/salvas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lousa: { mostrar: true, titulo: m.titulo, linhas: m.linhas, desenho: [] } }) }).catch(() => undefined);
   };
   /** Uma frase falada → linha do quadro (ou nada, se for abertura/fechamento/pergunta). */
   const novaLinha = (frase: string) => {
@@ -126,6 +129,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   const ouvirFala = (texto: string, fimDoTurno: boolean) => {
     const m = trans.current;
     if (!m) return;
+    if (m.modo === "ia") { if (fimDoTurno) { if (m.timer) clearTimeout(m.timer); m.timer = setTimeout(fimTrans, 2500); } return; }
     if (m.msTexto === null && texto.trim()) m.msTexto = Math.round(performance.now() - m.t0);
     m.buf += texto;
     // o Mentor começou a ditar ("Título: …"): passa para o modo desenho, mesmo que o pedido não tenha dito "desenhe"
@@ -146,6 +150,46 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       m.timer = setTimeout(fimTrans, 2500);
     }
   };
+  /** Em paralelo ao quadro local: a IA monta o quadro certo (português revisado, esquema desenhado) em fluxo; ao chegar, ele assume. */
+  const localTemVisual = (m: Trans) => !!m.dit && (!!m.dit.mmc || m.dit.linhasTab.length > 0 || m.dit.marcos > 0 || m.dit.caixas >= 2 || m.dit.camadas > 0 || !!m.dit.frase || Object.keys(m.dit.cenas).length > 0);
+  const iniciarIA = (m: Trans, pedido: string) => {
+    if (!pedido.trim()) return;
+    const ia: IA = { abort: new AbortController(), linhas: [], titulo: "", fim: false, usando: false };
+    m.ia = ia;
+    void (async () => {
+      try {
+        const res = await fetch("/api/mentor/lousa?stream=1", { method: "POST", signal: ia.abort.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido: pedido.slice(0, 500), study: getStudy?.() ?? undefined }) });
+        if (!res.ok || !res.body) { ia.fim = true; return; }
+        const rd = res.body.getReader(); const dec = new TextDecoder(); let resto = "";
+        for (;;) {
+          const { value, done } = await rd.read();
+          if (done) break;
+          resto += dec.decode(value, { stream: true });
+          const partes = resto.split("\n"); resto = partes.pop() ?? "";
+          for (const bruta of partes) {
+            let o: Record<string, unknown>;
+            try { o = JSON.parse(bruta) as Record<string, unknown>; } catch { continue; }
+            if (trans.current !== m) { ia.abort.abort(); return; }
+            if (o.mostrar === false) { ia.fim = true; return; }
+            if (o.fim) { ia.fim = true; continue; }
+            if ("mostrar" in o) { ia.titulo = typeof o.titulo === "string" ? o.titulo : ""; continue; }
+            const ok = linhaSchema.safeParse(o); // cada linha é validada sozinha: uma quebrada não derruba o quadro
+            if (!ok.success) continue;
+            ia.linhas.push(ok.data);
+            if (!ia.usando) {
+              if (localTemVisual(m) || (ia.linhas.length < 3 && !ia.linhas.some((l) => l.tipo === "desenho"))) continue; // espera ter o que mostrar
+              ia.usando = true; m.modo = "ia"; m.linhas = []; m.quandos = []; m.titulo = ia.titulo || m.titulo;
+              if (m.flush) clearTimeout(m.flush);
+              for (const l of ia.linhas) { m.linhas.push(l); m.quandos.push(agoraS() + 0.15 * m.quandos.length); }
+            } else { m.linhas.push(ok.data); m.quandos.push(Math.max(agoraS(), (m.quandos[m.quandos.length - 1] ?? 0) + 0.25)); }
+            if (m.timer) { clearTimeout(m.timer); m.timer = null; }
+            publicarTrans();
+          }
+        }
+        ia.fim = true;
+      } catch { ia.fim = true; }
+    })();
+  };
   const r0Turno = useRef("");
   const dispararLousa = () => {
     if (debLousa.current) { clearTimeout(debLousa.current); debLousa.current = null; }
@@ -161,6 +205,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       const tit = tituloDe(pedido);
       if (comandoDitado(g.dit, pedido, 0)) { g.titulo = tit; g.linhas = [linhaDitado(g.dit)]; g.quandos = [agoraS()]; publicarTrans(); }
     }
+    if (trans.current) iniciarIA(trans.current, ref.current.turn || falaTurno.current);
   };
   const progresso = () => {
     const ro = roteiro.current; const ctx = ref.current.ctx;
