@@ -6,7 +6,7 @@ import { Children, type ReactNode } from "react";
 import { isRevokedLegalLine } from "@/components/markdown";
 import { CalloutIcon, CALLOUT } from "@/components/aula/callout-icon";
 import { calloutKindOf, leadingLabelKind } from "@/domain/content/callout-kind";
-import { agruparCalculos, casoDeTexto, roteiroDeCaso, roteiroDeConta, roteiroDeFatoracao, ehCalculo, ehLinhaNumerica, roteiroRegraDeTres, roteiroDeLinhas, roteiroMatematico } from "@/domain/mentor/calculo-lousa";
+import { agruparCalculos, casoDeTexto, roteiroDeCaso, roteiroDeConta, roteiroDeFatoracao, ehCalculo, ehLinhaNumerica, roteiroRegraDeTres, roteiroDeLinhas, roteiroMatematico, ehFormula, roteiroDeFormula, roteiroDeConceito } from "@/domain/mentor/calculo-lousa";
 import { CartaoExemplo } from "@/components/aula/cartao-exemplo";
 import { montarCartao, temaDe } from "@/domain/mentor/cartao-exemplo";
 import { roteiroDeExemplo } from "@/domain/mentor/catalogo-lousa";
@@ -115,6 +115,14 @@ function MdInner({ children, legal = false, subject = null, titulo = "" }: { chi
             if (!legal) {
               const t = textOf(node as unknown as ElementContent).trim();
               const lk = leadingLabelKind(t);
+              if (temaDe(subject) === "matematica") {
+                const fm = ehFormula(t) ? roteiroDeFormula(t, "Fórmula") : null;
+                if (fm) return <QuadroExemplo itens={[t]} roteiro={fm}><p>{c}</p></QuadroExemplo>;
+                if ((exemploAntes || /dobr|metade|triplic|constante/i.test(t)) && !/\d{2}/.test(t) && !isLabelLine(t)) {
+                  const rc = roteiroDeConceito(t);
+                  if (rc) { exemploAntes = false; return <QuadroExemplo itens={[t]} roteiro={rc}><p>{c}</p></QuadroExemplo>; }
+                }
+              }
               if (temaDe(subject) === "matematica" && /\d/.test(t) && (exemploAntes || /\?|calcul|quanto|determine|resolv|efetu/i.test(t))) {
                 const rm = roteiroMatematico(t, ctxTitulo || "Cálculo");
                 if (rm) { exemploAntes = false; return <QuadroExemplo itens={[t]} roteiro={rm}><p>{c}</p></QuadroExemplo>; }

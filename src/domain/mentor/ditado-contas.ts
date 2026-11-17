@@ -194,13 +194,13 @@ export function regraDeTresDesenhada(r: RegraDeTres, x0: number, y0: number, d0:
 
 /** Cálculo resolvido linha a linha, como no caderno: frações empilhadas, setas entre os passos, X na multiplicação em cruz e o resultado numa caixa. */
 export function passosDesenhados(linhas: string[], x0: number, y0: number, d0: number): ContaDesenhada | null {
-  const ls = linhas.map((l) => l.trim().replace(/^(?:resultado|resposta)\s*:\s*/i, "").replace(/\s+/g, " ").replace(/[.;]$/, "").trim()).filter(Boolean).slice(0, 7);
-  if (ls.length < 2) return null;
+  const ls = linhas.map((l) => l.trim().replace(/^(?:resultado|resposta)\s*:\s*/i, "").replace(/([A-Za-z])_\{?(\d)\}?/g, "$1$2").replace(/\s+/g, " ").replace(/[.;]$/, "").trim()).filter(Boolean).slice(0, 7);
+  if (ls.length < 1) return null;
   const TAM = 26, CW = 15, it: ItemDesenho[] = [];
   let y = y0, d = d0;
   ls.forEach((linha, i) => {
     const ultima = i === ls.length - 1;
-    const partes = linha.split(/(\d+(?:,\d+)?|x)\s*\/\s*(\d+(?:,\d+)?|x)/g);
+    const partes = linha.split(/([A-Za-z]\d?|\d+(?:,\d+)?)\s*\/\s*([A-Za-z]\d?|\d+(?:,\d+)?)/g);
     const temFrac = partes.length > 1, alt = temFrac ? 78 : 50, yb = y + (temFrac ? 44 : 32);
     const cor: Cor = ultima ? "verde" : i === 0 ? "azul" : "grafite";
     let x = x0 + 26;

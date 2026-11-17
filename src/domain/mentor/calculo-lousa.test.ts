@@ -176,3 +176,19 @@ describe("lousa de matemática sem texto explicativo", () => {
     expect(tituloUtil("Crimes contra a honra", "Calúnia")).toBe("Crimes contra a honra");
   });
 });
+
+import { ehFormula, roteiroDeConceito, roteiroDeFormula } from "./calculo-lousa";
+describe("texto de cálculo vira exemplo numérico visual", () => {
+  it("fórmula em uma linha", () => {
+    expect(ehFormula("A_1/B_1=A_2/B_2")).toBe(true);
+    expect(ehFormula("Se a quantidade dobra, o preço dobra")).toBe(false);
+    expect(roteiroDeFormula("A_1/B_1=A_2/B_2")![1]).toBe("Passos: A_1/B_1=A_2/B_2");
+    const e = novoDitado(true); for (const c of roteiroDeFormula("A_1/B_1=A_2/B_2")!) comandoDitado(e, c, 0);
+    expect(linhaDitado(e).rabisco!.filter((x) => x.t === "texto").map((x) => (x as { s: string }).s)).toEqual(expect.arrayContaining(["A1", "B1", "A2", "B2"]));
+  });
+  it("conceito em palavras vira regra de três numérica", () => {
+    expect(roteiroDeConceito("Se o número de trabalhadores dobra, o tempo cai pela metade.")![1]).toMatch(/^Regra de três: 6 \| 12 \| 9 .*inversa/);
+    expect(roteiroDeConceito("Se a quantidade de produtos dobra, o preço total também dobra.")![1]).toMatch(/direta/);
+    expect(roteiroDeConceito("O agente responde por furto.")).toBeNull();
+  });
+});

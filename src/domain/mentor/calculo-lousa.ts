@@ -229,3 +229,30 @@ export function roteiroMatematico(texto: string, titulo = "Cálculo"): string[] 
   if (r3) return r3;
   return roteiroDeConta(`Calcule ${t}`);
 }
+
+
+/** Fórmula curta numa linha ("A_1/B_1=A_2/B_2", "J = C · i · t")? Letras soltas, números e operadores — nada de palavras. */
+export function ehFormula(l: string): boolean {
+  const s = l.trim();
+  if (s.length < 5 || s.length > 48 || !/=/.test(s)) return false;
+  return s.split(/\s+/).every((tk) => /^[\dA-Za-z_{}^+\-−×÷·*/=().,%$²³]{1,18}$/.test(tk) && (tk.length === 1 || /[\d_^=/+\-−×÷·*]/.test(tk) || /^[A-Z]{1,2}$/.test(tk)));
+}
+export function roteiroDeFormula(l: string, titulo = "Fórmula"): string[] | null {
+  return ehFormula(l) ? [cmd("Título", corta(limpa(titulo) || "Fórmula", 40)), `Passos: ${l.trim()}`] : null;
+}
+
+/** Conceito de cálculo explicado só com palavras ("se a quantidade dobra, o preço dobra") → o mesmo conceito aplicado a números, como o professor faria no quadro. */
+export function roteiroDeConceito(texto: string): string[] | null {
+  const t = norm(limpa(texto));
+  const R3 = (a: string, b: string, c: string, A: string, B: string, tipo: string) => [cmd("Título", "Regra de três"), `Regra de três: ${a} | ${b} | ${c} | ${A} | ${B} | ${tipo} | `];
+  if (/inversamente|produto .*constante|trabalhadores|operarios/.test(t) && /(dobr|metade|constante|inversa)/.test(t)) return R3("6", "12", "9", "Operários", "Dias", "inversa");
+  if (/(dobr|triplic|proporcional|razao .*constante|preco|quantidade)/.test(t) && /(diretamente|dobr|triplic|razao|preco)/.test(t)) return R3("2", "10", "6", "Produtos", "Preço (R$)", "direta");
+  if (/\bmmc\b|minimo multiplo/.test(t)) return [cmd("Título", "MMC de 12 e 18"), "MMC: 12 e 18"];
+  if (/\bmdc\b|maximo divisor/.test(t)) return [cmd("Título", "MDC de 12 e 18"), "MDC: 12 e 18"];
+  if (/porcentagem|percentual|por cento/.test(t)) return [cmd("Título", "20% de 150"), "Passos: 20/100 · 150 | 3000/100 | 30"];
+  if (/juros simples/.test(t)) return [cmd("Título", "Juros simples"), "Passos: J = C · i · t | J = 1000 · 0,02 · 5 | J = 100 | M = C + J | M = 1000 + 100 | M = 1100"];
+  if (/media aritmetica|\bmedia\b/.test(t)) return [cmd("Título", "Média aritmética"), "Passos: (6 + 8 + 10)/3 | 24/3 | 8"];
+  if (/equacao do (1|primeiro) grau|isolar a incognita|incognita/.test(t)) return [cmd("Título", "Equação do 1º grau"), "Passos: 2x + 6 = 20 | 2x = 20 − 6 | 2x = 14 | x = 14/2 | x = 7"];
+  if (/soma de fracoes|fracoes/.test(t)) return [cmd("Título", "Soma de frações"), "Passos: 1/2 + 1/3 | 3/6 + 2/6 | 5/6"];
+  return null;
+}
