@@ -6,7 +6,7 @@ import { Children, type ReactNode } from "react";
 import { isRevokedLegalLine } from "@/components/markdown";
 import { CalloutIcon, CALLOUT } from "@/components/aula/callout-icon";
 import { calloutKindOf, leadingLabelKind } from "@/domain/content/callout-kind";
-import { agruparCalculos, casoDeTexto, roteiroDeCaso, roteiroDeConta, roteiroDeFatoracao, ehCalculo, ehLinhaNumerica, roteiroRegraDeTres, roteiroDeLinhas } from "@/domain/mentor/calculo-lousa";
+import { agruparCalculos, casoDeTexto, roteiroDeCaso, roteiroDeConta, roteiroDeFatoracao, ehCalculo, ehLinhaNumerica, roteiroRegraDeTres, roteiroDeLinhas, roteiroMatematico } from "@/domain/mentor/calculo-lousa";
 import { CartaoExemplo } from "@/components/aula/cartao-exemplo";
 import { montarCartao, temaDe } from "@/domain/mentor/cartao-exemplo";
 import { QuadroExemplo } from "@/components/aula/quadro-exemplo";
@@ -110,6 +110,10 @@ function MdInner({ children, legal = false, subject = null, titulo = "" }: { chi
             if (!legal) {
               const t = textOf(node as unknown as ElementContent).trim();
               const lk = leadingLabelKind(t);
+              if (temaDe(subject) === "matematica" && /\d/.test(t) && (exemploAntes || /\?|calcul|quanto|determine|resolv|efetu/i.test(t))) {
+                const rm = roteiroMatematico(t, ctxTitulo || "Cálculo");
+                if (rm) { exemploAntes = false; return <QuadroExemplo itens={[t]} roteiro={rm}><p>{c}</p></QuadroExemplo>; }
+              }
               const conta = roteiroDeConta(t);
               if (conta) return <QuadroExemplo itens={[t]} roteiro={conta}><p>{c}</p></QuadroExemplo>;
               const caso = casoDeTexto(t);

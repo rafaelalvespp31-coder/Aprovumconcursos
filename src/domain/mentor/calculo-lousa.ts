@@ -59,7 +59,8 @@ export function roteiroRegraDeTres(c: CasoCalculo): string[] | null {
   const unidadeB = n2![2] ?? "";
   // o nome da 2ª grandeza: a palavra depois da unidade ("m de tecido") ou o próprio nome
   const apos = new RegExp(`${n2![1]!.replace(".", "\\.")}\\s*(?:m|km|kg|g|l|h|min|cm)?\\s*(?:de\\s+)?([A-Za-zÀ-ú]+)`).exec(txt)?.[1] ?? nome(n2!);
-  const nomeB = unidadeB ? `${cap(apos)} (${unidadeB})` : cap(nome(n2!) || apos);
+  const moeda = /R\$\s*$/.test(txt.slice(0, n2!.index ?? 0));
+  const nomeB = moeda ? "Preço (R$)" : unidadeB ? `${cap(apos)} (${unidadeB})` : cap(nome(n2!) || apos);
   const inversa = /inversamente|operários.*dias|dias.*operários|torneiras.*(?:horas|tempo)/i.test(txt);
   const concl = /^portanto/i.test(limpa(c.resultado).split(/(?<=[.!?])\s+/).at(-1) ?? "") ? limpa(c.resultado).split(/(?<=[.!?])\s+/).at(-1)!.replace(/\.$/, "") : "";
   return [cmd("Título", "Regra de três"), `Regra de três: ${a} | ${b} | ${cc} | ${cap(nome(n1!))} | ${nomeB} | ${inversa ? "inversa" : "direta"} | ${concl}`];
@@ -202,4 +203,29 @@ export function agruparCalculos(md: string): string {
 export function roteiroDeLinhas(linhas: string[], titulo = "Cálculo"): string[] | null {
   const ls = linhas.map((l) => l.trim()).filter(Boolean);
   return ls.length >= 2 ? [cmd("Título", corta(limpa(titulo) || "Cálculo", 40)), `Passos: ${ls.join(" | ")}`] : null;
+}
+
+
+const f2 = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100).replace(".", ","));
+const nn = (s: string) => Number(s.replace(/\.(?=\d{3}\b)/g, "").replace(",", "."));
+
+/** Exemplo de matemática escrito em palavras → resolve com os números do enunciado e devolve o esquema de cálculo (nada de texto na lousa). */
+export function roteiroMatematico(texto: string, titulo = "Cálculo"): string[] | null {
+  const t = limpa(texto);
+  if (!/\d/.test(t) || t.length > 400) return null;
+  const mm = /\b(mmc|mdc)\b\D{0,40}?(\d{1,3})\D{1,12}?(\d{1,3})/i.exec(t);
+  if (mm) return [cmd("Título", `${mm[1]!.toUpperCase()} de ${mm[2]} e ${mm[3]}`), `${mm[1]!.toUpperCase()}: ${mm[2]} e ${mm[3]}`];
+  const j = /juros\s+simples/i.test(t) ? { C: /R\$\s*([\d.]+(?:,\d+)?)/.exec(t), i: /(\d+(?:,\d+)?)\s*%/.exec(t), n: /(\d+)\s*(meses|mês|anos|dias)/i.exec(t) } : null;
+  if (j?.C && j.i && j.n) {
+    const C = nn(j.C[1]!), i = nn(j.i[1]!) / 100, n = Number(j.n[1]), J = C * i * n;
+    return [cmd("Título", "Juros simples"), `Passos: J = C · i · t | J = ${f2(C)} · ${f2(i)} · ${n} | J = ${f2(J)} | M = C + J | M = ${f2(C)} + ${f2(J)} | M = ${f2(C + J)}`];
+  }
+  const pc = /(\d+(?:,\d+)?)\s*%\s*de\s*(?:R\$\s*)?(\d[\d.]*(?:,\d+)?)/i.exec(t);
+  if (pc) {
+    const p = nn(pc[1]!), b = nn(pc[2]!), r = (p * b) / 100;
+    return [cmd("Título", `${f2(p)}% de ${f2(b)}`), `Passos: ${f2(p)}/100 · ${f2(b)} | ${f2(p * b)}/100 | ${f2(r)}`];
+  }
+  const r3 = roteiroRegraDeTres({ titulo, enunciado: t, resultado: "" });
+  if (r3) return r3;
+  return roteiroDeConta(`Calcule ${t}`);
 }

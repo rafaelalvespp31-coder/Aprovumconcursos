@@ -131,3 +131,24 @@ describe("linhas numéricas viram esquema passo a passo", () => {
     expect(l.some((x) => x.t === "ret")).toBe(true);
   });
 });
+
+import { roteiroMatematico } from "./calculo-lousa";
+import { soNumeros } from "./catalogo-lousa";
+describe("exemplo de matemática em palavras vira esquema", () => {
+  it("regra de três com preço", () => {
+    const r = roteiroMatematico("Se 3 kg custam R$ 5, quanto custam 24 kg?")!;
+    expect(r[1]).toMatch(/^Regra de três: 3 \| 5 \| 24 \| Kg \| Preço \(R\$\)/);
+  });
+  it("porcentagem, juros e MMC", () => {
+    expect(roteiroMatematico("Quanto é 20% de 150?")![1]).toBe("Passos: 20/100 · 150 | 3000/100 | 30");
+    expect(roteiroMatematico("Capital de R$ 8.000 a 1,5% a.m., juros simples, por 8 meses.")![1]).toContain("M = 8000 + 960");
+    expect(roteiroMatematico("Calcule o MMC de 12 e 18.")![1]).toBe("MMC: 12 e 18");
+    expect(roteiroMatematico("O agente responde por furto.")).toBeNull();
+  });
+  it("soNumeros tira a prosa de quadros de matemática", () => {
+    const q = soNumeros({ titulo: "x", kind: "exemplos", roteiro: ["Título: Juros", "Exemplo: o capital rende juros ao longo do tempo", "Tabela: Dado, Valor", "Linha: Taxa, 1,5%", "Conta: J = 8.000 × 0,015 × 8", "Destaque: portanto o juro é pequeno"] } as never)!;
+    expect(q.roteiro.join("|")).not.toMatch(/Exemplo:|Destaque:/);
+    const d = soNumeros({ titulo: "x", kind: "x", roteiro: ["Título: Furto", "Caixa: Primeiro", "Item: texto"] } as never)!;
+    expect(d.roteiro).toHaveLength(3);
+  });
+});

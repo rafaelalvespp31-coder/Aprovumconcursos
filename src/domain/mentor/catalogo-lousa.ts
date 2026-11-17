@@ -80,7 +80,19 @@ const PALAVRAS = (s: string) => new Set(norm(s).split(/[^a-z0-9]+/).filter((w) =
 /** Escolhe a seção que melhor responde ao pedido do aluno ("dá um exemplo", "qual a diferença", "faz um esquema"…). */
 import { casosDe, roteiroDeCaso } from "./calculo-lousa";
 export interface QuadroGuardado { tipo: string; titulo: string; gatilhos: string[]; roteiro: string[] }
+const COMANDO_MAT = /^(tabela|linha(?! do tempo)|cruzar|conta|resposta|mmc|mdc|armada|divis[aã]o|regra de tr[eê]s|passos)\b/i;
+const PROSA = /^(item|exemplo|destaque|aten[cç][aã]o|cuidado|resumo|ponto|t[oó]pico|caixa)\s*:/i;
+/** Quadro de matemática: só números e esquemas de cálculo. Tira frases explicativas (ficam na voz). Quadros de outras matérias passam intactos. */
+export function soNumeros(q: QuadroPronto | null): QuadroPronto | null {
+  if (!q || (q.roteiro.filter((c) => COMANDO_MAT.test(c)).join(" ").match(/\d/g) ?? []).length < 4) return q;
+  const r = q.roteiro.filter((c) => !PROSA.test(c) || (c.replace(/^[^:]*:/, "").match(/\d/g) ?? []).length >= 3);
+  return r.length >= 3 ? { ...q, roteiro: r } : q;
+}
+
 export function escolherQuadro(secoes: SecaoAula[], pedido: string, largo: boolean, guardados: QuadroGuardado[] = []): QuadroPronto | null {
+  return soNumeros(escolherQuadroBruto(secoes, pedido, largo, guardados));
+}
+function escolherQuadroBruto(secoes: SecaoAula[], pedido: string, largo: boolean, guardados: QuadroGuardado[] = []): QuadroPronto | null {
   // os exemplos que a própria aula escreveu ("EXEMPLO:") são a base do que o Mentor desenha
   const doTexto = exemplosDaAula(secoes).flatMap((e) => { const r = roteiroDeExemplo(e.itens, `Exemplo: ${e.contexto}`.slice(0, 40), e.conclusao); return r ? [{ s: { kind: "exemplos", title: e.contexto, body_markdown: e.itens.join(" ") } as SecaoAula, q: { titulo: e.contexto, roteiro: r, kind: "exemplos" } as QuadroPronto }] : []; });
   const contas = secoes.flatMap((s) => casosDe(s.body_markdown).flatMap((c) => { const r = roteiroDeCaso(c); return r ? [{ s: { kind: "exemplos", title: `${c.titulo} ${c.enunciado} calculo conta`, body_markdown: c.resultado } as SecaoAula, q: { titulo: c.titulo, roteiro: r, kind: "exemplos" } as QuadroPronto }] : []; }));
