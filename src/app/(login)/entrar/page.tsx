@@ -26,7 +26,11 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
     <div className="login-tela">
       <div className="login-fundo" aria-hidden />
       {/* Desktop: cena de fundo em tela cheia (soldados à esquerda + fumaça); no celular a arte fica no topo */}
-      <div className="login-cena" aria-hidden />
+      <div className="login-cena" aria-hidden>
+        <i className="login-fumo a" />
+        <i className="login-fumo b" />
+        <i className="login-fumo c" />
+      </div>
       <LoginHeader />
 
       <main id="conteudo" className="login-palco">

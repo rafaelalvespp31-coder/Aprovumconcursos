@@ -678,17 +678,44 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   .login-cena::before {
     content: ""; position: absolute; inset: 0;
     background: url("/images/aprovum-login-fumaca.jpg") 0 0 / 640px 640px repeat;
-    mix-blend-mode: screen; opacity: 0.55;
+    mix-blend-mode: screen; opacity: 0.3;
   }
+  /* Soldados: a caixa da imagem tem o tamanho exato da arte e a borda direita da arte já vem esfumaçada (sem "retângulo"). */
   .login-cena::after {
-    content: ""; position: absolute; inset: 0;
-    background: url("/images/aprovum-login-hero.webp") left 0 top 4.5rem / auto max(calc(100% - 4.5rem), 112vh) no-repeat;
-    -webkit-mask-image: linear-gradient(to bottom, transparent 0, transparent 4.5rem, #000 13rem, #000 78%, transparent 100%);
-    mask-image: linear-gradient(to bottom, transparent 0, transparent 4.5rem, #000 13rem, #000 78%, transparent 100%);
+    content: ""; position: absolute; left: 0; top: 4.5rem; height: max(calc(100% - 4.5rem), 112vh); aspect-ratio: 700 / 1040;
+    background: url("/images/aprovum-login-hero.webp") 0 0 / 100% 100% no-repeat;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 9rem, #000 78%, transparent 100%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 9rem, #000 78%, transparent 100%);
   }
+  /* Fumaça por cima do rosto e do capacete: sobe, passa pelos soldados e se dissolve no ar. */
+  .login-fumo {
+    position: absolute; left: -26%; bottom: -28%; width: min(1040px, 82vw); aspect-ratio: 1; background-size: 100% 100%; background-repeat: no-repeat;
+    mix-blend-mode: screen; opacity: 0; will-change: transform, opacity; filter: blur(1.5px);
+    -webkit-mask-image: radial-gradient(closest-side, #000 35%, transparent 100%); mask-image: radial-gradient(closest-side, #000 35%, transparent 100%);
+  }
+  .login-fumo.a { background-image: url("/images/fumaca-a.webp"); }
+  .login-fumo.b { background-image: url("/images/fumaca-b.webp"); left: -12%; bottom: -34%; width: min(900px, 72vw); }
+  .login-fumo.c { background-image: url("/images/fumaca-c.webp"); left: -34%; bottom: -8%; width: min(980px, 78vw); }
 }
 @media (min-width: 900px) and (prefers-reduced-motion: no-preference) {
   .login-cena::before { animation: login-fumaca 90s linear infinite; }
+  .login-fumo { animation: fumo-sobe 22s ease-in-out infinite; }
+  .login-fumo.b { animation-duration: 28s; animation-delay: -9s; animation-name: fumo-sobe-b; }
+  .login-fumo.c { animation-duration: 25s; animation-delay: -16s; }
+}
+@media (min-width: 900px) and (prefers-reduced-motion: reduce) { .login-fumo.a { opacity: .22; } }
+/* nasce embaixo, sobe pelo rosto/capacete engrossando e vai sumindo (opacidade e escala) até se esvair */
+@keyframes fumo-sobe {
+  0% { opacity: 0; transform: translate3d(-4%, 14%, 0) scale(.9) rotate(-3deg); }
+  22% { opacity: .62; }
+  60% { opacity: .46; }
+  100% { opacity: 0; transform: translate3d(12%, -42%, 0) scale(1.25) rotate(5deg); }
+}
+@keyframes fumo-sobe-b {
+  0% { opacity: 0; transform: translate3d(8%, 18%, 0) scale(.95) rotate(4deg); }
+  25% { opacity: .55; }
+  65% { opacity: .4; }
+  100% { opacity: 0; transform: translate3d(-10%, -48%, 0) scale(1.3) rotate(-6deg); }
 }
 @keyframes login-fumaca { from { background-position: 0 0; } to { background-position: 640px -640px; } }
 
