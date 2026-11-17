@@ -83,3 +83,11 @@
 @media (prefers-reduced-motion: reduce) { .lz-gira { animation: none; } }
 
 .lz-mini.lz-mini-largo { width: 100%; max-width: 960px; }
+
+/* espera: barra que enche sozinha até o primeiro traço aparecer (some quando a primeira linha chega) */
+.lz-espera { display: grid; gap: 8px; padding: 22px 6px 6px; max-width: 360px; }
+.lz-espera-t { font: 600 13px/1.2 var(--font-sans, system-ui), sans-serif; color: #1d3a8a; opacity: 0.8; }
+.lz-espera-barra { display: block; height: 8px; border-radius: 999px; background: rgba(29, 58, 138, 0.14); overflow: hidden; }
+.lz-espera-barra i { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #1d3a8a, #c81e1e); animation: lz-espera-enche 9s cubic-bezier(0.1, 0.6, 0.2, 1) forwards; }
+@keyframes lz-espera-enche { to { width: 94%; } }
+@media (prefers-reduced-motion: reduce) { .lz-espera-barra i { animation: none; width: 60%; } }

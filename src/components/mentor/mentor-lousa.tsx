@@ -308,6 +308,12 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
         <div className="lz-placa" ref={placa} key={rodada} onClick={() => setPos(total)}>
           <ol className="lz-sr">{linhas.map((l, i) => <li key={i}>{[l.texto, l.dir].filter(Boolean).join(" — ")}</li>)}</ol>
           <div aria-hidden>
+            {(!dados || linhas.length === 0) && (
+              <div className="lz-espera" role="progressbar" aria-label="Preparando o quadro" aria-busy="true">
+                <span className="lz-espera-t">Preparando o quadro…</span>
+                <span className="lz-espera-barra"><i /></span>
+              </div>
+            )}
             {!dados && <p className="lz-l" data-t="texto"><Marcador c="#1d3a8a" /></p>}
             {linhas.map((l, j) => {
               if (sincronizado ? t0L.current[j] === undefined : pos < inicios[j]!) return null;
