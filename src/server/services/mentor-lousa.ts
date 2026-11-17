@@ -216,13 +216,14 @@ async function tentarFluxo(model: string, pedido: string, study: StudyContext | 
 
 /** Modelos em ordem: o configurado, o Flash estável e o Flash-Lite (mais rápido). Quem falhar ou demorar passa a vez, sem repetir linhas já emitidas. */
 async function gerarFluxo(pedido: string, study: StudyContext | null, emitir: (e: Evento) => void, sinal: AbortSignal): Promise<number> {
-  const modelos = [...new Set([process.env.GEMINI_LOUSA_MODEL?.trim() || "gemini-2.5-flash", "gemini-2.5-flash-lite"])];
+  const modelos = [...new Set([process.env.GEMINI_LOUSA_MODEL?.trim() || "gemini-2.5-flash-lite", "gemini-2.5-flash"])];
   let emitidas = 0;
-  const conta = (e: Evento) => { if (e.tipo === "linha") emitidas++; emitir(e); };
+  const t0 = Date.now();
+  const conta = (e: Evento) => { if (e.tipo === "linha" && emitidas++ === 0) void logEvent("mentor.lousa.primeira_linha", { ms: Date.now() - t0 }); emitir(e); };
   for (const [k, m] of modelos.entries()) {
     if (sinal.aborted) break;
     try {
-      const n = await tentarFluxo(m, pedido, study, conta, sinal, k === 0 ? 6000 : 8000);
+      const n = await tentarFluxo(m, pedido, study, conta, sinal, k === 0 ? 4000 : 8000);
       if (n > 0) return n;
     } catch (e) {
       if (emitidas > 0) return emitidas; // já mostrou parte: não recomeça
