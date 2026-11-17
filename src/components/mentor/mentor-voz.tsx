@@ -153,6 +153,12 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     r0Turno.current = ref.current.turn || falaTurno.current;
     onLousaRef.current("pendente"); // abre já: a caneta desenha o card enquanto o Mentor começa a falar
     trans.current = { modo: PEDE_DESENHO.test(ref.current.turn || falaTurno.current) ? "ditado" : "texto", dit: novoDitado(telaLarga()), esq: novoCtx(ref.current.turn || falaTurno.current), flush: null, buf: "", linhas: [], quandos: [], titulo: "", pulou: false, t0: performance.now(), msTexto: null, msTraco: null, modo0: PEDE_DESENHO.test(ref.current.turn || falaTurno.current) ? "ditado" : "texto", timer: setTimeout(() => { if (trans.current && trans.current.linhas.length === 0) { onLousaRef.current?.(null); fimTrans(); } }, 25000) };
+    // o aluno já disse o que quer ("MMC de 12 e 18"): o primeiro traço sai agora, sem esperar a fala do Mentor
+    const g = trans.current;
+    if (g && g.modo === "ditado" && g.dit) {
+      const pedido = ref.current.turn || falaTurno.current;
+      if (comandoDitado(g.dit, pedido, 0)) { g.titulo = tituloDe(pedido); g.linhas = [linhaDitado(g.dit)]; g.quandos = [agoraS()]; publicarTrans(); }
+    }
   };
   const progresso = () => {
     const ro = roteiro.current; const ctx = ref.current.ctx;

@@ -159,3 +159,27 @@ it("fluxograma falado liga as caixas com seta", () => {
   expect(r.filter((x) => x.t === "ret")).toHaveLength(3);
   expect(r.filter((x) => x.t === "linha" && x.seta)).toHaveLength(2);
 });
+
+describe("narração que antes virava frases soltas (celular)", () => {
+  const T = (e: ReturnType<typeof novoDitado>) => linhaDitado(e).rabisco!;
+  const txs = (e: ReturnType<typeof novoDitado>) => T(e).filter((x) => x.t === "texto").map((x) => (x as { s: string }).s);
+  it("'Conta: 12 dividido por 2 dá 6, e dezoito por 2 dá 9' abre a tabela do MMC", () => {
+    const e = novoDitado(false);
+    for (const f of ["Conta: 12 dividido por 2 dá 6, e dezoito por 2 dá 9.", "Conta: 6 por 2 dá 3, e o 9 permanece igual.", "Dividimos por 3 de novo.", "1 permanece igual, e 3 por 3 dá 1.", "Conta: Multiplicamos todos os fatores: 2 vezes 2 vezes 3 vezes 3."]) comandoDitado(e, f, 0);
+    fimDitado(e);
+    const t = txs(e);
+    expect(t).toEqual(expect.arrayContaining(["12", "18", "6", "9", "MMC = 36"]));
+    expect(t.some((s) => s.length > 20)).toBe(false); // nada de frases soltas
+  });
+  it("o pedido do aluno já desenha o começo ('MMC de 12 e 18')", () => {
+    const e = novoDitado(false);
+    expect(comandoDitado(e, "Como calcular o MMC de 12 e 18?", 0)).toBe(true);
+    expect(txs(e)).toEqual(expect.arrayContaining(["12", "18"]));
+  });
+  it("sem sobreposição: caixa depois da conta fica abaixo", () => {
+    const e = novoDitado(false);
+    comandoDitado(e, "Conta: 5 vezes x igual a 8 vezes 20.", 0); comandoDitado(e, "Primeiro, a lei vale para fatos futuros.", 0);
+    const y = T(e).filter((x) => x.t === "texto").map((x) => (x as { y: number }).y);
+    expect(Math.max(...y)).toBeGreaterThan(Math.min(...y) + 30);
+  });
+});

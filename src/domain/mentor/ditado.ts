@@ -70,7 +70,8 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
   const centro = (s: string, tam: number) => Math.max(e.margem, (e.W - s.length * cw(tam)) / 2);
 
   if (ENSINO.has(cmd)) { if (comandoEnsino(e, cmd, resto, d, it)) { e.itens.push(...it); return true; } }
-  if (MATEMATICA.has(cmd)) { if (!matematica(e, cmd, resto, d, it)) return true; e.itens.push(...it); return true; }
+  if ((cmd === "conta" || cmd === "passo") && mmcFalado(e, resto, d)) return true; // "Conta: 12 dividido por 2 dá 6…" vira a tabela do MMC, não frase solta
+  if (MATEMATICA.has(cmd)) { if (!matematica(e, cmd, resto, d, it)) return true; e.itens.push(...it); e.ym = Math.max(e.ym, e.yL, e.yR); return true; }
   if (e.so && (cmd === "titulo" || cmd === "subtitulo" || cmd === "item" || cmd === "ponto" || cmd === "topico" || cmd === "exemplo" || cmd === "destaque" || cmd === "atencao" || cmd === "cuidado")) return true; // só letras: não entra no quadro
   if (cmd === "titulo") {
     if (!resto) return true;
@@ -166,7 +167,7 @@ export function frasesDe(buf: string): { frases: string[]; resto: string } {
 
 // ── Conta ditada, como um professor resolvendo no quadro ───────────────────────────────────────────
 const MATEMATICA = new Set(["tabela", "linha", "cruzar", "conta", "passo", "resposta", "mmc", "mdc", "armada", "armar", "divisao"]);
-const NUMS: Record<string, number> = { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, onze: 11, doze: 12, treze: 13, quatorze: 14, quinze: 15, vinte: 20, trinta: 30, quarenta: 40, cinquenta: 50, sessenta: 60, setenta: 70, oitenta: 80, noventa: 90, cem: 100 };
+const NUMS: Record<string, number> = { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, onze: 11, doze: 12, treze: 13, quatorze: 14, quinze: 15, dezesseis: 16, dezessete: 17, dezoito: 18, dezenove: 19, vinte: 20, trinta: 30, quarenta: 40, cinquenta: 50, sessenta: 60, setenta: 70, oitenta: 80, noventa: 90, cem: 100 };
 const algarismos = (s: string) => s.replace(/\b(?:ent[aã]o|agora|ai|aí|bom|ent[aã]o,)\b[\s,]*/gi, "").replace(/\b[a-zê]+\b/gi, (w) => { const n = NUMS[norm(w)]; return n === undefined ? w : String(n); });
 const sim = (s: string) => algarismos(s)
   .replace(/\s+(?:é|e|fica|dá)?\s*igual\s+a\s+/gi, " = ").replace(/\s+dividido\s+por\s+/gi, " ÷ ").replace(/\s+vezes\s+/gi, " · ")
@@ -190,6 +191,8 @@ function matematica(e: EstadoDitado, cmd: string, resto: string, d0: number, it:
   const d = Math.max(0, d0);
   const fim = () => { e.ym = Math.max(e.ym, e.yL, e.yR); };
 
+  if ((cmd === "conta" || cmd === "passo") && e.mmc?.feito) return false; // o MMC já mostrou o resultado: não repete
+  if (e.mmc && (cmd === "conta" || cmd === "passo" || cmd === "resposta")) setR(Math.max(yR(), e.ym));
   if (cmd === "tabela") {
     const [a, b] = parte(resto);
     if (!a) return false;
@@ -215,12 +218,15 @@ function matematica(e: EstadoDitado, cmd: string, resto: string, d0: number, it:
   } else if (cmd === "conta" || cmd === "passo") {
     if (!resto) return false;
     const cor: Cor = (["azul", "vermelho", "roxo", "laranja"] as Cor[])[e.corConta++ % 4]!;
-    const txt = sim(resto).slice(0, 40);
-    it.push(tx(xR, yR() + 28, txt, cor, tam + 2, d));
-    setR(yR() + 40);
+    let txt = sim(resto.includes(":") ? resto.split(":").pop()! : resto).trim();
+    if (txt.split(/\s+/).length > 9 && (txt.match(/\d/g) ?? []).length < 3) return false; // explicação em palavras não é conta: fica só na voz
+    const cols = Math.max(10, Math.floor((e.W - xR - e.margem) / cw(tam + 2)));
+    const ls = quebra(txt, cols).slice(0, 3);
+    ls.forEach((l, i) => it.push(tx(xR, yR() + 28 + i * (tam + 8), l, cor, tam + 2, d + i * 0.1)));
+    setR(yR() + 16 + ls.length * (tam + 8));
   } else if (cmd === "resposta") {
     if (!resto) return false;
-    const txt = sim(resto).slice(0, 36);
+    const txt = sim(resto.includes(":") ? resto.split(":").pop()! : resto).trim().slice(0, Math.max(10, Math.floor((e.W - xR - e.margem - 60) / cw(tam + 4))));
     const y = yR() + 8;
     it.push({ t: "ret", x: xR - 8, y, w: Math.round(txt.length * cw(tam + 4) + 28), h: tam + 20, cor: "verde", d }, tx(xR + 6, y + tam + 8, txt, "verde", tam + 4, d + 0.2), tx(xR + txt.length * cw(tam + 4) + 24, y + 12, "★", "laranja", 22, d + 0.5));
     setR(y + tam + 34);
@@ -286,6 +292,7 @@ const curto = (s: string, n: number) => s.split(/\s+/).slice(0, n).join(" ").rep
 export function naturalDitado(e: EstadoDitado, frase: string, atraso: number): boolean {
   const f = frase.replace(/\s+/g, " ").trim().replace(/[.!]+$/, "");
   if (!f || ehConversa(f)) return false;
+  if (mmcFalado(e, f, atraso)) return true;
   const s = norm(f);
   const mm = /\b(mmc|mdc|minimo multiplo comum|maximo divisor comum)\b\D{0,30}?(\d{1,3})\D{1,12}?(\d{1,3})(?:\D{1,12}?(\d{1,3}))?/.exec(s);
   if (mm && !e.mmc) { const nm = mm[1]!.startsWith("mdc") || mm[1]!.startsWith("maximo") ? "MDC" : "MMC"; if (e.itens.length === 0) comandoDitado(e, `Título: ${nm} de ${[mm[2], mm[3], mm[4]].filter(Boolean).join(" e ")}`, atraso); }
@@ -319,4 +326,19 @@ export function naturalDitado(e: EstadoDitado, frase: string, atraso: number): b
     return ok && e.itens.length > antes;
   }
   return false;
+}
+
+/** "12 dividido por 2 dá 6, e 18 por 2 dá 9" (ou o professor narrando a divisão): abre/avança a tabela do MMC em vez de escrever a frase. */
+function mmcFalado(e: EstadoDitado, texto: string, atraso: number): boolean {
+  const f = algarismos(texto).replace(/\s+/g, " ");
+  const pares = [...f.matchAll(/(\d+)\s*(?:÷|dividido por|por)\s*(\d+)\s*(?:d[aá]|=|igual a|é|fica)\s*(\d+)/gi)].map((m) => ({ a: +m[1]!, p: +m[2]!, r: +m[3]! })).filter((x) => x.p >= 2 && x.a % x.p === 0 && x.r === x.a / x.p && (!e.mmc || e.mmc.vals.includes(x.a)));
+  if (!pares.length) return false;
+  const p = pares[0]!.p;
+  if (!e.mmc) {
+    const nums = [...new Set(pares.filter((x) => x.p === p).map((x) => x.a))];
+    if (nums.length < 2) return false;
+    if (e.itens.length === 0) comandoDitado(e, `Título: MMC de ${nums.join(" e ")}`, atraso);
+    comandoDitado(e, `MMC: ${nums.join(" e ")}`, atraso);
+  }
+  return comandoDitado(e, `Vamos dividir por ${p}`, atraso) || true;
 }
