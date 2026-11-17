@@ -69,3 +69,22 @@ describe("exemplo da aula vira quadro", () => {
     expect(roteiroDeExemplo(["só um"])).toBeNull();
   });
 });
+
+import { exemplosDaAula } from "./catalogo-lousa";
+describe("exemplos escritos na própria aula", () => {
+  const aula: SecaoAula[] = [{ kind: "explicacao", title: "Conflito de leis penais", body_markdown: `**1. Regra da irretroatividade**\n\nA lei penal nova não alcança fatos anteriores.\n\n**EXEMPLO:**\n\n- Em janeiro, crime possui pena de 1 a 4 anos.\n- Em junho, uma lei aumenta a pena para 2 a 8 anos.\n- O agente praticou o crime em março.\n\nA lei de junho não poderá ser utilizada para aumentar a punição pelo fato de março.\n\n**2. Regra da retroatividade benéfica**\n\n**EXEMPLO:**\n\n- Em janeiro, crime possui pena de 2 a 8 anos.\n- Em junho, uma lei reduz a pena para 1 a 4 anos.\n- O agente praticou o crime em março.\n\nA lei de junho poderá ser aplicada ao fato de março.` }];
+  it("extrai cada exemplo com a regra e a conclusão", () => {
+    const ex = exemplosDaAula(aula);
+    expect(ex).toHaveLength(2);
+    expect(ex[0]!.contexto).toBe("Regra da irretroatividade");
+    expect(ex[0]!.itens).toHaveLength(3);
+    expect(ex[1]!.conclusao).toMatch(/poderá ser aplicada/);
+  });
+  it("o Mentor escolhe o exemplo da regra pedida e desenha com a conclusão", () => {
+    const q = escolherQuadro(aula, "dá um exemplo da retroatividade benéfica no quadro", true)!;
+    expect(q.kind).toBe("exemplos");
+    expect(q.roteiro.join(" ")).toMatch(/reduz a pena/);
+    expect(q.roteiro.some((c) => c.startsWith("Destaque: A lei de junho poderá"))).toBe(true);
+    expect(escolherQuadro(aula, "me dá um exemplo sobre irretroatividade", true)!.roteiro.join(" ")).toMatch(/aumenta a pena/);
+  });
+});

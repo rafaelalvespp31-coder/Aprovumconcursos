@@ -10,7 +10,6 @@ const tentados = new Set<string>(); // gera no máximo uma vez por instância (e
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 const noStore = { "Cache-Control": "no-store" };
-const KINDS = ["esquema", "quadro_comparativo", "comparacao", "exemplos", "aplicacao"];
 
 /** GET ?lessonId&pedido&largo → quadro pronto montado das seções catalogadas da aula (tabelas, comparações e casos), sem IA. */
 export async function GET(req: NextRequest) {
@@ -23,7 +22,7 @@ export async function GET(req: NextRequest) {
   try {
     const db = createAdminClient();
     const [{ data }, { data: aula }] = await Promise.all([
-      db.from("lesson_sections").select("kind, title, body_markdown").eq("lesson_id", id.data).eq("user_id", user.id).in("kind", KINDS).order("sort_order"),
+      db.from("lesson_sections").select("kind, title, body_markdown").eq("lesson_id", id.data).eq("user_id", user.id).order("sort_order"),
       db.from("lessons").select("catalog_topic_id").eq("id", id.data).eq("user_id", user.id).maybeSingle(),
     ]);
     const topicId = (aula?.catalog_topic_id as string | null) ?? null;

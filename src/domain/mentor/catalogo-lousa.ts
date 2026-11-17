@@ -80,16 +80,18 @@ const PALAVRAS = (s: string) => new Set(norm(s).split(/[^a-z0-9]+/).filter((w) =
 /** Escolhe a seção que melhor responde ao pedido do aluno ("dá um exemplo", "qual a diferença", "faz um esquema"…). */
 export interface QuadroGuardado { tipo: string; titulo: string; gatilhos: string[]; roteiro: string[] }
 export function escolherQuadro(secoes: SecaoAula[], pedido: string, largo: boolean, guardados: QuadroGuardado[] = []): QuadroPronto | null {
+  // os exemplos que a própria aula escreveu ("EXEMPLO:") são a base do que o Mentor desenha
+  const doTexto = exemplosDaAula(secoes).flatMap((e) => { const r = roteiroDeExemplo(e.itens, `Exemplo: ${e.contexto}`.slice(0, 40), e.conclusao); return r ? [{ s: { kind: "exemplos", title: e.contexto, body_markdown: e.itens.join(" ") } as SecaoAula, q: { titulo: e.contexto, roteiro: r, kind: "exemplos" } as QuadroPronto }] : []; });
   const p = norm(pedido), pw = PALAVRAS(pedido);
   const quer = (re: RegExp) => re.test(p);
-  const cands = secoes.map((s) => ({ s, q: quadroDaSecao(s, largo) })).filter((x): x is { s: SecaoAula; q: QuadroPronto } => !!x.q);
+  const cands = [...doTexto, ...secoes.map((s) => ({ s, q: quadroDaSecao(s, largo) })).filter((x): x is { s: SecaoAula; q: QuadroPronto } => !!x.q)];
   // quadros desenhados sob medida para o tópico (IA, uma vez só) valem mais que a conversão direta das tabelas da aula
   for (const g of guardados) cands.push({ s: { kind: g.tipo, title: `${g.titulo} ${g.gatilhos.join(" ")}`, body_markdown: "" }, q: { titulo: g.titulo, roteiro: g.roteiro, kind: g.tipo } });
   if (!cands.length) return null;
   let melhor = cands[0]!, nota = -1;
   for (const c of cands) {
     let n = 0;
-    if (quer(/exemplo|caso|pratic|aplic/) && (c.s.kind === "exemplos" || c.s.kind === "aplicacao")) n += 8;
+    if (quer(/exemplo|caso|pratic|aplic/) && (c.s.kind === "exemplos" || c.s.kind === "aplicacao")) n += 8 + (doTexto.some((d) => d.q === c.q) ? 2 : 0);
     if (quer(/diferen|compar|versus|\bx\b|confund/) && (c.s.kind === "comparacao" || c.s.kind === "quadro_comparativo")) n += 6;
     if (quer(/esquema|mapa|resum|tabela|desenh/) && (c.s.kind === "esquema" || c.s.kind === "quadro_comparativo")) n += 5;
     if (quer(/calcul|conta|passo|resolv|como se faz|como faz/) && c.s.kind === "calculo") n += 8;
@@ -126,7 +128,7 @@ const cap = (s: string) => s.replace(/^\w/, (c) => c.toUpperCase());
  * Bloco "EXEMPLO:" da aula (lista de fatos) → roteiro do quadro: com datas vira linha do tempo (em ordem cronológica)
  * + caixas; sem datas vira uma sequência de caixas (um passo por item).
  */
-export function roteiroDeExemplo(itens: string[], titulo = "Exemplo"): string[] | null {
+export function roteiroDeExemplo(itens: string[], titulo = "Exemplo", conclusao = ""): string[] | null {
   const xs = itens.map(limpa).filter((s) => s.length >= 3).slice(0, 8);
   if (xs.length < 2) return null;
   const info = xs.map((x, i) => {
@@ -147,5 +149,34 @@ export function roteiroDeExemplo(itens: string[], titulo = "Exemplo"): string[] 
     out.push(cmd("Caixa", n.rot ? corta(n.rot, 30) : `Passo ${k + 1}`));
     out.push(cmd("Item", corta(cap(n.resto) || n.x, 110)));
   });
+  const c = limpa(conclusao);
+  if (c.length >= 12) out.push(cmd("Destaque", corta(c, 130)));
   return out.length >= 5 ? out : null;
+}
+
+export interface ExemploDaAula { contexto: string; itens: string[]; conclusao: string }
+const ROTULO_EX = /^[\s>*_#]*(?:exemplos?|ex\.|caso pr[áa]tico)\s*:?[\s*_]*$/i;
+const ITEM = /^\s*(?:[-*•]|\d+[.)])\s+(.*\S)\s*$/;
+
+/** Todos os blocos "EXEMPLO:" (rótulo + lista de fatos + frase de conclusão) escritos nas seções da aula, com o título da regra a que pertencem. */
+export function exemplosDaAula(secoes: SecaoAula[]): ExemploDaAula[] {
+  const out: ExemploDaAula[] = [];
+  for (const s of secoes) {
+    const ls = s.body_markdown.split("\n");
+    let ctx = s.title;
+    for (let i = 0; i < ls.length; i++) {
+      const l = ls[i]!.trim();
+      if (/^(?:#{1,6}\s+|\*\*\s*\d+[.)]\s)/.test(l) && !ROTULO_EX.test(l)) ctx = limpa(l).replace(/^\d+[.)]\s*/, "");
+      if (!ROTULO_EX.test(l)) continue;
+      const itens: string[] = [];
+      let j = i + 1;
+      while (j < ls.length && !ls[j]!.trim()) j++;
+      for (; j < ls.length; j++) { const m = ITEM.exec(ls[j]!); if (m) itens.push(m[1]!); else if (ls[j]!.trim()) break; else if (itens.length && !ITEM.test(ls[j + 1] ?? "")) break; }
+      while (j < ls.length && !ls[j]!.trim()) j++;
+      const prox = (ls[j] ?? "").trim();
+      const conclusao = prox && !ITEM.test(prox) && !ROTULO_EX.test(prox) && !/^(#{1,6}\s|\*\*\s*\d+[.)])/.test(prox) && prox.length <= 220 ? prox : "";
+      if (itens.length >= 2) out.push({ contexto: ctx, itens, conclusao });
+    }
+  }
+  return out;
 }
