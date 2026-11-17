@@ -1,6 +1,6 @@
 import "server-only";
 import { studyContextInstruction, type StudyContext } from "@/domain/mentor/study-context";
-import { EndSensitivity, GoogleGenAI, Modality, StartSensitivity, Type } from "@google/genai";
+import { Behavior, EndSensitivity, GoogleGenAI, Modality, StartSensitivity, Type } from "@google/genai";
 import { createAdminClient } from "../supabase";
 import { logEvent } from "../observability";
 import { getMyPlan } from "./plans";
@@ -120,17 +120,18 @@ async function personalPrompt(userId: string): Promise<string> {
  * aceita a ferramenta e, quando recusa, a conversa cai. Ligue com GEMINI_VOICE_SEARCH=1 só depois de testar.
  */
 /** A lousa abre sozinha na tela do aluno quando ele pede uma conta, exemplo ou desenho; a voz acompanha. */
-const LOUSA_RULE = `\n\nLOUSA: quando o aluno pedir de forma explícita para escrever, desenhar ou dar um exemplo no quadro/lousa, a lousa abre sozinha. Nesse caso responda SÓ com duas ou três palavras ("Bora, olha aqui!") e pare — nunca diga que vai escrever nem que está escrevendo, a lousa já está aparecendo: o aplicativo vai te mandar, uma de cada vez, mensagens começando com [PASSO]; cada uma traz o que acabou de ser escrito no quadro. A cada [PASSO], fale esse conteúdo como um professor que está escrevendo, em tom natural e fluido, em no máximo duas frases curtas, sem dizer "passo", sem fazer perguntas e sem acrescentar assuntos novos; números e operações por extenso. Quando chegar [FIM], feche em uma frase: diga que a explicação ficou salva nas Ferramentas e pergunte se ficou claro. Em qualquer outro pedido, ensine só falando, sem mencionar lousa nem quadro.`;
+const LOUSA_RULE = `\n\nLOUSA: quando o aluno pedir de forma explícita para escrever, desenhar ou dar um exemplo no quadro/lousa, use a função lousa_escrever. Responda com duas ou três palavras ("Bora, olha aqui!") e já chame a função com o título (tipo "titulo"); depois, a cada passo, chame lousa_escrever com a linha curta que vai ficar escrita (enunciado, cada conta em uma linha, resposta final com caixa) e CONTINUE falando esse passo em voz alta sem parar, como um professor que escreve e explica ao mesmo tempo. Faça de 5 a 9 linhas, sem emojis. Fale números e operações por extenso, sem ler símbolos. Nunca diga que vai escrever nem mencione a função. Ao terminar, diga em uma frase que a explicação ficou salva nas Ferramentas e pergunte se ficou claro. Se receber mensagens [PASSO] ou [FIM] do aplicativo, apenas fale o conteúdo em até duas frases, sem perguntas. Em qualquer outro pedido, ensine só falando, sem mencionar lousa nem quadro.`;
 
 const lousaTool = {
   functionDeclarations: [
     {
       name: "lousa_escrever",
-      description: "Escreve UMA linha no quadro branco do aluno, na hora. Chame uma vez por passo, logo antes de explicar esse passo em voz alta.",
+      behavior: Behavior.NON_BLOCKING,
+      description: "Escreve UMA linha no quadro branco do aluno, na hora, sem interromper a sua fala. Chame uma vez por passo e continue falando esse passo em voz alta. A primeira chamada abre a lousa.",
       parameters: {
         type: Type.OBJECT,
         properties: {
-          tipo: { type: Type.STRING, enum: ["titulo", "texto", "conta", "resposta", "nota", "par", "figuras"], description: "titulo (só o primeiro), texto (explicação/enunciado), conta (expressão), resposta (fecho), nota (observação pequena), par (duas colunas tracejadas: texto e dir), figuras (emojis contáveis)" },
+          tipo: { type: Type.STRING, enum: ["titulo", "texto", "conta", "resposta", "nota", "par"], description: "titulo (só o primeiro), texto (explicação/enunciado), conta (expressão), resposta (fecho), nota (observação pequena), par (duas colunas tracejadas: texto e dir)" },
           texto: { type: Type.STRING, description: "O que fica escrito (curto, no máximo 80 caracteres)." },
           dir: { type: Type.STRING, description: "Só em tipo par: o lado direito." },
           nivel: { type: Type.INTEGER, description: "Recuo de 0 a 5." },
@@ -139,8 +140,6 @@ const lousaTool = {
           caixa: { type: Type.BOOLEAN, description: "Caixa em volta (resultado final)." },
           circular: { type: Type.STRING, description: "Trecho do texto a circular (ex.: x)." },
           marca: { type: Type.STRING, enum: ["ok", "estrela", "seta_baixo", "seta_dir"] },
-          emoji: { type: Type.STRING, description: "Só em tipo figuras: o emoji (ex.: 🍎)." },
-          quantidade: { type: Type.INTEGER, description: "Só em tipo figuras: quantos emojis (1 a 12)." },
           realce_trecho: { type: Type.STRING, description: "Trecho da linha escrito com outra caneta." },
           realce_cor: { type: Type.STRING, enum: ["azul", "preto", "vermelho", "verde", "laranja", "roxo", "rosa"] },
         },
@@ -149,8 +148,7 @@ const lousaTool = {
     },
   ],
 };
-void lousaTool; // a lousa é escrita pelo roteiro (fluxo do servidor); a função fica declarada só para uso futuro
-const voiceTools = () => (process.env.GEMINI_VOICE_SEARCH === "1" ? [{ googleSearch: {} }] : undefined);
+const voiceTools = () => [lousaTool, ...(process.env.GEMINI_VOICE_SEARCH === "1" ? [{ googleSearch: {} }] : [])];
 
 export interface VoiceSession {
   token: string;

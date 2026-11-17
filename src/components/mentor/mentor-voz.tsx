@@ -2,7 +2,7 @@
 
 import { linhaSchema, pedeLousa, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
+import { FunctionResponseScheduling, GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
 import { isFarewell } from "@/domain/mentor/voice";
 import { detectPitch } from "@/domain/mentor/pitch";
@@ -145,13 +145,59 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       bombear();
     } catch { onLousaRef.current?.(null); encerrarFila(); }
   };
+  /**
+   * Caminho principal (instantâneo): o próprio Mentor chama `lousa_escrever` enquanto fala, na mesma conexão da voz.
+   * Se ele não chamar em ~3,5 s (ou o turno acabar sem chamar), entra o plano B: gerar pelo servidor e narrar por passos.
+   */
+  type ModoTool = { linhas: LinhaLousa[]; quandos: number[]; titulo: string; recebeu: boolean; plano: boolean; timer: ReturnType<typeof setTimeout> | null };
+  const tool = useRef<ModoTool | null>(null);
+  const publicarTool = () => {
+    const m = tool.current;
+    if (!m) return;
+    onLousaRef.current?.({ mostrar: true, titulo: m.titulo, linhas: [...m.linhas], desenho: [] }, undefined, { quandos: [...m.quandos], agora: agoraS });
+  };
+  const planoB = () => {
+    const m = tool.current;
+    if (!m || m.recebeu || m.plano) return;
+    m.plano = true;
+    if (m.timer) clearTimeout(m.timer);
+    fila.current = { ativo: true, falando: true, fechou: false, acabou: false, titulo: "", linhas: [], quandos: [], liberadas: 0, faladas: 0, seguranca: setTimeout(() => { const g = fila.current; if (g) { g.falando = false; bombear(); } }, 6000) };
+    void lerFluxo();
+  };
+  const fimTool = () => {
+    const m = tool.current;
+    if (!m) return;
+    if (m.timer) clearTimeout(m.timer);
+    tool.current = null;
+    lousaOcupada.current = false;
+    if (m.linhas.length >= 4) void fetch("/api/mentor/lousa/salvas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lousa: { mostrar: true, titulo: m.titulo, linhas: m.linhas, desenho: [] } }) }).catch(() => undefined);
+  };
+  const chamadaLousa = (m: LiveServerMessage) => {
+    const calls = m.toolCall?.functionCalls;
+    if (!calls?.length) return;
+    const respostas = calls.map((c) => ({ id: c.id, name: c.name, response: { output: "ok" }, scheduling: FunctionResponseScheduling.SILENT }));
+    try { ref.current.session?.sendToolResponse({ functionResponses: respostas }); } catch { /* sessão caiu */ }
+    const modo = tool.current;
+    if (!modo || modo.plano) return;
+    for (const c of calls) {
+      if (c.name !== "lousa_escrever") continue;
+      const a = (c.args ?? {}) as Record<string, unknown>;
+      const ok = linhaSchema.safeParse({ tipo: a.tipo, texto: a.texto, dir: a.dir, nivel: a.nivel, cor: a.cor, sublinhar: a.sublinhar, caixa: a.caixa, circular: a.circular, marca: a.marca, realce: a.realce_trecho ? [{ trecho: a.realce_trecho, cor: a.realce_cor ?? "vermelho" }] : undefined });
+      if (!ok.success || modo.linhas.length >= 14) continue;
+      modo.recebeu = true;
+      if (modo.timer) { clearTimeout(modo.timer); modo.timer = null; }
+      if (ok.data.tipo === "titulo" && !modo.titulo) modo.titulo = ok.data.texto;
+      modo.linhas.push(ok.data);
+      modo.quandos.push(agoraS());
+      publicarTool();
+    }
+  };
   const dispararLousa = () => {
     if (debLousa.current) { clearTimeout(debLousa.current); debLousa.current = null; }
     if (lousaOcupada.current || !onLousaRef.current) return;
     lousaOcupada.current = true;
-    // o Mentor ainda está dando o "já vou escrever": o 1º passo só vai quando esse turno acabar (ou em 9 s)
-    fila.current = { ativo: true, falando: true, fechou: false, acabou: false, titulo: "", linhas: [], quandos: [], liberadas: 0, faladas: 0, seguranca: setTimeout(() => { const g = fila.current; if (g) { g.falando = false; bombear(); } }, 9000) };
-    void lerFluxo(); // abre já e escreve passo a passo
+    onLousaRef.current("pendente"); // abre já: a caneta desenha o card enquanto o Mentor começa a falar
+    tool.current = { linhas: [], quandos: [], titulo: "", recebeu: false, plano: false, timer: setTimeout(planoB, 3500) };
   };
   const progresso = () => {
     const ro = roteiro.current; const ctx = ref.current.ctx;
@@ -395,7 +441,9 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     const ro = roteiro.current;
     const contar = !!(replied && ro && ro.contando && !ro.fim);
     if (contar) ro!.chars = Math.min(ro!.total, ro!.chars + replied!.length);
+    if (m.toolCall) chamadaLousa(m);
     if (m.serverContent?.turnComplete) {
+      if (tool.current) { const g = tool.current; if (g.recebeu) { if (g.timer) clearTimeout(g.timer); g.timer = setTimeout(fimTool, 2500); } else planoB(); }
       turnoAcabou();
       falaTurno.current = "";
       modeloTurno.current = false;
