@@ -133,3 +133,29 @@ describe("fala natural, sem palavras de comando", () => {
     expect(comandoDitado(e, "Isso é muito importante para a prova.", 0)).toBe(false);
   });
 });
+
+describe("esquema do cálculo desenhado só pela fala", () => {
+  const T = (e: ReturnType<typeof novoDitado>) => linhaDitado(e).rabisco!;
+  it("regra de três: tabela, linhas, setas cruzadas e conta", () => {
+    const e = novoDitado(true);
+    for (const f of ["5 maçãs custam 20 reais.", "8 maçãs custam quanto?", "Cinco vezes x é igual a 8 vezes 20.", "Portanto x é igual a 32."]) comandoDitado(e, f, 0);
+    const r = T(e);
+    expect(r.filter((x) => x.t === "linha" && x.seta).length).toBeGreaterThanOrEqual(2);
+    expect(r.filter((x) => x.t === "texto").map((x) => (x as { s: string }).s)).toEqual(expect.arrayContaining(["5", "20", "8", "x"]));
+  });
+  it("MMC: 'vamos calcular o MMC de 12 e 18' abre a conta", () => {
+    const e = novoDitado(true);
+    comandoDitado(e, "Vamos calcular o MMC de 12 e 18.", 0);
+    comandoDitado(e, "Vamos dividir por 2.", 0);
+    const t = T(e).filter((x) => x.t === "texto").map((x) => (x as { s: string }).s);
+    expect(t).toEqual(expect.arrayContaining(["12", "18", "6", "9", "2"]));
+  });
+});
+
+it("fluxograma falado liga as caixas com seta", () => {
+  const e = novoDitado(true);
+  for (const f of ["Primeiro, a lei vale para fatos futuros.", "Depois, a lei nova que beneficia retroage.", "Por fim, vale a lei mais favorável."]) comandoDitado(e, f, 0);
+  const r = linhaDitado(e).rabisco!;
+  expect(r.filter((x) => x.t === "ret")).toHaveLength(3);
+  expect(r.filter((x) => x.t === "linha" && x.seta)).toHaveLength(2);
+});

@@ -65,7 +65,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (!m) return;
     onLousaRef.current?.({ mostrar: true, titulo: m.titulo, linhas: [...m.linhas], desenho: [] }, undefined, { quandos: [...m.quandos], agora: agoraS });
   };
-  const PEDE_DESENHO = /desenh|esquema|diagrama|linha do tempo|mapa mental|ilustr|rabisc/i;
+  const PEDE_DESENHO = /desenh|esquema|diagrama|linha do tempo|mapa mental|ilustr|rabisc|calcul|\bconta\b|mmc|mdc|regra de tr|fluxo|passo a passo|exemplo|resolv|equa[cç]|porcentag|fra[cç][aã]o|divis[aã]o|multiplica|soma|subtra/i;
   const telaLarga = () => typeof window !== "undefined" && window.innerWidth >= 760;
   const fimTrans = () => {
     const m = trans.current;
@@ -125,7 +125,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (!m) return;
     m.buf += texto;
     // o Mentor começou a ditar ("Título: …"): passa para o modo desenho, mesmo que o pedido não tenha dito "desenhe"
-    if (m.modo === "texto" && /(?:^|[.!?]\s+)(?:t[ií]tulo|tabela|conta|mmc|mdc|armada|divis[aã]o|linha do tempo|caixa|frase|camada|cadeia|coluna)\s*[:,]/i.test(m.buf)) { m.modo = "ditado"; m.linhas = []; m.quandos = []; m.dit = novoDitado(telaLarga()); }
+    if (m.modo === "texto" && (/\d[^.!?]{0,40}\b(vezes|dividido|igual a|mais|menos)\b[^.!?]{0,30}\d|\b(mmc|mdc)\b|dividir por \d|\b(1[0-9]{3}|20[0-9]{2})\b/i.test(m.buf) || /(?:^|[.!?]\s+)(?:t[ií]tulo|tabela|conta|mmc|mdc|armada|divis[aã]o|linha do tempo|caixa|frase|camada|cadeia|coluna)\s*[:,]/i.test(m.buf))) { m.modo = "ditado"; m.linhas = []; m.quandos = []; m.dit = novoDitado(telaLarga()); }
     if (m.modo === "ditado") { ouvirDitado(m, fimDoTurno); return; }
     const partes = m.buf.split(/(?<=[.!?:;])\s+/);
     m.buf = partes.pop() ?? "";

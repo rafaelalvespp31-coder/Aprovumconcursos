@@ -283,8 +283,15 @@ const curto = (s: string, n: number) => s.split(/\s+/).slice(0, n).join(" ").rep
  */
 export function naturalDitado(e: EstadoDitado, frase: string, atraso: number): boolean {
   const f = frase.replace(/\s+/g, " ").trim().replace(/[.!]+$/, "");
-  if (!f || f.endsWith("?") || ehConversa(f)) return false;
+  if (!f || ehConversa(f)) return false;
   const s = norm(f);
+  const mm = /\b(mmc|mdc|minimo multiplo comum|maximo divisor comum)\b\D{0,30}?(\d{1,3})\D{1,12}?(\d{1,3})(?:\D{1,12}?(\d{1,3}))?/.exec(s);
+  if (mm && !e.mmc) return comandoDitado(e, `${mm[1]!.startsWith("mdc") || mm[1]!.startsWith("maximo") ? "MDC" : "MMC"}: ${[mm[2], mm[3], mm[4]].filter(Boolean).join(" e ")}`, atraso);
+  const r3 = /(\d+)\s+([a-z]+)\s+(?:custam|valem|pesam|levam|rendem|fazem|gastam|produzem)\s+(?:r\$\s*)?(\d+)\s+([a-z]+)/.exec(s);
+  if (r3 && e.linhasTab.length === 0) { comandoDitado(e, `Tabela: ${r3[2]}, ${r3[4]}`, atraso); return comandoDitado(e, `Linha: ${r3[1]}, ${r3[3]}`, atraso); }
+  const r3b = /(\d+)\s+(?:[a-z]+\s+)?(?:custam|valem|pesam|levam|rendem|fazem|gastam|produzem)\s+(?:quanto|x)\b/.exec(s);
+  if (r3b && e.linhasTab.length > 0) { comandoDitado(e, `Linha: ${r3b[1]}, x`, atraso); return comandoDitado(e, "Cruzar", atraso); }
+  if (f.endsWith("?")) return false;
   const nums = (f.match(/\d+/g) ?? []).length;
   if (e.itens.length === 0) {
     const t = /\b(?:vamos|hoje|agora)\s+(?:falar|ver|estudar|aprender|entender|resolver|calcular|desenhar|fazer)\s+(?:sobre\s+|de\s+|do\s+|da\s+|dos\s+|das\s+|o\s+|a\s+|um\s+|uma\s+)?(.+)$/i.exec(f);
@@ -299,6 +306,14 @@ export function naturalDitado(e: EstadoDitado, frase: string, atraso: number): b
     return comandoDitado(e, `Marco: ${ano[1]}${rot ? " " + rot : ""}`, atraso);
   }
   const o = ORD.exec(f);
-  if (o && f.length > o[0].length + 6) return comandoDitado(e, `Caixa: ${curto(f.slice(o[0].length), 6)}`, atraso);
+  if (o && f.length > o[0].length + 6) {
+    const antes = e.itens.length;
+    const ok = comandoDitado(e, `Caixa: ${curto(f.slice(o[0].length), 6)}`, atraso);
+    if (e.col > 0 && e.col < e.ncols) { // fluxograma: seta ligando a caixa anterior (mesma linha) a esta
+      const x = e.margem + e.col * (e.colW + 18), y = e.rowTop + 22;
+      e.itens.push({ t: "linha", x1: x - 18, y1: y, x2: x - 2, y2: y, cor: "vermelho", d: Math.max(0, atraso) + 0.3, seta: true });
+    }
+    return ok && e.itens.length > antes;
+  }
   return false;
 }
