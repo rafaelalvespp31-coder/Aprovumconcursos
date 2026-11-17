@@ -1,5 +1,6 @@
 "use client";
 
+import { descreverQuadro } from "@/domain/mentor/catalogo-lousa";
 import { comandoDitado, fimDitado, frasesDe, linhaDitado, novoDitado, type EstadoDitado } from "@/domain/mentor/ditado";
 import { esquemasDe, fimTempo, novoCtx, type Ctx as EsquemaCtx } from "@/domain/mentor/esquemas";
 import { ehConversa, linhaSchema, tituloDaFala, linhaDeFala, linhaTitulo, pedeLousa, pedidoDeCalculo, linhaDeNumero, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
@@ -209,6 +210,8 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
         m.titulo = q.titulo; m.linhas = [linhaDitado(dit)]; m.quandos = [agoraS()];
         if (m.timer) { clearTimeout(m.timer); m.timer = null; }
         publicarTrans();
+        // o Mentor descreve em voz o que está no quadro: é o exemplo DA AULA, não outro
+        try { ref.current.session?.sendRealtimeInput({ text: `[AVISO DO APLICATIVO] O quadro já está aparecendo para o aluno com o exemplo que está DENTRO DA AULA. Descreva em voz alta, em ordem e com suas palavras, exatamente o que está escrito e desenhado no quadro, citando o exemplo da aula. Não troque por outro exemplo e não invente dados que não estão nele. Conteúdo do quadro: ${descreverQuadro(q.titulo, q.roteiro)}` }); } catch { /* sessão encerrada */ }
         return true;
       }).catch(() => false);
   };

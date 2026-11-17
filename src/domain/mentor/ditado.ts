@@ -41,7 +41,7 @@ function quebra(s: string, max: number): string[] {
     else { out.push(atual); atual = w; }
   }
   if (atual) out.push(atual);
-  return out.flatMap((l) => (l.length > max + 6 ? [l.slice(0, max), l.slice(max)] : [l])).slice(0, 4);
+  return out.flatMap((l) => (l.length > max + 6 ? [l.slice(0, max), l.slice(max)] : [l]));
 }
 
 const ondinha = (x0: number, x1: number, y: number, cor: Cor, d: number): ItemDesenho => {
@@ -97,7 +97,7 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
     const g = e.grade;
     if (!g) return true;
     const cab = cmd === "grade", tam = cab ? 22 : 19, cwid = g.w / g.n, max = Math.min(38, Math.max(8, Math.floor((cwid - 16) / cw(tam))));
-    const ls = cels.map((c) => quebra(cab ? c.toUpperCase() : c, max).slice(0, 5));
+    const ls = cels.map((c) => quebra(cab ? c.toUpperCase() : c, max));
     const h = Math.max(...ls.map((l) => l.length)) * (tam + 6) + 14;
     ls.forEach((col, i) => col.forEach((l, j) => push(tx(g.x0 + i * cwid + 8, g.y + 6 + tam + j * (tam + 6), l, cab ? "azul" : i === 0 ? "verde" : "grafite", tam, d + j * passo))));
     push(lin(g.x0, g.y + h, g.x0 + g.w, g.y + h, "grafite", d + 0.3));
@@ -147,7 +147,7 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
     const icone = iconeMarco(`${ano} ${rotulo}`), cor = CICLO[k % 5]!;
     if (!largo && e.tv) {
       const { x } = e.tv, top = e.tv.y, tamL = 17, wl = Math.max(12, Math.floor((e.W - e.margem - (x + 28) - 6) / cw(tamL)));
-      const ls = rotulo ? quebra(rotulo, wl).slice(0, 5) : [];
+      const ls = rotulo ? quebra(rotulo, wl) : [];
       const h = 60 + ls.length * 22 + 14;
       if (k > 0) push(lin(x, top - 12, x, top + 8, "grafite", d));
       push({ t: "circ", cx: x, cy: top + 16, r: 9, cor: "vermelho", d });
@@ -159,7 +159,7 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
       e.y = Math.max(e.y, e.tv.y);
     } else {
       const slots = 4, sw = (e.W - e.margem * 2) / slots, cx = Math.round(e.margem + sw * (k % slots + 0.5)), yT = e.yTempo;
-      const ls = rotulo ? quebra(rotulo, Math.max(8, Math.floor((sw - 8) / cw(15)))).slice(0, 5) : [];
+      const ls = rotulo ? quebra(rotulo, Math.max(8, Math.floor((sw - 8) / cw(15)))) : [];
       push({ t: "circ", cx, cy: yT, r: 8, cor: "vermelho", d }, { t: "emoji", x: cx - 15, y: yT - 18, s: icone, tam: 30, d: d + 0.1 });
       if (ano) push(tx(Math.max(e.margem, cx - ano.length * cw(22) / 2), yT + 32, ano, "azul", 22, d + 0.15));
       ls.forEach((l, i) => push(tx(Math.max(e.margem, cx - l.length * cw(15) / 2), yT + 56 + i * 19, l, cor, 15, d + 0.25 + i * passo)));

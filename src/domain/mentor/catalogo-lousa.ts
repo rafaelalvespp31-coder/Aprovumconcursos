@@ -10,11 +10,12 @@ export interface QuadroPronto { titulo: string; roteiro: string[]; kind: string 
 
 const limpa = (s: string) =>
   s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[*_`#>]/g, "").replace(/\s+/g, " ").replace(/\s*\|\s*$/, "").trim();
+/** Texto completo para a lousa (ela quebra em linhas): só corta frases gigantes, sempre no fim de uma palavra e sem reticências. */
 const corta = (s: string, n: number) => {
-  const t = limpa(s);
-  if (t.length <= n) return t;
-  const c = t.slice(0, n), i = Math.max(c.lastIndexOf(". "), c.lastIndexOf("; "), c.lastIndexOf(", "), c.lastIndexOf(" "));
-  return (i > n * 0.5 ? c.slice(0, i) : c).replace(/[,;:\s]+$/, "") + (t.length > n && !/[.!?]$/.test(c.slice(0, i > n * 0.5 ? i : n)) ? "…" : "");
+  const t = limpa(s), lim = Math.max(n * 3, 200);
+  if (t.length <= lim) return t;
+  const c = t.slice(0, lim), i = Math.max(c.lastIndexOf(". "), c.lastIndexOf("; "), c.lastIndexOf(" "));
+  return (i > lim * 0.5 ? c.slice(0, i) : c).replace(/[,;:\s]+$/, "");
 };
 // comando = uma frase do ditado; ":" e pontos finais não podem quebrar a frase
 const cmd = (nome: string, texto: string) => `${nome}: ${texto.replace(/[.:\s]+$/, "").trim()}`;
@@ -247,4 +248,28 @@ export function exemplosDaAula(secoes: SecaoAula[]): ExemploDaAula[] {
     }
   }
   return out;
+}
+
+/** Roteiro do quadro → texto corrido, para o Mentor DESCREVER em voz exatamente o que está desenhado (o exemplo da aula, sem trocar por outro). */
+export function descreverQuadro(titulo: string, roteiro: string[]): string {
+  const partes: string[] = [`Título do quadro: ${titulo}.`];
+  for (const c of roteiro) {
+    const m = /^([^:]+):\s*(.*)$/.exec(c);
+    if (!m) continue;
+    const nome = m[1]!.trim().toLowerCase(), corpo = m[2]!.trim().replace(/[.\s]+$/, "");
+    if (!corpo && nome !== "linha do tempo") continue;
+    if (nome === "título" || nome === "titulo") continue;
+    if (nome === "linha do tempo") partes.push("É uma linha do tempo, em ordem cronológica.");
+    else if (nome === "marco") partes.push(`Marco: ${corpo.replace(/^(\d{3,4})\s+/, "em $1, ")}.`);
+    else if (nome === "caixa") partes.push(`Etapa "${corpo}".`);
+    else if (nome === "destaque") partes.push(`Destaque: ${corpo}.`);
+    else if (nome === "passos") partes.push(`Passos do cálculo: ${corpo.split("|").map((s) => s.trim()).join("; ")}.`);
+    else if (nome === "regra de três") { const p2 = corpo.split("|").map((s) => s.trim()); partes.push(`Regra de três (${p2[5] ?? "direta"}): ${p2[0]} ${p2[3]} corresponde a ${p2[1]} ${p2[4]}; ${p2[2]} ${p2[3]} corresponde a x.`); }
+    else if (nome === "grade") partes.push(`Tabela com as colunas: ${corpo.split("|").map((s) => s.trim()).join(", ")}.`);
+    else if (nome === "célula" || nome === "celula") partes.push(`Linha da tabela: ${corpo.split("|").map((s) => s.trim()).join(" — ")}.`);
+    else if (nome === "tabela") partes.push(`Tabela com as colunas: ${corpo}.`);
+    else if (nome === "linha") partes.push(`Linha: ${corpo}.`);
+    else partes.push(`${corpo}.`);
+  }
+  return partes.join(" ").replace(/\.\./g, ".").slice(0, 2200);
 }

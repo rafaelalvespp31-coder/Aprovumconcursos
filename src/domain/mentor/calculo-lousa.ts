@@ -8,7 +8,12 @@ export interface CasoCalculo { titulo: string; enunciado: string; pergunta?: str
 const limpa = (s: string) => s.replace(/\[([^\]]+)\]\([^)]*\)/g, "$1").replace(/[*_`#>]/g, "").replace(/\s+/g, " ").trim();
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const cmd = (nome: string, texto: string) => `${nome}: ${/a\.[amdst]\.$/.test(texto) ? texto.trim() : texto.replace(/[.:\s]+$/, "").trim()}`;
-const corta = (s: string, n: number) => (s.length <= n ? s : s.slice(0, s.lastIndexOf(" ", n) > n * 0.5 ? s.lastIndexOf(" ", n) : n).replace(/[,;:\s]+$/, "") + "…");
+const corta = (s: string, n: number) => {
+  const lim = Math.max(n * 3, 200);
+  if (s.length <= lim) return s;
+  const c = s.slice(0, lim), i = Math.max(c.lastIndexOf(". "), c.lastIndexOf("; "), c.lastIndexOf(" "));
+  return (i > lim * 0.5 ? c.slice(0, i) : c).replace(/[,;:\s]+$/, "");
+};
 
 /** O texto de resultado tem conta de verdade? (números e operadores) */
 export function ehCalculo(resultado: string): boolean {

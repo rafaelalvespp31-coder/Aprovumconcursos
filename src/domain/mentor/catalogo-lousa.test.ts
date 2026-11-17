@@ -106,3 +106,14 @@ describe("exemplo da própria aula vira linha do tempo", () => {
     expect(its.filter((x) => x.t === "circ").length).toBeGreaterThanOrEqual(2);
   });
 });
+
+import { descreverQuadro } from "./catalogo-lousa";
+describe("descrição do quadro para o Mentor narrar", () => {
+  it("linha do tempo vira texto em ordem", () => {
+    const d = descreverQuadro("Retroatividade da lei penal", ["Título: Retroatividade da lei penal", "Linha do tempo:", "Marco: 2020 João pratica um crime", "Marco: 2025 Surge uma lei", "Destaque: Sim, a lei benéfica retroage"]);
+    expect(d).toContain("linha do tempo");
+    expect(d).toContain("em 2020, João pratica um crime");
+    expect(d.indexOf("2020")).toBeLessThan(d.indexOf("2025"));
+    expect(d).toContain("Destaque: Sim, a lei benéfica retroage");
+  });
+});
