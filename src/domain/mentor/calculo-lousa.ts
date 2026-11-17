@@ -256,3 +256,53 @@ export function roteiroDeConceito(texto: string): string[] | null {
   if (/soma de fracoes|fracoes/.test(t)) return [cmd("Título", "Soma de frações"), "Passos: 1/2 + 1/3 | 3/6 + 2/6 | 5/6"];
   return null;
 }
+
+const mdcN = (a: number, b: number): number => (b ? mdcN(b, a % b) : a);
+const fmtV = (n: number) => String(Math.round(n * 1e6) / 1e6).replace(".", ",");
+
+/** Tabela-verdade de duas proposições (p, q) para o conectivo citado: Raciocínio Lógico desenhado como o professor faz. */
+function tabelaVerdade(op: "∧" | "∨" | "→" | "↔" | "⊻"): string[] {
+  const f = { "∧": (p: boolean, q: boolean) => p && q, "∨": (p: boolean, q: boolean) => p || q, "→": (p: boolean, q: boolean) => !p || q, "↔": (p: boolean, q: boolean) => p === q, "⊻": (p: boolean, q: boolean) => p !== q }[op];
+  const v = (b: boolean) => (b ? "V" : "F");
+  return [cmd("Título", `Tabela-verdade: p ${op} q`), `Grade: p | q | p ${op} q`, ...[[true, true], [true, false], [false, true], [false, false]].map(([p, q]) => `Célula: ${v(p!)} | ${v(q!)} | ${v(f(p!, q!))}`)];
+}
+
+/** Exemplo de matemática / raciocínio lógico (Situação, Pergunta, Resposta) → esquema calculado. Devolve null quando não há conta a mostrar. */
+export function roteiroMatematicoCaso(c: { titulo?: string; situacao: string; pergunta?: string; resposta: string }): string[] | null {
+  const sit = limpa(c.situacao), res = limpa(c.resposta), tudo = `${sit} ${c.pergunta ?? ""} ${res}`;
+  const n = norm(tudo);
+  // proposições: tabela-verdade
+  if (/proposi[cç][aã]o|conectivo|tabela.verdade|∧|∨|→|↔/i.test(tudo)) {
+    const op = /∧/.test(tudo) ? "∧" : /∨/.test(tudo) ? "∨" : /↔|se e somente se|bicondicional/i.test(tudo) ? "↔" : /→|condicional|se .* ent[aã]o/i.test(tudo) ? "→" : /\bp e q\b|conjun/i.test(tudo) ? "∧" : /\bp ou q\b|disjun/i.test(tudo) ? "∨" : null;
+    if (op) return tabelaVerdade(op as "∧" | "∨" | "→" | "↔");
+  }
+  // dízima 0,999... = 1
+  if (/0,9{2,}/.test(tudo)) return [cmd("Título", "0,999... = 1"), "Passos: x = 0,999... | 10x = 9,999... | 10x − x = 9 | 9x = 9 | x = 1"];
+  // classificação numérica (inteiros, naturais, racionais)
+  const lista = /(?:apresenta|s[aã]o|:)\s*((?:-?\d+(?:[,/]\d+)?\s*(?:,|e)\s*)+-?\d+(?:[,/]\d+)?)/.exec(sit);
+  if (lista && /inteiro|natural|racional|irracional/.test(n)) {
+    const nums = lista[1]!.split(/\s*(?:,|\be\b)\s*/).filter(Boolean).slice(0, 6);
+    const linhas = nums.map((s) => { const m = /^(-?\d+)\/(\d+)$/.exec(s); const [a, b] = m ? [Number(m[1]), Number(m[2])] : [nn(s), 1]; const v = a / b; return `Célula: ${s} | ${fmtV(v)} | ${Number.isInteger(v) ? "inteiro" : "racional"}`; });
+    return [cmd("Título", "Classificação dos números"), "Grade: Número | Valor | Tipo", ...linhas];
+  }
+  // frações: simplificar a/b
+  const fr = /(\d+)\s*\/\s*(\d+)/.exec(res) ?? /(\d+)\s*\/\s*(\d+)/.exec(sit);
+  if (fr && /fra[cç][aã]o|fra[cç][oõ]es/i.test(`${c.titulo ?? ""} ${tudo}`)) {
+    const a = Number(fr[1]), b = Number(fr[2]), g = mdcN(a, b);
+    return g > 1 ? [cmd("Título", "Simplificando a fração"), `Passos: ${a}/${b} | ${a} ÷ ${g} = ${a / g} | ${b} ÷ ${g} = ${b / g} | ${a / g}/${b / g}`] : [cmd("Título", "Fração"), `Passos: ${a}/${b} | ${a}/${b} = ${fmtV(a / b)}`];
+  }
+  // decimais: 2,5 + 1,25 e 2,5 × 1,25
+  const dec = [...sit.matchAll(/(\d+,\d+|\d+)\s*([+×−x·÷-])\s*(\d+,\d+|\d+)/g)].filter((m) => /,/.test(m[0]));
+  if (dec.length) {
+    const linhas: string[] = [];
+    for (const m of dec.slice(0, 2)) {
+      const a = nn(m[1]!), b = nn(m[3]!), op = m[2]!;
+      const r = op === "+" ? a + b : /[−-]/.test(op) ? a - b : /÷/.test(op) ? a / b : a * b;
+      const casas = (s: string) => (s.split(",")[1] ?? "").length, w = Math.max(casas(m[1]!), casas(m[3]!));
+      if (op === "+" || /[−-]/.test(op)) { linhas.push(`${a.toFixed(w).replace(".", ",")} ${op === "+" ? "+" : "−"} ${b.toFixed(w).replace(".", ",")} = ${fmtV(r)}`); }
+      else if (/[×x·]/.test(op)) { const ia = Math.round(a * 10 ** casas(m[1]!)), ib = Math.round(b * 10 ** casas(m[3]!)); linhas.push(`${ia} × ${ib} = ${ia * ib}`, `${casas(m[1]!) + casas(m[3]!)} casas: ${fmtV(r)}`.replace("casas: ", "casas → ")); }
+    }
+    if (linhas.length) return [cmd("Título", "Números decimais"), `Passos: ${linhas.join(" | ")}`];
+  }
+  return roteiroMatematico(sit) ?? roteiroMatematico(`${sit} ${c.pergunta ?? ""}`) ?? roteiroDeConceito(`${c.titulo ?? ""} ${sit}`);
+}

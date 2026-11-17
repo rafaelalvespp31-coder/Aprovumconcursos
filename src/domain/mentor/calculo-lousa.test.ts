@@ -192,3 +192,13 @@ describe("texto de cálculo vira exemplo numérico visual", () => {
     expect(roteiroDeConceito("O agente responde por furto.")).toBeNull();
   });
 });
+
+import { roteiroMatematicoCaso } from "./calculo-lousa";
+describe("casos reais de matemática do catálogo", () => {
+  it("MMC", () => expect(roteiroMatematicoCaso({ situacao: "Uma candidata precisa encontrar o MMC de 8 e 12.", resposta: "MMC = 24" })![1]).toBe("MMC: 8 e 12"));
+  it("fração simplificada", () => expect(roteiroMatematicoCaso({ titulo: "Conceito de frações", situacao: "Uma turma tem 30 estudantes, dos quais 18 são mulheres.", resposta: "**18/30**, pois 18 é a quantidade" })![1]).toContain("3/5"));
+  it("decimais", () => expect(roteiroMatematicoCaso({ situacao: "Uma questão apresenta 2,5 + 1,25 e 2,5 × 1,25.", resposta: "Não." })![1]).toContain("3,75"));
+  it("lógica", () => expect(roteiroMatematicoCaso({ situacao: "Como representar a proposição composta?", resposta: "p ∧ q, uma proposição composta" })).toContain("Grade: p | q | p ∧ q"));
+  it("dízima", () => expect(roteiroMatematicoCaso({ situacao: "0,999... é menor que 1.", resposta: "Não." })![1]).toContain("9x = 9"));
+  it("classificação", () => expect(roteiroMatematicoCaso({ situacao: "Uma questão apresenta 0, -3, -1/2, 4/2 e 0/7.", pergunta: "Quais são inteiros?", resposta: "0, -3, 4/2 e 0/7" })).toContain("Grade: Número | Valor | Tipo"));
+});

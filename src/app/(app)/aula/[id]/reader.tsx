@@ -3,7 +3,7 @@
 import { QuadroExemplo } from "@/components/aula/quadro-exemplo";
 import { CartaoExemplo } from "@/components/aula/cartao-exemplo";
 import { montarCartao, temaDe, tituloUtil } from "@/domain/mentor/cartao-exemplo";
-import { ehCalculo, roteiroDeCaso } from "@/domain/mentor/calculo-lousa";
+import { ehCalculo, roteiroDeCaso, roteiroMatematicoCaso } from "@/domain/mentor/calculo-lousa";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Markdown } from "@/components/markdown";
@@ -736,8 +736,10 @@ function ApostilaSection({
               </div>
             )}
             {cases.map((c, i) => {
-              if (!ehCalculo(c.answer) && !roteiroDeCaso({ titulo: "x", enunciado: c.situation, pergunta: c.question, resultado: c.answer })?.[1]?.startsWith("Regra de três")) return null;
-              const ro = roteiroDeCaso({ titulo: "Exemplo", enunciado: c.situation, pergunta: c.question, resultado: c.answer });
+              const ehMat = temaDe(subject) === "matematica";
+              const ro = ehMat
+                ? (roteiroMatematicoCaso({ titulo: s.title, situacao: c.situation, pergunta: c.question, resposta: c.answer }) ?? (ehCalculo(c.answer) ? roteiroDeCaso({ titulo: "Exemplo", enunciado: c.situation, pergunta: c.question, resultado: c.answer }) : null))
+                : ehCalculo(c.answer) ? roteiroDeCaso({ titulo: "Exemplo", enunciado: c.situation, pergunta: c.question, resultado: c.answer }) : null;
               return ro ? <QuadroExemplo key={`q${i}`} itens={[c.situation]} roteiro={ro} /> : null;
             })}
           </>
