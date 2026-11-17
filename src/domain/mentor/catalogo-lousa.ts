@@ -78,10 +78,13 @@ const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 const PALAVRAS = (s: string) => new Set(norm(s).split(/[^a-z0-9]+/).filter((w) => w.length > 3));
 
 /** Escolhe a seção que melhor responde ao pedido do aluno ("dá um exemplo", "qual a diferença", "faz um esquema"…). */
+import { casosDe, roteiroDeCaso } from "./calculo-lousa";
 export interface QuadroGuardado { tipo: string; titulo: string; gatilhos: string[]; roteiro: string[] }
 export function escolherQuadro(secoes: SecaoAula[], pedido: string, largo: boolean, guardados: QuadroGuardado[] = []): QuadroPronto | null {
   // os exemplos que a própria aula escreveu ("EXEMPLO:") são a base do que o Mentor desenha
   const doTexto = exemplosDaAula(secoes).flatMap((e) => { const r = roteiroDeExemplo(e.itens, `Exemplo: ${e.contexto}`.slice(0, 40), e.conclusao); return r ? [{ s: { kind: "exemplos", title: e.contexto, body_markdown: e.itens.join(" ") } as SecaoAula, q: { titulo: e.contexto, roteiro: r, kind: "exemplos" } as QuadroPronto }] : []; });
+  const contas = secoes.flatMap((s) => casosDe(s.body_markdown).flatMap((c) => { const r = roteiroDeCaso(c); return r ? [{ s: { kind: "exemplos", title: `${c.titulo} ${c.enunciado} calculo conta`, body_markdown: c.resultado } as SecaoAula, q: { titulo: c.titulo, roteiro: r, kind: "exemplos" } as QuadroPronto }] : []; }));
+  doTexto.push(...contas);
   const p = norm(pedido), pw = PALAVRAS(pedido);
   const quer = (re: RegExp) => re.test(p);
   const cands = [...doTexto, ...secoes.map((s) => ({ s, q: quadroDaSecao(s, largo) })).filter((x): x is { s: SecaoAula; q: QuadroPronto } => !!x.q)];

@@ -6,6 +6,7 @@ import { Children, type ReactNode } from "react";
 import { isRevokedLegalLine } from "@/components/markdown";
 import { CalloutIcon, CALLOUT } from "@/components/aula/callout-icon";
 import { calloutKindOf, leadingLabelKind } from "@/domain/content/callout-kind";
+import { casoDeTexto, roteiroDeCaso } from "@/domain/mentor/calculo-lousa";
 import { QuadroExemplo } from "@/components/aula/quadro-exemplo";
 import { PENA_MARK, highlightLegal, legalLevel, legalParagraphs, splitLegalLabel } from "@/domain/content/legal-format";
 
@@ -93,6 +94,9 @@ function MdInner({ children, legal = false }: { children: string; legal?: boolea
             if (!legal) {
               const t = textOf(node as unknown as ElementContent).trim();
               const lk = leadingLabelKind(t);
+              const caso = casoDeTexto(t);
+              const ro = caso && roteiroDeCaso(caso);
+              if (ro) return <QuadroExemplo itens={[t]} roteiro={ro}><p className="ap-ex">{c}</p></QuadroExemplo>;
               if (isLabelLine(t) && lk === "exemplo") exemploAntes = true;
               if (isLabelLine(t)) return <p className="ap-rotulo">{lk && <CalloutIcon kind={lk} size={13} />}{c}</p>;
               if (lk) return <p className="ap-nota" style={{ ["--tom" as string]: CALLOUT[lk].tone }}><CalloutIcon kind={lk} />{<span className="ap-nota-txt">{c}</span>}</p>;

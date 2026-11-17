@@ -6,7 +6,7 @@ import { roteiroDeExemplo } from "@/domain/mentor/catalogo-lousa";
 import { comandoDitado, linhaDitado, novoDitado } from "@/domain/mentor/ditado";
 
 /** Exemplo da aula desenhado numa lousa, como um professor faria: nasce a lápis quando entra na tela. */
-export function QuadroExemplo({ itens, children }: { itens: string[]; children?: React.ReactNode }) {
+export function QuadroExemplo({ itens, roteiro, children }: { itens: string[]; roteiro?: string[]; children?: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visto, setVisto] = useState(false);
   const [largo, setLargo] = useState(true);
@@ -19,12 +19,12 @@ export function QuadroExemplo({ itens, children }: { itens: string[]; children?:
     return () => io.disconnect();
   }, []);
   const linha = useMemo(() => {
-    const ro = roteiroDeExemplo(itens);
+    const ro = roteiro ?? roteiroDeExemplo(itens);
     if (!ro) return null;
     const e = novoDitado(largo);
     ro.forEach((c, i) => comandoDitado(e, c, i * 0.35));
     return e.itens.length >= 6 ? linhaDitado(e) : null;
-  }, [itens, largo]);
+  }, [itens, roteiro, largo]);
   if (!linha) return <>{children}</>;
   const w = linha.larg ?? 1000, its = linha.rabisco ?? [];
   return (
