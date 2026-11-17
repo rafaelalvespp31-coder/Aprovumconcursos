@@ -1,3 +1,4 @@
+import { ehConversa } from "./lousa";
 import { comandoEnsino, conversaEnsino, fimEnsino, ENSINO, type Cena, type Frase, type Mmc } from "./ditado-ensino";
 import { linhaSchema, type ItemDesenho, type LinhaLousa } from "./lousa";
 
@@ -54,7 +55,10 @@ const NUM_PALAVRA = /^(?:(?:n[ºo°]\s*)?\d+|um|uma|dois|duas|tr[eê]s|quatro|ci
 export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): boolean {
   const f = frase.replace(/\s+/g, " ").replace(/[*_`]/g, "").trim();
   const m = /^(t[ií]tulo|subt[ií]tulo|linha do tempo|marco|caixa|item|ponto|t[oó]pico|exemplo|destaque|aten[cç][aã]o|cuidado|resumo|seta|tabela|linha|cruzar|conta|passo|resposta|mmc|mdc|arma(?:da|r)|divis[aã]o|frase|sujeito|predicado|verbo|n[uú]cleo|complemento|adjunto|camada|cadeia|coluna|pessoa|v[ií]tima|arma|objeto)\b[\s:,.\-–]*(.*)$/i.exec(f);
-  if (!m) { const it0: ItemDesenho[] = []; const ok = conversaEnsino(e, f, Math.max(0, atraso), it0); e.itens.push(...it0); return ok; }
+  if (!m) {
+    const it0: ItemDesenho[] = []; const ok = conversaEnsino(e, f, Math.max(0, atraso), it0); e.itens.push(...it0);
+    return ok || naturalDitado(e, f, atraso);
+  }
   let cmd = norm(m[1]!);
   if (cmd === "coluna") cmd = "caixa";
   const resto = m[2]!.replace(/[.!]+$/, "").trim();
@@ -268,4 +272,33 @@ export function fimDitado(e: EstadoDitado): boolean {
   fimEnsino(e, it);
   e.itens.push(...it);
   return it.length > 0;
+}
+
+const ORD = /^(?:primeiro|segundo|terceiro|quarto|quinto|depois|em seguida|a seguir|por fim|finalmente|ent[aã]o|logo depois)\b[\s,:]*/i;
+const curto = (s: string, n: number) => s.split(/\s+/).slice(0, n).join(" ").replace(/[.,;:!?]+$/, "");
+
+/**
+ * Fala natural do professor → desenho, sem ele precisar dizer "linha", "coluna", "título"…:
+ * conta de matemática (números + operação falada), anos (linha do tempo), passos ("primeiro… depois…") e assunto ("vamos ver X").
+ */
+export function naturalDitado(e: EstadoDitado, frase: string, atraso: number): boolean {
+  const f = frase.replace(/\s+/g, " ").trim().replace(/[.!]+$/, "");
+  if (!f || f.endsWith("?") || ehConversa(f)) return false;
+  const s = norm(f);
+  const nums = (f.match(/\d+/g) ?? []).length;
+  if (e.itens.length === 0) {
+    const t = /\b(?:vamos|hoje|agora)\s+(?:falar|ver|estudar|aprender|entender|resolver|calcular|desenhar|fazer)\s+(?:sobre\s+|de\s+|do\s+|da\s+|dos\s+|das\s+|o\s+|a\s+|um\s+|uma\s+)?(.+)$/i.exec(f);
+    if (t) return comandoDitado(e, `Título: ${curto(t[1]!, 6)}`, atraso);
+  }
+  if (/\b(portanto|logo|resposta|resultado|ent[aã]o)\b.*(\bigual\b|=)/i.test(f) && nums + (/\bx\b/.test(s) ? 1 : 0) >= 1) return comandoDitado(e, `Resposta: ${f.replace(/^.*?\b(?:portanto|logo|ent[aã]o|resposta|resultado)\b[\s,:]*/i, "")}`, atraso);
+  if (nums + (/\bx\b/.test(s) ? 1 : 0) >= 2 && /\b(vezes|dividido|dividimos|mais|menos|igual|multiplic\w*|soma\w*|subtra\w*|=|\+|×|÷)\b|[=+×÷]/.test(s)) return comandoDitado(e, `Conta: ${f}`, atraso);
+  const ano = /\b(1[0-9]{3}|20[0-9]{2})\b\s*,?\s*(.*)$/.exec(f);
+  if (ano) {
+    if (e.yTempo === undefined) comandoDitado(e, "Linha do tempo:", atraso);
+    const rot = curto(ano[2]!.replace(/^(?:a|o|foi|era|quando|que|com|em|:|,)\s+/i, ""), 2);
+    return comandoDitado(e, `Marco: ${ano[1]}${rot ? " " + rot : ""}`, atraso);
+  }
+  const o = ORD.exec(f);
+  if (o && f.length > o[0].length + 6) return comandoDitado(e, `Caixa: ${curto(f.slice(o[0].length), 6)}`, atraso);
+  return false;
 }

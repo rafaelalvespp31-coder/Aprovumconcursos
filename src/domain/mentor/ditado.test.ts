@@ -111,3 +111,25 @@ describe("os 5 testes do comando mestre (ditado simulado)", () => {
     expect(rets[3]!.y).toBeGreaterThan(rets[0]!.y);
   });
 });
+
+describe("fala natural, sem palavras de comando", () => {
+  const tx2 = (e: ReturnType<typeof novoDitado>) => linhaDitado(e).rabisco!.filter((x) => x.t === "texto").map((x) => (x as { s: string }).s);
+  it("conta resolvida só falando", () => {
+    const e = novoDitado(true);
+    for (const f of ["Vamos resolver uma regra de três.", "Cinco vezes x é igual a 8 vezes 20.", "Então x é igual a 160 dividido por 5.", "Portanto x é igual a 32."]) comandoDitado(e, f, 0);
+    expect(tx2(e).join(" ")).toMatch(/REGRA DE TRÊS/);
+    expect(tx2(e).join(" ")).toMatch(/32/);
+  });
+  it("linha do tempo e fluxo falados", () => {
+    const e = novoDitado(true);
+    for (const f of ["Em 1988, a Constituição garantiu isso.", "Em 2003, veio o Estatuto.", "Primeiro, a lei vale para fatos futuros.", "Depois, a lei nova que beneficia retroage."]) comandoDitado(e, f, 0);
+    const t = tx2(e);
+    expect(t.join(" ")).toMatch(/1988/); expect(t.join(" ")).toMatch(/2003/);
+    expect(t.join(" ")).toMatch(/A LEI VALE/i);
+  });
+  it("conversa solta continua fora do quadro", () => {
+    const e = novoDitado(true);
+    expect(comandoDitado(e, "Entendeu até aqui?", 0)).toBe(false);
+    expect(comandoDitado(e, "Isso é muito importante para a prova.", 0)).toBe(false);
+  });
+});
