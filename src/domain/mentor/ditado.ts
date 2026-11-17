@@ -127,8 +127,9 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
     e.col++;
     const x = e.margem + e.col * (e.colW + 18), y = e.rowTop;
     const cor = CICLO[e.caixas++ % 5]!;
-    const tam = largo ? 25 : 22;
-    const ls = quebra(titulo.toUpperCase(), Math.floor((e.colW - 24) / cw(tam)));
+    const tam = largo ? 22 : 20;
+    const rot = /^\d/.test(titulo) ? titulo : `${e.caixas}. ${titulo.charAt(0).toUpperCase()}${titulo.slice(1)}`; // faixa numerada, como "1. Problema" no quadro de referência
+    const ls = quebra(rot, Math.floor((e.colW - 24) / cw(tam)));
     const w = Math.min(e.colW, Math.max(...ls.map((l) => l.length)) * cw(tam) + 24), h = ls.length * (tam + 6) + 12;
     push({ t: "ret", x, y, w: Math.round(w), h, cor, bg: true, d });
     ls.forEach((l, i) => push(tx(x + 12, y + 8 + tam + i * (tam + 6) - 3, l, cor, tam, d + 0.15 + i * passo)));

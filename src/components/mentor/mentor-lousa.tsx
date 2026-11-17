@@ -291,6 +291,27 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
   }, [onClose]);
 
   const fim = vivo ? false : sincronizado ? pos > totalFala : pos >= total;
+  // % do exemplo já escrito na lousa (ao vivo: sobe até 99% e fecha em 100% quando o Mentor para de acrescentar linhas)
+  const [vivoAcabou, setVivoAcabou] = useState(false);
+  const frac = !dados || linhas.length === 0 ? 0 : Math.min(1, pos / Math.max(1, sincronizado ? totalFala : total));
+  useEffect(() => {
+    if (!vivo) return;
+    setVivoAcabou(false);
+    if (frac < 1 || linhas.length === 0) return;
+    const id = setTimeout(() => setVivoAcabou(true), 2500);
+    return () => clearTimeout(id);
+  }, [vivo, frac, linhas.length]);
+  const maxPct = useRef(0);
+  useEffect(() => { maxPct.current = 0; }, [rodada]);
+  const pctBruto = fim || reduz.current ? 100 : vivo ? (vivoAcabou ? 100 : Math.min(99, Math.round(frac * 100))) : Math.round(frac * 100);
+  const pct = Math.max(maxPct.current, pctBruto);
+  maxPct.current = pct;
+  const [progOculto, setProgOculto] = useState(false);
+  useEffect(() => {
+    if (pct < 100) { setProgOculto(false); return; }
+    const id = setTimeout(() => setProgOculto(true), 1500);
+    return () => clearTimeout(id);
+  }, [pct]);
   // acompanha a escrita: rola o quadro para a linha atual
   
 
@@ -314,6 +335,13 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
         <button type="button" className="lz-bt" onClick={() => setRodada((r) => r + 1)} aria-label="Escrever de novo" title="Escrever de novo"><RotateCcw size={18} aria-hidden /></button>
         <button type="button" className="lz-bt" onClick={onClose} aria-label="Fechar quadro"><X size={20} aria-hidden /></button>
       </div>
+      {!progOculto && (
+        <div className="lz-prog" role="progressbar" aria-label="Montando o exemplo na lousa" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct} data-testid="lousa-progresso">
+          <span className="lz-prog-t">{pct >= 100 ? "Exemplo completo na lousa" : "Montando o exemplo na lousa"}</span>
+          <span className="lz-prog-barra"><i style={{ width: `${pct}%` }} /></span>
+          <b className="lz-prog-n">{pct}%</b>
+        </div>
+      )}
       <div className="lz-quadro">
         <div className="lz-placa" ref={placa} key={rodada} onClick={() => setPos(total)} style={{ ["--tema" as string]: iconeDaLousa(lousa.titulo || "").cor }}>
           <IconeLousa titulo={lousa.titulo || ""} />

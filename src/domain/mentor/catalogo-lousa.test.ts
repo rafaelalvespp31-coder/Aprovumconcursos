@@ -18,7 +18,7 @@ describe("quadros prontos da aula catalogada", () => {
     expect(q.roteiro).toContain("Item: O que é: Oral, objetiva, individual");
     const r = roda(q.roteiro);
     expect(r.filter((x) => x.t === "ret").length).toBe(3);
-    expect(r.filter((x) => x.t === "texto").map((x) => (x as { s: string }).s)).toContain("9.8.1"); // a numeração do subtópico não some
+    expect(r.filter((x) => x.t === "texto").map((x) => (x as { s: string }).s).some((s) => s.startsWith("9.8.1"))).toBe(true); // a numeração do subtópico não some
   });
   it("comparação e casos práticos viram caixas e destaques", () => {
     expect(quadroDaSecao(S[2]!, true)!.roteiro).toContain("Caixa: Ciclista montado × desmontado");
