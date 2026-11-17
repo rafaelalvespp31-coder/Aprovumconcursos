@@ -8,7 +8,7 @@ import "./mentor-lousa.css";
 const COR: Record<string, string> = { azul: "#1d3a8a", preto: "#1a1a1f", vermelho: "#c62828", verde: "#1b7a43", grafite: "#1a1a1f", laranja: "#d9620b", roxo: "#6b2fa3", rosa: "#c2185b" };
 const UPS = 20;
 const SYNC_UPS = 38; // velocidade da caneta no quadro sincronizado (rápida, mas ainda legível)
-const VIVO_UPS = 18; // quadro ao vivo: caneta rápida, as linhas entram assim que chegam
+const VIVO_UPS = 34; // quadro ao vivo: caneta rápida, as linhas entram assim que chegam
 const LEAD_CHARS = 22; // começa a escrever a linha ~1,5 s antes de o Mentor falá-la // unidades de tempo por segundo (cada letra custa ~1 unidade)
 const PAUSA = 4; // respiro entre linhas, como quem levanta o canetão
 
@@ -127,9 +127,9 @@ function pontoNoContorno(w: number, h: number, r: number, p: number): [number, n
   return pts[0]!;
 }
 
-const T_VERMELHO = 1000; // ms para a caneta riscar o contorno do card
-const T_QUADRO = 650; // ms para riscar a moldura do quadro branco
-const T_ENCHE = 420; // ms para o quadro "encher" (fundo e título aparecem)
+const T_VERMELHO = 520; // ms para a caneta riscar o contorno do card
+const T_QUADRO = 320; // ms para riscar a moldura do quadro branco
+const T_ENCHE = 220; // ms para o quadro "encher" (fundo e título aparecem)
 
 /** Abertura: uma caneta risca o contorno do card e a moldura do quadro; depois o quadro enche e a escrita começa. */
 function Moldura({ onEncher, onFim }: { onEncher: () => void; onFim: () => void }) {

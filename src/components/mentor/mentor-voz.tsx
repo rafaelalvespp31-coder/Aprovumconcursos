@@ -55,7 +55,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
    * Lousa ao vivo, em passos: a lousa abre na hora; cada linha só é escrita quando o Mentor vai falar dela,
    * e o próximo passo só vai depois que ele termina de falar (voz e caneta andam juntas, sem atropelo).
    */
-  type Fila = { ativo: boolean; falando: boolean; fechou: boolean; acabou: boolean; titulo: string; linhas: LinhaLousa[]; quandos: number[]; liberadas: number; seguranca: ReturnType<typeof setTimeout> | null };
+  type Fila = { ativo: boolean; falando: boolean; fechou: boolean; acabou: boolean; titulo: string; linhas: LinhaLousa[]; quandos: number[]; liberadas: number; faladas: number; seguranca: ReturnType<typeof setTimeout> | null };
   const fila = useRef<Fila | null>(null);
   const agoraS = () => performance.now() / 1000;
   const encerrarFila = () => {
@@ -79,15 +79,19 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   };
   const bombear = (): void => {
     const f = fila.current;
-    if (!f || !f.ativo || f.falando) return;
-    if (f.liberadas < f.linhas.length) {
-      const l = f.linhas[f.liberadas++]!;
-      f.quandos.push(agoraS());
-      publicar();
+    if (!f || !f.ativo) return;
+    // a caneta escreve assim que a linha chega (até 3 à frente da fala): o quadro nunca espera pela voz
+    while (f.liberadas < f.linhas.length && f.liberadas < f.faladas + 3) { f.liberadas++; f.quandos.push(agoraS()); publicar(); }
+    if (f.falando) return;
+    while (f.faladas < f.liberadas) {
+      const l = f.linhas[f.faladas++]!;
       const fala = l.fala.trim() || (l.tipo === "titulo" ? "" : l.texto.trim());
-      if (!fala) { bombear(); return; }
+      if (!fala) continue;
       falarPasso(`[PASSO] ${fala}`, 22000);
-    } else if (f.acabou) {
+      bombear(); // a fala andou: libera mais uma linha na lousa
+      return;
+    }
+    if (f.acabou && f.liberadas >= f.linhas.length) {
       if (f.fechou) { encerrarFila(); return; }
       f.fechou = true;
       falarPasso("[FIM] Feche em uma frase: a explicação ficou salva nas Ferramentas; pergunte se ficou claro.", 15000);
@@ -142,7 +146,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (lousaOcupada.current || !onLousaRef.current) return;
     lousaOcupada.current = true;
     // o Mentor ainda está dando o "já vou escrever": o 1º passo só vai quando esse turno acabar (ou em 9 s)
-    fila.current = { ativo: true, falando: true, fechou: false, acabou: false, titulo: "", linhas: [], quandos: [], liberadas: 0, seguranca: setTimeout(() => { const g = fila.current; if (g) { g.falando = false; bombear(); } }, 9000) };
+    fila.current = { ativo: true, falando: true, fechou: false, acabou: false, titulo: "", linhas: [], quandos: [], liberadas: 0, faladas: 0, seguranca: setTimeout(() => { const g = fila.current; if (g) { g.falando = false; bombear(); } }, 9000) };
     void lerFluxo(); // abre já e escreve passo a passo
   };
   const progresso = () => {
@@ -381,7 +385,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if ((starts || replied) && pedeLousa(r.turn)) dispararLousa();
     if (said && onLousaRef.current && pedeLousa(r.turn)) { // dispara assim que o aluno termina o pedido, sem esperar o Mentor começar
       if (debLousa.current) clearTimeout(debLousa.current);
-      debLousa.current = setTimeout(dispararLousa, 350);
+      debLousa.current = setTimeout(dispararLousa, 120);
     }
     if (replied) r.replied.push(replied);
     const ro = roteiro.current;
