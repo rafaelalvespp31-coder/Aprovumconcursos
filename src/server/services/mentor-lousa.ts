@@ -173,34 +173,64 @@ function lerLinha(bruta: string): Evento | null {
   return ok.success ? { tipo: "linha", linha: ok.data } : null;
 }
 
-/** Gera o quadro em fluxo com um modelo rápido: cada linha sai assim que o modelo a escreve. Devolve quantas linhas emitiu. */
-async function gerarFluxo(pedido: string, study: StudyContext | null, emitir: (e: Evento) => void, sinal: AbortSignal): Promise<number> {
+/** Uma tentativa de gerar o quadro em fluxo com `model`. Se o 1º trecho não chegar em `primeiroMs`, desiste (cai para o próximo modelo). */
+async function tentarFluxo(model: string, pedido: string, study: StudyContext | null, emitir: (e: Evento) => void, sinal: AbortSignal, primeiroMs: number): Promise<number> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return 0;
   const p = wrapUntrusted(pedido.slice(0, 500), "pedido_do_aluno");
   const ctx = study ? wrapUntrusted(JSON.stringify(study).slice(0, 1500), "aula_atual") : null;
   const ai = new GoogleGenAI({ apiKey });
-  const model = process.env.GEMINI_LOUSA_MODEL?.trim() || "gemini-flash-latest";
-  const stream = await ai.models.generateContentStream({
-    model,
-    contents: [{ role: "user", parts: [{ text: `${ctx ? `${ctx.text}\n\n` : ""}${p.text}` }] }],
-    config: { systemInstruction: SYSTEM_STREAM, temperature: 0.2, maxOutputTokens: 1900, thinkingConfig: { thinkingBudget: 0 }, abortSignal: AbortSignal.any([sinal, AbortSignal.timeout(25_000)]) },
-  });
-  let buf = "";
-  let n = 0;
-  const tratar = (l: string) => {
-    const e = lerLinha(l);
-    if (!e) return;
-    if (e.tipo === "linha") { if (n >= 16) return; n++; }
-    emitir(e);
-  };
-  for await (const chunk of stream) {
-    buf += chunk.text ?? "";
-    let i: number;
-    while ((i = buf.indexOf("\n")) >= 0) { tratar(buf.slice(0, i)); buf = buf.slice(i + 1); }
+  const tentativa = new AbortController();
+  const aborta = () => tentativa.abort();
+  sinal.addEventListener("abort", aborta, { once: true });
+  let relogio: ReturnType<typeof setTimeout> | null = setTimeout(aborta, primeiroMs);
+  const total = setTimeout(aborta, 25_000);
+  try {
+    const stream = await ai.models.generateContentStream({
+      model,
+      contents: [{ role: "user", parts: [{ text: `${ctx ? `${ctx.text}\n\n` : ""}${p.text}` }] }],
+      config: { systemInstruction: SYSTEM_STREAM, temperature: 0.2, maxOutputTokens: 1900, thinkingConfig: { thinkingBudget: 0 }, abortSignal: tentativa.signal },
+    });
+    let buf = "";
+    let n = 0;
+    const tratar = (l: string) => {
+      const e = lerLinha(l);
+      if (!e) return;
+      if (e.tipo === "linha") { if (n >= 16) return; n++; }
+      emitir(e);
+    };
+    for await (const chunk of stream) {
+      if (relogio) { clearTimeout(relogio); relogio = null; }
+      buf += chunk.text ?? "";
+      let i: number;
+      while ((i = buf.indexOf("\n")) >= 0) { tratar(buf.slice(0, i)); buf = buf.slice(i + 1); }
+    }
+    if (buf.trim()) tratar(buf);
+    return n;
+  } finally {
+    if (relogio) clearTimeout(relogio);
+    clearTimeout(total);
+    sinal.removeEventListener("abort", aborta);
   }
-  if (buf.trim()) tratar(buf);
-  return n;
+}
+
+/** Modelos em ordem: o configurado, o Flash estável e o Flash-Lite (mais rápido). Quem falhar ou demorar passa a vez, sem repetir linhas já emitidas. */
+async function gerarFluxo(pedido: string, study: StudyContext | null, emitir: (e: Evento) => void, sinal: AbortSignal): Promise<number> {
+  const modelos = [...new Set([process.env.GEMINI_LOUSA_MODEL?.trim() || "gemini-2.5-flash", "gemini-2.5-flash-lite"])];
+  let emitidas = 0;
+  const conta = (e: Evento) => { if (e.tipo === "linha") emitidas++; emitir(e); };
+  for (const [k, m] of modelos.entries()) {
+    if (sinal.aborted) break;
+    try {
+      const n = await tentarFluxo(m, pedido, study, conta, sinal, k === 0 ? 6000 : 8000);
+      if (n > 0) return n;
+    } catch (e) {
+      if (emitidas > 0) return emitidas; // já mostrou parte: não recomeça
+      await logEvent("mentor.lousa.modelo_falhou", { modelo: m, error: (e as Error).message.slice(0, 200) });
+    }
+    if (emitidas > 0) return emitidas;
+  }
+  return emitidas;
 }
 
 /** Fluxo NDJSON do quadro: cache → modelo rápido em streaming → (último recurso) gerador estruturado. */
@@ -241,7 +271,7 @@ export function lousaEmFluxo(userId: string, pedido: string, study: StudyContext
         liberado = true;
         for (const e of fila.splice(0)) emitir(e);
         const n = await gerando;
-        if (n === 0 && acc.linhas.length === 0 && !cab) {
+        if (n === 0 && acc.linhas.length === 0) {
           const d = await montarLousa(userId, pedido, study); // plano C: gerador estruturado (sem fluxo)
           if (d.mostrar) { out({ mostrar: true, titulo: d.titulo }); for (const l of d.linhas) out(l); acc.linhas.push(...d.linhas); acc.titulo = d.titulo; } else out({ mostrar: false });
         }

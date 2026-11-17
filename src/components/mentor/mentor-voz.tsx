@@ -110,8 +110,10 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     const r = ref.current;
     onLousaRef.current?.("pendente");
     try {
-      const res = await fetch("/api/mentor/lousa?stream=1", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido: r.turn || falaTurno.current, study: getStudy?.() ?? undefined }) });
-      if (!res.ok || !res.body) { onLousaRef.current?.(null); encerrarFila(); return; }
+      const corta = new AbortController();
+      const limite = setTimeout(() => corta.abort(), 30000); // não deixa o quadro "Preparando…" para sempre
+      const res = await fetch("/api/mentor/lousa?stream=1", { method: "POST", signal: corta.signal, headers: { "Content-Type": "application/json" }, body: JSON.stringify({ pedido: r.turn || falaTurno.current, study: getStudy?.() ?? undefined }) });
+      if (!res.ok || !res.body) { clearTimeout(limite); onLousaRef.current?.(null); encerrarFila(); return; }
       let mostrar = true;
       const tratar = (linha: string) => {
         const f = fila.current;
@@ -129,10 +131,12 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       for (;;) {
         const { value, done } = await reader.read();
         if (done) break;
+        clearTimeout(limite); // chegou o 1º trecho: segue sem limite curto
         buf += dec.decode(value, { stream: true });
         let i: number;
         while ((i = buf.indexOf("\n")) >= 0) { const l = buf.slice(0, i).trim(); buf = buf.slice(i + 1); if (l) tratar(l); }
       }
+      clearTimeout(limite);
       if (buf.trim()) tratar(buf.trim());
       const f = fila.current;
       if (!f) return;
