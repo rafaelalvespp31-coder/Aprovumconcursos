@@ -150,8 +150,8 @@ const lousaTool = {
   ],
 };
 void lousaTool; // a lousa agora acompanha a transcrição da fala: o modelo de voz não recebe funções (evitava mudez/travas)
-// Pesquisa na internet ligada por padrão (o Mentor é professor de todas as matérias); GEMINI_VOICE_SEARCH=0 desliga.
-const voiceTools = () => (process.env.GEMINI_VOICE_SEARCH === "0" ? undefined : [{ googleSearch: {} }]);
+// Pesquisa na internet: DESLIGADA por padrão (ligá-la por padrão deixou o Mentor mudo). Só liga com GEMINI_VOICE_SEARCH=1.
+const voiceTools = () => (process.env.GEMINI_VOICE_SEARCH === "1" ? [{ googleSearch: {} }] : undefined);
 
 export interface VoiceSession {
   token: string;
