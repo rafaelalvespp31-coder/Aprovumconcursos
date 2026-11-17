@@ -101,18 +101,31 @@ export function alturaMini(its: ItemDesenho[], largo = false): number {
   return Math.max(140, Math.min(largo ? 1500 : 260, Math.ceil(m + 14)));
 }
 
+/** Caneta que anda sobre o traço enquanto ele é escrito: segue o caminho (offset-path) com um leve balanço de mão. */
+function Pena({ dd, d, dur, c }: { dd: string; d: number; dur: number; c: string }) {
+  return (
+    <g className="lz-pena2" style={{ ["--d" as string]: `${d}s`, ["--w" as string]: `${dur}s`, offsetPath: `path('${dd}')` } as React.CSSProperties}>
+      <g className="lz-pena2-in">
+        <path d="M0 0L4 -5L26 -30L31 -25L9 0Z" fill="#2b303b" stroke="#fff" strokeWidth="1" />
+        <path d="M0 0L4 -5L9 0Z" fill={c} />
+        <path d="M8 -9L27 -27" stroke="#8b93a5" strokeWidth="1.5" strokeLinecap="round" />
+      </g>
+    </g>
+  );
+}
+
 export function Traco({ it, d }: { it: ItemDesenho; d: number }) {
   const c = cor("cor" in it ? it.cor : undefined, "grafite");
   const st = { ["--d" as string]: `${d}s`, stroke: c } as React.CSSProperties;
   if (it.t === "emoji") return <text className="lz-em" x={it.x} y={it.y} fontSize={it.tam} style={{ ["--d" as string]: `${d}s` }}>{it.s}</text>;
   if (it.t === "texto") {
     // escrita à mão: a tinta aparece da esquerda para a direita no ritmo de uma caneta, com a ponta da caneta andando junto
-    const tam = it.tam ?? 19, larg = it.s.length * tam * 0.55, dur = Math.min(2.4, Math.max(0.4, it.s.length * 0.065));
-    const v = { ["--d" as string]: `${d}s`, ["--w" as string]: `${dur}s` } as React.CSSProperties;
+    const tam = it.tam ?? 19, larg = it.s.length * tam * 0.5, dur = Math.min(3, Math.max(0.5, it.s.length * 0.075));
+    const v = { ["--d" as string]: `${d}s`, ["--w" as string]: `${dur}s`, ["--n" as string]: Math.max(1, it.s.length) } as React.CSSProperties;
     return (
       <g>
         <text className="lz-tx lz-escrito" x={it.x} y={it.y} style={{ ...v, fill: c, ...(it.tam ? { fontSize: it.tam } : {}) }}>{it.s}</text>
-        <path className="lz-pena" d="M0 0 l-4 -11 l6 -4 l4 11z" style={{ ...v, ["--x0" as string]: `${it.x}px`, ["--x1" as string]: `${it.x + larg}px`, ["--y0" as string]: `${it.y - tam * 0.15}px`, fill: c }} />
+        <Pena dd={`M${it.x} ${it.y - tam * 0.15}L${it.x + larg} ${it.y - tam * 0.15}`} d={d} dur={dur} c={c} />
       </g>
     );
   }
@@ -122,6 +135,7 @@ export function Traco({ it, d }: { it: ItemDesenho; d: number }) {
     return (
       <g>
         <path className="lz-tr" pathLength={1} d={`M${it.x1} ${it.y1}L${it.x2} ${it.y2}`} style={{ ...st, animationDuration: `${dl}s` }} />
+        <Pena dd={`M${it.x1} ${it.y1}L${it.x2} ${it.y2}`} d={d} dur={dl} c={c} />
         {it.seta && <path className="lz-tr" pathLength={1} d={`M${it.x2 - h * Math.cos(ang - 0.5)} ${it.y2 - h * Math.sin(ang - 0.5)}L${it.x2} ${it.y2}L${it.x2 - h * Math.cos(ang + 0.5)} ${it.y2 - h * Math.sin(ang + 0.5)}`} style={{ ...st, ["--d" as string]: `${d + 0.5}s` }} />}
       </g>
     );
@@ -133,11 +147,16 @@ export function Traco({ it, d }: { it: ItemDesenho; d: number }) {
       <g>
         {it.bg && <path className="lz-fundo" d={dd} style={{ ["--d" as string]: `${d}s`, fill: c, ...(it.sol ? { fillOpacity: 1 } : {}) }} />}
         <path className="lz-tr" pathLength={1} d={dd} style={{ ...st, animationDuration: `${Math.min(1.3, Math.max(0.4, (2 * (w + h)) / 800))}s` }} />
+        <Pena dd={dd} d={d} dur={Math.min(1.3, Math.max(0.4, (2 * (w + h)) / 800))} c={c} />
       </g>
     );
   }
-  if (it.t === "circ") return <path className="lz-tr" pathLength={1} d={`M${it.cx - it.r} ${it.cy}a${it.r} ${it.r} 0 1 0 ${2 * it.r} 0a${it.r} ${it.r} 0 1 0 ${-2 * it.r} 0`} style={st} />;
-  return <path className="lz-tr" pathLength={1} d={`M${it.pts.map(([x, y]) => `${x} ${y}`).join("L")}`} style={st} />;
+  if (it.t === "circ") {
+    const dc = `M${it.cx - it.r} ${it.cy}a${it.r} ${it.r} 0 1 0 ${2 * it.r} 0a${it.r} ${it.r} 0 1 0 ${-2 * it.r} 0`;
+    return <g><path className="lz-tr" pathLength={1} d={dc} style={st} /><Pena dd={dc} d={d} dur={0.5} c={c} /></g>;
+  }
+  const dcv = `M${it.pts.map(([x, y]) => `${x} ${y}`).join("L")}`;
+  return <g><path className="lz-tr" pathLength={1} d={dcv} style={st} /><Pena dd={dcv} d={d} dur={0.5} c={c} /></g>;
 }
 
 /**
