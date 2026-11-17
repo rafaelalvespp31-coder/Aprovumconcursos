@@ -29,4 +29,7 @@ const falas = ["", "Vamos ver um exemplo.", "Se cinco maçãs custam vinte reais
 const comFala = { ...dados, linhas: dados.linhas.map((l, i) => ({ ...l, fala: falas[i] ?? "" })) };
 const t0 = typeof performance !== "undefined" ? performance.now() : 0;
 const sync = () => { const c = ((performance.now() - t0) / 1000) * 14; const tot = comFala.linhas.reduce((a, l) => a + l.fala.length, 0); return { c: Math.min(c, tot), fim: c > tot + 14 }; };
-export default function Page() { return <div style={{ minHeight: "100vh", background: "#eee" }}><MentorLousa lousa={comFala} sync={sync} onClose={() => {}} /></div>; }
+const t00 = typeof performance !== "undefined" ? performance.now() / 1000 : 0;
+const vivo = { quandos: comFala.linhas.map(() => t00), agora: () => performance.now() / 1000 };
+void sync;
+export default function Page() { return <div style={{ minHeight: "100vh", background: "#eee" }}><MentorLousa lousa={comFala} vivo={vivo} onClose={() => {}} /></div>; }

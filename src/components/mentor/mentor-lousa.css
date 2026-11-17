@@ -1,7 +1,7 @@
 @font-face { font-family: "Kalam"; font-weight: 400; font-style: normal; font-display: swap; src: url("/fonts/kalam-latin-400-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: "Kalam"; font-weight: 700; font-style: normal; font-display: swap; src: url("/fonts/kalam-latin-700-normal.woff2") format("woff2"); unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 .lz { --az: #1d3a8a; --pr: #1a1a1f; --vm: #c62828; --vd: #1b7a43; position: fixed; z-index: 90; inset: 0; margin: auto; width: min(920px, calc(100vw - 24px)); height: min(86vh, 700px); display: flex; flex-direction: column; color: var(--pr);
-  border-radius: 10px; background: #15151a; box-shadow: 0 0 0 1px rgba(0,0,0,.3), 0 30px 80px -10px rgba(0,0,0,.7), 0 0 0 4px rgba(229,9,20,.85); animation: lz-in .34s cubic-bezier(.22,1,.36,1) both; overflow: hidden; }
+  border-radius: 10px; background: #15151a; box-shadow: 0 0 0 1px rgba(0,0,0,.3), 0 30px 80px -10px rgba(0,0,0,.7), 0 0 0 4px rgba(229,9,20,.85); overflow: hidden; transition: background .42s ease, box-shadow .42s ease; }
 @keyframes lz-in { from { opacity: 0; scale: .95; translate: 0 14px; } }
 .lz-topo { flex: none; display: flex; align-items: center; gap: 8px; padding: 4px 6px 4px 16px; color: #fff; }
 .lz-kicker { font: 800 11px/1 Inter, sans-serif; letter-spacing: .18em; color: #ff5a52; }
@@ -61,3 +61,11 @@
 .lz-fig-e { display: inline-block; animation: lz-pop .45s cubic-bezier(.3,1.5,.5,1) both; }
 .lz-pronto .lz-fig-e { animation: none; }
 .lz-mini { margin: 4px 0 8px; width: min(100%, 420px); }
+
+/* Abertura: o card nasce riscado por uma caneta; só depois o quadro "enche" */
+.lz.lz-moldura { background: transparent; box-shadow: none; }
+.lz > .lz-topo, .lz > .lz-quadro { transition: opacity .42s ease; }
+.lz.lz-moldura > .lz-topo, .lz.lz-moldura > .lz-quadro { opacity: 0; }
+.lz-molde { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; overflow: visible; }
+.lz-molde rect { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.lz-molde .lz-marc { animation: none; }

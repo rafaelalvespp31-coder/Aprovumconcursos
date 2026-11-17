@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { RotateCcw, X } from "lucide-react";
 import { LOUSA_H, LOUSA_W, type ItemDesenho, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import "./mentor-lousa.css";
@@ -37,7 +37,7 @@ function cronograma(l: LinhaLousa): number[] {
 
 function Marcador({ c }: { c: string }) {
   return (
-    <svg className="lz-marc" viewBox="0 0 24 24" aria-hidden>
+    <svg className="lz-marc" viewBox="0 0 24 24" width="26" height="26" aria-hidden>
       <path d="M4 21l1-4 11-11 3 3-11 11z" fill="#15161a" stroke="#000" strokeWidth="1" strokeLinejoin="round" />
       <path d="M16 6l2.2-2.2a1.5 1.5 0 012.1 0l.9.9a1.5 1.5 0 010 2.1L19 9z" fill={c} stroke="#000" strokeWidth="1" strokeLinejoin="round" />
       <path d="M4 21l1-4 3 3z" fill={c} stroke="#000" strokeWidth="1" strokeLinejoin="round" />
@@ -114,6 +114,70 @@ function Traco({ it, d }: { it: ItemDesenho; d: number }) {
  * Quadro branco do Mentor: abre quando o aluno pede uma conta, um exemplo ou um desenho. Um professor "escreve" de
  * cima para baixo, letra por letra, com recuos, sublinhados, caixas, círculos e setas, e depois traça o desenho.
  */
+/** Ponto a `p` (0..1) do perímetro de um retângulo de cantos cortados, sentido horário, começando no topo-esquerdo. */
+function pontoNoContorno(w: number, h: number, r: number, p: number): [number, number] {
+  const pts: [number, number][] = [[r, 0], [w - r, 0], [w, r], [w, h - r], [w - r, h], [r, h], [0, h - r], [0, r], [r, 0]];
+  const seg = pts.slice(1).map((q, i) => Math.hypot(q[0] - pts[i]![0], q[1] - pts[i]![1]));
+  const tot = seg.reduce((a, b) => a + b, 0);
+  let d = Math.max(0, Math.min(1, p)) * tot;
+  for (let i = 0; i < seg.length; i++) {
+    if (d <= seg[i]!) { const k = seg[i]! ? d / seg[i]! : 0; return [pts[i]![0] + (pts[i + 1]![0] - pts[i]![0]) * k, pts[i]![1] + (pts[i + 1]![1] - pts[i]![1]) * k]; }
+    d -= seg[i]!;
+  }
+  return pts[0]!;
+}
+
+const T_VERMELHO = 1000; // ms para a caneta riscar o contorno do card
+const T_QUADRO = 650; // ms para riscar a moldura do quadro branco
+const T_ENCHE = 420; // ms para o quadro "encher" (fundo e título aparecem)
+
+/** Abertura: uma caneta risca o contorno do card e a moldura do quadro; depois o quadro enche e a escrita começa. */
+function Moldura({ onEncher, onFim }: { onEncher: () => void; onFim: () => void }) {
+  const ref = useRef<SVGSVGElement>(null);
+  const [dim, setDim] = useState({ w: 0, h: 0 });
+  const [t, setT] = useState(0);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setDim({ w: el.clientWidth, h: el.clientHeight }));
+    ro.observe(el);
+    setDim({ w: el.clientWidth, h: el.clientHeight });
+    return () => ro.disconnect();
+  }, []);
+  useEffect(() => {
+    const t0 = performance.now();
+    let raf = 0; let encheu = false;
+    const f = (now: number) => {
+      const el = now - t0;
+      setT(el);
+      if (!encheu && el >= T_VERMELHO + T_QUADRO) { encheu = true; onEncher(); }
+      if (el < T_VERMELHO + T_QUADRO + T_ENCHE) raf = requestAnimationFrame(f); else onFim();
+    };
+    raf = requestAnimationFrame(f);
+    return () => cancelAnimationFrame(raf);
+  }, [onEncher, onFim]);
+  const { w, h } = dim;
+  const e1 = Math.min(1, t / T_VERMELHO);
+  const e2 = Math.min(1, Math.max(0, (t - T_VERMELHO) / T_QUADRO));
+  const eased = (x: number) => x * x * (3 - 2 * x);
+  const ins = 46; // moldura do quadro: dentro do card (abaixo da faixa do título)
+  const fase1 = e1 < 1;
+  const [px, py] = fase1 ? pontoNoContorno(w, h, 10, eased(e1)) : pontoNoContorno(w - 20, h - ins - 12, 6, eased(e2));
+  const ox = fase1 ? 0 : 10, oy = fase1 ? 0 : ins;
+  const andando = t < T_VERMELHO + T_QUADRO;
+  return (
+    <svg ref={ref} className="lz-molde" aria-hidden>
+      {w > 0 && (
+        <>
+          <rect x="1.5" y="1.5" width={w - 3} height={h - 3} rx="10" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - eased(e1)} stroke="#e50914" />
+          <rect x="10" y={ins} width={w - 20} height={h - ins - 12} rx="6" pathLength={1} strokeDasharray={1} strokeDashoffset={1 - eased(e2)} stroke="#aeb4bc" strokeWidth="4" />
+          {andando && <g transform={`translate(${px + ox - 4} ${py + oy - 25}) rotate(${Math.sin(t / 55) * 4} 4 25)`}><Marcador c={fase1 ? "#e50914" : "#1d3a8a"} /></g>}
+        </>
+      )}
+    </svg>
+  );
+}
+
 const PENDENTE: Lousa = { mostrar: true, titulo: "", linhas: [], desenho: [] };
 
 export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lousa | null; /** Segue a voz: devolve quantas letras do roteiro já foram faladas. */ sync?: () => { c: number; fim: boolean }; /** Quadro escrito ao vivo: instante (relógio do áudio) em que cada linha começa a ser falada. */ vivo?: { quandos: number[]; agora: () => number }; onClose: () => void }) {
@@ -148,9 +212,13 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
     } const c = crono[j]!; const t0 = pos - inicios[j]!; let n = 0; while (n < c.length && c[n]! <= t0) n++; return n; };
   const [pos, setPos] = useState(0);
   const [rodada, setRodada] = useState(0);
+  // 0 = caneta riscando o card · 1 = quadro enchendo · 2 = escrevendo
+  const [fase, setFase] = useState<0 | 1 | 2>(0);
+  const encher = useCallback(() => setFase((f) => (f < 1 ? 1 : f)), []);
+  const fimMoldura = useCallback(() => setFase(2), []);
   const reduz = useRef(false);
   const placa = useRef<HTMLDivElement>(null);
-  useEffect(() => { reduz.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches; }, []);
+  useEffect(() => { reduz.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches; if (reduz.current) setFase(2); }, []);
 
   useEffect(() => {
     if (!sync || totalFala <= 0) return;
@@ -170,15 +238,16 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
   }, [sync, totalFala, rodada, fl]);
 
   useEffect(() => {
-    if (!vivo) return;
+    if (!vivo || fase < 2) return;
     let raf = 0;
-    const f = () => { setPos(Math.max(0, VIVO_UPS * (vivo.agora() - (vivo.quandos[0] ?? vivo.agora())))); raf = requestAnimationFrame(f); };
+    const base = vivo.agora(); // a escrita só começa depois que a caneta termina o quadro
+    const f = () => { setPos(Math.max(0, VIVO_UPS * (vivo.agora() - base))); raf = requestAnimationFrame(f); };
     raf = requestAnimationFrame(f);
     return () => cancelAnimationFrame(raf);
-  }, [vivo]);
+  }, [vivo, fase]);
 
   useEffect(() => {
-    if (sincronizado || vivo) return;
+    if (sincronizado || vivo || fase < 2) return;
     if (reduz.current) { setPos(total); return; }
     setPos(0);
     const t0 = performance.now();
@@ -190,7 +259,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
     };
     raf = requestAnimationFrame(f);
     return () => cancelAnimationFrame(raf);
-  }, [total, rodada, sincronizado, vivo]);
+  }, [total, rodada, sincronizado, vivo, fase]);
 
   useEffect(() => {
     const k = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -207,7 +276,8 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
   useEffect(() => { const el = placa.current; if (el && !fim) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }); }, [ativo, linhas.length, fim]);
   const desenho = lousa.desenho;
   return (
-    <aside className={`lz ${reduz.current ? "lz-pronto" : ""}`} role="dialog" aria-label={`Quadro do Mentor: ${lousa.titulo || "exemplo"}`} data-testid="mentor-lousa">
+    <aside className={`lz ${reduz.current ? "lz-pronto" : ""} ${fase === 0 ? "lz-moldura" : ""}`} role="dialog" aria-label={`Quadro do Mentor: ${lousa.titulo || "exemplo"}`} data-testid="mentor-lousa">
+      {fase < 2 && !reduz.current && <Moldura onEncher={encher} onFim={fimMoldura} />}
       <div className="lz-topo">
         <span className="lz-kicker">QUADRO</span>
         <span className="lz-titulo">{lousa.titulo || (dados ? "" : "Preparando…")}</span>
