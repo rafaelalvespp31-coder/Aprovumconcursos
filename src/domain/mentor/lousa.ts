@@ -171,3 +171,77 @@ export function linhaDeFala(frase: string, primeira: boolean, idx = 0): LinhaLou
 }
 
 export const linhaTitulo = (texto: string): LinhaLousa => linhaSchema.parse({ tipo: "titulo", texto, cor: "azul", sublinhar: "onda" });
+
+// ── Esquemas desenhados (sem emojis) a partir do que o Mentor fala ──────────────────────────────
+type Forma = { forma: "circ" | "ret" | "linha"; cor: z.infer<typeof COR> };
+const COISAS: [RegExp, Forma][] = [
+  [/ma[çc][ãa]s?/, { forma: "circ", cor: "vermelho" }], [/laranjas?/, { forma: "circ", cor: "laranja" }], [/bananas?/, { forma: "circ", cor: "laranja" }],
+  [/peras?/, { forma: "circ", cor: "verde" }], [/uvas?/, { forma: "circ", cor: "roxo" }], [/bolos?|pizzas?/, { forma: "circ", cor: "rosa" }], [/bolas?/, { forma: "circ", cor: "azul" }],
+  [/funcion[áa]rios?|oper[áa]rios?|trabalhadores?/, { forma: "circ", cor: "azul" }], [/policiais?|agentes?/, { forma: "circ", cor: "grafite" }], [/pessoas?|alunos?|candidatos?|estudantes?/, { forma: "circ", cor: "roxo" }],
+  [/viaturas?|carros?|motos?/, { forma: "ret", cor: "grafite" }], [/caminh[õo]es|caminh[ãa]o/, { forma: "ret", cor: "laranja" }], [/livros?/, { forma: "ret", cor: "azul" }],
+  [/canetas?|l[áa]pis/, { forma: "linha", cor: "azul" }], [/dias?/, { forma: "ret", cor: "verde" }], [/horas?/, { forma: "circ", cor: "azul" }],
+];
+const FORA = new Set(["vezes", "por", "de", "e", "a", "o", "para", "em", "que", "se", "x"]);
+const base = (s: string) => s.toLowerCase().replace(/(?<=[a-zà-ú]{3,})s$/, "").replace(/ões$/, "ão");
+
+export interface Qtd { n: number; nome: string; raiz: string }
+function quantidades(frase: string): Qtd[] {
+  if (CONTA.test(frase)) return [];
+  const out: Qtd[] = [];
+  for (const m of frase.matchAll(/(\d+(?:[.,]\d+)?)\s+([A-Za-zÀ-ú]+)/g)) {
+    const nome = m[2]!.toLowerCase();
+    if (FORA.has(nome)) continue;
+    out.push({ n: Number(m[1]!.replace(",", ".")), nome, raiz: base(nome) });
+  }
+  return out;
+}
+
+export interface EsquemaCtx { base?: { a: Qtd; b: Qtd }; grade: boolean; usadas: Set<string> }
+export const novoEsquema = (): EsquemaCtx => ({ grade: false, usadas: new Set() });
+
+function desenhoQuantidade(q: Qtd): LinhaLousa | null {
+  const c = COISAS.find(([re]) => new RegExp(`^(?:${re.source})$`, "i").test(q.nome))?.[1];
+  if (!c || !Number.isInteger(q.n) || q.n < 1 || q.n > 9) return null;
+  const sp = Math.min(46, 340 / q.n);
+  const it: ItemDesenho[] = [];
+  for (let i = 0; i < q.n; i++) {
+    const x = 30 + i * sp;
+    if (c.forma === "circ") it.push({ t: "circ", cx: x + 16, cy: 55, r: 15, cor: c.cor });
+    else if (c.forma === "ret") it.push({ t: "ret", x, y: 40, w: 34, h: 26, cor: c.cor });
+    else it.push({ t: "linha", x1: x + 10, y1: 30, x2: x + 22, y2: 82, cor: c.cor });
+  }
+  it.push({ t: "texto", x: 30, y: 122, s: `${q.n} ${q.nome}`, cor: c.cor });
+  return linhaSchema.parse({ tipo: "desenho", texto: "", nivel: 1, rabisco: it });
+}
+
+/** Regra de três em grade: 5 maçãs → 20 reais / 8 maçãs → x, com as setas cruzadas. */
+function desenhoGrade(a: Qtd, b: Qtd, c: Qtd): LinhaLousa {
+  const it: ItemDesenho[] = [
+    { t: "texto", x: 20, y: 38, s: `${a.n} ${a.nome}`, cor: "azul" },
+    { t: "texto", x: 235, y: 38, s: `${b.n} ${b.nome}`, cor: "verde" },
+    { t: "texto", x: 20, y: 112, s: `${c.n} ${c.nome}`, cor: "azul" },
+    { t: "texto", x: 245, y: 112, s: "x", cor: "vermelho" },
+    { t: "circ", cx: 249, cy: 104, r: 16, cor: "vermelho" },
+    { t: "linha", x1: 140, y1: 30, x2: 222, y2: 30, seta: true, cor: "grafite" },
+    { t: "linha", x1: 140, y1: 104, x2: 222, y2: 104, seta: true, cor: "grafite" },
+    { t: "linha", x1: 80, y1: 52, x2: 232, y2: 94, cor: "laranja" },
+    { t: "linha", x1: 250, y1: 52, x2: 70, y2: 94, cor: "roxo" },
+  ];
+  return linhaSchema.parse({ tipo: "desenho", texto: "", nivel: 1, rabisco: it });
+}
+
+/** Esquema desenhado (formas coloridas) para o que o Mentor acabou de falar, ou null. */
+export function esquemaDe(frase: string, ctx: EsquemaCtx): LinhaLousa | null {
+  const qs = quantidades(frase);
+  if (!qs.length) return null;
+  if (ctx.base && !ctx.grade && qs.length === 1 && qs[0]!.raiz === ctx.base.a.raiz) {
+    ctx.grade = true;
+    return desenhoGrade(ctx.base.a, ctx.base.b, qs[0]!);
+  }
+  if (qs.length >= 2 && !ctx.base) ctx.base = { a: qs[0]!, b: qs[1]! };
+  const q = qs[0]!;
+  if (ctx.usadas.has(q.raiz)) return null;
+  const d = desenhoQuantidade(q);
+  if (d) ctx.usadas.add(q.raiz);
+  return d;
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { anunciaLousa, figurasDe, linhaDeFala, linhaTitulo, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
+import { anunciaLousa, esquemaDe, linhaDeFala, linhaTitulo, novoEsquema, type EsquemaCtx, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
@@ -55,7 +55,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
    * Lousa ao vivo por TRANSCRIÇÃO: nada de chamada extra ao servidor nem função. A lousa abre no pedido e cada frase que o
    * Mentor fala vira uma linha escrita, no instante em que o áudio daquela frase toca.
    */
-  type Trans = { flush: ReturnType<typeof setTimeout> | null; buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; timer: ReturnType<typeof setTimeout> | null };
+  type Trans = { esq: EsquemaCtx; flush: ReturnType<typeof setTimeout> | null; buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; timer: ReturnType<typeof setTimeout> | null };
   const trans = useRef<Trans | null>(null);
   const agoraS = () => performance.now() / 1000;
   const publicarTrans = () => {
@@ -89,8 +89,8 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     const quando = Math.max(agoraS() + Math.max(0, adiante - dur), (m.quandos[m.quandos.length - 1] ?? 0) + 0.15);
     m.linhas.push(l);
     m.quandos.push(quando);
-    const fig = figurasDe(frase); // o esquema do exemplo: desenha as coisas citadas (5 maçãs → 🍎🍎🍎🍎🍎)
-    if (fig) { m.linhas.push(fig); m.quandos.push(quando + 0.2); }
+    const fig = esquemaDe(frase, m.esq); // o esquema do exemplo, desenhado com formas coloridas (sem emojis)
+    if (fig) { m.linhas.push(fig); m.quandos.push(quando + 0.25); }
     if (m.timer) { clearTimeout(m.timer); m.timer = null; }
     publicarTrans();
   };
@@ -119,7 +119,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     lousaOcupada.current = true;
     r0Turno.current = ref.current.turn || falaTurno.current;
     onLousaRef.current("pendente"); // abre já: a caneta desenha o card enquanto o Mentor começa a falar
-    trans.current = { flush: null, buf: "", linhas: [], quandos: [], titulo: "", pulou: false, timer: setTimeout(() => { if (trans.current && trans.current.linhas.length === 0) { onLousaRef.current?.(null); fimTrans(); } }, 25000) };
+    trans.current = { esq: novoEsquema(), flush: null, buf: "", linhas: [], quandos: [], titulo: "", pulou: false, timer: setTimeout(() => { if (trans.current && trans.current.linhas.length === 0) { onLousaRef.current?.(null); fimTrans(); } }, 25000) };
   };
   const progresso = () => {
     const ro = roteiro.current; const ctx = ref.current.ctx;

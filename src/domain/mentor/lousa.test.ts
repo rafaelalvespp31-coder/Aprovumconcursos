@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { figurasDe, linhaDeFala, linhaTitulo, lousaSchema, pedeLousa, tituloDe } from "./lousa";
+import { esquemaDe, figurasDe, linhaDeFala, novoEsquema, linhaTitulo, lousaSchema, pedeLousa, tituloDe } from "./lousa";
 
 describe("pedeLousa", () => {
   it("abre só quando o aluno pede quadro, lousa ou desenho", () => {
@@ -90,5 +90,18 @@ describe("esquema e canetas", () => {
     expect(new Set(cores).size).toBeGreaterThan(2);
     expect(linhaDeFala("Se 5 maçãs custam 20 reais", true)?.realce?.[0]).toMatchObject({ cor: "vermelho" });
     expect(linhaTitulo("Regra de três").tipo).toBe("titulo");
+  });
+});
+
+describe("esquema desenhado", () => {
+  it("desenha formas e depois a grade da regra de três", () => {
+    const c = novoEsquema();
+    const a = esquemaDe("Se 5 maçãs custam 20 reais", c);
+    expect(a?.tipo).toBe("desenho");
+    expect(a?.rabisco?.filter((x) => x.t === "circ")).toHaveLength(5);
+    const g = esquemaDe("Quanto custam 8 maçãs?", c);
+    expect(g?.rabisco?.some((x) => x.t === "texto" && x.s === "x")).toBe(true);
+    expect(g?.rabisco?.length).toBeLessThanOrEqual(10);
+    expect(esquemaDe("5 vezes x é igual a 8 vezes 20", c)).toBeNull();
   });
 });
