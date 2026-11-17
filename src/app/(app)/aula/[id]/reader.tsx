@@ -723,11 +723,23 @@ function ApostilaSection({
         </>
       ) : md.trim() ? <ApostilaMarkdown legal={legal} subject={subject} titulo={s.title}>{md}</ApostilaMarkdown> : null}
       {legal && <p className="ap-nota">Confira sempre a redação vigente no Portal da Legislação do Planalto.</p>}
-      {cases.map((c, i) => {
-        if (!ehCalculo(c.answer)) return <CartaoExemplo key={`c${i}`} c={montarCartao({ subject, titulo: s.title, corpo: s.body_markdown, situacao: c.situation, pergunta: c.question, resposta: c.answer })} />;
-        const ro = roteiroDeCaso({ titulo: "Exemplo", enunciado: c.situation, pergunta: c.question, resultado: c.answer });
-        return ro ? <QuadroExemplo key={`q${i}`} itens={[c.situation]} roteiro={ro} /> : null;
-      })}
+      {(() => {
+        const cartoes = cases.filter((c) => !ehCalculo(c.answer));
+        return (
+          <>
+            {cartoes.length > 0 && (
+              <div className={cartoes.length > 1 ? "cx-carrossel" : undefined}>
+                {cartoes.map((c, i) => <CartaoExemplo key={`c${i}`} indice={i + 1} total={cartoes.length} c={montarCartao({ subject, titulo: s.title, corpo: s.body_markdown, situacao: c.situation, pergunta: c.question, resposta: c.answer })} />)}
+              </div>
+            )}
+            {cases.map((c, i) => {
+              if (!ehCalculo(c.answer)) return null;
+              const ro = roteiroDeCaso({ titulo: "Exemplo", enunciado: c.situation, pergunta: c.question, resultado: c.answer });
+              return ro ? <QuadroExemplo key={`q${i}`} itens={[c.situation]} roteiro={ro} /> : null;
+            })}
+          </>
+        );
+      })()}
       {cases.length > 0 && (
         <div className="ap-pratica">
           <PracticeCard progressKey={s.id} cases={cases} onReread={() => document.getElementById(sectionDomId(s.id))?.scrollIntoView({ behavior: "smooth", block: "start" })} />

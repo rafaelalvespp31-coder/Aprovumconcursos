@@ -2,6 +2,7 @@
   background: repeating-linear-gradient(#fbfaf6 0 27px, #e3e6ee 27px 28px), #fbfaf6; border: 2px solid color-mix(in srgb, var(--cx) 55%, #fff); box-shadow: 0 2px 10px rgba(20,20,40,.12); }
 .cx-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .cx-titulo { margin: 0; font-size: clamp(20px, 4.6vw, 30px); line-height: 1.15; font-weight: 700; text-transform: uppercase; color: #1f2a6b; }
+.cx-ilu { flex: none; display: block; }
 .cx-icone { flex: none; display: grid; place-items: center; width: 64px; height: 64px; border-radius: 50%; color: var(--cx); background: color-mix(in srgb, var(--cx) 12%, #fff); }
 .cx-base { display: inline-block; margin: 10px 0 4px; padding: 4px 16px; border: 2px solid var(--cx); border-radius: 10px; background: #fff; color: #1f2a6b; font-weight: 700; font-size: 16px; }
 .cx-corpo { display: grid; grid-template-columns: 1.1fr 1fr; gap: 16px; margin-top: 10px; align-items: start; }
@@ -16,3 +17,17 @@
 .cx-aneis { position: absolute; top: -9px; left: 0; right: 0; display: flex; justify-content: space-evenly; }
 .cx-aneis i { display: block; width: 8px; height: 18px; border: 2px solid #3a3f5c; border-radius: 6px; background: #fbfaf6; }
 @media (max-width: 640px) { .cx { padding: 12px; } .cx-corpo { grid-template-columns: 1fr; gap: 20px; } .cx-icone { width: 52px; height: 52px; } }
+
+.cx { position: relative; }
+.cx-num { flex: none; display: grid; place-items: center; align-content: center; width: 58px; height: 58px; border: 3px solid #1f2a6b; border-radius: 50%; background: #fff; font-size: 14px; font-weight: 700; color: #1f2a6b; line-height: 1; }
+.cx-num b { font-size: 24px; }
+.cx-topo .cx-titulo { flex: 1; text-align: center; }
+.cx-pilula { position: relative; padding: 6px 22px; }
+.cx-raio { position: absolute; top: 50%; width: 14px; height: 0; border-top: 3px solid var(--cx); border-radius: 2px; }
+.cx-raio-e { left: -22px; transform: rotate(-30deg); box-shadow: 0 14px 0 -0px transparent; }
+.cx-raio-d { right: -22px; transform: rotate(30deg); }
+.cx-rodape { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-top: 14px; padding-top: 8px; border-top: 2px solid #1f2a6b; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #1f2a6b; }
+.cx-rodape em { font-style: normal; padding: 3px 10px; border-radius: 6px; background: #1f2a6b; color: #fff; }
+.cx-chave { color: inherit; }
+.cx-carrossel { display: flex; gap: 14px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 10px; margin: 10px 0; }
+.cx-carrossel > .cx { flex: 0 0 min(94%, 720px); scroll-snap-align: center; margin: 0; }
