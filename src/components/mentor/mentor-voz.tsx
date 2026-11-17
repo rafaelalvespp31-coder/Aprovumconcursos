@@ -57,12 +57,13 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
    * Lousa ao vivo por TRANSCRIÇÃO: nada de chamada extra ao servidor nem função. A lousa abre no pedido e cada frase que o
    * Mentor fala vira uma linha escrita, no instante em que o áudio daquela frase toca.
    */
-  type Trans = { modo: "texto" | "ditado"; dit?: EstadoDitado; esq: EsquemaCtx; flush: ReturnType<typeof setTimeout> | null; buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; timer: ReturnType<typeof setTimeout> | null };
+  type Trans = { modo: "texto" | "ditado"; dit?: EstadoDitado; esq: EsquemaCtx; flush: ReturnType<typeof setTimeout> | null; buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; t0: number; msTexto: number | null; msTraco: number | null; modo0: "texto" | "ditado"; timer: ReturnType<typeof setTimeout> | null };
   const trans = useRef<Trans | null>(null);
   const agoraS = () => performance.now() / 1000;
   const publicarTrans = () => {
     const m = trans.current;
     if (!m) return;
+    if (m.msTraco === null && m.linhas.length > 0) m.msTraco = Math.round(performance.now() - m.t0);
     onLousaRef.current?.({ mostrar: true, titulo: m.titulo, linhas: [...m.linhas], desenho: [] }, undefined, { quandos: [...m.quandos], agora: agoraS });
   };
   const PEDE_DESENHO = /desenh|esquema|diagrama|linha do tempo|mapa mental|ilustr|rabisc|calcul|\bconta\b|mmc|mdc|regra de tr|fluxo|passo a passo|exemplo|resolv|equa[cç]|porcentag|fra[cç][aã]o|divis[aã]o|multiplica|soma|subtra/i;
@@ -73,6 +74,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (m.timer) clearTimeout(m.timer);
     trans.current = null;
     lousaOcupada.current = false;
+    if (m.msTexto !== null || m.msTraco !== null) void fetch("/api/mentor/lousa/tempo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ modo: m.modo0, largo: telaLarga(), ms_texto: m.msTexto, ms_traco: m.msTraco, ms_fim: Math.min(300000, Math.round(performance.now() - m.t0)) }) }).catch(() => undefined);
     if (m.linhas.length >= 4 || (m.dit && m.dit.itens.length >= 6)) void fetch("/api/mentor/lousa/salvas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lousa: { mostrar: true, titulo: m.titulo, linhas: m.linhas, desenho: [] } }) }).catch(() => undefined);
   };
   /** Uma frase falada → linha do quadro (ou nada, se for abertura/fechamento/pergunta). */
@@ -123,6 +125,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   const ouvirFala = (texto: string, fimDoTurno: boolean) => {
     const m = trans.current;
     if (!m) return;
+    if (m.msTexto === null && texto.trim()) m.msTexto = Math.round(performance.now() - m.t0);
     m.buf += texto;
     // o Mentor começou a ditar ("Título: …"): passa para o modo desenho, mesmo que o pedido não tenha dito "desenhe"
     if (m.modo === "texto" && (/\d[^.!?]{0,40}\b(vezes|dividido|igual a|mais|menos)\b[^.!?]{0,30}\d|\b(mmc|mdc)\b|dividir por \d|\b(1[0-9]{3}|20[0-9]{2})\b/i.test(m.buf) || /(?:^|[.!?]\s+)(?:t[ií]tulo|tabela|conta|mmc|mdc|armada|divis[aã]o|linha do tempo|caixa|frase|camada|cadeia|coluna)\s*[:,]/i.test(m.buf))) { m.modo = "ditado"; m.linhas = []; m.quandos = []; m.dit = novoDitado(telaLarga()); }
@@ -149,7 +152,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     lousaOcupada.current = true;
     r0Turno.current = ref.current.turn || falaTurno.current;
     onLousaRef.current("pendente"); // abre já: a caneta desenha o card enquanto o Mentor começa a falar
-    trans.current = { modo: PEDE_DESENHO.test(ref.current.turn || falaTurno.current) ? "ditado" : "texto", dit: novoDitado(telaLarga()), esq: novoCtx(ref.current.turn || falaTurno.current), flush: null, buf: "", linhas: [], quandos: [], titulo: "", pulou: false, timer: setTimeout(() => { if (trans.current && trans.current.linhas.length === 0) { onLousaRef.current?.(null); fimTrans(); } }, 25000) };
+    trans.current = { modo: PEDE_DESENHO.test(ref.current.turn || falaTurno.current) ? "ditado" : "texto", dit: novoDitado(telaLarga()), esq: novoCtx(ref.current.turn || falaTurno.current), flush: null, buf: "", linhas: [], quandos: [], titulo: "", pulou: false, t0: performance.now(), msTexto: null, msTraco: null, modo0: PEDE_DESENHO.test(ref.current.turn || falaTurno.current) ? "ditado" : "texto", timer: setTimeout(() => { if (trans.current && trans.current.linhas.length === 0) { onLousaRef.current?.(null); fimTrans(); } }, 25000) };
   };
   const progresso = () => {
     const ro = roteiro.current; const ctx = ref.current.ctx;
