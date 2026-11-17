@@ -58,6 +58,12 @@ export const LOUSA_W = 400;
 export const LOUSA_H = 260;
 
 /** O Mentor anuncia, falando, que vai anotar/escrever/desenhar no quadro ("vou anotar na lousa", "olha aqui no quadro"). */
+/** Conversa sobre o próprio quadro ou fecho da aula ("vou apagar", "ficou claro?"): fica só na voz, nunca vai para a lousa. */
+export function ehConversa(frase: string): boolean {
+  const s = frase.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return /\b(apag\w*|limp\w*|quadro|lousa|ficou claro|entendeu|alguma duvida|tem duvida|bora|olha aqui|vou (te )?(anotar|escrever|desenhar|rabiscar|montar|mostrar|explicar)|ja estou|estou (escrevendo|desenhando)|ferramentas|ficou salv\w*|posso (continuar|seguir)|vamos la)\b/.test(s);
+}
+
 export function anunciaLousa(fala: string): boolean {
   const s = fala.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   return /\b(na|a|pra) lousa\b/.test(s) || /\bvou (te )?(anotar|escrever|desenhar|rabiscar|montar|mostrar (a|o) (conta|calculo|exemplo))/.test(s) || /\bdeixa eu (anotar|escrever|desenhar)/.test(s) || /\bno quadro\b/.test(s);

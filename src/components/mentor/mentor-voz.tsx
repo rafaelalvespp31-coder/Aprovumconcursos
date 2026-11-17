@@ -2,7 +2,7 @@
 
 import { comandoDitado, fimDitado, frasesDe, linhaDitado, novoDitado, type EstadoDitado } from "@/domain/mentor/ditado";
 import { esquemasDe, fimTempo, novoCtx, type Ctx as EsquemaCtx } from "@/domain/mentor/esquemas";
-import { anunciaLousa, linhaDeFala, linhaTitulo, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
+import { anunciaLousa, ehConversa, linhaDeFala, linhaTitulo, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
@@ -78,7 +78,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   /** Uma frase falada → linha do quadro (ou nada, se for abertura/fechamento/pergunta). */
   const novaLinha = (frase: string) => {
     const m = trans.current;
-    if (!m) return;
+    if (!m || ehConversa(frase)) return;
     const l = linhaDeFala(frase, m.linhas.length === 0, m.linhas.length);
     if (!l) return;
     if (!m.titulo) {

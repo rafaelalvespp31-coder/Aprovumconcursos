@@ -105,3 +105,12 @@ describe("esquema desenhado", () => {
     expect(esquemaDe("5 vezes x é igual a 8 vezes 20", c)).toBeNull();
   });
 });
+
+import { ehConversa } from "./lousa";
+describe("conversa que não vai para o quadro", () => {
+  it("separa fecho e comentário do quadro da explicação", () => {
+    expect(ehConversa("Pronto, ficou claro?")).toBe(true);
+    expect(ehConversa("Agora vou apagar o quadro.")).toBe(true);
+    expect(ehConversa("A lei penal não retroage, salvo para beneficiar o réu.")).toBe(false);
+  });
+});
