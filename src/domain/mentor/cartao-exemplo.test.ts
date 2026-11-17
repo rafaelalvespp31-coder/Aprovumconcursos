@@ -25,3 +25,12 @@ describe("cartão visual de exemplo", () => {
     expect(c).toMatchObject({ tema: "direito", palavra: "ULTRATIVIDADE", base: "Art. 3º do Código Penal", icone: "Hourglass" });
   });
 });
+
+describe("tema de matemática pelo assunto", () => {
+  it("regra de três, MMC e juros contam como matemática", () => {
+    expect(temaDe("Razão, Proporção e Regra de Três")).toBe("matematica");
+    expect(temaDe("Mínimo Múltiplo Comum (MMC)")).toBe("matematica");
+    expect(temaDe("Múltiplos, Divisores e Divisibilidade")).toBe("matematica");
+    expect(temaDe("Direito Penal Crimes contra o patrimônio")).toBe("direito");
+  });
+});

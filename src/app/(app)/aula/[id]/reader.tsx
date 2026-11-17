@@ -387,7 +387,7 @@ export function LessonReader(props: ReaderProps) {
             <ApostilaSection
               key={s.id}
               section={s}
-              subject={props.meta?.subject}
+              subject={`${props.meta?.subject ?? ""} ${lesson.title} ${lesson.trailTitle}`}
               lessonTitle={lesson.title}
               lessonId={lesson.id}
               annotations={annotationsBySection.get(s.id) ?? []}

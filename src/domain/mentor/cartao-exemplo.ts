@@ -10,7 +10,7 @@ const corta = (s: string, n: number) => (s.length <= n ? s : `${s.slice(0, s.las
 
 export function temaDe(subject: string | null | undefined, texto = ""): TemaCartao {
   const s = norm(`${subject ?? ""}`);
-  if (/matematic|raciocinio|estatistic|financeir/.test(s)) return "matematica";
+  if (/matematic|raciocinio|estatistic|financeir|razao|proporc|regra de tres|porcentag|juros|fracao|fracoes|equacao|equacoes|\bmmc\b|\bmdc\b|minimo multiplo|maximo divisor|multiplos|divisores|aritmetic|algebra|geometri|potenciac|radiciac|analise combinatoria|probabilidad|sistema de numeracao/.test(s)) return "matematica";
   if (/portugues|lingua|redacao|literatura/.test(s)) return "portugues";
   if (/informatic|tecnologia|computa|seguranca da informacao/.test(s)) return "informatica";
   if (/direito|constituc|penal|civil|processual|administrativ|tributari|legislacao|eca|ctb|lep|etica/.test(s)) return "direito";
