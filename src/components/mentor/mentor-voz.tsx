@@ -1,5 +1,6 @@
 "use client";
 
+import { comandoDitado, frasesDe, linhaDitado, novoDitado, type EstadoDitado } from "@/domain/mentor/ditado";
 import { esquemasDe, fimTempo, novoCtx, type Ctx as EsquemaCtx } from "@/domain/mentor/esquemas";
 import { anunciaLousa, linhaDeFala, linhaTitulo, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -56,7 +57,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
    * Lousa ao vivo por TRANSCRIÇÃO: nada de chamada extra ao servidor nem função. A lousa abre no pedido e cada frase que o
    * Mentor fala vira uma linha escrita, no instante em que o áudio daquela frase toca.
    */
-  type Trans = { esq: EsquemaCtx; flush: ReturnType<typeof setTimeout> | null; buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; timer: ReturnType<typeof setTimeout> | null };
+  type Trans = { modo: "texto" | "ditado"; dit?: EstadoDitado; esq: EsquemaCtx; flush: ReturnType<typeof setTimeout> | null; buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; timer: ReturnType<typeof setTimeout> | null };
   const trans = useRef<Trans | null>(null);
   const agoraS = () => performance.now() / 1000;
   const publicarTrans = () => {
@@ -64,13 +65,15 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (!m) return;
     onLousaRef.current?.({ mostrar: true, titulo: m.titulo, linhas: [...m.linhas], desenho: [] }, undefined, { quandos: [...m.quandos], agora: agoraS });
   };
+  const PEDE_DESENHO = /desenh|esquema|diagrama|linha do tempo|mapa mental|ilustr|rabisc/i;
+  const telaLarga = () => typeof window !== "undefined" && window.innerWidth >= 760;
   const fimTrans = () => {
     const m = trans.current;
     if (!m) return;
     if (m.timer) clearTimeout(m.timer);
     trans.current = null;
     lousaOcupada.current = false;
-    if (m.linhas.length >= 4) void fetch("/api/mentor/lousa/salvas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lousa: { mostrar: true, titulo: m.titulo, linhas: m.linhas, desenho: [] } }) }).catch(() => undefined);
+    if (m.linhas.length >= 4 || (m.dit && m.dit.itens.length >= 20)) void fetch("/api/mentor/lousa/salvas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lousa: { mostrar: true, titulo: m.titulo, linhas: m.linhas, desenho: [] } }) }).catch(() => undefined);
   };
   /** Uma frase falada → linha do quadro (ou nada, se for abertura/fechamento/pergunta). */
   const novaLinha = (frase: string) => {
@@ -94,10 +97,35 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (m.timer) { clearTimeout(m.timer); m.timer = null; }
     publicarTrans();
   };
+  /** Diagrama ditado: cada comando falado ("Título:", "Caixa:", "Item:"…) vira traços no instante em que o áudio chega nele. */
+  const ouvirDitado = (m: Trans, fimDoTurno: boolean) => {
+    const { frases, resto } = frasesDe(m.buf);
+    m.buf = resto;
+    if (fimDoTurno && resto.trim()) { frases.push(resto); m.buf = ""; }
+    const r = ref.current;
+    let mudou = false;
+    for (const fr of frases) {
+      const adiante = r.ctx ? Math.max(0, r.next - r.ctx.currentTime) : 0;
+      if (comandoDitado(m.dit!, fr, Math.min(10, Math.max(0, adiante - fr.length / 13)))) mudou = true;
+    }
+    if (m.flush) clearTimeout(m.flush);
+    m.flush = setTimeout(() => { const g = trans.current; if (g?.modo === "ditado" && g.buf.trim().length >= 14 && /^(t[ií]tulo|subt|linha do tempo|marco|caixa|item|ponto|t[oó]pico|exemplo|destaque|aten|cuidado|resumo|seta)/i.test(g.buf.trim())) { comandoDitado(g.dit!, g.buf, 0); g.buf = ""; g.linhas = [linhaDitado(g.dit!)]; publicarTrans(); } }, 1500);
+    if (mudou) {
+      if (!m.titulo) m.titulo = tituloDe(r0Turno.current);
+      if (m.timer) { clearTimeout(m.timer); m.timer = null; }
+      m.linhas = [linhaDitado(m.dit!)];
+      m.quandos = [m.quandos[0] ?? agoraS()];
+      publicarTrans();
+    }
+    if (fimDoTurno) { if (m.timer) clearTimeout(m.timer); m.timer = setTimeout(fimTrans, 2500); }
+  };
   const ouvirFala = (texto: string, fimDoTurno: boolean) => {
     const m = trans.current;
     if (!m) return;
     m.buf += texto;
+    // o Mentor começou a ditar ("Título: …"): passa para o modo desenho, mesmo que o pedido não tenha dito "desenhe"
+    if (m.modo === "texto" && /(?:^|[.!?]\s+)t[ií]tulo\s*[:,]/i.test(m.buf)) { m.modo = "ditado"; m.linhas = []; m.quandos = []; m.dit = novoDitado(telaLarga()); }
+    if (m.modo === "ditado") { ouvirDitado(m, fimDoTurno); return; }
     const partes = m.buf.split(/(?<=[.!?:;])\s+/);
     m.buf = partes.pop() ?? "";
     for (const p of partes) novaLinha(p);
@@ -120,7 +148,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     lousaOcupada.current = true;
     r0Turno.current = ref.current.turn || falaTurno.current;
     onLousaRef.current("pendente"); // abre já: a caneta desenha o card enquanto o Mentor começa a falar
-    trans.current = { esq: novoCtx(ref.current.turn || falaTurno.current), flush: null, buf: "", linhas: [], quandos: [], titulo: "", pulou: false, timer: setTimeout(() => { if (trans.current && trans.current.linhas.length === 0) { onLousaRef.current?.(null); fimTrans(); } }, 25000) };
+    trans.current = { modo: PEDE_DESENHO.test(ref.current.turn || falaTurno.current) ? "ditado" : "texto", dit: novoDitado(telaLarga()), esq: novoCtx(ref.current.turn || falaTurno.current), flush: null, buf: "", linhas: [], quandos: [], titulo: "", pulou: false, timer: setTimeout(() => { if (trans.current && trans.current.linhas.length === 0) { onLousaRef.current?.(null); fimTrans(); } }, 25000) };
   };
   const progresso = () => {
     const ro = roteiro.current; const ctx = ref.current.ctx;

@@ -91,13 +91,13 @@ function Escrito({ s, v, l, cor0, feito, lado }: { s: string; v: number; l: Linh
 }
 
 /** Altura do mini-quadro: 140 no mínimo, cresce para caber desenhos mais altos (pirâmides, fluxos em coluna). */
-function alturaMini(its: ItemDesenho[]): number {
+function alturaMini(its: ItemDesenho[], largo = false): number {
   let m = 0;
   for (const it of its) {
     const y = it.t === "linha" ? Math.max(it.y1, it.y2) : it.t === "ret" ? it.y + it.h : it.t === "circ" ? it.cy + it.r : it.t === "curva" ? Math.max(...it.pts.map((q) => q[1])) : it.y;
     m = Math.max(m, y);
   }
-  return Math.max(140, Math.min(260, Math.ceil(m + 14)));
+  return Math.max(140, Math.min(largo ? 1000 : 260, Math.ceil(m + 14)));
 }
 
 function Traco({ it, d }: { it: ItemDesenho; d: number }) {
@@ -346,8 +346,8 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
                   );
                 } else if (v >= nLab) {
                   fig = (
-                    <svg className="lz-svg lz-mini" viewBox={`0 0 ${LOUSA_W} ${alturaMini(l.rabisco ?? [])}`} role="img" aria-label={l.texto || "Desenho"}>
-                      {(l.rabisco ?? []).map((it, i) => <Traco key={i} it={it} d={i * Math.min(0.3, 3.2 / Math.max(1, (l.rabisco ?? []).length))} />)}
+                    <svg className={`lz-svg lz-mini${l.larg ? " lz-mini-largo" : ""}`} viewBox={`0 0 ${l.larg ?? LOUSA_W} ${alturaMini(l.rabisco ?? [], !!l.larg)}`} role="img" aria-label={l.texto || "Desenho"}>
+                      {(l.rabisco ?? []).map((it, i) => <Traco key={i} it={it} d={it.d ?? i * Math.min(0.3, 3.2 / Math.max(1, (l.rabisco ?? []).length))} />)}
                     </svg>
                   );
                 }

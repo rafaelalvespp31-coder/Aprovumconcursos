@@ -81,3 +81,5 @@
 @keyframes lz-gira { to { transform: rotate(360deg); } }
 @media (max-width: 480px) { .lz-salvar span { display: none; } .lz-salvar { padding: 0 9px; } }
 @media (prefers-reduced-motion: reduce) { .lz-gira { animation: none; } }
+
+.lz-mini.lz-mini-largo { width: 100%; max-width: 960px; }

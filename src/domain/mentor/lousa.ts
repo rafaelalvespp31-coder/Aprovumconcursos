@@ -1,7 +1,7 @@
 import { z } from "zod";
 
 /** Só abre o quadro quando o aluno pede explicitamente para escrever/desenhar/mostrar no quadro; explicar e dar exemplo falado não abre. */
-const GATILHO = /(\bquadro\b|\blousa\b|desenh|rabisc|ilustr|\bescrev(a|e|er|endo)\b|\banot(a|e|ar|ando)\b|exemplo (escrito|desenhado)|mostr\w+ (por escrito|desenhando|na tela)|passo a passo (escrito|no quadro))/i;
+const GATILHO = /(\besquema|\bdiagrama|linha do tempo|mapa mental|\bquadro\b|\blousa\b|desenh|rabisc|ilustr|\bescrev(a|e|er|endo)\b|\banot(a|e|ar|ando)\b|exemplo (escrito|desenhado)|mostr\w+ (por escrito|desenhando|na tela)|passo a passo (escrito|no quadro))/i;
 export const pedeLousa = (fala: string): boolean => fala.trim().length >= 8 && GATILHO.test(fala);
 
 const COR = z.enum(["grafite", "vermelho", "azul", "verde", "laranja", "roxo", "rosa"]);
@@ -9,13 +9,13 @@ const n = z.number().min(0).max(1000);
 
 /** Desenho em 400×260: só primitivas simples, desenhadas pelo nosso componente (nunca SVG vindo da IA). */
 export const itemDesenho = z.discriminatedUnion("t", [
-  z.object({ t: z.literal("linha"), x1: n, y1: n, x2: n, y2: n, seta: z.boolean().optional(), cor: COR.optional() }),
-  z.object({ t: z.literal("ret"), x: n, y: n, w: n, h: n, cor: COR.optional() }),
-  z.object({ t: z.literal("circ"), cx: n, cy: n, r: n, cor: COR.optional() }),
-  z.object({ t: z.literal("curva"), pts: z.array(z.tuple([n, n])).min(2).max(24), cor: COR.optional() }),
-  z.object({ t: z.literal("texto"), x: n, y: n, s: z.string().trim().min(1).max(40), cor: COR.optional(), tam: z.number().min(9).max(40).optional() }),
+  z.object({ t: z.literal("linha"), d: z.number().min(0).max(30).optional(), x1: n, y1: n, x2: n, y2: n, seta: z.boolean().optional(), cor: COR.optional() }),
+  z.object({ t: z.literal("ret"), d: z.number().min(0).max(30).optional(), x: n, y: n, w: n, h: n, cor: COR.optional() }),
+  z.object({ t: z.literal("circ"), d: z.number().min(0).max(30).optional(), cx: n, cy: n, r: n, cor: COR.optional() }),
+  z.object({ t: z.literal("curva"), d: z.number().min(0).max(30).optional(), pts: z.array(z.tuple([n, n])).min(2).max(40), cor: COR.optional() }),
+  z.object({ t: z.literal("texto"), d: z.number().min(0).max(30).optional(), x: n, y: n, s: z.string().trim().min(1).max(40), cor: COR.optional(), tam: z.number().min(9).max(40).optional() }),
   /** Emoji ou figura pronta (fruta, número, objeto): x,y é o canto inferior esquerdo; tam em pixels. */
-  z.object({ t: z.literal("emoji"), x: n, y: n, s: z.string().trim().min(1).max(8), tam: z.number().min(16).max(90).default(40) }),
+  z.object({ t: z.literal("emoji"), d: z.number().min(0).max(30).optional(), x: n, y: n, s: z.string().trim().min(1).max(8), tam: z.number().min(16).max(90).default(40) }),
 ]);
 
 const COR_TEXTO = z.enum(["azul", "preto", "vermelho", "verde", "laranja", "roxo", "rosa"]);
@@ -38,7 +38,9 @@ export const linhaSchema = z.object({
   /** tipo "figuras": grupos de emojis desenhados um a um (ex.: 5 maçãs, 8 maçãs) — mostra a quantidade do problema. */
   figuras: z.array(z.object({ e: z.string().trim().min(1).max(8), n: z.number().int().min(1).max(12) })).max(4).optional(),
   /** tipo "desenho": mini-quadro 400x140 desenhado traço a traço junto com esta linha (texto = legenda). */
-  rabisco: z.array(itemDesenho).max(48).optional(),
+  rabisco: z.array(itemDesenho).max(200).optional(),
+  /** Largura do mini-quadro (padrão 400). Diagramas de ditado usam 1000 (telas largas) ou 460 (celular). */
+  larg: z.number().min(300).max(1000).optional(),
   /** Trechos escritos com outra caneta (cor diferente do resto da linha). */
   realce: z.array(z.object({ trecho: z.string().trim().min(1).max(40), cor: COR_TEXTO })).max(4).optional(),
 });

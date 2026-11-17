@@ -63,7 +63,8 @@ async function doCache(chave: string): Promise<(Lousa & { _id?: string }) | null
 
 /** Guarda a lousa no cache compartilhado e devolve o id (ou null). */
 async function guardar(chave: string, pedido: string, l: Lousa): Promise<string | null> {
-  if (chave.length < 4 || l.linhas.length < 4) return null; // só explicações completas
+  const diagrama = l.linhas.some((x) => x.tipo === "desenho" && (x.rabisco?.length ?? 0) >= 20);
+  if (chave.length < 4 || (l.linhas.length < 4 && !diagrama)) return null; // só explicações completas
   try {
     const db = createAdminClient();
     await db.from("mentor_lousas_cache").upsert({ chave, pedido: pedido.slice(0, 300), titulo: l.titulo, dados: l }, { onConflict: "chave", ignoreDuplicates: true });
