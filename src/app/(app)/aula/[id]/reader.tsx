@@ -1,7 +1,9 @@
 "use client";
 
 import { QuadroExemplo } from "@/components/aula/quadro-exemplo";
-import { roteiroDeCaso } from "@/domain/mentor/calculo-lousa";
+import { CartaoExemplo } from "@/components/aula/cartao-exemplo";
+import { montarCartao } from "@/domain/mentor/cartao-exemplo";
+import { ehCalculo, roteiroDeCaso } from "@/domain/mentor/calculo-lousa";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Markdown } from "@/components/markdown";
@@ -385,6 +387,7 @@ export function LessonReader(props: ReaderProps) {
             <ApostilaSection
               key={s.id}
               section={s}
+              subject={props.meta?.subject}
               lessonId={lesson.id}
               annotations={annotationsBySection.get(s.id) ?? []}
               clarifications={props.clarifications.filter((c) => c.section_id === s.id)}
@@ -688,12 +691,14 @@ export function LessonReader(props: ReaderProps) {
 
 function ApostilaSection({
   section: s,
+  subject,
   lessonId,
   annotations,
   clarifications,
   onAnnotation,
 }: {
   section: ReaderSection;
+  subject?: string | null;
   lessonId: string;
   annotations: Annotation[];
   clarifications: ReaderClarification[];
@@ -716,9 +721,13 @@ function ApostilaSection({
           <TreeMapCard root={tree.root} nodes={tree.nodes} />
           {tree.after && <ApostilaMarkdown legal={legal}>{tree.after}</ApostilaMarkdown>}
         </>
-      ) : md.trim() ? <ApostilaMarkdown legal={legal}>{md}</ApostilaMarkdown> : null}
+      ) : md.trim() ? <ApostilaMarkdown legal={legal} subject={subject} titulo={s.title}>{md}</ApostilaMarkdown> : null}
       {legal && <p className="ap-nota">Confira sempre a redação vigente no Portal da Legislação do Planalto.</p>}
-      {cases.map((c, i) => { const ro = roteiroDeCaso({ titulo: "Exemplo", enunciado: c.situation, pergunta: c.question, resultado: c.answer }); return ro ? <QuadroExemplo key={`q${i}`} itens={[c.situation]} roteiro={ro} /> : null; })}
+      {cases.map((c, i) => {
+        if (!ehCalculo(c.answer)) return <CartaoExemplo key={`c${i}`} c={montarCartao({ subject, titulo: s.title, corpo: s.body_markdown, situacao: c.situation, pergunta: c.question, resposta: c.answer })} />;
+        const ro = roteiroDeCaso({ titulo: "Exemplo", enunciado: c.situation, pergunta: c.question, resultado: c.answer });
+        return ro ? <QuadroExemplo key={`q${i}`} itens={[c.situation]} roteiro={ro} /> : null;
+      })}
       {cases.length > 0 && (
         <div className="ap-pratica">
           <PracticeCard progressKey={s.id} cases={cases} onReread={() => document.getElementById(sectionDomId(s.id))?.scrollIntoView({ behavior: "smooth", block: "start" })} />
