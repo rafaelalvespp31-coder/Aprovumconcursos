@@ -90,11 +90,21 @@ function Escrito({ s, v, l, cor0, feito, lado }: { s: string; v: number; l: Linh
   return <>{out}</>;
 }
 
+/** Altura do mini-quadro: 140 no mínimo, cresce para caber desenhos mais altos (pirâmides, fluxos em coluna). */
+function alturaMini(its: ItemDesenho[]): number {
+  let m = 0;
+  for (const it of its) {
+    const y = it.t === "linha" ? Math.max(it.y1, it.y2) : it.t === "ret" ? it.y + it.h : it.t === "circ" ? it.cy + it.r : it.t === "curva" ? Math.max(...it.pts.map((q) => q[1])) : it.y;
+    m = Math.max(m, y);
+  }
+  return Math.max(140, Math.min(260, Math.ceil(m + 14)));
+}
+
 function Traco({ it, d }: { it: ItemDesenho; d: number }) {
   const c = cor("cor" in it ? it.cor : undefined, "grafite");
   const st = { ["--d" as string]: `${d}s`, stroke: c } as React.CSSProperties;
   if (it.t === "emoji") return <text className="lz-em" x={it.x} y={it.y} fontSize={it.tam} style={{ ["--d" as string]: `${d}s` }}>{it.s}</text>;
-  if (it.t === "texto") return <text className="lz-tx" x={it.x} y={it.y} style={{ ["--d" as string]: `${d}s`, fill: c }}>{it.s}</text>;
+  if (it.t === "texto") return <text className="lz-tx" x={it.x} y={it.y} style={{ ["--d" as string]: `${d}s`, fill: c, ...(it.tam ? { fontSize: it.tam } : {}) }}>{it.s}</text>;
   if (it.t === "linha") {
     const ang = Math.atan2(it.y2 - it.y1, it.x2 - it.x1);
     const h = 10;
@@ -336,7 +346,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
                   );
                 } else if (v >= nLab) {
                   fig = (
-                    <svg className="lz-svg lz-mini" viewBox={`0 0 ${LOUSA_W} 140`} role="img" aria-label={l.texto || "Desenho"}>
+                    <svg className="lz-svg lz-mini" viewBox={`0 0 ${LOUSA_W} ${alturaMini(l.rabisco ?? [])}`} role="img" aria-label={l.texto || "Desenho"}>
                       {(l.rabisco ?? []).map((it, i) => <Traco key={i} it={it} d={i * Math.min(0.3, 3.2 / Math.max(1, (l.rabisco ?? []).length))} />)}
                     </svg>
                   );

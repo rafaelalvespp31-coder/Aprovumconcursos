@@ -13,7 +13,7 @@ export const itemDesenho = z.discriminatedUnion("t", [
   z.object({ t: z.literal("ret"), x: n, y: n, w: n, h: n, cor: COR.optional() }),
   z.object({ t: z.literal("circ"), cx: n, cy: n, r: n, cor: COR.optional() }),
   z.object({ t: z.literal("curva"), pts: z.array(z.tuple([n, n])).min(2).max(24), cor: COR.optional() }),
-  z.object({ t: z.literal("texto"), x: n, y: n, s: z.string().trim().min(1).max(40), cor: COR.optional() }),
+  z.object({ t: z.literal("texto"), x: n, y: n, s: z.string().trim().min(1).max(40), cor: COR.optional(), tam: z.number().min(9).max(40).optional() }),
   /** Emoji ou figura pronta (fruta, número, objeto): x,y é o canto inferior esquerdo; tam em pixels. */
   z.object({ t: z.literal("emoji"), x: n, y: n, s: z.string().trim().min(1).max(8), tam: z.number().min(16).max(90).default(40) }),
 ]);
@@ -47,7 +47,7 @@ export type LinhaLousa = z.infer<typeof linhaSchema>;
 export const lousaSchema = z.object({
   mostrar: z.boolean(),
   titulo: z.string().trim().max(80).default(""),
-  linhas: z.array(linhaSchema).max(28).default([]),
+  linhas: z.array(linhaSchema).max(40).default([]),
   desenho: z.array(itemDesenho).max(30).default([]),
 });
 export type Lousa = z.infer<typeof lousaSchema>;

@@ -1,3 +1,4 @@
+import { etapaDe, fluxo, listaDe, materiaDe } from "./esquemas-materias";
 import { esquemaDe, linhaSchema, novoEsquema, type EsquemaCtx, type ItemDesenho, type LinhaLousa } from "./lousa";
 
 /**
@@ -12,11 +13,11 @@ const CW = 11; // largura média de um dígito na letra do quadro
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const fmt = (n: number) => String(n);
 
-export interface Ctx { q: EsquemaCtx; modo?: "mmc" | "mdc"; feito: boolean; usadas: Set<string>; anos: { ano: string; rot: string }[] }
+export interface Ctx { q: EsquemaCtx; modo?: "mmc" | "mdc"; feito: boolean; usadas: Set<string>; anos: { ano: string; rot: string }[]; passos: string[] }
 export function novoCtx(pedido: string): Ctx {
   const s = norm(pedido);
   const modo = /\bm\.?m\.?c\b|minimo multiplo/.test(s) ? "mmc" : /\bm\.?d\.?c\b|maximo divisor/.test(s) ? "mdc" : undefined;
-  return { q: novoEsquema(), modo, feito: false, usadas: new Set(), anos: [] };
+  return { q: novoEsquema(), modo, feito: false, usadas: new Set(), anos: [], passos: [] };
 }
 
 function passos(ns: number[]): { p: number; vals: number[] }[] | null {
@@ -109,16 +110,29 @@ function eventosTempo(ev: { ano: string; rot: string }[]): LinhaLousa {
 
 /** Fecha a linha do tempo que ficou pendente (chame quando o Mentor termina o turno). */
 export function fimTempo(ctx: Ctx): LinhaLousa[] {
-  if (ctx.anos.length < 2) { ctx.anos = []; return []; }
-  const d = eventosTempo(ctx.anos);
+  const out: LinhaLousa[] = [];
+  if (ctx.anos.length >= 2) out.push(eventosTempo(ctx.anos));
   ctx.anos = [];
-  return [d];
+  if (ctx.passos.length >= 3) out.push(fluxo(ctx.passos));
+  ctx.passos = [];
+  return out;
 }
 
 const ints = (s: string, min: number, max: number) => [...new Set([...s.matchAll(/\d{1,6}/g)].map((m) => Number(m[0])).filter((n) => n >= min && n <= max))];
 
 export function esquemasDe(frase: string, ctx: Ctx): LinhaLousa[] {
   const s = norm(frase);
+  // esquemas por matéria (conceitos conhecidos) e listas/etapas citadas
+  const mat = materiaDe(frase, ctx.usadas);
+  if (mat) return [mat];
+  const lista = listaDe(frase);
+  if (lista) return [lista];
+  const et = etapaDe(frase);
+  if (et) {
+    ctx.passos.push(et);
+    if (ctx.passos.length >= 4) { const d = fluxo(ctx.passos); ctx.passos = []; return [d]; }
+    return [];
+  }
   // MMC / MDC
   const modo = /\bm\.?m\.?c\b|minimo multiplo/.test(s) ? "mmc" : /\bm\.?d\.?c\b|maximo divisor/.test(s) ? "mdc" : null;
   if (modo) ctx.modo = modo;
