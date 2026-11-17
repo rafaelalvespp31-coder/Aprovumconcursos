@@ -2,7 +2,7 @@
 
 import { comandoDitado, fimDitado, frasesDe, linhaDitado, novoDitado, type EstadoDitado } from "@/domain/mentor/ditado";
 import { esquemasDe, fimTempo, novoCtx, type Ctx as EsquemaCtx } from "@/domain/mentor/esquemas";
-import { anunciaLousa, ehConversa, linhaDeFala, linhaTitulo, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
+import { anunciaLousa, ehConversa, tituloDaFala, linhaDeFala, linhaTitulo, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
@@ -84,7 +84,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     const l = linhaDeFala(frase, m.linhas.length === 0, m.linhas.length);
     if (!l) return;
     if (!m.titulo) {
-      m.titulo = tituloDe(r0Turno.current);
+      m.titulo = tituloDaFala(frase) ?? tituloDe(r0Turno.current);
       m.linhas.push(linhaTitulo(m.titulo));
       m.quandos.push(agoraS());
     }
@@ -107,6 +107,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     const r = ref.current;
     let mudou = false;
     for (const fr of frases) {
+      if (!m.titulo) { const tf = tituloDaFala(fr); if (tf) m.titulo = tf; }
       const adiante = r.ctx ? Math.max(0, r.next - r.ctx.currentTime) : 0;
       if (comandoDitado(m.dit!, fr, Math.min(10, Math.max(0, adiante - fr.length / 13)))) mudou = true;
     }
@@ -158,7 +159,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (g && g.modo === "ditado" && g.dit) {
       const pedido = ref.current.turn || falaTurno.current;
       const tit = tituloDe(pedido);
-      if (comandoDitado(g.dit, pedido, 0) || (tit !== "Explicação" && tit.length > 2 && comandoDitado(g.dit, `Título: ${tit}`, 0))) { g.titulo = tit; g.linhas = [linhaDitado(g.dit)]; g.quandos = [agoraS()]; publicarTrans(); }
+      if (comandoDitado(g.dit, pedido, 0)) { g.titulo = tit; g.linhas = [linhaDitado(g.dit)]; g.quandos = [agoraS()]; publicarTrans(); }
     }
   };
   const progresso = () => {

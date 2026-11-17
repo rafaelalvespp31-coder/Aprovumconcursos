@@ -137,7 +137,7 @@ function simbolos(s: string): string {
 /** Título a partir do pedido do aluno ("me dá um exemplo de regra de três no quadro" → "Regra de três"). */
 export function tituloDe(pedido: string): string {
   const m = /\b(?:de|da|do|sobre|d[ea]s)\s+([^,.?!]{3,40}?)(?:\s+(?:no|na|em|pra|para|com)\s+(?:o\s+|a\s+)?(?:quadro|lousa)|[,.?!]|$)/i.exec(pedido.replace(/\s+/g, " "));
-  const s = (m?.[1] ?? "").replace(/\b(um|uma|exemplo|escrito|desenhado)\b/gi, "").replace(/\s+/g, " ").trim();
+  const s = (m?.[1] ?? "").replace(/\b(um|uma|exemplo|escrito|desenhado|para eu lembrar|pra eu lembrar|pra mim|para mim|por favor|aqui|agora)\b/gi, "").replace(/\b(est|ex)ratividade\b/gi, "extratividade").replace(/\s+/g, " ").trim();
   return s ? s.charAt(0).toUpperCase() + s.slice(1, 38) : "Explicação";
 }
 
@@ -252,4 +252,11 @@ export function esquemaDe(frase: string, ctx: EsquemaCtx): LinhaLousa | null {
   const d = desenhoQuantidade(q);
   if (d) ctx.usadas.add(q.raiz);
   return d;
+}
+
+/** Assunto dito pelo próprio Mentor ("Vamos ver extratividade da lei penal"): texto certo, sem os erros de transcrição da fala do aluno. */
+export function tituloDaFala(frase: string): string | null {
+  const m = /\b(?:vamos|hoje|agora)\s+(?:falar|ver|estudar|aprender|entender|resolver|calcular|fazer)\s+(?:sobre\s+|de\s+|do\s+|da\s+|dos\s+|das\s+|o\s+|a\s+|um\s+|uma\s+)?([^,.?!:;]{3,48})/i.exec(frase);
+  const s = m?.[1]?.trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1) : null;
 }

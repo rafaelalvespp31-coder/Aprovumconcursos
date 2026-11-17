@@ -101,7 +101,7 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
     if (!resto || e.yTempo === undefined) return true;
     const k = e.marcos++;
     const x = e.margem + 80 + (k + 1) * ((e.W - e.margem * 2 - 160) / 5);
-    push({ t: "circ", cx: Math.round(x), cy: e.yTempo, r: 6, cor: "vermelho", d }, tx(Math.max(e.margem, x - resto.length * cw(14) / 2), e.yTempo + 28, resto.slice(0, 22), CICLO[k % 5]!, 14, d + 0.15));
+    push({ t: "circ", cx: Math.round(x), cy: e.yTempo, r: 6, cor: "vermelho", d }, tx(Math.max(e.margem, x - resto.length * cw(14) / 2), e.yTempo + 28, resto.slice(0, 30), CICLO[k % 5]!, 14, d + 0.15));
     e.y = Math.max(e.y, e.yTempo + 40);
   } else if (cmd === "caixa") {
     const titulo = resto.replace(NUM_PALAVRA, "").trim() || "Caixa";
@@ -312,13 +312,13 @@ export function naturalDitado(e: EstadoDitado, frase: string, atraso: number): b
   const ano = /\b(1[0-9]{3}|20[0-9]{2})\b\s*,?\s*(.*)$/.exec(f);
   if (ano) {
     if (e.yTempo === undefined) comandoDitado(e, "Linha do tempo:", atraso);
-    const rot = curto(ano[2]!.replace(/^(?:a|o|foi|era|quando|que|com|em|:|,)\s+/i, ""), 2);
+    const rot = curto(ano[2]!.replace(/^(?:a|o|foi|era|quando|que|com|em|:|,)\s+/i, ""), 3);
     return comandoDitado(e, `Marco: ${ano[1]}${rot ? " " + rot : ""}`, atraso);
   }
   const o = ORD.exec(f);
   if (o && f.length > o[0].length + 6) {
     const antes = e.itens.length;
-    const ok = comandoDitado(e, `Caixa: ${curto(f.slice(o[0].length), 6)}`, atraso);
+    const ok = comandoDitado(e, `Caixa: ${curto(f.slice(o[0].length), 10)}`, atraso);
     if (e.col > 0 && e.col < e.ncols) { // fluxograma: seta ligando a caixa anterior (mesma linha) a esta
       const x = e.margem + e.col * (e.colW + 18), y = e.rowTop + 22;
       e.itens.push({ t: "linha", x1: x - 18, y1: y, x2: x - 2, y2: y, cor: "vermelho", d: Math.max(0, atraso) + 0.3, seta: true });

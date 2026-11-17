@@ -115,3 +115,11 @@ describe("conversa que não vai para o quadro", () => {
     expect(ehConversa("A lei penal não retroage, salvo para beneficiar o réu.")).toBe(false);
   });
 });
+
+import { tituloDaFala } from "./lousa";
+describe("títulos sem erro de transcrição", () => {
+  it("usa o assunto dito pelo Mentor e limpa o pedido do aluno", () => {
+    expect(tituloDaFala("Vamos ver extratividade da lei penal.")).toBe("Extratividade da lei penal");
+    expect(tituloDe("Explique o tempo da estratividade para eu lembrar")).not.toMatch(/estratividade|lembrar/);
+  });
+});
