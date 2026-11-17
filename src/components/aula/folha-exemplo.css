@@ -1,0 +1,27 @@
+.fo{margin:16px 0;padding:14px 16px;background:#fff;color:#1b2430;border:1px solid #d9dee6;border-left:4px solid var(--tema,#2563eb);border-radius:10px;box-shadow:0 1px 2px rgba(15,23,42,.06);font-size:15px;line-height:1.5}
+.fo-cab{font-size:11px;letter-spacing:.08em;font-weight:600;color:#475467;margin-bottom:10px}
+.fo-cab b{color:#1b2430;letter-spacing:0}
+.fo-rotulo{font-size:12px;font-weight:600;color:#475467;margin:10px 0 4px}
+.fo-bloco,.fo-caixa{margin:6px 0}
+.fo-caixa{padding:8px 12px;background:#f6f8fb;border-radius:8px}
+.fo-eq{font-size:17px;margin:6px 0;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.fo-expr{display:inline-flex;align-items:center;gap:3px;flex-wrap:wrap}
+.fo-fr{display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;margin:0 3px;line-height:1.2}
+.fo-fr>span:first-child{border-bottom:1.5px solid currentColor;padding:0 4px}
+.fo-fr>span:last-child{padding:0 4px}
+.fo-passos{list-style:none;margin:6px 0;padding:0;display:grid;gap:6px}
+.fo-passos li{display:flex;align-items:center;gap:10px;font-size:17px;padding:4px 0}
+.fo-n{flex:none;width:22px;height:22px;border-radius:50%;background:var(--tema,#2563eb);color:#fff;font-size:12px;display:grid;place-items:center}
+.fo-final,.fo-resp{font-weight:700;background:#ecfdf3;border:1.5px solid #12b76a;color:#05603a;border-radius:8px;padding:6px 12px;margin:6px 0}
+.fo-final{display:block!important}
+.fo-tab{border-collapse:collapse;margin:8px 0;min-width:60%}
+.fo-tab th{background:var(--tema,#2563eb);color:#fff;font-weight:600;font-size:13px;padding:6px 14px;text-align:center}
+.fo-tab td{border:1px solid #d9dee6;padding:6px 14px;text-align:center}
+.fo-tab tbody tr:nth-child(even){background:#f6f8fb}
+.fo-x{font-weight:700;color:#b42318}
+.fo-seta{font-size:13px;color:#475467;margin:4px 0}
+.fo-tempo{list-style:none;margin:8px 0;padding:0 0 0 14px;border-left:2px solid var(--tema,#2563eb)}
+.fo-tempo li{margin:6px 0;padding-left:8px}
+.fo-desenho{margin:8px 0}
+.fo-desenho .qe{margin:0;max-width:100%}
+@media(max-width:480px){.fo{padding:12px}.fo-eq,.fo-passos li{font-size:16px}}

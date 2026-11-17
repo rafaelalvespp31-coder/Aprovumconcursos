@@ -4,10 +4,11 @@ import "@/components/mentor/mentor-lousa.css";
 import { IconeLousa, iconeDaLousa } from "@/components/aula/icone-lousa";
 import { alturaMini, Traco } from "@/components/mentor/mentor-lousa";
 import { roteiroDeExemplo } from "@/domain/mentor/catalogo-lousa";
+import { FolhaExemplo } from "@/components/aula/folha-exemplo";
 import { comandoDitado, fimDitado, linhaDitado, novoDitado } from "@/domain/mentor/ditado";
 
 /** Exemplo da aula desenhado numa lousa, como um professor faria: nasce a lápis quando entra na tela. */
-export function QuadroExemplo({ itens, roteiro, children }: { itens: string[]; roteiro?: string[]; children?: React.ReactNode }) {
+export function QuadroDesenhado({ itens, roteiro, children }: { itens: string[]; roteiro?: string[]; children?: React.ReactNode }) {
   const ref = useRef<HTMLDivElement>(null);
   const [visto, setVisto] = useState(false);
   const [largo, setLargo] = useState(true);
@@ -53,5 +54,17 @@ export function QuadroExemplo({ itens, roteiro, children }: { itens: string[]; r
       </div>
       {children && <details className="qe-texto"><summary>Ver o exemplo em texto</summary>{children}</details>}
     </div>
+  );
+}
+
+/** Exemplo da aula como folha de material didático (estilo apostila/PDF). Esquemas gráficos (armada, divisão, MMC) entram desenhados dentro da folha. */
+export function QuadroExemplo({ itens, roteiro, children }: { itens: string[]; roteiro?: string[]; children?: React.ReactNode }) {
+  const ro = roteiro ?? roteiroDeExemplo(itens);
+  if (!ro) return <>{children}</>;
+  return (
+    <>
+      <FolhaExemplo roteiro={ro} desenho={(r) => <QuadroDesenhado itens={itens} roteiro={r} />} />
+      {children && <details className="qe-texto"><summary>Ver o exemplo em texto</summary>{children}</details>}
+    </>
   );
 }
