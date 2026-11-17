@@ -5,7 +5,7 @@ const GATILHO = /(\besquema|\bdiagrama|linha do tempo|mapa mental|\bquadro\b|\bl
 export const pedeLousa = (fala: string): boolean => fala.trim().length >= 8 && GATILHO.test(fala);
 
 const COR = z.enum(["grafite", "vermelho", "azul", "verde", "laranja", "roxo", "rosa"]);
-const n = z.number().min(0).max(1000);
+const n = z.number().min(0).max(2000);
 
 /** Desenho em 400×260: só primitivas simples, desenhadas pelo nosso componente (nunca SVG vindo da IA). */
 export const itemDesenho = z.discriminatedUnion("t", [

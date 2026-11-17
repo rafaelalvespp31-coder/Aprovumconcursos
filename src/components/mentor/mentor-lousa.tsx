@@ -98,7 +98,7 @@ export function alturaMini(its: ItemDesenho[], largo = false): number {
     const y = it.t === "linha" ? Math.max(it.y1, it.y2) : it.t === "ret" ? it.y + it.h : it.t === "circ" ? it.cy + it.r : it.t === "curva" ? Math.max(...it.pts.map((q) => q[1])) : it.y;
     m = Math.max(m, y);
   }
-  return Math.max(140, Math.min(largo ? 1000 : 260, Math.ceil(m + 14)));
+  return Math.max(140, Math.min(largo ? 1500 : 260, Math.ceil(m + 14)));
 }
 
 export function Traco({ it, d }: { it: ItemDesenho; d: number }) {
