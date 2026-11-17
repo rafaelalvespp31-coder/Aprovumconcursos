@@ -105,13 +105,23 @@ export function Traco({ it, d }: { it: ItemDesenho; d: number }) {
   const c = cor("cor" in it ? it.cor : undefined, "grafite");
   const st = { ["--d" as string]: `${d}s`, stroke: c } as React.CSSProperties;
   if (it.t === "emoji") return <text className="lz-em" x={it.x} y={it.y} fontSize={it.tam} style={{ ["--d" as string]: `${d}s` }}>{it.s}</text>;
-  if (it.t === "texto") return <text className="lz-tx" x={it.x} y={it.y} style={{ ["--d" as string]: `${d}s`, fill: c, ...(it.tam ? { fontSize: it.tam } : {}) }}>{it.s}</text>;
-  if (it.t === "linha") {
-    const ang = Math.atan2(it.y2 - it.y1, it.x2 - it.x1);
-    const h = 10;
+  if (it.t === "texto") {
+    // escrita à mão: a tinta aparece da esquerda para a direita no ritmo de uma caneta, com a ponta da caneta andando junto
+    const tam = it.tam ?? 19, larg = it.s.length * tam * 0.55, dur = Math.min(2.4, Math.max(0.4, it.s.length * 0.065));
+    const v = { ["--d" as string]: `${d}s`, ["--w" as string]: `${dur}s` } as React.CSSProperties;
     return (
       <g>
-        <path className="lz-tr" pathLength={1} d={`M${it.x1} ${it.y1}L${it.x2} ${it.y2}`} style={st} />
+        <text className="lz-tx lz-escrito" x={it.x} y={it.y} style={{ ...v, fill: c, ...(it.tam ? { fontSize: it.tam } : {}) }}>{it.s}</text>
+        <path className="lz-pena" d="M0 0 l-4 -11 l6 -4 l4 11z" style={{ ...v, ["--x0" as string]: `${it.x}px`, ["--x1" as string]: `${it.x + larg}px`, ["--y0" as string]: `${it.y - tam * 0.15}px`, fill: c }} />
+      </g>
+    );
+  }
+  if (it.t === "linha") {
+    const ang = Math.atan2(it.y2 - it.y1, it.x2 - it.x1);
+    const h = 10, dl = Math.min(1.1, Math.max(0.25, Math.hypot(it.x2 - it.x1, it.y2 - it.y1) / 320));
+    return (
+      <g>
+        <path className="lz-tr" pathLength={1} d={`M${it.x1} ${it.y1}L${it.x2} ${it.y2}`} style={{ ...st, animationDuration: `${dl}s` }} />
         {it.seta && <path className="lz-tr" pathLength={1} d={`M${it.x2 - h * Math.cos(ang - 0.5)} ${it.y2 - h * Math.sin(ang - 0.5)}L${it.x2} ${it.y2}L${it.x2 - h * Math.cos(ang + 0.5)} ${it.y2 - h * Math.sin(ang + 0.5)}`} style={{ ...st, ["--d" as string]: `${d + 0.5}s` }} />}
       </g>
     );
@@ -122,7 +132,7 @@ export function Traco({ it, d }: { it: ItemDesenho; d: number }) {
     return (
       <g>
         {it.bg && <path className="lz-fundo" d={dd} style={{ ["--d" as string]: `${d}s`, fill: c, ...(it.sol ? { fillOpacity: 1 } : {}) }} />}
-        <path className="lz-tr" pathLength={1} d={dd} style={st} />
+        <path className="lz-tr" pathLength={1} d={dd} style={{ ...st, animationDuration: `${Math.min(1.3, Math.max(0.4, (2 * (w + h)) / 800))}s` }} />
       </g>
     );
   }

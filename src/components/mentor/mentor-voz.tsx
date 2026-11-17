@@ -3,7 +3,7 @@
 import { descreverQuadro } from "@/domain/mentor/catalogo-lousa";
 import { comandoDitado, fimDitado, frasesDe, linhaDitado, novoDitado, type EstadoDitado } from "@/domain/mentor/ditado";
 import { esquemasDe, fimTempo, novoCtx, type Ctx as EsquemaCtx } from "@/domain/mentor/esquemas";
-import { ehConversa, linhaSchema, tituloDaFala, linhaDeFala, linhaTitulo, pedeLousa, pedidoDeCalculo, linhaDeNumero, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
+import { ehConversa, linhaSchema, tituloDaFala, linhaDeFala, linhaTitulo, pedeLousa, pedeFechar, pedidoDeCalculo, linhaDeNumero, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
@@ -35,7 +35,7 @@ const fromB64 = (b64: string) => {
  * com o Google usando um token de uso único criado pelo servidor; o servidor controla o limite
  * diário (3 min) e a instrução do Mentor.
  */
-export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = false, orbSize = 96, onClose, onSpeaking, onLevel, onLousa }: { /** Entrega a função que lê a energia do áudio (volume/graves/médios/agudos). */ onLevel?: (nivel: () => Bands) => void; /** Avisa quando o Mentor começa/para de falar (ex.: borda do card chiando). */ onSpeaking?: (falando: boolean) => void; base?: string; /** Contexto da aula lido no instante em que a conversa começa. */ getStudy?: () => (StudyContext & { lessonId?: string }) | null; /** Começa sozinho assim que o saldo de voz carrega (aberto por um clique do aluno). */ autoStart?: boolean; /** Só a orbe animada, sem cartão nem textos (toque nela para encerrar). */ orbOnly?: boolean; /** Diâmetro da orbe no modo orbOnly. */ orbSize?: number; onClose?: () => void; /** Recebe a lousa (passos e desenho) quando o aluno pede uma conta, exemplo ou esquema. */ onLousa?: (l: Lousa | "pendente" | null, sync?: () => { c: number; fim: boolean }, vivo?: { quandos: number[]; agora: () => number }) => void }) {
+export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = false, orbSize = 96, onClose, onSpeaking, onLevel, onLousa }: { /** Entrega a função que lê a energia do áudio (volume/graves/médios/agudos). */ onLevel?: (nivel: () => Bands) => void; /** Avisa quando o Mentor começa/para de falar (ex.: borda do card chiando). */ onSpeaking?: (falando: boolean) => void; base?: string; /** Contexto da aula lido no instante em que a conversa começa. */ getStudy?: () => (StudyContext & { lessonId?: string }) | null; /** Começa sozinho assim que o saldo de voz carrega (aberto por um clique do aluno). */ autoStart?: boolean; /** Só a orbe animada, sem cartão nem textos (toque nela para encerrar). */ orbOnly?: boolean; /** Diâmetro da orbe no modo orbOnly. */ orbSize?: number; onClose?: () => void; /** Recebe a lousa (passos e desenho) quando o aluno pede uma conta, exemplo ou esquema. */ onLousa?: (l: Lousa | "pendente" | "fechar" | null, sync?: () => { c: number; fim: boolean }, vivo?: { quandos: number[]; agora: () => number }) => void }) {
   const [fase, setFase] = useState<Fase>("carregando");
   const [left, setLeft] = useState(0);
   const [limit, setLimit] = useState(180);
@@ -59,7 +59,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
    * Mentor fala vira uma linha escrita, no instante em que o áudio daquela frase toca.
    */
   type IA = { abort: AbortController; linhas: LinhaLousa[]; titulo: string; fim: boolean; usando: boolean };
-  type Trans = { soNum?: boolean; ia?: IA; modo: "texto" | "ditado" | "ia"; dit?: EstadoDitado; esq: EsquemaCtx; flush: ReturnType<typeof setTimeout> | null; buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; t0: number; msTexto: number | null; msTraco: number | null; modo0: "texto" | "ditado"; timer: ReturnType<typeof setTimeout> | null };
+  type Trans = { fechada?: boolean; soNum?: boolean; ia?: IA; modo: "texto" | "ditado" | "ia"; dit?: EstadoDitado; esq: EsquemaCtx; flush: ReturnType<typeof setTimeout> | null; buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; t0: number; msTexto: number | null; msTraco: number | null; modo0: "texto" | "ditado"; timer: ReturnType<typeof setTimeout> | null };
   const trans = useRef<Trans | null>(null);
   const agoraS = () => performance.now() / 1000;
   const publicarTrans = () => {
@@ -128,9 +128,14 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     }
     if (fimDoTurno) { if (m.timer) clearTimeout(m.timer); m.timer = setTimeout(fimTrans, 2500); }
   };
+  /** Terminada a explicação (fim do turno), o que o Mentor disser depois não vai mais para a lousa. */
   const ouvirFala = (texto: string, fimDoTurno: boolean) => {
     const m = trans.current;
-    if (!m) return;
+    if (!m || m.fechada) return;
+    ouvirFalaAberta(m, texto, fimDoTurno);
+    if (fimDoTurno) m.fechada = true;
+  };
+  const ouvirFalaAberta = (m: Trans, texto: string, fimDoTurno: boolean) => {
     if (m.modo === "ia") { if (fimDoTurno) { if (m.timer) clearTimeout(m.timer); m.timer = setTimeout(fimTrans, 2500); } return; }
     if (m.msTexto === null && texto.trim()) m.msTexto = Math.round(performance.now() - m.t0);
     m.buf += texto;
@@ -216,6 +221,17 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       }).catch(() => false);
   };
   const r0Turno = useRef("");
+  const bloqueioLousa = useRef(false); // "fecha a lousa": até o fim deste turno nada abre nem escreve
+  /** O aluno mandou fechar: fecha a lousa e para de escrever na hora. */
+  const fecharPorVoz = () => {
+    bloqueioLousa.current = true;
+    if (debLousa.current) { clearTimeout(debLousa.current); debLousa.current = null; }
+    const m = trans.current;
+    if (m) { if (m.timer) clearTimeout(m.timer); if (m.flush) clearTimeout(m.flush); m.ia?.abort.abort(); }
+    trans.current = null;
+    lousaOcupada.current = false;
+    onLousaRef.current?.("fechar");
+  };
   const dispararLousa = () => {
     if (debLousa.current) { clearTimeout(debLousa.current); debLousa.current = null; }
     if (lousaOcupada.current || !onLousaRef.current) return;
@@ -481,8 +497,9 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     // Lousa: abre na hora (quando o aluno pede uma conta/exemplo/desenho ou o Mentor diz que vai anotar) e
     // monta o conteúdo em paralelo à fala; o quadro já aparece escrevendo e recebe o texto quando chega.
     if (replied) falaTurno.current += replied;
-    if ((starts || replied) && pedeLousa(r.turn)) dispararLousa(); // só abre quando o ALUNO pede para desenhar/escrever; o que o Mentor diz nunca abre o quadro
-    if (said && onLousaRef.current && pedeLousa(r.turn)) { // dispara assim que o aluno termina o pedido, sem esperar o Mentor começar
+    if (said && pedeFechar(r.turn)) fecharPorVoz();
+    if (!bloqueioLousa.current && (starts || replied) && pedeLousa(r.turn)) dispararLousa(); // só abre quando o ALUNO pede para desenhar/escrever; o que o Mentor diz nunca abre o quadro
+    if (said && onLousaRef.current && !bloqueioLousa.current && pedeLousa(r.turn)) { // dispara assim que o aluno termina o pedido, sem esperar o Mentor começar
       if (debLousa.current) clearTimeout(debLousa.current);
       debLousa.current = setTimeout(dispararLousa, 120);
     }
@@ -500,6 +517,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
         r.byeTimer = setTimeout(() => void encerrar("usuario"), Math.min(8000, falta * 1000 + 500));
       }
       r.turn = r.bye ? r.turn : "";
+      bloqueioLousa.current = false;
     }
     for (const p of m.serverContent?.modelTurn?.parts ?? []) {
       if (p.inlineData?.data && (p.inlineData.mimeType ?? "").startsWith("audio/")) tocar(p.inlineData.data);

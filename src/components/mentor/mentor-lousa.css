@@ -130,3 +130,12 @@
   .lz-prog-barra { height: 4px; }
   .lz-prog-n { min-width: 30px; }
 }
+
+/* escrita à caneta no quadro desenhado: tinta revelada da esquerda para a direita + ponta da caneta acompanhando */
+@keyframes lz-escrito { from { clip-path: inset(-8px 100% -8px -2px); } to { clip-path: inset(-8px -8px -8px -2px); } }
+@keyframes lz-pena { 0% { opacity: 0; translate: var(--x0) var(--y0); } 4% { opacity: .95; } 94% { opacity: .95; } 100% { opacity: 0; translate: var(--x1) var(--y0); } }
+.lz-tx.lz-escrito { opacity: 1; animation: lz-escrito var(--w, .8s) linear var(--d, 0s) both; }
+.lz-pena { opacity: 0; transform-box: fill-box; animation: lz-pena var(--w, .8s) linear var(--d, 0s) both; pointer-events: none; }
+.lz-pronto .lz-tx.lz-escrito { animation: none; clip-path: none; }
+.lz-pronto .lz-pena { display: none; }
+@media (prefers-reduced-motion: reduce) { .lz-tx.lz-escrito { animation: none; clip-path: none; } .lz-pena { display: none; } }

@@ -3,6 +3,11 @@ import { z } from "zod";
 
 /** Só abre o quadro quando o aluno pede explicitamente para escrever/desenhar/mostrar no quadro; explicar e dar exemplo falado não abre. */
 const GATILHO = /(\besquema|\bdiagrama|linha do tempo|mapa mental|\bquadro\b|\blousa\b|desenh|rabisc|ilustr|\bescrev(a|e|er|endo)\b|\banot(a|e|ar|ando)\b|exemplo (escrito|desenhado)|mostr\w+ (por escrito|desenhando|na tela)|passo a passo (escrito|no quadro))/i;
+/** O aluno mandou fechar a lousa/quadro ("fecha a lousa", "pode fechar o quadro"): fecha e não escreve mais nada. */
+export const pedeFechar = (fala: string): boolean => {
+  const s = fala.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return /\b(fech\w*|esconde\w*|some com|tira|tire|remov\w*|encerr\w*)\b[^.!?]{0,30}\b(lousa|quadro|desenho)\b/.test(s);
+};
 export const pedeLousa = (fala: string): boolean => fala.trim().length >= 8 && GATILHO.test(fala);
 
 const COR = z.enum(["grafite", "vermelho", "azul", "verde", "laranja", "roxo", "rosa", "branco"]);
