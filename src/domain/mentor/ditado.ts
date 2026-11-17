@@ -399,6 +399,7 @@ export function naturalDitado(e: EstadoDitado, frase: string, atraso: number): b
     const rot = curto([antes, depois].filter(Boolean).join(" ").replace(/^[,;\s]+/, ""), 12);
     return comandoDitado(e, `Marco: ${ano[1]}${rot ? " " + rot.charAt(0).toUpperCase() + rot.slice(1) : ""}`, atraso);
   }
+  if (e.mmc) return false; // a tabela do MMC é o desenho: frases de explicação não viram caixas por cima dela
   const o = ORD.exec(f);
   if (o && f.length > o[0].length + 6) {
     const antes = e.itens.length;

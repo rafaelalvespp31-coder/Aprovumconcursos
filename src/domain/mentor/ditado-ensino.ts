@@ -31,7 +31,9 @@ function iniciaMmc(e: EstadoDitado, modo: "mmc" | "mdc", resto: string, d: numbe
   const colx = (i: number) => e.margem + 10 + i * sp;
   const barX = e.margem + ns.length * sp + 2;
   ns.forEach((n, i) => it.push(tx(colx(i), y + 30, String(n), "azul", tam, d + i * 0.1)));
-  it.push(lin(barX, y + 4, barX, y + 30 + 5 * pitch, "grafite", d + 0.2));
+  let linhas = 0; // quantas divisões a conta terá, para a barra vertical acabar onde a tabela acaba
+  { let v = [...ns]; for (const p of [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31]) while (v.some((n) => n > 1 && n % p === 0) && linhas < 6) { v = v.map((n) => (n > 1 && n % p === 0 ? n / p : n)); linhas++; } }
+  it.push(lin(barX, y + 4, barX, y + 30 + Math.max(2, linhas) * pitch - 14, "grafite", d + 0.2));
   e.mmc = { modo, vals: ns, x0: e.margem, y0: y + 30, k: 0, usados: [], pitch, sp, feito: false, xR: larg ? Math.round(e.W * 0.52) : e.margem, yR: y + 30 };
   e.ym = Math.max(e.ym, y + 30 + 40);
   return true;
@@ -171,20 +173,24 @@ export function conversaEnsino(e: EstadoDitado, frase: string, d: number, it: It
   const m = e.mmc;
   if (!m || m.feito) return false;
   const s = norm(frase);
-  if (/\b(multiplic\w*|resultado|produto)\b/.test(s)) { finalizaMmc(e, d, it); return true; }
+  if (/\b(multiplic\w*|resultado|produto)\b/.test(s)) { completaMmc(e, d, it); return true; }
   const p = /\b(?:por|pelo|com o|come[cç]\w* (?:pelo|por)|proximo (?:primo )?(?:e|eh)? ?o?)\s+(\d{1,2})\b/.exec(s);
   if (p && /\b(divid\w*|divis\w*|primo|vamos|comecar|come[cç]\w*|agora|proximo|depois|vez|novo|novamente|mais)\b/.test(s)) return aplicaPrimo(e, Number(p[1]), d, it);
   return false;
 }
 
-/** Fim do turno: fecha o resultado pendente do MMC. */
-export function fimEnsino(e: EstadoDitado, it: ItemDesenho[]): void {
+/** Completa a fatoração que o Mentor não narrou inteira (o produto só vale com todos os fatores) e fecha o resultado. */
+function completaMmc(e: EstadoDitado, d: number, it: ItemDesenho[]): void {
   const m = e.mmc;
   if (!m || m.feito) return;
-  // o Mentor não narrou todas as divisões: completa a fatoração sozinha, para o quadro nunca ficar pela metade
   for (const p of [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31]) {
-    while (!m.feito && m.vals.some((v) => v > 1 && v % p === 0) && m.k < 6) aplicaPrimo(e, p, 0.3 + m.k * 0.5, it);
+    while (!m.feito && m.vals.some((v) => v > 1 && v % p === 0) && m.k < 6) aplicaPrimo(e, p, d + m.k * 0.5, it);
     if (m.feito) return;
   }
-  finalizaMmc(e, 0.3, it);
+  finalizaMmc(e, d, it);
+}
+
+/** Fim do turno: fecha o resultado pendente do MMC. */
+export function fimEnsino(e: EstadoDitado, it: ItemDesenho[]): void {
+  completaMmc(e, 0.3, it);
 }

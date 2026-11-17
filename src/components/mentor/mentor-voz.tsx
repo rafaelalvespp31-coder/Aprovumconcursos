@@ -48,6 +48,8 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   const onLousaRef = useRef(onLousa);
   useEffect(() => { onLousaRef.current = onLousa; });
   const falaTurno = useRef("");
+  const ofertaQuadro = useRef(false); // o Mentor terminou a explicação oferecendo exemplificar no quadro
+  const pedidoAnterior = useRef(""); // a pergunta do aluno que ele acabou de explicar
   const debLousa = useRef<ReturnType<typeof setTimeout> | null>(null);
   /** Roteiro em andamento: eventos (instante de reprodução → caracteres falados) para o quadro seguir a voz. */
   const roteiro = useRef<{ total: number; chars: number; ev: { t: number; c: number }[]; fim: boolean; tFim: number; pend: string[]; n: number; fechado: boolean; contando: boolean } | null>(null);
@@ -497,6 +499,10 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     // Lousa: abre na hora (quando o aluno pede uma conta/exemplo/desenho ou o Mentor diz que vai anotar) e
     // monta o conteúdo em paralelo à fala; o quadro já aparece escrevendo e recebe o texto quando chega.
     if (replied) falaTurno.current += replied;
+    if (said && ofertaQuadro.current && /^\W*(sim|pode|quero|claro|manda|por favor|vamos|bora|ok|beleza|aceito|com certeza|isso)\b/i.test(r.turn.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()) && !pedeLousa(r.turn)) {
+      r.turn = `${pedidoAnterior.current} no quadro`; // "sim" à oferta = pedido do mesmo assunto no quadro
+      ofertaQuadro.current = false;
+    }
     if (said && pedeFechar(r.turn)) fecharPorVoz();
     if (!bloqueioLousa.current && (starts || replied) && pedeLousa(r.turn)) dispararLousa(); // só abre quando o ALUNO pede para desenhar/escrever; o que o Mentor diz nunca abre o quadro
     if (said && onLousaRef.current && !bloqueioLousa.current && pedeLousa(r.turn)) { // dispara assim que o aluno termina o pedido, sem esperar o Mentor começar
@@ -509,6 +515,8 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (contar) ro!.chars = Math.min(ro!.total, ro!.chars + replied!.length);
     if (m.serverContent?.turnComplete) {
       ouvirFala("", true);
+      ofertaQuadro.current = /(quadro|lousa)[^?]*\?\W*$/i.test(falaTurno.current.trim());
+      if (r.turn && !pedeLousa(r.turn)) pedidoAnterior.current = r.turn;
       falaTurno.current = "";
       modeloTurno.current = false;
       if (r.bye) {

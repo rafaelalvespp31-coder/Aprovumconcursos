@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { comandoDitado, fimDitado, frasesDe, linhaDitado, novoDitado } from "./ditado";
+import { comandoDitado, fimDitado, frasesDe, linhaDitado, naturalDitado, novoDitado } from "./ditado";
 
 describe("ditado do desenho", () => {
   it("monta o esquema da extratividade em ordem", () => {
@@ -181,5 +181,20 @@ describe("narração que antes virava frases soltas (celular)", () => {
     comandoDitado(e, "Conta: 5 vezes x igual a 8 vezes 20.", 0); comandoDitado(e, "Primeiro, a lei vale para fatos futuros.", 0);
     const y = T(e).filter((x) => x.t === "texto").map((x) => (x as { y: number }).y);
     expect(Math.max(...y)).toBeGreaterThan(Math.min(...y) + 30);
+  });
+});
+
+describe("MMC não fica bagunçado nem incompleto", () => {
+  it("completa os fatores e não escreve caixa por cima da tabela", () => {
+    const e = novoDitado(false, true);
+    naturalDitado(e, "Vamos calcular o MMC de 12 e 18", 0);
+    naturalDitado(e, "Primeiro, escrevemos 12 e 18 lado a lado e usamos o", 0);
+    naturalDitado(e, "vamos dividir por 2", 0);
+    naturalDitado(e, "agora por 3", 0);
+    naturalDitado(e, "agora multiplicamos", 0);
+    fimDitado(e);
+    const txt = e.itens.filter((i) => i.t === "texto").map((i) => (i as { s?: string; txt?: string }).s ?? (i as { txt?: string }).txt ?? "").join(" ");
+    expect(txt).toContain("MMC = 36");
+    expect(txt).not.toContain("Escrevemos");
   });
 });
