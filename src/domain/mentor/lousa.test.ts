@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { lousaSchema, pedeLousa } from "./lousa";
+import { linhaDeFala, lousaSchema, pedeLousa, tituloDe } from "./lousa";
 
 describe("pedeLousa", () => {
   it("abre só quando o aluno pede quadro, lousa ou desenho", () => {
@@ -61,5 +61,19 @@ describe("linhaDeChamada", () => {
     expect(linhaDeChamada({ tipo: "figuras", texto: "5 maçãs:", emoji: "🍎", quantidade: 5 })?.figuras).toEqual([{ e: "🍎", n: 5 }]);
     expect(linhaDeChamada({ tipo: "html", texto: "x" })).toBeNull();
     expect(linhaDeChamada({ tipo: "conta", texto: "x", nivel: 99 })?.nivel).toBe(5);
+  });
+});
+
+describe("lousa por transcrição", () => {
+  it("título do pedido", () => {
+    expect(tituloDe("me dá um exemplo de regra de três no quadro")).toBe("Regra de três");
+    expect(tituloDe("escreve na lousa")).toBe("Explicação");
+  });
+  it("frase → linha", () => {
+    expect(linhaDeFala("Bora, olha aqui!", true)).toBeNull();
+    expect(linhaDeFala("Ficou claro?", false)).toBeNull();
+    expect(linhaDeFala("5 vezes x é igual a 8 vezes 20", false)).toMatchObject({ tipo: "conta", texto: "5 · x = 8 · 20" });
+    expect(linhaDeFala("Então x é igual a 32", false)).toMatchObject({ tipo: "resposta", caixa: true });
+    expect(linhaDeFala("Se 5 maçãs custam 20 reais", true)).toMatchObject({ tipo: "texto", nivel: 0 });
   });
 });

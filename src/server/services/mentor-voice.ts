@@ -1,6 +1,6 @@
 import "server-only";
 import { studyContextInstruction, type StudyContext } from "@/domain/mentor/study-context";
-import { Behavior, EndSensitivity, GoogleGenAI, Modality, StartSensitivity, Type } from "@google/genai";
+import { EndSensitivity, GoogleGenAI, Modality, StartSensitivity, Type } from "@google/genai";
 import { createAdminClient } from "../supabase";
 import { logEvent } from "../observability";
 import { getMyPlan } from "./plans";
@@ -120,13 +120,12 @@ async function personalPrompt(userId: string): Promise<string> {
  * aceita a ferramenta e, quando recusa, a conversa cai. Ligue com GEMINI_VOICE_SEARCH=1 só depois de testar.
  */
 /** A lousa abre sozinha na tela do aluno quando ele pede uma conta, exemplo ou desenho; a voz acompanha. */
-const LOUSA_RULE = `\n\nLOUSA: quando o aluno pedir de forma explícita para escrever, desenhar ou dar um exemplo no quadro/lousa, use a função lousa_escrever. Responda com duas ou três palavras ("Bora, olha aqui!") e já chame a função com o título (tipo "titulo"); depois, a cada passo, chame lousa_escrever com a linha curta que vai ficar escrita (enunciado, cada conta em uma linha, resposta final com caixa) e CONTINUE falando esse passo em voz alta sem parar, como um professor que escreve e explica ao mesmo tempo. Faça de 5 a 9 linhas, sem emojis. Fale números e operações por extenso, sem ler símbolos. Nunca diga que vai escrever nem mencione a função. Ao terminar, diga em uma frase que a explicação ficou salva nas Ferramentas e pergunte se ficou claro. Se receber mensagens [PASSO] ou [FIM] do aplicativo, apenas fale o conteúdo em até duas frases, sem perguntas. Em qualquer outro pedido, ensine só falando, sem mencionar lousa nem quadro.`;
+const LOUSA_RULE = `\n\nLOUSA: quando o aluno pedir de forma explícita para escrever, desenhar ou dar um exemplo no quadro/lousa, a lousa abre sozinha e escreve na tela, em tempo real, cada frase que você falar. Então comece com duas palavras ("Bora, olha aqui!") e explique em frases curtas (até 12 palavras), uma ideia ou uma conta por frase, sem emojis: primeiro o enunciado, depois cada passo da conta com números em algarismos ("5 vezes x é igual a 8 vezes 20"), por fim a resposta ("Então x é igual a 32"). Evite rodeios e repetições: o que você diz é o que fica escrito. Não diga que vai escrever. Ao terminar, diga em uma frase que ficou salvo nas Ferramentas e pergunte se ficou claro. Em qualquer outro pedido, ensine só falando, sem mencionar lousa nem quadro.`;
 
 const lousaTool = {
   functionDeclarations: [
     {
       name: "lousa_escrever",
-      behavior: Behavior.NON_BLOCKING,
       description: "Escreve UMA linha no quadro branco do aluno, na hora, sem interromper a sua fala. Chame uma vez por passo e continue falando esse passo em voz alta. A primeira chamada abre a lousa.",
       parameters: {
         type: Type.OBJECT,
@@ -148,7 +147,8 @@ const lousaTool = {
     },
   ],
 };
-const voiceTools = () => [lousaTool, ...(process.env.GEMINI_VOICE_SEARCH === "1" ? [{ googleSearch: {} }] : [])];
+void lousaTool; // a lousa agora acompanha a transcrição da fala: o modelo de voz não recebe funções (evitava mudez/travas)
+const voiceTools = () => (process.env.GEMINI_VOICE_SEARCH === "1" ? [{ googleSearch: {} }] : undefined);
 
 export interface VoiceSession {
   token: string;

@@ -111,3 +111,40 @@ export function linhaDeChamada(a: Record<string, unknown>): LinhaLousa | null {
   const ok = linhaSchema.safeParse(raw);
   return ok.success ? ok.data : null;
 }
+
+const NUM = /\d/;
+const CONTA = /\b(vezes|dividido|dividida|mais|menos|igual|multiplic|soma|subtra)\b|[=+×÷·]/i;
+const FECHO = /\b(portanto|ent[ãa]o|resultado|resposta|logo|fica|d[áa])\b/i;
+
+/** Escreve a conta como num quadro: "5 vezes x é igual a 8 vezes 20" → "5 · x = 8 · 20". */
+function simbolos(s: string): string {
+  return s
+    .replace(/\s+(é|e|fica|dá)?\s*igual\s+a\s+/gi, " = ")
+    .replace(/\s+dividido\s+por\s+/gi, " ÷ ")
+    .replace(/\s+vezes\s+/gi, " · ")
+    .replace(/\s+mais\s+/gi, " + ")
+    .replace(/\s+menos\s+/gi, " − ");
+}
+
+/** Título a partir do pedido do aluno ("me dá um exemplo de regra de três no quadro" → "Regra de três"). */
+export function tituloDe(pedido: string): string {
+  const m = /\b(?:de|da|do|sobre|d[ea]s)\s+([^,.?!]{3,40}?)(?:\s+(?:no|na|em|pra|para|com)\s+(?:o\s+|a\s+)?(?:quadro|lousa)|[,.?!]|$)/i.exec(pedido.replace(/\s+/g, " "));
+  const s = (m?.[1] ?? "").replace(/\b(um|uma|exemplo|escrito|desenhado)\b/gi, "").replace(/\s+/g, " ").trim();
+  return s ? s.charAt(0).toUpperCase() + s.slice(1, 38) : "Explicação";
+}
+
+/** Uma frase falada pelo Mentor → linha do quadro. Devolve null para abertura, fechamento e perguntas. */
+export function linhaDeFala(frase: string, primeira: boolean): LinhaLousa | null {
+  const f = frase.replace(/\s+/g, " ").replace(/[*_`]/g, "").trim();
+  if (f.length < 4) return null;
+  const sem = f.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  if (/\b(ficou claro|ferramentas|salv[ao]|alguma duvida|entendeu)\b/.test(sem) || f.endsWith("?")) return null;
+  if (primeira && f.length < 28 && /\b(bora|vamos|olha|certo|claro|beleza|pronto|ok)\b/.test(sem)) return null;
+  const corta = (s: string) => (s.length > 78 ? `${s.slice(0, 77).replace(/[\s,;:]+\S*$/, "")}…` : s);
+  const limpa = f.replace(/[.!]+$/, "");
+  if (NUM.test(limpa) && CONTA.test(limpa)) {
+    const eh = FECHO.test(sem) && /=|igual|resultado|resposta|portanto/.test(sem) && /\d\s*$/.test(limpa);
+    return linhaSchema.parse({ tipo: eh ? "resposta" : "conta", texto: corta(simbolos(limpa.replace(/^(ent[ãa]o|portanto|logo|agora|depois)[, ]+/i, ""))), nivel: 1, cor: eh ? "verde" : "preto", caixa: eh || undefined });
+  }
+  return linhaSchema.parse({ tipo: "texto", texto: corta(limpa), nivel: primeira ? 0 : 1, cor: "azul" });
+}
