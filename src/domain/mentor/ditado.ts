@@ -1,5 +1,6 @@
 import { ehConversa } from "./lousa";
 import { comandoEnsino, conversaEnsino, fimEnsino, ENSINO, type Cena, type Frase, type Mmc } from "./ditado-ensino";
+import { numerais } from "./numerais";
 import { contaDesenhada, passosDesenhados, regraDeTresDesenhada, type OpConta } from "./ditado-contas";
 import { linhaSchema, type ItemDesenho, type LinhaLousa } from "./lousa";
 
@@ -16,7 +17,7 @@ export interface EstadoDitado {
   W: number; ncols: number; colW: number; margem: number;
   y: number; // cursor vertical do cabeçalho
   colY: number[]; rowTop: number; col: number; caixas: number; temCaixa: boolean;
-  mmc?: Mmc; frase?: Frase; cenas: Record<number, Cena>; camadas: number; pirY: number; so: boolean; yL: number; yR: number; ym: number; linhasTab: { y: number; a: string; b: string }[]; corConta: number; marcos: number; resumo: boolean; resumoY: number; yTempo?: number; mat?: boolean; grade?: { y: number; n: number; x0: number; w: number }; itens: ItemDesenho[];
+  mmc?: Mmc; frase?: Frase; cenas: Record<number, Cena>; camadas: number; pirY: number; so: boolean; yL: number; yR: number; ym: number; linhasTab: { y: number; a: string; b: string }[]; corConta: number; marcos: number; resumo: boolean; tv?: { x: number; y: number }; resumoY: number; yTempo?: number; mat?: boolean; grade?: { y: number; n: number; x0: number; w: number }; itens: ItemDesenho[];
 }
 
 /** `so`: copia só os traços, sem letras. Padrão: o quadro mostra o que foi DITADO como desenho (rótulos, números, contas), nunca a conversa do professor. */
@@ -52,9 +53,24 @@ const ondinha = (x0: number, x1: number, y: number, cor: Cor, d: number): ItemDe
 
 const NUM_PALAVRA = /^(?:(?:n[ºo°]\s*)?\d+(?!\d|\.\d)|um|uma|dois|duas|tr[eê]s|quatro|cinco|seis)\b[\s:,.\-–]*/i;
 
+/** Ícone do marco da linha do tempo conforme o que aconteceu. */
+function iconeMarco(s: string): string {
+  const n = norm(s);
+  if (/revog|abolit|extin/.test(n)) return "🗑️";
+  if (/constitu|\bcf\b|1988/.test(n)) return "🏛️";
+  if (/\blei\b|\bleis\b|norma|vigor|promulg|public|surge|nova lei|edit/.test(n)) return "📜";
+  if (/crime|delit|infrac|prat|fato|conduta/.test(n)) return "🚨";
+  if (/pena|cumpr|condena|sentenc|preso|priva|reclus|detenc/.test(n)) return "🔒";
+  if (/retroa|benef|favor|mais branda|abolit/.test(n)) return "✅";
+  if (/gravos|prejudic|ultra|mais severa/.test(n)) return "⛔";
+  if (/julg|process|acao|denunc|tribunal|stf|stj/.test(n)) return "🔨";
+  if (/lei|norma|vigor|promulg|public|surge|nova|edit/.test(n)) return "📜";
+  return "📌";
+}
+
 /** Aplica um comando ditado. Devolve false se a frase não for um comando (conversa do professor: ignorada). `atraso` = segundos até o áudio chegar nela. */
 export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): boolean {
-  const f = frase.replace(/\s+/g, " ").replace(/[*_`]/g, "").trim();
+  const f = numerais(frase.replace(/\s+/g, " ").replace(/[*_`]/g, "").trim());
   const m = /^(t[ií]tulo|subt[ií]tulo|linha do tempo|marco|caixa|item|ponto|t[oó]pico|exemplo|destaque|aten[cç][aã]o|cuidado|resumo|seta|tabela|linha|cruzar|conta|passo|resposta|mmc|mdc|arma(?:da|r)|divis[aã]o|regra de tr[eê]s|passos|frase|sujeito|predicado|verbo|n[uú]cleo|complemento|adjunto|camada|cadeia|grade|c[eé]lula|coluna|pessoa|v[ií]tima|arma|objeto)\b[\s:,.\-–]*(.*)$/i.exec(f);
   if (!m) {
     const it0: ItemDesenho[] = []; const ok = conversaEnsino(e, f, Math.max(0, atraso), it0); e.itens.push(...it0);
@@ -107,19 +123,48 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
   } else if (cmd === "linha do tempo") {
     const ex = /^(?:de|do|da|desde)\s+(.+?)\s+(?:at[ée]|a|ao|para)\s+(.+)$/i.exec(resto);
     const a = (ex?.[1] ?? "").trim(), b = (ex?.[2] ?? "").trim();
-    const y = e.y + 56;
-    e.yTempo = y;
-    if (a) push(tx(e.margem, y - 22, a.toUpperCase(), "azul", largo ? 20 : 15, d));
-    push(lin(e.margem, y, e.W - e.margem, y, "grafite", d + 0.1, true));
-    if (b) { const bb = b.toUpperCase(); push(tx(Math.max(e.margem, e.W - e.margem - bb.length * cw(largo ? 20 : 15)), y - 22, bb, "vermelho", largo ? 20 : 15, d + 0.3)); }
     e.marcos = 0;
-    e.y = y + 14;
+    if (!largo) {
+      // celular: linha do tempo na vertical (cada marco: bolinha na linha, ícone, ano e o que aconteceu)
+      let y = e.y + 8;
+      if (a || b) { push(tx(e.margem, y + 18, `${a.toUpperCase()}${a && b ? " → " : ""}${b.toUpperCase()}`.slice(0, 34), "azul", 15, d)); y += 30; }
+      e.tv = { x: e.margem + 18, y: y + 6 };
+      e.yTempo = e.tv.y;
+      e.y = y + 6;
+    } else {
+      const y = e.y + 76;
+      e.yTempo = y;
+      if (a) push(tx(e.margem, y - 52, a.toUpperCase(), "azul", 20, d));
+      push(lin(e.margem, y, e.W - e.margem, y, "grafite", d + 0.1, true));
+      if (b) { const bb = b.toUpperCase(); push(tx(Math.max(e.margem, e.W - e.margem - bb.length * cw(20)), y - 52, bb, "vermelho", 20, d + 0.3)); }
+      e.y = y + 14;
+    }
   } else if (cmd === "marco") {
     if (!resto || e.yTempo === undefined) return true;
     const k = e.marcos++;
-    const x = e.margem + 80 + (k + 1) * ((e.W - e.margem * 2 - 160) / 5);
-    push({ t: "circ", cx: Math.round(x), cy: e.yTempo, r: 6, cor: "vermelho", d }, tx(Math.max(e.margem, x - resto.length * cw(14) / 2), e.yTempo + 28, resto.slice(0, 30), CICLO[k % 5]!, 14, d + 0.15));
-    e.y = Math.max(e.y, e.yTempo + 40);
+    const mm = /^(\d{1,2}\/\d{1,2}\/\d{4}|\d{3,4}|\d+º?\s*(?:dia|ano|m[eê]s))\s*[-–:,]?\s*(.*)$/.exec(resto);
+    const ano = mm ? mm[1]! : "", rotulo = (mm ? mm[2]! : resto).trim();
+    const icone = iconeMarco(`${ano} ${rotulo}`), cor = CICLO[k % 5]!;
+    if (!largo && e.tv) {
+      const { x } = e.tv, top = e.tv.y, tamL = 17, wl = Math.max(12, Math.floor((e.W - e.margem - (x + 28) - 6) / cw(tamL)));
+      const ls = rotulo ? quebra(rotulo, wl).slice(0, 5) : [];
+      const h = 60 + ls.length * 22 + 14;
+      if (k > 0) push(lin(x, top - 12, x, top + 8, "grafite", d));
+      push({ t: "circ", cx: x, cy: top + 16, r: 9, cor: "vermelho", d });
+      if (!(k === 0 && false)) push(lin(x, top + 25, x, top + h - 2, "grafite", d + 0.1));
+      push({ t: "emoji", x: x + 24, y: top + 36, s: icone, tam: 28, d: d + 0.1 });
+      if (ano) push(tx(x + 66, top + 34, ano, "azul", 24, d + 0.15));
+      ls.forEach((l, i) => push(tx(x + 24, top + 62 + i * 22, l, cor, tamL, d + 0.25 + i * passo)));
+      e.tv.y = top + h;
+      e.y = Math.max(e.y, e.tv.y);
+    } else {
+      const slots = 4, sw = (e.W - e.margem * 2) / slots, cx = Math.round(e.margem + sw * (k % slots + 0.5)), yT = e.yTempo;
+      const ls = rotulo ? quebra(rotulo, Math.max(8, Math.floor((sw - 8) / cw(15)))).slice(0, 5) : [];
+      push({ t: "circ", cx, cy: yT, r: 8, cor: "vermelho", d }, { t: "emoji", x: cx - 15, y: yT - 18, s: icone, tam: 30, d: d + 0.1 });
+      if (ano) push(tx(Math.max(e.margem, cx - ano.length * cw(22) / 2), yT + 32, ano, "azul", 22, d + 0.15));
+      ls.forEach((l, i) => push(tx(Math.max(e.margem, cx - l.length * cw(15) / 2), yT + 56 + i * 19, l, cor, 15, d + 0.25 + i * passo)));
+      e.y = Math.max(e.y, yT + 56 + ls.length * 19 + 10);
+    }
   } else if (cmd === "caixa") {
     const titulo = resto.replace(NUM_PALAVRA, "").trim() || "Caixa";
     if (e.col + 1 >= e.ncols) { e.rowTop = (e.col >= 0 ? Math.max(...e.colY) + 22 : Math.max(e.y, e.ym, e.resumo ? e.resumoY : 0) + 10); e.col = -1; e.colY = Array(e.ncols).fill(e.rowTop); }
@@ -327,7 +372,7 @@ const curto = (s: string, n: number) => s.split(/\s+/).slice(0, n).join(" ").rep
  * conta de matemática (números + operação falada), anos (linha do tempo), passos ("primeiro… depois…") e assunto ("vamos ver X").
  */
 export function naturalDitado(e: EstadoDitado, frase: string, atraso: number): boolean {
-  const f = frase.replace(/\s+/g, " ").trim().replace(/[.!]+$/, "");
+  const f = numerais(frase.replace(/\s+/g, " ").trim().replace(/[.!]+$/, ""));
   if (!f || ehConversa(f)) return false;
   if (mmcFalado(e, f, atraso)) return true;
   const s = norm(f);
@@ -346,11 +391,13 @@ export function naturalDitado(e: EstadoDitado, frase: string, atraso: number): b
   }
   if (/\b(portanto|logo|resposta|resultado)\b.*(\bigual\b|=)/i.test(f) && nums + (/\bx\b/.test(s) ? 1 : 0) >= 1) return comandoDitado(e, `Resposta: ${f.replace(/^.*?\b(?:portanto|logo|resposta|resultado)\b[\s,:]*/i, "")}`, atraso);
   if (nums + (/\bx\b/.test(s) ? 1 : 0) >= 2 && /\b(vezes|dividido|dividimos|mais|menos|igual|multiplic\w*|soma\w*|subtra\w*|=|\+|×|÷)\b|[=+×÷]/.test(s)) return comandoDitado(e, `Conta: ${f}`, atraso);
-  const ano = /\b(1[0-9]{3}|20[0-9]{2})\b\s*,?\s*(.*)$/.exec(f);
+  const ano = /\b(1[0-9]{3}|20[0-9]{2})\b/.exec(f);
   if (ano) {
     if (e.yTempo === undefined) comandoDitado(e, "Linha do tempo:", atraso);
-    const rot = curto(ano[2]!.replace(/^(?:a|o|foi|era|quando|que|com|em|:|,)\s+/i, ""), 3);
-    return comandoDitado(e, `Marco: ${ano[1]}${rot ? " " + rot : ""}`, atraso);
+    const antes = f.slice(0, ano.index).replace(/\b(?:em|no ano de|no ano|desde|at[ée]|de)\s*$/i, "").trim();
+    const depois = f.slice(ano.index + ano[0].length).replace(/^[\s,;:]*(?:a|o|foi|era|quando|que|com|em|:|,)?\s*/i, "").trim();
+    const rot = curto([antes, depois].filter(Boolean).join(" ").replace(/^[,;\s]+/, ""), 12);
+    return comandoDitado(e, `Marco: ${ano[1]}${rot ? " " + rot.charAt(0).toUpperCase() + rot.slice(1) : ""}`, atraso);
   }
   const o = ORD.exec(f);
   if (o && f.length > o[0].length + 6) {

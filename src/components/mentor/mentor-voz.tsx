@@ -230,12 +230,14 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     }
     if (trans.current) {
       const m0 = trans.current, ped = ref.current.turn || falaTurno.current;
-      // a lousa acompanha o que o Mentor FALA (ele conhece a aula inteira); o quadro catalogado/IA só entra se, depois de alguns segundos, a fala ainda não rendeu nada para escrever
-      setTimeout(() => {
-        const g2 = trans.current;
-        if (g2 !== m0 || m0.modo === "ia" || m0.linhas.length > 0 || (m0.dit && m0.dit.itens.length > 0)) return;
-        void buscarCatalogo(m0, ped).then((achou) => { if (!achou && trans.current === m0 && m0.modo !== "ia" && m0.linhas.length === 0) iniciarIA(m0, ped); });
-      }, 7000);
+      // 1º o exemplo que a PRÓPRIA AULA já traz (sai do banco na hora, sem atraso nem erro); a fala do Mentor continua escrevendo se não houver nada na aula sobre o pedido
+      void buscarCatalogo(m0, ped).then((achou) => {
+        if (achou) return;
+        setTimeout(() => {
+          if (trans.current !== m0 || m0.modo === "ia" || m0.linhas.length > 0 || (m0.dit && m0.dit.itens.length > 0)) return;
+          iniciarIA(m0, ped);
+        }, 7000);
+      });
       // o Mentor só avisa que vai mostrar no quadro se, passado um tempo, realmente não apareceu nada nele
       setTimeout(() => {
         const g3 = trans.current;

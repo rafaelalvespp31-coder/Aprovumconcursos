@@ -1,4 +1,6 @@
 import { comandoDitado, fimDitado, novoDitado } from "./ditado";
+import { numerais } from "./numerais";
+import { extractPractice } from "@/domain/content/practice";
 /**
  * Quadros prontos a partir da aula catalogada: tabelas, comparações e casos práticos que já estão nas seções da aula viram
  * roteiros de comandos para o motor de desenho (ditado.ts). Sem IA e sem espera: do banco para o quadro em milissegundos.
@@ -89,6 +91,36 @@ export function soNumeros(q: QuadroPronto | null): QuadroPronto | null {
   return r.length >= 3 ? { ...q, roteiro: r } : q;
 }
 
+/** Texto com datas ("Em 2020, João pratica…; em 2025, surge a lei…") → linha do tempo com um marco por data, em ordem cronológica. */
+export function roteiroLinhaDoTempo(texto: string, titulo: string, conclusao = ""): string[] | null {
+  const frases = numerais(limpa(texto)).split(/(?<=[.;!?])\s+/);
+  const marcos: Array<{ ano: number; rot: string }> = [];
+  for (const f of frases) {
+    const m = /\b(1[0-9]{3}|20[0-9]{2})\b/.exec(f);
+    if (!m) continue;
+    const antes = f.slice(0, m.index).replace(/\b(?:em|no ano de|no ano|desde|at[ée]|de|se)\s*$/i, "").replace(/[,;:\s]+$/, "").trim();
+    const depois = f.slice(m.index + m[0].length).replace(/^[\s,;:]*(?:a|o|foi|era|quando|que|com|em)?\s*/i, "").replace(/[.;!?]+$/, "").trim();
+    const rot = corta([antes, depois].filter(Boolean).join(", "), 70);
+    marcos.push({ ano: Number(m[1]), rot: cap(rot) });
+  }
+  if (marcos.length < 2) return null;
+  marcos.sort((a, b) => a.ano - b.ano);
+  const out = [cmd("Título", corta(titulo, 40)), "Linha do tempo:", ...marcos.slice(0, 6).map((x) => cmd("Marco", `${x.ano} ${x.rot}`.trim()))];
+  const c = limpa(conclusao);
+  if (c.length >= 12) out.push(cmd("Destaque", corta(c, 130)));
+  return out;
+}
+
+/** Casos práticos (":::exemplo") escritos na própria aula: datas viram linha do tempo; o resto, situação → pergunta → resposta. */
+function casosPraticos(secoes: SecaoAula[]): Array<{ s: SecaoAula; q: QuadroPronto }> {
+  return secoes.flatMap((sec) => extractPractice(sec.body_markdown).cases.flatMap((c) => {
+    const titulo = corta(sec.title || "Exemplo", 40);
+    const roteiro = roteiroLinhaDoTempo(`${c.situation} ${c.answer}`, titulo, c.answer)
+      ?? roteiroDeCaso({ titulo, enunciado: c.situation, pergunta: c.question, resultado: c.answer });
+    return roteiro ? [{ s: { kind: "exemplos", title: `${sec.title} ${c.situation} ${c.question}`, body_markdown: c.answer }, q: { titulo, roteiro, kind: "exemplos" } }] : [];
+  }));
+}
+
 export function escolherQuadro(secoes: SecaoAula[], pedido: string, largo: boolean, guardados: QuadroGuardado[] = []): QuadroPronto | null {
   return soNumeros(escolherQuadroBruto(secoes, pedido, largo, guardados));
 }
@@ -96,7 +128,7 @@ function escolherQuadroBruto(secoes: SecaoAula[], pedido: string, largo: boolean
   // os exemplos que a própria aula escreveu ("EXEMPLO:") são a base do que o Mentor desenha
   const doTexto = exemplosDaAula(secoes).flatMap((e) => { const r = roteiroDeExemplo(e.itens, `Exemplo: ${e.contexto}`.slice(0, 40), e.conclusao); return r ? [{ s: { kind: "exemplos", title: e.contexto, body_markdown: e.itens.join(" ") } as SecaoAula, q: { titulo: e.contexto, roteiro: r, kind: "exemplos" } as QuadroPronto }] : []; });
   const contas = secoes.flatMap((s) => casosDe(s.body_markdown).flatMap((c) => { const r = roteiroDeCaso(c); return r ? [{ s: { kind: "exemplos", title: `${c.titulo} ${c.enunciado} calculo conta`, body_markdown: c.resultado } as SecaoAula, q: { titulo: c.titulo, roteiro: r, kind: "exemplos" } as QuadroPronto }] : []; }));
-  doTexto.push(...contas);
+  doTexto.push(...contas, ...casosPraticos(secoes));
   const p = norm(pedido), pw = PALAVRAS(pedido);
   const quer = (re: RegExp) => re.test(p);
   const cands = [...doTexto, ...secoes.map((s) => ({ s, q: quadroDaSecao(s, largo) })).filter((x): x is { s: SecaoAula; q: QuadroPronto } => !!x.q)];
@@ -111,12 +143,13 @@ function escolherQuadroBruto(secoes: SecaoAula[], pedido: string, largo: boolean
     if (quer(/esquema|mapa|resum|tabela|desenh/) && (c.s.kind === "esquema" || c.s.kind === "quadro_comparativo")) n += 5;
     if (quer(/calcul|conta|passo|resolv|como se faz|como faz/) && c.s.kind === "calculo") n += 8;
     if (quer(/tempo|linha|cronolog|ordem/) && c.s.kind === "linha_do_tempo") n += 8;
+    if (quer(/tempo|linha|cronolog|ordem|retroativ|extrativ|ultrativ|datas?\b/) && c.q.roteiro.includes("Linha do tempo:")) n += 10;
     if (guardados.some((g) => g.titulo === c.q.titulo)) n += 2;
     const w = PALAVRAS(`${c.s.title} ${c.s.body_markdown.slice(0, 600)}`);
     for (const x of pw) if (w.has(x)) n += 1;
     if (n > nota) { nota = n; melhor = c; }
   }
-  return melhor.q;
+  return nota >= 3 ? melhor.q : null; // sem relação com o pedido: o Mentor escreve o que fala, em vez de um quadro qualquer
 }
 
 /** Mantém só os comandos que o motor de desenho entende e exige que o roteiro desenhe de verdade. */

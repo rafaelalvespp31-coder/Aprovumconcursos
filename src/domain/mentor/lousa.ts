@@ -1,3 +1,4 @@
+import { numerais } from "./numerais";
 import { z } from "zod";
 
 /** Só abre o quadro quando o aluno pede explicitamente para escrever/desenhar/mostrar no quadro; explicar e dar exemplo falado não abre. */
@@ -162,7 +163,7 @@ export function figurasDe(frase: string): LinhaLousa | null {
 
 /** Uma frase falada pelo Mentor → linha do quadro (canetas variadas por posição). Devolve null para abertura, fechamento e perguntas. */
 export function linhaDeFala(frase: string, primeira: boolean, idx = 0): LinhaLousa | null {
-  const f = frase.replace(/\s+/g, " ").replace(/[*_`]/g, "").trim();
+  const f = numerais(frase.replace(/\s+/g, " ").replace(/[*_`]/g, "").trim());
   if (f.length < 4) return null;
   const sem = f.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
   if (/\b(ficou claro|ferramentas|salv[ao]|alguma duvida|entendeu)\b/.test(sem) || (f.endsWith("?") && !NUM.test(f))) return null;

@@ -88,3 +88,21 @@ describe("exemplos escritos na própria aula", () => {
     expect(escolherQuadro(aula, "me dá um exemplo sobre irretroatividade", true)!.roteiro.join(" ")).toMatch(/aumenta a pena/);
   });
 });
+
+describe("exemplo da própria aula vira linha do tempo", () => {
+  const sec: SecaoAula[] = [{ kind: "conteudo", title: "Retroatividade da lei penal", body_markdown: "Texto.\n\n:::exemplo\nSituação: João pratica um crime em 2020. Em 2025, surge uma lei que deixa de considerar a conduta crime.\nPergunta: A nova lei alcança João?\nResposta: Sim. A lei posterior que beneficia retroage (art. 5º, XL, CF).\n:::" }];
+  it("pedido de linha do tempo escolhe o caso com datas", () => {
+    const q = escolherQuadro(sec, "me mostra a linha do tempo da retroatividade", true)!;
+    expect(q.roteiro).toContain("Linha do tempo:");
+    const marcos = q.roteiro.filter((c) => c.startsWith("Marco"));
+    expect(marcos[0]).toMatch(/2020.*João pratica um crime/);
+    expect(marcos[1]).toMatch(/2025/);
+  });
+  it("desenha ícones e a linha", () => {
+    const q = escolherQuadro(sec, "linha do tempo", true)!;
+    const e = novoDitado(false); for (const c of q.roteiro) comandoDitado(e, c, 0);
+    const its = linhaDitado(e).rabisco!;
+    expect(its.some((x) => x.t === "emoji")).toBe(true);
+    expect(its.filter((x) => x.t === "circ").length).toBeGreaterThanOrEqual(2);
+  });
+});
