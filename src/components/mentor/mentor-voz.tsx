@@ -73,7 +73,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (m.timer) clearTimeout(m.timer);
     trans.current = null;
     lousaOcupada.current = false;
-    if (m.linhas.length >= 4 || (m.dit && m.dit.itens.length >= 20)) void fetch("/api/mentor/lousa/salvas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lousa: { mostrar: true, titulo: m.titulo, linhas: m.linhas, desenho: [] } }) }).catch(() => undefined);
+    if (m.linhas.length >= 4 || (m.dit && m.dit.itens.length >= 6)) void fetch("/api/mentor/lousa/salvas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lousa: { mostrar: true, titulo: m.titulo, linhas: m.linhas, desenho: [] } }) }).catch(() => undefined);
   };
   /** Uma frase falada → linha do quadro (ou nada, se for abertura/fechamento/pergunta). */
   const novaLinha = (frase: string) => {

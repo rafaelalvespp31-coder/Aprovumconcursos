@@ -63,7 +63,7 @@ async function doCache(chave: string): Promise<(Lousa & { _id?: string }) | null
 
 /** Guarda a lousa no cache compartilhado e devolve o id (ou null). */
 async function guardar(chave: string, pedido: string, l: Lousa): Promise<string | null> {
-  const diagrama = l.linhas.some((x) => x.tipo === "desenho" && (x.rabisco?.length ?? 0) >= 20);
+  const diagrama = l.linhas.some((x) => x.tipo === "desenho" && (x.rabisco?.length ?? 0) >= 6);
   if (chave.length < 4 || (l.linhas.length < 4 && !diagrama)) return null; // só explicações completas
   try {
     const db = createAdminClient();

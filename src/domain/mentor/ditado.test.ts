@@ -8,9 +8,8 @@ describe("ditado do desenho", () => {
     const ok = cmds.map((c) => comandoDitado(e, c, 0));
     expect(ok).toEqual([true, true, false, true, true, true, true, true, true, true, true, true]);
     const l = linhaDitado(e);
-    const textos = l.rabisco!.filter((x) => x.t === "texto").map((x) => (x as { s: string }).s).join(" ");
-    expect(textos).toContain("EXTRATIVIDADE");
-    expect(textos).toContain("REGRA GERAL");
+    expect(l.rabisco!.some((x) => x.t === "texto")).toBe(false); // só desenho, sem letras
+    expect(l.rabisco!.some((x) => x.t === "linha" && x.seta)).toBe(true); // a linha do tempo
     expect(l.larg).toBe(1000);
     expect(l.rabisco!.length).toBeLessThanOrEqual(200);
     // três colunas: a 4ª caixa vai para a linha de baixo
@@ -30,4 +29,12 @@ describe("ditado do desenho", () => {
     expect(resto).toBe("Caixa dois");
   });
   it("conversa solta é ignorada", () => { expect(comandoDitado(novoDitado(true), "Agora olha como isso funciona na prática", 0)).toBe(false); });
+});
+
+describe("ditado com letras (modo completo)", () => {
+  it("so=false mantém os textos", () => {
+    const e = novoDitado(true, false);
+    comandoDitado(e, "Título: Extratividade da lei penal.", 0);
+    expect(linhaDitado(e).rabisco!.some((x) => x.t === "texto")).toBe(true);
+  });
 });

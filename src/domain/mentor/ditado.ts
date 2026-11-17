@@ -13,14 +13,15 @@ export interface EstadoDitado {
   W: number; ncols: number; colW: number; margem: number;
   y: number; // cursor vertical do cabeçalho
   colY: number[]; rowTop: number; col: number; caixas: number; temCaixa: boolean;
-  marcos: number; resumo: boolean; resumoY: number; yTempo?: number; itens: ItemDesenho[];
+  so: boolean; marcos: number; resumo: boolean; resumoY: number; yTempo?: number; itens: ItemDesenho[];
 }
 
-export function novoDitado(largo: boolean): EstadoDitado {
+/** `so` (padrão): copia só o DESENHO (linhas, setas, caixas, marcos); o que ele fala fica na voz, sem letras no quadro. */
+export function novoDitado(largo: boolean, so = true): EstadoDitado {
   const W = largo ? 1000 : 460;
   const ncols = largo ? 3 : 1, margem = 24;
   const colW = (W - margem * 2 - (ncols - 1) * 18) / ncols;
-  return { W, ncols, colW, margem, y: 8, colY: Array(ncols).fill(0), rowTop: 0, col: -1, caixas: 0, temCaixa: false, marcos: 0, resumo: false, resumoY: 0, itens: [] };
+  return { W, ncols, colW, margem, y: 8, colY: Array(ncols).fill(0), rowTop: 0, col: -1, caixas: 0, temCaixa: false, so, marcos: 0, resumo: false, resumoY: 0, itens: [] };
 }
 
 const cw = (tam: number) => tam * 0.56;
@@ -62,6 +63,7 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
   const push = (...xs: ItemDesenho[]) => { it.push(...xs); };
   const centro = (s: string, tam: number) => Math.max(e.margem, (e.W - s.length * cw(tam)) / 2);
 
+  if (e.so && (cmd === "titulo" || cmd === "subtitulo" || cmd === "item" || cmd === "ponto" || cmd === "topico" || cmd === "exemplo" || cmd === "destaque" || cmd === "atencao" || cmd === "cuidado")) return true; // só letras: não entra no quadro
   if (cmd === "titulo") {
     if (!resto) return true;
     const tam = largo ? 40 : 28;
@@ -104,7 +106,7 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
     const w = Math.min(e.colW, Math.max(...ls.map((l) => l.length)) * cw(tam) + 24), h = ls.length * (tam + 6) + 12;
     push({ t: "ret", x, y, w: Math.round(w), h, cor, d });
     ls.forEach((l, i) => push(tx(x + 12, y + 8 + tam + i * (tam + 6) - 3, l, cor, tam, d + 0.15 + i * passo)));
-    e.colY[e.col] = y + h + 12;
+    e.colY[e.col] = y + h + (e.so ? 26 : 12);
     e.temCaixa = true;
     e.resumo = false;
   } else if (cmd === "item" || cmd === "ponto" || cmd === "topico" || cmd === "exemplo" || cmd === "destaque" || cmd === "atencao" || cmd === "cuidado") {
@@ -138,7 +140,7 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
     push(lin(x, y, x, y + 26, "vermelho", d, true));
     if (e.temCaixa && e.col >= 0) e.colY[e.col] = y + 32; else e.y = y + 32;
   }
-  e.itens.push(...it);
+  e.itens.push(...(e.so ? it.filter((x) => x.t !== "texto") : it));
   return true;
 }
 
