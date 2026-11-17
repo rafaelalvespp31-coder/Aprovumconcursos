@@ -38,7 +38,7 @@ export const linhaSchema = z.object({
   /** tipo "figuras": grupos de emojis desenhados um a um (ex.: 5 maçãs, 8 maçãs) — mostra a quantidade do problema. */
   figuras: z.array(z.object({ e: z.string().trim().min(1).max(8), n: z.number().int().min(1).max(12) })).max(4).optional(),
   /** tipo "desenho": mini-quadro 400x140 desenhado traço a traço junto com esta linha (texto = legenda). */
-  rabisco: z.array(itemDesenho).max(10).optional(),
+  rabisco: z.array(itemDesenho).max(48).optional(),
   /** Trechos escritos com outra caneta (cor diferente do resto da linha). */
   realce: z.array(z.object({ trecho: z.string().trim().min(1).max(40), cor: COR_TEXTO })).max(4).optional(),
 });

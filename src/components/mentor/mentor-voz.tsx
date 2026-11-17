@@ -1,6 +1,7 @@
 "use client";
 
-import { anunciaLousa, esquemaDe, linhaDeFala, linhaTitulo, novoEsquema, type EsquemaCtx, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
+import { esquemasDe, fimTempo, novoCtx, type Ctx as EsquemaCtx } from "@/domain/mentor/esquemas";
+import { anunciaLousa, linhaDeFala, linhaTitulo, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
@@ -89,8 +90,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     const quando = Math.max(agoraS() + Math.max(0, adiante - dur), (m.quandos[m.quandos.length - 1] ?? 0) + 0.15);
     m.linhas.push(l);
     m.quandos.push(quando);
-    const fig = esquemaDe(frase, m.esq); // o esquema do exemplo, desenhado com formas coloridas (sem emojis)
-    if (fig) { m.linhas.push(fig); m.quandos.push(quando + 0.25); }
+    for (const d of esquemasDe(frase, m.esq)) { m.linhas.push(d); m.quandos.push(quando + 0.25); } // esquema do exemplo (tabela, conta armada, linha do tempo…)
     if (m.timer) { clearTimeout(m.timer); m.timer = null; }
     publicarTrans();
   };
@@ -108,6 +108,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (fimDoTurno) {
       if (m.buf.trim()) novaLinha(m.buf);
       m.buf = "";
+      for (const d of fimTempo(m.esq)) { m.linhas.push(d); m.quandos.push(agoraS() + 0.3); publicarTrans(); }
       if (m.timer) clearTimeout(m.timer);
       m.timer = setTimeout(fimTrans, 2500);
     }
@@ -119,7 +120,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     lousaOcupada.current = true;
     r0Turno.current = ref.current.turn || falaTurno.current;
     onLousaRef.current("pendente"); // abre já: a caneta desenha o card enquanto o Mentor começa a falar
-    trans.current = { esq: novoEsquema(), flush: null, buf: "", linhas: [], quandos: [], titulo: "", pulou: false, timer: setTimeout(() => { if (trans.current && trans.current.linhas.length === 0) { onLousaRef.current?.(null); fimTrans(); } }, 25000) };
+    trans.current = { esq: novoCtx(ref.current.turn || falaTurno.current), flush: null, buf: "", linhas: [], quandos: [], titulo: "", pulou: false, timer: setTimeout(() => { if (trans.current && trans.current.linhas.length === 0) { onLousaRef.current?.(null); fimTrans(); } }, 25000) };
   };
   const progresso = () => {
     const ro = roteiro.current; const ctx = ref.current.ctx;

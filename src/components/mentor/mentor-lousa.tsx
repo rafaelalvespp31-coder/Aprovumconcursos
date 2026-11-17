@@ -24,7 +24,7 @@ function custoLetra(ch: string, i: number): number {
 }
 /** Texto completo escrito pela linha (o "par" junta os dois lados com um intervalo para o tracejado). */
 const totalFiguras = (l: LinhaLousa) => (l.figuras ?? []).reduce((a, g) => a + g.n, 0);
-const textoDe = (l: LinhaLousa) => (l.tipo === "par" ? `${l.texto}\u2003${l.dir ?? ""}` : l.tipo === "espaco" ? "" : l.tipo === "figuras" ? l.texto + "\u200b".repeat(totalFiguras(l) * 4) : l.tipo === "desenho" ? l.texto + "\u200b".repeat((l.rabisco?.length ?? 0) * 6) : l.texto);
+const textoDe = (l: LinhaLousa) => (l.tipo === "par" ? `${l.texto}\u2003${l.dir ?? ""}` : l.tipo === "espaco" ? "" : l.tipo === "figuras" ? l.texto + "\u200b".repeat(totalFiguras(l) * 4) : l.tipo === "desenho" ? l.texto + "\u200b".repeat(Math.min(90, (l.rabisco?.length ?? 0) * 6)) : l.texto);
 const cor = (c?: string, padrao = "azul") => COR[c ?? padrao] ?? COR.azul!;
 
 /** Instante (acumulado) em que cada letra termina de ser escrita; o último valor é a duração da linha. */
@@ -337,7 +337,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
                 } else if (v >= nLab) {
                   fig = (
                     <svg className="lz-svg lz-mini" viewBox={`0 0 ${LOUSA_W} 140`} role="img" aria-label={l.texto || "Desenho"}>
-                      {(l.rabisco ?? []).map((it, i) => <Traco key={i} it={it} d={i * 0.3} />)}
+                      {(l.rabisco ?? []).map((it, i) => <Traco key={i} it={it} d={i * Math.min(0.3, 3.2 / Math.max(1, (l.rabisco ?? []).length))} />)}
                     </svg>
                   );
                 }
