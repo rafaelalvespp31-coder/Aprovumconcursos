@@ -1,6 +1,6 @@
 "use client";
 
-import { linhaDeFala, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
+import { anunciaLousa, linhaDeFala, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
@@ -55,7 +55,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
    * Lousa ao vivo por TRANSCRIÇÃO: nada de chamada extra ao servidor nem função. A lousa abre no pedido e cada frase que o
    * Mentor fala vira uma linha escrita, no instante em que o áudio daquela frase toca.
    */
-  type Trans = { buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; timer: ReturnType<typeof setTimeout> | null };
+  type Trans = { flush: ReturnType<typeof setTimeout> | null; buf: string; linhas: LinhaLousa[]; quandos: number[]; titulo: string; pulou: boolean; timer: ReturnType<typeof setTimeout> | null };
   const trans = useRef<Trans | null>(null);
   const agoraS = () => performance.now() / 1000;
   const publicarTrans = () => {
@@ -95,6 +95,9 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     const partes = m.buf.split(/(?<=[.!?:;])\s+/);
     m.buf = partes.pop() ?? "";
     for (const p of partes) novaLinha(p);
+    // sem pontuação: se o Mentor parou um instante, escreve o que já falou (não deixa a lousa esperando)
+    if (m.flush) clearTimeout(m.flush);
+    m.flush = setTimeout(() => { const g = trans.current; if (g && g.buf.trim().length >= 18) { novaLinha(g.buf); g.buf = ""; } }, 700);
     if (m.buf.length > 90) { const i = m.buf.lastIndexOf(","); if (i > 30) { novaLinha(m.buf.slice(0, i)); m.buf = m.buf.slice(i + 1).trim(); } }
     if (fimDoTurno) {
       if (m.buf.trim()) novaLinha(m.buf);
@@ -110,7 +113,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     lousaOcupada.current = true;
     r0Turno.current = ref.current.turn || falaTurno.current;
     onLousaRef.current("pendente"); // abre já: a caneta desenha o card enquanto o Mentor começa a falar
-    trans.current = { buf: "", linhas: [], quandos: [], titulo: "", pulou: false, timer: setTimeout(() => { if (trans.current && trans.current.linhas.length === 0) { onLousaRef.current?.(null); fimTrans(); } }, 25000) };
+    trans.current = { flush: null, buf: "", linhas: [], quandos: [], titulo: "", pulou: false, timer: setTimeout(() => { if (trans.current && trans.current.linhas.length === 0) { onLousaRef.current?.(null); fimTrans(); } }, 25000) };
   };
   const progresso = () => {
     const ro = roteiro.current; const ctx = ref.current.ctx;
@@ -344,7 +347,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     // Lousa: abre na hora (quando o aluno pede uma conta/exemplo/desenho ou o Mentor diz que vai anotar) e
     // monta o conteúdo em paralelo à fala; o quadro já aparece escrevendo e recebe o texto quando chega.
     if (replied) falaTurno.current += replied;
-    if ((starts || replied) && pedeLousa(r.turn)) dispararLousa();
+    if ((starts || replied) && (pedeLousa(r.turn) || (replied && anunciaLousa(falaTurno.current)))) dispararLousa();
     if (said && onLousaRef.current && pedeLousa(r.turn)) { // dispara assim que o aluno termina o pedido, sem esperar o Mentor começar
       if (debLousa.current) clearTimeout(debLousa.current);
       debLousa.current = setTimeout(dispararLousa, 120);

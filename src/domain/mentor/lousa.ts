@@ -58,7 +58,7 @@ export const LOUSA_H = 260;
 /** O Mentor anuncia, falando, que vai anotar/escrever/desenhar no quadro ("vou anotar na lousa", "olha aqui no quadro"). */
 export function anunciaLousa(fala: string): boolean {
   const s = fala.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  return /\b(na|a|pra) lousa\b/.test(s) || /\bvou (te )?(anotar|escrever|desenhar|rabiscar|montar|mostrar (a|o) (conta|calculo|exemplo))/.test(s) || /\bdeixa eu (anotar|escrever|desenhar)/.test(s);
+  return /\b(na|a|pra) lousa\b/.test(s) || /\bvou (te )?(anotar|escrever|desenhar|rabiscar|montar|mostrar (a|o) (conta|calculo|exemplo))/.test(s) || /\bdeixa eu (anotar|escrever|desenhar)/.test(s) || /\bno quadro\b/.test(s);
 }
 
 /** Roteiro falado, na ordem das linhas: o Mentor lê isto enquanto o quadro vai sendo escrito no mesmo ritmo. */
