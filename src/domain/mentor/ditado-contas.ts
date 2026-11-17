@@ -168,11 +168,8 @@ export function regraDeTresDesenhada(r: RegraDeTres, x0: number, y0: number, d0:
   it.push(tx(c1, y + 96, r.c, "grafite", 26, d + 0.6), tx(c2, y + 96, "x", "vermelho", 26, d + 0.7));
   it.push({ t: "linha", x1: aL, y1: y + 38, x2: aL, y2: y + 104, cor: "azul", seta: true, d: d + 0.8 }, { t: "linha", x1: aR, y1: y + 38, x2: aR, y2: y + 104, cor: "azul", seta: true, d: d + 0.8 });
   y += 124; d += 1;
-  // 2. o raciocínio
-  const l1 = r.inversa ? `Mais ${nA.toLowerCase()}, MENOS ${nB.toLowerCase()}:` : `Menos ${nA.toLowerCase()}, MENOS ${nB.toLowerCase()}:`;
-  it.push(tx(x0 + 6, y + 18, l1.slice(0, 40), "grafite", 17, d));
-  it.push(tx(x0 + 6, y + 42, (r.inversa ? "inversamente proporcionais:" : "diretamente proporcionais:").slice(0, 40), "vermelho", 17, d + 0.3), tx(x0 + 226, y + 42, r.inversa ? "multiplica em linha" : "multiplica em cruz", "azul", 17, d + 0.6));
-  y += 64; d += 1;
+  // (o raciocínio em palavras fica só na voz: na lousa vão apenas os números)
+  y += 4; d += 0.4;
   // 3. à esquerda o cruzamento, à direita a conta em coluna
   const xm = x0 + 206;
   it.push(tx(aL + 2, y + 18, nA, "azul", 15, d), tx(aL + 112, y + 18, nB, "verde", 15, d + 0.1));
@@ -189,7 +186,8 @@ export function regraDeTresDesenhada(r: RegraDeTres, x0: number, y0: number, d0:
   it.push(tx(xr, y + 152, `x = ${fmt(x)}`.slice(0, 20), "verde", 28, d + 2.2));
   y += 176; d += 2.6;
   // 4. conclusão na caixa
-  const concl = (r.conclusao || `Portanto, x = ${fmt(x)}.`).slice(0, 40);
+  const unid = /\(([^)]+)\)/.exec(r.nomeB)?.[1] ?? "";
+  const concl = `x = ${fmt(x)}${unid ? ` ${unid}` : ""}`.slice(0, 40);
   it.push({ t: "ret", x: x0, y, w: cw + 4, h: 40, cor: "azul", d }, tx(x0 + 14, y + 27, concl, "azul", 19, d + 0.3));
   return { it, h: y + 52 - y0 };
 }

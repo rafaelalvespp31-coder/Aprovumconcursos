@@ -74,7 +74,7 @@ export function roteiroDeCaso(c: CasoCalculo): string[] | null {
   const t = norm(`${enun} ${pergunta}`);
   const mm = /\b(mmc|mdc)\b\D{0,30}?(\d{1,3})\D{1,12}?(\d{1,3})/.exec(t);
   if (mm) { out.push(`${mm[1]!.toUpperCase()}: ${mm[2]} e ${mm[3]}`); return out; /* as divisões e o resultado se completam sozinhos no fim */ }
-  out.push(cmd("Exemplo", corta(enun, 120)));
+  // matemática: só números na lousa; o enunciado em palavras fica na voz
   const r3 = /(\d+)\s+([a-zà-ú]+)\s+(?:custam|valem|pesam|levam|rendem|fazem|gastam|produzem)\s+(?:r\$\s*)?(\d+)\s+([a-zà-ú]+)/i.exec(limpa(c.enunciado).toLowerCase());
   const r3b = /(\d+)\s+(?:[a-zà-ú]+\s+)?(?:custam|valem|pesam|levam|rendem|fazem|gastam|produzem)\s+(?:quanto|x)\b/.exec(norm(`${enun} ${pergunta}`));
   if (r3 && r3b) out.push(`${r3[1]} ${r3[2]} custam ${r3[3]} ${r3[4]}`, `${r3b[1]} ${r3[2]} custam quanto`);

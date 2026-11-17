@@ -166,20 +166,14 @@ function roteiroDeTabuada(xs: string[], titulo: string, conclusao: string): stri
   if (m.length >= 2 && m.some((x) => !x) && xs.filter((x) => /\d[^=]*=[^=]*\d/.test(x) && x.length <= 90).length === xs.length) {
     const o = [cmd("Título", corta(titulo, 40))];
     xs.forEach((x, i) => { o.push(cmd("Caixa", `Passo ${i + 1}`)); o.push(cmd("Conta", corta(x.replace(/^\d+[.)]\s*/, ""), 60))); });
-    const c = limpa(conclusao);
-    if (c.length >= 8) o.push(cmd("Destaque", corta(c, 130)));
-    return o;
+    return o; // matemática: só números na lousa
   }
   if (m.length < 3 || m.some((x) => !x)) return null;
   const ms = m as RegExpExecArray[];
-  const a = ms[0]![1]!, op = ms[0]![2]!;
-  const igual = ms.every((x) => x[1] === a && x[2] === op);
   const out = [cmd("Título", corta(titulo, 40))];
-  if (igual && /[×x·*]/.test(op)) out.push(cmd("Exemplo", `Multiplicamos ${a} por ${ms.map((x) => x[3]).join(", ")}`));
   out.push("Tabela: Conta, Resultado");
   for (const x of ms) out.push(cmd("Linha", `${x[1]} ${/[x*]/.test(x[2]!) ? "×" : x[2]} ${x[3]}, ${x[4]}`));
-  const c = limpa(conclusao);
-  if (c.length >= 8) out.push(cmd("Destaque", corta(c, 130)));
+  void conclusao; // matemática: só números na lousa
   return out;
 }
 
