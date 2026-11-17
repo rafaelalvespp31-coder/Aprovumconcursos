@@ -1,6 +1,6 @@
 "use client";
 
-import { anunciaLousa, linhaDeFala, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
+import { anunciaLousa, figurasDe, linhaDeFala, linhaTitulo, pedeLousa, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
 import type { Bands } from "./voz-orbe";
@@ -75,9 +75,13 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   const novaLinha = (frase: string) => {
     const m = trans.current;
     if (!m) return;
-    const l = linhaDeFala(frase, m.linhas.length === 0);
+    const l = linhaDeFala(frase, m.linhas.length === 0, m.linhas.length);
     if (!l) return;
-    if (!m.titulo) m.titulo = tituloDe(r0Turno.current);
+    if (!m.titulo) {
+      m.titulo = tituloDe(r0Turno.current);
+      m.linhas.push(linhaTitulo(m.titulo));
+      m.quandos.push(agoraS());
+    }
     // começa quando o áudio dessa frase começa a tocar (o texto chega antes do som)
     const r = ref.current;
     const adiante = r.ctx ? Math.max(0, r.next - r.ctx.currentTime) : 0;
@@ -85,6 +89,8 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     const quando = Math.max(agoraS() + Math.max(0, adiante - dur), (m.quandos[m.quandos.length - 1] ?? 0) + 0.15);
     m.linhas.push(l);
     m.quandos.push(quando);
+    const fig = figurasDe(frase); // o esquema do exemplo: desenha as coisas citadas (5 maçãs → 🍎🍎🍎🍎🍎)
+    if (fig) { m.linhas.push(fig); m.quandos.push(quando + 0.2); }
     if (m.timer) { clearTimeout(m.timer); m.timer = null; }
     publicarTrans();
   };

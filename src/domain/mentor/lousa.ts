@@ -133,18 +133,41 @@ export function tituloDe(pedido: string): string {
   return s ? s.charAt(0).toUpperCase() + s.slice(1, 38) : "Explicação";
 }
 
-/** Uma frase falada pelo Mentor → linha do quadro. Devolve null para abertura, fechamento e perguntas. */
-export function linhaDeFala(frase: string, primeira: boolean): LinhaLousa | null {
+const CANETAS_CONTA = ["preto", "vermelho", "roxo", "laranja"] as const;
+const FIGURAS: [RegExp, string][] = [
+  [/ma[çc][ãa]s?/, "🍎"], [/laranjas?/, "🍊"], [/bananas?/, "🍌"], [/peras?/, "🍐"], [/uvas?/, "🍇"], [/bolos?/, "🍰"], [/pizzas?/, "🍕"],
+  [/funcion[áa]rios?|oper[áa]rios?|trabalhadores?/, "👷"], [/policiais?|agentes?/, "👮"], [/pessoas?|alunos?|candidatos?|estudantes?/, "🧑"],
+  [/viaturas?/, "🚓"], [/carros?/, "🚗"], [/caminh[õo]es|caminh[ãa]o/, "🚚"], [/motos?/, "🏍️"], [/livros?/, "📘"], [/canetas?/, "🖊️"], [/bolas?/, "⚽"],
+  [/dias?/, "📅"], [/horas?/, "⏰"],
+];
+
+/** Se a frase tem "N coisas" que dá para desenhar (até 12), devolve a linha de figuras. */
+export function figurasDe(frase: string): LinhaLousa | null {
+  const s = frase.normalize("NFC").toLowerCase();
+  for (const [re, e] of FIGURAS) {
+    const m = new RegExp(`\\b(\\d{1,2})\\s+(?:${re.source})\\b`, "i").exec(s);
+    const n = m ? Number(m[1]) : 0;
+    if (n >= 1 && n <= 12) return linhaSchema.parse({ tipo: "figuras", texto: "", nivel: 1, figuras: [{ e, n }] });
+  }
+  return null;
+}
+
+/** Uma frase falada pelo Mentor → linha do quadro (canetas variadas por posição). Devolve null para abertura, fechamento e perguntas. */
+export function linhaDeFala(frase: string, primeira: boolean, idx = 0): LinhaLousa | null {
   const f = frase.replace(/\s+/g, " ").replace(/[*_`]/g, "").trim();
   if (f.length < 4) return null;
   const sem = f.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  if (/\b(ficou claro|ferramentas|salv[ao]|alguma duvida|entendeu)\b/.test(sem) || f.endsWith("?")) return null;
+  if (/\b(ficou claro|ferramentas|salv[ao]|alguma duvida|entendeu)\b/.test(sem) || (f.endsWith("?") && !NUM.test(f))) return null;
   if (primeira && f.length < 28 && /\b(bora|vamos|olha|certo|claro|beleza|pronto|ok)\b/.test(sem)) return null;
   const corta = (s: string) => (s.length > 78 ? `${s.slice(0, 77).replace(/[\s,;:]+\S*$/, "")}…` : s);
   const limpa = f.replace(/[.!]+$/, "");
   if (NUM.test(limpa) && CONTA.test(limpa)) {
     const eh = FECHO.test(sem) && /=|igual|resultado|resposta|portanto/.test(sem) && /\d\s*$/.test(limpa);
-    return linhaSchema.parse({ tipo: eh ? "resposta" : "conta", texto: corta(simbolos(limpa.replace(/^(ent[ãa]o|portanto|logo|agora|depois)[, ]+/i, ""))), nivel: 1, cor: eh ? "verde" : "preto", caixa: eh || undefined });
+    return linhaSchema.parse({ tipo: eh ? "resposta" : "conta", texto: corta(simbolos(limpa.replace(/^(ent[ãa]o|portanto|logo|agora|depois)[, ]+/i, ""))), nivel: 1, cor: eh ? "verde" : CANETAS_CONTA[idx % CANETAS_CONTA.length], caixa: eh || undefined, marca: eh ? "estrela" : undefined });
   }
-  return linhaSchema.parse({ tipo: "texto", texto: corta(limpa), nivel: primeira ? 0 : 1, cor: "azul" });
+  const texto = corta(limpa);
+  const dest = /\d+(?:[.,]\d+)?\s+[A-Za-zÀ-ú]+/.exec(texto)?.[0]; // "5 maçãs": outra caneta no que importa
+  return linhaSchema.parse({ tipo: "texto", texto, nivel: primeira ? 0 : 1, cor: idx % 2 === 0 ? "azul" : "roxo", realce: dest ? [{ trecho: dest, cor: "vermelho" }] : undefined, sublinhar: /\b(quanto|qual|quantos|quantas)\b/.test(sem) ? "reta" : undefined });
 }
+
+export const linhaTitulo = (texto: string): LinhaLousa => linhaSchema.parse({ tipo: "titulo", texto, cor: "azul", sublinhar: "onda" });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { linhaDeFala, lousaSchema, pedeLousa, tituloDe } from "./lousa";
+import { figurasDe, linhaDeFala, linhaTitulo, lousaSchema, pedeLousa, tituloDe } from "./lousa";
 
 describe("pedeLousa", () => {
   it("abre só quando o aluno pede quadro, lousa ou desenho", () => {
@@ -72,8 +72,23 @@ describe("lousa por transcrição", () => {
   it("frase → linha", () => {
     expect(linhaDeFala("Bora, olha aqui!", true)).toBeNull();
     expect(linhaDeFala("Ficou claro?", false)).toBeNull();
+    expect(linhaDeFala("Quanto custam 8 maçãs?", false)).toMatchObject({ tipo: "texto", sublinhar: "reta" });
     expect(linhaDeFala("5 vezes x é igual a 8 vezes 20", false)).toMatchObject({ tipo: "conta", texto: "5 · x = 8 · 20" });
     expect(linhaDeFala("Então x é igual a 32", false)).toMatchObject({ tipo: "resposta", caixa: true });
     expect(linhaDeFala("Se 5 maçãs custam 20 reais", true)).toMatchObject({ tipo: "texto", nivel: 0 });
+  });
+});
+
+describe("esquema e canetas", () => {
+  it("desenha as coisas citadas", () => {
+    expect(figurasDe("Se 5 maçãs custam 20 reais")).toMatchObject({ tipo: "figuras", figuras: [{ e: "🍎", n: 5 }] });
+    expect(figurasDe("São 40 funcionários")).toBeNull();
+    expect(figurasDe("Quanto custam 8 maçãs?")?.figuras?.[0]?.n).toBe(8);
+  });
+  it("varia as canetas e destaca o que importa", () => {
+    const cores = [0, 1, 2, 3].map((i) => linhaDeFala("5 vezes x é igual a 8 vezes 20", false, i)?.cor);
+    expect(new Set(cores).size).toBeGreaterThan(2);
+    expect(linhaDeFala("Se 5 maçãs custam 20 reais", true)?.realce?.[0]).toMatchObject({ cor: "vermelho" });
+    expect(linhaTitulo("Regra de três").tipo).toBe("titulo");
   });
 });
