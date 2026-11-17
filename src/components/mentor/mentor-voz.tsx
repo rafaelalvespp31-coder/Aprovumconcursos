@@ -157,7 +157,8 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     const g = trans.current;
     if (g && g.modo === "ditado" && g.dit) {
       const pedido = ref.current.turn || falaTurno.current;
-      if (comandoDitado(g.dit, pedido, 0)) { g.titulo = tituloDe(pedido); g.linhas = [linhaDitado(g.dit)]; g.quandos = [agoraS()]; publicarTrans(); }
+      const tit = tituloDe(pedido);
+      if (comandoDitado(g.dit, pedido, 0) || (tit !== "Explicação" && tit.length > 2 && comandoDitado(g.dit, `Título: ${tit}`, 0))) { g.titulo = tit; g.linhas = [linhaDitado(g.dit)]; g.quandos = [agoraS()]; publicarTrans(); }
     }
   };
   const progresso = () => {
