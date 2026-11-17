@@ -42,3 +42,12 @@ describe("caso em texto puro", () => {
     expect(roteiroDeCaso(c!)).not.toBeNull();
   });
 });
+
+import { roteiroDeExemplo } from "./catalogo-lousa";
+describe("lista de contas vira tabela", () => {
+  it("múltiplos de 5", () => {
+    const r = roteiroDeExemplo(["- 5 × 1 = 5", "- 5 × 2 = 10", "- 5 × 3 = 15", "- 5 × 4 = 20"], "Múltiplos de 5", "Assim, 5, 10, 15, 20 são múltiplos de 5.")!;
+    expect(r).toEqual(expect.arrayContaining(["Tabela: Conta, Resultado", "Linha: 5 × 2, 10", "Exemplo: Multiplicamos 5 por 1, 2, 3, 4"]));
+    expect(r.join("|")).not.toMatch(/Passo/);
+  });
+});

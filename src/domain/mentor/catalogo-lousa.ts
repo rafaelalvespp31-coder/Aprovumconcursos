@@ -132,8 +132,10 @@ const cap = (s: string) => s.replace(/^\w/, (c) => c.toUpperCase());
  * + caixas; sem datas vira uma sequência de caixas (um passo por item).
  */
 export function roteiroDeExemplo(itens: string[], titulo = "Exemplo", conclusao = ""): string[] | null {
-  const xs = itens.map(limpa).filter((s) => s.length >= 3).slice(0, 8);
+  const xs = itens.map((s) => limpa(s).replace(/^[-–—•]\s*/, "")).filter((s) => s.length >= 3).slice(0, 8);
   if (xs.length < 2) return null;
+  const tabuada = roteiroDeTabuada(xs, titulo, conclusao);
+  if (tabuada) return tabuada;
   const info = xs.map((x, i) => {
     const lead = TEMPO.exec(x), anyM = MES_ANY.exec(x);
     const rot = lead ? lead[1]! : anyM ? anyM[1]! : null;
@@ -155,6 +157,23 @@ export function roteiroDeExemplo(itens: string[], titulo = "Exemplo", conclusao 
   const c = limpa(conclusao);
   if (c.length >= 12) out.push(cmd("Destaque", corta(c, 130)));
   return out.length >= 5 ? out : null;
+}
+
+const CONTA = /^(\d+(?:[.,]\d+)?)\s*([×x·*÷/+−-])\s*(\d+(?:[.,]\d+)?)\s*=\s*(\d+(?:[.,]\d+)?)\b/;
+/** Lista de contas ("5 × 1 = 5", "5 × 2 = 10"…) → tabela de verdade: o aluno vê cada conta e o resultado, linha a linha. */
+function roteiroDeTabuada(xs: string[], titulo: string, conclusao: string): string[] | null {
+  const m = xs.map((x) => CONTA.exec(x));
+  if (m.length < 3 || m.some((x) => !x)) return null;
+  const ms = m as RegExpExecArray[];
+  const a = ms[0]![1]!, op = ms[0]![2]!;
+  const igual = ms.every((x) => x[1] === a && x[2] === op);
+  const out = [cmd("Título", corta(titulo, 40))];
+  if (igual && /[×x·*]/.test(op)) out.push(cmd("Exemplo", `Multiplicamos ${a} por ${ms.map((x) => x[3]).join(", ")}`));
+  out.push("Tabela: Conta, Resultado");
+  for (const x of ms) out.push(cmd("Linha", `${x[1]} ${/[x*]/.test(x[2]!) ? "×" : x[2]} ${x[3]}, ${x[4]}`));
+  const c = limpa(conclusao);
+  if (c.length >= 8) out.push(cmd("Destaque", corta(c, 130)));
+  return out;
 }
 
 export interface ExemploDaAula { contexto: string; itens: string[]; conclusao: string }
