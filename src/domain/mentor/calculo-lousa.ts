@@ -82,3 +82,25 @@ export function casoDeTexto(t: string): CasoCalculo | null {
   const m = /^(Caso\s+\d+[^.\n]*)\.\s*([^\n]*)\n\s*(?:→|->|⇒)\s*(.+)$/s.exec(t.trim());
   return m ? { titulo: m[1]!.trim(), enunciado: m[2]!.trim(), resultado: m[3]!.replace(/\s+/g, " ").trim() } : null;
 }
+
+/** Bloco de código da aula com a decomposição simultânea ("12 18 | 2 / 6 9 | 2 / …") → lousa de MMC. */
+export function roteiroDeFatoracao(codigo: string): string[] | null {
+  const ls = codigo.split("\n").map((l) => l.trim()).filter(Boolean);
+  if (ls.length < 3 || !ls.every((l) => /^[\d\s]+\|\s*\d*$/.test(l))) return null;
+  const nums = (ls[0]!.split("|")[0]!.match(/\d+/g) ?? []).map(Number);
+  if (nums.length < 2 || nums.length > 4) return null;
+  const mdc = ls.every((l) => /\|/.test(l)) && false;
+  const nome = mdc ? "MDC" : "MMC";
+  return [`Título: ${nome} de ${nums.join(" e ")}`, `${nome}: ${nums.join(" e ")}`];
+}
+
+/** Parágrafo que pede uma conta simples ("Calcule 345 + 278", "Efetue 84 ÷ 4") → conta armada de professor. */
+export function roteiroDeConta(texto: string): string[] | null {
+  const t = limpa(texto);
+  if (t.length > 160 || !/calcul|efetu|resolv|quanto (?:é|e|vale)|arme/i.test(t)) return null;
+  const m = /(\d{1,3}(?:\.\d{3})*|\d{1,6})\s*([+−×÷x·/-])\s*(\d{1,3}(?:\.\d{3})*|\d{1,6})(?![\d,])/.exec(t);
+  if (!m) return null;
+  const op = m[2] === "+" ? "+" : m[2] === "−" || m[2] === "-" ? "−" : m[2] === "÷" || m[2] === "/" ? "÷" : "×";
+  const a = m[1]!.replace(/\./g, ""), b = m[3]!.replace(/\./g, "");
+  return ["Título: Conta armada", `Armada: ${a} ${op} ${b}`];
+}

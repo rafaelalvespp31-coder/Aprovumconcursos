@@ -1,5 +1,6 @@
 import { ehConversa } from "./lousa";
 import { comandoEnsino, conversaEnsino, fimEnsino, ENSINO, type Cena, type Frase, type Mmc } from "./ditado-ensino";
+import { contaDesenhada, type OpConta } from "./ditado-contas";
 import { linhaSchema, type ItemDesenho, type LinhaLousa } from "./lousa";
 
 /**
@@ -252,23 +253,16 @@ function matematica(e: EstadoDitado, cmd: string, resto: string, d0: number, it:
     const prod = usados.reduce((a, b) => a * b, 1);
     it.push(tx(xR, yR() + 28, `${cmd.toUpperCase()} = ${usados.join(" · ") || "1"}`.slice(0, 40), "vermelho", tam + 2, d + 0.6), tx(xR, yR() + 70, `${cmd.toUpperCase()} = ${prod}`, "verde", tam + 6, d + 0.9));
     setR(yR() + 84); if (empilha) e.yL = Math.max(e.yL, e.yR);
-  } else if (cmd === "armada" || cmd === "armar") {
-    const m = /(\d{1,6})\s*(\+|−|-|·|×|mais|menos|vezes)\s*(\d{1,6})/.exec(resto);
-    if (!m) return false;
-    const a = Number(m[1]), b = Number(m[3]);
-    const op = /\+|mais/.test(m[2]!) ? "+" : /−|-|menos/.test(m[2]!) ? "−" : "×";
-    const r = op === "+" ? a + b : op === "−" ? a - b : a * b;
-    const w = Math.max(String(a).length, String(b).length, String(r).length), dir = xL + 40 + w * 14 + 20, at = (n: number) => dir - String(n).length * 14;
-    const y0 = e.yL;
-    it.push(tx(at(a), y0 + 30, String(a), "azul", 28, d), tx(xL + 6, y0 + 68, op, "vermelho", 28, d + 0.2), tx(at(b), y0 + 68, String(b), "azul", 28, d + 0.2), lin(xL, y0 + 78, dir + 8, y0 + 78, "grafite", d + 0.4), tx(at(r), y0 + 114, String(r), "verde", 28, d + 0.7));
-    e.yL += 130; if (empilha) e.yR = e.yL;
-  } else if (cmd === "divisao") {
-    const [a, b] = ints(resto);
-    if (!a || !b) return false;
-    const q = Math.floor(a / b), r = a % b, x0 = xL + 12 + String(a).length * 14 + 12, y0 = e.yL;
-    it.push(tx(xL + 4, y0 + 52, String(a), "azul", 28, d), lin(x0, y0 + 20, x0, y0 + 92, "grafite", d + 0.2), lin(x0, y0 + 58, x0 + 26 + Math.max(String(b).length, String(q).length) * 14, y0 + 58, "grafite", d + 0.3), tx(x0 + 10, y0 + 48, String(b), "vermelho", 28, d + 0.4), tx(x0 + 10, y0 + 90, String(q), "verde", 28, d + 0.7));
-    if (r) it.push(tx(xL + 4, y0 + 116, `resto ${r}`, "laranja", 18, d + 0.9));
-    e.yL += 128; if (empilha) e.yR = e.yL;
+  } else if (cmd === "armada" || cmd === "armar" || cmd === "divisao") {
+    const m = /(\d{1,6})\s*(\+|−|-|·|×|÷|\/|:|mais|menos|vezes|dividido por)\s*(\d{1,6})/.exec(resto);
+    const nums = ints(resto);
+    const op: OpConta | null = m ? (/\+|mais/.test(m[2]!) ? "+" : /−|-|menos/.test(m[2]!) ? "−" : /÷|\/|:|dividido/.test(m[2]!) ? "÷" : "×") : cmd === "divisao" && nums.length >= 2 ? "÷" : null;
+    const a = m ? Number(m[1]) : nums[0], b = m ? Number(m[3]) : nums[1];
+    if (!op || a === undefined || b === undefined) return false;
+    const c = contaDesenhada(a, op, b, xL + 8, e.yL, d);
+    if (!c) return false;
+    it.push(...c.it);
+    e.yL += c.h; if (empilha) e.yR = e.yL;
   }
   fim();
   return true;

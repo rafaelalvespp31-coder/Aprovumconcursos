@@ -51,3 +51,22 @@ describe("lista de contas vira tabela", () => {
     expect(r.join("|")).not.toMatch(/Passo/);
   });
 });
+
+import { roteiroDeConta, roteiroDeFatoracao } from "./calculo-lousa";
+describe("fatoração e conta simples", () => {
+  it("bloco de decomposição simultânea", () => {
+    expect(roteiroDeFatoracao("12  18 | 2\n6   9 | 2\n3   9 | 3\n1   3 | 3\n1   1 |")).toEqual(["Título: MMC de 12 e 18", "MMC: 12 e 18"]);
+    expect(roteiroDeFatoracao("texto qualquer")).toBeNull();
+  });
+  it("conta pedida", () => {
+    expect(roteiroDeConta("Calcule 345 + 278.")).toEqual(["Título: Conta armada", "Armada: 345 + 278"]);
+    expect(roteiroDeConta("O art. 12 prevê pena.")).toBeNull();
+  });
+  it("divisão, subtração e multiplicação armadas", () => {
+    const e = novoDitado(true);
+    for (const c of ["Armada: 845 − 378", "Armada: 123 × 45", "Divisão: 8456 ÷ 4"]) comandoDitado(e, c, 0);
+    const s = linhaDitado(e).rabisco!.filter((x) => x.t === "texto").map((x) => (x as { s: string }).s);
+    expect(s).toContain("Prova: 2114 × 4 = 8456");
+    expect(s.length).toBeGreaterThan(30);
+  });
+});

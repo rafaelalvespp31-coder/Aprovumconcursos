@@ -54,7 +54,7 @@ describe("conta ditada como num quadro", () => {
     const e = novoDitado(false);
     comandoDitado(e, "MMC: 12 e 18.", 0); comandoDitado(e, "Armada: 234 mais 158.", 0); comandoDitado(e, "Divisão: 145 por 4.", 0); fimDitado(e);
     const t = textos(e);
-    expect(t).toEqual(expect.arrayContaining(["MMC = 36", "392", "36"]));
+    expect(t).toEqual(expect.arrayContaining(["MMC = 36", "Prova: 36 × 4 + 1 = 145"]));
   });
   it("tudo dentro dos limites do quadro", () => {
     const e = novoDitado(false);

@@ -6,7 +6,7 @@ import { Children, type ReactNode } from "react";
 import { isRevokedLegalLine } from "@/components/markdown";
 import { CalloutIcon, CALLOUT } from "@/components/aula/callout-icon";
 import { calloutKindOf, leadingLabelKind } from "@/domain/content/callout-kind";
-import { casoDeTexto, roteiroDeCaso } from "@/domain/mentor/calculo-lousa";
+import { casoDeTexto, roteiroDeCaso, roteiroDeConta, roteiroDeFatoracao } from "@/domain/mentor/calculo-lousa";
 import { QuadroExemplo } from "@/components/aula/quadro-exemplo";
 import { PENA_MARK, highlightLegal, legalLevel, legalParagraphs, splitLegalLabel } from "@/domain/content/legal-format";
 
@@ -90,10 +90,16 @@ function MdInner({ children, legal = false }: { children: string; legal?: boolea
             if (!legal && isHeadingItem(t)) { mode = /exemplo|caso/i.test(t) ? "ex" : null; return <li className="ap-li-titulo">{c}</li>; }
             return <li>{c}</li>;
           },
+          pre: ({ node, children: c }) => {
+            const ro = legal ? null : roteiroDeFatoracao(textOf(node as unknown as ElementContent));
+            return ro ? <QuadroExemplo itens={["MMC"]} roteiro={ro}><pre>{c}</pre></QuadroExemplo> : <pre>{c}</pre>;
+          },
           p: ({ node, children: c }) => {
             if (!legal) {
               const t = textOf(node as unknown as ElementContent).trim();
               const lk = leadingLabelKind(t);
+              const conta = roteiroDeConta(t);
+              if (conta) return <QuadroExemplo itens={[t]} roteiro={conta}><p>{c}</p></QuadroExemplo>;
               const caso = casoDeTexto(t);
               const ro = caso && roteiroDeCaso(caso);
               if (ro) return <QuadroExemplo itens={[t]} roteiro={ro}><p className="ap-ex">{c}</p></QuadroExemplo>;
