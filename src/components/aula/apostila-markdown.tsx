@@ -6,6 +6,7 @@ import { Children, type ReactNode } from "react";
 import { isRevokedLegalLine } from "@/components/markdown";
 import { CalloutIcon, CALLOUT } from "@/components/aula/callout-icon";
 import { calloutKindOf, leadingLabelKind } from "@/domain/content/callout-kind";
+import { QuadroExemplo } from "@/components/aula/quadro-exemplo";
 import { PENA_MARK, highlightLegal, legalLevel, legalParagraphs, splitLegalLabel } from "@/domain/content/legal-format";
 
 function textOf(n: ElementContent | undefined): string {
@@ -54,6 +55,7 @@ export function ApostilaMarkdown({ children, legal = false }: { children: string
 function MdInner({ children, legal = false }: { children: string; legal?: boolean }) {
   // Quem está no bloco de exemplo/caso (parágrafos em itálico) até o próximo título.
   let mode: "ex" | null = null;
+  let exemploAntes = false; // acabou de passar o rótulo "EXEMPLO:": a lista seguinte vira lousa desenhada
   return (
     <>
       <ReactMarkdown
@@ -73,6 +75,12 @@ function MdInner({ children, legal = false }: { children: string; legal?: boolea
           h2: ({ children: c }) => { mode = null; return <h4 className="ap-md-h">{c}</h4>; },
           h3: ({ children: c }) => { mode = null; return <h4 className="ap-md-h">{c}</h4>; },
           h4: ({ node, children: c }) => { mode = /exemplo|caso/i.test(textOf(node as unknown as ElementContent)) ? "ex" : null; return <h4 className="ap-md-h">{c}</h4>; },
+          ul: ({ node, children: c }) => {
+            if (!exemploAntes || legal) return <ul>{c}</ul>;
+            exemploAntes = false;
+            const itens = (node?.children ?? []).filter((x): x is Extract<ElementContent, { type: "element" }> => x.type === "element" && x.tagName === "li").map((li) => textOf(li).trim());
+            return <QuadroExemplo itens={itens}><ul>{c}</ul></QuadroExemplo>;
+          },
           ol: ({ start, children: c }) => (
             <ol start={start ?? undefined} style={start && start > 1 ? { counterReset: `ap-ol ${start - 1}` } : undefined}>{c}</ol>
           ),
@@ -85,6 +93,7 @@ function MdInner({ children, legal = false }: { children: string; legal?: boolea
             if (!legal) {
               const t = textOf(node as unknown as ElementContent).trim();
               const lk = leadingLabelKind(t);
+              if (isLabelLine(t) && lk === "exemplo") exemploAntes = true;
               if (isLabelLine(t)) return <p className="ap-rotulo">{lk && <CalloutIcon kind={lk} size={13} />}{c}</p>;
               if (lk) return <p className="ap-nota" style={{ ["--tom" as string]: CALLOUT[lk].tone }}><CalloutIcon kind={lk} />{<span className="ap-nota-txt">{c}</span>}</p>;
               return <p className={mode === "ex" ? "ap-ex" : undefined}>{c}</p>;

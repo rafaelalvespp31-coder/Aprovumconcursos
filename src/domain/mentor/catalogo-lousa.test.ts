@@ -37,3 +37,35 @@ describe("quadros prontos da aula catalogada", () => {
     for (const x of roda(quadroDaSecao(S[0]!, false)!.roteiro)) if (x.t === "texto") expect(x.y).toBeLessThanOrEqual(1000);
   });
 });
+
+import { validarRoteiro } from "./catalogo-lousa";
+describe("roteiros escritos pela IA", () => {
+  it("aceita esquema de direito e conta de matemática; recusa lixo", () => {
+    const dir = ["Título: Extratividade da lei penal", "Linha do tempo: de fato até sentença", "Marco: Fato cometido", "Marco: Lei nova", "Caixa: Retroatividade", "Item: Lei nova benéfica alcança fatos passados", "Destaque: Vale até após o trânsito em julgado", "Caixa: Ultra-atividade", "Item: Lei revogada ainda vale para fatos antigos", "Resumo: A lei mais favorável ao réu sempre se aplica"];
+    expect(validarRoteiro(dir)?.length).toBe(dir.length);
+    const mat = ["Título: Regra de três", "Tabela: maçãs, reais", "Linha: 5, 20", "Linha: 8, x", "Cruzar", "Conta: 5 vezes x igual a 8 vezes 20", "Conta: x igual a 160 dividido por 5", "Resposta: x igual a 32"];
+    expect(validarRoteiro(mat)).not.toBeNull();
+    expect(validarRoteiro(["blá", "blá blá", "texto solto", "mais texto", "outra frase", "fim de papo", "nada"])).toBeNull();
+  });
+  it("quadro guardado para o tópico vence a conversão quando o pedido casa", () => {
+    const g = [{ tipo: "calculo", titulo: "Regra de três", gatilhos: ["regra", "calcular"], roteiro: ["Título: Regra de três", "Tabela: a, b"] }];
+    expect(escolherQuadro(S, "como calcular a regra de três", true, g)?.kind).toBe("calculo");
+  });
+});
+
+import { roteiroDeExemplo } from "./catalogo-lousa";
+describe("exemplo da aula vira quadro", () => {
+  it("fatos com datas viram linha do tempo e caixas", () => {
+    const r = roteiroDeExemplo(["Em janeiro, determinado crime possui pena de 1 a 4 anos.", "Em junho, uma lei aumenta a pena para 2 a 8 anos.", "O agente praticou o crime em março."])!;
+    expect(r).toContain("Linha do tempo:");
+    expect(r).toContain("Marco: Janeiro");
+    expect(r).toContain("Marco: Junho");
+    expect(r.filter((c) => c.startsWith("Caixa")).length).toBe(3);
+    const e = novoDitado(true); for (const c of r) comandoDitado(e, c, 0);
+    expect(e.itens.length).toBeGreaterThan(15);
+  });
+  it("sem datas vira passos; com 1 item não vira quadro", () => {
+    expect(roteiroDeExemplo(["João pega a bolsa de Maria", "Maria percebe e grita"])!.filter((c) => c.startsWith("Caixa: Passo")).length).toBe(2);
+    expect(roteiroDeExemplo(["só um"])).toBeNull();
+  });
+});

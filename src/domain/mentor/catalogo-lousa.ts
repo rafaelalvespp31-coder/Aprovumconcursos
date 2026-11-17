@@ -1,3 +1,4 @@
+import { comandoDitado, fimDitado, novoDitado } from "./ditado";
 /**
  * Quadros prontos a partir da aula catalogada: tabelas, comparações e casos práticos que já estão nas seções da aula viram
  * roteiros de comandos para o motor de desenho (ditado.ts). Sem IA e sem espera: do banco para o quadro em milissegundos.
@@ -77,10 +78,13 @@ const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 const PALAVRAS = (s: string) => new Set(norm(s).split(/[^a-z0-9]+/).filter((w) => w.length > 3));
 
 /** Escolhe a seção que melhor responde ao pedido do aluno ("dá um exemplo", "qual a diferença", "faz um esquema"…). */
-export function escolherQuadro(secoes: SecaoAula[], pedido: string, largo: boolean): QuadroPronto | null {
+export interface QuadroGuardado { tipo: string; titulo: string; gatilhos: string[]; roteiro: string[] }
+export function escolherQuadro(secoes: SecaoAula[], pedido: string, largo: boolean, guardados: QuadroGuardado[] = []): QuadroPronto | null {
   const p = norm(pedido), pw = PALAVRAS(pedido);
   const quer = (re: RegExp) => re.test(p);
   const cands = secoes.map((s) => ({ s, q: quadroDaSecao(s, largo) })).filter((x): x is { s: SecaoAula; q: QuadroPronto } => !!x.q);
+  // quadros desenhados sob medida para o tópico (IA, uma vez só) valem mais que a conversão direta das tabelas da aula
+  for (const g of guardados) cands.push({ s: { kind: g.tipo, title: `${g.titulo} ${g.gatilhos.join(" ")}`, body_markdown: "" }, q: { titulo: g.titulo, roteiro: g.roteiro, kind: g.tipo } });
   if (!cands.length) return null;
   let melhor = cands[0]!, nota = -1;
   for (const c of cands) {
@@ -88,9 +92,60 @@ export function escolherQuadro(secoes: SecaoAula[], pedido: string, largo: boole
     if (quer(/exemplo|caso|pratic|aplic/) && (c.s.kind === "exemplos" || c.s.kind === "aplicacao")) n += 8;
     if (quer(/diferen|compar|versus|\bx\b|confund/) && (c.s.kind === "comparacao" || c.s.kind === "quadro_comparativo")) n += 6;
     if (quer(/esquema|mapa|resum|tabela|desenh/) && (c.s.kind === "esquema" || c.s.kind === "quadro_comparativo")) n += 5;
+    if (quer(/calcul|conta|passo|resolv|como se faz|como faz/) && c.s.kind === "calculo") n += 8;
+    if (quer(/tempo|linha|cronolog|ordem/) && c.s.kind === "linha_do_tempo") n += 8;
+    if (guardados.some((g) => g.titulo === c.q.titulo)) n += 2;
     const w = PALAVRAS(`${c.s.title} ${c.s.body_markdown.slice(0, 600)}`);
     for (const x of pw) if (w.has(x)) n += 1;
     if (n > nota) { nota = n; melhor = c; }
   }
   return melhor.q;
+}
+
+/** Mantém só os comandos que o motor de desenho entende e exige que o roteiro desenhe de verdade. */
+export function validarRoteiro(roteiro: string[]): string[] | null {
+  for (const largo of [true, false]) {
+    const e = novoDitado(largo);
+    const ok = roteiro.filter((c) => comandoDitado(e, c, 0));
+    fimDitado(e);
+    if (ok.length < Math.ceil(roteiro.length * 0.7) || e.itens.length < 6) return null;
+    if (largo) roteiro = ok;
+  }
+  return roteiro;
+}
+
+
+const MESES = "janeiro|fevereiro|mar[çc]o|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro";
+const TEMPO = new RegExp(`^(?:em\\s+|no\\s+(?:dia\\s+)?|na\\s+)?((?:\\d{1,2}\\s+de\\s+)?(?:${MESES})(?:\\s+de\\s+\\d{4})?|\\d{4}|dia\\s+\\d{1,2}|hoje|ontem|depois|antes)\\b[\\s,:;–-]*`, "i");
+
+const MES_LISTA = ["janeiro", "fevereiro", "marco", "abril", "maio", "junho", "julho", "agosto", "setembro", "outubro", "novembro", "dezembro"];
+const MES_ANY = new RegExp(`\\b(${MESES})\\b`, "i");
+const cap = (s: string) => s.replace(/^\w/, (c) => c.toUpperCase());
+
+/**
+ * Bloco "EXEMPLO:" da aula (lista de fatos) → roteiro do quadro: com datas vira linha do tempo (em ordem cronológica)
+ * + caixas; sem datas vira uma sequência de caixas (um passo por item).
+ */
+export function roteiroDeExemplo(itens: string[], titulo = "Exemplo"): string[] | null {
+  const xs = itens.map(limpa).filter((s) => s.length >= 3).slice(0, 8);
+  if (xs.length < 2) return null;
+  const info = xs.map((x, i) => {
+    const lead = TEMPO.exec(x), anyM = MES_ANY.exec(x);
+    const rot = lead ? lead[1]! : anyM ? anyM[1]! : null;
+    const mes = rot ? MES_LISTA.indexOf(norm(rot).replace(/^\d+\s+de\s+/, "").split(" ")[0]!) : -1;
+    return { x, i, rot: rot ? cap(rot) : null, mes, resto: lead ? x.slice(lead[0].length) : x };
+  });
+  const comTempo = info.filter((n) => n.rot);
+  const out = [cmd("Título", corta(titulo, 40))];
+  let seq = info;
+  if (comTempo.length >= 2) {
+    if (comTempo.length === info.length && info.every((n) => n.mes >= 0)) seq = [...info].sort((a, b) => a.mes - b.mes || a.i - b.i);
+    out.push("Linha do tempo:");
+    for (const n of seq) if (n.rot) out.push(cmd("Marco", corta(n.rot, 24)));
+  }
+  seq.forEach((n, k) => {
+    out.push(cmd("Caixa", n.rot ? corta(n.rot, 30) : `Passo ${k + 1}`));
+    out.push(cmd("Item", corta(cap(n.resto) || n.x, 110)));
+  });
+  return out.length >= 5 ? out : null;
 }

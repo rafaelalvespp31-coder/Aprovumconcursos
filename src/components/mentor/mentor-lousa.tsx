@@ -91,7 +91,7 @@ function Escrito({ s, v, l, cor0, feito, lado }: { s: string; v: number; l: Linh
 }
 
 /** Altura do mini-quadro: 140 no mínimo, cresce para caber desenhos mais altos (pirâmides, fluxos em coluna). */
-function alturaMini(its: ItemDesenho[], largo = false): number {
+export function alturaMini(its: ItemDesenho[], largo = false): number {
   let m = 0;
   for (const it of its) {
     const y = it.t === "linha" ? Math.max(it.y1, it.y2) : it.t === "ret" ? it.y + it.h : it.t === "circ" ? it.cy + it.r : it.t === "curva" ? Math.max(...it.pts.map((q) => q[1])) : it.y;
@@ -100,7 +100,7 @@ function alturaMini(its: ItemDesenho[], largo = false): number {
   return Math.max(140, Math.min(largo ? 1000 : 260, Math.ceil(m + 14)));
 }
 
-function Traco({ it, d }: { it: ItemDesenho; d: number }) {
+export function Traco({ it, d }: { it: ItemDesenho; d: number }) {
   const c = cor("cor" in it ? it.cor : undefined, "grafite");
   const st = { ["--d" as string]: `${d}s`, stroke: c } as React.CSSProperties;
   if (it.t === "emoji") return <text className="lz-em" x={it.x} y={it.y} fontSize={it.tam} style={{ ["--d" as string]: `${d}s` }}>{it.s}</text>;
