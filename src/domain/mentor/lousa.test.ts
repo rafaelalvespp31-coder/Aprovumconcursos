@@ -110,6 +110,7 @@ import { ehConversa } from "./lousa";
 describe("conversa que não vai para o quadro", () => {
   it("separa fecho e comentário do quadro da explicação", () => {
     expect(ehConversa("Pronto, ficou claro?")).toBe(true);
+    expect(ehConversa("Fique tranquilo, que eu vou terminar de escrever e você já vai visualizar.")).toBe(true);
     expect(ehConversa("Agora vou apagar o quadro.")).toBe(true);
     expect(ehConversa("A lei penal não retroage, salvo para beneficiar o réu.")).toBe(false);
   });

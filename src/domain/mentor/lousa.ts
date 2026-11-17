@@ -61,7 +61,7 @@ export const LOUSA_H = 260;
 /** Conversa sobre o próprio quadro ou fecho da aula ("vou apagar", "ficou claro?"): fica só na voz, nunca vai para a lousa. */
 export function ehConversa(frase: string): boolean {
   const s = frase.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
-  return /\b(apag\w*|limp\w*|quadro|lousa|ficou claro|entendeu|alguma duvida|tem duvida|bora|olha aqui|vou (te )?(anotar|escrever|desenhar|rabiscar|montar|mostrar|explicar)|ja estou|estou (escrevendo|desenhando)|ferramentas|ficou salv\w*|posso (continuar|seguir)|vamos la)\b/.test(s);
+  return /\b(apag\w*|limp\w*|quadro|lousa|ficou claro|fique tranquilo|terminar de escrever|entendeu|alguma duvida|tem duvida|bora|olha aqui|vou (te )?(anotar|escrever|desenhar|rabiscar|montar|mostrar|explicar)|ja estou|estou (escrevendo|desenhando)|ferramentas|ficou salv\w*|posso (continuar|seguir)|vamos la)\b/.test(s);
 }
 
 export function anunciaLousa(fala: string): boolean {
