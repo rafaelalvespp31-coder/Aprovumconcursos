@@ -26,7 +26,7 @@ describe("exemplo de matemática vira conta desenhada", () => {
   });
   it("sem conta → null", () => {
     expect(ehCalculo("O agente responde por furto.")).toBe(false);
-    expect(roteiroDeCaso({ titulo: "x", enunciado: "texto", resultado: "Pode." })).toBeNull();
+    expect(roteiroDeCaso({ titulo: "x", enunciado: "texto", resultado: "" })).toBeNull();
   });
   it("MMC no enunciado usa a tabela de fatoração", () => {
     const r = roteiroDeCaso({ titulo: "Caso 3 — MMC", enunciado: "Calcule o MMC de 12 e 18.", resultado: "12 = 2² × 3; 18 = 2 × 3²; MMC = 2² × 3² = 36" })!;
@@ -68,5 +68,20 @@ describe("fatoração e conta simples", () => {
     const s = linhaDitado(e).rabisco!.filter((x) => x.t === "texto").map((x) => (x as { s: string }).s);
     expect(s).toContain("Prova: 2114 × 4 = 8456");
     expect(s.length).toBeGreaterThan(30);
+  });
+});
+
+import { roteiroDeSituacao, roteiroDeTexto } from "./calculo-lousa";
+describe("exemplos sem conta", () => {
+  it("situação → pergunta → resposta", () => {
+    const r = roteiroDeCaso({ titulo: "Exemplo", enunciado: "Ana é ameaçada pelo vizinho.", pergunta: "O delegado pode agir de ofício?", resultado: "Não. A ação é condicionada à representação." })!;
+    expect(r).toEqual(expect.arrayContaining(["Caixa: Situação", "Caixa: Pergunta", "Caixa: Resposta"]));
+    expect(roteiroDeSituacao({ titulo: "x", enunciado: "", resultado: "" })).toBeNull();
+  });
+  it("texto corrido vira passos", () => {
+    const r = roteiroDeTexto("Exemplo", "Uma escola tem grupos de 12 e 18 alunos. Queremos o menor encontro comum. Usamos a decomposição. O resultado é 36.")!;
+    expect(r[0]).toBe("Título: Exemplo");
+    expect(r).toContain("Caixa: Passo 1");
+    expect(r.at(-1)).toMatch(/^Destaque: O resultado é 36/);
   });
 });

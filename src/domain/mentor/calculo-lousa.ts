@@ -44,7 +44,7 @@ function passos(resultado: string): { contas: string[]; resposta: string } {
 }
 
 export function roteiroDeCaso(c: CasoCalculo): string[] | null {
-  if (!ehCalculo(c.resultado)) return null;
+  if (!ehCalculo(c.resultado)) return roteiroDeSituacao(c);
   const enun = limpa(c.enunciado), pergunta = limpa(c.pergunta ?? "");
   const out = [cmd("Título", corta(limpa(c.titulo).replace(/\.$/, ""), 40))];
   const t = norm(`${enun} ${pergunta}`);
@@ -103,4 +103,28 @@ export function roteiroDeConta(texto: string): string[] | null {
   const op = m[2] === "+" ? "+" : m[2] === "−" || m[2] === "-" ? "−" : m[2] === "÷" || m[2] === "/" ? "÷" : "×";
   const a = m[1]!.replace(/\./g, ""), b = m[3]!.replace(/\./g, "");
   return ["Título: Conta armada", `Armada: ${a} ${op} ${b}`];
+}
+
+const frases = (s: string) => limpa(s).split(/(?<=[.!?])\s+(?=[A-ZÀ-Ú0-9“"])/).map((x) => x.trim()).filter((x) => x.length >= 4);
+
+/** Qualquer exemplo em texto (sem conta) → sequência didática: contexto, passos numerados e a conclusão em destaque. */
+export function roteiroDeTexto(titulo: string, texto: string): string[] | null {
+  const fs = frases(texto).slice(0, 7);
+  if (fs.length < 2) return null;
+  const out = [cmd("Título", corta(limpa(titulo).replace(/\.$/, "") || "Exemplo", 40))];
+  out.push(cmd("Exemplo", corta(fs[0]!, 150)));
+  const meio = fs.slice(1, -1), fim = fs.at(-1)!;
+  meio.forEach((f, i) => { out.push(cmd("Caixa", `Passo ${i + 1}`)); out.push(cmd("Item", corta(f, 120))); });
+  out.push(cmd(meio.length ? "Destaque" : "Item", corta(fim, 150)));
+  return out.length >= 4 ? out : null;
+}
+
+/** Bloco "Na prática" (Situação → Pergunta → Resposta) sem conta: fluxo de três quadros ligados por setas. */
+export function roteiroDeSituacao(c: CasoCalculo): string[] | null {
+  const sit = limpa(c.enunciado), res = limpa(c.resultado);
+  if (!sit || !res) return null;
+  const out = [cmd("Título", corta(limpa(c.titulo).replace(/\.$/, "") || "Na prática", 40)), "Caixa: Situação", cmd("Item", corta(sit, 130))];
+  if (c.pergunta) out.push("Caixa: Pergunta", cmd("Item", corta(limpa(c.pergunta), 120)));
+  out.push("Caixa: Resposta", cmd("Destaque", corta(res, 150)));
+  return out;
 }

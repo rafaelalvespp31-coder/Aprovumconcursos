@@ -6,7 +6,7 @@ import { Children, type ReactNode } from "react";
 import { isRevokedLegalLine } from "@/components/markdown";
 import { CalloutIcon, CALLOUT } from "@/components/aula/callout-icon";
 import { calloutKindOf, leadingLabelKind } from "@/domain/content/callout-kind";
-import { casoDeTexto, roteiroDeCaso, roteiroDeConta, roteiroDeFatoracao } from "@/domain/mentor/calculo-lousa";
+import { casoDeTexto, roteiroDeCaso, roteiroDeConta, roteiroDeFatoracao, roteiroDeTexto } from "@/domain/mentor/calculo-lousa";
 import { QuadroExemplo } from "@/components/aula/quadro-exemplo";
 import { PENA_MARK, highlightLegal, legalLevel, legalParagraphs, splitLegalLabel } from "@/domain/content/legal-format";
 
@@ -72,10 +72,10 @@ function MdInner({ children, legal = false }: { children: string; legal?: boolea
             );
           },
           img: () => null,
-          h1: ({ children: c }) => { mode = null; return <h4 className="ap-md-h">{c}</h4>; },
-          h2: ({ children: c }) => { mode = null; return <h4 className="ap-md-h">{c}</h4>; },
-          h3: ({ children: c }) => { mode = null; return <h4 className="ap-md-h">{c}</h4>; },
-          h4: ({ node, children: c }) => { mode = /exemplo|caso/i.test(textOf(node as unknown as ElementContent)) ? "ex" : null; return <h4 className="ap-md-h">{c}</h4>; },
+          h1: ({ node, children: c }) => { mode = null; exemploAntes = /^\W*(exemplo|caso)\b/i.test(textOf(node as unknown as ElementContent)); return <h4 className="ap-md-h">{c}</h4>; },
+          h2: ({ node, children: c }) => { mode = null; exemploAntes = /^\W*(exemplo|caso)\b/i.test(textOf(node as unknown as ElementContent)); return <h4 className="ap-md-h">{c}</h4>; },
+          h3: ({ node, children: c }) => { mode = null; exemploAntes = /^\W*(exemplo|caso)\b/i.test(textOf(node as unknown as ElementContent)); return <h4 className="ap-md-h">{c}</h4>; },
+          h4: ({ node, children: c }) => { exemploAntes = /^\W*(exemplo|caso)\b/i.test(textOf(node as unknown as ElementContent)); mode = /exemplo|caso/i.test(textOf(node as unknown as ElementContent)) ? "ex" : null; return <h4 className="ap-md-h">{c}</h4>; },
           ul: ({ node, children: c }) => {
             if (!exemploAntes || legal) return <ul>{c}</ul>;
             exemploAntes = false;
@@ -103,7 +103,13 @@ function MdInner({ children, legal = false }: { children: string; legal?: boolea
               const caso = casoDeTexto(t);
               const ro = caso && roteiroDeCaso(caso);
               if (ro) return <QuadroExemplo itens={[t]} roteiro={ro}><p className="ap-ex">{c}</p></QuadroExemplo>;
+              if (exemploAntes && !isLabelLine(t) && t.length >= 60) {
+                exemploAntes = false;
+                const ro = roteiroDeTexto("Exemplo", t);
+                if (ro) return <QuadroExemplo itens={[t]} roteiro={ro}><p>{c}</p></QuadroExemplo>;
+              }
               if (isLabelLine(t) && lk === "exemplo") exemploAntes = true;
+              else if (t.length <= 70 && /^\W*(exemplo|caso)\b/i.test(t)) exemploAntes = true;
               if (isLabelLine(t)) return <p className="ap-rotulo">{lk && <CalloutIcon kind={lk} size={13} />}{c}</p>;
               if (lk) return <p className="ap-nota" style={{ ["--tom" as string]: CALLOUT[lk].tone }}><CalloutIcon kind={lk} />{<span className="ap-nota-txt">{c}</span>}</p>;
               return <p className={mode === "ex" ? "ap-ex" : undefined}>{c}</p>;
