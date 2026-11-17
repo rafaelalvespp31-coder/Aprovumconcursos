@@ -1,6 +1,6 @@
 import type { ItemDesenho } from "./lousa";
 
-type Cor = "azul" | "vermelho" | "verde" | "grafite" | "laranja" | "roxo";
+type Cor = "azul" | "vermelho" | "verde" | "grafite" | "laranja" | "roxo" | "branco";
 const tx = (x: number, y: number, s: string, cor: Cor, tam: number, d: number): ItemDesenho => ({ t: "texto", x: Math.max(0, Math.round(x)), y: Math.round(y), s: s.slice(0, 40), cor, tam, d }) as ItemDesenho;
 const lin = (x1: number, y1: number, x2: number, y2: number, cor: Cor, d: number): ItemDesenho => ({ t: "linha", x1: Math.max(0, Math.round(x1)), y1: Math.round(y1), x2: Math.max(0, Math.round(x2)), y2: Math.round(y2), cor, d }) as ItemDesenho;
 
@@ -154,20 +154,23 @@ const num = (s: string) => Number(s.replace(/\./g, "").replace(",", "."));
 const fmt = (n: number) => (Number.isInteger(n) ? String(n) : String(Math.round(n * 100) / 100).replace(".", ","));
 
 export interface RegraDeTres { a: string; b: string; c: string; nomeA: string; nomeB: string; inversa: boolean; conclusao: string }
-/** Regra de três como no quadro do professor: oito faixas numeradas (problema, dados, proporcionalidade, proporção, cruzada, isolar x, conferir, resumo + resposta). */
+/** Regra de três como no quadro do professor: oito faixas numeradas (problema, dados, proporcionalidade, proporção, cruzada, isolar x, conferir, resumo + resposta). Tela larga: grade 3×3 como no quadro de referência; celular: uma coluna. */
 export function regraDeTresDesenhada(r: RegraDeTres, x0: number, y0: number, d0: number, W: number): ContaDesenhada | null {
   const a = num(r.a), b = num(r.b), c = num(r.c);
   if (![a, b, c].every((v) => Number.isFinite(v) && v > 0)) return null;
   const k = r.inversa ? c : a, P = r.inversa ? a * b : b * c, x = P / k;
   const it: ItemDesenho[] = [];
   const uA = /\(([^)]+)\)/.exec(r.nomeA)?.[1] ?? "", nA = r.nomeA.replace(/\s*\(.*\)\s*$/, "").slice(0, 14), nB = r.nomeB.replace(/\s*\(.*\)\s*$/, "").slice(0, 14), unid = /\(([^)]+)\)/.exec(r.nomeB)?.[1] ?? nB.toLowerCase();
-  const cw = 410, dois = W >= 800; // tela larga: etapas 1-4 à esquerda e 5-8 à direita, como no quadro de referência
-  let ini = x0 + 12, y = y0, d = d0, hEsq = 0;
-  const X0 = x0;
-  const colunaDireita = () => { if (!dois) return; hEsq = y - y0; y = y0; ini = X0 + 440 + 12; x0 = X0 + 440; };
-  /** Faixa colorida numerada, como o professor escreve o título de cada etapa. */
+  const gr = W >= 800, cw = gr ? 304 : 410, tf = gr ? 15 : 18;
+  const ini = x0 + 12;
+  let y = y0, d = d0;
+  const faixas: Array<{ i0: number; i1: number; y0: number; h: number }> = [];
+  let i0 = 0, yIni = y0;
+  const abre = () => { i0 = it.length; yIni = y; };
+  const fecha = () => { faixas.push({ i0, i1: it.length, y0: yIni, h: y - yIni }); };
   const faixa = (n: number, titulo: string, cor: Cor) => {
-    it.push({ t: "ret", x: x0, y, w: cw, h: 30, cor, bg: true, d }, tx(x0 + 12, y + 21, `${n}. ${titulo}`, cor, 18, d + 0.1));
+    abre();
+    it.push({ t: "ret", x: x0, y, w: cw, h: 30, cor, bg: true, d }, tx(x0 + 10, y + 21, `${n}. ${titulo}`, cor, tf, d + 0.1));
     y += 42; d += 0.5;
   };
   const fracao = (xf: number, yf: number, nu: string, de: string, cor: Cor, dd: number) => {
@@ -177,57 +180,83 @@ export function regraDeTresDesenhada(r: RegraDeTres, x0: number, y0: number, d0:
   };
   // 1. problema
   faixa(1, "Problema", "azul");
-  it.push(tx(ini, y + 10, `${r.a} ${uA || nA} → ${r.b} ${nB}`.slice(0, 36), "grafite", 20, d), tx(ini, y + 40, `${r.c} ${uA || nA} → x ${nB}?`.slice(0, 36), "grafite", 20, d + 0.3));
-  y += 60; d += 0.8;
+  it.push(tx(ini, y + 10, `${r.a} ${uA || nA} → ${r.b} ${nB}`.slice(0, 30), "grafite", 20, d), tx(ini, y + 40, `${r.c} ${uA || nA} → x ${nB}?`.slice(0, 30), "grafite", 20, d + 0.3));
+  y += 60; d += 0.8; fecha();
   // 2. dados em tabela
   faixa(2, "Organize os dados", "verde");
-  const cwT = 150, hT = 34;
-  [[nA, nB, "azul"], [r.a, r.b, "grafite"], [r.c, "x", "grafite"]].forEach((lin3, i) => {
-    const cor = lin3[2] as Cor;
+  const cwT = gr ? 118 : 150, hT = 34;
+  [[nA, nB, "azul"], [r.a, r.b, "grafite"], [r.c, "x", "grafite"]].forEach((l3, i) => {
+    const cor = l3[2] as Cor;
     [0, 1].forEach((j) => {
-      const xx = ini + 20 + j * cwT, tt = String(lin3[j]);
-      it.push({ t: "ret", x: xx, y: y + i * hT, w: cwT, h: hT, cor: i === 0 ? "azul" : "grafite", bg: i === 0, d: d + i * 0.3 }, tx(xx + 12, y + i * hT + 24, tt, i === 2 && j === 1 ? "vermelho" : cor, i === 0 ? 17 : 22, d + i * 0.3 + 0.1));
+      const xx = ini + (gr ? 12 : 20) + j * cwT, tt = String(l3[j]);
+      it.push({ t: "ret", x: xx, y: y + i * hT, w: cwT, h: hT, cor: i === 0 ? "azul" : "grafite", bg: i === 0, d: d + i * 0.3 }, tx(xx + 10, y + i * hT + 24, tt.slice(0, 11), i === 2 && j === 1 ? "vermelho" : cor, i === 0 ? 16 : 22, d + i * 0.3 + 0.1));
     });
   });
-  y += 3 * hT + 16; d += 1.2;
+  y += 3 * hT + 16; d += 1.2; fecha();
   // 3. proporcionalidade
   faixa(3, "Identifique a proporcionalidade", "roxo");
-  it.push(tx(ini, y + 12, (r.inversa ? `Mais ${nA} → menos ${nB}` : `Mais ${nA} → mais ${nB}`).slice(0, 36), "grafite", 20, d));
-  it.push({ t: "ret", x: ini, y: y + 24, w: 360, h: 34, cor: "verde", d: d + 0.4 }, tx(ini + 12, y + 47, `✔ Grandezas ${r.inversa ? "inversamente" : "diretamente"} proporcionais`.slice(0, 40), "verde", 15, d + 0.5));
-  y += 76; d += 1;
+  it.push(tx(ini, y + 12, (r.inversa ? `Mais ${nA} → menos ${nB}` : `Mais ${nA} → mais ${nB}`).slice(0, 30), "grafite", 19, d));
+  it.push({ t: "ret", x: ini, y: y + 24, w: cw - 24, h: 34, cor: "verde", d: d + 0.4 }, tx(ini + 10, y + 47, `✔ Grandezas ${r.inversa ? "inversamente" : "diretamente"}`.slice(0, 30), "verde", 15, d + 0.5));
+  it.push(tx(ini + 10, y + 75, "proporcionais", "verde", 15, d + 0.6));
+  y += 90; d += 1; fecha();
   // 4. proporção
   faixa(4, "Monte a proporção", "vermelho");
   const yf = y + 22;
-  let xf = fracao(ini + 10, yf, r.inversa ? r.c : r.a, r.inversa ? r.a : r.c, "grafite", d);
+  const xf = fracao(ini + 10, yf, r.inversa ? r.c : r.a, r.inversa ? r.a : r.c, "grafite", d);
   it.push(tx(xf + 8, yf + 10, "=", "grafite", 26, d + 0.4));
   fracao(xf + 34, yf, r.b, "x", "vermelho", d + 0.5);
-  y += 62; d += 1;
-  colunaDireita();
+  y += 62; d += 1; fecha();
   // 5. multiplicação cruzada
   faixa(5, "Faça a multiplicação cruzada", "verde");
-  it.push(tx(ini, y + 14, (r.inversa ? `${r.c} · x = ${r.a} · ${r.b}` : `${r.a} · x = ${r.c} · ${r.b}`).slice(0, 34), "grafite", 24, d));
-  it.push({ t: "ret", x: ini, y: y + 28, w: 200, h: 36, cor: "laranja", bg: true, d: d + 0.5 }, tx(ini + 12, y + 53, `${fmt(k)}x = ${fmt(P)}`.slice(0, 20), "laranja", 24, d + 0.6));
-  y += 78; d += 1.2;
+  it.push(tx(ini, y + 14, (r.inversa ? `${r.c} · x = ${r.a} · ${r.b}` : `${r.a} · x = ${r.c} · ${r.b}`).slice(0, 28), "grafite", 24, d));
+  it.push({ t: "ret", x: ini, y: y + 28, w: 200, h: 36, cor: "laranja", bg: true, d: d + 0.5 }, tx(ini + 12, y + 53, `${fmt(k)}x = ${fmt(P)}`.slice(0, 16), "laranja", 24, d + 0.6));
+  y += 78; d += 1.2; fecha();
   // 6. isolar x
   faixa(6, "Isole o X", "azul");
-  it.push(tx(ini + 10, y + 26, "x =", "grafite", 26, d));
-  fracao(ini + 60, y + 20, fmt(P), fmt(k), "grafite", d + 0.2);
-  it.push({ t: "linha", x1: ini + 150, y1: y + 20, x2: ini + 190, y2: y + 20, cor: "vermelho", seta: true, d: d + 0.6 });
-  it.push({ t: "ret", x: ini + 200, y: y, w: 160, h: 44, cor: "laranja", bg: true, d: d + 0.8 }, tx(ini + 214, y + 32, `x = ${fmt(x)}`.slice(0, 14), "laranja", 28, d + 0.9));
-  y += 70; d += 1.6;
+  const bx = gr ? 150 : 200;
+  it.push(tx(ini + 6, y + 26, "x =", "grafite", 26, d));
+  fracao(ini + 56, y + 20, fmt(P), fmt(k), "grafite", d + 0.2);
+  it.push({ t: "linha", x1: ini + bx - 38, y1: y + 20, x2: ini + bx - 8, y2: y + 20, cor: "vermelho", seta: true, d: d + 0.6 });
+  it.push({ t: "ret", x: ini + bx, y, w: gr ? 130 : 160, h: 44, cor: "laranja", bg: true, d: d + 0.8 }, tx(ini + bx + 12, y + 32, `x = ${fmt(x)}`.slice(0, 11), "laranja", gr ? 24 : 28, d + 0.9));
+  y += 70; d += 1.6; fecha();
   // 7. conferir
   faixa(7, "Confira o resultado", "roxo");
   const conf = r.inversa ? [`${r.a} × ${r.b} = ${fmt(a * b)}`, `${r.c} × ${fmt(x)} = ${fmt(c * x)}`] : [`Por ${nA.toLowerCase()}: ${r.b} ÷ ${r.a} = ${fmt(b / a)}`, `Em ${r.c}: ${fmt(b / a)} × ${r.c} = ${fmt(x)}`];
-  conf.forEach((l, i) => it.push(tx(ini, y + 14 + i * 30, l.slice(0, 36), "grafite", 20, d + i * 0.4)));
-  it.push({ t: "ret", x: ini, y: y + 70, w: 240, h: 32, cor: "verde", d: d + 1 }, tx(ini + 12, y + 93, "✔ Resultado confirmado!", "verde", 17, d + 1.1));
-  y += 120; d += 1.6;
-  // 8. resumo e resposta
+  conf.forEach((l, i) => it.push(tx(ini, y + 14 + i * 30, l.slice(0, 30), "grafite", gr ? 18 : 20, d + i * 0.4)));
+  it.push({ t: "ret", x: ini, y: y + 70, w: 240, h: 32, cor: "verde", d: d + 1 }, tx(ini + 12, y + 93, "✔ Resultado confirmado!", "verde", 16, d + 1.1));
+  y += 120; d += 1.6; fecha();
+  // 8. resumo
   faixa(8, "Resumo da aula", "verde");
-  ["Identifique as grandezas", "Descubra a proporcionalidade", "Monte a proporção", "Resolva a equação", "Confira o resultado"].forEach((l, i) => it.push(tx(ini, y + 12 + i * 26, `✔ ${l}`, "verde", 17, d + i * 0.3)));
-  y += 140; d += 1.6;
+  ["Identifique as grandezas", "Descubra a proporcionalidade", "Monte a proporção", "Resolva a equação", "Confira o resultado"].forEach((l, i) => it.push(tx(ini, y + 12 + i * 26, `✔ ${l}`, "verde", gr ? 16 : 17, d + i * 0.3)));
+  y += 140; d += 1.6; fecha();
+  // resposta
+  abre();
   const resp = `${fmt(x)} ${unid}`.slice(0, 22);
   it.push({ t: "ret", x: x0, y, w: cw, h: 62, cor: "laranja", bg: true, d }, tx(x0 + 14, y + 24, "Resposta:", "grafite", 16, d + 0.2), tx(x0 + 14, y + 52, resp, "laranja", 30, d + 0.4));
-  return { it, h: Math.max(hEsq, y + 74 - y0) };
+  y += 74; fecha();
+  if (!gr) return { it, h: y - y0 };
+  // grade 3×3: linha 1 = etapas 1-3; linha 2 = 4-6; linha 3 = 7, 8 e a resposta
+  const grade: number[][] = [[0, 1, 2], [3, 4, 5], [6, 7, 8]];
+  const out: ItemDesenho[] = [];
+  let yl = y0;
+  for (const linha of grade) {
+    const hl = Math.max(...linha.map((i) => faixas[i]!.h));
+    linha.forEach((i, col) => {
+      const f = faixas[i]!;
+      const dx = col * (cw + 14), dy = yl - f.y0;
+      for (const o of it.slice(f.i0, f.i1)) out.push(move(o, dx, dy));
+    });
+    yl += hl + 14;
+  }
+  return { it: out, h: yl - y0 };
+}
+
+/** Desloca um item do desenho (para montar a grade de etapas). */
+function move(o: ItemDesenho, dx: number, dy: number): ItemDesenho {
+  if (o.t === "linha") return { ...o, x1: o.x1 + dx, y1: o.y1 + dy, x2: o.x2 + dx, y2: o.y2 + dy };
+  if (o.t === "circ") return { ...o, cx: o.cx + dx, cy: o.cy + dy };
+  if (o.t === "curva") return { ...o, pts: o.pts.map(([px, py]) => [px + dx, py + dy] as [number, number]) };
+  return { ...o, x: o.x + dx, y: o.y + dy };
 }
 
 /** Cálculo resolvido linha a linha, como no caderno: frações empilhadas, setas entre os passos, X na multiplicação em cruz e o resultado numa caixa. */

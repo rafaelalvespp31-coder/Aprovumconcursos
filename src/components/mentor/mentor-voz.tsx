@@ -236,6 +236,12 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
         if (g2 !== m0 || m0.modo === "ia" || m0.linhas.length > 0 || (m0.dit && m0.dit.itens.length > 0)) return;
         void buscarCatalogo(m0, ped).then((achou) => { if (!achou && trans.current === m0 && m0.modo !== "ia" && m0.linhas.length === 0) iniciarIA(m0, ped); });
       }, 7000);
+      // o Mentor só avisa que vai mostrar no quadro se, passado um tempo, realmente não apareceu nada nele
+      setTimeout(() => {
+        const g3 = trans.current;
+        if (g3 !== m0 || m0.linhas.length > 0 || (m0.dit && m0.dit.itens.length > 0)) return;
+        try { ref.current.session?.sendRealtimeInput({ text: "[AVISO DO APLICATIVO] O quadro ainda não apareceu para o aluno. Diga agora UMA frase curta avisando que vai mostrar no quadro e continue a explicação." }); } catch { /* sessão já encerrada */ }
+      }, 12000);
     }
   };
   const progresso = () => {

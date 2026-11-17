@@ -45,7 +45,7 @@ describe("conta ditada como num quadro", () => {
     const e = novoDitado(true);
     for (const c of ["Título: Regra de três.", "Tabela: maçãs, reais.", "Linha: 5, 20.", "Linha: 8, x.", "Cruzar.", "Conta: 5 vezes x igual a 8 vezes 20.", "Conta: x igual a 160 dividido por 5.", "Resposta: x igual a 32."]) comandoDitado(e, c, 0);
     const t = textos(e);
-    expect(t).toEqual(expect.arrayContaining(["REGRA DE TRÊS", "maçãs", "20", "x", "5 · x = 8 · 20", "x = 160 ÷ 5", "x = 32"]));
+    expect(t).toEqual(expect.arrayContaining(["Regra de três", "maçãs", "20", "x", "5 · x = 8 · 20", "x = 160 ÷ 5", "x = 32"]));
     const l = linhaDitado(e).rabisco!;
     expect(l.filter((x) => x.t === "linha" && x.seta)).toHaveLength(2); // as duas setas cruzadas
     expect(l.some((x) => x.t === "circ")).toBe(true); // o x circulado
@@ -84,7 +84,7 @@ describe("os 5 testes do comando mestre (ditado simulado)", () => {
     for (const c of ["Título: Furto e roubo.", "Coluna um: furto.", "Pessoa: ladrão.", "Objeto: bolsa.", "Seta: leva.", "Item: subtração sem violência.", "Coluna dois: roubo.", "Pessoa: ladrão.", "Arma.", "Pessoa: vítima.", "Item: grave ameaça ou violência."]) comandoDitado(e, c, 0);
     const l = linhaDitado(e).rabisco!;
     expect(l.filter((x) => x.t === "circ").length).toBeGreaterThanOrEqual(3); // cabeças
-    const rets = l.filter((x) => x.t === "ret") as { x: number }[];
+    const rets = l.filter((x) => x.t === "ret" && !(x as { sol?: boolean }).sol) as { x: number }[]; // sem a faixa do título
     expect(rets[0]!.x).toBeLessThan(rets[rets.length - 1]!.x); // colunas lado a lado
     expect(tx(e)).toEqual(expect.arrayContaining(["ladrão", "bolsa", "vítima"]));
   });
@@ -92,7 +92,7 @@ describe("os 5 testes do comando mestre (ditado simulado)", () => {
     const e = novoDitado(false);
     for (const c of ["Título: Sujeito e predicado.", "Frase: O menino comeu a maçã.", "Sujeito: o menino.", "Predicado: comeu a maçã.", "Verbo: comeu.", "Objeto: a maçã."]) comandoDitado(e, c, 0);
     const l = linhaDitado(e).rabisco!;
-    expect(l.filter((x) => x.t === "curva")).toHaveLength(5); // ondinha do título + 4 colchetes
+    expect(l.filter((x) => x.t === "curva")).toHaveLength(4); // 4 colchetes (o título agora é uma faixa azul)
     expect(tx(e)).toEqual(expect.arrayContaining(["O menino comeu a maçã", "Sujeito", "Predicado", "Verbo"]));
   });
   it("4 · cadeia alimentar com setas", () => {
@@ -117,7 +117,7 @@ describe("fala natural, sem palavras de comando", () => {
   it("conta resolvida só falando", () => {
     const e = novoDitado(true);
     for (const f of ["Vamos resolver uma regra de três.", "Cinco vezes x é igual a 8 vezes 20.", "Então x é igual a 160 dividido por 5.", "Portanto x é igual a 32."]) comandoDitado(e, f, 0);
-    expect(tx2(e).join(" ")).toMatch(/REGRA DE TRÊS/);
+    expect(tx2(e).join(" ")).toMatch(/regra de três/i);
     expect(tx2(e).join(" ")).toMatch(/32/);
   });
   it("linha do tempo e fluxo falados", () => {

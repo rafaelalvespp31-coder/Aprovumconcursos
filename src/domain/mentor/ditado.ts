@@ -8,7 +8,7 @@ import { linhaSchema, type ItemDesenho, type LinhaLousa } from "./lousa";
  * "Caixa um: …", "Item: …", "Resumo: …") e cada comando vira traços no quadro, no mesmo instante e na mesma ordem.
  * Layout em colunas (tela larga, W=1000) ou em coluna única (celular, W=460), como num quadro de aula.
  */
-type Cor = "grafite" | "vermelho" | "azul" | "verde" | "laranja" | "roxo" | "rosa";
+type Cor = "grafite" | "vermelho" | "azul" | "verde" | "laranja" | "roxo" | "rosa" | "branco";
 const CICLO: Cor[] = ["azul", "vermelho", "verde", "laranja", "roxo"];
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 
@@ -92,12 +92,12 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
   }
   if (cmd === "titulo") {
     if (!resto) return true;
-    const tam = largo ? 40 : 28;
-    const ls = quebra(resto.toUpperCase(), Math.floor((e.W - 40) / cw(tam)));
-    ls.forEach((l, i) => push(tx(centro(l, tam), e.y + 36 + i * (tam + 6), l, "azul", tam, d + i * passo)));
-    const yb = e.y + 36 + ls.length * (tam + 6);
-    push(ondinha(centro(ls[0]!, tam), centro(ls[0]!, tam) + ls[0]!.length * cw(tam), yb - 6, "vermelho", d + 0.4));
-    e.y = yb + 6;
+    const tam = largo ? 34 : 26;
+    const ls = quebra(resto, Math.floor((e.W - 90) / cw(tam)));
+    const wTxt = Math.max(...ls.map((l) => l.length)) * cw(tam), wBar = Math.min(e.W - 24, wTxt + 56), xBar = Math.round((e.W - wBar) / 2), hBar = ls.length * (tam + 8) + 16;
+    push({ t: "ret", x: xBar, y: e.y + 6, w: Math.round(wBar), h: hBar, cor: "azul", bg: true, sol: true, d }); // faixa azul de título, como no quadro de referência
+    ls.forEach((l, i) => push(tx(centro(l, tam), e.y + 6 + 8 + tam + i * (tam + 8) - 2, l, "branco", tam, d + 0.15 + i * passo)));
+    e.y = e.y + 6 + hBar + 12;
   } else if (cmd === "subtitulo") {
     if (!resto) return true;
     const tam = largo ? 24 : 20;

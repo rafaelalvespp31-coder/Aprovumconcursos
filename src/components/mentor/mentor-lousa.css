@@ -106,7 +106,7 @@
 .lz-fundo { opacity: 0; fill-opacity: .13; animation: lz-surge .5s ease-out forwards; animation-delay: var(--d, 0s); }
 
 /* estilo "caderno": papel pautado, selo do assunto e moldura na cor do tema */
-.lz-placa, .qe-placa { --tema: #6d4aff; background: repeating-linear-gradient(transparent 0 33px, rgba(80,95,150,.13) 33px 34px), #fbfaf6 !important; position: relative; }
+.lz-placa, .qe-placa { --tema: #6d4aff; background: #f8fafd !important; position: relative; }
 .lz-ico { position: absolute; top: 10px; right: 12px; z-index: 2; display: grid; place-items: center; width: 54px; height: 54px; border: 2px solid; border-radius: 50%; pointer-events: none; }
 .qe-moldura { background: color-mix(in srgb, var(--tema, #6d4aff) 35%, #fff) !important; box-shadow: 0 2px 10px rgba(20,20,40,.14) !important; border-radius: 14px; padding: 5px; }
 .qe-placa { border-radius: 10px !important; }
@@ -117,3 +117,16 @@
 .lz-prog-barra{flex:1;height:6px;border-radius:3px;background:#dfe4ee;overflow:hidden}
 .lz-prog-barra i{display:block;height:100%;background:#12b76a;border-radius:3px;transition:width .25s ease-out}
 .lz-prog-n{font-variant-numeric:tabular-nums;min-width:36px;text-align:right}
+
+/* celular: barra do quadro compacta e bem encaixada (botões menores, progresso numa linha fina) */
+@media (max-width: 720px) {
+  .lz-topo { gap: 2px; padding: 0 2px 0 10px; min-height: 38px; }
+  .lz-bt { width: 36px; height: 36px; }
+  .lz-salvar { height: 26px; padding: 0 8px; }
+  .lz-kicker { font-size: 9px; letter-spacing: .14em; }
+  .lz-titulo { font-size: 13px; }
+  .lz-prog { gap: 8px; padding: 3px 10px; font-size: 11px; }
+  .lz-prog-t { display: none; }
+  .lz-prog-barra { height: 4px; }
+  .lz-prog-n { min-width: 30px; }
+}

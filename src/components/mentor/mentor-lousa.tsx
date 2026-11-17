@@ -6,7 +6,7 @@ import { Bookmark, BookmarkCheck, Loader2, RotateCcw, X } from "lucide-react";
 import { LOUSA_H, LOUSA_W, type ItemDesenho, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import "./mentor-lousa.css";
 
-const COR: Record<string, string> = { azul: "#1d3a8a", preto: "#1a1a1f", vermelho: "#c62828", verde: "#1b7a43", grafite: "#1a1a1f", laranja: "#d9620b", roxo: "#6b2fa3", rosa: "#c2185b" };
+const COR: Record<string, string> = { azul: "#1d3a8a", preto: "#1a1a1f", vermelho: "#c62828", verde: "#1b7a43", grafite: "#1a1a1f", laranja: "#d9620b", roxo: "#6b2fa3", rosa: "#c2185b", branco: "#ffffff" };
 const UPS = 20;
 const SYNC_UPS = 38; // velocidade da caneta no quadro sincronizado (rápida, mas ainda legível)
 const VIVO_UPS = 34; // quadro ao vivo: caneta rápida, as linhas entram assim que chegam
@@ -121,7 +121,7 @@ export function Traco({ it, d }: { it: ItemDesenho; d: number }) {
     const dd = `M${x + r} ${y}h${w - 2 * r}a${r} ${r} 0 0 1 ${r} ${r}v${h - 2 * r}a${r} ${r} 0 0 1 ${-r} ${r}h${-(w - 2 * r)}a${r} ${r} 0 0 1 ${-r} ${-r}v${-(h - 2 * r)}a${r} ${r} 0 0 1 ${r} ${-r}z`;
     return (
       <g>
-        {it.bg && <path className="lz-fundo" d={dd} style={{ ["--d" as string]: `${d}s`, fill: c }} />}
+        {it.bg && <path className="lz-fundo" d={dd} style={{ ["--d" as string]: `${d}s`, fill: c, ...(it.sol ? { fillOpacity: 1 } : {}) }} />}
         <path className="lz-tr" pathLength={1} d={dd} style={st} />
       </g>
     );
