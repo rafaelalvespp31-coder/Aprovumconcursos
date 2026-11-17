@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { escolherQuadro, quadroDaSecao, type SecaoAula } from "./catalogo-lousa";
+import { escolherQuadro, quadroDaSecao, trechoDoPedido, type SecaoAula } from "./catalogo-lousa";
 import { comandoDitado, linhaDitado, novoDitado } from "./ditado";
 
 const S: SecaoAula[] = [
@@ -115,5 +115,28 @@ describe("descrição do quadro para o Mentor narrar", () => {
     expect(d).toContain("em 2020, João pratica um crime");
     expect(d.indexOf("2020")).toBeLessThan(d.indexOf("2025"));
     expect(d).toContain("Destaque: Sim, a lei benéfica retroage");
+  });
+});
+
+describe("pedido → trecho certo da aula", () => {
+  const aula: SecaoAula[] = [
+    { kind: "conteudo", title: "Retroatividade da lei penal", body_markdown: "A lei penal posterior que beneficia o agente retroage (art. 5º, XL, CF).\n\n:::exemplo\nSituação: João pratica um crime em 2020. Em 2025, surge uma lei que deixa de considerar a conduta crime.\nPergunta: A nova lei alcança João?\nResposta: Sim, retroage.\n:::" },
+    { kind: "conteudo", title: "Ultratividade da lei penal", body_markdown: "Ultratividade é a aplicação da lei revogada a fatos ocorridos durante sua vigência.\n\n:::exemplo\nSituação: Em 2010, Maria comete furto. Em 2015, uma lei mais severa aumenta a pena.\nPergunta: Qual lei se aplica?\nResposta: A de 2010, porque a lei mais grave não retroage.\n:::" },
+  ];
+  it("ultraatividade/ultratividade/extratividade pegam o trecho da ultratividade", () => {
+    for (const p of ["linha do tempo da ultraatividade", "me mostra a linha do tempo da ultratividade", "desenha a extratividade"]) {
+      const q = escolherQuadro(aula, p, false)!;
+      expect(q.titulo).toMatch(/Ultratividade/);
+      expect(q.roteiro.join(" ")).toMatch(/2010/);
+      expect(q.roteiro.join(" ")).not.toMatch(/João/);
+    }
+  });
+  it("retroatividade pega o exemplo do João em ordem", () => {
+    const q = escolherQuadro(aula, "linha do tempo da retroatividade", false)!;
+    expect(q.roteiro).toContain("Linha do tempo:");
+    expect(q.roteiro.filter((c) => c.startsWith("Marco"))[0]).toMatch(/2020/);
+  });
+  it("sem assunto no pedido não força um trecho", () => {
+    expect(trechoDoPedido(aula, "me dá um exemplo")).toBeNull();
   });
 });

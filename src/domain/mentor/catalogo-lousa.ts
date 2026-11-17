@@ -122,10 +122,67 @@ function casosPraticos(secoes: SecaoAula[]): Array<{ s: SecaoAula; q: QuadroPron
   }));
 }
 
+// ── pedido → trecho da aula ────────────────────────────────────────────────────────────────────────
+const PEDIDO_VAZIO = new Set(["linha", "tempo", "mostra", "mostre", "mostrar", "desenha", "desenhe", "desenhar", "exemplo", "exemplos", "quero", "queria", "pode", "para", "sobre", "como", "aula", "quadro", "lousa", "escreve", "escreva", "explica", "explique", "fala", "favor", "pelo", "pela", "essa", "esse", "isso", "esta", "este", "tambem", "depois", "agora", "assunto", "parte", "tudo", "voce", "mentor", "faz", "faca", "fazer", "preciso", "gostaria", "ver", "dar", "da", "de", "do", "na", "no", "um", "uma", "com", "que", "por", "e", "o", "a", "os", "as", "dos", "das", "nos", "nas", "meu", "minha", "seu", "sua", "cronologia", "cronologica", "esquema", "diagrama"]);
+/** Radicais que identificam o assunto pedido (com as variações de escrita: ultratividade = ultraatividade = extratividade). */
+export function radicaisDoPedido(pedido: string): string[] {
+  const out = new Set<string>();
+  for (const w of norm(pedido).split(/[^a-z0-9]+/)) {
+    if (w.length < 4 || PEDIDO_VAZIO.has(w)) continue;
+    if (/^(ultra|extra)-?a?tiv/.test(w)) { ["ultrativ", "ultraativ", "extrativ", "extraativ"].forEach((r) => out.add(r)); continue; }
+    if (/^retro-?a?tiv/.test(w)) { out.add("retroativ"); continue; }
+    out.add(w.length > 7 ? w.slice(0, w.length - 3) : w.length > 5 ? w.slice(0, w.length - 1) : w);
+  }
+  return [...out];
+}
+
+/** Procura na aula os trechos sobre o assunto pedido e os transcreve para a lousa como estão no material (linha do tempo quando há datas ou o aluno pediu). */
+export function trechoDoPedido(secoes: SecaoAula[], pedido: string): QuadroPronto | null {
+  const rad = radicaisDoPedido(pedido);
+  if (!rad.length) return null;
+  const quer = /tempo|cronolog|linha/.test(norm(pedido));
+  const pass: Array<{ ordem: number; sec: string; texto: string; nota: number }> = [];
+  let ordem = 0;
+  for (const sec of secoes) {
+    const tit = norm(sec.title);
+    const hitTit = rad.filter((r) => tit.includes(r)).length;
+    for (const bruto of sec.body_markdown.replace(/^[ \t]*:::.*$/gm, "").split(/\n\s*\n/)) {
+      const txt = limpa(bruto.replace(/\n/g, " "));
+      if (txt.length < 12) continue;
+      const nt = norm(txt);
+      const hits = rad.filter((r) => nt.includes(r)).length;
+      if (hits + hitTit === 0 || (hits === 0 && txt.length < 30)) { ordem++; continue; }
+      pass.push({ ordem: ordem++, sec: sec.title, texto: txt, nota: hits * 3 + hitTit });
+    }
+  }
+  if (!pass.length) return null;
+  const top = [...pass].sort((a, b) => b.nota - a.nota).slice(0, 5).sort((a, b) => a.ordem - b.ordem);
+  const titulo = corta(top[0]!.sec || "Exemplo", 40);
+  const junto = top.map((x) => x.texto).join(" ");
+  const anos = (numerais(junto).match(/\b(?:1[0-9]{3}|20[0-9]{2})\b/g) ?? []).length;
+  if (quer || anos >= 2) {
+    const tl = roteiroLinhaDoTempo(junto, titulo);
+    if (tl) return { titulo, roteiro: tl, kind: "linha_do_tempo" };
+    if (quer) {
+      // sem datas no material: a sequência do que a aula conta, na ordem em que está escrita
+      const frases = junto.split(/(?<=[.;!?])\s+/).map((f) => f.trim()).filter((f) => f.length >= 15).slice(0, 5);
+      if (frases.length >= 2) return { titulo, roteiro: [cmd("Título", titulo), "Linha do tempo:", ...frases.map((f) => cmd("Marco", cap(f.replace(/[.;!?]+$/, ""))))], kind: "linha_do_tempo" };
+    }
+  }
+  const roteiro = [cmd("Título", titulo)];
+  for (const x of top) {
+    const m = /^([^:.]{3,40}):\s+(.{12,})$/.exec(x.texto);
+    if (m) { roteiro.push(cmd("Caixa", m[1]!), cmd("Item", m[2]!)); } else roteiro.push(cmd("Item", x.texto));
+  }
+  return roteiro.length >= 3 ? { titulo, roteiro, kind: "exemplos" } : null;
+}
+
 export function escolherQuadro(secoes: SecaoAula[], pedido: string, largo: boolean, guardados: QuadroGuardado[] = []): QuadroPronto | null {
   return soNumeros(escolherQuadroBruto(secoes, pedido, largo, guardados));
 }
 function escolherQuadroBruto(secoes: SecaoAula[], pedido: string, largo: boolean, guardados: QuadroGuardado[] = []): QuadroPronto | null {
+  const doPedido = trechoDoPedido(secoes, pedido); // o assunto pedido, direto do material da aula
+  if (doPedido && /tempo|cronolog|linha/.test(norm(pedido))) return doPedido; // linha do tempo de um assunto: vai direto ao trecho dele
   // os exemplos que a própria aula escreveu ("EXEMPLO:") são a base do que o Mentor desenha
   const doTexto = exemplosDaAula(secoes).flatMap((e) => { const r = roteiroDeExemplo(e.itens, `Exemplo: ${e.contexto}`.slice(0, 40), e.conclusao); return r ? [{ s: { kind: "exemplos", title: e.contexto, body_markdown: e.itens.join(" ") } as SecaoAula, q: { titulo: e.contexto, roteiro: r, kind: "exemplos" } as QuadroPronto }] : []; });
   const contas = secoes.flatMap((s) => casosDe(s.body_markdown).flatMap((c) => { const r = roteiroDeCaso(c); return r ? [{ s: { kind: "exemplos", title: `${c.titulo} ${c.enunciado} calculo conta`, body_markdown: c.resultado } as SecaoAula, q: { titulo: c.titulo, roteiro: r, kind: "exemplos" } as QuadroPronto }] : []; }));
@@ -148,9 +205,11 @@ function escolherQuadroBruto(secoes: SecaoAula[], pedido: string, largo: boolean
     if (guardados.some((g) => g.titulo === c.q.titulo)) n += 2;
     const w = PALAVRAS(`${c.s.title} ${c.s.body_markdown.slice(0, 600)}`);
     for (const x of pw) if (w.has(x)) n += 1;
+    const nc = norm(`${c.s.title} ${c.s.body_markdown} ${c.q.roteiro.join(" ")}`);
+    for (const r of radicaisDoPedido(pedido)) if (nc.includes(r)) n += 4; // o assunto pedido (com variações: ultratividade = extratividade)
     if (n > nota) { nota = n; melhor = c; }
   }
-  return nota >= 3 ? melhor.q : null; // sem relação com o pedido: o Mentor escreve o que fala, em vez de um quadro qualquer
+  return nota >= 3 ? melhor.q : doPedido; // sem quadro pronto parecido: transcreve do material o trecho do assunto pedido // sem relação com o pedido: o Mentor escreve o que fala, em vez de um quadro qualquer
 }
 
 /** Mantém só os comandos que o motor de desenho entende e exige que o roteiro desenhe de verdade. */
