@@ -1,9 +1,5 @@
 "use client";
 
-import { QuadroExemplo } from "@/components/aula/quadro-exemplo";
-import { CartaoExemplo } from "@/components/aula/cartao-exemplo";
-import { montarCartao, temaDe, tituloUtil } from "@/domain/mentor/cartao-exemplo";
-import { ehCalculo, roteiroDeCaso, roteiroMatematicoCaso } from "@/domain/mentor/calculo-lousa";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Markdown } from "@/components/markdown";
@@ -724,27 +720,11 @@ function ApostilaSection({
           <TreeMapCard root={tree.root} nodes={tree.nodes} />
           {tree.after && <ApostilaMarkdown legal={legal}>{tree.after}</ApostilaMarkdown>}
         </>
-      ) : md.trim() ? <ApostilaMarkdown legal={legal} subject={subject} titulo={tituloUtil(s.title, lessonTitle ?? "")}>{md}</ApostilaMarkdown> : null}
+      ) : md.trim() ? <ApostilaMarkdown legal={legal}>{md}</ApostilaMarkdown> : null}
       {legal && <p className="ap-nota">Confira sempre a redação vigente no Portal da Legislação do Planalto.</p>}
-      {(() => {
-        const cartoes = temaDe(subject) === "matematica" ? [] : cases.filter((c) => !ehCalculo(c.answer));
-        return (
-          <>
-            {cartoes.length > 0 && (
-              <div className={cartoes.length > 1 ? "cx-carrossel" : undefined}>
-                {cartoes.map((c, i) => <CartaoExemplo key={`c${i}`} indice={i + 1} total={cartoes.length} c={montarCartao({ subject, titulo: tituloUtil(s.title, lessonTitle ?? ""), corpo: s.body_markdown, situacao: c.situation, pergunta: c.question, resposta: c.answer })} />)}
-              </div>
-            )}
-            {cases.map((c, i) => {
-              const ehMat = temaDe(subject) === "matematica";
-              const ro = ehMat
-                ? (roteiroMatematicoCaso({ titulo: s.title, situacao: c.situation, pergunta: c.question, resposta: c.answer }) ?? (ehCalculo(c.answer) ? roteiroDeCaso({ titulo: "Exemplo", enunciado: c.situation, pergunta: c.question, resultado: c.answer }) : null))
-                : ehCalculo(c.answer) ? roteiroDeCaso({ titulo: "Exemplo", enunciado: c.situation, pergunta: c.question, resultado: c.answer }) : null;
-              return ro ? <QuadroExemplo key={`q${i}`} itens={[c.situation]} roteiro={ro} /> : null;
-            })}
-          </>
-        );
-      })()}
+      {cases.length > 0 && (
+        <ApostilaMarkdown legal={legal}>{cases.map((c, i) => [`#### Exemplo ${cases.length > 1 ? i + 1 : ""}`.trim(), `**Situação:** ${c.situation}`, c.question ? `**Pergunta:** ${c.question}` : "", `**Resposta:** ${c.answer}`].filter(Boolean).join("\n\n")).join("\n\n")}</ApostilaMarkdown>
+      )}
       {cases.length > 0 && (
         <div className="ap-pratica">
           <PracticeCard progressKey={s.id} cases={cases} onReread={() => document.getElementById(sectionDomId(s.id))?.scrollIntoView({ behavior: "smooth", block: "start" })} />

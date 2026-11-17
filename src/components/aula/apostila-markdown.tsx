@@ -6,11 +6,6 @@ import { Children, type ReactNode } from "react";
 import { isRevokedLegalLine } from "@/components/markdown";
 import { CalloutIcon, CALLOUT } from "@/components/aula/callout-icon";
 import { calloutKindOf, leadingLabelKind } from "@/domain/content/callout-kind";
-import { agruparCalculos, casoDeTexto, roteiroDeCaso, roteiroDeConta, roteiroDeFatoracao, ehCalculo, ehLinhaNumerica, roteiroRegraDeTres, roteiroDeLinhas, roteiroMatematico, ehFormula, roteiroDeFormula, roteiroDeConceito } from "@/domain/mentor/calculo-lousa";
-import { CartaoExemplo } from "@/components/aula/cartao-exemplo";
-import { montarCartao, temaDe } from "@/domain/mentor/cartao-exemplo";
-import { roteiroDeExemplo } from "@/domain/mentor/catalogo-lousa";
-import { QuadroExemplo } from "@/components/aula/quadro-exemplo";
 import { PENA_MARK, highlightLegal, legalLevel, legalParagraphs, splitLegalLabel } from "@/domain/content/legal-format";
 
 function textOf(n: ElementContent | undefined): string {
@@ -80,19 +75,7 @@ function MdInner({ children, legal = false, subject = null, titulo = "" }: { chi
           h2: ({ node, children: c }) => { mode = null; ctxTitulo = textOf(node as unknown as ElementContent).trim() || ctxTitulo; exemploAntes = /^\W*(exemplo|caso)\b/i.test(textOf(node as unknown as ElementContent)); return <h4 className="ap-md-h">{c}</h4>; },
           h3: ({ node, children: c }) => { mode = null; ctxTitulo = textOf(node as unknown as ElementContent).trim() || ctxTitulo; exemploAntes = /^\W*(exemplo|caso)\b/i.test(textOf(node as unknown as ElementContent)); return <h4 className="ap-md-h">{c}</h4>; },
           h4: ({ node, children: c }) => { exemploAntes = /^\W*(exemplo|caso)\b/i.test(textOf(node as unknown as ElementContent)); mode = /exemplo|caso/i.test(textOf(node as unknown as ElementContent)) ? "ex" : null; return <h4 className="ap-md-h">{c}</h4>; },
-          ul: ({ node, children: c }) => {
-            if (!exemploAntes || legal) return <ul>{c}</ul>;
-            exemploAntes = false;
-            const itens = (node?.children ?? []).filter((x): x is Extract<ElementContent, { type: "element" }> => x.type === "element" && x.tagName === "li").map((li) => textOf(li).trim());
-            const numericos = itens.filter(ehLinhaNumerica);
-            if (numericos.length >= 2) { const rl = roteiroDeLinhas(numericos, ctxTitulo); if (rl) return <QuadroExemplo itens={itens} roteiro={rl}><ul>{c}</ul></QuadroExemplo>; }
-            if (temaDe(subject) === "matematica") {
-              // matemática: só lousa de cálculo (contas em lista); lista explicativa fica como texto da aula
-              const ro = roteiroDeExemplo(itens);
-              return ro && ro.some((x) => /^(tabela: conta|conta:)/i.test(x)) ? <QuadroExemplo itens={itens} roteiro={ro}><ul>{c}</ul></QuadroExemplo> : <ul>{c}</ul>;
-            }
-            return <QuadroExemplo itens={itens}><ul>{c}</ul></QuadroExemplo>;
-          },
+          ul: ({ children: c }) => <ul>{c}</ul>,
           ol: ({ start, children: c }) => (
             <ol start={start ?? undefined} style={start && start > 1 ? { counterReset: `ap-ol ${start - 1}` } : undefined}>{c}</ol>
           ),
@@ -101,46 +84,11 @@ function MdInner({ children, legal = false, subject = null, titulo = "" }: { chi
             if (!legal && isHeadingItem(t)) { mode = /exemplo|caso/i.test(t) ? "ex" : null; return <li className="ap-li-titulo">{c}</li>; }
             return <li>{c}</li>;
           },
-          pre: ({ node, children: c }) => {
-            const txt = textOf(node as unknown as ElementContent);
-            if (!legal && txt.trim().startsWith("@@calculo")) {
-              const linhas = txt.trim().split("\n").slice(1);
-              const rc = roteiroDeLinhas(linhas, ctxTitulo);
-              return rc ? <QuadroExemplo itens={linhas} roteiro={rc}><pre className="ap-calc-texto">{linhas.join("\n")}</pre></QuadroExemplo> : <pre>{c}</pre>;
-            }
-            const ro = legal ? null : roteiroDeFatoracao(txt);
-            return ro ? <QuadroExemplo itens={["MMC"]} roteiro={ro}><pre>{c}</pre></QuadroExemplo> : <pre>{c}</pre>;
-          },
+          pre: ({ children: c }) => <pre>{c}</pre>,
           p: ({ node, children: c }) => {
             if (!legal) {
               const t = textOf(node as unknown as ElementContent).trim();
               const lk = leadingLabelKind(t);
-              if (temaDe(subject) === "matematica") {
-                const fm = ehFormula(t) ? roteiroDeFormula(t, "Fórmula") : null;
-                if (fm) return <QuadroExemplo itens={[t]} roteiro={fm}><p>{c}</p></QuadroExemplo>;
-                if ((exemploAntes || /dobr|metade|triplic|constante/i.test(t)) && !/\d{2}/.test(t) && !isLabelLine(t)) {
-                  const rc = roteiroDeConceito(t);
-                  if (rc) { exemploAntes = false; return <QuadroExemplo itens={[t]} roteiro={rc}><p>{c}</p></QuadroExemplo>; }
-                }
-              }
-              if (temaDe(subject) === "matematica" && /\d/.test(t) && (exemploAntes || /\?|calcul|quanto|determine|resolv|efetu/i.test(t))) {
-                const rm = roteiroMatematico(t, ctxTitulo || "Cálculo");
-                if (rm) { exemploAntes = false; return <QuadroExemplo itens={[t]} roteiro={rm}><p>{c}</p></QuadroExemplo>; }
-              }
-              const conta = roteiroDeConta(t);
-              if (conta) return <QuadroExemplo itens={[t]} roteiro={conta}><p>{c}</p></QuadroExemplo>;
-              const caso = casoDeTexto(t);
-              const ro = caso && roteiroDeCaso(caso);
-              if (caso && ro && temaDe(subject) === "matematica" && !ehCalculo(caso.resultado) && !roteiroRegraDeTres(caso)) return <p className={mode === "ex" ? "ap-ex" : undefined}>{c}</p>;
-              if (ro) return <QuadroExemplo itens={[t]} roteiro={ro}><p className="ap-ex">{c}</p></QuadroExemplo>;
-              if (exemploAntes && !isLabelLine(t) && t.length >= 60) {
-                exemploAntes = false;
-                if (temaDe(subject) === "matematica") { /* matemática: na lousa só números */ } else {
-                  const fs = t.split(/(?<=[.!?])\s+/);
-                  const regra = fs.length > 2 ? fs.slice(-1)[0]! : t;
-                  return <><CartaoExemplo c={montarCartao({ subject, titulo: ctxTitulo || "Exemplo", situacao: fs.length > 2 ? fs.slice(0, -1).join(" ") : t, resposta: regra })} /><details className="qe-texto"><summary>Ver o exemplo em texto</summary><p>{c}</p></details></>;
-                }
-              }
               if (isLabelLine(t) && lk === "exemplo") exemploAntes = true;
               else if (t.length <= 70 && /^\W*(exemplo|caso)\b/i.test(t)) exemploAntes = true;
               if (isLabelLine(t)) return <p className="ap-rotulo">{lk && <CalloutIcon kind={lk} size={13} />}{c}</p>;
@@ -168,7 +116,7 @@ function MdInner({ children, legal = false, subject = null, titulo = "" }: { chi
           ),
         }}
       >
-        {legal ? legalParagraphs(children) : agruparCalculos(limparMatematica(children))}
+        {legal ? legalParagraphs(children) : limparMatematica(children)}
       </ReactMarkdown>
     </>
   );
