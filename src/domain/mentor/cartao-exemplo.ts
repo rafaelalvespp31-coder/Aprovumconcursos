@@ -67,3 +67,12 @@ export function montarCartao(o: { subject?: string | null; titulo: string; corpo
     icone: iconeDe(o.titulo, tema),
   };
 }
+
+/** Cor do tema de acordo com o ícone escolhido (mesma paleta do cartão). */
+export function corDoIcone(icone: string): string {
+  if (/PenLine|BookOpen/.test(icone)) return "#e0457b";
+  if (icone === "Calculator") return "#0f8f6e";
+  if (/Monitor|ShieldCheck/.test(icone)) return "#1f7ae0";
+  if (icone === "BookOpen") return "#d9822b";
+  return "#6d4aff";
+}

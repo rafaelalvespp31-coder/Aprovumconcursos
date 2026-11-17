@@ -1,5 +1,6 @@
 "use client";
 
+import { IconeLousa, iconeDaLousa } from "@/components/aula/icone-lousa";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Bookmark, BookmarkCheck, Loader2, RotateCcw, X } from "lucide-react";
 import { LOUSA_H, LOUSA_W, type ItemDesenho, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
@@ -115,7 +116,16 @@ export function Traco({ it, d }: { it: ItemDesenho; d: number }) {
       </g>
     );
   }
-  if (it.t === "ret") return <path className="lz-tr" pathLength={1} d={`M${it.x} ${it.y}h${it.w}v${it.h}h${-it.w}z`} style={st} />;
+  if (it.t === "ret") {
+    const r = Math.min(10, it.w / 2, it.h / 2), x = it.x, y = it.y, w = it.w, h = it.h;
+    const dd = `M${x + r} ${y}h${w - 2 * r}a${r} ${r} 0 0 1 ${r} ${r}v${h - 2 * r}a${r} ${r} 0 0 1 ${-r} ${r}h${-(w - 2 * r)}a${r} ${r} 0 0 1 ${-r} ${-r}v${-(h - 2 * r)}a${r} ${r} 0 0 1 ${r} ${-r}z`;
+    return (
+      <g>
+        {it.bg && <path className="lz-fundo" d={dd} style={{ ["--d" as string]: `${d}s`, fill: c }} />}
+        <path className="lz-tr" pathLength={1} d={dd} style={st} />
+      </g>
+    );
+  }
   if (it.t === "circ") return <path className="lz-tr" pathLength={1} d={`M${it.cx - it.r} ${it.cy}a${it.r} ${it.r} 0 1 0 ${2 * it.r} 0a${it.r} ${it.r} 0 1 0 ${-2 * it.r} 0`} style={st} />;
   return <path className="lz-tr" pathLength={1} d={`M${it.pts.map(([x, y]) => `${x} ${y}`).join("L")}`} style={st} />;
 }
@@ -305,7 +315,8 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
         <button type="button" className="lz-bt" onClick={onClose} aria-label="Fechar quadro"><X size={20} aria-hidden /></button>
       </div>
       <div className="lz-quadro">
-        <div className="lz-placa" ref={placa} key={rodada} onClick={() => setPos(total)}>
+        <div className="lz-placa" ref={placa} key={rodada} onClick={() => setPos(total)} style={{ ["--tema" as string]: iconeDaLousa(lousa.titulo || "").cor }}>
+          <IconeLousa titulo={lousa.titulo || ""} />
           <ol className="lz-sr">{linhas.map((l, i) => <li key={i}>{[l.texto, l.dir].filter(Boolean).join(" — ")}</li>)}</ol>
           <div aria-hidden>
             {(!dados || linhas.length === 0) && (

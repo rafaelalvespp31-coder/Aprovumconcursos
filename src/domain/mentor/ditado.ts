@@ -130,7 +130,7 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
     const tam = largo ? 25 : 22;
     const ls = quebra(titulo.toUpperCase(), Math.floor((e.colW - 24) / cw(tam)));
     const w = Math.min(e.colW, Math.max(...ls.map((l) => l.length)) * cw(tam) + 24), h = ls.length * (tam + 6) + 12;
-    push({ t: "ret", x, y, w: Math.round(w), h, cor, d });
+    push({ t: "ret", x, y, w: Math.round(w), h, cor, bg: true, d });
     ls.forEach((l, i) => push(tx(x + 12, y + 8 + tam + i * (tam + 6) - 3, l, cor, tam, d + 0.15 + i * passo)));
     e.colY[e.col] = y + h + (e.so ? 26 : 12);
     e.temCaixa = true;
@@ -145,9 +145,22 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
     if (e.resumo) { x = e.margem + (largo ? 130 : 0); y = e.resumoY; larg = e.W - x - e.margem; }
     else if (e.temCaixa && e.col >= 0) { x = e.margem + e.col * (e.colW + 18) + 6; y = e.colY[e.col]!; larg = e.colW - 12; }
     else { x = e.margem; y = Math.max(e.y + 8, e.ym > 0 ? e.ym + 8 : 0); larg = e.W - e.margem * 2; }
-    const ls = quebra(pref + resto, Math.min(38, Math.floor(larg / cw(tam))));
-    ls.forEach((l, i) => push(tx(x + (i ? 14 : 0), y + tam + i * (tam + 7), l, cor, tam, d + i * passo)));
-    const nova = y + ls.length * (tam + 7) + 4;
+    let nova: number;
+    if ((ehEx || ehDest) && larg >= 150) {
+      // cartão de caderno: o exemplo vai num bloco com espiral; o destaque, numa caixa com lâmpada
+      const ls = quebra(resto, Math.max(10, Math.min(38, Math.floor((larg - 28) / cw(tam)))));
+      const y0 = y + 14, h = 34 + ls.length * (tam + 7) + 8, rot = ehEx ? "EXEMPLO:" : "GUARDE ISTO:";
+      push({ t: "ret", x: x - 2, y: y0, w: Math.round(larg - 4), h, cor: ehEx ? "grafite" : "vermelho", bg: !ehEx, d });
+      if (ehEx) for (let k = 0; k < 7; k++) push({ t: "ret", x: Math.round(x + 14 + k * ((larg - 44) / 6)), y: y0 - 9, w: 8, h: 16, cor: "grafite", d: d + 0.1 });
+      else push({ t: "circ", cx: Math.round(x + larg - 26), cy: y0 + 20, r: 8, cor: "laranja", d: d + 0.2 }, lin(x + larg - 30, y0 + 32, x + larg - 22, y0 + 32, "laranja", d + 0.3));
+      push(tx(x + 12, y0 + 24, rot, ehEx ? "verde" : "vermelho", 15, d + 0.2));
+      ls.forEach((l, i) => push(tx(x + 12, y0 + 30 + tam + i * (tam + 7), l, "grafite", tam, d + 0.35 + i * passo)));
+      nova = y0 + h + 10;
+    } else {
+      const ls = quebra(pref + resto, Math.min(38, Math.floor(larg / cw(tam))));
+      ls.forEach((l, i) => push(tx(x + (i ? 14 : 0), y + tam + i * (tam + 7), l, cor, tam, d + i * passo)));
+      nova = y + ls.length * (tam + 7) + 4;
+    }
     if (e.resumo) e.resumoY = nova;
     else if (e.temCaixa && e.col >= 0) e.colY[e.col] = nova;
     else e.y = nova;

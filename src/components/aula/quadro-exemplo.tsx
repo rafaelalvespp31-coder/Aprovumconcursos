@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import "@/components/mentor/mentor-lousa.css";
+import { IconeLousa, iconeDaLousa } from "@/components/aula/icone-lousa";
 import { alturaMini, Traco } from "@/components/mentor/mentor-lousa";
 import { roteiroDeExemplo } from "@/domain/mentor/catalogo-lousa";
 import { comandoDitado, fimDitado, linhaDitado, novoDitado } from "@/domain/mentor/ditado";
@@ -18,6 +19,7 @@ export function QuadroExemplo({ itens, roteiro, children }: { itens: string[]; r
     io.observe(el);
     return () => io.disconnect();
   }, []);
+  const tituloQ = (roteiro ?? [])[0]?.replace(/^t[ií]tulo\s*:\s*/i, "") ?? "";
   const estreito = !!roteiro && roteiro.every((c) => /^(t[ií]tulo|armada|divis[aã]o)\s*:/i.test(c));
   const linha = useMemo(() => {
     const ro = roteiro ?? roteiroDeExemplo(itens);
@@ -38,9 +40,10 @@ export function QuadroExemplo({ itens, roteiro, children }: { itens: string[]; r
   }
   const w = estreito ? (linha.larg ?? 460) : Math.min(linha.larg ?? 1000, Math.max(380, Math.round(mx + 40)));
   return (
-    <div className={estreito ? "qe qe-estreito" : "qe"} ref={ref}>
+    <div className={estreito ? "qe qe-estreito" : "qe"} ref={ref} style={{ ["--tema" as string]: iconeDaLousa(tituloQ).cor }}>
       <div className="qe-moldura">
-        <div className="qe-placa">
+        <div className="qe-placa" >
+          <IconeLousa titulo={tituloQ} />
           {visto && (
             <svg className="qe-svg" viewBox={`0 0 ${w} ${alturaMini(its, true)}`} role="img" aria-label={`Exemplo desenhado: ${itens.join("; ")}`}>
               {its.map((it, i) => <Traco key={i} it={it} d={it.d ?? 0} />)}
