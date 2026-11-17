@@ -13,15 +13,15 @@ export interface EstadoDitado {
   W: number; ncols: number; colW: number; margem: number;
   y: number; // cursor vertical do cabeçalho
   colY: number[]; rowTop: number; col: number; caixas: number; temCaixa: boolean;
-  so: boolean; marcos: number; resumo: boolean; resumoY: number; yTempo?: number; itens: ItemDesenho[];
+  so: boolean; yL: number; yR: number; ym: number; linhasTab: { y: number; a: string; b: string }[]; corConta: number; marcos: number; resumo: boolean; resumoY: number; yTempo?: number; itens: ItemDesenho[];
 }
 
-/** `so` (padrão): copia só o DESENHO (linhas, setas, caixas, marcos); o que ele fala fica na voz, sem letras no quadro. */
-export function novoDitado(largo: boolean, so = true): EstadoDitado {
+/** `so`: copia só os traços, sem letras. Padrão: o quadro mostra o que foi DITADO como desenho (rótulos, números, contas), nunca a conversa do professor. */
+export function novoDitado(largo: boolean, so = false): EstadoDitado {
   const W = largo ? 1000 : 460;
   const ncols = largo ? 3 : 1, margem = 24;
   const colW = (W - margem * 2 - (ncols - 1) * 18) / ncols;
-  return { W, ncols, colW, margem, y: 8, colY: Array(ncols).fill(0), rowTop: 0, col: -1, caixas: 0, temCaixa: false, so, marcos: 0, resumo: false, resumoY: 0, itens: [] };
+  return { W, ncols, colW, margem, y: 8, colY: Array(ncols).fill(0), rowTop: 0, col: -1, caixas: 0, temCaixa: false, so, yL: -1, yR: -1, ym: 0, linhasTab: [], corConta: 0, marcos: 0, resumo: false, resumoY: 0, itens: [] };
 }
 
 const cw = (tam: number) => tam * 0.56;
@@ -52,7 +52,7 @@ const NUM_PALAVRA = /^(?:(?:n[ºo°]\s*)?\d+|um|uma|dois|duas|tr[eê]s|quatro|ci
 /** Aplica um comando ditado. Devolve false se a frase não for um comando (conversa do professor: ignorada). `atraso` = segundos até o áudio chegar nela. */
 export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): boolean {
   const f = frase.replace(/\s+/g, " ").replace(/[*_`]/g, "").trim();
-  const m = /^(t[ií]tulo|subt[ií]tulo|linha do tempo|marco|caixa|item|ponto|t[oó]pico|exemplo|destaque|aten[cç][aã]o|cuidado|resumo|seta)\b[\s:,.\-–]*(.*)$/i.exec(f);
+  const m = /^(t[ií]tulo|subt[ií]tulo|linha do tempo|marco|caixa|item|ponto|t[oó]pico|exemplo|destaque|aten[cç][aã]o|cuidado|resumo|seta|tabela|linha|cruzar|conta|passo|resposta|mmc|mdc|arma(?:da|r)|divis[aã]o)\b[\s:,.\-–]*(.*)$/i.exec(f);
   if (!m) return false;
   const cmd = norm(m[1]!);
   const resto = m[2]!.replace(/[.!]+$/, "").trim();
@@ -63,6 +63,7 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
   const push = (...xs: ItemDesenho[]) => { it.push(...xs); };
   const centro = (s: string, tam: number) => Math.max(e.margem, (e.W - s.length * cw(tam)) / 2);
 
+  if (MATEMATICA.has(cmd)) { if (!matematica(e, cmd, resto, d, it)) return true; e.itens.push(...it); return true; }
   if (e.so && (cmd === "titulo" || cmd === "subtitulo" || cmd === "item" || cmd === "ponto" || cmd === "topico" || cmd === "exemplo" || cmd === "destaque" || cmd === "atencao" || cmd === "cuidado")) return true; // só letras: não entra no quadro
   if (cmd === "titulo") {
     if (!resto) return true;
@@ -96,8 +97,8 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
     e.y = Math.max(e.y, e.yTempo + 40);
   } else if (cmd === "caixa") {
     const titulo = resto.replace(NUM_PALAVRA, "").trim() || "Caixa";
-    if (e.col + 1 >= e.ncols) { e.rowTop = (e.col >= 0 ? Math.max(...e.colY) + 22 : Math.max(e.y, e.resumo ? e.resumoY : 0) + 10); e.col = -1; e.colY = Array(e.ncols).fill(e.rowTop); }
-    else if (e.col < 0) { e.rowTop = e.y + 10; e.colY = Array(e.ncols).fill(e.rowTop); }
+    if (e.col + 1 >= e.ncols) { e.rowTop = (e.col >= 0 ? Math.max(...e.colY) + 22 : Math.max(e.y, e.ym, e.resumo ? e.resumoY : 0) + 10); e.col = -1; e.colY = Array(e.ncols).fill(e.rowTop); }
+    else if (e.col < 0) { e.rowTop = Math.max(e.y, e.ym) + 10; e.colY = Array(e.ncols).fill(e.rowTop); }
     e.col++;
     const x = e.margem + e.col * (e.colW + 18), y = e.rowTop;
     const cor = CICLO[e.caixas++ % 5]!;
@@ -126,7 +127,7 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
     else if (e.temCaixa && e.col >= 0) e.colY[e.col] = nova;
     else e.y = nova;
   } else if (cmd === "resumo") {
-    const base = e.temCaixa ? Math.max(...e.colY) : e.y;
+    const base = Math.max(e.temCaixa ? Math.max(...e.colY) : e.y, e.ym);
     const y = Math.max(base, e.resumo ? e.resumoY : 0) + 26;
     const tam = largo ? 24 : 21;
     push({ t: "ret", x: e.margem, y, w: Math.round("RESUMO".length * cw(tam) + 28), h: tam + 16, cor: "laranja", d }, tx(e.margem + 14, y + tam + 4, "RESUMO", "laranja", tam, d + 0.15));
@@ -154,4 +155,106 @@ export function frasesDe(buf: string): { frases: string[]; resto: string } {
   const partes = buf.split(/(?<=[.!?;])(?<!\b(?:art|arts|inc|par|n|nº|dr|sr)\.)\s+/i);
   const resto = partes.pop() ?? "";
   return { frases: partes, resto };
+}
+
+// ── Conta ditada, como um professor resolvendo no quadro ───────────────────────────────────────────
+const MATEMATICA = new Set(["tabela", "linha", "cruzar", "conta", "passo", "resposta", "mmc", "mdc", "armada", "armar", "divisao"]);
+const sim = (s: string) => s
+  .replace(/\s+(?:é|e|fica|dá)?\s*igual\s+a\s+/gi, " = ").replace(/\s+dividido\s+por\s+/gi, " ÷ ").replace(/\s+vezes\s+/gi, " · ")
+  .replace(/\s+mais\s+/gi, " + ").replace(/\s+menos\s+/gi, " − ").replace(/\s+ao quadrado\b/gi, "²").replace(/\s+por\s+cento\b/gi, "%");
+const parte = (s: string) => s.split(/\s*(?:,|;|\be\b|\bpor\b|\bpara\b)\s*/i).map((x) => x.trim()).filter(Boolean);
+
+/** Cabeça de bloco matemático: à esquerda tabelas/fatorações/contas armadas; à direita (ou embaixo, no celular) os passos da conta. */
+function cursor(e: EstadoDitado) {
+  const larg = e.ncols > 1;
+  if (e.yL < 0) { e.yL = Math.max(e.y, e.ym) + 14; e.yR = e.yL; }
+  return { larg, xL: e.margem, xR: larg ? Math.round(e.W * 0.52) : e.margem };
+}
+const ints = (s: string) => [...new Set([...s.matchAll(/\d{1,6}/g)].map((m) => Number(m[0])))];
+
+function matematica(e: EstadoDitado, cmd: string, resto: string, d0: number, it: ItemDesenho[]): boolean {
+  const { larg, xL, xR } = cursor(e);
+  const empilha = !larg; // celular: tudo na mesma coluna
+  const yR = () => (empilha ? e.yL : e.yR);
+  const setR = (v: number) => { if (empilha) e.yL = v; else e.yR = v; };
+  const tam = larg ? 22 : 20;
+  const d = Math.max(0, d0);
+  const fim = () => { e.ym = Math.max(e.ym, e.yL, e.yR); };
+
+  if (cmd === "tabela") {
+    const [a, b] = parte(resto);
+    if (!a) return false;
+    const x2 = xL + (larg ? 190 : 200);
+    it.push(tx(xL + 8, e.yL + 24, a.slice(0, 14), "azul", tam, d), tx(x2 + 8, e.yL + 24, (b ?? "").slice(0, 14) || " ", "verde", tam, d + 0.15));
+    it.push(lin(xL, e.yL + 34, x2 + 150, e.yL + 34, "grafite", d + 0.3), lin(x2 - 8, e.yL + 4, x2 - 8, e.yL + 34 + 4, "grafite", d + 0.3));
+    e.yL += 38; e.linhasTab = []; if (empilha) e.yR = e.yL;
+  } else if (cmd === "linha") {
+    const [a, b] = parte(resto);
+    if (!a) return false;
+    const x2 = xL + (larg ? 190 : 200);
+    const y = e.yL + 26;
+    it.push(tx(xL + 8, y, a.slice(0, 14), "grafite", tam + 2, d), tx(x2 + 8, y, (b ?? "").slice(0, 14) || " ", "grafite", tam + 2, d + 0.15));
+    if (/^x$/i.test(b ?? "") || /^x$/i.test(a)) it.push({ t: "circ", cx: (/^x$/i.test(a) ? xL + 14 : x2 + 14), cy: y - 8, r: 17, cor: "vermelho", d: d + 0.3 });
+    e.linhasTab.push({ y, a, b: b ?? "" });
+    e.yL += 40; if (empilha) e.yR = e.yL;
+  } else if (cmd === "cruzar") {
+    const L = e.linhasTab.slice(-2);
+    if (L.length < 2) return false;
+    const x2 = xL + (larg ? 190 : 200);
+    const [r1, r2] = [L[0]!, L[1]!];
+    it.push(lin(xL + 26, r1.y + 6, x2 - 6, r2.y - 24, "laranja", d, true), lin(x2 + 26, r1.y + 6, xL + 20, r2.y - 24, "roxo", d + 0.3, true));
+  } else if (cmd === "conta" || cmd === "passo") {
+    if (!resto) return false;
+    const cor: Cor = (["azul", "vermelho", "roxo", "laranja"] as Cor[])[e.corConta++ % 4]!;
+    const txt = sim(resto).slice(0, 40);
+    it.push(tx(xR, yR() + 28, txt, cor, tam + 2, d));
+    setR(yR() + 40);
+  } else if (cmd === "resposta") {
+    if (!resto) return false;
+    const txt = sim(resto).slice(0, 36);
+    const y = yR() + 8;
+    it.push({ t: "ret", x: xR - 8, y, w: Math.round(txt.length * cw(tam + 4) + 28), h: tam + 20, cor: "verde", d }, tx(xR + 6, y + tam + 8, txt, "verde", tam + 4, d + 0.2), tx(xR + txt.length * cw(tam + 4) + 24, y + 12, "★", "laranja", 22, d + 0.5));
+    setR(y + tam + 34);
+  } else if (cmd === "mmc" || cmd === "mdc") {
+    const ns = ints(resto).filter((n) => n >= 2 && n <= 999).slice(0, 3);
+    if (ns.length < 2) return false;
+    let v = [...ns]; const rows: { p: number; vals: number[]; todos: boolean }[] = [];
+    while (v.some((x) => x > 1) && rows.length < 6) {
+      let p = 2; while (!v.some((x) => x > 1 && x % p === 0)) p++;
+      const todos = v.every((x) => x > 1 && x % p === 0);
+      v = v.map((x) => (x > 1 && x % p === 0 ? x / p : x)); rows.push({ p, vals: [...v], todos });
+    }
+    const pitch = 36, colx = (i: number) => xL + 10 + i * 70, barX = xL + ns.length * 70 + 2, y0 = e.yL + 26;
+    ns.forEach((n, i) => it.push(tx(colx(i), y0, String(n), "azul", tam + 2, d)));
+    it.push(lin(barX, e.yL + 2, barX, y0 + rows.length * pitch + 8, "grafite", d + 0.1));
+    const usados: number[] = [];
+    rows.forEach((r, k) => {
+      const conta = cmd === "mmc" || r.todos; if (conta) usados.push(r.p);
+      it.push(tx(barX + 14, y0 + k * pitch, String(r.p), conta ? "vermelho" : "grafite", tam + 2, d + 0.2 + k * 0.15));
+      r.vals.forEach((n, i) => it.push(tx(colx(i), y0 + (k + 1) * pitch, String(n), "azul", tam + 2, d + 0.25 + k * 0.15)));
+    });
+    e.yL = y0 + rows.length * pitch + 24;
+    const prod = usados.reduce((a, b) => a * b, 1);
+    it.push(tx(xR, yR() + 28, `${cmd.toUpperCase()} = ${usados.join(" · ") || "1"}`.slice(0, 40), "vermelho", tam + 2, d + 0.6), tx(xR, yR() + 70, `${cmd.toUpperCase()} = ${prod}`, "verde", tam + 6, d + 0.9));
+    setR(yR() + 84); if (empilha) e.yL = Math.max(e.yL, e.yR);
+  } else if (cmd === "armada" || cmd === "armar") {
+    const m = /(\d{1,6})\s*(\+|−|-|·|×|mais|menos|vezes)\s*(\d{1,6})/.exec(resto);
+    if (!m) return false;
+    const a = Number(m[1]), b = Number(m[3]);
+    const op = /\+|mais/.test(m[2]!) ? "+" : /−|-|menos/.test(m[2]!) ? "−" : "×";
+    const r = op === "+" ? a + b : op === "−" ? a - b : a * b;
+    const w = Math.max(String(a).length, String(b).length, String(r).length), dir = xL + 40 + w * 14 + 20, at = (n: number) => dir - String(n).length * 14;
+    const y0 = e.yL;
+    it.push(tx(at(a), y0 + 30, String(a), "azul", 28, d), tx(xL + 6, y0 + 68, op, "vermelho", 28, d + 0.2), tx(at(b), y0 + 68, String(b), "azul", 28, d + 0.2), lin(xL, y0 + 78, dir + 8, y0 + 78, "grafite", d + 0.4), tx(at(r), y0 + 114, String(r), "verde", 28, d + 0.7));
+    e.yL += 130; if (empilha) e.yR = e.yL;
+  } else if (cmd === "divisao") {
+    const [a, b] = ints(resto);
+    if (!a || !b) return false;
+    const q = Math.floor(a / b), r = a % b, x0 = xL + 12 + String(a).length * 14 + 12, y0 = e.yL;
+    it.push(tx(xL + 4, y0 + 52, String(a), "azul", 28, d), lin(x0, y0 + 20, x0, y0 + 92, "grafite", d + 0.2), lin(x0, y0 + 58, x0 + 26 + Math.max(String(b).length, String(q).length) * 14, y0 + 58, "grafite", d + 0.3), tx(x0 + 10, y0 + 48, String(b), "vermelho", 28, d + 0.4), tx(x0 + 10, y0 + 90, String(q), "verde", 28, d + 0.7));
+    if (r) it.push(tx(xL + 4, y0 + 116, `resto ${r}`, "laranja", 18, d + 0.9));
+    e.yL += 128; if (empilha) e.yR = e.yL;
+  }
+  fim();
+  return true;
 }

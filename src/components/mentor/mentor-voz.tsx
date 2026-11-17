@@ -109,7 +109,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       if (comandoDitado(m.dit!, fr, Math.min(10, Math.max(0, adiante - fr.length / 13)))) mudou = true;
     }
     if (m.flush) clearTimeout(m.flush);
-    m.flush = setTimeout(() => { const g = trans.current; if (g?.modo === "ditado" && g.buf.trim().length >= 14 && /^(t[ií]tulo|subt|linha do tempo|marco|caixa|item|ponto|t[oó]pico|exemplo|destaque|aten|cuidado|resumo|seta)/i.test(g.buf.trim())) { comandoDitado(g.dit!, g.buf, 0); g.buf = ""; g.linhas = [linhaDitado(g.dit!)]; publicarTrans(); } }, 1500);
+    m.flush = setTimeout(() => { const g = trans.current; if (g?.modo === "ditado" && g.buf.trim().length >= 14 && /^(t[ií]tulo|subt|linha do tempo|marco|caixa|item|ponto|t[oó]pico|exemplo|destaque|aten|cuidado|resumo|seta|tabela|linha|cruzar|conta|passo|resposta|mmc|mdc|arma|divis)/i.test(g.buf.trim())) { comandoDitado(g.dit!, g.buf, 0); g.buf = ""; g.linhas = [linhaDitado(g.dit!)]; publicarTrans(); } }, 1500);
     if (mudou) {
       if (!m.titulo) m.titulo = tituloDe(r0Turno.current);
       if (m.timer) { clearTimeout(m.timer); m.timer = null; }
@@ -124,7 +124,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (!m) return;
     m.buf += texto;
     // o Mentor começou a ditar ("Título: …"): passa para o modo desenho, mesmo que o pedido não tenha dito "desenhe"
-    if (m.modo === "texto" && /(?:^|[.!?]\s+)t[ií]tulo\s*[:,]/i.test(m.buf)) { m.modo = "ditado"; m.linhas = []; m.quandos = []; m.dit = novoDitado(telaLarga()); }
+    if (m.modo === "texto" && /(?:^|[.!?]\s+)(?:t[ií]tulo|tabela|conta|mmc|mdc|armada|divis[aã]o|linha do tempo|caixa)\s*[:,]/i.test(m.buf)) { m.modo = "ditado"; m.linhas = []; m.quandos = []; m.dit = novoDitado(telaLarga()); }
     if (m.modo === "ditado") { ouvirDitado(m, fimDoTurno); return; }
     const partes = m.buf.split(/(?<=[.!?:;])\s+/);
     m.buf = partes.pop() ?? "";
