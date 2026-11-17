@@ -80,6 +80,14 @@ async function vincular(userId: string, lousaId: string | null): Promise<void> {
   try { await createAdminClient().from("mentor_lousa_salvas").upsert({ user_id: userId, lousa_id: lousaId }, { onConflict: "user_id,lousa_id", ignoreDuplicates: true }); } catch { /* melhor-esforço */ }
 }
 
+/** Salva à mão a lousa aberta: guarda no cache compartilhado e liga ao aluno. */
+export async function salvarLousa(userId: string, l: Lousa): Promise<boolean> {
+  const id = await guardar(chaveLousa(l.titulo || "explicacao"), l.titulo, l);
+  if (!id) return false;
+  await vincular(userId, id);
+  return true;
+}
+
 export interface LousaSalva { id: string; titulo: string; pedido: string; criadaEm: string }
 
 /** Lousas que este aluno já viu (mais recentes primeiro). */

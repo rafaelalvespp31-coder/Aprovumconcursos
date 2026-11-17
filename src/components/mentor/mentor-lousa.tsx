@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RotateCcw, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, Loader2, RotateCcw, X } from "lucide-react";
 import { LOUSA_H, LOUSA_W, type ItemDesenho, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import "./mentor-lousa.css";
 
@@ -180,7 +180,7 @@ function Moldura({ onEncher, onFim }: { onEncher: () => void; onFim: () => void 
 
 const PENDENTE: Lousa = { mostrar: true, titulo: "", linhas: [], desenho: [] };
 
-export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lousa | null; /** Segue a voz: devolve quantas letras do roteiro já foram faladas. */ sync?: () => { c: number; fim: boolean }; /** Quadro escrito ao vivo: instante (relógio do áudio) em que cada linha começa a ser falada. */ vivo?: { quandos: number[]; agora: () => number }; onClose: () => void }) {
+export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClose }: { lousa: Lousa | null; /** Salva a lousa nas Ferramentas; devolve se deu certo. */ onSalvar?: () => Promise<boolean>; jaSalva?: boolean; /** Segue a voz: devolve quantas letras do roteiro já foram faladas. */ sync?: () => { c: number; fim: boolean }; /** Quadro escrito ao vivo: instante (relógio do áudio) em que cada linha começa a ser falada. */ vivo?: { quandos: number[]; agora: () => number }; onClose: () => void }) {
   const lousa = dados ?? PENDENTE;
   const linhas = lousa.linhas;
   const crono = useMemo(() => linhas.map(cronograma), [linhas]);
@@ -212,6 +212,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
     } const c = crono[j]!; const t0 = pos - inicios[j]!; let n = 0; while (n < c.length && c[n]! <= t0) n++; return n; };
   const [pos, setPos] = useState(0);
   const [rodada, setRodada] = useState(0);
+  const [salvo, setSalvo] = useState<"nao" | "salvando" | "sim" | "erro">(jaSalva ? "sim" : "nao");
   // 0 = caneta riscando o card · 1 = quadro enchendo · 2 = escrevendo
   const [fase, setFase] = useState<0 | 1 | 2>(0);
   const encher = useCallback(() => setFase((f) => (f < 1 ? 1 : f)), []);
@@ -281,6 +282,13 @@ export function MentorLousa({ lousa: dados, sync, vivo, onClose }: { lousa: Lous
       <div className="lz-topo">
         <span className="lz-kicker">QUADRO</span>
         <span className="lz-titulo">{lousa.titulo || (dados ? "" : "Preparando…")}</span>
+        {onSalvar && dados && dados.linhas.length > 0 && (
+          <button type="button" className={`lz-salvar is-${salvo}`} disabled={salvo === "salvando" || salvo === "sim"} aria-label="Salvar lousa nas Ferramentas" data-testid="lousa-salvar"
+            onClick={() => { setSalvo("salvando"); void onSalvar().then((ok) => setSalvo(ok ? "sim" : "erro")).catch(() => setSalvo("erro")); }}>
+            {salvo === "sim" ? <BookmarkCheck size={16} aria-hidden /> : salvo === "salvando" ? <Loader2 size={16} className="lz-gira" aria-hidden /> : <Bookmark size={16} aria-hidden />}
+            <span>{salvo === "sim" ? "Salva" : salvo === "erro" ? "Tentar de novo" : "Salvar"}</span>
+          </button>
+        )}
         <button type="button" className="lz-bt" onClick={() => setRodada((r) => r + 1)} aria-label="Escrever de novo" title="Escrever de novo"><RotateCcw size={18} aria-hidden /></button>
         <button type="button" className="lz-bt" onClick={onClose} aria-label="Fechar quadro"><X size={20} aria-hidden /></button>
       </div>

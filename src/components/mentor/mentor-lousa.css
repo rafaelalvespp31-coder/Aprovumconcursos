@@ -69,3 +69,15 @@
 .lz-molde { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 3; overflow: visible; }
 .lz-molde rect { fill: none; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 .lz-molde .lz-marc { animation: none; }
+
+/* Salvar: pílula na barra superior do card */
+.lz-salvar { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 30px; padding: 0 12px; border-radius: 999px; border: 1px solid rgba(255,255,255,.28); background: rgba(255,255,255,.08); color: #fff; font: 600 12px/1 inherit; cursor: pointer; transition: background .2s ease, border-color .2s ease, transform .15s ease; }
+.lz-salvar:hover:not(:disabled) { background: rgba(255,255,255,.16); }
+.lz-salvar:active:not(:disabled) { transform: scale(.97); }
+.lz-salvar:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.lz-salvar.is-sim { background: rgba(34,170,90,.22); border-color: rgba(34,170,90,.7); cursor: default; }
+.lz-salvar.is-erro { border-color: #ff6b6b; color: #ffb3b3; }
+.lz-gira { animation: lz-gira .8s linear infinite; }
+@keyframes lz-gira { to { transform: rotate(360deg); } }
+@media (max-width: 480px) { .lz-salvar span { display: none; } .lz-salvar { padding: 0 9px; } }
+@media (prefers-reduced-motion: reduce) { .lz-gira { animation: none; } }

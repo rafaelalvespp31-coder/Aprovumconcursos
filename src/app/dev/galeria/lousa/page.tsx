@@ -32,4 +32,4 @@ const sync = () => { const c = ((performance.now() - t0) / 1000) * 14; const tot
 const t00 = typeof performance !== "undefined" ? performance.now() / 1000 : 0;
 const vivo = { quandos: comFala.linhas.map(() => t00), agora: () => performance.now() / 1000 };
 void sync;
-export default function Page() { return <div style={{ minHeight: "100vh", background: "#eee" }}><MentorLousa lousa={comFala} vivo={vivo} onClose={() => {}} /></div>; }
+export default function Page() { return <div style={{ minHeight: "100vh", background: "#eee" }}><MentorLousa lousa={comFala} vivo={vivo} onSalvar={async () => true} onClose={() => {}} /></div>; }

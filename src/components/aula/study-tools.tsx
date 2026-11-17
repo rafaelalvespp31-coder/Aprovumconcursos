@@ -110,13 +110,25 @@ export function StudyTools({
       const ok = lousaSchema.safeParse(j?.lousa);
       if (ok.success && ok.data.linhas.length) {
         const t0 = performance.now() / 1000;
-        setLousa({ id: Date.now(), dados: ok.data, vivo: { quandos: ok.data.linhas.map(() => t0), agora: () => performance.now() / 1000 } });
+        setLousa({ id: Date.now(), dados: ok.data, salva: true, vivo: { quandos: ok.data.linhas.map(() => t0), agora: () => performance.now() / 1000 } });
         setPanel(null);
       }
     } finally { setAbrindo(null); }
   }, []);
   const [mentorFala, setMentorFala] = useState(false);
-  const [lousa, setLousa] = useState<{ id: number; dados: Lousa | null; sync?: () => { c: number; fim: boolean }; vivo?: { quandos: number[]; agora: () => number } } | null>(null);
+  const [lousa, setLousa] = useState<{ id: number; dados: Lousa | null; salva?: boolean; sync?: () => { c: number; fim: boolean }; vivo?: { quandos: number[]; agora: () => number } } | null>(null);
+  const salvarAberta = useCallback(async () => {
+    const d = lousa?.dados;
+    if (!d) return false;
+    try {
+      const r = await fetch("/api/mentor/lousa/salvas", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lousa: d }) });
+      if (!r.ok) return false;
+      const j = (await fetch("/api/mentor/lousa/salvas", { cache: "no-store" }).then((x) => (x.ok ? x.json() : null)).catch(() => null)) as { salvas?: LousaSalva[] } | null;
+      if (j?.salvas) setSalvas(j.salvas);
+      return true;
+    } catch { return false; }
+  }, [lousa?.dados]);
+
   const levelRef = useRef<(() => Bands) | null>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [armed, setArmed] = useState(false);
@@ -565,7 +577,7 @@ export function StudyTools({
         return (
           <>
             {host ? createPortal(barra, host) : barra}
-            {lousa && createPortal(<MentorLousa key={lousa.id} lousa={lousa.dados} sync={lousa.sync} vivo={lousa.vivo} onClose={() => setLousa(null)} />, document.body)}
+            {lousa && createPortal(<MentorLousa key={lousa.id} lousa={lousa.dados} jaSalva={lousa.salva} onSalvar={salvarAberta} sync={lousa.sync} vivo={lousa.vivo} onClose={() => setLousa(null)} />, document.body)}
           </>
         );
       })()}
