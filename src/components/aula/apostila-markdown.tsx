@@ -9,6 +9,7 @@ import { calloutKindOf, leadingLabelKind } from "@/domain/content/callout-kind";
 import { agruparCalculos, casoDeTexto, roteiroDeCaso, roteiroDeConta, roteiroDeFatoracao, ehCalculo, ehLinhaNumerica, roteiroRegraDeTres, roteiroDeLinhas, roteiroMatematico } from "@/domain/mentor/calculo-lousa";
 import { CartaoExemplo } from "@/components/aula/cartao-exemplo";
 import { montarCartao, temaDe } from "@/domain/mentor/cartao-exemplo";
+import { roteiroDeExemplo } from "@/domain/mentor/catalogo-lousa";
 import { QuadroExemplo } from "@/components/aula/quadro-exemplo";
 import { PENA_MARK, highlightLegal, legalLevel, legalParagraphs, splitLegalLabel } from "@/domain/content/legal-format";
 
@@ -85,7 +86,11 @@ function MdInner({ children, legal = false, subject = null, titulo = "" }: { chi
             const itens = (node?.children ?? []).filter((x): x is Extract<ElementContent, { type: "element" }> => x.type === "element" && x.tagName === "li").map((li) => textOf(li).trim());
             const numericos = itens.filter(ehLinhaNumerica);
             if (numericos.length >= 2) { const rl = roteiroDeLinhas(numericos, ctxTitulo); if (rl) return <QuadroExemplo itens={itens} roteiro={rl}><ul>{c}</ul></QuadroExemplo>; }
-            if (temaDe(subject) === "matematica" && !itens.some((x) => /\d/.test(x))) return <ul>{c}</ul>;
+            if (temaDe(subject) === "matematica") {
+              // matemática: só lousa de cálculo (contas em lista); lista explicativa fica como texto da aula
+              const ro = roteiroDeExemplo(itens);
+              return ro && ro.some((x) => /^(tabela: conta|conta:)/i.test(x)) ? <QuadroExemplo itens={itens} roteiro={ro}><ul>{c}</ul></QuadroExemplo> : <ul>{c}</ul>;
+            }
             return <QuadroExemplo itens={itens}><ul>{c}</ul></QuadroExemplo>;
           },
           ol: ({ start, children: c }) => (
