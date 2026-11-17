@@ -4,7 +4,7 @@ import { MentorLousa } from "@/components/mentor/mentor-lousa";
 import { lousaSchema, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { Download, FileText, Lightbulb, Loader2, StickyNote, Trash2, Wrench, X } from "lucide-react";
+import { Download, FileText, Lightbulb, Loader2, PenLine, StickyNote, Trash2, Wrench, X } from "lucide-react";
 import { VozOrbRepouso } from "@/components/mentor/voz-orb-solo";
 import type { Bands } from "@/components/mentor/voz-orbe";
 import { VozOnda } from "./voz-onda";
@@ -32,7 +32,8 @@ export interface StudyApi {
 /** Mensagem que o servidor devolve para falhas inesperadas (vale tentar de novo). */
 const TRANSIENT = "Não foi possível concluir agora. Tente novamente.";
 const realApi: StudyApi = { create: createPostitAction, list: listPostitsAction, updateNote: updatePostitNoteAction, remove: deletePostitAction, generatePdf: generatePostitPdfAction, removePdf: deletePostitPdfAction };
-type Panel = null | "lista" | "pdf" | "mentor";
+type Panel = null | "lista" | "pdf" | "mentor" | "lousas";
+interface LousaSalva { id: string; titulo: string; pedido: string; criadaEm: string }
 
 const FRESH_MS = 12_000;
 const toView = (p: PostitDto): PostitView => ({ id: p.id, sectionId: p.sectionId, sectionTitle: p.sectionTitle, quote: p.quote, structure: p.structure ?? null, quoteStart: p.quoteStart, note: p.note, explanation: p.explanation, createdAt: p.createdAt });
@@ -92,6 +93,28 @@ export function StudyTools({
   }, [lessonId, postits]);
   const [pdfs, setPdfs] = useState<PdfInfo[]>(initialPdfs);
   const [panel, setPanel] = useState<Panel>(null);
+  const [salvas, setSalvas] = useState<LousaSalva[] | null>(null);
+  const [abrindo, setAbrindo] = useState<string | null>(null);
+  // Explicações do Mentor já vistas (ficam salvas): carrega ao abrir a aba e rever uma abre a lousa na hora
+  useEffect(() => {
+    if (panel !== "lousas") return;
+    let vivo = true;
+    void fetch("/api/mentor/lousa/salvas", { cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).then((j: { salvas?: LousaSalva[] } | null) => { if (vivo) setSalvas(j?.salvas ?? []); }).catch(() => { if (vivo) setSalvas([]); });
+    return () => { vivo = false; };
+  }, [panel]);
+  const abrirSalva = useCallback(async (id: string) => {
+    setAbrindo(id);
+    try {
+      const r = await fetch(`/api/mentor/lousa/salvas?id=${encodeURIComponent(id)}`, { cache: "no-store" });
+      const j = r.ok ? ((await r.json()) as { lousa?: unknown }) : null;
+      const ok = lousaSchema.safeParse(j?.lousa);
+      if (ok.success && ok.data.linhas.length) {
+        const t0 = performance.now() / 1000;
+        setLousa({ id: Date.now(), dados: ok.data, vivo: { quandos: ok.data.linhas.map(() => t0), agora: () => performance.now() / 1000 } });
+        setPanel(null);
+      }
+    } finally { setAbrindo(null); }
+  }, []);
   const [mentorFala, setMentorFala] = useState(false);
   const [lousa, setLousa] = useState<{ id: number; dados: Lousa | null; sync?: () => { c: number; fim: boolean }; vivo?: { quandos: number[]; agora: () => number } } | null>(null);
   const levelRef = useRef<(() => Bands) | null>(null);
@@ -529,6 +552,9 @@ export function StudyTools({
               <button type="button" className={`st-btn ${panel === "pdf" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "pdf" ? null : "pdf"))} aria-label="Meu PDF de Revisão" aria-expanded={panel === "pdf"} title="Meu PDF de Revisão" data-testid="st-pdf">
                 <FileText className="size-5" aria-hidden /><span className="st-btn-txt"><b>Meu PDF</b><small>Gerar revisão</small></span>
               </button>
+              <button type="button" className={`st-btn ${panel === "lousas" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "lousas" ? null : "lousas"))} aria-label="Lousas do Mentor salvas" aria-expanded={panel === "lousas"} title="Explicações do Mentor na lousa, salvas para rever" data-testid="st-lousas">
+                <PenLine className="size-5" aria-hidden /><span className="st-btn-txt"><b>Lousas</b><small>Rever explicação</small></span>
+              </button>
               <div className="st-mentor-wrap">
                 {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={46} onSpeaking={setMentorFala} onLousa={(dados, sync, vivo) => setLousa((a) => (dados === null ? (a?.dados ? a : { id: a?.id ?? Date.now(), dados: LOUSA_ERRO }) : dados === "pendente" ? (a?.dados ? a : { id: Date.now(), dados: null }) : { id: a?.id ?? Date.now(), dados, sync, vivo }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setPanel(null); }} /> : <VozOrbRepouso size={46} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
                 <span className="st-btn-txt st-mentor-txt" aria-hidden onClick={() => { if (panel !== "mentor") { currentCapture(); setPanel("mentor"); } }}><b>Mentor</b><small>Falar com o Mentor</small></span>
@@ -569,10 +595,10 @@ export function StudyTools({
         </div>
       )}
 
-      {(panel === "lista" || panel === "pdf") && (
-        <div className={`st-painel is-${panel}`} role="dialog" aria-modal="false" aria-label={panel === "lista" ? "Post-its da aula" : panel === "pdf" ? "Meu PDF de Revisão" : "Mentor por voz"} data-st data-testid={`st-painel-${panel}`}>
+      {(panel === "lista" || panel === "pdf" || panel === "lousas") && (
+        <div className={`st-painel is-${panel}`} role="dialog" aria-modal="false" aria-label={panel === "lista" ? "Post-its da aula" : panel === "pdf" ? "Meu PDF de Revisão" : panel === "lousas" ? "Lousas do Mentor" : "Mentor por voz"} data-st data-testid={`st-painel-${panel}`}>
           <div className="st-painel-topo">
-            <h2>{panel === "lista" ? `Post-its desta aula${count ? ` (${count})` : ""}` : "Meu PDF de Revisão"}</h2>
+            <h2>{panel === "lista" ? `Post-its desta aula${count ? ` (${count})` : ""}` : panel === "lousas" ? "Lousas do Mentor" : "Meu PDF de Revisão"}</h2>
             <button type="button" className="st-fechar" onClick={() => setPanel(null)} aria-label="Fechar painel"><X className="size-4" aria-hidden /></button>
           </div>
           <div className="st-painel-corpo">
@@ -584,6 +610,25 @@ export function StudyTools({
                   {postits.map((p, i) => (
                     <li key={p.id} ref={(el) => { if (el && focusId === p.id) el.scrollIntoView({ block: "nearest" }); }}>
                       <PostitCard p={p} n={i + 1} focused={focusId === p.id} onNote={saveNote} onDelete={remove} onGo={goTo} />
+                    </li>
+                  ))}
+                </ul>
+              )
+            )}
+            {panel === "lousas" && (
+              salvas === null ? (
+                <p className="st-vazio"><Loader2 className="size-4 animate-spin" aria-hidden /> Carregando…</p>
+              ) : salvas.length === 0 ? (
+                <p className="st-vazio">Nenhuma lousa ainda. Peça ao Mentor: <b>“escreve no quadro um exemplo de…”</b>. A explicação fica salva aqui para você rever na hora.</p>
+              ) : (
+                <ul className="st-lousas" data-testid="st-lousas-lista">
+                  {salvas.map((s) => (
+                    <li key={s.id}>
+                      <button type="button" onClick={() => void abrirSalva(s.id)} disabled={abrindo === s.id}>
+                        <PenLine className="size-4" aria-hidden />
+                        <span><b>{s.titulo}</b><small>{fmt(s.criadaEm)}</small></span>
+                        {abrindo === s.id && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                      </button>
                     </li>
                   ))}
                 </ul>

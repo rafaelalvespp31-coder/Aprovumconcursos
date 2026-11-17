@@ -8,7 +8,7 @@ import "./mentor-lousa.css";
 const COR: Record<string, string> = { azul: "#1d3a8a", preto: "#1a1a1f", vermelho: "#c62828", verde: "#1b7a43", grafite: "#1a1a1f", laranja: "#d9620b", roxo: "#6b2fa3", rosa: "#c2185b" };
 const UPS = 20;
 const SYNC_UPS = 38; // velocidade da caneta no quadro sincronizado (rápida, mas ainda legível)
-const VIVO_UPS = 38; // quadro ao vivo: caneta rápida, as linhas entram assim que chegam
+const VIVO_UPS = 30; // quadro ao vivo: caneta rápida, as linhas entram assim que chegam
 const LEAD_CHARS = 22; // começa a escrever a linha ~1,5 s antes de o Mentor falá-la // unidades de tempo por segundo (cada letra custa ~1 unidade)
 const PAUSA = 4; // respiro entre linhas, como quem levanta o canetão
 
