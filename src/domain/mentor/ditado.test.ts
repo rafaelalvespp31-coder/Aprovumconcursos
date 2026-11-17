@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { comandoDitado, frasesDe, linhaDitado, novoDitado } from "./ditado";
+import { comandoDitado, fimDitado, frasesDe, linhaDitado, novoDitado } from "./ditado";
 
 describe("ditado do desenho", () => {
   it("monta o esquema da extratividade em ordem", () => {
@@ -52,7 +52,7 @@ describe("conta ditada como num quadro", () => {
   });
   it("mmc, conta armada e divisão", () => {
     const e = novoDitado(false);
-    comandoDitado(e, "MMC: 12 e 18.", 0); comandoDitado(e, "Armada: 234 mais 158.", 0); comandoDitado(e, "Divisão: 145 por 4.", 0);
+    comandoDitado(e, "MMC: 12 e 18.", 0); comandoDitado(e, "Armada: 234 mais 158.", 0); comandoDitado(e, "Divisão: 145 por 4.", 0); fimDitado(e);
     const t = textos(e);
     expect(t).toEqual(expect.arrayContaining(["MMC = 36", "392", "36"]));
   });
@@ -60,5 +60,54 @@ describe("conta ditada como num quadro", () => {
     const e = novoDitado(false);
     for (let i = 0; i < 8; i++) comandoDitado(e, `Conta: passo ${i} mais ${i}.`, 0);
     for (const x of linhaDitado(e).rabisco!) if (x.t === "texto") expect(x.y).toBeLessThanOrEqual(1000);
+  });
+});
+
+describe("os 5 testes do comando mestre (ditado simulado)", () => {
+  const tx = (e: ReturnType<typeof novoDitado>) => linhaDitado(e).rabisco!.filter((x) => x.t === "texto").map((x) => (x as { s: string }).s);
+  it("1 · MMC de 12 e 18, divisão por divisão, até o resultado", () => {
+    const e = novoDitado(true);
+    comandoDitado(e, "Título: MMC de 12 e 18.", 0);
+    comandoDitado(e, "MMC: 12 e 18.", 0);
+    const antes = linhaDitado(e).rabisco!.length;
+    expect(comandoDitado(e, "Vamos conversar sobre números primos.", 0)).toBe(false);
+    expect(comandoDitado(e, "Vamos dividir por 2.", 0)).toBe(true);
+    expect(linhaDitado(e).rabisco!.length).toBeGreaterThan(antes);
+    comandoDitado(e, "Dividimos de novo por 2.", 0); comandoDitado(e, "Agora dividimos por 3.", 0);
+    expect(tx(e)).not.toContain("MMC = 36"); // ainda não terminou
+    comandoDitado(e, "E mais uma vez por 3.", 0);
+    expect(tx(e)).toContain("MMC = 36"); // 1, 1: o resultado nasce sozinho
+    expect(tx(e)).toContain("2 × 2 × 3 × 3");
+  });
+  it("2 · furto × roubo: duas cenas lado a lado", () => {
+    const e = novoDitado(true);
+    for (const c of ["Título: Furto e roubo.", "Coluna um: furto.", "Pessoa: ladrão.", "Objeto: bolsa.", "Seta: leva.", "Item: subtração sem violência.", "Coluna dois: roubo.", "Pessoa: ladrão.", "Arma.", "Pessoa: vítima.", "Item: grave ameaça ou violência."]) comandoDitado(e, c, 0);
+    const l = linhaDitado(e).rabisco!;
+    expect(l.filter((x) => x.t === "circ").length).toBeGreaterThanOrEqual(3); // cabeças
+    const rets = l.filter((x) => x.t === "ret") as { x: number }[];
+    expect(rets[0]!.x).toBeLessThan(rets[rets.length - 1]!.x); // colunas lado a lado
+    expect(tx(e)).toEqual(expect.arrayContaining(["ladrão", "bolsa", "vítima"]));
+  });
+  it("3 · sujeito e predicado com colchetes sob a frase", () => {
+    const e = novoDitado(false);
+    for (const c of ["Título: Sujeito e predicado.", "Frase: O menino comeu a maçã.", "Sujeito: o menino.", "Predicado: comeu a maçã.", "Verbo: comeu.", "Objeto: a maçã."]) comandoDitado(e, c, 0);
+    const l = linhaDitado(e).rabisco!;
+    expect(l.filter((x) => x.t === "curva")).toHaveLength(5); // ondinha do título + 4 colchetes
+    expect(tx(e)).toEqual(expect.arrayContaining(["O menino comeu a maçã", "Sujeito", "Predicado", "Verbo"]));
+  });
+  it("4 · cadeia alimentar com setas", () => {
+    const e = novoDitado(true);
+    comandoDitado(e, "Cadeia: capim, gafanhoto, sapo, cobra, gavião.", 0);
+    const l = linhaDitado(e).rabisco!;
+    expect(l.filter((x) => x.t === "circ")).toHaveLength(5);
+    expect(l.filter((x) => x.t === "linha" && x.seta)).toHaveLength(4);
+  });
+  it("5 · pirâmide: a hierarquia cresce camada a camada", () => {
+    const e = novoDitado(true);
+    for (const c of ["Camada: Constituição.", "Camada: leis.", "Camada: decretos.", "Camada: portarias."]) comandoDitado(e, c, 0);
+    const rets = linhaDitado(e).rabisco!.filter((x) => x.t === "ret") as { w: number; y: number }[];
+    expect(rets).toHaveLength(4);
+    expect(rets[3]!.w).toBeGreaterThan(rets[0]!.w);
+    expect(rets[3]!.y).toBeGreaterThan(rets[0]!.y);
   });
 });

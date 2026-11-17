@@ -1,3 +1,4 @@
+import { comandoEnsino, conversaEnsino, fimEnsino, ENSINO, type Cena, type Frase, type Mmc } from "./ditado-ensino";
 import { linhaSchema, type ItemDesenho, type LinhaLousa } from "./lousa";
 
 /**
@@ -13,7 +14,7 @@ export interface EstadoDitado {
   W: number; ncols: number; colW: number; margem: number;
   y: number; // cursor vertical do cabeçalho
   colY: number[]; rowTop: number; col: number; caixas: number; temCaixa: boolean;
-  so: boolean; yL: number; yR: number; ym: number; linhasTab: { y: number; a: string; b: string }[]; corConta: number; marcos: number; resumo: boolean; resumoY: number; yTempo?: number; itens: ItemDesenho[];
+  mmc?: Mmc; frase?: Frase; cenas: Record<number, Cena>; camadas: number; pirY: number; so: boolean; yL: number; yR: number; ym: number; linhasTab: { y: number; a: string; b: string }[]; corConta: number; marcos: number; resumo: boolean; resumoY: number; yTempo?: number; itens: ItemDesenho[];
 }
 
 /** `so`: copia só os traços, sem letras. Padrão: o quadro mostra o que foi DITADO como desenho (rótulos, números, contas), nunca a conversa do professor. */
@@ -21,7 +22,7 @@ export function novoDitado(largo: boolean, so = false): EstadoDitado {
   const W = largo ? 1000 : 460;
   const ncols = largo ? 3 : 1, margem = 24;
   const colW = (W - margem * 2 - (ncols - 1) * 18) / ncols;
-  return { W, ncols, colW, margem, y: 8, colY: Array(ncols).fill(0), rowTop: 0, col: -1, caixas: 0, temCaixa: false, so, yL: -1, yR: -1, ym: 0, linhasTab: [], corConta: 0, marcos: 0, resumo: false, resumoY: 0, itens: [] };
+  return { W, ncols, colW, margem, y: 8, colY: Array(ncols).fill(0), rowTop: 0, col: -1, caixas: 0, temCaixa: false, cenas: {}, camadas: 0, pirY: 0, so, yL: -1, yR: -1, ym: 0, linhasTab: [], corConta: 0, marcos: 0, resumo: false, resumoY: 0, itens: [] };
 }
 
 const cw = (tam: number) => tam * 0.56;
@@ -52,9 +53,10 @@ const NUM_PALAVRA = /^(?:(?:n[ºo°]\s*)?\d+|um|uma|dois|duas|tr[eê]s|quatro|ci
 /** Aplica um comando ditado. Devolve false se a frase não for um comando (conversa do professor: ignorada). `atraso` = segundos até o áudio chegar nela. */
 export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): boolean {
   const f = frase.replace(/\s+/g, " ").replace(/[*_`]/g, "").trim();
-  const m = /^(t[ií]tulo|subt[ií]tulo|linha do tempo|marco|caixa|item|ponto|t[oó]pico|exemplo|destaque|aten[cç][aã]o|cuidado|resumo|seta|tabela|linha|cruzar|conta|passo|resposta|mmc|mdc|arma(?:da|r)|divis[aã]o)\b[\s:,.\-–]*(.*)$/i.exec(f);
-  if (!m) return false;
-  const cmd = norm(m[1]!);
+  const m = /^(t[ií]tulo|subt[ií]tulo|linha do tempo|marco|caixa|item|ponto|t[oó]pico|exemplo|destaque|aten[cç][aã]o|cuidado|resumo|seta|tabela|linha|cruzar|conta|passo|resposta|mmc|mdc|arma(?:da|r)|divis[aã]o|frase|sujeito|predicado|verbo|n[uú]cleo|complemento|adjunto|camada|cadeia|coluna|pessoa|v[ií]tima|arma|objeto)\b[\s:,.\-–]*(.*)$/i.exec(f);
+  if (!m) { const it0: ItemDesenho[] = []; const ok = conversaEnsino(e, f, Math.max(0, atraso), it0); e.itens.push(...it0); return ok; }
+  let cmd = norm(m[1]!);
+  if (cmd === "coluna") cmd = "caixa";
   const resto = m[2]!.replace(/[.!]+$/, "").trim();
   const it: ItemDesenho[] = [];
   let d = Math.max(0, atraso);
@@ -63,6 +65,7 @@ export function comandoDitado(e: EstadoDitado, frase: string, atraso: number): b
   const push = (...xs: ItemDesenho[]) => { it.push(...xs); };
   const centro = (s: string, tam: number) => Math.max(e.margem, (e.W - s.length * cw(tam)) / 2);
 
+  if (ENSINO.has(cmd)) { if (comandoEnsino(e, cmd, resto, d, it)) { e.itens.push(...it); return true; } }
   if (MATEMATICA.has(cmd)) { if (!matematica(e, cmd, resto, d, it)) return true; e.itens.push(...it); return true; }
   if (e.so && (cmd === "titulo" || cmd === "subtitulo" || cmd === "item" || cmd === "ponto" || cmd === "topico" || cmd === "exemplo" || cmd === "destaque" || cmd === "atencao" || cmd === "cuidado")) return true; // só letras: não entra no quadro
   if (cmd === "titulo") {
@@ -257,4 +260,12 @@ function matematica(e: EstadoDitado, cmd: string, resto: string, d0: number, it:
   }
   fim();
   return true;
+}
+
+/** Fim do turno do Mentor: devolve true se algo novo foi desenhado (ex.: resultado do MMC). */
+export function fimDitado(e: EstadoDitado): boolean {
+  const it: ItemDesenho[] = [];
+  fimEnsino(e, it);
+  e.itens.push(...it);
+  return it.length > 0;
 }
