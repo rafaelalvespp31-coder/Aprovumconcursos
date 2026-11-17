@@ -166,7 +166,9 @@ export function frasesDe(buf: string): { frases: string[]; resto: string } {
 
 // ── Conta ditada, como um professor resolvendo no quadro ───────────────────────────────────────────
 const MATEMATICA = new Set(["tabela", "linha", "cruzar", "conta", "passo", "resposta", "mmc", "mdc", "armada", "armar", "divisao"]);
-const sim = (s: string) => s
+const NUMS: Record<string, number> = { um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10, onze: 11, doze: 12, treze: 13, quatorze: 14, quinze: 15, vinte: 20, trinta: 30, quarenta: 40, cinquenta: 50, sessenta: 60, setenta: 70, oitenta: 80, noventa: 90, cem: 100 };
+const algarismos = (s: string) => s.replace(/\b(?:ent[aã]o|agora|ai|aí|bom|ent[aã]o,)\b[\s,]*/gi, "").replace(/\b[a-zê]+\b/gi, (w) => { const n = NUMS[norm(w)]; return n === undefined ? w : String(n); });
+const sim = (s: string) => algarismos(s)
   .replace(/\s+(?:é|e|fica|dá)?\s*igual\s+a\s+/gi, " = ").replace(/\s+dividido\s+por\s+/gi, " ÷ ").replace(/\s+vezes\s+/gi, " · ")
   .replace(/\s+mais\s+/gi, " + ").replace(/\s+menos\s+/gi, " − ").replace(/\s+ao quadrado\b/gi, "²").replace(/\s+por\s+cento\b/gi, "%");
 const parte = (s: string) => s.split(/\s*(?:,|;|\be\b|\bpor\b|\bpara\b)\s*/i).map((x) => x.trim()).filter(Boolean);
@@ -184,32 +186,32 @@ function matematica(e: EstadoDitado, cmd: string, resto: string, d0: number, it:
   const empilha = !larg; // celular: tudo na mesma coluna
   const yR = () => (empilha ? e.yL : e.yR);
   const setR = (v: number) => { if (empilha) e.yL = v; else e.yR = v; };
-  const tam = larg ? 22 : 20;
+  const tam = larg ? 28 : 22;
   const d = Math.max(0, d0);
   const fim = () => { e.ym = Math.max(e.ym, e.yL, e.yR); };
 
   if (cmd === "tabela") {
     const [a, b] = parte(resto);
     if (!a) return false;
-    const x2 = xL + (larg ? 190 : 200);
-    it.push(tx(xL + 8, e.yL + 24, a.slice(0, 14), "azul", tam, d), tx(x2 + 8, e.yL + 24, (b ?? "").slice(0, 14) || " ", "verde", tam, d + 0.15));
-    it.push(lin(xL, e.yL + 34, x2 + 150, e.yL + 34, "grafite", d + 0.3), lin(x2 - 8, e.yL + 4, x2 - 8, e.yL + 34 + 4, "grafite", d + 0.3));
-    e.yL += 38; e.linhasTab = []; if (empilha) e.yR = e.yL;
+    const x2 = xL + (larg ? 230 : 200);
+    it.push(tx(xL + 8, e.yL + 28, a.slice(0, 14), "azul", tam, d), tx(x2 + 8, e.yL + 28, (b ?? "").slice(0, 14) || " ", "verde", tam, d + 0.15));
+    it.push(lin(xL, e.yL + 40, x2 + 170, e.yL + 40, "grafite", d + 0.3), lin(x2 - 8, e.yL + 2, x2 - 8, e.yL + 44, "grafite", d + 0.3));
+    e.yL += 46; e.linhasTab = []; if (empilha) e.yR = e.yL;
   } else if (cmd === "linha") {
     const [a, b] = parte(resto);
     if (!a) return false;
     const x2 = xL + (larg ? 190 : 200);
-    const y = e.yL + 26;
+    const y = e.yL + 36;
     it.push(tx(xL + 8, y, a.slice(0, 14), "grafite", tam + 2, d), tx(x2 + 8, y, (b ?? "").slice(0, 14) || " ", "grafite", tam + 2, d + 0.15));
     if (/^x$/i.test(b ?? "") || /^x$/i.test(a)) it.push({ t: "circ", cx: (/^x$/i.test(a) ? xL + 14 : x2 + 14), cy: y - 8, r: 17, cor: "vermelho", d: d + 0.3 });
     e.linhasTab.push({ y, a, b: b ?? "" });
-    e.yL += 40; if (empilha) e.yR = e.yL;
+    e.yL += 62; if (empilha) e.yR = e.yL;
   } else if (cmd === "cruzar") {
     const L = e.linhasTab.slice(-2);
     if (L.length < 2) return false;
-    const x2 = xL + (larg ? 190 : 200);
+    const x2 = xL + (larg ? 230 : 200);
     const [r1, r2] = [L[0]!, L[1]!];
-    it.push(lin(xL + 26, r1.y + 6, x2 - 6, r2.y - 24, "laranja", d, true), lin(x2 + 26, r1.y + 6, xL + 20, r2.y - 24, "roxo", d + 0.3, true));
+    it.push(lin(xL + 30, r1.y + 10, x2 - 4, r2.y - 32, "laranja", d, true), lin(x2 + 30, r1.y + 10, xL + 24, r2.y - 32, "roxo", d + 0.3, true));
   } else if (cmd === "conta" || cmd === "passo") {
     if (!resto) return false;
     const cor: Cor = (["azul", "vermelho", "roxo", "laranja"] as Cor[])[e.corConta++ % 4]!;
@@ -286,8 +288,9 @@ export function naturalDitado(e: EstadoDitado, frase: string, atraso: number): b
   if (!f || ehConversa(f)) return false;
   const s = norm(f);
   const mm = /\b(mmc|mdc|minimo multiplo comum|maximo divisor comum)\b\D{0,30}?(\d{1,3})\D{1,12}?(\d{1,3})(?:\D{1,12}?(\d{1,3}))?/.exec(s);
+  if (mm && !e.mmc) { const nm = mm[1]!.startsWith("mdc") || mm[1]!.startsWith("maximo") ? "MDC" : "MMC"; if (e.itens.length === 0) comandoDitado(e, `Título: ${nm} de ${[mm[2], mm[3], mm[4]].filter(Boolean).join(" e ")}`, atraso); }
   if (mm && !e.mmc) return comandoDitado(e, `${mm[1]!.startsWith("mdc") || mm[1]!.startsWith("maximo") ? "MDC" : "MMC"}: ${[mm[2], mm[3], mm[4]].filter(Boolean).join(" e ")}`, atraso);
-  const r3 = /(\d+)\s+([a-z]+)\s+(?:custam|valem|pesam|levam|rendem|fazem|gastam|produzem)\s+(?:r\$\s*)?(\d+)\s+([a-z]+)/.exec(s);
+  const r3 = /(\d+)\s+([a-zà-ú]+)\s+(?:custam|valem|pesam|levam|rendem|fazem|gastam|produzem)\s+(?:r\$\s*)?(\d+)\s+([a-zà-ú]+)/.exec(f.toLowerCase());
   if (r3 && e.linhasTab.length === 0) { comandoDitado(e, `Tabela: ${r3[2]}, ${r3[4]}`, atraso); return comandoDitado(e, `Linha: ${r3[1]}, ${r3[3]}`, atraso); }
   const r3b = /(\d+)\s+(?:[a-z]+\s+)?(?:custam|valem|pesam|levam|rendem|fazem|gastam|produzem)\s+(?:quanto|x)\b/.exec(s);
   if (r3b && e.linhasTab.length > 0) { comandoDitado(e, `Linha: ${r3b[1]}, x`, atraso); return comandoDitado(e, "Cruzar", atraso); }
@@ -297,7 +300,7 @@ export function naturalDitado(e: EstadoDitado, frase: string, atraso: number): b
     const t = /\b(?:vamos|hoje|agora)\s+(?:falar|ver|estudar|aprender|entender|resolver|calcular|desenhar|fazer)\s+(?:sobre\s+|de\s+|do\s+|da\s+|dos\s+|das\s+|o\s+|a\s+|um\s+|uma\s+)?(.+)$/i.exec(f);
     if (t) return comandoDitado(e, `Título: ${curto(t[1]!, 6)}`, atraso);
   }
-  if (/\b(portanto|logo|resposta|resultado|ent[aã]o)\b.*(\bigual\b|=)/i.test(f) && nums + (/\bx\b/.test(s) ? 1 : 0) >= 1) return comandoDitado(e, `Resposta: ${f.replace(/^.*?\b(?:portanto|logo|ent[aã]o|resposta|resultado)\b[\s,:]*/i, "")}`, atraso);
+  if (/\b(portanto|logo|resposta|resultado)\b.*(\bigual\b|=)/i.test(f) && nums + (/\bx\b/.test(s) ? 1 : 0) >= 1) return comandoDitado(e, `Resposta: ${f.replace(/^.*?\b(?:portanto|logo|resposta|resultado)\b[\s,:]*/i, "")}`, atraso);
   if (nums + (/\bx\b/.test(s) ? 1 : 0) >= 2 && /\b(vezes|dividido|dividimos|mais|menos|igual|multiplic\w*|soma\w*|subtra\w*|=|\+|×|÷)\b|[=+×÷]/.test(s)) return comandoDitado(e, `Conta: ${f}`, atraso);
   const ano = /\b(1[0-9]{3}|20[0-9]{2})\b\s*,?\s*(.*)$/.exec(f);
   if (ano) {

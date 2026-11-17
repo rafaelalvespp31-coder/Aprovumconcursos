@@ -19,7 +19,7 @@ const parte = (s: string) => s.split(/\s*(?:,|;|\be\b)\s*/i).map((x) => x.trim()
 export const ENSINO = new Set(["frase", "sujeito", "predicado", "verbo", "nucleo", "complemento", "adjunto", "camada", "cadeia", "coluna", "pessoa", "vitima", "arma", "objeto", "mmc", "mdc"]);
 
 // ── MMC / MDC progressivo ────────────────────────────────────────────────────────────────────────
-export interface Mmc { modo: "mmc" | "mdc"; vals: number[]; x0: number; y0: number; k: number; usados: number[]; pitch: number; feito: boolean; xR: number; yR: number }
+export interface Mmc { modo: "mmc" | "mdc"; vals: number[]; x0: number; y0: number; k: number; usados: number[]; pitch: number; sp: number; feito: boolean; xR: number; yR: number }
 
 function iniciaMmc(e: EstadoDitado, modo: "mmc" | "mdc", resto: string, d: number, it: ItemDesenho[]): boolean {
   const ns = [...new Set([...resto.matchAll(/\d{1,3}/g)].map((m) => Number(m[0])))].filter((n) => n >= 2).slice(0, 3);
@@ -27,12 +27,12 @@ function iniciaMmc(e: EstadoDitado, modo: "mmc" | "mdc", resto: string, d: numbe
   const larg = e.ncols > 1;
   const y = Math.max(e.y, e.ym) + 14;
   e.yL = y; e.yR = y;
-  const tam = larg ? 24 : 22, pitch = 40;
-  const colx = (i: number) => e.margem + 10 + i * 72;
-  const barX = e.margem + ns.length * 72 + 2;
+  const tam = larg ? 30 : 24, pitch = larg ? 56 : 44, sp = larg ? 88 : 70;
+  const colx = (i: number) => e.margem + 10 + i * sp;
+  const barX = e.margem + ns.length * sp + 2;
   ns.forEach((n, i) => it.push(tx(colx(i), y + 30, String(n), "azul", tam, d + i * 0.1)));
-  it.push(lin(barX, y + 4, barX, y + 30 + 6 * pitch, "grafite", d + 0.2));
-  e.mmc = { modo, vals: ns, x0: e.margem, y0: y + 30, k: 0, usados: [], pitch, feito: false, xR: larg ? Math.round(e.W * 0.52) : e.margem, yR: y + 30 };
+  it.push(lin(barX, y + 4, barX, y + 30 + 5 * pitch, "grafite", d + 0.2));
+  e.mmc = { modo, vals: ns, x0: e.margem, y0: y + 30, k: 0, usados: [], pitch, sp, feito: false, xR: larg ? Math.round(e.W * 0.52) : e.margem, yR: y + 30 };
   e.ym = Math.max(e.ym, y + 30 + 40);
   return true;
 }
@@ -41,15 +41,15 @@ function iniciaMmc(e: EstadoDitado, modo: "mmc" | "mdc", resto: string, d: numbe
 function aplicaPrimo(e: EstadoDitado, p: number, d: number, it: ItemDesenho[]): boolean {
   const m = e.mmc;
   if (!m || m.feito || m.k >= 6 || !m.vals.some((v) => v > 1 && v % p === 0)) return false;
-  const larg = e.ncols > 1, tam = larg ? 24 : 22;
-  const colx = (i: number) => e.margem + 10 + i * 72;
-  const barX = e.margem + m.vals.length * 72 + 2;
+  const larg = e.ncols > 1, tam = larg ? 30 : 24;
+  const colx = (i: number) => e.margem + 10 + i * m.sp;
+  const barX = e.margem + m.vals.length * m.sp + 2;
   const y = m.y0 + m.k * m.pitch;
   const todos = m.vals.every((v) => v > 1 && v % p === 0);
   const usa = m.modo === "mmc" || todos;
   if (usa) m.usados.push(p);
   it.push(tx(barX + 16, y, String(p), usa ? "vermelho" : "grafite", tam, d));
-  if (usa) it.push(circ(barX + 16 + String(p).length * 6, y - 8, 17, "vermelho", d + 0.1));
+  if (usa) it.push(circ(barX + 16 + String(p).length * 8, y - 10, 22, "vermelho", d + 0.1));
   m.vals = m.vals.map((v) => (v > 1 && v % p === 0 ? v / p : v));
   m.vals.forEach((v, i) => it.push(tx(colx(i), y + m.pitch, String(v), "azul", tam, d + 0.2 + i * 0.1)));
   it.push(lin(colx(0) + 12, y + 6, colx(0) + 12, y + m.pitch - tam - 2, "laranja", d + 0.15, true));
@@ -63,11 +63,11 @@ function finalizaMmc(e: EstadoDitado, d: number, it: ItemDesenho[]): void {
   const m = e.mmc;
   if (!m || m.feito) return;
   m.feito = true;
-  const larg = e.ncols > 1, tam = larg ? 24 : 22;
+  const larg = e.ncols > 1, tam = larg ? 30 : 24;
   const nome = m.modo.toUpperCase(), prod = m.usados.reduce((a, b) => a * b, 1);
   const x = m.xR;
   const y = larg ? m.y0 : m.y0 + (m.k + 1) * m.pitch + 10;
-  it.push(tx(x, y, m.usados.length ? m.usados.join(" × ") : "1", "vermelho", tam, d));
+  it.push(tx(x, y, m.usados.length ? m.usados.join(" · ") : "1", "vermelho", tam, d));
   it.push(tx(x, y + 44, `${nome} = ${prod}`, "verde", tam + 6, d + 0.4));
   it.push(ret(x - 8, y + 44 - tam - 10, Math.min(360, `${nome} = ${prod}`.length * cw(tam + 6) + 24), tam + 22, "verde", d + 0.7));
   e.ym = Math.max(e.ym, y + 70);

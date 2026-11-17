@@ -77,7 +77,7 @@ describe("os 5 testes do comando mestre (ditado simulado)", () => {
     expect(tx(e)).not.toContain("MMC = 36"); // ainda não terminou
     comandoDitado(e, "E mais uma vez por 3.", 0);
     expect(tx(e)).toContain("MMC = 36"); // 1, 1: o resultado nasce sozinho
-    expect(tx(e)).toContain("2 × 2 × 3 × 3");
+    expect(tx(e)).toContain("2 · 2 · 3 · 3");
   });
   it("2 · furto × roubo: duas cenas lado a lado", () => {
     const e = novoDitado(true);
