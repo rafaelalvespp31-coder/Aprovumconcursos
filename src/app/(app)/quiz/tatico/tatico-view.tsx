@@ -28,7 +28,7 @@ function sairTelaCheia() {
 }
 
 const mmss = (ms: number) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
-const fs = (txt: string, base: number, min: number, soft: number) => Math.max(min, base - Math.max(0, txt.length - soft) * 0.07);
+const fs = (txt: string, base: number, min: number, soft: number, k = 0.07) => Math.max(min, base - Math.max(0, txt.length - soft) * k);
 
 function useEscala(portrait: boolean) {
   const ref = useRef<HTMLDivElement>(null);
@@ -46,7 +46,7 @@ function useEscala(portrait: boolean) {
   return { ref, k, faixa, offX, offY, boxH: portrait ? faixa.h * k : undefined };
 }
 
-export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock }: { breathClock?: (nowMs: number) => number | null; s: Partida; at: number; nivel: { level: number; into: number }; noFx: boolean; portrait: boolean; onShoot: (i: number) => void; shot: { i: number; n: number; hit: boolean | null } | null }) {
+function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock }: { breathClock?: (nowMs: number) => number | null; s: Partida; at: number; nivel: { level: number; into: number }; noFx: boolean; portrait: boolean; onShoot: (i: number) => void; shot: { i: number; n: number; hit: boolean | null } | null }) {
   const { ref, k, faixa, offX, offY, boxH } = useEscala(portrait);
   const [now, setNow] = useState(0);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 200); return () => clearInterval(t); }, []);
@@ -123,7 +123,7 @@ export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock 
               <div className="tt-panel tt-hud-l">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/tatico/caveira.webp" alt="" />
-                <div><div className="tt-lbl">PONTUAÇÃO</div><div className="tt-big">{s.me.hits}<small>ACERTOS</small></div></div>
+                <div><div className="tt-lbl">PONTUAÇÃO</div><div className="tt-big">{s.me.hits}<small>PTS</small></div></div>
               </div>
               <div className="tt-panel tt-seq"><div className="tt-lbl">SEQUÊNCIA</div><div className="tt-big">{s.me.streak}x</div></div>
               <div className={`tt-panel red tt-timer ${s.phase === "responder" && ms < 6000 ? "low" : ""}`} data-testid="tatico-timer">
@@ -133,10 +133,10 @@ export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock 
               <div className="tt-panel tt-vs"><span>VS {s.opp.name}</span><em>{s.me.hits} x {s.opp.hits}</em></div>
               {q && (
                 <>
-                  <div className="tt-panel red tt-q">QUESTÃO <b>{String(Math.min(q.pos, s.total)).padStart(2, "0")}/{String(s.total).padStart(2, "0")}</b>{q.tiebreak ? " · MORTE SÚBITA" : ""}</div>
-                  <div className="tt-panel tt-enun" style={{ fontSize: fs(q.statement, 22, 12, 90) }}>{q.statement}</div>
+                  <div className="tt-panel tt-q">QUESTÃO <b>{String(Math.min(q.pos, s.total)).padStart(2, "0")}/{String(s.total).padStart(2, "0")}</b>{q.tiebreak ? " · MORTE SÚBITA" : ""}</div>
+                  <div className="tt-panel tt-enun" style={{ fontSize: fs(q.statement, 26, 13, 80) }}>{q.statement}</div>
                   {q.options.map((o, i) => (
-                    <button key={o.label} disabled={bloqueado} className={cls(o.label, "tt-panel tt-opt")} style={{ left: OPT_POS[i]!.l, top: OPT_POS[i]!.t, height: OPT_POS[i]!.h, fontSize: fs(o.text, 19, 11, 70) }} onClick={() => onShoot(i)} data-testid={`tatico-op-${o.label}`}>
+                    <button key={o.label} disabled={bloqueado} className={cls(o.label, "tt-panel tt-opt")} style={{ left: OPT_POS[i]!.l, top: OPT_POS[i]!.t, height: OPT_POS[i]!.h, fontSize: fs(o.text, 23, 14, 50, 0.055) }} onClick={() => onShoot(i)} data-testid={`tatico-op-${o.label}`}>
                       <span className="lt">{o.label}</span><span className="tx">{o.text}</span>
                     </button>
                   ))}
@@ -145,14 +145,17 @@ export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock 
               <div className="tt-panel tt-xp">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/tatico/soldado.webp" alt="" />
-                <div className="tt-lbl" style={{ color: "#fff" }}>NÍVEL {nivel.level}</div>
-                <div className="bar"><i style={{ width: `${nivel.into * 10}%` }} /></div>
-                <div style={{ fontSize: 18, marginTop: 4 }}><b>{nivel.into}</b> / 10 QUESTÕES</div>
+                <div className="info">
+                  <div className="tt-lbl" style={{ color: "#fff", fontSize: 24 }}>NÍVEL {nivel.level}</div>
+                  <div className="bar"><i style={{ width: `${nivel.into * 10}%` }} /></div>
+                  <div className="lt2"><b>{nivel.into}</b> / 10 QUESTÕES</div>
+                </div>
               </div>
               <div className="tt-panel tt-ammo">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/tatico/glock.webp" alt="" />
                 <div><div className="tt-lbl">GLOCK G17</div><div className="n">{Math.max(0, s.total - Math.max(0, s.idx - (rev || s.me.answered ? 0 : 1)))}<small> / {s.total}</small></div></div>
+                <svg className="cart" viewBox="0 0 22 44" fill="none" stroke="#ddd" strokeWidth="2" aria-hidden><path d="M5 18c0-6 2-12 6-16 4 4 6 10 6 16v22H5z" /><path d="M5 34h12" /></svg>
               </div>
             </>
           )}
