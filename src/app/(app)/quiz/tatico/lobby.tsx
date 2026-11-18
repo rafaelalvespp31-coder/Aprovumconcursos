@@ -183,7 +183,7 @@ function DesafiarAluno() {
           </button>
           {materias.map((m) => (
             <button key={m.materia} type="button" aria-pressed={mat === m.materia} className={`lb-chip ${mat === m.materia ? "on" : ""}`} onClick={() => setMat(m.materia)}>
-              <span className="lck" aria-hidden />{m.materia}<small>{m.n} questões</small>
+              <span className="lck" aria-hidden />{m.materia}<small>{Number(m.n).toLocaleString("pt-BR")} questões</small>
             </button>
           ))}
         </div>
