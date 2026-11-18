@@ -17,6 +17,19 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ quadro: null }, { status: 401, headers: noStore });
   const id = z.string().uuid().safeParse(req.nextUrl.searchParams.get("lessonId"));
   if (!id.success) return NextResponse.json({ quadro: null }, { headers: noStore });
+  if (req.nextUrl.searchParams.get("contexto") === "1") {
+    // título da aula aberta e das OUTRAS aulas da trilha: base da trava de assunto
+    try {
+      const db = createAdminClient();
+      const { data: atual } = await db.from("lessons").select("title, trail_id").eq("id", id.data).eq("user_id", user.id).maybeSingle();
+      if (!atual) return NextResponse.json({ atual: "", outras: [] }, { headers: noStore });
+      const { data: todas } = await db.from("lessons").select("id, title").eq("trail_id", atual.trail_id as string).eq("user_id", user.id).order("sort_order").limit(200);
+      const outras = ((todas ?? []) as Array<{ id: string; title: string }>).filter((l) => l.id !== id.data).map((l) => l.title);
+      return NextResponse.json({ atual: atual.title as string, outras }, { headers: noStore });
+    } catch {
+      return NextResponse.json({ atual: "", outras: [] }, { headers: noStore });
+    }
+  }
   const pedido = (req.nextUrl.searchParams.get("pedido") ?? "").slice(0, 500);
   const largo = req.nextUrl.searchParams.get("largo") === "1";
   try {

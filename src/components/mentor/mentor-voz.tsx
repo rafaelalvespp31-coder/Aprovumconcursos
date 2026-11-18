@@ -3,6 +3,7 @@
 import { descreverQuadro } from "@/domain/mentor/catalogo-lousa";
 import { comandoDitado, fimDitado, frasesDe, linhaDitado, novoDitado, type EstadoDitado } from "@/domain/mentor/ditado";
 import { esquemasDe, fimTempo, novoCtx, type Ctx as EsquemaCtx } from "@/domain/mentor/esquemas";
+import { travaDeAssunto } from "@/domain/mentor/trava";
 import { ehConversa, linhaSchema, tituloDaFala, linhaDeFala, linhaTitulo, pedeLousa, pedeFechar, pedidoDeCalculo, linhaDeNumero, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
@@ -222,6 +223,25 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
         return true;
       }).catch(() => false);
   };
+  const ctxAula = useRef<{ lessonId: string; atual: string; outras: string[] } | null>(null); // aula aberta e as outras da trilha (trava de assunto)
+  const carregarCtxAula = () => {
+    const lessonId = getStudy?.()?.lessonId;
+    if (!lessonId || ctxAula.current?.lessonId === lessonId) return;
+    fetch(`/api/mentor/lousa/aula?lessonId=${encodeURIComponent(lessonId)}&contexto=1`, { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { atual?: string; outras?: string[] } | null) => { if (j?.atual) ctxAula.current = { lessonId, atual: j.atual, outras: j.outras ?? [] }; })
+      .catch(() => undefined);
+  };
+  /** O aluno pediu o quadro de um assunto que é de OUTRA aula: não abre; o Mentor explica que ainda não chegou nessa aula. */
+  const travouAssunto = (pedido: string): boolean => {
+    const c = ctxAula.current;
+    if (!c) return false;
+    const outra = travaDeAssunto(pedido, c.atual, c.outras);
+    if (!outra) return false;
+    bloqueioLousa.current = true; // até o fim deste turno nada abre nem escreve
+    try { ref.current.session?.sendRealtimeInput({ text: `[AVISO DO APLICATIVO] O aluno pediu um assunto que é da aula "${outra}", que ainda não chegou; agora vocês estão na aula "${c.atual}". Não ensine nem desenhe esse assunto agora. Diga com gentileza, em uma ou duas frases, que isso será visto na aula "${outra}", que quando chegar nela você explica com exemplo e no quadro, e ofereça continuar a aula atual.` }); } catch { /* sessão já encerrada */ }
+    return true;
+  };
   const r0Turno = useRef("");
   const bloqueioLousa = useRef(false); // "fecha a lousa": até o fim deste turno nada abre nem escreve
   /** O aluno mandou fechar: fecha a lousa e para de escrever na hora. */
@@ -237,6 +257,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   const dispararLousa = () => {
     if (debLousa.current) { clearTimeout(debLousa.current); debLousa.current = null; }
     if (lousaOcupada.current || !onLousaRef.current) return;
+    if (travouAssunto(ref.current.turn || falaTurno.current)) return;
     lousaOcupada.current = true;
     r0Turno.current = ref.current.turn || falaTurno.current;
     onLousaRef.current("pendente"); // abre já: a caneta desenha o card enquanto o Mentor começa a falar
@@ -541,6 +562,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("mic");
       // Microfone e liberação da conversa andam juntos (responde mais rápido). Se o microfone falhar,
       // a reserva de tempo é devolvida na hora (seconds: 0).
+      carregarCtxAula();
       const startReq = fetch("/api/mentor/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "start", study: getStudy?.() ?? undefined }) });
       const [micR, resR] = await Promise.allSettled([
         navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }),
