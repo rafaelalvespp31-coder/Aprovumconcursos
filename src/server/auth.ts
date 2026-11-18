@@ -6,6 +6,8 @@ import { createUserClient } from "./supabase";
 export interface SessionUser {
   id: string;
   email: string | null;
+  /** Horário do último login: muda a cada login novo. */
+  signedInAt?: string | null;
 }
 
 /** Valida a sessão com o servidor de autenticação (não confia só no cookie). */
@@ -13,7 +15,7 @@ export const getSessionUser = cache(async function getSessionUser(): Promise<Ses
   const supabase = await createUserClient();
   const { data, error } = await supabase.auth.getUser();
   if (error || !data.user) return null;
-  return { id: data.user.id, email: data.user.email ?? null };
+  return { id: data.user.id, email: data.user.email ?? null, signedInAt: data.user.last_sign_in_at ?? null };
 });
 
 export async function requireUser(next?: string): Promise<SessionUser> {

@@ -12,6 +12,8 @@ import { ensurePromo } from "@/server/services/promo";
 import { CaveiraPopup } from "@/components/promo/caveira-popup";
 import { markPopupSeenAction } from "./promo-actions";
 import { logEvent } from "@/server/observability";
+import { getEstadoTutoriais } from "@/server/services/tutorial";
+import { TutorialProvider } from "@/components/tutorial/tutorial-provider";
 
 export default async function AppLayout({
   children,
@@ -21,7 +23,7 @@ export default async function AppLayout({
   const user = await requireUser();
   // Tudo em paralelo (antes: resumo, depois administrador, depois promoção, um esperando o outro).
   // Degustação global: concede (idempotente, no banco) e decide a popup. Nunca para administradores.
-  const [summary, disciplines, promo] = await Promise.all([
+  const [summary, disciplines, promo, tutoriais] = await Promise.all([
     getShellSummary(user.email ?? null),
     ensureDisciplines(),
     isAdmin().then((adm) =>
@@ -30,9 +32,11 @@ export default async function AppLayout({
         return null;
       }),
     ),
+    getEstadoTutoriais(user.id).catch(() => null),
   ]);
   return (
     <DisciplinesSync list={disciplines}>
+      <TutorialProvider estado={tutoriais} loginId={user.signedInAt ?? "s"}>
       <PastelShell
         floating={
           <Suspense fallback={null}>
@@ -52,6 +56,7 @@ export default async function AppLayout({
       {promo && !promo.popupSeenAt && (
         <CaveiraPopup campaignId={promo.campaignId} days={Math.max(1, Math.round((new Date(promo.expiresAt).getTime() - new Date(promo.startsAt).getTime()) / 86_400_000))} markSeen={markPopupSeenAction} />
       )}
+      </TutorialProvider>
     </DisciplinesSync>
   );
 }

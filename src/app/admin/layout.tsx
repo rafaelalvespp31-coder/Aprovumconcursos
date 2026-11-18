@@ -138,6 +138,12 @@ export default async function AdminLayout({
                 Campanha Caveira
               </Link>
               <Link
+                href="/admin/tutoriais"
+                className="text-destaque underline-offset-2 hover:underline"
+              >
+                Tutoriais
+              </Link>
+              <Link
                 href="/admin/socio"
                 className="text-destaque underline-offset-2 hover:underline"
               >
