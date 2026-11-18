@@ -1,6 +1,6 @@
 import { requireAdmin } from "@/server/services/catalog";
 import { listStudents, studentSummary } from "@/server/services/students";
-import { FREE_LIMITS } from "@/domain/plans/limits";
+import { FREE_LIMITS, GAME_DAILY_LIMIT } from "@/domain/plans/limits";
 import { markPaidAction, resetPasswordAction, resolvePlanRequestAction, setGhostAction, setPlanAction } from "./actions";
 import { StudentsTable } from "./students-table";
 import { listOpenPlanRequests } from "@/server/services/plan-requests";
@@ -22,7 +22,7 @@ export default async function StudentsPage() {
     <div>
       <h1 className="t-h1">Alunos</h1>
       <p className="mt-1 max-w-3xl t-small text-tinta-suave">
-        Toda conta nova começa no plano <strong>Gratuito</strong> ({FREE_LIMITS.lessonsPerDay} aula, {FREE_LIMITS.questionsPerDay} questões e {FREE_LIMITS.gameQuestionsPerDay} questões do Modo Jogo
+        Toda conta nova começa no plano <strong>Gratuito</strong> ({FREE_LIMITS.lessonsPerDay} aula, {FREE_LIMITS.questionsPerDay} questões e {GAME_DAILY_LIMIT} questões do Modo Jogo
         por dia). Planos pagos (Pro e Premium) são ilimitados até o vencimento; vencido, o aluno volta aos limites do gratuito.
       </p>
       <AlunosNotificacoes initial={atividade} />

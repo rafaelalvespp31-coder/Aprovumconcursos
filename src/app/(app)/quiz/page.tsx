@@ -2,6 +2,7 @@ import { getQuizHome, startRound, DAILY_GOAL, LIVES } from "@/server/services/qu
 import { QuizView } from "./quiz-view";
 import { requireUser } from "@/server/auth";
 import { getPlanUsage } from "@/server/services/plans";
+import { GAME_DAILY_LIMIT } from "@/domain/plans/limits";
 import { UserFacingError } from "@/server/services/trails";
 import { ButtonLink, Notice } from "@/components/ui";
 
@@ -55,21 +56,21 @@ export default async function QuizPage({ searchParams }: { searchParams: Promise
       <div className="mx-auto max-w-2xl" data-testid="limite-jogo">
         <h1 className="t-h1">Modo Jogo</h1>
         <div className="mt-4">
-          <Notice tone="alerta" title="Limite diário do plano gratuito">
+          <Notice tone="alerta" title="Modo Jogo travado até amanhã">
             {limit}
           </Notice>
         </div>
-        <ButtonLink href="/perfil#plano" className="mt-4">
-          Ver planos
+        <ButtonLink href="/questoes" className="mt-4">
+          Estudar em Questões enquanto isso
         </ButtonLink>
       </div>
     );
   }
   return (
     <>
-      {!usage.unlimited && usage.gameLeft !== null && (
+      {usage.gameLeft !== null && (
         <p className="mb-3 rounded-[12px] border border-[#E6E7EB] bg-white px-3 py-2 text-[13px] text-[#08090B]" data-testid="cota-jogo">
-          Plano gratuito: {usage.gameLeft === 1 ? "resta 1 questão" : `restam ${usage.gameLeft} questões`} no Modo Jogo hoje.
+          Hoje: {usage.gameLeft === 1 ? "resta 1 questão" : `restam ${usage.gameLeft} questões`} de {GAME_DAILY_LIMIT} no Modo Jogo.
         </p>
       )}
       <QuizView key={round.topic.id} home={home} initialRound={round} lives={LIVES} dailyGoal={DAILY_GOAL} />

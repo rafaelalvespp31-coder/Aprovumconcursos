@@ -1,7 +1,7 @@
 import "server-only";
 import { createAdminClient } from "../supabase";
 import { UserFacingError } from "./trails";
-import { brDay, effectivePlan, limitMessage, quotaFor, type PlanId, type QuotaKind } from "@/domain/plans/limits";
+import { GAME_DAILY_LIMIT, brDay, effectivePlan, limitMessage, quotaFor, type PlanId, type QuotaKind } from "@/domain/plans/limits";
 import type { PromoGrant } from "@/domain/plans/promo";
 import { getActivePromo } from "./promo";
 
@@ -11,6 +11,8 @@ export interface MyPlan {
   paid: boolean;
   /** Sem limites do gratuito: plano pago em vigor, admin ou degustação promocional válida. */
   unlimited: boolean;
+  /** Administrador: sem nenhum limite diário (pode testar o jogo). */
+  admin: boolean;
   /** Degustação premium vigente (validada agora, no servidor), se houver. */
   promo: PromoGrant | null;
 }
@@ -27,7 +29,7 @@ export async function getMyPlan(userId: string): Promise<MyPlan> {
     getActivePromo(userId),
   ]);
   const eff = effectivePlan(sub.data ? { planId: sub.data.plan_id as string, status: sub.data.status as string, currentPeriodEnd: sub.data.current_period_end as string | null } : null);
-  return { planId: eff.planId, paid: eff.paid, unlimited: eff.paid || !!admin.data || !!promo, promo };
+  return { planId: eff.planId, paid: eff.paid, unlimited: eff.paid || !!admin.data || !!promo, admin: !!admin.data, promo };
 }
 
 async function usedToday(userId: string, kind: Exclude<QuotaKind, "aula">): Promise<number> {
@@ -41,7 +43,8 @@ async function usedToday(userId: string, kind: Exclude<QuotaKind, "aula">): Prom
 /** Barra a ação quando o limite diário do plano gratuito acabou (questões ou Modo Jogo). */
 export async function assertQuota(userId: string, kind: "questoes" | "jogo"): Promise<void> {
   const plan = await getMyPlan(userId);
-  if (plan.unlimited) return;
+  // Modo Jogo: o teto diário vale para todos os planos (só o administrador fica de fora).
+  if (kind === "jogo" ? plan.admin : plan.unlimited) return;
   if ((await usedToday(userId, kind)) >= quotaFor(kind)) throw new UserFacingError(limitMessage(kind), "plan_limit");
 }
 
@@ -88,7 +91,8 @@ export interface PlanUsage {
 export async function getPlanUsage(userId: string): Promise<PlanUsage> {
   const plan = await getMyPlan(userId);
   const promoUntil = plan.promo?.expiresAt ?? null;
-  if (plan.unlimited) return { paid: plan.paid, unlimited: true, questionsLeft: null, gameLeft: null, promoUntil };
-  const [q, g] = await Promise.all([usedToday(userId, "questoes"), usedToday(userId, "jogo")]);
-  return { paid: false, unlimited: false, questionsLeft: Math.max(0, quotaFor("questoes") - q), gameLeft: Math.max(0, quotaFor("jogo") - g), promoUntil };
+  const jogo = plan.admin ? null : Math.max(0, GAME_DAILY_LIMIT - (await usedToday(userId, "jogo")));
+  if (plan.unlimited) return { paid: plan.paid, unlimited: true, questionsLeft: null, gameLeft: jogo, promoUntil };
+  const q = await usedToday(userId, "questoes");
+  return { paid: false, unlimited: false, questionsLeft: Math.max(0, quotaFor("questoes") - q), gameLeft: jogo, promoUntil };
 }

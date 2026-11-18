@@ -3,7 +3,7 @@ import "./tutorial.css";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { CircleHelp, Crown, Flag, MessageCircle, Play, RotateCcw, Sparkles, X, ChevronDown, CheckCircle2 } from "lucide-react";
-import { FREE_LIMITS } from "@/domain/plans/limits";
+import { FREE_LIMITS, GAME_DAILY_LIMIT } from "@/domain/plans/limits";
 import { passoValido, TOUR_ID, TUTORIAIS, tutorialPorId } from "@/domain/tutorial/roteiros";
 import type { EstadoTutoriais, ProgressoTutorial } from "@/server/services/tutorial";
 import { salvarProgressoTutorialAction } from "@/app/(app)/tutorial-actions";
@@ -15,7 +15,7 @@ export const useTutorial = () => useContext(TutorialCtx);
 
 const FAQ: Array<{ p: string; r: string }> = [
   { p: "Como continuo de onde parei?", r: "No Painel, o cartão da próxima aula leva você direto ao ponto em que estava, e a faixa abaixo lista as últimas aulas que você abriu." },
-  { p: "Quantas aulas e questões posso fazer por dia?", r: `No plano gratuito você estuda ${FREE_LIMITS.lessonsPerDay} aula, ${FREE_LIMITS.questionsPerDay} questões e ${FREE_LIMITS.gameQuestionsPerDay} questões do Modo Jogo por dia. Os planos pagos liberam sem limite diário, em Meu Plano.` },
+  { p: "Quantas aulas e questões posso fazer por dia?", r: `No plano gratuito você estuda ${FREE_LIMITS.lessonsPerDay} aula e ${FREE_LIMITS.questionsPerDay} questões por dia; os planos pagos liberam sem limite, em Meu Plano. O Modo Jogo tem ${GAME_DAILY_LIMIT} questões por dia para todos, e libera de novo no dia seguinte.` },
   { p: "Como o Mentor pode me ajudar?", r: "Toque no Mentor para ver seu plano e suas prioridades, ou na aba Voz para conversar falando. Peça “mostra no quadro” para ele desenhar a explicação." },
   { p: "Onde vejo meu desempenho?", r: "Em Desempenho: suas respostas, seus acertos e a sua evolução ao longo dos dias." },
   { p: "Como envio o edital do meu concurso?", r: "Em APROVUM AI você envia o edital e a plataforma organiza a sua preparação." },

@@ -4,7 +4,7 @@
  * se o alvo não estiver na tela, o tour mostra o passo centralizado, sem destaque quebrado.
  * Não há etapa de "Simulados": o app não tem essa função.
  */
-import { FREE_LIMITS } from "@/domain/plans/limits";
+import { FREE_LIMITS, GAME_DAILY_LIMIT } from "@/domain/plans/limits";
 
 export type Alvo = string | { sel: string; nota: string };
 
@@ -56,7 +56,7 @@ export const TUTORIAIS: Tutorial[] = [
       { id: "mentor", titulo: "MENTOR APROVUM", alvos: ['[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "Este é o Mentor. Toque nele para ver seu plano e suas prioridades, tirar dúvidas e conversar por voz na aba Voz. Você pode arrastá-lo para o lugar que preferir." },
       { id: "lousa", titulo: "LOUSA INTELIGENTE", alvos: ['[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "Na conversa por voz, peça “desenha no quadro” e o Mentor abre a lousa: ele escreve e desenha com uma caneta enquanto explica. Para fechar, é só pedir “fecha a lousa”." },
       { id: "questoes", titulo: "QUESTÕES", alvos: menu("/questoes"), lado: "right", texto: "Em Questões você monta cadernos com os filtros que quiser, resolve, confere a resposta com explicação e acompanha seu desempenho." },
-      { id: "jogo", titulo: "MODO JOGO", alvos: menu("/quiz"), lado: "right", texto: `No Modo Jogo você estuda jogando: completa a lei contra o relógio. No plano gratuito são ${FREE_LIMITS.gameQuestionsPerDay} questões por dia.` },
+      { id: "jogo", titulo: "MODO JOGO", alvos: menu("/quiz"), lado: "right", texto: `No Modo Jogo você estuda jogando: completa a lei contra o relógio. São ${GAME_DAILY_LIMIT} questões por dia.` },
       { id: "revisoes", titulo: "REVISÕES", alvos: menu("/revisoes", true), lado: "right", texto: "As revisões trazem de volta, na hora certa, o que você já estudou. As pendentes aparecem aqui; revisar é o que fixa o conteúdo." },
       { id: "concursos", titulo: "CONCURSOS", alvos: menu("/concursos", true), lado: "right", texto: "Aqui estão os concursos cadastrados, com vagas, datas de prova e informações dos editais." },
       { id: "aprovum-ai", titulo: "APROVUM AI: SEU EDITAL", alvos: menu("/aprovum-ai", true), lado: "right", texto: "Envie o edital do concurso que você quer conquistar e a APROVUM organiza a sua preparação. O Raio-X mostra prioridades de estudo para o seu concurso." },
@@ -113,7 +113,7 @@ export const TUTORIAIS: Tutorial[] = [
     resumo: "Estude jogando.",
     rota: "/quiz",
     passos: [
-      { id: "jogo", titulo: "MODO JOGO", rota: "/quiz", alvos: ['[data-testid="jogo-banner"]', '[data-testid="cota-jogo"]', "#conteudo"], lado: "bottom", texto: `Complete a lei contra o relógio e evolua jogando. No plano gratuito são ${FREE_LIMITS.gameQuestionsPerDay} questões por dia.` },
+      { id: "jogo", titulo: "MODO JOGO", rota: "/quiz", alvos: ['[data-testid="jogo-banner"]', '[data-testid="cota-jogo"]', "#conteudo"], lado: "bottom", texto: `Complete a lei contra o relógio e evolua jogando. São ${GAME_DAILY_LIMIT} questões por dia.` },
     ],
   },
   {

@@ -8,11 +8,12 @@ export const FREE_LIMITS = {
   lessonsPerDay: 1,
   /** Questões respondidas por dia no banco de questões e nos cadernos. */
   questionsPerDay: 5,
-  /** Questões respondidas por dia no Modo Jogo. */
-  gameQuestionsPerDay: 5,
   /** Redações enviadas para correção por IA por dia (plano pago e degustação seguem o limite geral da redação). */
   redacoesPerDay: 1,
 } as const;
+
+/** Modo Jogo: teto de questões por dia para TODOS os alunos (acertando ou errando), de qualquer plano. Trava e libera no dia seguinte. */
+export const GAME_DAILY_LIMIT = 20;
 
 export const PLAN_IDS = ["free", "pro", "premium"] as const;
 export type PlanId = (typeof PLAN_IDS)[number];
@@ -60,14 +61,14 @@ export function brDay(now: Date = new Date()): { day: string; start: string } {
 export type QuotaKind = "aula" | "questoes" | "jogo";
 
 export function quotaFor(kind: QuotaKind): number {
-  return kind === "aula" ? FREE_LIMITS.lessonsPerDay : kind === "questoes" ? FREE_LIMITS.questionsPerDay : FREE_LIMITS.gameQuestionsPerDay;
+  return kind === "aula" ? FREE_LIMITS.lessonsPerDay : kind === "questoes" ? FREE_LIMITS.questionsPerDay : GAME_DAILY_LIMIT;
 }
 
 /** Mensagem quando o limite do dia acaba. */
 export function limitMessage(kind: QuotaKind): string {
   if (kind === "aula") return `O plano gratuito libera ${FREE_LIMITS.lessonsPerDay} aula por dia e você já estudou a de hoje. Volte amanhã ou assine um plano para estudar sem limites.`;
   if (kind === "questoes") return `Você respondeu as ${FREE_LIMITS.questionsPerDay} questões de hoje do plano gratuito. Volte amanhã ou assine um plano para resolver sem limites.`;
-  return `O Modo Jogo do plano gratuito libera ${FREE_LIMITS.gameQuestionsPerDay} questões por dia e as de hoje acabaram. Volte amanhã ou assine um plano para jogar sem limites.`;
+  return `Você fez as ${GAME_DAILY_LIMIT} questões do Modo Jogo de hoje. O jogo está travado e libera amanhã, a partir da meia-noite (horário de Brasília).`;
 }
 
 /** Correções de redação por dia: o gratuito tem o limite do plano; pago/degustação, o limite geral; admin não tem. */

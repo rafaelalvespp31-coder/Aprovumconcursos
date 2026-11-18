@@ -50,7 +50,7 @@ function setUser({ plan = "free", end = null as string | null, promoEnd = null a
     : [];
   // Limites do gratuito já esgotados hoje.
   tables.bank_attempts = Array.from({ length: 5 }, (_, i) => ({ id: `b${i}`, user_id: U, created_at: iso(-1000) }));
-  tables.quiz_attempts = Array.from({ length: 5 }, (_, i) => ({ id: `q${i}`, user_id: U, created_at: iso(-1000) }));
+  tables.quiz_attempts = Array.from({ length: 20 }, (_, i) => ({ id: `q${i}`, user_id: U, created_at: iso(-1000) }));
   tables.daily_lesson_access = [{ user_id: U, day: new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date()), lesson_id: "aula-de-hoje" }];
   tables.lessons = [{ id: "aula-de-hoje", title: "Aula de hoje" }];
 }
@@ -72,10 +72,11 @@ describe("permissões com degustação premium", () => {
     expect(p).toMatchObject({ planId: "free", paid: false, unlimited: true });
     expect(p.promo?.campaignId).toBe("caveira-ficou-maluco");
     await expect(assertQuota(U, "questoes")).resolves.toBeUndefined();
-    await expect(assertQuota(U, "jogo")).resolves.toBeUndefined();
+    // Modo Jogo: o teto de 20/dia vale até para quem tem degustação (aqui já foram 20 hoje)
+    await expect(assertQuota(U, "jogo")).rejects.toThrow(/Modo Jogo/);
     expect(await claimDailyLesson(U, "outra-aula")).toEqual({ ok: true });
     expect(inserts).toHaveLength(0); // não consome a "aula do dia"
-    expect(await getPlanUsage(U)).toMatchObject({ unlimited: true, paid: false, questionsLeft: null, promoUntil: tables.promo_grants![0]!.expires_at });
+    expect(await getPlanUsage(U)).toMatchObject({ unlimited: true, paid: false, questionsLeft: null, gameLeft: 0, promoUntil: tables.promo_grants![0]!.expires_at });
   });
 
   it("concessão vencida não vale nada: volta ao plano original na hora, sem rotina agendada", async () => {
@@ -113,5 +114,15 @@ describe("contador da degustação", () => {
     expect(promoRemainingLabel("2026-11-08T12:30:00Z", now)).toBe("MENOS DE 1 HORA");
     expect(promoRemainingLabel("2026-11-08T11:00:00Z", now)).toBe("DEGUSTAÇÃO ENCERRADA");
     expect(promoRemaining("2026-11-08T11:00:00Z", now).expired).toBe(true);
+  });
+
+  it("Modo Jogo: 19 questões hoje ainda deixam jogar a 20ª; com 20 trava (qualquer plano)", async () => {
+    tables.quiz_attempts = Array.from({ length: 19 }, (_, i) => ({ id: `q${i}`, user_id: U, created_at: iso(-1000) }));
+    await expect(assertQuota(U, "jogo")).resolves.toBeUndefined();
+    tables.quiz_attempts = Array.from({ length: 20 }, (_, i) => ({ id: `q${i}`, user_id: U, created_at: iso(-1000) }));
+    await expect(assertQuota(U, "jogo")).rejects.toThrow(/libera amanhã/);
+    setUser({ promoEnd: iso(6 * DAY) });
+    tables.quiz_attempts = Array.from({ length: 20 }, (_, i) => ({ id: `q${i}`, user_id: U, created_at: iso(-1000) }));
+    await expect(assertQuota(U, "jogo")).rejects.toThrow(/libera amanhã/);
   });
 });
