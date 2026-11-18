@@ -200,10 +200,13 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
   );
 }
 
-export function TaticoView({ inicial, nivel, admin }: { admin: boolean; inicial: TaticoEstado; nivel: { level: number; into: number } }) {
+export function TaticoView({ inicial, nivel, admin, retomar }: { retomar: boolean; admin: boolean; inicial: TaticoEstado; nivel: { level: number; into: number } }) {
   const [s, setSraw] = useState<TaticoEstado>(inicial);
   // Já tem partida/fila ativa ao abrir (ex.: acabou de aceitar um desafio)? Passa pela tela de carregamento e cai no estande.
-  const [carregando, setCarregando] = useState(inicial.estado === "partida" || inicial.estado === "fila");
+  // Pelo card do Modo Jogo sempre cai na página de desafiar alguém; só vai direto ao estande quando o desafio acabou de ser aceito
+  // (?jogo=1). Partida que ficou em andamento aparece como aviso "voltar à partida" no lobby.
+  const [entrou, setEntrou] = useState(retomar && inicial.estado === "partida");
+  const [carregando, setCarregando] = useState(retomar && inicial.estado === "partida");
   const [esperaServidor, setEsperaServidor] = useState(false);
   const [stats, setStats] = useState<TaticoStats>(null);
   const usadosIni = "usados" in inicial && typeof inicial.usados === "number" ? inicial.usados : 0;
@@ -263,7 +266,7 @@ export function TaticoView({ inicial, nivel, admin }: { admin: boolean; inicial:
   useEffect(() => {
     const h = async (e: Event) => {
       const d = (e as CustomEvent<{ status: string }>).detail;
-      if (d?.status === "aceito") { setCarregando(true); setEsperaServidor(true); const r = await taticoEstadoAction(); if (r.ok) setS(r.s); setEsperaServidor(false); }
+      if (d?.status === "aceito") { setEntrou(true); setCarregando(true); setEsperaServidor(true); const r = await taticoEstadoAction(); if (r.ok) setS(r.s); setEsperaServidor(false); }
     };
     window.addEventListener(EVENTO_DESAFIO, h); return () => window.removeEventListener(EVENTO_DESAFIO, h);
   }, [setS]);
@@ -286,10 +289,10 @@ export function TaticoView({ inicial, nivel, admin }: { admin: boolean; inicial:
   const entrarSolo = useCallback(async () => {
     if (som) audio.start();
     entrarTelaCheia();
-    setErro(null); setCarregando(true); setEsperaServidor(true);
+    setErro(null); setEntrou(true); setCarregando(true); setEsperaServidor(true);
     const r = await taticoEntrarSoloAction();
     setEsperaServidor(false);
-    if (!r.ok) { setErro(r.error); setCarregando(false); return; }
+    if (!r.ok) { setErro(r.error); setCarregando(false); setEntrou(false); return; }
     setS(r.s);
     if (r.s.estado !== "partida") { setCarregando(false); sairTelaCheia(); }
   }, [setS, som, audio]);
@@ -307,7 +310,7 @@ export function TaticoView({ inicial, nivel, admin }: { admin: boolean; inicial:
   /* ---------- telas ---------- */
   if (carregando) return <Carregando som={som} aguardando={esperaServidor} onPronto={() => setCarregando(false)} />;
   if (s.estado === "fila") return <EsperaEstande onSair={async () => { await taticoSairFilaAction(); setS({ estado: "ocioso", usados: usadosIni, limite: 3 }); sairTelaCheia(); }} />;
-  if (s.estado === "partida" && !fim) {
+  if (s.estado === "partida" && !fim && entrou) {
     return (
       <div className="tt-full" data-testid="tatico-tela-cheia">
         <Cena espectro={espectro} oppShot={oppShot} breathClock={som && !noFx ? (now) => audio.breathTime(now) : undefined} s={s} at={at} nivel={nivel} noFx={noFx} portrait={portrait} onShoot={atirar} shot={shot} />
@@ -320,13 +323,13 @@ export function TaticoView({ inicial, nivel, admin }: { admin: boolean; inicial:
       </div>
     );
   }
-  if (fim && s.estado === "partida") return <Resultado s={s} rev={rev} onNova={() => { setS({ estado: "ocioso", usados: s.usados, limite: 3 }); setRev(null); pos.current = -1; }} />;
+  if (fim && s.estado === "partida" && entrou) return <Resultado s={s} rev={rev} onNova={() => { setS({ estado: "ocioso", usados: s.usados, limite: 3 }); setRev(null); pos.current = -1; }} />;
   return (
-    <Lobby s={s} stats={stats} erro={erro} admin={admin} onSolo={entrarSolo} />
+    <Lobby s={s} stats={stats} erro={erro} admin={admin} onSolo={entrarSolo} onRetomar={() => { entrarTelaCheia(); setEntrou(true); setCarregando(true); }} />
   );
 }
 
-function Lobby({ s, stats, erro, admin, onSolo }: { admin: boolean; onSolo: () => void; s: TaticoEstado; stats: TaticoStats; erro: string | null }) {
+function Lobby({ s, stats, erro, admin, onSolo, onRetomar }: { onRetomar: () => void; admin: boolean; onSolo: () => void; s: TaticoEstado; stats: TaticoStats; erro: string | null }) {
   const usados = "usados" in s && typeof s.usados === "number" ? s.usados : 0;
   const esgotado = s.estado === "limite" || usados >= 3;
   const wr = stats && stats.partidas ? Math.round((100 * stats.vitorias) / stats.partidas) : 0;
@@ -338,6 +341,12 @@ function Lobby({ s, stats, erro, admin, onSolo }: { admin: boolean; onSolo: () =
             <p style={{ fontSize: 12, letterSpacing: ".2em", color: "#e5202e", fontWeight: 800 }}>MODO JOGO · 1 x 1</p>
             <h1 style={{ fontSize: "clamp(26px,6vw,44px)", fontWeight: 900, fontStyle: "italic", lineHeight: 1.05 }}>DESAFIO TÁTICO</h1>
             <p style={{ fontSize: 14, margin: "8px auto 14px", maxWidth: 420, color: "#ddd" }}>10 questões reais contra outro aluno, ao vivo. Vitória +200 XP · derrota −100 XP. Empate vai para a morte súbita.</p>
+            {s.estado === "partida" && s.phase !== "fim" && (
+              <div className="tt-desafio" data-testid="tatico-andamento" role="status" style={{ marginBottom: 12 }}>
+                <p><b>{s.solo ? "Seu treino ainda está aberto" : "Você tem uma partida em andamento"}</b></p>
+                <button onClick={onRetomar} className="mt-2 rounded-[10px] bg-[#c9141f] px-5 py-2 text-[14px] font-extrabold text-white active:scale-[.97]">VOLTAR AO ESTANDE</button>
+              </div>
+            )}
             {esgotado ? (
               <p style={{ fontWeight: 800, color: "#ffd24a" }}>Você usou os 3 desafios de hoje. Volte amanhã.</p>
             ) : s.estado === "sem_questoes" ? (

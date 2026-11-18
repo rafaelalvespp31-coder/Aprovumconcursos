@@ -41,7 +41,7 @@ export function DesafioWatcher() {
           const sd = r.saida;
           if (sd && sd.status !== "pendente" && !vistos.current.has(sd.id)) {
             vistos.current.add(sd.id);
-            if (sd.status === "aceito") { emitir({ status: "aceito", match: sd.match, para: sd.para }); router.push("/quiz/tatico"); }
+            if (sd.status === "aceito") { emitir({ status: "aceito", match: sd.match, para: sd.para }); router.push("/quiz/tatico?jogo=1"); }
             else {
               const texto = sd.status === "recusado" ? (sd.reason === "indisponivel" ? `${sd.para} não pôde aceitar agora.` : `${sd.para} recusou o desafio.`) : sd.status === "expirado" ? `${sd.para} não respondeu ao desafio.` : "";
               if (texto) setAviso({ n: Date.now(), texto, tom: "erro" });
@@ -65,7 +65,7 @@ export function DesafioWatcher() {
     const r = await taticoResponderDesafioAction(ent.d.id, aceitar);
     setBusy(false); setEnt(null);
     if (!r.ok) { setAviso({ n: Date.now(), texto: r.erro ?? "Não foi possível responder.", tom: "erro" }); return; }
-    if (aceitar && r.match) { emitir({ status: "aceito", match: r.match }); router.push("/quiz/tatico"); }
+    if (aceitar && r.match) { emitir({ status: "aceito", match: r.match }); router.push("/quiz/tatico?jogo=1"); }
   };
 
   const restante = ent ? Math.max(0, ent.d.ms - Math.max(0, now - ent.at)) : 0;
