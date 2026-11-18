@@ -269,16 +269,6 @@ export function TaticoView({ inicial, nivel, admin }: { admin: boolean; inicial:
   }, [audio]);
   useEffect(() => { if (fim || s.estado === "ocioso") { audio.stop(); sairTelaCheia(); } }, [fim, s.estado, audio]);
 
-  const entrar = useCallback(async () => {
-    if (som) audio.start();
-    entrarTelaCheia();
-    setErro(null); setCarregando(true); setEsperaServidor(true);          // feedback imediato: o vídeo abre no clique
-    const r = await taticoEntrarAction();
-    setEsperaServidor(false);
-    if (!r.ok) { setErro(r.error); setCarregando(false); return; }
-    setS(r.s);
-    if (r.s.estado !== "partida" && r.s.estado !== "fila") { setCarregando(false); sairTelaCheia(); }
-  }, [setS, som, audio]);
   const entrarSolo = useCallback(async () => {
     if (som) audio.start();
     entrarTelaCheia();
@@ -318,11 +308,11 @@ export function TaticoView({ inicial, nivel, admin }: { admin: boolean; inicial:
   }
   if (fim && s.estado === "partida") return <Resultado s={s} rev={rev} onNova={() => { setS({ estado: "ocioso", usados: s.usados, limite: 3 }); setRev(null); pos.current = -1; }} />;
   return (
-    <Lobby s={s} stats={stats} erro={erro} admin={admin} onSolo={entrarSolo} onEntrar={entrar} onSair={async () => { await taticoSairFilaAction(); setS({ estado: "ocioso", usados: usadosIni, limite: 3 }); }} />
+    <Lobby s={s} stats={stats} erro={erro} admin={admin} onSolo={entrarSolo} />
   );
 }
 
-function Lobby({ s, stats, erro, admin, onSolo, onEntrar, onSair }: { admin: boolean; onSolo: () => void; s: TaticoEstado; stats: TaticoStats; erro: string | null; onEntrar: () => void; onSair: () => void }) {
+function Lobby({ s, stats, erro, admin, onSolo }: { admin: boolean; onSolo: () => void; s: TaticoEstado; stats: TaticoStats; erro: string | null }) {
   const usados = "usados" in s && typeof s.usados === "number" ? s.usados : 0;
   const esgotado = s.estado === "limite" || usados >= 3;
   const wr = stats && stats.partidas ? Math.round((100 * stats.vitorias) / stats.partidas) : 0;
@@ -334,24 +324,17 @@ function Lobby({ s, stats, erro, admin, onSolo, onEntrar, onSair }: { admin: boo
             <p style={{ fontSize: 12, letterSpacing: ".2em", color: "#e5202e", fontWeight: 800 }}>MODO JOGO · 1 x 1</p>
             <h1 style={{ fontSize: "clamp(26px,6vw,44px)", fontWeight: 900, fontStyle: "italic", lineHeight: 1.05 }}>DESAFIO TÁTICO</h1>
             <p style={{ fontSize: 14, margin: "8px auto 14px", maxWidth: 420, color: "#ddd" }}>10 questões reais contra outro aluno, ao vivo. Vitória +200 XP · derrota −100 XP. Empate vai para a morte súbita.</p>
-            {s.estado === "fila" ? (
-              <>
-                <p role="status" style={{ fontWeight: 800 }}>Procurando adversário…</p>
-                <p style={{ fontSize: 12, color: "#bbb" }}>A busca expira em 90 s sem gastar sua tentativa.</p>
-                <button onClick={onSair} className="mt-3 rounded-[10px] border border-white/40 px-4 py-2 text-[14px]">Cancelar</button>
-              </>
-            ) : esgotado ? (
+            {esgotado ? (
               <p style={{ fontWeight: 800, color: "#ffd24a" }}>Você usou os 3 desafios de hoje. Volte amanhã.</p>
             ) : s.estado === "sem_questoes" ? (
               <p style={{ fontWeight: 800, color: "#ffd24a" }}>Ainda não há questões suficientes para o desafio.</p>
             ) : (
-              <button onClick={onEntrar} data-testid="tatico-entrar" className="rounded-[10px] bg-[#c9141f] px-6 py-3 text-[16px] font-extrabold text-white shadow-[0_0_24px_rgba(229,32,46,.6)] active:scale-[.97]">ENTRAR NO ESTANDE</button>
+              <DesafiarAluno />
             )}
-            {s.estado !== "fila" && !esgotado && <DesafiarAluno />}
-            {admin && s.estado !== "fila" && (
+            {admin && (
               <div style={{ marginTop: 10 }}>
-                <button onClick={onSolo} data-testid="tatico-solo" className="rounded-[10px] border border-[#ffd24a] px-4 py-2 text-[14px] font-bold text-[#ffd24a] active:scale-[.97]">TREINO SOLO (admin)</button>
-                <p style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>Sem adversário, sem XP e sem gastar o limite diário.</p>
+                <button onClick={onSolo} data-testid="tatico-solo" className="rounded-[10px] border border-[#ffd24a] px-4 py-2 text-[14px] font-bold text-[#ffd24a] active:scale-[.97]">TREINO (admin)</button>
+                <p style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>Entra no estande sozinho, sem adversário, sem XP e sem gastar o limite diário.</p>
               </div>
             )}
             <p style={{ fontSize: 13, marginTop: 10, color: "#ccc" }}>Desafios hoje: <b>{Math.min(3, usados)}/3</b></p>
@@ -421,7 +404,7 @@ function Resultado({ s, rev, onNova }: { s: Partida; rev: TaticoRevisao; onNova:
 
 /** Escolher qual aluno desafiar: online agora primeiro, busca por nome; mostra a espera pela resposta em tempo real. */
 function DesafiarAluno() {
-  const [aberto, setAberto] = useState(false);
+  const [aberto, setAberto] = useState(true);
   const [q, setQ] = useState("");
   const [lista, setLista] = useState<AlunoBusca[]>([]);
   const [carregando, setCarregando] = useState(false);
@@ -467,7 +450,7 @@ function DesafiarAluno() {
   return (
     <div style={{ marginTop: 10 }}>
       <button onClick={() => { setAberto((v) => !v); setMsg(null); }} data-testid="tatico-desafiar-aluno" className="rounded-[10px] border border-white/60 px-5 py-2 text-[15px] font-bold text-white active:scale-[.97]">
-        {aberto ? "FECHAR" : "DESAFIAR UM ALUNO"}
+        {aberto ? "FECHAR LISTA" : "DESAFIAR UM ALUNO"}
       </button>
       {msg && <p role="alert" data-testid="tatico-msg-desafio" style={{ color: "#ffb4ba", fontSize: 13, marginTop: 6 }}>{msg}</p>}
       {aberto && (
