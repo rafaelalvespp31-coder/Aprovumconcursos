@@ -67,9 +67,9 @@ export default async function QuizPage({ searchParams }: { searchParams: Promise
   }
   return (
     <>
-      {usage.gameLeft !== null && (
+      {!usage.unlimited && usage.gameLeft !== null && (
         <p className="mb-3 rounded-[12px] border border-[#E6E7EB] bg-white px-3 py-2 text-[13px] text-[#08090B]" data-testid="cota-jogo">
-          Hoje: {usage.gameLeft === 1 ? "resta 1 questão" : `restam ${usage.gameLeft} questões`} de {usage.gameMax} no Modo Jogo.
+          Plano gratuito: {usage.gameLeft === 1 ? "resta 1 questão" : `restam ${usage.gameLeft} questões`} no Modo Jogo hoje.
         </p>
       )}
       <QuizView key={round.topic.id} home={home} initialRound={round} lives={LIVES} dailyGoal={DAILY_GOAL} />

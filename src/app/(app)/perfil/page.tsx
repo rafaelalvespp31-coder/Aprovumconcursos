@@ -108,13 +108,9 @@ export default async function ProfilePage() {
               <dd>
                 restam {usage.questionsLeft} de {FREE_LIMITS.questionsPerDay}
               </dd>
-            </>
-          )}
-          {usage.gameLeft !== null && (
-            <>
               <dt className="text-[#5C5C5C]">Modo Jogo hoje</dt>
               <dd>
-                restam {usage.gameLeft} de {usage.gameMax}
+                restam {usage.gameLeft} de {FREE_LIMITS.gameQuestionsPerDay}
               </dd>
             </>
           )}
@@ -123,7 +119,7 @@ export default async function ProfilePage() {
           {usage.promoUntil && !usage.paid
             ? `Degustação premium ativa até ${new Date(usage.promoUntil).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}: tudo liberado, sem limite diário. Depois você volta ao seu plano, sem perder nada do que estudou.`
             : usage.unlimited
-            ? "Seu plano é ilimitado em aulas e questões. O Modo Jogo tem teto de 20 questões por dia, liberado de novo à meia-noite."
+            ? "Seu plano é ilimitado: aulas, questões e Modo Jogo sem limite diário."
             : `No plano gratuito você estuda ${FREE_LIMITS.lessonsPerDay} aula, ${FREE_LIMITS.questionsPerDay} questões e ${FREE_LIMITS.gameQuestionsPerDay} questões do Modo Jogo por dia. Os planos pagos (mensal, semestral ou anual) liberam tudo sem limite: fale com a equipe do APROVUM para assinar.`}
         </p>
       </PastelCard>

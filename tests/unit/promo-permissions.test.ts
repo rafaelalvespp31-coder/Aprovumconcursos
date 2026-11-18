@@ -72,10 +72,10 @@ describe("permissões com degustação premium", () => {
     expect(p).toMatchObject({ planId: "free", paid: false, unlimited: true });
     expect(p.promo?.campaignId).toBe("caveira-ficou-maluco");
     await expect(assertQuota(U, "questoes")).resolves.toBeUndefined();
-    await expect(assertQuota(U, "jogo")).resolves.toBeUndefined(); // 5 hoje: o teto de quem tem degustação é 20
+    await expect(assertQuota(U, "jogo")).resolves.toBeUndefined();
     expect(await claimDailyLesson(U, "outra-aula")).toEqual({ ok: true });
     expect(inserts).toHaveLength(0); // não consome a "aula do dia"
-    expect(await getPlanUsage(U)).toMatchObject({ unlimited: true, paid: false, questionsLeft: null, gameLeft: 15, gameMax: 20, promoUntil: tables.promo_grants![0]!.expires_at });
+    expect(await getPlanUsage(U)).toMatchObject({ unlimited: true, paid: false, questionsLeft: null, gameLeft: null, promoUntil: tables.promo_grants![0]!.expires_at });
   });
 
   it("concessão vencida não vale nada: volta ao plano original na hora, sem rotina agendada", async () => {
@@ -97,13 +97,14 @@ describe("permissões com degustação premium", () => {
     expect(await getMyPlan(U)).toMatchObject({ planId: "pro", paid: true, unlimited: true, promo: null });
   });
 
-  it("Modo Jogo: gratuito trava em 5; com degustação, em 20", async () => {
-    await expect(assertQuota(U, "jogo")).rejects.toThrow(/5 questões do Modo Jogo/); // 5 hoje, sem concessão
-    setUser({ promoEnd: iso(6 * DAY) });
-    tables.quiz_attempts = Array.from({ length: 19 }, (_, i) => ({ id: `q${i}`, user_id: U, created_at: iso(-1000) }));
+  it("Modo Jogo: gratuito trava em 5; pago e degustação seguem ilimitados", async () => {
+    await expect(assertQuota(U, "jogo")).rejects.toThrow(/5 questões do Modo Jogo/);
+    setUser({ plan: "pro", end: iso(10 * DAY) });
+    tables.quiz_attempts = Array.from({ length: 40 }, (_, i) => ({ id: `q${i}`, user_id: U, created_at: iso(-1000) }));
     await expect(assertQuota(U, "jogo")).resolves.toBeUndefined();
-    tables.quiz_attempts = Array.from({ length: 20 }, (_, i) => ({ id: `q${i}`, user_id: U, created_at: iso(-1000) }));
-    await expect(assertQuota(U, "jogo")).rejects.toThrow(/20 questões do Modo Jogo/);
+    setUser({ promoEnd: iso(6 * DAY) });
+    tables.quiz_attempts = Array.from({ length: 40 }, (_, i) => ({ id: `q${i}`, user_id: U, created_at: iso(-1000) }));
+    await expect(assertQuota(U, "jogo")).resolves.toBeUndefined();
   });
 });
 
