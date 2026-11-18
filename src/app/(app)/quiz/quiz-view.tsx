@@ -127,6 +127,8 @@ export function QuizView({
   const [roundNo, setRoundNo] = useState(0);
   const [timedOut, setTimedOut] = useState(false);
   const [inView, setInView] = useState(false);
+  // A missão abre em popup de tela cheia: só o card de completar as frases, sem mais nada por perto.
+  const [jogoAberto, setJogoAberto] = useState(false);
   const [hint, setHint] = useState(false);
   const [pageVisible, setPageVisible] = useState(true);
   const [showAllTopics, setShowAllTopics] = useState(false);
@@ -185,8 +187,17 @@ export function QuizView({
     document.addEventListener("visibilitychange", on);
     return () => document.removeEventListener("visibilitychange", on);
   }, []);
+  useEffect(() => {
+    if (!jogoAberto) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && dialog === null) setJogoAberto(false); };
+    document.addEventListener("keydown", onKey);
+    return () => { document.body.style.overflow = prev; document.removeEventListener("keydown", onKey); };
+  }, [jogoAberto, dialog]);
   const timerRunning =
     hasQuestion &&
+    jogoAberto &&
     inView &&
     pageVisible &&
     !check &&
@@ -210,7 +221,7 @@ export function QuizView({
       // Espaço da questão quando o topo do jogo está encostado sob o cabeçalho: tela - cabeçalho - o que vem antes do card - rodapé.
       const topo = document.querySelector<HTMLElement>(".jogo-topo");
       const before = topo ? card.getBoundingClientRect().top - topo.getBoundingClientRect().top : 0;
-      const avail = window.innerHeight - (w >= 1024 ? 96 : 94) - before - (w >= 1024 ? 16 : 104);
+      const avail = jogoAberto ? window.innerHeight - 72 - before - 24 : window.innerHeight - (w >= 1024 ? 96 : 94) - before - (w >= 1024 ? 16 : 104);
       const set = (f: number) => {
         fr.style.setProperty("--jf", `${f}px`);
         fr.style.setProperty("--jl", String(+(1.55 + ((f - min) / (max - min)) * 0.6).toFixed(2)));
@@ -237,7 +248,7 @@ export function QuizView({
     fit();
     window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, [item, idx, roundNo, check, hint, filledCount, hasQuestion]);
+  }, [item, idx, roundNo, check, hint, filledCount, hasQuestion, jogoAberto]);
 
   const place = (w: string) => {
     if (check || timedOut || used.has(w)) return;
@@ -370,14 +381,10 @@ export function QuizView({
           streak={home.streak.current}
           pct={pct}
           started={idx > 0 || !!check || filled > 0}
-          onStart={() =>
-            finished
-              ? newRound()
-              : cardRef.current?.scrollIntoView({
-                  behavior: "smooth",
-                  block: "start",
-                })
-          }
+          onStart={() => {
+            if (finished) newRound();
+            setJogoAberto(true);
+          }}
           onPickTarget={() =>
             lessonsRef.current?.scrollIntoView({
               behavior: "smooth",
@@ -403,7 +410,26 @@ export function QuizView({
         />
       </div>
       <div className="relative mx-auto mt-6 grid max-w-[1180px] gap-6 lg:grid-cols-[minmax(0,1fr)_330px] xl:gap-8">
-        <div className="min-w-0">
+        <div
+          className={jogoAberto ? "fixed inset-0 z-[1000] overflow-y-auto overscroll-contain bg-[#050506] px-3 pb-6 pt-3 sm:px-6" : "hidden"}
+          role={jogoAberto ? "dialog" : undefined}
+          aria-modal={jogoAberto ? true : undefined}
+          aria-label="Frase da lei"
+          data-testid="jogo-popup"
+        >
+          {jogoAberto && (
+            <div className="mx-auto flex max-w-[1180px] justify-end">
+              <button
+                type="button"
+                onClick={() => setJogoAberto(false)}
+                className="font-hud flex min-h-10 items-center gap-1.5 rounded-[10px] px-3 text-[12px] font-bold uppercase tracking-[0.14em] text-white/80 ring-1 ring-white/20 hover:bg-white/10"
+                aria-label="Sair da missão"
+              >
+                <X className="h-4 w-4" aria-hidden /> Sair
+              </button>
+            </div>
+          )}
+          <div className="mx-auto max-w-[1180px]">
           {/* Matéria, tema e cronômetro */}
           <div
             ref={cardRef}
@@ -837,6 +863,7 @@ export function QuizView({
               </div>
             </div>
           )}
+          </div>
         </div>
 
         {/* Coluna lateral */}
