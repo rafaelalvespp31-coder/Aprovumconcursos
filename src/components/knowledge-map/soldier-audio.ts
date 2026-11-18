@@ -13,6 +13,14 @@ const VOICE_REST_MS = 4000;
 type Ctx = typeof AudioContext;
 
 export class SoldierAudio {
+  /** `shotSrc`: outro som de disparo (ex.: Glock do Desafio Tático). Padrão: o fuzil do mapa. */
+  constructor(private readonly opts: { shotSrc?: string; shotGain?: number } = {}) {}
+  private get shotSrc() {
+    return this.opts.shotSrc ?? SHOT.src;
+  }
+  private get shotGain() {
+    return this.opts.shotGain ?? SHOT.gain;
+  }
   private ctx: AudioContext | null = null;
   private breath: HTMLAudioElement | null = null;
   private voice: HTMLAudioElement | null = null;
@@ -46,7 +54,7 @@ export class SoldierAudio {
           ctx.createMediaElementSource(v).connect(vg).connect(ctx.destination);
           this.ctx = ctx;
           this.breathGain = bg;
-          fetch(SHOT.src)
+          fetch(this.shotSrc)
             .then((r) => r.arrayBuffer())
             .then((a) => ctx.decodeAudioData(a))
             .then((buf) => void (this.shotBuf = buf))
@@ -63,9 +71,9 @@ export class SoldierAudio {
     }
     // Elemento de reserva: toca o disparo se o Web Audio não decodificar o arquivo neste navegador.
     if (!this.shotEl) {
-      this.shotEl = new Audio(SHOT.src);
+      this.shotEl = new Audio(this.shotSrc);
       this.shotEl.preload = "auto";
-      this.shotEl.volume = SHOT.gain;
+      this.shotEl.volume = this.shotGain;
     }
     this.ctx?.resume().catch(() => undefined);
     this.breath.play().catch(() => undefined);
@@ -79,7 +87,7 @@ export class SoldierAudio {
       const src = ctx.createBufferSource();
       src.buffer = this.shotBuf;
       const g = ctx.createGain();
-      g.gain.value = SHOT.gain;
+      g.gain.value = this.shotGain;
       src.connect(g).connect(ctx.destination);
       // O arquivo começa no estalo do disparo (silêncio inicial cortado): sai junto com o clarão.
       src.start();
@@ -93,7 +101,7 @@ export class SoldierAudio {
       this.shotEl.play().catch(() => undefined);
       if (this.ctx) {
         // Sem buffer (ainda decodificando ou formato não suportado): a reserva toca sem controle de ganho.
-        this.shotEl.volume = SHOT.gain;
+        this.shotEl.volume = this.shotGain;
       }
     }
   }

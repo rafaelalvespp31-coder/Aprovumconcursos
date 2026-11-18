@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { SoldierAudio } from "@/components/knowledge-map/soldier-audio";
+import { breathAt } from "@/components/knowledge-map/breath";
 import { taticoEntrarAction, taticoEntrarSoloAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
 import type { TaticoEstado, TaticoQuestao, TaticoRevisao, TaticoStats } from "@/server/services/tatico";
 import "./tatico.css";
@@ -29,10 +31,27 @@ function useEscala(portrait: boolean) {
   return { ref, k, faixa, boxH: faixa.h * k };
 }
 
-export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot }: { s: Partida; at: number; nivel: { level: number; into: number }; noFx: boolean; portrait: boolean; onShoot: (i: number) => void; shot: { i: number; n: number; hit: boolean | null } | null }) {
+export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock }: { breathClock?: (nowMs: number) => number | null; s: Partida; at: number; nivel: { level: number; into: number }; noFx: boolean; portrait: boolean; onShoot: (i: number) => void; shot: { i: number; n: number; hit: boolean | null } | null }) {
   const { ref, k, faixa, boxH } = useEscala(portrait);
   const [now, setNow] = useState(0);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 200); return () => clearInterval(t); }, []);
+  // Respiração do braço: mesma curva do "novo estudo", guiada pelo áudio em loop (quando o som está ligado).
+  const breathEl = useRef<HTMLDivElement>(null);
+  const clock = useRef(breathClock);
+  useEffect(() => { clock.current = breathClock; }, [breathClock]);
+  useEffect(() => {
+    let raf = 0;
+    const loop = (ts: number) => {
+      const el = breathEl.current; const t = clock.current?.(ts) ?? null;
+      if (el) {
+        if (t == null) { el.style.animation = ""; el.style.transform = ""; }
+        else { const { chest, kick } = breathAt(t); el.style.animation = "none"; el.style.transform = `translate3d(0, ${(-chest * 10 + kick * 7).toFixed(2)}px, 0)`; }
+      }
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
   const ms = Math.max(0, s.msRestantes - Math.max(0, now - at));
   const q = s.question; const rev = s.phase === "revelar" || s.phase === "fim";
   const bloqueado = s.phase !== "responder" || s.me.answered || !!shot;
@@ -100,10 +119,10 @@ export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot }: { s: Parti
             </button>
           ))}
           {/* braço + efeitos */}
-          <div key={shot?.n ?? 0} className={`tt-arm ${shot ? "fire" : "idle"}`} style={{ ["--aim" as string]: `${mira}deg`, transform: `rotate(${mira}deg) translateY(${shot ? 0 : -6}px)` }}>
+          <div ref={breathEl} className="tt-breath"><div key={shot?.n ?? 0} className={`tt-arm ${shot ? "fire" : ""}`} style={{ ["--aim" as string]: `${mira}deg`, transform: `rotate(${mira}deg) translateY(${shot ? 0 : -6}px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/tatico/braco.webp" alt="" draggable={false} />
-          </div>
+          </div></div>
           {shot && !noFx && (
             <div key={`fx${shot.n}`}>
               <i className="tt-flash" style={{ left: 840 + mira * 6, top: 590 }} />
@@ -145,12 +164,15 @@ export function TaticoView({ inicial, nivel, stats, admin }: { admin: boolean; i
   const [portrait, setPortrait] = useState(false);
   const [noFx, setNoFx] = useState(false);
   const [rev, setRev] = useState<TaticoRevisao>(null);
+  const [audio] = useState(() => new SoldierAudio({ shotSrc: "/audio/disparo-glock.mp3", shotGain: 0.9 }));
+  const [som, setSom] = useState(true);
   const pos = useRef<number>(-1);
   const busy = useRef(false);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 760px)"); const f = () => setPortrait(mq.matches); f(); mq.addEventListener("change", f);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- preferência lida só no cliente
+    setSom(localStorage.getItem("tt-som") !== "off");
     setNoFx(localStorage.getItem("tt-fx") === "off" || window.matchMedia("(prefers-reduced-motion: reduce)").matches);
     return () => mq.removeEventListener("change", f);
   }, []);
@@ -177,29 +199,41 @@ export function TaticoView({ inicial, nivel, stats, admin }: { admin: boolean; i
     window.addEventListener("pagehide", sair); return () => window.removeEventListener("pagehide", sair);
   }, [s.estado]);
 
+  useEffect(() => {
+    const vis = () => (document.hidden ? audio.hide() : audio.show());
+    document.addEventListener("visibilitychange", vis);
+    return () => { document.removeEventListener("visibilitychange", vis); audio.dispose(); };
+  }, [audio]);
+  useEffect(() => { if (fim || s.estado === "ocioso") audio.stop(); }, [fim, s.estado, audio]);
+
   const entrar = useCallback(async () => {
+    if (som) audio.start();
     setErro(null); const r = await taticoEntrarAction();
     if (!r.ok) setErro(r.error); else setS(r.s);
-  }, [setS]);
+  }, [setS, som, audio]);
   const entrarSolo = useCallback(async () => {
+    if (som) audio.start();
     setErro(null); const r = await taticoEntrarSoloAction();
     if (!r.ok) setErro(r.error); else setS(r.s);
-  }, [setS]);
+  }, [setS, som, audio]);
   const atirar = useCallback(async (i: number) => {
     if (s.estado !== "partida" || s.phase !== "responder" || s.me.answered || shot) return;
+    // Som e clarão saem juntos, no mesmo instante do clique (antes de ir ao servidor).
+    if (som) { audio.start(); audio.shot(); }
     const n = Date.now(); setShot({ i, n, hit: null });
     const r = await taticoResponderAction(s.match, LETRAS[i]!);
     if (!r.ok && r.erro !== "ja_respondeu") { setShot(null); setErro(r.erro === "fora_do_tempo" ? "O tempo desta questão acabou." : "Não foi possível registrar o disparo."); return; }
     setShot({ i, n, hit: r.acertou ?? null });
     const e = await taticoEstadoAction(s.match); if (e.ok) setS(e.s);
-  }, [s, shot, setS]);
+  }, [s, shot, setS, som, audio]);
 
   /* ---------- telas ---------- */
   if (s.estado === "partida" && !fim) {
     return (
       <div>
-        <Cena s={s} at={at} nivel={nivel} noFx={noFx} portrait={portrait} onShoot={atirar} shot={shot} />
+        <Cena breathClock={som && !noFx ? (now) => audio.breathTime(now) : undefined} s={s} at={at} nivel={nivel} noFx={noFx} portrait={portrait} onShoot={atirar} shot={shot} />
         {erro && <p role="alert" className="mt-2 text-[13px] text-[#B42318]">{erro}</p>}
+        <button className="mt-2 mr-4 text-[12px] text-tinta-suave underline" data-testid="tatico-som" onClick={() => { const v = !som; setSom(v); localStorage.setItem("tt-som", v ? "on" : "off"); if (v) audio.start(); else audio.stop(); }}>{som ? "Desligar som" : "Ligar som"}</button>
         <button className="mt-2 text-[12px] text-tinta-suave underline" onClick={() => { const v = !noFx; setNoFx(v); localStorage.setItem("tt-fx", v ? "off" : "on"); }}>{noFx ? "Ativar efeitos visuais" : "Reduzir efeitos visuais"}</button>
       </div>
     );
