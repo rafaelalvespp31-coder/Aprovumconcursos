@@ -64,6 +64,8 @@ export interface CreateInput {
   formData: unknown;
   /** Identificador do dispositivo (antifraude do Mercado Pago). */
   deviceId?: unknown;
+  /** IP do comprador (antifraude do Mercado Pago). */
+  ip?: string | null;
   email: string | null;
 }
 
@@ -124,11 +126,18 @@ export async function createPayment(userId: string, input: CreateInput): Promise
   const row = ins.data as unknown as Row;
 
   // Dados que o antifraude do Mercado Pago usa para confiar no pagamento: nome do pagador e dispositivo.
-  const prof = await db.from("profiles").select("display_name").eq("id", userId).maybeSingle();
+  const prof = await db.from("profiles").select("display_name, created_at, whatsapp").eq("id", userId).maybeSingle();
   const fullName = str(prof.data?.display_name, 80);
   const [firstName, ...rest] = fullName.split(/\s+/).filter(Boolean);
   const lastName = rest.join(" ");
   const deviceId = str(input.deviceId, 120).replace(/[^\w.\-:]/g, "");
+  // Mais sinais reais do comprador melhoram a análise de risco: telefone, data de cadastro e IP.
+  let digits = str((prof.data as { whatsapp?: unknown } | null)?.whatsapp, 25).replace(/\D/g, "");
+  if (digits.length >= 12 && digits.startsWith("55")) digits = digits.slice(2);
+  const phone = digits.length === 10 || digits.length === 11 ? { area_code: digits.slice(0, 2), number: digits.slice(2) } : undefined;
+  const cadastro = (prof.data as { created_at?: unknown } | null)?.created_at;
+  const registration = typeof cadastro === "string" && !Number.isNaN(Date.parse(cadastro)) ? new Date(cadastro).toISOString() : undefined;
+  const ip = str(input.ip, 60).replace(/[^0-9a-fA-F:.]/g, "");
 
   let mp: MpPayment;
   try {
@@ -140,7 +149,8 @@ export async function createPayment(userId: string, input: CreateInput): Promise
       payer: { email, ...(firstName ? { first_name: firstName } : {}), ...(lastName ? { last_name: lastName } : {}), ...(identification ? { identification } : {}) },
       additional_info: {
         items: [{ id: offer, title: `APROVUM — ${price.label}`, description: `Acesso à plataforma APROVUM (${price.label})`, category_id: "learnings", quantity: 1, unit_price: price.cents / 100 }],
-        ...(firstName ? { payer: { first_name: firstName, ...(lastName ? { last_name: lastName } : {}) } } : {}),
+        ...(firstName || phone || registration ? { payer: { ...(firstName ? { first_name: firstName } : {}), ...(lastName ? { last_name: lastName } : {}), ...(phone ? { phone } : {}), ...(registration ? { registration_date: registration } : {}) } } : {}),
+        ...(ip ? { ip_address: ip } : {}),
       },
       external_reference: row.id,
       notification_url: `${siteUrl()}/api/webhooks/mercadopago`,

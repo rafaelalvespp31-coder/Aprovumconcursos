@@ -36,7 +36,7 @@ const REASON: Record<string, string> = {
   cc_rejected_bad_filled_other: "Confira os dados do cartão.",
   cc_rejected_call_for_authorize: "Autorize o pagamento com o seu banco e tente de novo.",
   rejected_high_risk: "O pagamento foi recusado pela análise de segurança. Confira o CPF, aguarde alguns minutos e tente de novo, ou pague com cartão.",
-  cc_rejected_high_risk: "Pagamento não autorizado por segurança. Tente outro meio de pagamento.",
+  cc_rejected_high_risk: "O Mercado Pago não autorizou este cartão por segurança (análise antifraude, não é problema no seu cartão). Pague com PIX, que é aprovado na hora, ou tente outro cartão.",
 };
 
 /** Pagamento dentro do app: Payment Brick (PIX e cartão em até 12x). Quem confirma é o servidor. */
@@ -176,7 +176,10 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
           </p>
         )}
         {failed ? (
-          <button type="button" className="ck-final" onClick={() => setResult(null)}><span>TENTAR NOVAMENTE</span></button>
+          <>
+            <button type="button" className="ck-final" onClick={() => setResult(null)}><span>TENTAR NOVAMENTE</span></button>
+            {result.method !== "pix" && <button type="button" className="ck-voltar" data-testid="plano-pagar-pix" onClick={() => { setResult(null); setError(null); setTab("pix"); }}>Pagar com PIX (aprovação na hora)</button>}
+          </>
         ) : (
           <button type="button" className="ck-voltar" onClick={onClose}>Fechar</button>
         )}

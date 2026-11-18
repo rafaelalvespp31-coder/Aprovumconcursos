@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Pedido inválido." }, { status: 400 });
   }
   try {
-    const payment = await createPayment(user.id, { offer: body.offer, formData: body.formData, deviceId: body.deviceId, email: user.email ?? null });
+    const payment = await createPayment(user.id, { offer: body.offer, formData: body.formData, deviceId: body.deviceId, ip: (req.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || req.headers.get("x-real-ip"), email: user.email ?? null });
     return NextResponse.json({ payment });
   } catch (e) {
     if (e instanceof UserFacingError) return NextResponse.json({ error: e.message }, { status: e.code === "rate_limited" ? 429 : 400 });
