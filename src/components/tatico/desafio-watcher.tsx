@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { taticoDesafiosAction, taticoResponderDesafioAction, taticoSairAction } from "@/app/(app)/quiz/tatico/actions";
+import { taticoDesafiosAction, taticoResponderDesafioAction } from "@/app/(app)/quiz/tatico/actions";
 import type { DesafiosEstado } from "@/server/services/tatico";
 import "./desafio.css";
 
@@ -30,6 +30,21 @@ export function DesafioWatcher() {
     window.dispatchEvent(new CustomEvent(EVENTO_DESAFIO, { detail }));
   }, []);
 
+  // presença: batida própria (fetch leve), independente do ciclo de convites e das Server Actions
+  useEffect(() => {
+    const bater = () => { if (!document.hidden) void fetch("/api/presenca", { method: "POST", keepalive: true, cache: "no-store" }).catch(() => undefined); };
+    const sair = () => { try { navigator.sendBeacon("/api/presenca?sair=1"); } catch { /* sem efeito */ } };
+    const vis = () => { if (document.hidden) sair(); else bater(); };
+    bater();
+    const iv = setInterval(bater, 3000);
+    document.addEventListener("visibilitychange", vis); window.addEventListener("pagehide", sair);
+    window.addEventListener("focus", bater); window.addEventListener("online", bater); window.addEventListener("pageshow", bater);
+    return () => {
+      clearInterval(iv); document.removeEventListener("visibilitychange", vis); window.removeEventListener("pagehide", sair);
+      window.removeEventListener("focus", bater); window.removeEventListener("online", bater); window.removeEventListener("pageshow", bater);
+    };
+  }, []);
+
   useEffect(() => {
     let vivo = true; let timer: ReturnType<typeof setTimeout>;
     const ciclo = async () => {
@@ -53,11 +68,7 @@ export function DesafioWatcher() {
       if (vivo) timer = setTimeout(ciclo, pendente.current ? 1500 : 3000);
     };
     timer = setTimeout(ciclo, 1200);
-    // saiu da aba/app → some da lista de online na hora; voltou → reaparece na hora
-    const vis = () => { if (document.hidden) void taticoSairAction(); else void taticoDesafiosAction(); };
-    const fim = () => { void taticoSairAction(); };
-    document.addEventListener("visibilitychange", vis); window.addEventListener("pagehide", fim);
-    return () => { vivo = false; clearTimeout(timer); document.removeEventListener("visibilitychange", vis); window.removeEventListener("pagehide", fim); };
+    return () => { vivo = false; clearTimeout(timer); };
   }, [emitir, router]);
 
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(t); }, []);
