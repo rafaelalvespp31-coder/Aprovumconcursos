@@ -75,3 +75,50 @@ export async function taticoRevisao(match: string): Promise<TaticoRevisao> {
   const u = await requireUser("/quiz");
   return rpc<TaticoRevisao>("tatico_revisao", { p_user: u.id, p_match: match });
 }
+
+export type AlunoBusca = { id: string; name: string; online: boolean };
+export type DesafiosEstado = {
+  entrada: { id: string; de: string; ms: number } | null;
+  saida: { id: string; para: string; status: "pendente" | "aceito" | "recusado" | "expirado" | "cancelado"; reason: string | null; match: string | null; ms: number } | null;
+};
+const ERROS_DESAFIO: Record<string, string> = {
+  aluno_invalido: "Aluno inválido.",
+  seu_limite: "Você já usou os 3 desafios de hoje.",
+  limite_dele: "Esse aluno já usou os 3 desafios de hoje.",
+  voce_em_partida: "Você já está em uma partida.",
+  ele_em_partida: "Esse aluno está em uma partida agora.",
+  ja_pendente: "Você já tem um desafio aguardando resposta.",
+  muitos_desafios: "Muitos desafios enviados. Tente de novo mais tarde.",
+  sem_questoes: "Ainda não há questões suficientes para o desafio.",
+};
+export async function taticoBuscar(q: string): Promise<AlunoBusca[]> {
+  const u = await requireUser("/quiz");
+  return (await rpc<AlunoBusca[] | null>("tatico_buscar", { p_user: u.id, p_q: q.slice(0, 40) })) ?? [];
+}
+export async function taticoDesafiar(alvo: string): Promise<{ ok: boolean; id?: string; para?: string; erro?: string }> {
+  const u = await requireUser("/quiz");
+  const r = await rpc<{ ok: boolean; id?: string; para?: string; erro?: string }>("tatico_desafiar", { p_user: u.id, p_target: alvo });
+  return r.ok ? r : { ok: false, erro: ERROS_DESAFIO[r.erro ?? ""] ?? "Não foi possível desafiar agora." };
+}
+export async function taticoDesafios(): Promise<DesafiosEstado> {
+  const u = await requireUser("/quiz");
+  return rpc<DesafiosEstado>("tatico_desafios", { p_user: u.id });
+}
+export async function taticoResponderDesafio(id: string, aceitar: boolean): Promise<{ ok: boolean; estado?: string; match?: string; erro?: string }> {
+  const u = await requireUser("/quiz");
+  const r = await rpc<{ ok: boolean; estado?: string; match?: string; erro?: string }>("tatico_responder_desafio", { p_user: u.id, p_id: id, p_aceitar: aceitar });
+  if (r.ok) return r;
+  return { ok: false, erro: r.erro === "expirado" ? "O desafio expirou." : r.erro === "indisponivel" ? "Desafio indisponível agora (limite do dia ou partida em andamento)." : "Não foi possível responder." };
+}
+export async function taticoCancelarDesafio(id: string): Promise<void> {
+  const u = await requireUser("/quiz");
+  await rpc("tatico_cancelar_desafio", { p_user: u.id, p_id: id });
+}
+
+/** Nível do Modo Jogo (a cada 10 questões respondidas), com uma contagem leve — sem montar a home inteira do jogo. */
+export async function taticoNivel(): Promise<{ level: number; into: number }> {
+  const u = await requireUser("/quiz");
+  const { count } = await createAdminClient().from("quiz_attempts").select("id", { count: "exact", head: true }).eq("user_id", u.id);
+  const n = count ?? 0;
+  return { level: Math.floor(n / 10) + 1, into: n % 10 };
+}

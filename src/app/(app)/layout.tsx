@@ -13,6 +13,7 @@ import { CaveiraPopup } from "@/components/promo/caveira-popup";
 import { markPopupSeenAction } from "./promo-actions";
 import { logEvent } from "@/server/observability";
 import { getEstadoTutoriais } from "@/server/services/tutorial";
+import { DesafioWatcher } from "@/components/tatico/desafio-watcher";
 import { TutorialProvider } from "@/components/tutorial/tutorial-provider";
 
 export default async function AppLayout({
@@ -53,6 +54,7 @@ export default async function AppLayout({
       >
         {children}
       </PastelShell>
+      <DesafioWatcher />
       {promo && !promo.popupSeenAt && (
         <CaveiraPopup campaignId={promo.campaignId} days={Math.max(1, Math.round((new Date(promo.expiresAt).getTime() - new Date(promo.startsAt).getTime()) / 86_400_000))} markSeen={markPopupSeenAction} />
       )}

@@ -1,0 +1,17 @@
+.dsf-card{position:fixed;z-index:2147483000;left:50%;top:max(12px,env(safe-area-inset-top));transform:translateX(-50%);width:min(420px,calc(100vw - 24px));padding:14px 16px 14px;color:#fff;border-radius:14px;border:1.5px solid #e5202e;background:linear-gradient(180deg,#1a0b0d,#08080a);box-shadow:0 0 0 1px #000,0 0 34px rgba(229,32,46,.55),0 20px 40px rgba(0,0,0,.6);animation:dsf-in .35s cubic-bezier(.2,1.2,.3,1);font-family:"Barlow Semi Condensed",Inter,system-ui,sans-serif}
+.dsf-topo{display:flex;gap:12px;align-items:center}
+.dsf-ico{display:grid;place-items:center;width:44px;height:44px;border-radius:10px;background:#2a0b0e;border:1px solid #c9141f;font-size:24px}
+.dsf-kick{font:italic 800 13px "Barlow Condensed",system-ui,sans-serif;letter-spacing:.18em;color:#ff4d5a}
+.dsf-nome{font-size:20px;line-height:1.15}
+.dsf-sub{margin-top:8px;font-size:13px;color:#cfcfd4}
+.dsf-barra{height:4px;margin-top:10px;background:#2a2a2e;border-radius:3px;overflow:hidden}
+.dsf-barra i{display:block;height:100%;background:linear-gradient(90deg,#8a0a14,#ff3b4a);transition:width .25s linear}
+.dsf-btns{display:flex;gap:10px;margin-top:12px}
+.dsf-btns button{flex:1;min-height:46px;border-radius:10px;font:italic 800 18px "Barlow Condensed",system-ui,sans-serif;letter-spacing:.06em;transition:transform .12s}
+.dsf-btns button:active{transform:scale(.97)}
+.dsf-btns button:disabled{opacity:.6}
+.dsf-aceitar{background:#c9141f;color:#fff;box-shadow:0 0 18px rgba(229,32,46,.55)}
+.dsf-recusar{background:transparent;color:#fff;border:1px solid rgba(255,255,255,.4)}
+.dsf-toast{position:fixed;z-index:2147483000;left:50%;top:max(14px,env(safe-area-inset-top));transform:translateX(-50%);max-width:calc(100vw - 24px);padding:12px 18px;border-radius:12px;color:#fff;font:600 15px "Barlow Semi Condensed",Inter,system-ui,sans-serif;background:#1a0b0d;border:1.5px solid #e5202e;box-shadow:0 0 24px rgba(229,32,46,.5);animation:dsf-in .3s ease-out}
+@keyframes dsf-in{from{opacity:0;transform:translate(-50%,-16px) scale(.96)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+@media (prefers-reduced-motion:reduce){.dsf-card,.dsf-toast{animation:none}}

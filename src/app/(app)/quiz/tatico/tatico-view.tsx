@@ -5,8 +5,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SoldierAudio } from "@/components/knowledge-map/soldier-audio";
 import { breathAt } from "@/components/knowledge-map/breath";
-import { taticoEntrarAction, taticoEntrarSoloAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
-import type { TaticoEstado, TaticoQuestao, TaticoRevisao, TaticoStats } from "@/server/services/tatico";
+import { EVENTO_DESAFIO } from "@/components/tatico/desafio-watcher";
+import { Carregando, EsperaEstande } from "./carregando";
+import { taticoStatsAction, taticoBuscarAction, taticoCancelarDesafioAction, taticoDesafiarAction, taticoEntrarAction, taticoEntrarSoloAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
+import type { AlunoBusca, TaticoEstado, TaticoQuestao, TaticoRevisao, TaticoStats } from "@/server/services/tatico";
 import "./tatico.css";
 
 type Partida = Extract<TaticoEstado, { estado: "partida" }>;
@@ -46,7 +48,7 @@ function useEscala(portrait: boolean) {
   return { ref, k, faixa, offX, offY, boxH: portrait ? faixa.h * k : undefined };
 }
 
-function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock }: { breathClock?: (nowMs: number) => number | null; s: Partida; at: number; nivel: { level: number; into: number }; noFx: boolean; portrait: boolean; onShoot: (i: number) => void; shot: { i: number; n: number; hit: boolean | null } | null }) {
+function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppShot }: { oppShot?: number; breathClock?: (nowMs: number) => number | null; s: Partida; at: number; nivel: { level: number; into: number }; noFx: boolean; portrait: boolean; onShoot: (i: number) => void; shot: { i: number; n: number; hit: boolean | null } | null }) {
   const { ref, k, faixa, offX, offY, boxH } = useEscala(portrait);
   const [now, setNow] = useState(0);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 200); return () => clearInterval(t); }, []);
@@ -80,13 +82,14 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock }: { br
   const bloqueado = s.phase !== "responder" || s.me.answered || !!shot;
   const mira = shot ? (TG_X[shot.i]! - 840) / 55 : 0;
   const cls = (l: string, base: string) => {
-    if (rev && q?.correct) { if (l === q.correct) return `${base} ok`; if (l === s.me.choice) return `${base} no`; return `${base} dim`; }
+    if (rev && q?.correct) { const o = q.oppChoice === l ? " opp" : ""; if (l === q.correct) return `${base} ok${o}`; if (l === s.me.choice) return `${base} no${o}`; return `${base} dim${o}`; }
     if (s.me.choice === l || (shot && LETRAS[shot.i] === l)) return `${base} sel`;
     return base;
   };
   const tgCls = (l: string) => {
-    if (rev && q?.correct) return l === q.correct ? "ok" : l === s.me.choice ? "no" : "";
-    return "";
+    const o = rev && q?.oppChoice === l ? " opp" : "";
+    if (rev && q?.correct) return (l === q.correct ? "ok" : l === s.me.choice ? "no" : "") + o;
+    return o;
   };
   return (
     <div className={`tt-wrap tt-wrap-full ${noFx ? "tt-fx-off" : ""}`}>
@@ -100,6 +103,7 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock }: { br
           {q && LETRAS.map((l, i) => (
             <button key={l} disabled={bloqueado} aria-label={`Atirar no alvo ${l}`} className={`tt-tg ${tgCls(l)} ${shot?.i === i && shot.hit === false ? "swing" : ""}`} style={{ left: TG_X[i]! - 56, backgroundImage: `url(/tatico/alvo${i}.webp)` }} onClick={() => onShoot(i)}>
               <span className="lt">{l}</span>
+              {rev && q?.oppChoice === l && <span className="adv">ADV.</span>}
               {shot?.i === i && (<><i className="tt-hole" style={{ left: 56, top: 72 }} key={`h${shot.n}`} /><i className="tt-spark" style={{ left: 56, top: 72 }} key={`s${shot.n}`} /></>)}
             </button>
           ))}
@@ -130,7 +134,10 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock }: { br
                 <svg width="46" height="52" viewBox="0 0 24 28" fill="none" stroke="#e5202e" strokeWidth="2"><circle cx="12" cy="16" r="9" /><path d="M12 16V10M9 2h6M12 2v5M20 6l2 2" /></svg>
                 <div className="tt-big">{s.phase === "responder" ? mmss(ms) : "--:--"}</div>
               </div>
-              <div className="tt-panel tt-vs"><span>VS {s.opp.name}</span><em>{s.me.hits} x {s.opp.hits}</em></div>
+              <div className="tt-panel tt-vs" data-testid="tatico-adversario">
+                <span className="nm">VS {s.opp.name}</span><em>{s.me.hits} x {s.opp.hits}</em>
+                <span className={`st ${s.opp.answered ? "ok" : ""}`}>{s.phase !== "responder" ? "" : s.opp.answered ? "● ATIROU" : "● MIRANDO…"}</span>
+              </div>
               {q && (
                 <>
                   <div className="tt-panel tt-q">QUESTÃO <b>{String(Math.min(q.pos, s.total)).padStart(2, "0")}/{String(s.total).padStart(2, "0")}</b>{q.tiebreak ? " · MORTE SÚBITA" : ""}</div>
@@ -162,6 +169,7 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock }: { br
           {rev && q?.correct && !portrait && (
             <div className="tt-panel red tt-reveal"><b>Gabarito: {q.correct}.</b> {(q.explanations?.[q.correct] || q.justification || "").toString().slice(0, 260)}</div>
           )}
+          {!!oppShot && <div key={`op${oppShot}`} className="tt-oppflash" />}
           {s.phase === "responder" && s.me.answered && !rev && <div className="tt-wait">AGUARDANDO O ADVERSÁRIO…</div>}
           {s.phase === "contagem" && <div className="tt-cd"><span key={Math.ceil(ms / 1000)}>{Math.max(1, Math.ceil(ms / 1000) - 5) > 3 ? "PREPARAR" : Math.max(1, Math.ceil(ms / 1000))}</span></div>}
         </div>
@@ -173,7 +181,7 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock }: { br
             <span data-testid="tatico-timer">{s.phase === "responder" ? mmss(ms) : "--:--"}</span>
           </div>
           <p style={{ fontSize: 15, lineHeight: 1.35, margin: "8px 0 4px", color: "#fff" }}>{q.statement}</p>
-          <div style={{ fontSize: 12, color: "#bbb" }}>VS {s.opp.name} · {s.me.hits} x {s.opp.hits} · sequência {s.me.streak}x</div>
+          <div style={{ fontSize: 12, color: "#bbb" }}>VS {s.opp.name} · {s.me.hits} x {s.opp.hits} · sequência {s.me.streak}x{s.phase === "responder" ? (s.opp.answered ? " · adversário atirou" : " · adversário mirando…") : ""}</div>
           {q.options.map((o, i) => (
             <button key={o.label} disabled={bloqueado} className={cls(o.label, "tt-m-opt")} onClick={() => onShoot(i)}><span className="lt">{o.label}</span><span>{o.text}</span></button>
           ))}
@@ -184,8 +192,13 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock }: { br
   );
 }
 
-export function TaticoView({ inicial, nivel, stats, admin }: { admin: boolean; inicial: { usados: number; limite: number }; nivel: { level: number; into: number }; stats: TaticoStats }) {
-  const [s, setSraw] = useState<TaticoEstado>({ estado: "ocioso", ...inicial });
+export function TaticoView({ inicial, nivel, admin }: { admin: boolean; inicial: TaticoEstado; nivel: { level: number; into: number } }) {
+  const [s, setSraw] = useState<TaticoEstado>(inicial);
+  // Já tem partida/fila ativa ao abrir (ex.: acabou de aceitar um desafio)? Passa pela tela de carregamento e cai no estande.
+  const [carregando, setCarregando] = useState(inicial.estado === "partida" || inicial.estado === "fila");
+  const [esperaServidor, setEsperaServidor] = useState(false);
+  const [stats, setStats] = useState<TaticoStats>(null);
+  const usadosIni = "usados" in inicial && typeof inicial.usados === "number" ? inicial.usados : 0;
   const [at, setAt] = useState(0);
   const setS = useCallback((v: TaticoEstado) => { setAt(Date.now()); setSraw(v); }, []);
   const [erro, setErro] = useState<string | null>(null);
@@ -196,8 +209,11 @@ export function TaticoView({ inicial, nivel, stats, admin }: { admin: boolean; i
   const [audio] = useState(() => new SoldierAudio({ shotSrc: "/audio/disparo-glock.mp3", shotGain: 0.9 }));
   const [som, setSom] = useState(true);
   const router = useRouter();
+  const [oppShot, setOppShot] = useState(0);
+  const oppRef = useRef(false);
   // Imersão: some tudo que é flutuante do app (Mentor, ajuda, cookies) enquanto o Desafio Tático está aberto.
   useEffect(() => { document.body.classList.add("tt-imersivo"); return () => document.body.classList.remove("tt-imersivo"); }, []);
+  useEffect(() => { let vivo = true; taticoStatsAction().then((r) => { if (vivo) setStats(r); }); return () => { vivo = false; }; }, []);
   const pos = useRef<number>(-1);
   const busy = useRef(false);
 
@@ -218,10 +234,25 @@ export function TaticoView({ inicial, nivel, stats, admin }: { admin: boolean; i
       if (busy.current) return; busy.current = true;
       const r = await taticoEstadoAction(s.estado === "partida" ? s.match : undefined); busy.current = false;
       if (r.ok) setS(r.s);
-    }, 1000);
+    }, s.estado === "partida" && s.phase === "responder" ? 700 : 1000);
     return () => clearInterval(t);
   }, [ativo, fim, s, setS]);
 
+  // Cada aluno vê o outro atirar: no instante em que o adversário responde, o clarão e o som do disparo dele aparecem aqui
+  // (a alternativa escolhida só aparece no gabarito, para ninguém copiar a resposta do outro).
+  const oppResp = s.estado === "partida" && s.phase === "responder" && s.opp.answered;
+  useEffect(() => {
+    if (oppResp && !oppRef.current) { oppRef.current = true; setOppShot(Date.now()); if (som) { audio.start(); audio.shot(); } }
+    if (!oppResp) oppRef.current = false;
+  }, [oppResp, som, audio]);
+  // Desafio aceito (por mim ou por quem eu desafiei): vai direto para a partida, já com as questões.
+  useEffect(() => {
+    const h = async (e: Event) => {
+      const d = (e as CustomEvent<{ status: string }>).detail;
+      if (d?.status === "aceito") { setCarregando(true); setEsperaServidor(true); const r = await taticoEstadoAction(); if (r.ok) setS(r.s); setEsperaServidor(false); }
+    };
+    window.addEventListener(EVENTO_DESAFIO, h); return () => window.removeEventListener(EVENTO_DESAFIO, h);
+  }, [setS]);
   const q: TaticoQuestao | null = s.estado === "partida" ? s.question : null;
   useEffect(() => { if (q && q.pos !== pos.current) { pos.current = q.pos; setShot(null); } }, [q]);
   useEffect(() => { if (fim && s.estado === "partida") taticoRevisaoAction(s.match).then(setRev); }, [fim, s]);
@@ -241,14 +272,22 @@ export function TaticoView({ inicial, nivel, stats, admin }: { admin: boolean; i
   const entrar = useCallback(async () => {
     if (som) audio.start();
     entrarTelaCheia();
-    setErro(null); const r = await taticoEntrarAction();
-    if (!r.ok) setErro(r.error); else setS(r.s);
+    setErro(null); setCarregando(true); setEsperaServidor(true);          // feedback imediato: o vídeo abre no clique
+    const r = await taticoEntrarAction();
+    setEsperaServidor(false);
+    if (!r.ok) { setErro(r.error); setCarregando(false); return; }
+    setS(r.s);
+    if (r.s.estado !== "partida" && r.s.estado !== "fila") { setCarregando(false); sairTelaCheia(); }
   }, [setS, som, audio]);
   const entrarSolo = useCallback(async () => {
     if (som) audio.start();
     entrarTelaCheia();
-    setErro(null); const r = await taticoEntrarSoloAction();
-    if (!r.ok) setErro(r.error); else setS(r.s);
+    setErro(null); setCarregando(true); setEsperaServidor(true);
+    const r = await taticoEntrarSoloAction();
+    setEsperaServidor(false);
+    if (!r.ok) { setErro(r.error); setCarregando(false); return; }
+    setS(r.s);
+    if (r.s.estado !== "partida") { setCarregando(false); sairTelaCheia(); }
   }, [setS, som, audio]);
   const atirar = useCallback(async (i: number) => {
     if (s.estado !== "partida" || s.phase !== "responder" || s.me.answered || shot) return;
@@ -262,10 +301,12 @@ export function TaticoView({ inicial, nivel, stats, admin }: { admin: boolean; i
   }, [s, shot, setS, som, audio]);
 
   /* ---------- telas ---------- */
+  if (carregando) return <Carregando som={som} aguardando={esperaServidor} onPronto={() => setCarregando(false)} />;
+  if (s.estado === "fila") return <EsperaEstande onSair={async () => { await taticoSairFilaAction(); setS({ estado: "ocioso", usados: usadosIni, limite: 3 }); sairTelaCheia(); }} />;
   if (s.estado === "partida" && !fim) {
     return (
       <div className="tt-full" data-testid="tatico-tela-cheia">
-        <Cena breathClock={som && !noFx ? (now) => audio.breathTime(now) : undefined} s={s} at={at} nivel={nivel} noFx={noFx} portrait={portrait} onShoot={atirar} shot={shot} />
+        <Cena oppShot={oppShot} breathClock={som && !noFx ? (now) => audio.breathTime(now) : undefined} s={s} at={at} nivel={nivel} noFx={noFx} portrait={portrait} onShoot={atirar} shot={shot} />
         {erro && <p role="alert" className="tt-toast">{erro}</p>}
         <div className="tt-ctl">
           <button data-testid="tatico-som" onClick={() => { const v = !som; setSom(v); localStorage.setItem("tt-som", v ? "on" : "off"); if (v) audio.start(); else audio.stop(); }}>{som ? "Som: ligado" : "Som: desligado"}</button>
@@ -277,7 +318,7 @@ export function TaticoView({ inicial, nivel, stats, admin }: { admin: boolean; i
   }
   if (fim && s.estado === "partida") return <Resultado s={s} rev={rev} onNova={() => { setS({ estado: "ocioso", usados: s.usados, limite: 3 }); setRev(null); pos.current = -1; }} />;
   return (
-    <Lobby s={s} stats={stats} erro={erro} admin={admin} onSolo={entrarSolo} onEntrar={entrar} onSair={async () => { await taticoSairFilaAction(); setS({ estado: "ocioso", usados: inicial.usados, limite: inicial.limite }); }} />
+    <Lobby s={s} stats={stats} erro={erro} admin={admin} onSolo={entrarSolo} onEntrar={entrar} onSair={async () => { await taticoSairFilaAction(); setS({ estado: "ocioso", usados: usadosIni, limite: 3 }); }} />
   );
 }
 
@@ -306,6 +347,7 @@ function Lobby({ s, stats, erro, admin, onSolo, onEntrar, onSair }: { admin: boo
             ) : (
               <button onClick={onEntrar} data-testid="tatico-entrar" className="rounded-[10px] bg-[#c9141f] px-6 py-3 text-[16px] font-extrabold text-white shadow-[0_0_24px_rgba(229,32,46,.6)] active:scale-[.97]">ENTRAR NO ESTANDE</button>
             )}
+            {s.estado !== "fila" && !esgotado && <DesafiarAluno />}
             {admin && s.estado !== "fila" && (
               <div style={{ marginTop: 10 }}>
                 <button onClick={onSolo} data-testid="tatico-solo" className="rounded-[10px] border border-[#ffd24a] px-4 py-2 text-[14px] font-bold text-[#ffd24a] active:scale-[.97]">TREINO SOLO (admin)</button>
@@ -374,5 +416,74 @@ function Resultado({ s, rev, onNova }: { s: Partida; rev: TaticoRevisao; onNova:
         </ol>
       )}
     </div></div>
+  );
+}
+
+/** Escolher qual aluno desafiar: online agora primeiro, busca por nome; mostra a espera pela resposta em tempo real. */
+function DesafiarAluno() {
+  const [aberto, setAberto] = useState(false);
+  const [q, setQ] = useState("");
+  const [lista, setLista] = useState<AlunoBusca[]>([]);
+  const [carregando, setCarregando] = useState(false);
+  const [esp, setEsp] = useState<{ id: string; para: string } | null>(null);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!aberto) return;
+    let vivo = true;
+    const t = setTimeout(async () => {
+      setCarregando(true); const r = await taticoBuscarAction(q.trim()); if (vivo) { setLista(r); setCarregando(false); }
+    }, q.trim().length >= 2 ? 300 : 0);
+    return () => { vivo = false; clearTimeout(t); };
+  }, [aberto, q]);
+  useEffect(() => {
+    const h = (e: Event) => {
+      const d = (e as CustomEvent<{ status: string; para?: string }>).detail;
+      if (!d) return;
+      setEsp(null);
+      if (d.status === "recusado") setMsg(`${d.para ?? "O aluno"} recusou o desafio.`);
+      else if (d.status === "expirado") setMsg(`${d.para ?? "O aluno"} não respondeu ao desafio.`);
+    };
+    window.addEventListener(EVENTO_DESAFIO, h); return () => window.removeEventListener(EVENTO_DESAFIO, h);
+  }, []);
+
+  const desafiar = async (a: AlunoBusca) => {
+    setMsg(null);
+    const r = await taticoDesafiarAction(a.id);
+    if (!r.ok) { setMsg(r.erro ?? "Não foi possível desafiar."); return; }
+    setEsp({ id: r.id!, para: r.para ?? a.name }); setAberto(false);
+  };
+  const cancelar = async () => { if (esp) await taticoCancelarDesafioAction(esp.id); setEsp(null); };
+
+  if (esp) {
+    return (
+      <div className="tt-desafio" data-testid="tatico-aguardando" role="status">
+        <p><b>Desafio enviado para {esp.para}</b></p>
+        <p style={{ fontSize: 12, color: "#bbb" }}>Aguardando resposta… (expira em 60 s)</p>
+        <button onClick={cancelar} className="mt-2 rounded-[10px] border border-white/40 px-4 py-2 text-[14px]">Cancelar desafio</button>
+      </div>
+    );
+  }
+  return (
+    <div style={{ marginTop: 10 }}>
+      <button onClick={() => { setAberto((v) => !v); setMsg(null); }} data-testid="tatico-desafiar-aluno" className="rounded-[10px] border border-white/60 px-5 py-2 text-[15px] font-bold text-white active:scale-[.97]">
+        {aberto ? "FECHAR" : "DESAFIAR UM ALUNO"}
+      </button>
+      {msg && <p role="alert" data-testid="tatico-msg-desafio" style={{ color: "#ffb4ba", fontSize: 13, marginTop: 6 }}>{msg}</p>}
+      {aberto && (
+        <div className="tt-desafio" data-testid="tatico-lista-alunos">
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar aluno pelo nome (2+ letras)" aria-label="Buscar aluno" className="tt-busca" />
+          <ul>
+            {lista.map((a) => (
+              <li key={a.id}>
+                <span><i className={`tt-dot ${a.online ? "on" : ""}`} aria-hidden />{a.name}<small>{a.online ? " · online" : ""}</small></span>
+                <button onClick={() => desafiar(a)} data-testid="tatico-desafiar-btn">Desafiar</button>
+              </li>
+            ))}
+            {!carregando && lista.length === 0 && <li className="vazio">{q.trim().length >= 2 ? "Nenhum aluno encontrado." : "Ninguém online agora. Busque um aluno pelo nome."}</li>}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }

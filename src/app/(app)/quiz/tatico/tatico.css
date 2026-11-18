@@ -155,3 +155,44 @@ body.tt-imersivo .mentor-flut,body.tt-imersivo [data-testid="mentor-flutuante"],
 .tt-ammo .tt-lbl{font-style:normal;font-weight:500;font-size:18px;font-family:"Barlow Semi Condensed",system-ui,sans-serif;margin-top:12px}
 .tt-ammo .n{font-size:46px;line-height:1.05}
 .tt-ammo .cart{position:absolute;right:22px;top:26px;width:24px;height:50px;opacity:1}
+
+/* desafio direto */
+.tt-vs{height:62px;flex-wrap:wrap;align-content:center;row-gap:0}
+.tt-vs .nm{flex:1}
+.tt-vs .st{flex:0 0 100%;font-size:15px;color:#ffd24a;letter-spacing:.08em;line-height:1}
+.tt-vs .st.ok{color:#28d46a}
+.tt-tg.opp::before{content:"";position:absolute;inset:-9px;border:2px dashed #ffd24a;border-radius:10px;pointer-events:none}
+.tt-tg .adv{position:absolute;left:50%;bottom:-26px;transform:translateX(-50%);font:italic 800 18px "Barlow Condensed",system-ui,sans-serif;color:#ffd24a;text-shadow:0 0 8px #000;white-space:nowrap}
+.tt-opt.opp::after{content:"ADV.";position:absolute;right:14px;top:8px;font:italic 800 16px "Barlow Condensed",system-ui,sans-serif;color:#ffd24a}
+.tt-oppflash{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 120px 30px rgba(255,210,74,.45);animation:tt-opp .5s ease-out forwards}
+@keyframes tt-opp{from{opacity:1}to{opacity:0}}
+.tt-desafio{margin:10px auto 0;max-width:380px;padding:12px;background:rgba(0,0,0,.72);border:1px solid rgba(255,255,255,.3);border-radius:12px;text-align:left;color:#fff}
+.tt-desafio p{text-align:center}
+.tt-busca{width:100%;min-height:44px;padding:8px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.35);background:#0b0b0d;color:#fff;font-size:15px}
+.tt-desafio ul{margin-top:8px;max-height:240px;overflow-y:auto}
+.tt-desafio li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 4px;border-bottom:1px solid rgba(255,255,255,.1);font-size:15px}
+.tt-desafio li.vazio{justify-content:center;color:#bbb;font-size:13px}
+.tt-desafio li small{color:#3ddc84}
+.tt-desafio li button{min-height:38px;padding:0 14px;border-radius:9px;background:#c9141f;color:#fff;font-weight:800;font-size:14px}
+.tt-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#666;margin-right:8px}
+.tt-dot.on{background:#3ddc84;box-shadow:0 0 8px #3ddc84}
+
+/* carregamento (vídeo) + espera no estande */
+.tt-load{position:fixed;inset:0;z-index:1100;background:#000;overflow:hidden;font-family:"Barlow Condensed",system-ui,sans-serif;color:#fff}
+.tt-load video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scale(1.14);transform-origin:0 0}
+.tt-load-grad{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.15) 0%,rgba(0,0,0,0) 45%,rgba(0,0,0,.85) 100%)}
+.tt-load-bar{position:absolute;left:50%;bottom:max(34px,env(safe-area-inset-bottom));transform:translateX(-50%);width:min(560px,86vw)}
+.tt-load-top{display:flex;justify-content:space-between;align-items:baseline;font-style:italic;font-weight:800;letter-spacing:.14em;font-size:20px}
+.tt-load-top b{font-size:28px;color:#ff3b4a;font-variant-numeric:tabular-nums}
+.tt-load-trilho{height:12px;margin-top:6px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);clip-path:polygon(8px 0,100% 0,calc(100% - 8px) 100%,0 100%);overflow:hidden}
+.tt-load-trilho i{display:block;height:100%;background:linear-gradient(90deg,#8a0a14,#e5202e 60%,#ff6b74);box-shadow:0 0 16px rgba(229,32,46,.9)}
+.tt-load-bar p{margin-top:8px;font-size:15px;letter-spacing:.12em;color:#d8d8dd;text-align:center;font-weight:600}
+.tt-espera-bg{position:absolute;inset:0;background:#000 url(/tatico/estande.webp) center/cover;filter:brightness(.55)}
+.tt-espera{position:relative;margin:auto;width:min(460px,90vw);text-align:center;padding:26px 22px;border:1.5px solid #e5202e;border-radius:14px;background:rgba(8,8,10,.82);box-shadow:0 0 40px rgba(229,32,46,.4);font-family:"Barlow Semi Condensed",system-ui,sans-serif}
+.tt-espera .k{font:italic 800 13px "Barlow Condensed",system-ui,sans-serif;letter-spacing:.2em;color:#ff4d5a}
+.tt-espera h2{font:italic 800 34px "Barlow Condensed",system-ui,sans-serif;margin:4px 0 12px}
+.tt-espera .d{font-size:14px;color:#cfcfd4;margin-top:12px}
+.tt-espera button{margin-top:14px;min-height:44px;padding:0 22px;border:1px solid rgba(255,255,255,.45);border-radius:10px;color:#fff}
+.tt-load-trilho.ind i{width:35%;animation:tt-ind 1.1s ease-in-out infinite}
+@keyframes tt-ind{0%{transform:translateX(-100%)}100%{transform:translateX(300%)}}
+@media (prefers-reduced-motion:reduce){.tt-load-trilho.ind i{animation:none;width:100%}}
