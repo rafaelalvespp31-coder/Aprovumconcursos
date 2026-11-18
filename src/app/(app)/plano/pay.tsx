@@ -103,7 +103,10 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
     return () => clearInterval(t);
   }, [expMs, result?.status]);
   useEffect(() => {
-    if (result?.status === "aprovado") onPaid();
+    if (result?.status === "aprovado") {
+      onPaid();
+      window.dispatchEvent(new Event("boas-vindas:checar"));
+    }
   }, [result?.status, onPaid]);
 
   const o = OFFERS[offer];
