@@ -65,7 +65,7 @@
 .tt-cd{position:absolute;inset:0;display:grid;place-items:center;background:rgba(0,0,0,.55);font-size:260px;font-weight:900;font-style:italic;color:#e5202e;text-shadow:0 0 50px rgba(229,32,46,.9)}
 .tt-cd span{animation:tt-pop 1s ease-out infinite}
 .tt-sd{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 160px 20px rgba(229,32,46,.55);animation:tt-pulse .8s infinite alternate}
-.tt-wait{position:absolute;left:442px;top:630px;width:796px;text-align:center;font-size:30px;font-weight:700;letter-spacing:.06em;color:#ffd24a;text-shadow:0 0 10px #000}
+.tt-wait{position:absolute;left:442px;top:872px;width:796px;text-align:center;font-size:30px;font-weight:700;letter-spacing:.06em;color:#ffd24a;text-shadow:0 0 10px #000}
 @keyframes tt-pulse{from{opacity:.55}to{opacity:1}}
 @keyframes tt-hole{from{transform:scale(2.4);opacity:0}to{transform:scale(1);opacity:1}}
 @keyframes tt-spark{from{transform:scale(.4);opacity:1}to{transform:scale(1.8);opacity:0}}
@@ -203,3 +203,10 @@ body.tt-imersivo .mentor-flut,body.tt-imersivo [data-testid="mentor-flutuante"],
 .tt-mat em{font-style:italic;font-weight:800;font-size:15px;letter-spacing:.14em;color:#ff4d5a;margin-right:6px}
 .tt-mat .sep{flex:none;width:2px;height:18px;background:#e5202e;max-width:none}
 .tt-wait.vez{color:#28d46a;animation:tt-pulse .6s infinite alternate}
+
+/* celular em pé: palco em paisagem girado 90° (arte de referência inteira, sem cortes) */
+.tt-fill{flex:1;min-height:0;display:flex;flex-direction:column;position:relative}
+.tt-rot{position:absolute;left:0;top:0;width:100dvh;height:100vw;transform-origin:0 0;transform:translateX(100vw) rotate(90deg);display:flex;flex-direction:column;overflow:hidden;background:#000}
+.tt-rot .tt-ctl{position:absolute;right:auto;left:50%;bottom:3px;transform:translateX(-50%);padding:0;background:transparent;z-index:7}
+.tt-rot .tt-ctl button{min-height:24px;padding:2px 9px;font-size:10px;border-radius:6px;opacity:.75}
+.tt-rot .tt-toast{top:6px;font-size:12px;padding:5px 10px}

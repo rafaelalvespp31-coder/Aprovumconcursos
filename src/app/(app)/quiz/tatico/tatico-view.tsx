@@ -132,7 +132,7 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
               <div className="tt-panel tt-hud-l">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/tatico/caveira.webp" alt="" />
-                <div><div className="tt-lbl">PONTUAÇÃO</div><div className="tt-big">{s.me.hits}<small>PTS</small></div></div>
+                <div><div className="tt-lbl">PONTUAÇÃO</div><div className="tt-big">{s.me.hits * 100}<small>XP</small></div></div>
               </div>
               <div className="tt-panel tt-seq"><div className="tt-lbl">SEQUÊNCIA</div><div className="tt-big">{s.me.streak}x</div></div>
               <div className={`tt-panel red tt-timer ${s.phase === "responder" && ms < 6000 ? "low" : ""}`} data-testid="tatico-timer">
@@ -161,7 +161,7 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
                 <div className="info">
                   <div className="tt-lbl" style={{ color: "#fff", fontSize: 24 }}>NÍVEL {nivel.level}</div>
                   <div className="bar"><i style={{ width: `${nivel.into * 10}%` }} /></div>
-                  <div className="lt2"><b>{nivel.into}</b> / 10 QUESTÕES</div>
+                  <div className="lt2"><b>{nivel.into * 100}</b> / 1.000 XP</div>
                 </div>
               </div>
               <div className="tt-panel tt-ammo">
@@ -230,7 +230,7 @@ export function TaticoView({ inicial, nivel, retomar }: { retomar: boolean; inic
   const busy = useRef(false);
 
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 760px)"); const f = () => setPortrait(mq.matches); f(); mq.addEventListener("change", f);
+    const mq = window.matchMedia("(max-width: 900px) and (orientation: portrait)"); const f = () => setPortrait(mq.matches); f(); mq.addEventListener("change", f);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- preferência lida só no cliente
     setSom(localStorage.getItem("tt-som") !== "off");
     setNoFx(localStorage.getItem("tt-fx") === "off" || window.matchMedia("(prefers-reduced-motion: reduce)").matches);
@@ -311,13 +311,16 @@ export function TaticoView({ inicial, nivel, retomar }: { retomar: boolean; inic
   if (s.estado === "partida" && !fim && entrou) {
     return (
       <div className="tt-full" data-testid="tatico-tela-cheia">
-        <Cena espectro={espectro} oppShot={oppShot} breathClock={som && !noFx ? (now) => audio.breathTime(now) : undefined} s={s} at={at} nivel={nivel} noFx={noFx} portrait={portrait} onShoot={atirar} shot={shot} />
+        {/* celular em pé: o estande inteiro (idêntico à arte de referência) gira 90° e ocupa a tela toda, como um jogo em paisagem */}
+        <div className={portrait ? "tt-rot" : "tt-fill"}>
+        <Cena espectro={espectro} oppShot={oppShot} breathClock={som && !noFx ? (now) => audio.breathTime(now) : undefined} s={s} at={at} nivel={nivel} noFx={noFx} portrait={false} onShoot={atirar} shot={shot} />
         {erro && <p role="alert" className="tt-toast">{erro}</p>}
         <div className="tt-ctl">
           <button data-testid="tatico-som" onClick={() => { const v = !som; setSom(v); localStorage.setItem("tt-som", v ? "on" : "off"); if (v) audio.start(); else audio.stop(); }}>{som ? "Som: ligado" : "Som: desligado"}</button>
           <button onClick={() => { const v = !noFx; setNoFx(v); localStorage.setItem("tt-fx", v ? "off" : "on"); }}>{noFx ? "Efeitos: reduzidos" : "Efeitos: completos"}</button>
           {s.solo && <button onClick={encerrarTreino} data-testid="tatico-encerrar-treino" style={{ borderColor: "#ffd24a", color: "#ffd24a" }}>Encerrar treino</button>}
           <button onClick={() => { if (window.confirm("Sair da partida? Ela continua valendo e você pode voltar enquanto estiver em andamento.")) { sairTelaCheia(); router.push("/quiz"); } }}>Sair</button>
+        </div>
         </div>
       </div>
     );
