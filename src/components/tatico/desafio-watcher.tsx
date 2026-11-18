@@ -74,7 +74,7 @@ export function DesafioWatcher() {
       {ent && restante > 0 && (
         <div className="dsf-card" role="alertdialog" aria-labelledby="dsf-t" data-testid="desafio-card">
           <div className="dsf-topo"><span className="dsf-ico" aria-hidden>⚔</span><div><p className="dsf-kick">DESAFIO TÁTICO</p><p id="dsf-t" className="dsf-nome"><b>{ent.d.de}</b> te desafiou!</p></div></div>
-          <p className="dsf-sub">10 questões ao vivo · vitória +200 XP · derrota −100 XP</p>
+          <p className="dsf-sub">{ent.d.materia ? <b className="dsf-mat">{ent.d.materia}</b> : "Todas as matérias"} · 10 questões ao vivo · +200 / −100 XP</p>
           <div className="dsf-barra" aria-hidden><i style={{ width: `${Math.min(100, (restante / 60000) * 100)}%` }} /></div>
           <div className="dsf-btns">
             <button className="dsf-aceitar" disabled={busy} onClick={() => responder(true)} data-testid="desafio-aceitar">ACEITAR</button>

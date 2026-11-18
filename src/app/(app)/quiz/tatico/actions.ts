@@ -1,6 +1,6 @@
 "use server";
 
-import { taticoBuscar, taticoCancelarDesafio, taticoDesafiar, taticoDesafios, taticoResponderDesafio, taticoEntrar, taticoEntrarSolo, taticoEncerrarTreino, taticoEstado, taticoResponder, taticoRevisao, taticoSairFila, taticoStats, type AlunoBusca, type DesafiosEstado, type TaticoEstado, type TaticoRevisao, type TaticoStats } from "@/server/services/tatico";
+import { taticoMaterias, type MateriaDesafio, taticoBuscar, taticoCancelarDesafio, taticoDesafiar, taticoDesafios, taticoResponderDesafio, taticoEntrar, taticoEntrarSolo, taticoEncerrarTreino, taticoEstado, taticoResponder, taticoRevisao, taticoSairFila, taticoStats, type AlunoBusca, type DesafiosEstado, type TaticoEstado, type TaticoRevisao, type TaticoStats } from "@/server/services/tatico";
 import { UserFacingError } from "@/server/services/trails";
 
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -34,9 +34,13 @@ export async function taticoEncerrarTreinoAction(): Promise<{ ok: true; s: Tatic
 export async function taticoBuscarAction(q: string): Promise<AlunoBusca[]> {
   try { return await taticoBuscar(typeof q === "string" ? q : ""); } catch { return []; }
 }
-export async function taticoDesafiarAction(alvo: string): Promise<{ ok: boolean; id?: string; para?: string; erro?: string }> {
+export async function taticoMateriasAction(): Promise<MateriaDesafio[]> {
+  try { return await taticoMaterias(); } catch { return []; }
+}
+export async function taticoDesafiarAction(alvo: string, materia?: string | null): Promise<{ ok: boolean; id?: string; para?: string; materia?: string | null; erro?: string }> {
   if (!UUID.test(alvo)) return { ok: false, erro: "Aluno inválido." };
-  try { return await taticoDesafiar(alvo); } catch (e) { return { ok: false, erro: falha(e) }; }
+  const mat = typeof materia === "string" && materia.length <= 80 ? materia : null;
+  try { return await taticoDesafiar(alvo, mat); } catch (e) { return { ok: false, erro: falha(e) }; }
 }
 export async function taticoDesafiosAction(): Promise<DesafiosEstado | null> {
   try { return await taticoDesafios(); } catch { return null; }

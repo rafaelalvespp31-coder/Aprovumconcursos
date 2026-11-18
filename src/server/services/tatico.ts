@@ -84,11 +84,12 @@ export async function taticoRevisao(match: string): Promise<TaticoRevisao> {
 
 export type AlunoBusca = { id: string; name: string; online: boolean };
 export type DesafiosEstado = {
-  entrada: { id: string; de: string; ms: number } | null;
-  saida: { id: string; para: string; status: "pendente" | "aceito" | "recusado" | "expirado" | "cancelado"; reason: string | null; match: string | null; ms: number } | null;
+  entrada: { id: string; de: string; materia?: string | null; ms: number } | null;
+  saida: { id: string; para: string; materia?: string | null; status: "pendente" | "aceito" | "recusado" | "expirado" | "cancelado"; reason: string | null; match: string | null; ms: number } | null;
 };
 const ERROS_DESAFIO: Record<string, string> = {
   aluno_invalido: "Aluno inválido.",
+  materia_invalida: "Matéria indisponível no momento.",
   seu_limite: "Você já usou os 3 desafios de hoje.",
   limite_dele: "Esse aluno já usou os 3 desafios de hoje.",
   voce_em_partida: "Você já está em uma partida.",
@@ -101,9 +102,17 @@ export async function taticoBuscar(q: string): Promise<AlunoBusca[]> {
   const u = await requireUser("/quiz");
   return (await rpc<AlunoBusca[] | null>("tatico_buscar", { p_user: u.id, p_q: q.slice(0, 40) })) ?? [];
 }
-export async function taticoDesafiar(alvo: string): Promise<{ ok: boolean; id?: string; para?: string; erro?: string }> {
+export type MateriaDesafio = { materia: string; n: number };
+/** Matérias com questões suficientes para uma partida (para o desafiante escolher). */
+export async function taticoMaterias(): Promise<MateriaDesafio[]> {
+  await requireUser("/quiz");
+  const { data, error } = await createAdminClient().rpc("tatico_materias");
+  if (error) return [];
+  return ((data ?? []) as { materia: string; n: number | string }[]).map((m) => ({ materia: m.materia, n: Number(m.n) }));
+}
+export async function taticoDesafiar(alvo: string, materia?: string | null): Promise<{ ok: boolean; id?: string; para?: string; materia?: string | null; erro?: string }> {
   const u = await requireUser("/quiz");
-  const r = await rpc<{ ok: boolean; id?: string; para?: string; erro?: string }>("tatico_desafiar", { p_user: u.id, p_target: alvo });
+  const r = await rpc<{ ok: boolean; id?: string; para?: string; materia?: string | null; erro?: string }>("tatico_desafiar", { p_user: u.id, p_target: alvo, p_materia: materia || null });
   return r.ok ? r : { ok: false, erro: ERROS_DESAFIO[r.erro ?? ""] ?? "Não foi possível desafiar agora." };
 }
 export async function taticoDesafios(): Promise<DesafiosEstado> {

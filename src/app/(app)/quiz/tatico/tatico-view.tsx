@@ -7,8 +7,9 @@ import { SoldierAudio } from "@/components/knowledge-map/soldier-audio";
 import { breathAt } from "@/components/knowledge-map/breath";
 import { EVENTO_DESAFIO } from "@/components/tatico/desafio-watcher";
 import { Carregando, EsperaEstande } from "./carregando";
-import { taticoStatsAction, taticoEncerrarTreinoAction, taticoBuscarAction, taticoCancelarDesafioAction, taticoDesafiarAction, taticoEntrarSoloAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
-import type { AlunoBusca, TaticoEstado, TaticoQuestao, TaticoRevisao, TaticoStats } from "@/server/services/tatico";
+import { Lobby } from "./lobby";
+import { taticoStatsAction, taticoEncerrarTreinoAction, taticoEntrarSoloAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
+import type { TaticoEstado, TaticoQuestao, TaticoRevisao, TaticoStats } from "@/server/services/tatico";
 import "./tatico.css";
 
 type Partida = Extract<TaticoEstado, { estado: "partida" }>;
@@ -337,71 +338,6 @@ export function TaticoView({ inicial, nivel, admin, retomar }: { retomar: boolea
   );
 }
 
-function Lobby({ s, stats, erro, admin, onSolo, onRetomar, onEncerrar }: { onEncerrar: () => void; onRetomar: () => void; admin: boolean; onSolo: () => void; s: TaticoEstado; stats: TaticoStats; erro: string | null }) {
-  const usados = "usados" in s && typeof s.usados === "number" ? s.usados : 0;
-  const esgotado = s.estado === "limite" || usados >= 3;
-  const wr = stats && stats.partidas ? Math.round((100 * stats.vitorias) / stats.partidas) : 0;
-  return (
-    <div className="tt-page" data-testid="tatico-lobby">
-      <div className="tt-page-in">
-        <div style={{ minHeight: "calc(100dvh - 48px)", display: "grid", placeItems: "center", textAlign: "center" }}>
-          <div>
-            <p style={{ fontSize: 12, letterSpacing: ".2em", color: "#e5202e", fontWeight: 800 }}>MODO JOGO · 1 x 1</p>
-            <h1 style={{ fontSize: "clamp(26px,6vw,44px)", fontWeight: 900, fontStyle: "italic", lineHeight: 1.05 }}>DESAFIO TÁTICO</h1>
-            <p style={{ fontSize: 14, margin: "8px auto 14px", maxWidth: 420, color: "#ddd" }}>10 questões reais contra outro aluno, ao vivo. Vitória +200 XP · derrota −100 XP. Empate vai para a morte súbita.</p>
-            {s.estado === "partida" && s.phase !== "fim" && (
-              <div className="tt-desafio" data-testid="tatico-andamento" role="status" style={{ marginBottom: 12 }}>
-                <p><b>{s.solo ? "Seu treino ainda está aberto" : "Você tem uma partida em andamento"}</b></p>
-                <button onClick={onRetomar} className="mt-2 rounded-[10px] bg-[#c9141f] px-5 py-2 text-[14px] font-extrabold text-white active:scale-[.97]">VOLTAR AO ESTANDE</button>
-                {s.solo && <button onClick={onEncerrar} data-testid="tatico-encerrar-treino-lobby" className="ml-2 mt-2 rounded-[10px] border border-[#ffd24a] px-5 py-2 text-[14px] font-bold text-[#ffd24a] active:scale-[.97]">ENCERRAR TREINO</button>}
-              </div>
-            )}
-            {esgotado ? (
-              <p style={{ fontWeight: 800, color: "#ffd24a" }}>Você usou os 3 desafios de hoje. Volte amanhã.</p>
-            ) : s.estado === "sem_questoes" ? (
-              <p style={{ fontWeight: 800, color: "#ffd24a" }}>Ainda não há questões suficientes para o desafio.</p>
-            ) : (
-              <DesafiarAluno />
-            )}
-            {admin && (
-              <div style={{ marginTop: 10 }}>
-                <button onClick={onSolo} data-testid="tatico-solo" className="rounded-[10px] border border-[#ffd24a] px-4 py-2 text-[14px] font-bold text-[#ffd24a] active:scale-[.97]">TREINO (admin)</button>
-                <p style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>Entra no estande sozinho, sem adversário, sem XP e sem gastar o limite diário.</p>
-              </div>
-            )}
-            <p style={{ fontSize: 13, marginTop: 10, color: "#ccc" }}>Desafios hoje: <b>{Math.min(3, usados)}/3</b></p>
-            {erro && <p role="alert" style={{ color: "#ff8a93", fontSize: 13 }}>{erro}</p>}
-          </div>
-        </div>
-      {stats && stats.partidas > 0 && (
-        <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="tatico-stats">
-          {[["Partidas", stats.partidas], ["Vitórias", `${stats.vitorias} (${wr}%)`], ["Derrotas", stats.derrotas], ["Melhor sequência", stats.melhorSequencia], ["XP ganho", `+${stats.xpGanho}`], ["XP perdido", `−${stats.xpPerdido}`], ["Acertos", stats.acertos], ["Erros", stats.erros]].map(([a, b]) => (
-            <div key={String(a)} className="rounded-[12px] border border-white/15 bg-black/60 text-white p-3"><p className="text-[12px] text-white/70">{a}</p><p className="text-[18px] font-extrabold">{b}</p></div>
-          ))}
-        </div>
-      )}
-      {stats && stats.recentes.length > 0 && (
-        <ul className="mt-4 space-y-1" aria-label="Histórico">
-          {stats.recentes.map((h) => (
-            <li key={h.match} className="flex items-center justify-between rounded-[10px] border border-white/15 bg-black/60 text-white px-3 py-2 text-[14px]">
-              <span className={h.venceu ? "font-bold text-[#3ddc84]" : "font-bold text-[#ff6b78]"}>{h.venceu ? "Vitória" : "Derrota"}{h.desempate ? " · morte súbita" : ""}</span>
-              <span className="text-white/70">{h.acertos} acertos · {h.erros} erros · {new Date(h.quando).toLocaleDateString("pt-BR")}</span>
-            </li>
-          ))}
-        </ul>
-      )}
-      {stats && stats.assuntos.length > 0 && (
-        <div className="mt-4 rounded-[12px] border border-white/15 bg-black/60 text-white p-3">
-          <p className="text-[13px] font-bold">Assuntos para reforçar</p>
-          <ul className="mt-1 text-[14px]">{stats.assuntos.slice(0, 4).map((a) => <li key={a.assunto}>{a.assunto}: {a.taxa}% ({a.acertos}/{a.total})</li>)}</ul>
-        </div>
-      )}
-      <Link href="/quiz" className="mt-4 mb-6 inline-block text-[14px] text-white underline">← Voltar ao Modo Jogo</Link>
-      </div>
-    </div>
-  );
-}
-
 function Resultado({ s, rev, onNova }: { s: Partida; rev: TaticoRevisao; onNova: () => void }) {
   const win = s.winner === true;
   return (
@@ -435,70 +371,3 @@ function Resultado({ s, rev, onNova }: { s: Partida; rev: TaticoRevisao; onNova:
 }
 
 /** Escolher qual aluno desafiar: online agora primeiro, busca por nome; mostra a espera pela resposta em tempo real. */
-function DesafiarAluno() {
-  const [aberto, setAberto] = useState(true);
-  const [q, setQ] = useState("");
-  const [lista, setLista] = useState<AlunoBusca[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [esp, setEsp] = useState<{ id: string; para: string } | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!aberto) return;
-    let vivo = true;
-    const buscar = async () => { const r = await taticoBuscarAction(q.trim()); if (vivo) { setLista(r); setCarregando(false); } };
-    const t = setTimeout(buscar, q.trim().length >= 2 ? 300 : 0);
-    const iv = setInterval(buscar, 5000);        // quem entra/sai da plataforma aparece/some sozinho
-    return () => { vivo = false; clearTimeout(t); clearInterval(iv); };
-  }, [aberto, q]);
-  useEffect(() => {
-    const h = (e: Event) => {
-      const d = (e as CustomEvent<{ status: string; para?: string }>).detail;
-      if (!d) return;
-      setEsp(null);
-      if (d.status === "recusado") setMsg(`${d.para ?? "O aluno"} recusou o desafio.`);
-      else if (d.status === "expirado") setMsg(`${d.para ?? "O aluno"} não respondeu ao desafio.`);
-    };
-    window.addEventListener(EVENTO_DESAFIO, h); return () => window.removeEventListener(EVENTO_DESAFIO, h);
-  }, []);
-
-  const desafiar = async (a: AlunoBusca) => {
-    setMsg(null);
-    const r = await taticoDesafiarAction(a.id);
-    if (!r.ok) { setMsg(r.erro ?? "Não foi possível desafiar."); return; }
-    setEsp({ id: r.id!, para: r.para ?? a.name }); setAberto(false);
-  };
-  const cancelar = async () => { if (esp) await taticoCancelarDesafioAction(esp.id); setEsp(null); };
-
-  if (esp) {
-    return (
-      <div className="tt-desafio" data-testid="tatico-aguardando" role="status">
-        <p><b>Desafio enviado para {esp.para}</b></p>
-        <p style={{ fontSize: 12, color: "#bbb" }}>Aguardando resposta… (expira em 60 s)</p>
-        <button onClick={cancelar} className="mt-2 rounded-[10px] border border-white/40 px-4 py-2 text-[14px]">Cancelar desafio</button>
-      </div>
-    );
-  }
-  return (
-    <div style={{ marginTop: 10 }}>
-      <button onClick={() => { setAberto((v) => !v); setMsg(null); }} data-testid="tatico-desafiar-aluno" className="rounded-[10px] border border-white/60 px-5 py-2 text-[15px] font-bold text-white active:scale-[.97]">
-        {aberto ? "FECHAR LISTA" : "DESAFIAR UM ALUNO"}
-      </button>
-      {msg && <p role="alert" data-testid="tatico-msg-desafio" style={{ color: "#ffb4ba", fontSize: 13, marginTop: 6 }}>{msg}</p>}
-      {aberto && (
-        <div className="tt-desafio" data-testid="tatico-lista-alunos">
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar aluno pelo nome (2+ letras)" aria-label="Buscar aluno" className="tt-busca" />
-          <ul>
-            {lista.map((a) => (
-              <li key={a.id}>
-                <span><i className="tt-dot on" aria-hidden />{a.name}<small> · online</small></span>
-                <button onClick={() => desafiar(a)} data-testid="tatico-desafiar-btn">Desafiar</button>
-              </li>
-            ))}
-            {!carregando && lista.length === 0 && <li className="vazio">{q.trim().length >= 2 ? "Nenhum aluno online com esse nome." : "Nenhum outro aluno online no momento."}</li>}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
-}
