@@ -1,6 +1,6 @@
 "use server";
 
-import { checkAnswer, getRanking, startRound, type QuizCheck, type QuizRound, type RankingRow } from "@/server/services/quiz";
+import { checkAnswer, getRanking, startRound, type QuizCheck, type QuizRound, type PeriodoRanking, type RankingRow } from "@/server/services/quiz";
 import { UserFacingError } from "@/server/services/trails";
 import { requireUser } from "@/server/auth";
 import { createUserClient } from "@/server/supabase";
@@ -25,9 +25,9 @@ export async function checkAnswerAction(topicId: string, nodeKey: string, given:
   }
 }
 
-export async function rankingAction(): Promise<{ ok: true; rows: RankingRow[] } | { ok: false; error: string }> {
+export async function rankingAction(periodo: PeriodoRanking = "geral"): Promise<{ ok: true; rows: RankingRow[] } | { ok: false; error: string }> {
   try {
-    return { ok: true, rows: await getRanking(20) };
+    return { ok: true, rows: await getRanking(20, ["hoje", "semana", "geral"].includes(periodo) ? periodo : "geral") };
   } catch {
     return { ok: false, error: "Não foi possível carregar o ranking agora." };
   }

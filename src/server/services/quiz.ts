@@ -325,29 +325,35 @@ export async function checkAnswer(topicId: string, nodeKey: string, given: strin
   };
 }
 
+export type PeriodoRanking = "hoje" | "semana" | "geral";
 export interface RankingRow {
   pos: number;
   name: string;
   xp: number;
   answered: number;
+  hits: number;
   isMe: boolean;
   patente: string;
   motto?: string | null;
+  /** Total de alunos que pontuaram no período (igual em todas as linhas). */
+  total: number;
 }
 
-/** Ranking de todos os alunos (posição, primeiro nome + inicial, XP). */
-export async function getRanking(limit = 20): Promise<RankingRow[]> {
+/** Ranking do Modo Jogo por período. Posições únicas (1, 2, 3…), primeiro nome + inicial, XP. */
+export async function getRanking(limit = 20, periodo: PeriodoRanking = "geral"): Promise<RankingRow[]> {
   await requireUser("/quiz");
   const db = await createUserClient();
-  const { data, error } = await db.rpc("quiz_ranking", { p_limit: limit });
+  const { data, error } = await db.rpc("quiz_ranking", { p_limit: limit, p_period: periodo });
   if (error) throw new Error(error.message);
-  return ((data ?? []) as Array<{ pos: number; name: string; xp: number; answered: number; is_me: boolean; motto: string | null }>).map((r) => ({
+  return ((data ?? []) as Array<{ pos: number; name: string; xp: number; answered: number; hits: number; is_me: boolean; motto: string | null; total: number }>).map((r) => ({
     pos: r.pos,
     name: r.name,
     xp: r.xp,
     answered: r.answered,
+    hits: r.hits,
     isMe: r.is_me,
     motto: r.motto,
+    total: r.total,
     patente: patente(levelFor(r.answered)),
   }));
 }

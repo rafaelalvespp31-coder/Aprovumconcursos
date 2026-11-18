@@ -439,6 +439,11 @@ body {
 .lvl-spark { opacity: 0; animation: lvl-spark-k 1s ease-out both; }
 .lvl-chevron { stroke-dasharray: 80; animation: lvl-chevron-k 0.45s ease-out both; }
 .lvl-row { animation: lvl-row-k 0.4s ease-out both; }
+@keyframes rk-sobe-k { from { opacity: 0; transform: translateY(16px) scale(.97); } to { opacity: 1; transform: none; } }
+@keyframes rk-coroa-k { 0%, 100% { transform: translateY(0) rotate(-4deg); } 50% { transform: translateY(-3px) rotate(4deg); } }
+.rk-sobe { animation: rk-sobe-k .5s cubic-bezier(.22, 1, .36, 1) both; }
+.rk-coroa { animation: rk-coroa-k 2.4s ease-in-out infinite; filter: drop-shadow(0 0 8px rgba(245, 197, 66, .6)); }
+@media (prefers-reduced-motion: reduce) { .rk-sobe, .rk-coroa { animation: none; } }
 dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 
 /* Modo Jogo — Operador animado */

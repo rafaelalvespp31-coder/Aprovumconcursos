@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowRight, Crown, Medal, Trophy, X } from "lucide-react";
+import { ArrowRight, Trophy, X } from "lucide-react";
 import type { QuizLevel, RankingRow } from "@/server/services/quiz";
 import { rankingAction, saveMottoAction } from "./actions";
+import { RankingPainel } from "./ranking-painel";
 
 const MASCOT = "/icons/instrutor-caveira.png";
 
@@ -162,41 +163,7 @@ export function LevelUpDialog({
             </form>
           )}
 
-          {/* Ranking */}
-          <section className="px-4 pb-5 sm:px-6" aria-label="Ranking de todos os alunos">
-            <div className="flex items-center justify-between">
-              <h3 className="font-hud flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.2em] text-white/70">
-                <Crown className="h-4 w-4 text-[#FF3B30]" aria-hidden /> Ranking geral
-              </h3>
-              {me && <span className="font-hud rounded-full bg-[#E10600] px-3 py-1 text-[12px] font-bold">Você: {me.pos}º</span>}
-            </div>
-            <ol className="mt-3 flex flex-col gap-2">
-              {rows === null && !error && Array.from({ length: 5 }, (_, i) => <li key={i} className="h-[52px] animate-pulse rounded-[14px] bg-white/5" />)}
-              {error && <li className="rounded-[14px] bg-white/5 px-4 py-3 text-[14px] text-white/70">{error}</li>}
-              {rows?.length === 0 && <li className="rounded-[14px] bg-white/5 px-4 py-3 text-[14px] text-white/70">Ninguém pontuou ainda. Seja o primeiro.</li>}
-              {rows?.map((r, i) => (
-                <li
-                  key={`${r.pos}-${r.name}-${i}`}
-                  className={`lvl-row font-hud flex items-center gap-3 rounded-[14px] px-3 py-2.5 ${r.isMe ? "bg-gradient-to-r from-[#D90A00] to-[#7A0000] ring-2 ring-white/30" : "bg-[#141414] ring-1 ring-white/5"}`}
-                  style={{ animationDelay: `${(to ? 1300 : 150) + i * 70}ms` }}
-                >
-                  <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[15px] font-bold ${r.pos === 1 ? "bg-[#F5C542] text-black" : r.pos === 2 ? "bg-[#C9CED6] text-black" : r.pos === 3 ? "bg-[#C47A3A] text-black" : r.isMe ? "bg-black/35" : "bg-white/10"}`}>
-                    {r.pos <= 3 ? <Medal className="h-4 w-4" aria-label={`${r.pos}º lugar`} /> : r.pos}
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[15px] font-bold">{r.name}{r.isMe ? " (você)" : ""}</span>
-                    <span className={`block text-[12px] ${r.isMe ? "text-white/80" : "text-white/50"}`}>{r.patente} • {r.answered} questões</span>
-                    {r.motto && <span className={`block truncate text-[11.5px] italic ${r.isMe ? "text-white/90" : "text-white/60"}`} data-testid="ranking-frase">“{r.motto}”</span>}
-                  </span>
-                  <span className="shrink-0 text-right">
-                    <span className="block text-[17px] font-bold tabular-nums">{r.xp}</span>
-                    <span className={`block text-[11px] ${r.isMe ? "text-white/80" : "text-white/50"}`}>XP</span>
-                  </span>
-                </li>
-              ))}
-            </ol>
-            <p className="font-hud mt-3 text-center text-[11.5px] text-white/60">O ranking mostra só o primeiro nome e a inicial do sobrenome.</p>
-          </section>
+          <RankingPainel geral={rows} erro={error} preview={!!previewRows} comNivel={!!to} />
 
           <div className="sticky bottom-0 bg-gradient-to-t from-[#0A0A0A] via-[#0A0A0A] to-transparent px-4 pb-5 pt-3 sm:px-6">
             <button

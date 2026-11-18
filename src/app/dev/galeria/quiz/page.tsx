@@ -35,7 +35,7 @@ const ranking = [
   { pos: 3, name: "Lucas M.", xp: 300, answered: 20, isMe: true },
   { pos: 4, name: "Júlia P.", xp: 210, answered: 17 },
   { pos: 5, name: "Aluno APROVUM", xp: 90, answered: 9 },
-].map((r) => ({ isMe: false, ...r, patente: patente(levelFor(r.answered)) }));
+].map((r) => ({ isMe: false, hits: Math.round(r.answered * 0.8), total: 5, ...r, patente: patente(levelFor(r.answered)) }));
 
 /** Exemplo de prévia: ?nivel=1 abre o popup de passagem de nível; ?ranking=1 o ranking. */
 export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | undefined>> }) {
