@@ -6,6 +6,7 @@ import { StudentsTable } from "./students-table";
 import { listOpenPlanRequests } from "@/server/services/plan-requests";
 import { OFFERS } from "@/domain/plans/offers";
 import { RequestsDone } from "./requests-done";
+import { OnlineAgora } from "./online-agora";
 import { AlunosNotificacoes } from "./notificacoes";
 import { listStudentActivity } from "@/server/services/student-activity";
 
@@ -25,6 +26,7 @@ export default async function StudentsPage() {
         Toda conta nova começa no plano <strong>Gratuito</strong> ({FREE_LIMITS.lessonsPerDay} aula, {FREE_LIMITS.questionsPerDay} questões e {FREE_LIMITS.gameQuestionsPerDay} questões do Modo Jogo
         por dia). Planos pagos (Pro e Premium) são ilimitados até o vencimento; vencido, o aluno volta aos limites do gratuito.
       </p>
+      <OnlineAgora />
       <AlunosNotificacoes initial={atividade} />
       <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5" data-testid="alunos-resumo">
         {(
