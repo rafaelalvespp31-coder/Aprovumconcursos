@@ -50,7 +50,7 @@ function setUser({ plan = "free", end = null as string | null, promoEnd = null a
     : [];
   // Limites do gratuito já esgotados hoje.
   tables.bank_attempts = Array.from({ length: 5 }, (_, i) => ({ id: `b${i}`, user_id: U, created_at: iso(-1000) }));
-  tables.quiz_attempts = Array.from({ length: 5 }, (_, i) => ({ id: `q${i}`, user_id: U, created_at: iso(-1000) }));
+  tables.quiz_attempts = Array.from({ length: 10 }, (_, i) => ({ id: `q${i}`, user_id: U, created_at: iso(-1000) }));
   tables.daily_lesson_access = [{ user_id: U, day: new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date()), lesson_id: "aula-de-hoje" }];
   tables.lessons = [{ id: "aula-de-hoje", title: "Aula de hoje" }];
 }

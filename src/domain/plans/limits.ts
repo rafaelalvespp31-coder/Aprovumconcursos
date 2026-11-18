@@ -9,7 +9,7 @@ export const FREE_LIMITS = {
   /** Questões respondidas por dia no banco de questões e nos cadernos. */
   questionsPerDay: 5,
   /** Questões respondidas por dia no Modo Jogo. */
-  gameQuestionsPerDay: 5,
+  gameQuestionsPerDay: 10,
   /** Redações enviadas para correção por IA por dia (plano pago e degustação seguem o limite geral da redação). */
   redacoesPerDay: 1,
 } as const;
