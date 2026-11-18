@@ -101,6 +101,43 @@ export function alturaMini(its: ItemDesenho[], largo = false): number {
   return Math.max(140, Math.min(largo ? 1500 : 260, Math.ceil(m + 14)));
 }
 
+/** Quanto tempo a caneta leva para escrever/desenhar cada item (a mesma conta da animação). */
+const DT_LETRA = 0.07;
+function comprimentoCurva(pts: Array<[number, number]>): number {
+  let s = 0;
+  for (let i = 1; i < pts.length; i++) s += Math.hypot(pts[i]![0] - pts[i - 1]![0], pts[i]![1] - pts[i - 1]![1]);
+  return s;
+}
+export function duracaoItem(it: ItemDesenho): number {
+  if (it.t === "emoji") return 0.35;
+  if (it.t === "texto") return Math.min(3.2, Math.max(0.5, it.s.length * DT_LETRA));
+  if (it.t === "linha") return Math.min(1.1, Math.max(0.25, Math.hypot(it.x2 - it.x1, it.y2 - it.y1) / 320)) + (it.seta ? 0.2 : 0);
+  if (it.t === "ret") return Math.min(1.3, Math.max(0.4, (2 * (it.w + it.h)) / 800));
+  if (it.t === "circ") return Math.min(1.2, Math.max(0.5, (2 * Math.PI * it.r) / 450));
+  return Math.min(1.6, Math.max(0.35, comprimentoCurva(it.pts as Array<[number, number]>) / 450));
+}
+
+/** Uma caneta só: cada item começa quando o anterior termina (com uma pausa curta de mão), em vez de vários traços ao mesmo tempo. */
+function useAgenda(itens: ItemDesenho[], atraso: (it: ItemDesenho, i: number) => number): number[] {
+  const est = useRef<{ primeiro: ItemDesenho | null; cursor: number; delays: number[] }>({ primeiro: null, cursor: 0, delays: [] });
+  const e = est.current;
+  if (e.primeiro !== (itens[0] ?? null) || e.delays.length > itens.length) { e.primeiro = itens[0] ?? null; e.cursor = 0; e.delays = []; } // outro quadro: recomeça
+  const agora = typeof performance !== "undefined" ? performance.now() : 0;
+  for (let i = e.delays.length; i < itens.length; i++) {
+    const it = itens[i]!;
+    const inicio = Math.max(agora + atraso(it, i) * 1000, e.cursor);
+    e.delays.push((inicio - agora) / 1000);
+    e.cursor = inicio + duracaoItem(it) * 1000 + 110;
+  }
+  return e.delays;
+}
+
+/** Itens do quadro escritos em sequência, por uma única caneta. */
+export function Rabisco({ itens, atraso }: { itens: ItemDesenho[]; atraso: (it: ItemDesenho, i: number) => number }) {
+  const ds = useAgenda(itens, atraso);
+  return <>{itens.map((it, i) => <Traco key={i} it={it} d={ds[i] ?? 0} />)}</>;
+}
+
 /** Caneta que anda sobre o traço enquanto ele é escrito: segue o caminho (offset-path) com um leve balanço de mão. */
 function Pena({ dd, d, dur, c }: { dd: string; d: number; dur: number; c: string }) {
   return (
@@ -119,12 +156,13 @@ export function Traco({ it, d }: { it: ItemDesenho; d: number }) {
   const st = { ["--d" as string]: `${d}s`, stroke: c } as React.CSSProperties;
   if (it.t === "emoji") return <text className="lz-em" x={it.x} y={it.y} fontSize={it.tam} style={{ ["--d" as string]: `${d}s` }}>{it.s}</text>;
   if (it.t === "texto") {
-    // escrita à mão: a tinta aparece da esquerda para a direita no ritmo de uma caneta, com a ponta da caneta andando junto
-    const tam = it.tam ?? 19, larg = it.s.length * tam * 0.5, dur = Math.min(3, Math.max(0.5, it.s.length * 0.075));
-    const v = { ["--d" as string]: `${d}s`, ["--w" as string]: `${dur}s`, ["--n" as string]: Math.max(1, it.s.length) } as React.CSSProperties;
+    // escrita à mão: cada letra aparece no seu momento, na ordem, com a ponta da caneta andando junto
+    const tam = it.tam ?? 19, larg = it.s.length * tam * 0.5, dur = duracaoItem(it), dt = dur / Math.max(1, it.s.length);
     return (
       <g>
-        <text className="lz-tx lz-escrito" x={it.x} y={it.y} style={{ ...v, fill: c, ...(it.tam ? { fontSize: it.tam } : {}) }}>{it.s}</text>
+        <text className="lz-tx lz-letras" x={it.x} y={it.y} style={{ fill: c, ...(it.tam ? { fontSize: it.tam } : {}) }}>
+          {Array.from(it.s).map((ch, i) => <tspan key={i} className="lz-ch" style={{ ["--d" as string]: `${d + i * dt}s` } as React.CSSProperties}>{ch}</tspan>)}
+        </text>
         <Pena dd={`M${it.x} ${it.y - tam * 0.15}L${it.x + larg} ${it.y - tam * 0.15}`} d={d} dur={dur} c={c} />
       </g>
     );
@@ -153,10 +191,10 @@ export function Traco({ it, d }: { it: ItemDesenho; d: number }) {
   }
   if (it.t === "circ") {
     const dc = `M${it.cx - it.r} ${it.cy}a${it.r} ${it.r} 0 1 0 ${2 * it.r} 0a${it.r} ${it.r} 0 1 0 ${-2 * it.r} 0`;
-    return <g><path className="lz-tr" pathLength={1} d={dc} style={st} /><Pena dd={dc} d={d} dur={0.5} c={c} /></g>;
+    return <g><path className="lz-tr" pathLength={1} d={dc} style={{ ...st, animationDuration: `${duracaoItem(it)}s` }} /><Pena dd={dc} d={d} dur={duracaoItem(it)} c={c} /></g>;
   }
   const dcv = `M${it.pts.map(([x, y]) => `${x} ${y}`).join("L")}`;
-  return <g><path className="lz-tr" pathLength={1} d={dcv} style={st} /><Pena dd={dcv} d={d} dur={0.5} c={c} /></g>;
+  return <g><path className="lz-tr" pathLength={1} d={dcv} style={{ ...st, animationDuration: `${duracaoItem(it)}s` }} /><Pena dd={dcv} d={d} dur={duracaoItem(it)} c={c} /></g>;
 }
 
 /**
@@ -421,7 +459,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
                 } else if (v >= nLab) {
                   fig = (
                     <svg className={`lz-svg lz-mini${l.larg ? " lz-mini-largo" : ""}`} viewBox={`0 0 ${l.larg ?? LOUSA_W} ${alturaMini(l.rabisco ?? [], !!l.larg)}`} role="img" aria-label={l.texto || "Desenho"}>
-                      {(l.rabisco ?? []).map((it, i) => <Traco key={i} it={it} d={it.d ?? i * Math.min(0.3, 3.2 / Math.max(1, (l.rabisco ?? []).length))} />)}
+                      <Rabisco itens={l.rabisco ?? []} atraso={(it, i) => it.d ?? i * Math.min(0.3, 3.2 / Math.max(1, (l.rabisco ?? []).length))} />
                     </svg>
                   );
                 }
@@ -446,7 +484,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
             })}
             {desenho.length > 0 && (fim || (sincronizado ? pos > totalFala * 0.75 : pos > total * 0.9) || reduz.current) && (
               <svg className="lz-svg" viewBox={`0 0 ${LOUSA_W} ${LOUSA_H}`} role="img" aria-label="Desenho do exemplo" key={`d${rodada}`}>
-                {desenho.map((it, i) => <Traco key={i} it={it} d={i * 0.4} />)}
+                <Rabisco itens={desenho} atraso={(_it, i) => i * 0.4} />
               </svg>
             )}
           </div>

@@ -36,7 +36,7 @@
 .lz-marc { display: inline-block; width: 26px; height: 26px; margin-left: 4px; vertical-align: -6px; transform-origin: 3px 22px; animation: lz-escreve .3s ease-in-out infinite alternate; pointer-events: none; }
 @keyframes lz-escreve { from { transform: rotate(-4deg) translateY(0); } to { transform: rotate(6deg) translateY(-2px); } }
 .lz-svg { display: block; width: min(100%, 400px); height: auto; margin: 10px auto 0; }
-.lz-tr { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 3; stroke-dasharray: 1; stroke-dashoffset: 1; animation: lz-traco .5s cubic-bezier(.4,.1,.2,1) forwards; animation-delay: var(--d, 0s); }
+.lz-tr { fill: none; stroke-linecap: round; stroke-linejoin: round; stroke-width: 3; stroke-dasharray: 1; stroke-dashoffset: 1; animation: lz-traco .5s linear forwards; animation-delay: var(--d, 0s); }
 .lz-tx { font-family: inherit; font-size: 19px; font-weight: 700; opacity: 0; animation: lz-surge .4s ease-out forwards; animation-delay: var(--d, 0s); }
 @keyframes lz-traco { to { stroke-dashoffset: 0; } }
 @keyframes lz-surge { to { opacity: 1; } }
@@ -150,3 +150,10 @@
 @keyframes lz-mao { from { transform: translate(0, 0) rotate(-2deg); } to { transform: translate(1px, -1.5px) rotate(2deg); } }
 .lz-pronto .lz-pena2 { display: none; }
 @media (prefers-reduced-motion: reduce) { .lz-pena2 { display: none; } }
+
+/* letras escritas uma a uma */
+.lz-tx.lz-letras { opacity: 1; animation: none; white-space: pre; }
+.lz-ch { opacity: 0; animation: lz-letra .16s ease-out var(--d, 0s) both; }
+@keyframes lz-letra { from { opacity: 0; } to { opacity: 1; } }
+.lz-pronto .lz-ch { animation: none; opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .lz-ch { animation: none; opacity: 1; } }
