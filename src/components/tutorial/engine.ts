@@ -41,6 +41,51 @@ async function esperarAlvo(alvos: Alvo[], ate = 2200): Promise<void> {
   while (Date.now() < fim) { if (acharAlvo(alvos)) return; await dormir(120); }
 }
 
+
+/** "Câmera" do tour: mira de enquadramento que desliza e trava no alvo, mais uma vinheta. Só decoração (não captura toque). */
+function criarCamera(reduz: boolean) {
+  const vinheta = document.createElement("div");
+  vinheta.className = "tour-vinheta";
+  const cam = document.createElement("div");
+  cam.className = "tour-cam" + (reduz ? " tour-cam-calma" : "");
+  cam.setAttribute("aria-hidden", "true");
+  cam.innerHTML = "<i></i><i></i><i></i><i></i><b></b>";
+  document.body.append(vinheta, cam);
+  requestAnimationFrame(() => vinheta.classList.add("on"));
+  let alvo: Element | null = null;
+  let raf = 0;
+  let ate = 0;
+  const pos = () => {
+    const ok = alvo && alvo.isConnected && alvo.id !== "driver-dummy-element";
+    const r = ok ? alvo!.getBoundingClientRect() : null;
+    if (!r || r.width < 8 || r.height < 8) { cam.classList.remove("on"); return; }
+    const m = 10;
+    cam.style.transform = `translate(${r.left - m}px, ${r.top - m}px)`;
+    cam.style.width = `${r.width + m * 2}px`;
+    cam.style.height = `${r.height + m * 2}px`;
+    cam.classList.add("on");
+  };
+  const laco = () => { pos(); if (performance.now() < ate) raf = requestAnimationFrame(laco); else raf = 0; };
+  const seguir = (ms: number) => { ate = Math.max(ate, performance.now() + ms); if (!raf) raf = requestAnimationFrame(laco); };
+  const aoMexer = () => seguir(120);
+  window.addEventListener("scroll", aoMexer, true);
+  window.addEventListener("resize", aoMexer);
+  return {
+    focar(el: Element) {
+      alvo = el;
+      cam.classList.remove("trava"); void cam.offsetWidth; cam.classList.add("trava"); // reinicia o "travar foco"
+      seguir(1100); // acompanha a rolagem suave até assentar
+    },
+    remover() {
+      window.removeEventListener("scroll", aoMexer, true);
+      window.removeEventListener("resize", aoMexer);
+      cancelAnimationFrame(raf);
+      cam.classList.remove("on"); vinheta.classList.remove("on");
+      setTimeout(() => { cam.remove(); vinheta.remove(); }, 350);
+    },
+  };
+}
+
 /** Roda o tutorial: Driver.js (carregado só agora) em sessões por página, navegando entre elas. */
 export async function rodarTutorial(t: Tutorial, inicio: number, g: Ganchos): Promise<Controle> {
   const { driver } = await import("driver.js");
@@ -50,6 +95,7 @@ export async function rodarTutorial(t: Tutorial, inicio: number, g: Ganchos): Pr
   let cancelado = false;
   let trocando = false;
   let ultimoGlobal = inicio;
+  const camera = criarCamera(reduz);
 
   const encerrar = () => { trocando = true; try { atual?.destroy(); } catch { /* já destruído */ } atual = null; trocando = false; };
 
@@ -119,17 +165,18 @@ export async function rodarTutorial(t: Tutorial, inicio: number, g: Ganchos): Pr
         const i = document.createElement("i"); i.style.width = `${((gi + 1) / total) * 100}%`; barra.appendChild(i);
         const rot = document.createElement("span"); rot.className = "tour-rotulo"; rot.textContent = rotuloPasso(gi, total);
         const pular = document.createElement("button"); pular.type = "button"; pular.className = "tour-pular"; pular.textContent = "PULAR TOUR";
-        pular.addEventListener("click", () => { const at = ultimoGlobal; encerrar(); cancelado = true; g.aoPular(at); });
+        pular.addEventListener("click", () => { const at = ultimoGlobal; encerrar(); cancelado = true; camera.remover(); g.aoPular(at); });
         extra.append(rot, barra, pular);
         pop.description.insertAdjacentElement("afterend", extra);
       },
-      onHighlightStarted: (_el, _step, { state }) => {
+      onHighlightStarted: (el, _step, { state }) => {
+        if (el) camera.focar(el);
         ultimoGlobal = seg.de + (state.activeIndex ?? 0);
         g.aoPasso(ultimoGlobal);
       },
       onNextClick: (_el, _step, { state, driver: dr }) => {
         const gi = seg.de + (state.activeIndex ?? 0);
-        if (gi >= total - 1) { encerrar(); cancelado = true; g.aoConcluir(); return; }
+        if (gi >= total - 1) { encerrar(); cancelado = true; camera.remover(); g.aoConcluir(); return; }
         if (gi < seg.ate) { dr.moveNext(); return; }
         encerrar();
         void abrir(gi + 1);
@@ -141,7 +188,7 @@ export async function rodarTutorial(t: Tutorial, inicio: number, g: Ganchos): Pr
         encerrar();
         void abrir(gi - 1);
       },
-      onCloseClick: () => { const at = ultimoGlobal; encerrar(); cancelado = true; g.aoPausar(at); },
+      onCloseClick: () => { const at = ultimoGlobal; encerrar(); cancelado = true; camera.remover(); g.aoPausar(at); },
       onDestroyed: () => { if (!trocando) atual = null; },
     });
     atual = d;
@@ -149,5 +196,5 @@ export async function rodarTutorial(t: Tutorial, inicio: number, g: Ganchos): Pr
   };
 
   void abrir(inicio);
-  return { parar: () => { cancelado = true; encerrar(); } };
+  return { parar: () => { cancelado = true; encerrar(); camera.remover(); } };
 }
