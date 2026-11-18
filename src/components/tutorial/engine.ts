@@ -67,16 +67,47 @@ function criarCamera(reduz: boolean) {
   };
   const laco = () => { pos(); if (performance.now() < ate) raf = requestAnimationFrame(laco); else raf = 0; };
   const seguir = (ms: number) => { ate = Math.max(ate, performance.now() + ms); if (!raf) raf = requestAnimationFrame(laco); };
+  // Zoom real no elemento (propriedade `scale`, que não briga com o transform que o app já usa).
+  let zoomEl: HTMLElement | null = null;
+  let zoomAnim: Animation | null = null;
+  const fator = (r: DOMRect) => {
+    const max = r.width < 140 ? 1.25 : 1.12;
+    const f = Math.min(max, (innerWidth * 0.94) / r.width, (innerHeight * 0.7) / r.height);
+    return f < 1.02 ? 1 : f;
+  };
+  const afastar = () => {
+    const e = zoomEl, a = zoomAnim;
+    zoomEl = null; zoomAnim = null;
+    if (!e || !a) return;
+    if (reduz) { a.cancel(); return; }
+    const de = getComputedStyle(e).scale;
+    a.cancel();
+    const volta = e.animate([{ scale: de === "none" ? "1" : de }, { scale: "1" }], { duration: 380, easing: "cubic-bezier(.4, 0, .2, 1)" });
+    volta.onfinish = volta.oncancel = () => volta.cancel();
+  };
+  const aproximar = (el: Element) => {
+    if (reduz || !(el instanceof HTMLElement) || el.id === "driver-dummy-element" || el === document.body) return;
+    const f = fator(el.getBoundingClientRect());
+    if (f === 1) return;
+    zoomEl = el;
+    zoomAnim = el.animate(
+      [{ scale: "1" }, { scale: String(f * 1.05), offset: 0.6 }, { scale: String(f) }],
+      { duration: 800, easing: "cubic-bezier(.22, 1, .36, 1)", fill: "forwards" },
+    );
+  };
   const aoMexer = () => seguir(120);
   window.addEventListener("scroll", aoMexer, true);
   window.addEventListener("resize", aoMexer);
   return {
     focar(el: Element) {
+      afastar(); // zoom out do passo anterior
       alvo = el;
+      aproximar(el); // zoom in neste passo
       cam.classList.remove("trava"); void cam.offsetWidth; cam.classList.add("trava"); // reinicia o "travar foco"
-      seguir(1100); // acompanha a rolagem suave até assentar
+      seguir(1400); // acompanha a rolagem suave até assentar
     },
     remover() {
+      afastar();
       window.removeEventListener("scroll", aoMexer, true);
       window.removeEventListener("resize", aoMexer);
       cancelAnimationFrame(raf);
