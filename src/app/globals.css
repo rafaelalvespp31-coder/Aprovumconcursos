@@ -193,6 +193,23 @@ body {
   mask-image: radial-gradient(ellipse at 70% 40%, #000 30%, transparent 75%);
 }
 
+/* CTAs chamativos do Modo Jogo: anel que pulsa + brilho respirando */
+.jogo-cta { animation: jogo-cta 1.6s ease-in-out infinite; }
+@keyframes jogo-cta {
+  0%, 100% { box-shadow: 0 10px 30px rgba(225, 6, 0, 0.45), 0 0 0 0 rgba(255, 59, 48, 0.55); transform: scale(1); }
+  50% { box-shadow: 0 10px 38px rgba(225, 6, 0, 0.75), 0 0 0 10px rgba(255, 59, 48, 0); transform: scale(1.035); }
+}
+.jogo-tatico { position: relative; isolation: isolate; overflow: hidden; border-color: transparent !important; animation: jogo-tatico-glow 2.2s ease-in-out infinite; }
+.jogo-tatico::before {
+  content: ""; position: absolute; inset: -60%; z-index: -2;
+  background: conic-gradient(from 0deg, #c9141f, #ffb347, #c9141f 30%, #3a0508 55%, #c9141f);
+  animation: jogo-radar 3.5s linear infinite;
+}
+.jogo-tatico::after { content: ""; position: absolute; inset: 2px; z-index: -1; border-radius: 12px; background: linear-gradient(90deg, #2a0709, #0b0b0d); }
+@keyframes jogo-tatico-glow { 0%, 100% { box-shadow: 0 0 18px rgba(229, 32, 46, 0.35); } 50% { box-shadow: 0 0 34px rgba(255, 77, 90, 0.7); } }
+.jogo-tatico .jogo-cta { animation-duration: 1.3s; }
+@media (prefers-reduced-motion: reduce) { .jogo-cta, .jogo-tatico, .jogo-tatico::before { animation: none; } }
+
 /* Foco sempre visível para navegação por teclado */
 :focus-visible {
   outline: 2px solid var(--color-azul);

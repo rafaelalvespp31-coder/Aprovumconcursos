@@ -153,7 +153,7 @@ export function GameBanner({
             <button
               type="button"
               onClick={onStart}
-              className="jogo-shine font-hud flex min-h-12 items-center gap-2 rounded-[14px] bg-[#E10600] px-4 text-[14px] font-bold uppercase tracking-[0.12em] sm:px-6 sm:text-[15px] sm:tracking-[0.16em] text-white shadow-[0_10px_30px_rgba(225,6,0,0.45)] transition-transform hover:-translate-y-0.5 active:scale-95"
+              className="jogo-shine jogo-cta font-hud flex min-h-14 items-center gap-2 rounded-[14px] bg-gradient-to-b from-[#FF2A1F] to-[#C40500] px-5 text-[15px] font-bold uppercase tracking-[0.12em] sm:px-6 sm:text-[15px] sm:tracking-[0.16em] text-white shadow-[0_10px_30px_rgba(225,6,0,0.45)] transition-transform hover:-translate-y-0.5 active:scale-95"
             >
               <Crosshair className="h-5 w-5" aria-hidden /> {started ? "Continuar missão" : "Iniciar missão"}
             </button>

@@ -359,14 +359,14 @@ export function QuizView({
         <Link
           href="/quiz/tatico"
           data-testid="tatico-entrada"
-          className="mb-4 flex items-center justify-between gap-3 rounded-[14px] border border-[#c9141f] bg-gradient-to-r from-[#2a0709] to-[#0b0b0d] px-4 py-3 shadow-[0_0_22px_rgba(229,32,46,.25)] transition active:scale-[.99]"
+          className="jogo-tatico mb-4 flex items-center justify-between gap-3 rounded-[14px] px-4 py-3.5 transition active:scale-[.99]"
         >
           <span>
-            <span className="block text-[11px] font-extrabold tracking-[.18em] text-[#ff4d5a]">NOVO · 1 x 1 AO VIVO</span>
-            <span className="block text-[18px] font-black italic">DESAFIO TÁTICO</span>
+            <span className="flex items-center gap-1.5 text-[11px] font-extrabold tracking-[.18em] text-[#ff4d5a]"><span className="relative flex h-2 w-2"><span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#ff3b30] opacity-75" /><span className="relative inline-flex h-2 w-2 rounded-full bg-[#ff3b30]" /></span>NOVO · 1 x 1 AO VIVO</span>
+            <span className="block text-[22px] font-black italic leading-tight text-white [text-shadow:0_0_16px_rgba(255,30,30,.6)]">DESAFIO TÁTICO</span>
             <span className="block text-[12px] text-white/70">10 questões contra outro aluno · +200 XP / −100 XP · 3 por dia</span>
           </span>
-          <span className="rounded-[10px] bg-[#c9141f] px-4 py-2 text-[14px] font-extrabold">Entrar</span>
+          <span className="jogo-cta jogo-shine rounded-[10px] bg-gradient-to-b from-[#ff2a1f] to-[#c40500] px-5 py-2.5 text-[15px] font-extrabold uppercase tracking-[.08em]">Entrar</span>
         </Link>
         {extra}
         <GameBanner
