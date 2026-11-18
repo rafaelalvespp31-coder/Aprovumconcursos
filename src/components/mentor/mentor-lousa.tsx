@@ -69,53 +69,65 @@ function Marca({ m }: { m: NonNullable<LinhaLousa["marca"]> }) {
 
 /* ===== Escrita à mão: cada letra é desenhada traço a traço, na ordem em que uma pessoa a faria ===== */
 const KG = 1.4; // altura do glifo, em em
-const GD_MS = 200; // quanto a mão leva para desenhar uma letra
 const PenaCtx = createContext<{ el: React.RefObject<HTMLSpanElement | null>; placa: React.RefObject<HTMLDivElement | null> } | null>(null);
 
-/** A caneta (uma só) anda sobre o traço da letra enquanto ela é desenhada e depois descansa. */
-function seguirPena(pen: HTMLElement | null, placa: HTMLElement | null, svg: SVGSVGElement | null, adv: number): (() => void) | undefined {
+/** Duração (ms) de uma letra: as compridas (m, w, ç…) levam mais que as curtas (i, l, .). */
+const duracaoGlifo = (tot: number) => Math.round(Math.min(300, 95 + tot / 11));
+/** Variação humana, fixa por letra: nenhuma letra sai igual à outra (inclinação, altura e tamanho). */
+function humano(h: number) {
+  const r = (k: number) => { const x = Math.sin(h * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
+  return { rot: (r(1) - 0.5) * 5, dy: (r(2) - 0.5) * 0.06, esc: 0.96 + r(3) * 0.08 };
+}
+const suave = (u: number) => u * u * (3 - 2 * u); // a mão acelera e desacelera em cada traço
+
+/** A caneta (uma só) anda sobre o traço da letra, no mesmo ritmo da tinta, e depois descansa. */
+function seguirPena(pen: HTMLElement | null, placa: HTMLElement | null, svg: SVGSVGElement | null, adv: number, tot: number, durMs: number): (() => void) | undefined {
   if (!pen || !placa || !svg) return undefined;
   const paths = [...svg.querySelectorAll("path")];
-  const lens = paths.map((q) => q.getTotalLength()); const tot = lens.reduce((a, b) => a + b, 0) || 1;
+  const lens = paths.map((q) => q.getTotalLength()); const soma = lens.reduce((a, b) => a + b, 0) || 1;
   const r = svg.getBoundingClientRect(); const pr = placa.getBoundingClientRect();
   const ox = r.left - pr.left + placa.scrollLeft; const oy = r.top - pr.top + placa.scrollTop;
   const sx = r.width / adv; const sy = r.height / 1000;
   const t0 = performance.now(); let raf = 0;
   pen.style.opacity = "1";
   const passo = (now: number) => {
-    const p = Math.min(1, (now - t0) / GD_MS);
-    let a = p * tot; let i = 0;
-    while (i < lens.length - 1 && a > lens[i]!) { a -= lens[i]!; i++; }
-    const pt = paths[i]!.getPointAtLength(Math.min(a, lens[i]!));
+    const p = Math.min(1, (now - t0) / durMs);
+    let ini = 0; let i = 0;
+    while (i < lens.length - 1 && p > (ini + lens[i]!) / soma) { ini += lens[i]!; i++; }
+    const u = Math.min(1, Math.max(0, (p * soma - ini) / (lens[i]! || 1)));
+    const pt = paths[i]!.getPointAtLength(suave(u) * lens[i]!);
     const x = ox + pt.x * sx; const y = oy + (pt.y + 800) * sy;
-    pen.style.transform = `translate(${(x - 4).toFixed(1)}px, ${(y - 23).toFixed(1)}px) rotate(${(Math.sin(now / 38) * 3).toFixed(1)}deg)`;
+    pen.style.transform = `translate(${(x - 4).toFixed(1)}px, ${(y - 23).toFixed(1)}px) rotate(${(-6 + Math.sin(now / 41) * 3 + (pt.y + 300) / 120).toFixed(1)}deg)`;
     if (p < 1) raf = requestAnimationFrame(passo);
   };
   raf = requestAnimationFrame(passo);
-  const rest = window.setTimeout(() => { pen.style.opacity = "0"; }, GD_MS + 900);
+  const rest = window.setTimeout(() => { pen.style.opacity = "0"; }, durMs + 900);
+  void tot;
   return () => { cancelAnimationFrame(raf); clearTimeout(rest); };
 }
 
-const Glifo = memo(function Glifo({ ch, nova }: { ch: string; nova: boolean }) {
+const Glifo = memo(function Glifo({ ch, nova, h }: { ch: string; nova: boolean; h: number }) {
   const g = GLIFOS[ch];
   const [anima] = useState(nova); // decidido na montagem: a letra continua a se desenhar mesmo depois de entrar a próxima
   const ctx = useContext(PenaCtx);
   const ref = useRef<SVGSVGElement>(null);
+  const tot = g ? g[1].reduce((a, t) => a + t[0], 0) || 1 : 1;
+  const dur = duracaoGlifo(tot);
   useEffect(() => {
     if (!anima || !g || !ctx || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    return seguirPena(ctx.el.current, ctx.placa.current, ref.current, g[0]);
-  }, [anima, g, ctx]);
+    return seguirPena(ctx.el.current, ctx.placa.current, ref.current, g[0], tot, dur);
+  }, [anima, g, ctx, tot, dur]);
   if (!g) return <span className={nova ? "lz-nova" : undefined}>{ch}</span>;
   const [adv, tr] = g;
-  const tot = tr.reduce((a, t) => a + t[0], 0) || 1;
   const cum = tr.reduce<number[]>((a, t) => [...a, a[a.length - 1]! + t[0]], [0]);
+  const hm = humano(h);
   return (
-    <span className="lz-g" style={{ width: `${((adv / 1000) * KG).toFixed(3)}em` }}>
+    <span className="lz-g" style={{ width: `${((adv / 1000) * KG).toFixed(3)}em`, transform: `translateY(${hm.dy.toFixed(3)}em) rotate(${hm.rot.toFixed(2)}deg) scale(${hm.esc.toFixed(3)})` }}>
       <svg ref={ref} viewBox={`0 -800 ${adv} 1000`} aria-hidden>
         {tr.map(([, d], i) => {
           const ini = cum[i]! / tot; const fim = cum[i + 1]! / tot;
           return anima
-            ? <path key={i} d={d} pathLength={1} className="lz-gl" style={{ animationDelay: `${Math.round(ini * GD_MS)}ms`, animationDuration: `${Math.max(20, Math.round((fim - ini) * GD_MS))}ms` }} />
+            ? <path key={i} d={d} pathLength={1} className="lz-gl" style={{ animationDelay: `${Math.round(ini * dur)}ms`, animationDuration: `${Math.max(24, Math.round((fim - ini) * dur))}ms` }} />
             : <path key={i} d={d} />;
         })}
       </svg>
@@ -124,7 +136,7 @@ const Glifo = memo(function Glifo({ ch, nova }: { ch: string; nova: boolean }) {
 });
 const Palavra = memo(function Palavra({ p, nova }: { p: string; nova: boolean }) {
   const cs = [...p];
-  return <span className="lz-pal">{cs.map((c, i) => <Glifo key={i} ch={c} nova={nova && i === cs.length - 1} />)}</span>;
+  return <span className="lz-pal">{cs.map((c, i) => <Glifo key={i} ch={c} nova={nova && i === cs.length - 1} h={cs.length * 7 + i * 13 + c.charCodeAt(0)} />)}</span>;
 });
 /** Um trecho de texto escrito à mão; `nova` marca que a última letra acabou de ser escrita (e ainda está sendo desenhada). */
 const Texto = memo(function Texto({ s, nova }: { s: string; nova: boolean }) {
@@ -221,14 +233,31 @@ export function Traco({ it, d }: { it: ItemDesenho; d: number }) {
   const st = { ["--d" as string]: `${d}s`, stroke: c } as React.CSSProperties;
   if (it.t === "emoji") return <text className="lz-em" x={it.x} y={it.y} fontSize={it.tam} style={{ ["--d" as string]: `${d}s` }}>{it.s}</text>;
   if (it.t === "texto") {
-    // escrita à mão: cada letra aparece no seu momento, na ordem, com a ponta da caneta andando junto
-    const tam = it.tam ?? 19, larg = it.s.length * tam * 0.5, dur = duracaoItem(it), dt = dur / Math.max(1, it.s.length);
+    // escrita à mão: cada letra é desenhada traço a traço, no seu momento, com a ponta da caneta andando junto
+    const tam = it.tam ?? 19, dur = duracaoItem(it), dt = dur / Math.max(1, it.s.length);
+    const k = (tam * KG) / 1000;
+    let x = it.x;
+    const letras = Array.from(it.s).map((ch, i) => {
+      const g = GLIFOS[ch];
+      const ax = x; x += (g ? g[0] : ch === " " ? 330 : 520) * k;
+      return { ch, i, g, ax };
+    });
     return (
-      <g>
-        <text className="lz-tx lz-letras" x={it.x} y={it.y} style={{ fill: c, ...(it.tam ? { fontSize: it.tam } : {}) }}>
-          {Array.from(it.s).map((ch, i) => <tspan key={i} className="lz-ch" style={{ ["--d" as string]: `${d + i * dt}s` } as React.CSSProperties}>{ch}</tspan>)}
-        </text>
-        <Pena dd={`M${it.x} ${it.y - tam * 0.15}L${it.x + larg} ${it.y - tam * 0.15}`} d={d} dur={dur} c={c} />
+      <g className="lz-gs" style={{ stroke: c }}>
+        {letras.map(({ ch, i, g, ax }) => {
+          if (!g) return ch === " " ? null : <text key={i} className="lz-tx" x={ax} y={it.y} style={{ fill: c, fontSize: tam, ["--d" as string]: `${d + i * dt}s` } as React.CSSProperties}>{ch}</text>;
+          const tot = g[1].reduce((a, t) => a + t[0], 0) || 1; let acc = 0;
+          const hm = humano(i * 17 + ch.charCodeAt(0));
+          return (
+            <g key={i} transform={`translate(${ax.toFixed(1)} ${(it.y + hm.dy * tam * 0.6).toFixed(1)}) rotate(${hm.rot.toFixed(2)}) scale(${(k * hm.esc).toFixed(5)})`}>
+              {g[1].map(([len, dd], si) => {
+                const ini = acc / tot; acc += len; const fim = acc / tot; const gd = Math.max(0.12, dt * 1.6);
+                return <path key={si} d={dd} pathLength={1} className="lz-gl" strokeWidth={Math.round(70 / hm.esc)} style={{ animationDelay: `${(d + i * dt + ini * gd * 0.6).toFixed(3)}s`, animationDuration: `${Math.max(0.03, (fim - ini) * gd).toFixed(3)}s` }} />;
+              })}
+            </g>
+          );
+        })}
+        <Pena dd={`M${it.x} ${it.y - tam * 0.2}L${Math.max(it.x + 10, x).toFixed(1)} ${it.y - tam * 0.2}`} d={d} dur={dur} c={c} />
       </g>
     );
   }
@@ -497,7 +526,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
               const feito = v >= len;
               const c = cor(l.cor, l.tipo === "conta" || l.tipo === "nota" ? "preto" : "azul");
               const pen: React.ReactNode = null; // a caneta é uma só e anda sobre o traço (ver PenaCtx)
-              const st = { ["--n" as string]: l.nivel, ["--c" as string]: c } as React.CSSProperties;
+              const st = { ["--n" as string]: l.nivel, ["--c" as string]: c, ["--rot" as string]: `${(((j * 37) % 9) - 4) * 0.09}deg` } as React.CSSProperties;
               if (l.tipo === "espaco") return <div key={j} className="lz-l" data-t="espaco" />;
               if (l.tipo === "par") {
                 const nE = [...l.texto].length;
