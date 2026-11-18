@@ -7,7 +7,7 @@ import { SoldierAudio } from "@/components/knowledge-map/soldier-audio";
 import { breathAt } from "@/components/knowledge-map/breath";
 import { EVENTO_DESAFIO } from "@/components/tatico/desafio-watcher";
 import { Carregando, EsperaEstande } from "./carregando";
-import { taticoStatsAction, taticoBuscarAction, taticoCancelarDesafioAction, taticoDesafiarAction, taticoEntrarSoloAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
+import { taticoStatsAction, taticoEncerrarTreinoAction, taticoBuscarAction, taticoCancelarDesafioAction, taticoDesafiarAction, taticoEntrarSoloAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
 import type { AlunoBusca, TaticoEstado, TaticoQuestao, TaticoRevisao, TaticoStats } from "@/server/services/tatico";
 import "./tatico.css";
 
@@ -296,6 +296,13 @@ export function TaticoView({ inicial, nivel, admin, retomar }: { retomar: boolea
     setS(r.s);
     if (r.s.estado !== "partida") { setCarregando(false); sairTelaCheia(); }
   }, [setS, som, audio]);
+  const encerrarTreino = useCallback(async () => {
+    if (!window.confirm("Encerrar o treino? Ele será finalizado e você volta à página de desafios.")) return;
+    audio.stop(); sairTelaCheia();
+    const r = await taticoEncerrarTreinoAction();
+    setEntrou(false); setCarregando(false); setRev(null); pos.current = -1; setShot(null); setEspectro(null);
+    if (r.ok) setS(r.s); else setErro(r.error);
+  }, [audio, setS]);
   const atirar = useCallback(async (i: number) => {
     if (s.estado !== "partida" || s.phase !== "responder" || s.me.answered || shot) return;
     // Som e clarão saem juntos, no mesmo instante do clique (antes de ir ao servidor).
@@ -318,6 +325,7 @@ export function TaticoView({ inicial, nivel, admin, retomar }: { retomar: boolea
         <div className="tt-ctl">
           <button data-testid="tatico-som" onClick={() => { const v = !som; setSom(v); localStorage.setItem("tt-som", v ? "on" : "off"); if (v) audio.start(); else audio.stop(); }}>{som ? "Som: ligado" : "Som: desligado"}</button>
           <button onClick={() => { const v = !noFx; setNoFx(v); localStorage.setItem("tt-fx", v ? "off" : "on"); }}>{noFx ? "Efeitos: reduzidos" : "Efeitos: completos"}</button>
+          {s.solo && <button onClick={encerrarTreino} data-testid="tatico-encerrar-treino" style={{ borderColor: "#ffd24a", color: "#ffd24a" }}>Encerrar treino</button>}
           <button onClick={() => { if (window.confirm("Sair da partida? Ela continua valendo e você pode voltar enquanto estiver em andamento.")) { sairTelaCheia(); router.push("/quiz"); } }}>Sair</button>
         </div>
       </div>
@@ -325,11 +333,11 @@ export function TaticoView({ inicial, nivel, admin, retomar }: { retomar: boolea
   }
   if (fim && s.estado === "partida" && entrou) return <Resultado s={s} rev={rev} onNova={() => { setS({ estado: "ocioso", usados: s.usados, limite: 3 }); setRev(null); pos.current = -1; }} />;
   return (
-    <Lobby s={s} stats={stats} erro={erro} admin={admin} onSolo={entrarSolo} onRetomar={() => { entrarTelaCheia(); setEntrou(true); setCarregando(true); }} />
+    <Lobby s={s} stats={stats} erro={erro} admin={admin} onSolo={entrarSolo} onRetomar={() => { entrarTelaCheia(); setEntrou(true); setCarregando(true); }} onEncerrar={encerrarTreino} />
   );
 }
 
-function Lobby({ s, stats, erro, admin, onSolo, onRetomar }: { onRetomar: () => void; admin: boolean; onSolo: () => void; s: TaticoEstado; stats: TaticoStats; erro: string | null }) {
+function Lobby({ s, stats, erro, admin, onSolo, onRetomar, onEncerrar }: { onEncerrar: () => void; onRetomar: () => void; admin: boolean; onSolo: () => void; s: TaticoEstado; stats: TaticoStats; erro: string | null }) {
   const usados = "usados" in s && typeof s.usados === "number" ? s.usados : 0;
   const esgotado = s.estado === "limite" || usados >= 3;
   const wr = stats && stats.partidas ? Math.round((100 * stats.vitorias) / stats.partidas) : 0;
@@ -345,6 +353,7 @@ function Lobby({ s, stats, erro, admin, onSolo, onRetomar }: { onRetomar: () => 
               <div className="tt-desafio" data-testid="tatico-andamento" role="status" style={{ marginBottom: 12 }}>
                 <p><b>{s.solo ? "Seu treino ainda está aberto" : "Você tem uma partida em andamento"}</b></p>
                 <button onClick={onRetomar} className="mt-2 rounded-[10px] bg-[#c9141f] px-5 py-2 text-[14px] font-extrabold text-white active:scale-[.97]">VOLTAR AO ESTANDE</button>
+                {s.solo && <button onClick={onEncerrar} data-testid="tatico-encerrar-treino-lobby" className="ml-2 mt-2 rounded-[10px] border border-[#ffd24a] px-5 py-2 text-[14px] font-bold text-[#ffd24a] active:scale-[.97]">ENCERRAR TREINO</button>}
               </div>
             )}
             {esgotado ? (

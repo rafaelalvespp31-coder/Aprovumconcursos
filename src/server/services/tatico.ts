@@ -55,6 +55,12 @@ export async function taticoEntrarSolo(): Promise<TaticoEstado> {
   if (r.estado === "sem_questoes") return { estado: "sem_questoes" };
   throw new UserFacingError("Recurso exclusivo para administradores.", "forbidden");
 }
+/** Encerra o treino solo em aberto do admin (não mexe em partidas 1x1). */
+export async function taticoEncerrarTreino(): Promise<TaticoEstado> {
+  const u = await requireUser("/quiz");
+  await rpc("tatico_encerrar_solo", { p_user: u.id });
+  return taticoEstado();
+}
 export async function taticoEstado(match?: string): Promise<TaticoEstado> {
   const u = await requireUser("/quiz");
   return rpc<TaticoEstado>("tatico_estado", { p_user: u.id, p_match: match ?? null });
