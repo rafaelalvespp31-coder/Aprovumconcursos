@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { taticoDesafiosAction, taticoResponderDesafioAction } from "@/app/(app)/quiz/tatico/actions";
+import { taticoDesafiosAction, taticoResponderDesafioAction, taticoSairAction } from "@/app/(app)/quiz/tatico/actions";
 import type { DesafiosEstado } from "@/server/services/tatico";
 import "./desafio.css";
 
@@ -53,7 +53,11 @@ export function DesafioWatcher() {
       if (vivo) timer = setTimeout(ciclo, pendente.current ? 1500 : 4500);
     };
     timer = setTimeout(ciclo, 1200);
-    return () => { vivo = false; clearTimeout(timer); };
+    // saiu da aba/app → some da lista de online na hora; voltou → reaparece na hora
+    const vis = () => { if (document.hidden) void taticoSairAction(); else void taticoDesafiosAction(); };
+    const fim = () => { void taticoSairAction(); };
+    document.addEventListener("visibilitychange", vis); window.addEventListener("pagehide", fim);
+    return () => { vivo = false; clearTimeout(timer); document.removeEventListener("visibilitychange", vis); window.removeEventListener("pagehide", fim); };
   }, [emitir, router]);
 
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 250); return () => clearInterval(t); }, []);

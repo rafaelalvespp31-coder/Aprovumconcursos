@@ -202,9 +202,9 @@ function DesafiarAluno() {
           {lista.map((a, i) => (
             <li key={a.id} style={{ ["--i" as string]: Math.min(i, 8) }}>
               <span className="av"><b>{inicial(a.name)}</b><i aria-hidden /></span>
-              <span className="nm"><strong>{a.name}</strong><small>online agora</small></span>
-              <button onClick={() => desafiar(a)} disabled={!!enviando} data-testid="tatico-desafiar-btn" className={`lb-btn red sm ${enviando === a.id ? "load" : ""}`}>
-                {enviando === a.id ? <><i className="spin" aria-hidden />ENVIANDO</> : "DESAFIAR"}
+              <span className="nm"><strong>{a.name}</strong><small className={a.em_partida ? "emj" : undefined}>{a.em_partida ? "em desafio agora" : "online agora"}</small></span>
+              <button onClick={() => desafiar(a)} disabled={!!enviando || a.em_partida} data-testid="tatico-desafiar-btn" className={`lb-btn red sm ${enviando === a.id ? "load" : ""}`}>
+                {enviando === a.id ? <><i className="spin" aria-hidden />ENVIANDO</> : (a.em_partida ? "EM DESAFIO" : "DESAFIAR")}
               </button>
             </li>
           ))}

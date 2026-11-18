@@ -1,6 +1,6 @@
 "use server";
 
-import { taticoMaterias, type MateriaDesafio, taticoBuscar, taticoCancelarDesafio, taticoDesafiar, taticoDesafios, taticoResponderDesafio, taticoEntrar, taticoEntrarSolo, taticoEncerrarTreino, taticoEstado, taticoResponder, taticoRevisao, taticoSairFila, taticoStats, type AlunoBusca, type DesafiosEstado, type TaticoEstado, type TaticoRevisao, type TaticoStats } from "@/server/services/tatico";
+import { taticoMaterias, type MateriaDesafio, taticoBuscar, taticoSair, taticoCancelarDesafio, taticoDesafiar, taticoDesafios, taticoResponderDesafio, taticoEntrar, taticoEntrarSolo, taticoEncerrarTreino, taticoEstado, taticoResponder, taticoRevisao, taticoSairFila, taticoStats, type AlunoBusca, type DesafiosEstado, type TaticoEstado, type TaticoRevisao, type TaticoStats } from "@/server/services/tatico";
 import { UserFacingError } from "@/server/services/trails";
 
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -33,6 +33,9 @@ export async function taticoEncerrarTreinoAction(): Promise<{ ok: true; s: Tatic
 
 export async function taticoBuscarAction(q: string): Promise<AlunoBusca[]> {
   try { return await taticoBuscar(typeof q === "string" ? q : ""); } catch { return []; }
+}
+export async function taticoSairAction(): Promise<void> {
+  try { await taticoSair(); } catch { /* melhor esforço */ }
 }
 export async function taticoMateriasAction(): Promise<MateriaDesafio[]> {
   try { return await taticoMaterias(); } catch { return []; }

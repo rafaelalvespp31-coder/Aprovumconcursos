@@ -82,7 +82,7 @@ export async function taticoRevisao(match: string): Promise<TaticoRevisao> {
   return rpc<TaticoRevisao>("tatico_revisao", { p_user: u.id, p_match: match });
 }
 
-export type AlunoBusca = { id: string; name: string; online: boolean };
+export type AlunoBusca = { id: string; name: string; online: boolean; em_partida: boolean };
 export type DesafiosEstado = {
   entrada: { id: string; de: string; materia?: string | null; ms: number } | null;
   saida: { id: string; para: string; materia?: string | null; status: "pendente" | "aceito" | "recusado" | "expirado" | "cancelado"; reason: string | null; match: string | null; ms: number } | null;
@@ -101,6 +101,11 @@ const ERROS_DESAFIO: Record<string, string> = {
 export async function taticoBuscar(q: string): Promise<AlunoBusca[]> {
   const u = await requireUser("/quiz");
   return (await rpc<AlunoBusca[] | null>("tatico_buscar", { p_user: u.id, p_q: q.slice(0, 40) })) ?? [];
+}
+/** O aluno saiu/ocultou a plataforma: some da lista de online na hora. */
+export async function taticoSair(): Promise<void> {
+  const u = await requireUser("/quiz");
+  await rpc<null>("tatico_sair", { p_user: u.id });
 }
 export type MateriaDesafio = { materia: string; n: number };
 /** Matérias com questões suficientes para uma partida (para o desafiante escolher). */

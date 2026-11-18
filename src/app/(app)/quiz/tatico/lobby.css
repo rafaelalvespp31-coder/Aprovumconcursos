@@ -143,3 +143,6 @@
 .lb-cd small{font:800 22px "Barlow Condensed",system-ui,sans-serif;color:#bdbdc4}
 .lb-cd.low b{color:#ff4d5a;animation:lb-low .5s ease-in-out infinite alternate}
 @keyframes lb-low{to{transform:scale(1.08);text-shadow:0 0 26px rgba(229,32,46,.95)}}
+.lb-alunos .nm small.emj{color:#f5b942}
+.lb-alunos li:has(small.emj) .av i{background:#f5b942;animation:none}
+.lb-alunos li:has(small.emj) .lb-btn{background:#2a2a30;color:#f5b942;border-color:#f5b942;box-shadow:none;opacity:1}
