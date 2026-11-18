@@ -279,6 +279,9 @@ export interface QuizCheck {
   help: QuizHelp;
 }
 
+/** Quanto o aluno perde ao errar: metade do que ganharia ao acertar. */
+export const penalidadeErro = (xpAcerto: number) => Math.round(xpAcerto / 2);
+
 export async function checkAnswer(topicId: string, nodeKey: string, given: string[], tierN: number, responseMs?: number): Promise<QuizCheck> {
   const user = await requireUser("/quiz");
   // Um humano responde bem menos que isso por minuto; o teto barra automação (XP em massa).
@@ -306,7 +309,9 @@ export async function checkAnswer(topicId: string, nodeKey: string, given: strin
   const repeat = await createAdminClient().from("quiz_attempts").select("id", { head: true, count: "exact" }).eq("user_id", user.id).eq("topic_id", topicId).eq("node_key", nodeKey);
   if (repeat.error) throw new Error(repeat.error.message);
   const repeated = (repeat.count ?? 0) > 0;
-  const xp = correct && !repeated ? tier.xp : 0;
+  // Acerto ganha o XP da dificuldade; erro perde metade dele (arredondada). O total nunca fica abaixo de zero.
+  const totalAntes = Math.max(0, before.reduce((t, a) => t + (a.xp ?? 0), 0));
+  const xp = repeated ? 0 : correct ? tier.xp : 0 - Math.min(totalAntes, penalidadeErro(tier.xp));
   // Grava só pelo servidor, depois de conferir (o aluno não grava XP direto no banco).
   const { error } = repeated ? { error: null } : await createAdminClient().from("quiz_attempts").insert({ user_id: user.id, topic_id: topicId, node_key: nodeKey, correct, xp, tier: tier.tier, response_ms: typeof responseMs === "number" && Number.isFinite(responseMs) ? Math.min(3_600_000, Math.max(0, Math.round(responseMs))) : null });
   if (error) throw new Error(error.message);

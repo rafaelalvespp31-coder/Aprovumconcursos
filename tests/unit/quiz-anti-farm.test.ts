@@ -63,10 +63,17 @@ describe("checkAnswer: anti-farm de XP", () => {
     expect(again.xp).toBe(0);
     expect(inserts).toHaveLength(1);
   });
-  it("errar continua sendo gravado (sem XP)", async () => {
+  it("errar continua sendo gravado (sem XP a perder quando o total é zero)", async () => {
     const r = await checkAnswer(TOPIC, "N0001", ["errado"], 1);
     expect(r.correct).toBe(false);
     expect(r.xp).toBe(0);
     expect(inserts).toHaveLength(1);
+  });
+  it("a perda por erro é menor que o ganho do acerto, em todas as dificuldades", async () => {
+    const { penalidadeErro } = await import("@/server/services/quiz");
+    for (const ganho of [10, 15, 20, 25]) {
+      expect(penalidadeErro(ganho)).toBeGreaterThan(0);
+      expect(penalidadeErro(ganho)).toBeLessThan(ganho);
+    }
   });
 });

@@ -278,10 +278,9 @@ export function QuizView({
       setXp(r.check.totals.xp);
       setTodayHits(r.check.totals.todayHits);
       setMastered((m) => new Map(m).set(topic.id, r.check.totals.mastered));
-      if (r.check.correct) {
-        setHits((h) => h + 1);
-        setRoundXp((x) => x + r.check.xp);
-      } else setHearts((h) => h - 1);
+      setRoundXp((x) => x + r.check.xp);
+      if (r.check.correct) setHits((h) => h + 1);
+      else setHearts((h) => h - 1);
     });
   };
   const verify = () => {
@@ -684,7 +683,7 @@ export function QuizView({
                           <p className="text-[18px] font-black uppercase leading-tight tracking-wide text-white sm:text-[20px]">
                             {check.correct
                               ? `Acertou! +${check.xp} XP`
-                              : `${timedOut ? "Tempo esgotado!" : "Errou!"} ${hearts > 0 ? "Menos uma vida." : "Acabaram as vidas."}`}
+                              : `${timedOut ? "Tempo esgotado!" : "Errou!"}${check.xp < 0 ? ` ${check.xp} XP.` : ""} ${hearts > 0 ? "Menos uma vida." : "Acabaram as vidas."}`}
                           </p>
                           <p className="text-[13.5px] font-semibold text-white/90">
                             {check.correct
@@ -1235,7 +1234,7 @@ function RoundEnd({
       <div className="mx-auto mt-6 grid max-w-sm grid-cols-3 gap-3">
         {[
           ["Acertos", `${hits}/${answered || total}`],
-          ["XP ganho", `+${roundXp}`],
+          ["XP da rodada", `${roundXp > 0 ? "+" : ""}${roundXp}`],
           ["Vidas", `${Math.max(0, hearts)}`],
         ].map(([k, v]) => (
           <div key={k} className="rounded-[16px] bg-black/35 px-2 py-3">
@@ -1298,7 +1297,7 @@ function LevelCard({
           <p className="text-[12.5px] text-white/70">
             Dificuldade:{" "}
             <strong className="text-white">{level.tier.label}</strong> • +
-            {level.tier.xp} XP por acerto
+            {level.tier.xp} XP por acerto · −{Math.round(level.tier.xp / 2)} por erro
           </p>
         </div>
       </div>
