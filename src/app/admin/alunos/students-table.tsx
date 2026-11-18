@@ -63,8 +63,14 @@ export function StudentsTable({ students, actions }: { students: StudentItem[]; 
   const [open, setOpen] = useState<string | null>(null);
   const list = useMemo(() => {
     const t = q.trim().toLowerCase();
+    const dig = t.replace(/\D/g, "");
     return students.filter((s) => {
-      if (t && !`${s.name ?? ""} ${s.email ?? ""}`.toLowerCase().includes(t)) return false;
+      if (t) {
+        const texto = `${s.name ?? ""} ${s.email ?? ""}`.toLowerCase();
+        const tel = (s.whatsapp ?? "").replace(/\D/g, "");
+        // Telefone: aceita com ou sem DDD/55/máscara; só busca por número se digitou 4+ dígitos.
+        if (!texto.includes(t) && !(dig.length >= 4 && tel.includes(dig.replace(/^55(?=\d{10,})/, "")))) return false;
+      }
       if (filter === "gratuito") return s.state === "gratuito";
       if (filter === "pago") return s.state === "ativo";
       if (filter === "expirado") return s.state === "expirado" || s.state === "cancelado";
@@ -79,7 +85,7 @@ export function StudentsTable({ students, actions }: { students: StudentItem[]; 
   return (
     <div className="mt-5">
       <div className="flex flex-wrap gap-2" role="search">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome ou e-mail" aria-label="Buscar por nome ou e-mail" className="min-h-10 min-w-[240px] flex-1 rounded-md border border-linha-forte px-3 t-small" />
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome, e-mail ou telefone" aria-label="Buscar por nome, e-mail ou telefone" className="min-h-10 min-w-[240px] flex-1 rounded-md border border-linha-forte px-3 t-small" />
         <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} aria-label="Filtrar por plano" className="min-h-10 rounded-md border border-linha-forte px-3 t-small">
           <option value="todos">Todos</option>
           <option value="gratuito">Gratuitos</option>

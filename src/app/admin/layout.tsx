@@ -5,6 +5,7 @@ import { DisciplinesSync } from "@/components/disciplines-sync";
 import { ensureDisciplines } from "@/server/services/disciplines";
 import { getAdminPendencias } from "@/server/services/admin-pendencias";
 import { PendenciasSino } from "@/components/admin/pendencias-sino";
+import { AssinaturaAviso } from "@/components/admin/assinatura-aviso";
 
 export const metadata = { title: "Administração" };
 
@@ -30,6 +31,7 @@ export default async function AdminLayout({
                 Equipe
               </span>
               <PendenciasSino initial={pend} />
+              <AssinaturaAviso />
             </div>
             <nav
               aria-label="Administração"
