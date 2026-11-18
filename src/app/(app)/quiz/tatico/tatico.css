@@ -55,7 +55,8 @@
 .tt-arm{position:absolute;left:540px;top:570px;width:600px;height:371px;pointer-events:none;transform-origin:300px 371px;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
 .tt-arm img{width:100%;height:100%;display:block}
 .tt-arm.fire{animation:tt-recoil .26s cubic-bezier(.1,.9,.3,1)}
-.tt-breath{position:absolute;left:0;top:0;width:1672px;height:941px;pointer-events:none;animation:tt-sway 4s ease-in-out infinite}
+.tt-world{position:absolute;left:0;top:0;width:1672px;height:941px;transform-origin:836px 470px;will-change:transform}
+.tt-breath{position:absolute;left:0;top:0;width:1672px;height:941px;pointer-events:none;transform-origin:836px 941px;will-change:transform}
 .tt-flash{position:absolute;width:150px;height:150px;margin:-75px 0 0 -75px;border-radius:50%;background:radial-gradient(#fff 8%,#ffd27a 25%,rgba(255,120,40,.55) 50%,transparent 70%);animation:tt-flash .12s ease-out forwards;pointer-events:none;mix-blend-mode:screen}
 .tt-shell{position:absolute;width:14px;height:6px;background:#c8a24a;border-radius:2px;animation:tt-shell .7s cubic-bezier(.3,.6,.5,1) forwards;pointer-events:none}
 .tt-smoke{position:absolute;width:60px;height:60px;margin:-30px 0 0 -30px;border-radius:50%;background:radial-gradient(rgba(220,220,220,.35),transparent 70%);filter:blur(4px);animation:tt-smoke 1.2s ease-out forwards;pointer-events:none}
@@ -80,7 +81,7 @@
 .tt-m-opt{display:flex;gap:10px;align-items:center;width:100%;text-align:left;padding:10px;margin-top:6px;border-radius:8px;border:1px solid #3a3a40;background:#101012;color:#fff;font-size:14px;line-height:1.25;min-height:48px}
 .tt-m-opt .lt{flex:0 0 32px;height:32px;display:grid;place-items:center;border:2px solid #c9141f;border-radius:6px;font-weight:800;background:#1a0709}
 .tt-m-opt.ok{border-color:#28d46a;background:#0b2a17}.tt-m-opt.no{border-color:#ff3b4a;background:#2a0b0f}.tt-m-opt.sel{outline:2px solid #ffd24a}
-@media (prefers-reduced-motion:reduce){.tt-breath,.tt-sd,.tt-timer.low .tt-big,.tt-cd span,.tt-tg.swing{animation:none}.tt-shell,.tt-smoke{display:none}}
+@media (prefers-reduced-motion:reduce){.tt-sd,.tt-timer.low .tt-big,.tt-cd span,.tt-tg.swing{animation:none}.tt-shell,.tt-smoke{display:none}}
 .tt-fx-off .tt-shell,.tt-fx-off .tt-smoke,.tt-fx-off .tt-flash,.tt-fx-off .tt-sd{display:none}
 
 /* tela cheia: o desafio ocupa a tela toda como um jogo */
@@ -94,3 +95,12 @@
 .tt-ctl button:active{transform:scale(.96)}
 .tt-toast{position:absolute;z-index:6;left:50%;top:10px;transform:translateX(-50%);background:#3b0a0e;color:#fff;border:1px solid #e5202e;border-radius:8px;padding:8px 14px;font-size:14px}
 @media (max-width:760px){.tt-ctl{position:static;justify-content:center;padding:6px;background:#000}}
+
+/* lobby e resultado também ocupam a tela toda */
+.tt-page{position:fixed;inset:0;z-index:1000;overflow-y:auto;color:#fff;background:#000 url(/tatico/estande-sm.webp) center/cover no-repeat;-webkit-overflow-scrolling:touch}
+.tt-page::before{content:"";position:fixed;inset:0;background:linear-gradient(180deg,rgba(0,0,0,.28),rgba(0,0,0,.78));pointer-events:none}
+.tt-page-in{position:relative;max-width:760px;margin:0 auto;padding:24px 16px}
+
+/* imersão total: nenhum ícone/aviso flutuante do app por cima do jogo */
+body.tt-imersivo{overflow:hidden}
+body.tt-imersivo .mentor-flut,body.tt-imersivo [data-testid="mentor-flutuante"],body.tt-imersivo .tour-ajuda-btn,body.tt-imersivo [data-testid="ajuda-botao"],body.tt-imersivo [data-testid="aviso-cookies"],body.tt-imersivo nextjs-portal{display:none!important}

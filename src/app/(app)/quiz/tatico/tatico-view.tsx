@@ -50,17 +50,25 @@ export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock 
   const { ref, k, faixa, offX, offY, boxH } = useEscala(portrait);
   const [now, setNow] = useState(0);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 200); return () => clearInterval(t); }, []);
-  // Respiração do braço: mesma curva do "novo estudo", guiada pelo áudio em loop (quando o som está ligado).
-  const breathEl = useRef<HTMLDivElement>(null);
+  // Respiração: a cena inteira (fundo, alvos e braço) se move junto, como a câmera de quem respira; o braço
+  // ainda "infla" um pouco a partir da base (nunca descola). Mesma curva do "novo estudo", guiada pelo áudio.
+  const worldEl = useRef<HTMLDivElement>(null);
+  const armEl = useRef<HTMLDivElement>(null);
   const clock = useRef(breathClock);
-  useEffect(() => { clock.current = breathClock; }, [breathClock]);
+  const fxOff = useRef(noFx);
+  useEffect(() => { clock.current = breathClock; fxOff.current = noFx; }, [breathClock, noFx]);
   useEffect(() => {
     let raf = 0;
     const loop = (ts: number) => {
-      const el = breathEl.current; const t = clock.current?.(ts) ?? null;
-      if (el) {
-        if (t == null) { el.style.animation = ""; el.style.transform = ""; }
-        else { const { chest, kick } = breathAt(t); el.style.animation = "none"; el.style.transform = `translate3d(0, ${(-chest * 10 + kick * 7).toFixed(2)}px, 0)`; }
+      const w = worldEl.current; const a = armEl.current;
+      if (w && a) {
+        if (fxOff.current) { w.style.transform = ""; a.style.transform = ""; }
+        else {
+          const { chest, kick } = breathAt(clock.current?.(ts) ?? ts / 1000);
+          const drift = Math.sin(ts / 2400);
+          w.style.transform = `translate3d(${(drift * 1.4).toFixed(2)}px, ${(-chest * 3.6 + kick * 2.6).toFixed(2)}px, 0) rotate(${(drift * 0.0007).toFixed(5)}rad) scale(${(1.014 + chest * 0.011).toFixed(5)})`;
+          a.style.transform = `scale(${(1 + chest * 0.004).toFixed(5)}, ${(1 + chest * 0.013 + kick * 0.007).toFixed(5)})`;
+        }
       }
       raf = requestAnimationFrame(loop);
     };
@@ -85,8 +93,29 @@ export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock 
       <div className="tt-fundo" aria-hidden />
       <div ref={ref} className="tt-box" style={portrait ? { height: boxH || undefined, flex: "none" } : { flex: 1, minHeight: 0 }} data-testid="tatico-cena">
         <div className="tt-stage" style={{ transform: `translate(${offX}px,${offY}px) scale(${k}) translate(${-faixa.x}px,${-faixa.y}px)` }}>
+          <div ref={worldEl} className="tt-world">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="tt-bg" src="/tatico/estande.webp" alt="" draggable={false} />
+          {/* alvos */}
+          {q && LETRAS.map((l, i) => (
+            <button key={l} disabled={bloqueado} aria-label={`Atirar no alvo ${l}`} className={`tt-tg ${tgCls(l)} ${shot?.i === i && shot.hit === false ? "swing" : ""}`} style={{ left: TG_X[i]! - 56, backgroundImage: `url(/tatico/alvo${i}.webp)` }} onClick={() => onShoot(i)}>
+              <span className="lt">{l}</span>
+              {shot?.i === i && (<><i className="tt-hole" style={{ left: 56, top: 72 }} key={`h${shot.n}`} /><i className="tt-spark" style={{ left: 56, top: 72 }} key={`s${shot.n}`} /></>)}
+            </button>
+          ))}
+          {/* braço + efeitos */}
+          <div ref={armEl} className="tt-breath"><div key={shot?.n ?? 0} className={`tt-arm ${shot ? "fire" : ""}`} style={{ ["--aim" as string]: `${mira}deg`, transform: `rotate(${mira}deg) translateY(-6px)` }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/tatico/braco.webp" alt="" draggable={false} />
+          </div></div>
+          {shot && !noFx && (
+            <div key={`fx${shot.n}`}>
+              <i className="tt-flash" style={{ left: 840 + mira * 6, top: 590 }} />
+              <i className="tt-shell" style={{ left: 870, top: 600 }} />
+              <i className="tt-smoke" style={{ left: 840 + mira * 6, top: 585 }} />
+            </div>
+          )}
+          </div>
           {s.phase === "responder" && q?.tiebreak && <div className="tt-sd" />}
           {/* HUD */}
           {!portrait && (
@@ -127,25 +156,6 @@ export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock 
               </div>
             </>
           )}
-          {/* alvos */}
-          {q && LETRAS.map((l, i) => (
-            <button key={l} disabled={bloqueado} aria-label={`Atirar no alvo ${l}`} className={`tt-tg ${tgCls(l)} ${shot?.i === i && shot.hit === false ? "swing" : ""}`} style={{ left: TG_X[i]! - 56, backgroundImage: `url(/tatico/alvo${i}.webp)` }} onClick={() => onShoot(i)}>
-              <span className="lt">{l}</span>
-              {shot?.i === i && (<><i className="tt-hole" style={{ left: 56, top: 72 }} key={`h${shot.n}`} /><i className="tt-spark" style={{ left: 56, top: 72 }} key={`s${shot.n}`} /></>)}
-            </button>
-          ))}
-          {/* braço + efeitos */}
-          <div ref={breathEl} className="tt-breath"><div key={shot?.n ?? 0} className={`tt-arm ${shot ? "fire" : ""}`} style={{ ["--aim" as string]: `${mira}deg`, transform: `rotate(${mira}deg) translateY(${shot ? 0 : -6}px)` }}>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/tatico/braco.webp" alt="" draggable={false} />
-          </div></div>
-          {shot && !noFx && (
-            <div key={`fx${shot.n}`}>
-              <i className="tt-flash" style={{ left: 840 + mira * 6, top: 590 }} />
-              <i className="tt-shell" style={{ left: 870, top: 600 }} />
-              <i className="tt-smoke" style={{ left: 840 + mira * 6, top: 585 }} />
-            </div>
-          )}
           {rev && q?.correct && !portrait && (
             <div className="tt-panel red tt-reveal"><b>Gabarito: {q.correct}.</b> {(q.explanations?.[q.correct] || q.justification || "").toString().slice(0, 260)}</div>
           )}
@@ -183,6 +193,8 @@ export function TaticoView({ inicial, nivel, stats, admin }: { admin: boolean; i
   const [audio] = useState(() => new SoldierAudio({ shotSrc: "/audio/disparo-glock.mp3", shotGain: 0.9 }));
   const [som, setSom] = useState(true);
   const router = useRouter();
+  // Imersão: some tudo que é flutuante do app (Mentor, ajuda, cookies) enquanto o Desafio Tático está aberto.
+  useEffect(() => { document.body.classList.add("tt-imersivo"); return () => document.body.classList.remove("tt-imersivo"); }, []);
   const pos = useRef<number>(-1);
   const busy = useRef(false);
 
@@ -271,11 +283,9 @@ function Lobby({ s, stats, erro, admin, onSolo, onEntrar, onSair }: { admin: boo
   const esgotado = s.estado === "limite" || usados >= 3;
   const wr = stats && stats.partidas ? Math.round((100 * stats.vitorias) / stats.partidas) : 0;
   return (
-    <div className="mx-auto max-w-3xl" data-testid="tatico-lobby">
-      <div className="tt-wrap" style={{ padding: 0 }}>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/tatico/estande-sm.webp" alt="" style={{ width: "100%", display: "block", opacity: 0.55 }} />
-        <div style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", textAlign: "center", padding: 16, background: "linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.8))", color: "#fff" }}>
+    <div className="tt-page" data-testid="tatico-lobby">
+      <div className="tt-page-in">
+        <div style={{ minHeight: "calc(100dvh - 48px)", display: "grid", placeItems: "center", textAlign: "center" }}>
           <div>
             <p style={{ fontSize: 12, letterSpacing: ".2em", color: "#e5202e", fontWeight: 800 }}>MODO JOGO · 1 x 1</p>
             <h1 style={{ fontSize: "clamp(26px,6vw,44px)", fontWeight: 900, fontStyle: "italic", lineHeight: 1.05 }}>DESAFIO TÁTICO</h1>
@@ -303,31 +313,31 @@ function Lobby({ s, stats, erro, admin, onSolo, onEntrar, onSair }: { admin: boo
             {erro && <p role="alert" style={{ color: "#ff8a93", fontSize: 13 }}>{erro}</p>}
           </div>
         </div>
-      </div>
       {stats && stats.partidas > 0 && (
         <div className="mt-4 grid grid-cols-2 gap-2 sm:grid-cols-4" data-testid="tatico-stats">
           {[["Partidas", stats.partidas], ["Vitórias", `${stats.vitorias} (${wr}%)`], ["Derrotas", stats.derrotas], ["Melhor sequência", stats.melhorSequencia], ["XP ganho", `+${stats.xpGanho}`], ["XP perdido", `−${stats.xpPerdido}`], ["Acertos", stats.acertos], ["Erros", stats.erros]].map(([a, b]) => (
-            <div key={String(a)} className="rounded-[12px] border border-[#E6E7EB] bg-white p-3"><p className="text-[12px] text-tinta-suave">{a}</p><p className="text-[18px] font-extrabold">{b}</p></div>
+            <div key={String(a)} className="rounded-[12px] border border-white/15 bg-black/60 text-white p-3"><p className="text-[12px] text-white/70">{a}</p><p className="text-[18px] font-extrabold">{b}</p></div>
           ))}
         </div>
       )}
       {stats && stats.recentes.length > 0 && (
         <ul className="mt-4 space-y-1" aria-label="Histórico">
           {stats.recentes.map((h) => (
-            <li key={h.match} className="flex items-center justify-between rounded-[10px] border border-[#E6E7EB] bg-white px-3 py-2 text-[14px]">
-              <span className={h.venceu ? "font-bold text-[#067647]" : "font-bold text-[#B42318]"}>{h.venceu ? "Vitória" : "Derrota"}{h.desempate ? " · morte súbita" : ""}</span>
-              <span className="text-tinta-suave">{h.acertos} acertos · {h.erros} erros · {new Date(h.quando).toLocaleDateString("pt-BR")}</span>
+            <li key={h.match} className="flex items-center justify-between rounded-[10px] border border-white/15 bg-black/60 text-white px-3 py-2 text-[14px]">
+              <span className={h.venceu ? "font-bold text-[#3ddc84]" : "font-bold text-[#ff6b78]"}>{h.venceu ? "Vitória" : "Derrota"}{h.desempate ? " · morte súbita" : ""}</span>
+              <span className="text-white/70">{h.acertos} acertos · {h.erros} erros · {new Date(h.quando).toLocaleDateString("pt-BR")}</span>
             </li>
           ))}
         </ul>
       )}
       {stats && stats.assuntos.length > 0 && (
-        <div className="mt-4 rounded-[12px] border border-[#E6E7EB] bg-white p-3">
+        <div className="mt-4 rounded-[12px] border border-white/15 bg-black/60 text-white p-3">
           <p className="text-[13px] font-bold">Assuntos para reforçar</p>
           <ul className="mt-1 text-[14px]">{stats.assuntos.slice(0, 4).map((a) => <li key={a.assunto}>{a.assunto}: {a.taxa}% ({a.acertos}/{a.total})</li>)}</ul>
         </div>
       )}
-      <Link href="/quiz" className="mt-4 inline-block text-[14px] underline">← Voltar ao Modo Jogo</Link>
+      <Link href="/quiz" className="mt-4 mb-6 inline-block text-[14px] text-white underline">← Voltar ao Modo Jogo</Link>
+      </div>
     </div>
   );
 }
@@ -335,7 +345,7 @@ function Lobby({ s, stats, erro, admin, onSolo, onEntrar, onSair }: { admin: boo
 function Resultado({ s, rev, onNova }: { s: Partida; rev: TaticoRevisao; onNova: () => void }) {
   const win = s.winner === true;
   return (
-    <div className="mx-auto max-w-3xl" data-testid="tatico-resultado">
+    <div className="tt-page" data-testid="tatico-resultado"><div className="tt-page-in">
       <div className="rounded-[16px] p-6 text-center text-white" style={{ background: win ? "linear-gradient(160deg,#052e16,#000)" : "linear-gradient(160deg,#3b0a0e,#000)", border: `2px solid ${win ? "#28d46a" : "#e5202e"}` }}>
         <p style={{ fontSize: 12, letterSpacing: ".2em", opacity: 0.8 }}>{s.decidedBy === "morte_subita" ? "DECIDIDO NA MORTE SÚBITA" : s.decidedBy === "abandono" ? "ADVERSÁRIO ABANDONOU" : "RESULTADO FINAL"}</p>
         <h2 style={{ fontSize: "clamp(34px,9vw,64px)", fontWeight: 900, fontStyle: "italic" }}>{win ? "VITÓRIA" : "DERROTA"}</h2>
@@ -347,11 +357,11 @@ function Resultado({ s, rev, onNova }: { s: Partida; rev: TaticoRevisao; onNova:
           <Link href="/quiz" className="rounded-[10px] border border-white/40 px-5 py-2">Ranking</Link>
         </div>
       </div>
-      <h3 className="mt-5 text-[16px] font-extrabold">Revisão das questões</h3>
-      {!rev ? <p className="text-[14px] text-tinta-suave">Carregando revisão…</p> : (
+      <h3 className="mt-5 text-[16px] font-extrabold text-white">Revisão das questões</h3>
+      {!rev ? <p className="text-[14px] text-white/70">Carregando revisão…</p> : (
         <ol className="mt-2 space-y-2">
           {rev.itens.map((it) => (
-            <li key={it.pos} className="rounded-[12px] border border-[#E6E7EB] bg-white p-3 text-[14px]">
+            <li key={it.pos} className="rounded-[12px] border border-[#E6E7EB] bg-white p-3 text-[14px] text-[#08090B]">
               <p className="font-bold">{it.tiebreak ? "Desempate" : `Questão ${it.pos}`} · <span className={it.acertou ? "text-[#067647]" : "text-[#B42318]"}>{it.acertou ? "acertou" : it.choice ? "errou" : "sem resposta"}</span></p>
               <p className="mt-1">{it.statement}</p>
               <p className="mt-1 text-tinta-suave">Sua resposta: {it.choice ?? "—"} · Gabarito: <b>{it.correct}</b></p>
@@ -360,6 +370,6 @@ function Resultado({ s, rev, onNova }: { s: Partida; rev: TaticoRevisao; onNova:
           ))}
         </ol>
       )}
-    </div>
+    </div></div>
   );
 }
