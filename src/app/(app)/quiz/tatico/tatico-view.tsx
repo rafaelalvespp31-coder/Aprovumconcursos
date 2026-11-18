@@ -7,7 +7,7 @@ import { SoldierAudio } from "@/components/knowledge-map/soldier-audio";
 import { breathAt } from "@/components/knowledge-map/breath";
 import { EVENTO_DESAFIO } from "@/components/tatico/desafio-watcher";
 import { Carregando, EsperaEstande } from "./carregando";
-import { taticoStatsAction, taticoBuscarAction, taticoCancelarDesafioAction, taticoDesafiarAction, taticoEntrarAction, taticoEntrarSoloAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
+import { taticoStatsAction, taticoBuscarAction, taticoCancelarDesafioAction, taticoDesafiarAction, taticoEntrarSoloAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
 import type { AlunoBusca, TaticoEstado, TaticoQuestao, TaticoRevisao, TaticoStats } from "@/server/services/tatico";
 import "./tatico.css";
 
@@ -48,7 +48,7 @@ function useEscala(portrait: boolean) {
   return { ref, k, faixa, offX, offY, boxH: portrait ? faixa.h * k : undefined };
 }
 
-function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppShot }: { oppShot?: number; breathClock?: (nowMs: number) => number | null; s: Partida; at: number; nivel: { level: number; into: number }; noFx: boolean; portrait: boolean; onShoot: (i: number) => void; shot: { i: number; n: number; hit: boolean | null } | null }) {
+function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppShot, espectro }: { espectro?: { i: number; n: number } | null; oppShot?: number; breathClock?: (nowMs: number) => number | null; s: Partida; at: number; nivel: { level: number; into: number }; noFx: boolean; portrait: boolean; onShoot: (i: number) => void; shot: { i: number; n: number; hit: boolean | null } | null }) {
   const { ref, k, faixa, offX, offY, boxH } = useEscala(portrait);
   const [now, setNow] = useState(0);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 200); return () => clearInterval(t); }, []);
@@ -79,15 +79,19 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
   }, []);
   const ms = Math.max(0, s.msRestantes - Math.max(0, now - at));
   const q = s.question; const rev = s.phase === "revelar" || s.phase === "fim";
-  const bloqueado = s.phase !== "responder" || s.me.answered || !!shot;
-  const mira = shot ? (TG_X[shot.i]! - 840) / 55 : 0;
+  const meuTurno = s.meuTurno ?? true;
+  const bloqueado = s.phase !== "responder" || !meuTurno || s.me.answered || !!shot;
+  // quem assiste vê o disparo do outro: o braço mira e atira no alvo escolhido, com clarão, furo e som
+  const ativo: { i: number; n: number; hit: boolean | null } | null = shot ?? (espectro ? { ...espectro, hit: null } : null);
+  const mira = ativo ? (TG_X[ativo.i]! - 840) / 55 : 0;
+  const materia = (q?.subject ?? "").includes("_") ? (q?.subject ?? "").replace(/_/g, " ").replace(/\b\p{L}/gu, (c) => c.toUpperCase()) : (q?.subject ?? "");
   const cls = (l: string, base: string) => {
     if (rev && q?.correct) { const o = q.oppChoice === l ? " opp" : ""; if (l === q.correct) return `${base} ok${o}`; if (l === s.me.choice) return `${base} no${o}`; return `${base} dim${o}`; }
     if (s.me.choice === l || (shot && LETRAS[shot.i] === l)) return `${base} sel`;
-    return base;
+    return q?.oppChoice === l ? `${base} opp` : base;
   };
   const tgCls = (l: string) => {
-    const o = rev && q?.oppChoice === l ? " opp" : "";
+    const o = q?.oppChoice === l ? " opp" : "";
     if (rev && q?.correct) return (l === q.correct ? "ok" : l === s.me.choice ? "no" : "") + o;
     return o;
   };
@@ -101,19 +105,19 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
           <img className="tt-bg" src="/tatico/estande.webp" alt="" draggable={false} />
           {/* alvos */}
           {q && LETRAS.map((l, i) => (
-            <button key={l} disabled={bloqueado} aria-label={`Atirar no alvo ${l}`} className={`tt-tg ${tgCls(l)} ${shot?.i === i && shot.hit === false ? "swing" : ""}`} style={{ left: TG_X[i]! - 56, backgroundImage: `url(/tatico/alvo${i}.webp)` }} onClick={() => onShoot(i)}>
+            <button key={l} disabled={bloqueado} aria-label={`Atirar no alvo ${l}`} className={`tt-tg ${tgCls(l)} ${ativo?.i === i && ativo.hit === false ? "swing" : ""}`} style={{ left: TG_X[i]! - 56, backgroundImage: `url(/tatico/alvo${i}.webp)` }} onClick={() => onShoot(i)}>
               <span className="lt">{l}</span>
-              {rev && q?.oppChoice === l && <span className="adv">ADV.</span>}
-              {shot?.i === i && (<><i className="tt-hole" style={{ left: 56, top: 72 }} key={`h${shot.n}`} /><i className="tt-spark" style={{ left: 56, top: 72 }} key={`s${shot.n}`} /></>)}
+              {q?.oppChoice === l && <span className="adv">ADV.</span>}
+              {ativo?.i === i && (<><i className="tt-hole" style={{ left: 56, top: 72 }} key={`h${ativo.n}`} /><i className="tt-spark" style={{ left: 56, top: 72 }} key={`s${ativo.n}`} /></>)}
             </button>
           ))}
           {/* braço + efeitos */}
-          <div ref={armEl} className="tt-breath"><div key={shot?.n ?? 0} className={`tt-arm ${shot ? "fire" : ""}`} style={{ ["--aim" as string]: `${mira}deg`, transform: `rotate(${mira}deg) translateY(-6px)` }}>
+          <div ref={armEl} className="tt-breath"><div key={ativo?.n ?? 0} className={`tt-arm ${ativo ? "fire" : ""}`} style={{ ["--aim" as string]: `${mira}deg`, transform: `rotate(${mira}deg) translateY(-6px)` }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/tatico/braco.webp" alt="" draggable={false} />
           </div></div>
-          {shot && !noFx && (
-            <div key={`fx${shot.n}`}>
+          {ativo && !noFx && (
+            <div key={`fx${ativo.n}`}>
               <i className="tt-flash" style={{ left: 840 + mira * 6, top: 590 }} />
               <i className="tt-shell" style={{ left: 870, top: 600 }} />
               <i className="tt-smoke" style={{ left: 840 + mira * 6, top: 585 }} />
@@ -136,10 +140,11 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
               </div>
               <div className="tt-panel tt-vs" data-testid="tatico-adversario">
                 <span className="nm">VS {s.opp.name}</span><em>{s.me.hits} x {s.opp.hits}</em>
-                <span className={`st ${s.opp.answered ? "ok" : ""}`}>{s.phase !== "responder" ? "" : s.opp.answered ? "● ATIROU" : "● MIRANDO…"}</span>
+                <span className={`st ${s.opp.answered || meuTurno ? "ok" : ""}`}>{s.phase !== "responder" ? "" : meuTurno ? "● SUA VEZ" : s.opp.answered ? "● ATIROU" : "● MIRANDO…"}</span>
               </div>
               {q && (
                 <>
+                  <div className="tt-panel tt-mat" data-testid="tatico-materia"><span><em>MATÉRIA</em> {materia || "—"}</span><span className="sep" /><span><em>TÓPICO</em> {q.topic || "—"}</span></div>
                   <div className="tt-panel tt-q">QUESTÃO <b>{String(Math.min(q.pos, s.total)).padStart(2, "0")}/{String(s.total).padStart(2, "0")}</b>{q.tiebreak ? " · MORTE SÚBITA" : ""}</div>
                   <div className="tt-panel tt-enun" style={{ fontSize: fs(q.statement, 26, 13, 80) }}>{q.statement}</div>
                   {q.options.map((o, i) => (
@@ -170,7 +175,9 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
             <div className="tt-panel red tt-reveal"><b>Gabarito: {q.correct}.</b> {(q.explanations?.[q.correct] || q.justification || "").toString().slice(0, 260)}</div>
           )}
           {!!oppShot && <div key={`op${oppShot}`} className="tt-oppflash" />}
-          {s.phase === "responder" && s.me.answered && !rev && <div className="tt-wait">AGUARDANDO O ADVERSÁRIO…</div>}
+          {s.phase === "responder" && !s.me.answered && !s.solo && (
+            <div className={`tt-wait ${meuTurno ? "vez" : ""}`} data-testid="tatico-vez">{meuTurno ? "SUA VEZ — ATIRE!" : s.opp.answered ? `${s.opp.name} ATIROU` : `VEZ DE ${s.opp.name.toUpperCase()} — ACOMPANHE`}</div>
+          )}
           {s.phase === "contagem" && <div className="tt-cd"><span key={Math.ceil(ms / 1000)}>{Math.max(1, Math.ceil(ms / 1000) - 5) > 3 ? "PREPARAR" : Math.max(1, Math.ceil(ms / 1000))}</span></div>}
         </div>
       </div>
@@ -180,8 +187,9 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
             <span>QUESTÃO {String(Math.min(q.pos, s.total)).padStart(2, "0")}/{s.total}{q.tiebreak ? " · MORTE SÚBITA" : ""}</span>
             <span data-testid="tatico-timer">{s.phase === "responder" ? mmss(ms) : "--:--"}</span>
           </div>
-          <p style={{ fontSize: 15, lineHeight: 1.35, margin: "8px 0 4px", color: "#fff" }}>{q.statement}</p>
-          <div style={{ fontSize: 12, color: "#bbb" }}>VS {s.opp.name} · {s.me.hits} x {s.opp.hits} · sequência {s.me.streak}x{s.phase === "responder" ? (s.opp.answered ? " · adversário atirou" : " · adversário mirando…") : ""}</div>
+          <p style={{ fontSize: 11, letterSpacing: ".06em", color: "#ffd24a", margin: "6px 0 0", fontWeight: 700 }} data-testid="tatico-materia-m">{(materia || "—").toUpperCase()} · {q.topic || "—"}</p>
+          <p style={{ fontSize: 15, lineHeight: 1.35, margin: "6px 0 4px", color: "#fff" }}>{q.statement}</p>
+          <div style={{ fontSize: 12, color: "#bbb" }}>VS {s.opp.name} · {s.me.hits} x {s.opp.hits} · sequência {s.me.streak}x{s.phase === "responder" ? (meuTurno ? " · sua vez" : s.opp.answered ? " · adversário atirou" : " · vez do adversário") : ""}</div>
           {q.options.map((o, i) => (
             <button key={o.label} disabled={bloqueado} className={cls(o.label, "tt-m-opt")} onClick={() => onShoot(i)}><span className="lt">{o.label}</span><span>{o.text}</span></button>
           ))}
@@ -210,7 +218,7 @@ export function TaticoView({ inicial, nivel, admin }: { admin: boolean; inicial:
   const [som, setSom] = useState(true);
   const router = useRouter();
   const [oppShot, setOppShot] = useState(0);
-  const oppRef = useRef(false);
+  const [espectro, setEspectro] = useState<{ i: number; n: number; pos: number } | null>(null);
   // Imersão: some tudo que é flutuante do app (Mentor, ajuda, cookies) enquanto o Desafio Tático está aberto.
   useEffect(() => { document.body.classList.add("tt-imersivo"); return () => document.body.classList.remove("tt-imersivo"); }, []);
   useEffect(() => { let vivo = true; taticoStatsAction().then((r) => { if (vivo) setStats(r); }); return () => { vivo = false; }; }, []);
@@ -238,13 +246,19 @@ export function TaticoView({ inicial, nivel, admin }: { admin: boolean; inicial:
     return () => clearInterval(t);
   }, [ativo, fim, s, setS]);
 
-  // Cada aluno vê o outro atirar: no instante em que o adversário responde, o clarão e o som do disparo dele aparecem aqui
-  // (a alternativa escolhida só aparece no gabarito, para ninguém copiar a resposta do outro).
-  const oppResp = s.estado === "partida" && s.phase === "responder" && s.opp.answered;
+  // Um aluno atira por vez; o outro assiste em tempo real: assim que o servidor registra a escolha de quem atirou,
+  // o braço mira no alvo escolhido e dispara (clarão, furo e som) também aqui.
+  const oppLetra = s.estado === "partida" ? s.question?.oppChoice ?? null : null;
+  const oppPos = s.estado === "partida" ? s.question?.pos ?? 0 : 0;
   useEffect(() => {
-    if (oppResp && !oppRef.current) { oppRef.current = true; setOppShot(Date.now()); if (som) { audio.start(); audio.shot(); } }
-    if (!oppResp) oppRef.current = false;
-  }, [oppResp, som, audio]);
+    if (!oppLetra || !oppPos) return;
+    const i = LETRAS.indexOf(oppLetra as (typeof LETRAS)[number]);
+    if (i < 0) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- reação ao evento do adversário vindo do servidor
+    setEspectro((cur) => (cur && cur.pos === oppPos ? cur : { i, n: Date.now(), pos: oppPos }));
+    setOppShot(Date.now());
+    if (som) { audio.start(); audio.shot(); }
+  }, [oppLetra, oppPos, som, audio]);
   // Desafio aceito (por mim ou por quem eu desafiei): vai direto para a partida, já com as questões.
   useEffect(() => {
     const h = async (e: Event) => {
@@ -254,7 +268,7 @@ export function TaticoView({ inicial, nivel, admin }: { admin: boolean; inicial:
     window.addEventListener(EVENTO_DESAFIO, h); return () => window.removeEventListener(EVENTO_DESAFIO, h);
   }, [setS]);
   const q: TaticoQuestao | null = s.estado === "partida" ? s.question : null;
-  useEffect(() => { if (q && q.pos !== pos.current) { pos.current = q.pos; setShot(null); } }, [q]);
+  useEffect(() => { if (q && q.pos !== pos.current) { pos.current = q.pos; setShot(null); setEspectro(null); } }, [q]);
   useEffect(() => { if (fim && s.estado === "partida") taticoRevisaoAction(s.match).then(setRev); }, [fim, s]);
   useEffect(() => {
     if (s.estado !== "fila") return;
@@ -285,7 +299,7 @@ export function TaticoView({ inicial, nivel, admin }: { admin: boolean; inicial:
     if (som) { audio.start(); audio.shot(); }
     const n = Date.now(); setShot({ i, n, hit: null });
     const r = await taticoResponderAction(s.match, LETRAS[i]!);
-    if (!r.ok && r.erro !== "ja_respondeu") { setShot(null); setErro(r.erro === "fora_do_tempo" ? "O tempo desta questão acabou." : "Não foi possível registrar o disparo."); return; }
+    if (!r.ok && r.erro !== "ja_respondeu") { setShot(null); setErro(r.erro === "fora_do_tempo" ? "O tempo desta questão acabou." : r.erro === "nao_e_sua_vez" ? "Agora é a vez do adversário." : "Não foi possível registrar o disparo."); return; }
     setShot({ i, n, hit: r.acertou ?? null });
     const e = await taticoEstadoAction(s.match); if (e.ok) setS(e.s);
   }, [s, shot, setS, som, audio]);
@@ -296,7 +310,7 @@ export function TaticoView({ inicial, nivel, admin }: { admin: boolean; inicial:
   if (s.estado === "partida" && !fim) {
     return (
       <div className="tt-full" data-testid="tatico-tela-cheia">
-        <Cena oppShot={oppShot} breathClock={som && !noFx ? (now) => audio.breathTime(now) : undefined} s={s} at={at} nivel={nivel} noFx={noFx} portrait={portrait} onShoot={atirar} shot={shot} />
+        <Cena espectro={espectro} oppShot={oppShot} breathClock={som && !noFx ? (now) => audio.breathTime(now) : undefined} s={s} at={at} nivel={nivel} noFx={noFx} portrait={portrait} onShoot={atirar} shot={shot} />
         {erro && <p role="alert" className="tt-toast">{erro}</p>}
         <div className="tt-ctl">
           <button data-testid="tatico-som" onClick={() => { const v = !som; setSom(v); localStorage.setItem("tt-som", v ? "on" : "off"); if (v) audio.start(); else audio.stop(); }}>{som ? "Som: ligado" : "Som: desligado"}</button>
@@ -407,17 +421,17 @@ function DesafiarAluno() {
   const [aberto, setAberto] = useState(true);
   const [q, setQ] = useState("");
   const [lista, setLista] = useState<AlunoBusca[]>([]);
-  const [carregando, setCarregando] = useState(false);
+  const [carregando, setCarregando] = useState(true);
   const [esp, setEsp] = useState<{ id: string; para: string } | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
     if (!aberto) return;
     let vivo = true;
-    const t = setTimeout(async () => {
-      setCarregando(true); const r = await taticoBuscarAction(q.trim()); if (vivo) { setLista(r); setCarregando(false); }
-    }, q.trim().length >= 2 ? 300 : 0);
-    return () => { vivo = false; clearTimeout(t); };
+    const buscar = async () => { const r = await taticoBuscarAction(q.trim()); if (vivo) { setLista(r); setCarregando(false); } };
+    const t = setTimeout(buscar, q.trim().length >= 2 ? 300 : 0);
+    const iv = setInterval(buscar, 5000);        // quem entra/sai da plataforma aparece/some sozinho
+    return () => { vivo = false; clearTimeout(t); clearInterval(iv); };
   }, [aberto, q]);
   useEffect(() => {
     const h = (e: Event) => {
@@ -459,11 +473,11 @@ function DesafiarAluno() {
           <ul>
             {lista.map((a) => (
               <li key={a.id}>
-                <span><i className={`tt-dot ${a.online ? "on" : ""}`} aria-hidden />{a.name}<small>{a.online ? " · online" : ""}</small></span>
+                <span><i className="tt-dot on" aria-hidden />{a.name}<small> · online</small></span>
                 <button onClick={() => desafiar(a)} data-testid="tatico-desafiar-btn">Desafiar</button>
               </li>
             ))}
-            {!carregando && lista.length === 0 && <li className="vazio">{q.trim().length >= 2 ? "Nenhum aluno encontrado." : "Ninguém online agora. Busque um aluno pelo nome."}</li>}
+            {!carregando && lista.length === 0 && <li className="vazio">{q.trim().length >= 2 ? "Nenhum aluno online com esse nome." : "Nenhum outro aluno online no momento."}</li>}
           </ul>
         </div>
       )}

@@ -19,7 +19,7 @@ export type TaticoEstado =
       idx: number; total: number; msRestantes: number; questionSeconds: number;
       me: { hits: number; miss: number; streak: number; bestStreak: number; answered: boolean; choice: string | null; correct: boolean | null };
       opp: { name: string; hits: number; miss: number; answered: boolean };
-      solo?: boolean; question: TaticoQuestao | null; winner: boolean | null; decidedBy: string | null; xp: number | null; usados: number; limite: number;
+      solo?: boolean; meuTurno?: boolean; question: TaticoQuestao | null; winner: boolean | null; decidedBy: string | null; xp: number | null; usados: number; limite: number;
     };
 export type TaticoStats = {
   partidas: number; vitorias: number; derrotas: number; vitoriasDesempate: number; acertos: number; erros: number;
