@@ -351,6 +351,18 @@ export function QuizView({
         }
       />
       <div className="relative mx-auto max-w-[1180px]">
+        <Link
+          href="/quiz/tatico"
+          data-testid="tatico-entrada"
+          className="mb-4 flex items-center justify-between gap-3 rounded-[14px] border border-[#c9141f] bg-gradient-to-r from-[#2a0709] to-[#0b0b0d] px-4 py-3 shadow-[0_0_22px_rgba(229,32,46,.25)] transition active:scale-[.99]"
+        >
+          <span>
+            <span className="block text-[11px] font-extrabold tracking-[.18em] text-[#ff4d5a]">NOVO · 1 x 1 AO VIVO</span>
+            <span className="block text-[18px] font-black italic">DESAFIO TÁTICO</span>
+            <span className="block text-[12px] text-white/70">10 questões contra outro aluno · +200 XP / −100 XP · 3 por dia</span>
+          </span>
+          <span className="rounded-[10px] bg-[#c9141f] px-4 py-2 text-[14px] font-extrabold">Entrar</span>
+        </Link>
         {extra}
         <GameBanner
           topicTitle={topic.title}
