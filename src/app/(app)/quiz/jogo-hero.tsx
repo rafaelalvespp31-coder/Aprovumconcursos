@@ -8,8 +8,7 @@
  * O progresso vem dos dados reais do aluno (dispositivos dominados e ofensiva).
  */
 
-import Link from "next/link";
-import { BrainCircuit, ChartNoAxesCombined, ChevronRight, Crosshair, FileText, Flame, Gamepad2 } from "lucide-react";
+import { Flame } from "lucide-react";
 import { BannerGate } from "@/components/banner-gate";
 
 /** Recorte da arte (public/images/jogo-hero-arte.webp), em px. */
@@ -29,7 +28,6 @@ export function JogoHero({
   total,
   streak,
   last7,
-  onPlay,
 }: {
   /** Dispositivos dominados no Modo Jogo (todos os temas). */
   mastered: number;
@@ -37,7 +35,6 @@ export function JogoHero({
   /** Dias seguidos de estudo e os últimos 7 dias (o último é hoje). */
   streak: number;
   last7: boolean[];
-  onPlay: () => void;
 }) {
   const pct = total ? Math.round((mastered / total) * 100) : 0;
   const recent = last7.slice(-5);
@@ -124,45 +121,7 @@ export function JogoHero({
           </div>
         </div>
       </BannerGate>
-
-      {/* Atalhos */}
-      <ul className="jh-atalhos" aria-label="Recursos do APROVUM">
-        {FEATURES.map((f) => (
-          <li key={f.title}>
-            {f.href ? (
-              <Link href={f.href} className="jh-atalho">
-                <Feature {...f} />
-              </Link>
-            ) : (
-              <button type="button" onClick={onPlay} className="jh-atalho">
-                <Feature {...f} />
-              </button>
-            )}
-          </li>
-        ))}
-      </ul>
     </section>
-  );
-}
-
-const FEATURES = [
-  { icon: BrainCircuit, title: "Aulas inteligentes", text: "Conteúdo direto ao ponto, com fontes verificadas.", href: "/trilhas" },
-  { icon: Gamepad2, title: "Gamificação", text: "Estude, evolua, conquiste.", href: null },
-  { icon: Crosshair, title: "Todos os concursos", text: "Das carreiras policiais aos demais órgãos.", href: "/nova-trilha" },
-  { icon: FileText, title: "Questões de prova", text: "Cadernos por matéria, concurso e banca, com gabarito comentado.", href: "/questoes" },
-  { icon: ChartNoAxesCombined, title: "Seu progresso", text: "Acompanhe sua evolução em tempo real.", href: "/desempenho" },
-] as const;
-
-function Feature({ icon: Icon, title, text }: { icon: React.ComponentType<{ className?: string }>; title: string; text: string }) {
-  return (
-    <>
-      <Icon className="jh-atalho-icone" aria-hidden />
-      <span className="jh-atalho-texto">
-        <span className="jh-atalho-titulo">{title}</span>
-        <span className="jh-atalho-desc">{text}</span>
-      </span>
-      <ChevronRight className="jh-atalho-seta" aria-hidden />
-    </>
   );
 }
 

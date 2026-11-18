@@ -343,12 +343,6 @@ export function QuizView({
         total={overall.total}
         streak={home.streak.current}
         last7={home.streak.last7}
-        onPlay={() =>
-          cardRef.current?.scrollIntoView({
-            behavior: "smooth",
-            block: "start",
-          })
-        }
       />
       <div className="relative mx-auto max-w-[1180px]">
         <Link
