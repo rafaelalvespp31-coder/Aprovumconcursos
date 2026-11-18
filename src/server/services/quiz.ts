@@ -300,7 +300,7 @@ export async function checkAnswer(topicId: string, nodeKey: string, given: strin
   }
   const item = game ? gameToCloze(game) : topic ? itemsFor(topic, tier).find((i) => i.nodeKey === nodeKey) : undefined;
   if (!topic || !item) throw new UserFacingError("Questão não encontrada. Comece uma nova rodada.", "not_found");
-  const results = checkCloze(item, given.slice(0, item.answers.length).map((g) => String(g ?? "").slice(0, 80)));
+  const results = checkCloze(item, given.slice(0, item.answers.length).map((g) => String(g ?? "").slice(0, 600)));
   const correct = results.every(Boolean);
   // Anti-farm: acertar de novo o mesmo item dentro de 24 h não rende XP nem conta como nova resposta
   // (a resposta certa é mostrada após o primeiro acerto; sem isso dava para repetir o item em loop).

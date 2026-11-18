@@ -442,7 +442,8 @@ export function refOf(node: LawNode, all: LawNode[], marker?: string): string {
 
 /** Confere as respostas (sem diferenciar maiúsculas e acentos). */
 export function checkCloze(item: ClozeItem, given: string[]): boolean[] {
-  return item.answers.map((a, i) => norm(given[i] ?? "").trim() === norm(a));
+  const igual = (x: string) => norm(x).replace(/\s+/g, " ").trim();
+  return item.answers.map((a, i) => igual(given[i] ?? "") === igual(a));
 }
 
 /** Todos os itens possíveis de um tema. */

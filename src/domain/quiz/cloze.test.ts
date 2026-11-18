@@ -96,3 +96,14 @@ describe("Complete a frase: qualidade", () => {
     expect(all.filter((i) => i.ref.startsWith("Art. 17") || i.ref.startsWith("Art. 18")).length).toBe(1);
   });
 });
+
+describe("checkCloze com respostas longas (perguntas curtas do jogo)", () => {
+  const longa = "A parte pode indicar mais de um assistente técnico em perícia complexa multidisciplinar.";
+  const item = { nodeKey: "G000001", context: null, parts: [{ text: "x " }, { blank: 0 }], answers: [longa], bank: [longa], ref: "CPP" };
+  it("aceita a resposta certa mesmo com mais de 80 caracteres e espaços extras", () => {
+    expect(longa.length).toBeGreaterThan(80);
+    expect(checkCloze(item, [longa])).toEqual([true]);
+    expect(checkCloze(item, [`  ${longa.replace(" mais ", "  mais ")}  `])).toEqual([true]);
+    expect(checkCloze(item, ["É proibido indicar mais de um assistente."])).toEqual([false]);
+  });
+});
