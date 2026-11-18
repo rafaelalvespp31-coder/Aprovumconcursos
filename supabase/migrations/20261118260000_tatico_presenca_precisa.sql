@@ -7,7 +7,7 @@ language sql stable security definer set search_path = '' as $$
          exists (select 1 from public.tatico_matches m where m.status not in ('finalizada','cancelada') and p.id in (m.p1, m.p2)) as em_partida
   from public.profiles p
   where p.id <> p_user and nullif(btrim(p.display_name), '') is not null
-    and exists (select 1 from public.tatico_presence pr where pr.user_id = p.id and pr.seen_at > now() - interval '15 seconds')
+    and exists (select 1 from public.tatico_presence pr where pr.user_id = p.id and pr.seen_at > now() - interval '8 seconds')
     and (length(btrim(coalesce(p_q, ''))) < 2 or p.display_name ilike '%' || btrim(p_q) || '%')
   order by 4 asc, 2 asc
   limit 40;

@@ -125,7 +125,7 @@ function DesafiarAluno() {
     let vivo = true;
     const buscar = async () => { const r = await taticoBuscarAction(q.trim()); if (vivo) { setLista(r); setCarregando(false); } };
     const t = setTimeout(buscar, q.trim().length >= 2 ? 300 : 0);
-    const iv = setInterval(buscar, 5000);        // quem entra/sai da plataforma aparece/some sozinho
+    const iv = setInterval(buscar, 2000);        // quem entra/sai da plataforma aparece/some sozinho
     return () => { vivo = false; clearTimeout(t); clearInterval(iv); };
   }, [q, esp]);
   const esperando = !!esp;
@@ -179,15 +179,14 @@ function DesafiarAluno() {
         <h2 id="lb-s1" className="lb-step"><i>1</i>ESCOLHA A MATÉRIA</h2>
         <div className="lb-chips" role="group" aria-label="Matéria do desafio" data-testid="tatico-materias">
           <button type="button" aria-pressed={mat === null} className={`lb-chip ${mat === null ? "on" : ""}`} onClick={() => setMat(null)}>
-            <span className="lck" aria-hidden />Todas<small>mistura</small>
+            <b>Todas</b><small>mistura</small>
           </button>
           {materias.map((m) => (
             <button key={m.materia} type="button" aria-pressed={mat === m.materia} className={`lb-chip ${mat === m.materia ? "on" : ""}`} onClick={() => setMat(m.materia)}>
-              <span className="lck" aria-hidden />{m.materia}<small>{Number(m.n).toLocaleString("pt-BR")} questões</small>
+              <b>{m.materia}</b><small>{Number(m.n).toLocaleString("pt-BR")} questões</small>
             </button>
           ))}
         </div>
-        <p className="lb-sub">As alternativas são embaralhadas e nenhuma questão se repete na partida.</p>
       </section>
 
       <section className="lb-panel lb-enter lb-d1" aria-labelledby="lb-s2" data-testid="tatico-lista-alunos">

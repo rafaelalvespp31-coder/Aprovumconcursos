@@ -50,7 +50,7 @@ export function DesafioWatcher() {
           }
         }
       }
-      if (vivo) timer = setTimeout(ciclo, pendente.current ? 1500 : 4500);
+      if (vivo) timer = setTimeout(ciclo, pendente.current ? 1500 : 3000);
     };
     timer = setTimeout(ciclo, 1200);
     // saiu da aba/app → some da lista de online na hora; voltou → reaparece na hora
