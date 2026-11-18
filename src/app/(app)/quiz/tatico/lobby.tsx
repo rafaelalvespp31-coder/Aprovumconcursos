@@ -24,8 +24,8 @@ function Municao({ usados }: { usados: number }) {
   );
 }
 
-export function Lobby({ s, stats, erro, admin, onSolo, onRetomar, onEncerrar }: {
-  onEncerrar: () => void; onRetomar: () => void; admin: boolean; onSolo: () => void; s: TaticoEstado; stats: TaticoStats; erro: string | null;
+export function Lobby({ s, stats, erro, onRetomar, onEncerrar }: {
+  onEncerrar: () => void; onRetomar: () => void; s: TaticoEstado; stats: TaticoStats; erro: string | null;
 }) {
   const usados = "usados" in s && typeof s.usados === "number" ? s.usados : 0;
   const esgotado = s.estado === "limite" || usados >= 3;
@@ -67,12 +67,6 @@ export function Lobby({ s, stats, erro, admin, onSolo, onRetomar, onEncerrar }: 
           <DesafiarAluno />
         )}
 
-        {admin && (
-          <div className="lb-panel lb-gold lb-treino lb-enter">
-            <div><p className="lb-k gold">ADMIN</p><p className="lb-pt"><b>Treino solo no estande</b></p><p className="lb-sub">Sem adversário, sem XP e sem gastar o limite diário.</p></div>
-            <button onClick={onSolo} data-testid="tatico-solo" className="lb-btn ghost gold">ENTRAR</button>
-          </div>
-        )}
         {erro && <p role="alert" className="lb-erro">{erro}</p>}
 
         {stats && stats.partidas > 0 && (

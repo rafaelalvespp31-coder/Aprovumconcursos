@@ -49,7 +49,7 @@ export function GameBanner({
   pct: number;
   started: boolean;
   onStart: () => void;
-  onPickTarget: () => void;
+  onPickTarget?: () => void;
   onRanking: () => void;
   /** Reação do Operador à última resposta. */
   mood?: "ok" | "erro" | null;
@@ -157,6 +157,7 @@ export function GameBanner({
             >
               <Crosshair className="h-5 w-5" aria-hidden /> {started ? "Continuar missão" : "Iniciar missão"}
             </button>
+            {onPickTarget && (
             <button
               type="button"
               onClick={onPickTarget}
@@ -164,6 +165,7 @@ export function GameBanner({
             >
               <Target className="h-4 w-4" aria-hidden /> Trocar alvo
             </button>
+            )}
             <button
               type="button"
               onClick={onRanking}

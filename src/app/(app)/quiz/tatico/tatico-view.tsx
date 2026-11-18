@@ -8,7 +8,7 @@ import { breathAt } from "@/components/knowledge-map/breath";
 import { EVENTO_DESAFIO } from "@/components/tatico/desafio-watcher";
 import { Carregando, EsperaEstande } from "./carregando";
 import { Lobby } from "./lobby";
-import { taticoStatsAction, taticoEncerrarTreinoAction, taticoEntrarSoloAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
+import { taticoStatsAction, taticoEncerrarTreinoAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
 import type { TaticoEstado, TaticoQuestao, TaticoRevisao, TaticoStats } from "@/server/services/tatico";
 import "./tatico.css";
 
@@ -201,7 +201,7 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
   );
 }
 
-export function TaticoView({ inicial, nivel, admin, retomar }: { retomar: boolean; admin: boolean; inicial: TaticoEstado; nivel: { level: number; into: number } }) {
+export function TaticoView({ inicial, nivel, retomar }: { retomar: boolean; inicial: TaticoEstado; nivel: { level: number; into: number } }) {
   const [s, setSraw] = useState<TaticoEstado>(inicial);
   // Já tem partida/fila ativa ao abrir (ex.: acabou de aceitar um desafio)? Passa pela tela de carregamento e cai no estande.
   // Pelo card do Modo Jogo sempre cai na página de desafiar alguém; só vai direto ao estande quando o desafio acabou de ser aceito
@@ -287,16 +287,6 @@ export function TaticoView({ inicial, nivel, admin, retomar }: { retomar: boolea
   }, [audio]);
   useEffect(() => { if (fim || s.estado === "ocioso") { audio.stop(); sairTelaCheia(); } }, [fim, s.estado, audio]);
 
-  const entrarSolo = useCallback(async () => {
-    if (som) audio.start();
-    entrarTelaCheia();
-    setErro(null); setEntrou(true); setCarregando(true); setEsperaServidor(true);
-    const r = await taticoEntrarSoloAction();
-    setEsperaServidor(false);
-    if (!r.ok) { setErro(r.error); setCarregando(false); setEntrou(false); return; }
-    setS(r.s);
-    if (r.s.estado !== "partida") { setCarregando(false); sairTelaCheia(); }
-  }, [setS, som, audio]);
   const encerrarTreino = useCallback(async () => {
     if (!window.confirm("Encerrar o treino? Ele será finalizado e você volta à página de desafios.")) return;
     audio.stop(); sairTelaCheia();
@@ -334,7 +324,7 @@ export function TaticoView({ inicial, nivel, admin, retomar }: { retomar: boolea
   }
   if (fim && s.estado === "partida" && entrou) return <Resultado s={s} rev={rev} onNova={() => { setS({ estado: "ocioso", usados: s.usados, limite: 3 }); setRev(null); pos.current = -1; }} />;
   return (
-    <Lobby s={s} stats={stats} erro={erro} admin={admin} onSolo={entrarSolo} onRetomar={() => { entrarTelaCheia(); setEntrou(true); setCarregando(true); }} onEncerrar={encerrarTreino} />
+    <Lobby s={s} stats={stats} erro={erro} onRetomar={() => { entrarTelaCheia(); setEntrou(true); setCarregando(true); }} onEncerrar={encerrarTreino} />
   );
 }
 
