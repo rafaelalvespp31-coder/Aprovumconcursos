@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { SoldierAudio } from "@/components/knowledge-map/soldier-audio";
 import { breathAt } from "@/components/knowledge-map/breath";
 import { taticoEntrarAction, taticoEntrarSoloAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
@@ -14,25 +15,39 @@ const TG_X = [591, 765, 938, 1108];
 const OPT_POS = [{ l: 442, t: 168, h: 104 }, { l: 846, t: 168, h: 104 }, { l: 442, t: 282, h: 90 }, { l: 846, t: 282, h: 90 }];
 const W = 1672, H = 941;
 
+function entrarTelaCheia() {
+  try {
+    const el = document.documentElement;
+    if (!document.fullscreenElement) void el.requestFullscreen?.({ navigationUI: "hide" }).catch(() => undefined);
+    const o = screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> };
+    if (window.matchMedia("(pointer: coarse)").matches) void o?.lock?.("landscape").catch(() => undefined);
+  } catch { /* sem suporte: o modo fixo em CSS já ocupa a janela */ }
+}
+function sairTelaCheia() {
+  try { if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined); screen.orientation?.unlock?.(); } catch { /* sem efeito */ }
+}
+
 const mmss = (ms: number) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
 const fs = (txt: string, base: number, min: number, soft: number) => Math.max(min, base - Math.max(0, txt.length - soft) * 0.07);
 
 function useEscala(portrait: boolean) {
   const ref = useRef<HTMLDivElement>(null);
-  const [w, setW] = useState(0);
+  const [dim, setDim] = useState({ w: 0, h: 0 });
   useLayoutEffect(() => {
     const el = ref.current; if (!el) return;
-    const ro = new ResizeObserver(() => setW(el.clientWidth)); ro.observe(el); setW(el.clientWidth);
+    const ro = new ResizeObserver(() => setDim({ w: el.clientWidth, h: el.clientHeight })); ro.observe(el); setDim({ w: el.clientWidth, h: el.clientHeight });
     return () => ro.disconnect();
   }, []);
-  // retrato: recorta a faixa central (alvos + braço) e a pergunta vira DOM
-  const faixa = portrait ? { x: 420, y: 400, w: 830, h: 541 } : { x: 0, y: 0, w: W, h: H };
-  const k = w / faixa.w;
-  return { ref, k, faixa, boxH: faixa.h * k };
+  // retrato: recorta a faixa central (alvos + braço) e a pergunta vira DOM; paisagem: o palco inteiro, centralizado, ocupando a tela
+  const faixa = portrait ? { x: 520, y: 392, w: 660, h: 549 } : { x: 0, y: 0, w: W, h: H };
+  const k = portrait ? dim.w / faixa.w : Math.min(dim.w / faixa.w, dim.h / faixa.h);
+  const offX = portrait ? 0 : (dim.w - faixa.w * k) / 2;
+  const offY = portrait ? 0 : (dim.h - faixa.h * k) / 2;
+  return { ref, k, faixa, offX, offY, boxH: portrait ? faixa.h * k : undefined };
 }
 
 export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock }: { breathClock?: (nowMs: number) => number | null; s: Partida; at: number; nivel: { level: number; into: number }; noFx: boolean; portrait: boolean; onShoot: (i: number) => void; shot: { i: number; n: number; hit: boolean | null } | null }) {
-  const { ref, k, faixa, boxH } = useEscala(portrait);
+  const { ref, k, faixa, offX, offY, boxH } = useEscala(portrait);
   const [now, setNow] = useState(0);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 200); return () => clearInterval(t); }, []);
   // Respiração do braço: mesma curva do "novo estudo", guiada pelo áudio em loop (quando o som está ligado).
@@ -66,9 +81,10 @@ export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock 
     return "";
   };
   return (
-    <div className={`tt-wrap ${noFx ? "tt-fx-off" : ""}`}>
-      <div ref={ref} className="tt-box" style={{ height: boxH || undefined }} data-testid="tatico-cena">
-        <div className="tt-stage" style={{ transform: `scale(${k}) translate(${-faixa.x}px,${-faixa.y}px)` }}>
+    <div className={`tt-wrap tt-wrap-full ${noFx ? "tt-fx-off" : ""}`}>
+      <div className="tt-fundo" aria-hidden />
+      <div ref={ref} className="tt-box" style={portrait ? { height: boxH || undefined, flex: "none" } : { flex: 1, minHeight: 0 }} data-testid="tatico-cena">
+        <div className="tt-stage" style={{ transform: `translate(${offX}px,${offY}px) scale(${k}) translate(${-faixa.x}px,${-faixa.y}px)` }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img className="tt-bg" src="/tatico/estande.webp" alt="" draggable={false} />
           {s.phase === "responder" && q?.tiebreak && <div className="tt-sd" />}
@@ -138,7 +154,7 @@ export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock 
         </div>
       </div>
       {portrait && q && (
-        <div className="tt-m-q" style={{ margin: 8 }}>
+        <div className="tt-m-q" style={{ margin: 8, flex: 1, overflowY: "auto", minHeight: 0 }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontWeight: 800, fontSize: 13, color: "#e5202e" }}>
             <span>QUESTÃO {String(Math.min(q.pos, s.total)).padStart(2, "0")}/{s.total}{q.tiebreak ? " · MORTE SÚBITA" : ""}</span>
             <span data-testid="tatico-timer">{s.phase === "responder" ? mmss(ms) : "--:--"}</span>
@@ -166,6 +182,7 @@ export function TaticoView({ inicial, nivel, stats, admin }: { admin: boolean; i
   const [rev, setRev] = useState<TaticoRevisao>(null);
   const [audio] = useState(() => new SoldierAudio({ shotSrc: "/audio/disparo-glock.mp3", shotGain: 0.9 }));
   const [som, setSom] = useState(true);
+  const router = useRouter();
   const pos = useRef<number>(-1);
   const busy = useRef(false);
 
@@ -204,15 +221,17 @@ export function TaticoView({ inicial, nivel, stats, admin }: { admin: boolean; i
     document.addEventListener("visibilitychange", vis);
     return () => { document.removeEventListener("visibilitychange", vis); audio.dispose(); };
   }, [audio]);
-  useEffect(() => { if (fim || s.estado === "ocioso") audio.stop(); }, [fim, s.estado, audio]);
+  useEffect(() => { if (fim || s.estado === "ocioso") { audio.stop(); sairTelaCheia(); } }, [fim, s.estado, audio]);
 
   const entrar = useCallback(async () => {
     if (som) audio.start();
+    entrarTelaCheia();
     setErro(null); const r = await taticoEntrarAction();
     if (!r.ok) setErro(r.error); else setS(r.s);
   }, [setS, som, audio]);
   const entrarSolo = useCallback(async () => {
     if (som) audio.start();
+    entrarTelaCheia();
     setErro(null); const r = await taticoEntrarSoloAction();
     if (!r.ok) setErro(r.error); else setS(r.s);
   }, [setS, som, audio]);
@@ -230,11 +249,14 @@ export function TaticoView({ inicial, nivel, stats, admin }: { admin: boolean; i
   /* ---------- telas ---------- */
   if (s.estado === "partida" && !fim) {
     return (
-      <div>
+      <div className="tt-full" data-testid="tatico-tela-cheia">
         <Cena breathClock={som && !noFx ? (now) => audio.breathTime(now) : undefined} s={s} at={at} nivel={nivel} noFx={noFx} portrait={portrait} onShoot={atirar} shot={shot} />
-        {erro && <p role="alert" className="mt-2 text-[13px] text-[#B42318]">{erro}</p>}
-        <button className="mt-2 mr-4 text-[12px] text-tinta-suave underline" data-testid="tatico-som" onClick={() => { const v = !som; setSom(v); localStorage.setItem("tt-som", v ? "on" : "off"); if (v) audio.start(); else audio.stop(); }}>{som ? "Desligar som" : "Ligar som"}</button>
-        <button className="mt-2 text-[12px] text-tinta-suave underline" onClick={() => { const v = !noFx; setNoFx(v); localStorage.setItem("tt-fx", v ? "off" : "on"); }}>{noFx ? "Ativar efeitos visuais" : "Reduzir efeitos visuais"}</button>
+        {erro && <p role="alert" className="tt-toast">{erro}</p>}
+        <div className="tt-ctl">
+          <button data-testid="tatico-som" onClick={() => { const v = !som; setSom(v); localStorage.setItem("tt-som", v ? "on" : "off"); if (v) audio.start(); else audio.stop(); }}>{som ? "Som: ligado" : "Som: desligado"}</button>
+          <button onClick={() => { const v = !noFx; setNoFx(v); localStorage.setItem("tt-fx", v ? "off" : "on"); }}>{noFx ? "Efeitos: reduzidos" : "Efeitos: completos"}</button>
+          <button onClick={() => { if (window.confirm("Sair da partida? Ela continua valendo e você pode voltar enquanto estiver em andamento.")) { sairTelaCheia(); router.push("/quiz"); } }}>Sair</button>
+        </div>
       </div>
     );
   }

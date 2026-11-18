@@ -82,3 +82,15 @@
 .tt-m-opt.ok{border-color:#28d46a;background:#0b2a17}.tt-m-opt.no{border-color:#ff3b4a;background:#2a0b0f}.tt-m-opt.sel{outline:2px solid #ffd24a}
 @media (prefers-reduced-motion:reduce){.tt-breath,.tt-sd,.tt-timer.low .tt-big,.tt-cd span,.tt-tg.swing{animation:none}.tt-shell,.tt-smoke{display:none}}
 .tt-fx-off .tt-shell,.tt-fx-off .tt-smoke,.tt-fx-off .tt-flash,.tt-fx-off .tt-sd{display:none}
+
+/* tela cheia: o desafio ocupa a tela toda como um jogo */
+.tt-full{position:fixed;inset:0;z-index:1000;background:#000;display:flex;flex-direction:column;height:100dvh;width:100vw;overflow:hidden}
+.tt-wrap-full{flex:1;min-height:0;display:flex;flex-direction:column;border:0;border-radius:0;box-shadow:none;background:#000;position:relative}
+.tt-wrap-full>.tt-box{overflow:hidden;position:relative}
+.tt-fundo{position:absolute;inset:0;background:#000 url(/tatico/estande-sm.webp) center/cover;filter:blur(22px) brightness(.45);transform:scale(1.1)}
+.tt-wrap-full>.tt-box,.tt-wrap-full>.tt-m-q{position:relative;z-index:1}
+.tt-ctl{position:absolute;z-index:5;right:8px;bottom:8px;display:flex;gap:6px}
+.tt-ctl button{background:rgba(0,0,0,.65);color:#fff;border:1px solid #c9141f;border-radius:8px;padding:6px 10px;font-size:12px;min-height:34px;backdrop-filter:blur(4px)}
+.tt-ctl button:active{transform:scale(.96)}
+.tt-toast{position:absolute;z-index:6;left:50%;top:10px;transform:translateX(-50%);background:#3b0a0e;color:#fff;border:1px solid #e5202e;border-radius:8px;padding:8px 14px;font-size:14px}
+@media (max-width:760px){.tt-ctl{position:static;justify-content:center;padding:6px;background:#000}}
