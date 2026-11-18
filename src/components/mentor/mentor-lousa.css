@@ -157,3 +157,17 @@
 @keyframes lz-letra { from { opacity: 0; } to { opacity: 1; } }
 .lz-pronto .lz-ch { animation: none; opacity: 1; }
 @media (prefers-reduced-motion: reduce) { .lz-ch { animation: none; opacity: 1; } }
+
+/* Escrita à mão: cada letra é desenhada traço a traço; uma única caneta anda sobre o traço */
+.lz-pal { display: inline-block; white-space: nowrap; }
+.lz-g { display: inline-block; position: relative; height: 1.4em; vertical-align: -0.28em; }
+.lz-g svg { display: block; width: 100%; height: 100%; overflow: visible; }
+.lz-g path { fill: none; stroke: currentColor; stroke-width: var(--gw, 70); stroke-linecap: round; stroke-linejoin: round; }
+.lz-g path.lz-gl { stroke-dasharray: 1; stroke-dashoffset: 1; animation: lz-gl 200ms linear both; }
+@keyframes lz-gl { 0% { opacity: 0; } 1% { opacity: 1; stroke-dashoffset: 1; } 100% { opacity: 1; stroke-dashoffset: 0; } }
+.lz-l[data-t="titulo"], .lz-l[data-t="conta"], .lz-l[data-t="resposta"] { --gw: 105; }
+.lz-pena-h { position: absolute; left: 0; top: 0; width: 26px; height: 26px; opacity: 0; pointer-events: none; z-index: 4; transition: opacity .25s; will-change: transform; }
+.lz-pena-h .lz-marc { animation: none; margin: 0; vertical-align: top; }
+.lz-pronto .lz-g path.lz-gl { animation: none; stroke-dashoffset: 0; }
+.lz-pronto .lz-pena-h { display: none; }
+@media (prefers-reduced-motion: reduce) { .lz-g path.lz-gl { animation: none; stroke-dashoffset: 0; } .lz-pena-h { display: none; } }

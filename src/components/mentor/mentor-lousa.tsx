@@ -1,16 +1,17 @@
 "use client";
 
 import { IconeLousa, iconeDaLousa } from "@/components/aula/icone-lousa";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { Bookmark, BookmarkCheck, Loader2, RotateCcw, X } from "lucide-react";
 import { LOUSA_H, LOUSA_W, type ItemDesenho, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
+import { GLIFOS } from "./lousa-glifos";
 import "./mentor-lousa.css";
 
 const COR: Record<string, string> = { azul: "#1d3a8a", preto: "#1a1a1f", vermelho: "#c62828", verde: "#1b7a43", grafite: "#1a1a1f", laranja: "#d9620b", roxo: "#6b2fa3", rosa: "#c2185b", branco: "#ffffff" };
 const UPS = 20;
-const SYNC_UPS = 38; // velocidade da caneta no quadro sincronizado (rápida, mas ainda legível)
-const VIVO_UPS = 34; // quadro ao vivo: caneta rápida, as linhas entram assim que chegam
-const LEAD_CHARS = 22; // começa a escrever a linha ~1,5 s antes de o Mentor falá-la // unidades de tempo por segundo (cada letra custa ~1 unidade)
+const SYNC_UPS = 22; // velocidade da caneta no quadro sincronizado (rápida, mas ainda legível)
+const VIVO_UPS = 20; // quadro ao vivo: caneta rápida, as linhas entram assim que chegam
+const LEAD_CHARS = 34; // começa a escrever a linha ~1,5 s antes de o Mentor falá-la // unidades de tempo por segundo (cada letra custa ~1 unidade)
 const PAUSA = 4; // respiro entre linhas, como quem levanta o canetão
 
 /** Tempo de cada letra: espaços e pontuação demoram mais, números um pouco mais, e há uma oscilação leve e fixa (humana). */
@@ -66,6 +67,72 @@ function Marca({ m }: { m: NonNullable<LinhaLousa["marca"]> }) {
   );
 }
 
+/* ===== Escrita à mão: cada letra é desenhada traço a traço, na ordem em que uma pessoa a faria ===== */
+const KG = 1.4; // altura do glifo, em em
+const GD_MS = 200; // quanto a mão leva para desenhar uma letra
+const PenaCtx = createContext<{ el: React.RefObject<HTMLSpanElement | null>; placa: React.RefObject<HTMLDivElement | null> } | null>(null);
+
+/** A caneta (uma só) anda sobre o traço da letra enquanto ela é desenhada e depois descansa. */
+function seguirPena(pen: HTMLElement | null, placa: HTMLElement | null, svg: SVGSVGElement | null, adv: number): (() => void) | undefined {
+  if (!pen || !placa || !svg) return undefined;
+  const paths = [...svg.querySelectorAll("path")];
+  const lens = paths.map((q) => q.getTotalLength()); const tot = lens.reduce((a, b) => a + b, 0) || 1;
+  const r = svg.getBoundingClientRect(); const pr = placa.getBoundingClientRect();
+  const ox = r.left - pr.left + placa.scrollLeft; const oy = r.top - pr.top + placa.scrollTop;
+  const sx = r.width / adv; const sy = r.height / 1000;
+  const t0 = performance.now(); let raf = 0;
+  pen.style.opacity = "1";
+  const passo = (now: number) => {
+    const p = Math.min(1, (now - t0) / GD_MS);
+    let a = p * tot; let i = 0;
+    while (i < lens.length - 1 && a > lens[i]!) { a -= lens[i]!; i++; }
+    const pt = paths[i]!.getPointAtLength(Math.min(a, lens[i]!));
+    const x = ox + pt.x * sx; const y = oy + (pt.y + 800) * sy;
+    pen.style.transform = `translate(${(x - 4).toFixed(1)}px, ${(y - 23).toFixed(1)}px) rotate(${(Math.sin(now / 38) * 3).toFixed(1)}deg)`;
+    if (p < 1) raf = requestAnimationFrame(passo);
+  };
+  raf = requestAnimationFrame(passo);
+  const rest = window.setTimeout(() => { pen.style.opacity = "0"; }, GD_MS + 900);
+  return () => { cancelAnimationFrame(raf); clearTimeout(rest); };
+}
+
+const Glifo = memo(function Glifo({ ch, nova }: { ch: string; nova: boolean }) {
+  const g = GLIFOS[ch];
+  const [anima] = useState(nova); // decidido na montagem: a letra continua a se desenhar mesmo depois de entrar a próxima
+  const ctx = useContext(PenaCtx);
+  const ref = useRef<SVGSVGElement>(null);
+  useEffect(() => {
+    if (!anima || !g || !ctx || window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    return seguirPena(ctx.el.current, ctx.placa.current, ref.current, g[0]);
+  }, [anima, g, ctx]);
+  if (!g) return <span className={nova ? "lz-nova" : undefined}>{ch}</span>;
+  const [adv, tr] = g;
+  const tot = tr.reduce((a, t) => a + t[0], 0) || 1;
+  const cum = tr.reduce<number[]>((a, t) => [...a, a[a.length - 1]! + t[0]], [0]);
+  return (
+    <span className="lz-g" style={{ width: `${((adv / 1000) * KG).toFixed(3)}em` }}>
+      <svg ref={ref} viewBox={`0 -800 ${adv} 1000`} aria-hidden>
+        {tr.map(([, d], i) => {
+          const ini = cum[i]! / tot; const fim = cum[i + 1]! / tot;
+          return anima
+            ? <path key={i} d={d} pathLength={1} className="lz-gl" style={{ animationDelay: `${Math.round(ini * GD_MS)}ms`, animationDuration: `${Math.max(20, Math.round((fim - ini) * GD_MS))}ms` }} />
+            : <path key={i} d={d} />;
+        })}
+      </svg>
+    </span>
+  );
+});
+const Palavra = memo(function Palavra({ p, nova }: { p: string; nova: boolean }) {
+  const cs = [...p];
+  return <span className="lz-pal">{cs.map((c, i) => <Glifo key={i} ch={c} nova={nova && i === cs.length - 1} />)}</span>;
+});
+/** Um trecho de texto escrito à mão; `nova` marca que a última letra acabou de ser escrita (e ainda está sendo desenhada). */
+const Texto = memo(function Texto({ s, nova }: { s: string; nova: boolean }) {
+  const partes = s.split(/( +)/);
+  let ult = -1; for (let i = partes.length - 1; i >= 0; i--) if (partes[i] !== "") { ult = i; break; }
+  return <>{partes.map((p, i) => (p === "" ? null : /^ +$/.test(p) ? " " : <Palavra key={i} p={p} nova={nova && i === ult} />))}</>;
+});
+
 /** Escreve as primeiras `v` letras de `s`, cada trecho com a sua caneta; o círculo só entra com a linha pronta. */
 function Escrito({ s, v, l, cor0, feito, lado }: { s: string; v: number; l: LinhaLousa; cor0: string; feito: boolean; lado?: "dir" }) {
   const ch = [...s];
@@ -80,10 +147,8 @@ function Escrito({ s, v, l, cor0, feito, lado }: { s: string; v: number; l: Linh
     let j = i + 1;
     while (j < Math.min(v, ch.length) && cores[j] === cores[i] && circ[j] === circ[i]) j++;
     const ultimo = j === v && !feito;
-    const corpo = ch.slice(i, ultimo ? j - 1 : j).join("");
-    const nova = ultimo ? <span key={`n${j}`} className="lz-nova">{ch[j - 1]}</span> : null;
     const st = cores[i] ? { color: cores[i] } : undefined;
-    const miolo = <>{corpo}{nova}</>;
+    const miolo = <Texto s={ch.slice(i, j).join("")} nova={ultimo} />;
     out.push(circ[i] ? <span key={i} className="lz-ci" style={st}>{miolo}</span> : <span key={i} style={st}>{miolo}</span>);
     i = j;
   }
@@ -386,6 +451,8 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
   // acompanha a escrita só quando muda a linha ativa (rolar a cada quadro trava)
   useEffect(() => { const el = placa.current; if (el && !fim) el.scrollTo({ top: el.scrollHeight, behavior: "smooth" }); }, [ativo, linhas.length, fim]);
   const desenho = lousa.desenho;
+  const penEl = useRef<HTMLSpanElement>(null);
+  const penCtx = useMemo(() => ({ el: penEl, placa }), []);
   return (
     <aside className={`lz ${reduz.current ? "lz-pronto" : ""} ${fase === 0 ? "lz-moldura" : ""}`} role="dialog" aria-label={`Quadro do Mentor: ${lousa.titulo || "exemplo"}`} data-testid="mentor-lousa">
       {fase < 2 && !reduz.current && <Moldura onEncher={encher} onFim={fimMoldura} />}
@@ -413,7 +480,9 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
         <div className="lz-placa" ref={placa} key={rodada} onClick={() => setPos(total)} style={{ ["--tema" as string]: iconeDaLousa(lousa.titulo || "").cor }}>
           <IconeLousa titulo={lousa.titulo || ""} />
           <ol className="lz-sr">{linhas.map((l, i) => <li key={i}>{[l.texto, l.dir].filter(Boolean).join(" — ")}</li>)}</ol>
+          <PenaCtx.Provider value={penCtx}>
           <div aria-hidden>
+            <span ref={penEl} className="lz-pena-h"><Marcador c={ativo >= 0 ? cor(linhas[ativo]?.cor, "azul") : "#1d3a8a"} /></span>
             {(!dados || linhas.length === 0) && (
               <div className="lz-espera" role="progressbar" aria-label="Preparando o quadro" aria-busy="true">
                 <span className="lz-espera-t">Preparando o quadro…</span>
@@ -427,7 +496,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
               const v = letras(j);
               const feito = v >= len;
               const c = cor(l.cor, l.tipo === "conta" || l.tipo === "nota" ? "preto" : "azul");
-              const pen = ativo === j && <Marcador c={c} />;
+              const pen: React.ReactNode = null; // a caneta é uma só e anda sobre o traço (ver PenaCtx)
               const st = { ["--n" as string]: l.nivel, ["--c" as string]: c } as React.CSSProperties;
               if (l.tipo === "espaco") return <div key={j} className="lz-l" data-t="espaco" />;
               if (l.tipo === "par") {
@@ -488,6 +557,7 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
               </svg>
             )}
           </div>
+          </PenaCtx.Provider>
         </div>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img className="lz-logo" src="/images/aprovum-logo-escura.png" alt="" aria-hidden />
