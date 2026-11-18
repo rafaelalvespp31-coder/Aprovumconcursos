@@ -88,7 +88,7 @@
 .tt-full{position:fixed;inset:0;z-index:1000;background:#000;display:flex;flex-direction:column;height:100dvh;width:100vw;overflow:hidden}
 .tt-wrap-full{flex:1;min-height:0;display:flex;flex-direction:column;border:0;border-radius:0;box-shadow:none;background:#000;position:relative}
 .tt-wrap-full>.tt-box{overflow:hidden;position:relative}
-.tt-fundo{position:absolute;inset:0;background:#000 url(/tatico/estande-sm.webp) center/cover;filter:brightness(.42)}
+.tt-fundo{position:absolute;inset:0;background:radial-gradient(ellipse 90% 40% at 50% 0%,rgba(150,14,26,.28),transparent 70%),linear-gradient(180deg,#0b0708,#050506 60%,#000)}
 .tt-wrap-full>.tt-box,.tt-wrap-full>.tt-m-q{position:relative;z-index:1}
 .tt-ctl{position:absolute;z-index:5;right:8px;bottom:8px;display:flex;gap:6px}
 .tt-ctl button{background:rgba(0,0,0,.65);color:#fff;border:1px solid #c9141f;border-radius:8px;padding:6px 10px;font-size:12px;min-height:34px;backdrop-filter:blur(4px)}

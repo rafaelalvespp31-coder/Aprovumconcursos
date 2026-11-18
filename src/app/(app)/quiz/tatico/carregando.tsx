@@ -51,8 +51,8 @@ export function Carregando({ som, aguardando, onPronto }: { som: boolean; aguard
   // vídeo: com som se o aluno deixou o som ligado (o clique em "Entrar" libera o áudio); senão, mudo
   useEffect(() => {
     const v = vid.current; if (!v) return;
-    v.muted = !som; v.volume = 0.8;
-    v.play().catch(() => { v.muted = true; v.play().catch(() => undefined); });
+    v.muted = true; v.volume = 0;
+    v.play().catch(() => undefined);
   }, [som]);
 
   const n = Math.round(pct * 100);
