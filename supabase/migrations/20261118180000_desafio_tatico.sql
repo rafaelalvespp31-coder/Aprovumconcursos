@@ -150,8 +150,8 @@ end $$;
 -- ---------- avanço da máquina de estados (lazy: roda em toda leitura/resposta, sob trava) ----------
 create or replace function public.tatico_avancar(p_match uuid)
 returns void language plpgsql security definer set search_path = '' as $$
-declare m public.tatico_matches%rowtype; n1 int; n2 int; a1 boolean; a2 boolean; c1 boolean; c2 boolean;
-        h1 int; h2 int; ausente1 boolean; ausente2 boolean; q record; loops int := 0; novo public.tatico_match_questions%rowtype;
+declare m public.tatico_matches%rowtype; n1 int; n2 int; c1 boolean; c2 boolean;
+        ausente1 boolean; ausente2 boolean; q record; loops int := 0; novo public.tatico_match_questions%rowtype;
 begin
   select * into m from public.tatico_matches where id = p_match for update;
   if not found or m.status in ('finalizada','cancelada','aguardando_adversario') then return; end if;
@@ -174,7 +174,6 @@ begin
         from public.tatico_answers where match_id = p_match and pos = m.idx;
       -- fecha a rodada: tempo esgotado, ou os dois responderam, ou quem respondeu aguarda alguém que sumiu
       exit when not ((n1 > 0 and n2 > 0) or now() >= m.phase_until or (n1 > 0 and ausente2) or (n2 > 0 and ausente1));
-      select * into novo from public.tatico_match_questions where match_id = p_match and pos = m.idx;
       if n1 = 0 then insert into public.tatico_answers (match_id, pos, user_id, choice, correct) values (p_match, m.idx, m.p1, null, false); end if;
       if n2 = 0 then insert into public.tatico_answers (match_id, pos, user_id, choice, correct) values (p_match, m.idx, m.p2, null, false); end if;
       select coalesce(bool_or(correct) filter (where user_id = m.p1), false), coalesce(bool_or(correct) filter (where user_id = m.p2), false)
@@ -254,7 +253,7 @@ begin
   insert into public.tatico_matches (p1, p2, status, phase, phase_until, day)
     values (par, p_user, 'aguardando_inicio', 'contagem', now() + interval '9 seconds', dia) returning id into mid;
   insert into public.tatico_match_questions (match_id, pos, source, question_id, snapshot)
-    select mid, row_number() over (order by random()), s.source, s.qid, s.snap
+    select mid, (row_number() over (order by random()))::int, s.source, s.qid, s.snap
     from (select * from public.tatico_pool() order by random() limit 10) s;
   -- a tentativa é contada AGORA (início da partida); recarregar/abandonar não devolve
   insert into public.tatico_daily (user_id, day, used) values (par, dia, 1), (p_user, dia, 1)
@@ -290,7 +289,7 @@ end $$;
 -- ---------- estado para a tela (sem vazar gabarito nem a escolha do adversário antes da hora) ----------
 create or replace function public.tatico_estado(p_user uuid, p_match uuid default null)
 returns jsonb language plpgsql security definer set search_path = '' as $$
-declare m public.tatico_matches%rowtype; mid uuid := p_match; eu int; opp uuid; qs public.tatico_match_questions%rowtype;
+declare m public.tatico_matches%rowtype; mid uuid := p_match; opp uuid; qs public.tatico_match_questions%rowtype;
         mine record; theirs record; rev boolean; q jsonb; seq int := 0; melhor int := 0; ult record;
         nome_opp text; qtd int; dia date := public.tatico_dia(); usados int;
 begin
@@ -313,6 +312,7 @@ begin
   opp := case when m.p1 = p_user then m.p2 else m.p1 end;
   select coalesce(nullif(split_part(btrim(p.display_name), ' ', 1), '') || coalesce(' ' || left(nullif(split_part(btrim(p.display_name), ' ', 2), ''), 1) || '.', ''), 'Aluno APROVUM')
     into nome_opp from public.profiles p where p.id = opp;
+  nome_opp := coalesce(nome_opp, 'Aluno APROVUM');
   rev := m.phase in ('revelar','fim');
   select choice, correct, answered_at into mine from public.tatico_answers where match_id = mid and pos = m.idx and user_id = p_user;
   select (count(*) > 0) as respondeu into theirs from public.tatico_answers where match_id = mid and pos = m.idx and user_id = opp;
@@ -343,7 +343,7 @@ begin
     'me', jsonb_build_object('hits', case when p_user = m.p1 then m.p1_hits else m.p2_hits end,
                              'miss', case when p_user = m.p1 then m.p1_miss else m.p2_miss end,
                              'streak', seq, 'bestStreak', melhor,
-                             'answered', mine.choice is not null or (mine.correct is not null),
+                             'answered', mine.correct is not null,
                              'choice', mine.choice, 'correct', mine.correct),
     'opp', jsonb_build_object('name', nome_opp, 'hits', case when p_user = m.p1 then m.p2_hits else m.p1_hits end,
                               'miss', case when p_user = m.p1 then m.p2_miss else m.p1_miss end,
@@ -398,7 +398,7 @@ begin
         from (select q.snapshot->>'topic' t, count(*) filter (where a.correct) ac, count(*) tot
               from public.tatico_answers a join public.tatico_match_questions q on q.match_id = a.match_id and q.pos = a.pos
               join public.tatico_matches m2 on m2.id = a.match_id and m2.status = 'finalizada'
-              where a.user_id = p_user group by 1 having count(*) >= 1 order by 1.0 * count(*) filter (where a.correct) / count(*), count(*) desc limit 8) w), '[]'::jsonb)
+              where a.user_id = p_user group by 1 order by 1.0 * count(*) filter (where a.correct) / count(*), count(*) desc limit 8) w), '[]'::jsonb)
   ) into r
   from public.tatico_matches m where p_user in (m.p1, m.p2) and m.status = 'finalizada';
   return r;

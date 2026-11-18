@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { taticoEntrarAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
+import { taticoEntrarAction, taticoEntrarSoloAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
 import type { TaticoEstado, TaticoQuestao, TaticoRevisao, TaticoStats } from "@/server/services/tatico";
 import "./tatico.css";
 
@@ -136,7 +136,7 @@ export function Cena({ s, at, nivel, noFx, portrait, onShoot, shot }: { s: Parti
   );
 }
 
-export function TaticoView({ inicial, nivel, stats }: { inicial: { usados: number; limite: number }; nivel: { level: number; into: number }; stats: TaticoStats }) {
+export function TaticoView({ inicial, nivel, stats, admin }: { admin: boolean; inicial: { usados: number; limite: number }; nivel: { level: number; into: number }; stats: TaticoStats }) {
   const [s, setSraw] = useState<TaticoEstado>({ estado: "ocioso", ...inicial });
   const [at, setAt] = useState(0);
   const setS = useCallback((v: TaticoEstado) => { setAt(Date.now()); setSraw(v); }, []);
@@ -181,6 +181,10 @@ export function TaticoView({ inicial, nivel, stats }: { inicial: { usados: numbe
     setErro(null); const r = await taticoEntrarAction();
     if (!r.ok) setErro(r.error); else setS(r.s);
   }, [setS]);
+  const entrarSolo = useCallback(async () => {
+    setErro(null); const r = await taticoEntrarSoloAction();
+    if (!r.ok) setErro(r.error); else setS(r.s);
+  }, [setS]);
   const atirar = useCallback(async (i: number) => {
     if (s.estado !== "partida" || s.phase !== "responder" || s.me.answered || shot) return;
     const n = Date.now(); setShot({ i, n, hit: null });
@@ -202,11 +206,11 @@ export function TaticoView({ inicial, nivel, stats }: { inicial: { usados: numbe
   }
   if (fim && s.estado === "partida") return <Resultado s={s} rev={rev} onNova={() => { setS({ estado: "ocioso", usados: s.usados, limite: 3 }); setRev(null); pos.current = -1; }} />;
   return (
-    <Lobby s={s} stats={stats} erro={erro} onEntrar={entrar} onSair={async () => { await taticoSairFilaAction(); setS({ estado: "ocioso", usados: inicial.usados, limite: inicial.limite }); }} />
+    <Lobby s={s} stats={stats} erro={erro} admin={admin} onSolo={entrarSolo} onEntrar={entrar} onSair={async () => { await taticoSairFilaAction(); setS({ estado: "ocioso", usados: inicial.usados, limite: inicial.limite }); }} />
   );
 }
 
-function Lobby({ s, stats, erro, onEntrar, onSair }: { s: TaticoEstado; stats: TaticoStats; erro: string | null; onEntrar: () => void; onSair: () => void }) {
+function Lobby({ s, stats, erro, admin, onSolo, onEntrar, onSair }: { admin: boolean; onSolo: () => void; s: TaticoEstado; stats: TaticoStats; erro: string | null; onEntrar: () => void; onSair: () => void }) {
   const usados = "usados" in s && typeof s.usados === "number" ? s.usados : 0;
   const esgotado = s.estado === "limite" || usados >= 3;
   const wr = stats && stats.partidas ? Math.round((100 * stats.vitorias) / stats.partidas) : 0;
@@ -232,6 +236,12 @@ function Lobby({ s, stats, erro, onEntrar, onSair }: { s: TaticoEstado; stats: T
               <p style={{ fontWeight: 800, color: "#ffd24a" }}>Ainda não há questões suficientes para o desafio.</p>
             ) : (
               <button onClick={onEntrar} data-testid="tatico-entrar" className="rounded-[10px] bg-[#c9141f] px-6 py-3 text-[16px] font-extrabold text-white shadow-[0_0_24px_rgba(229,32,46,.6)] active:scale-[.97]">ENTRAR NO ESTANDE</button>
+            )}
+            {admin && s.estado !== "fila" && (
+              <div style={{ marginTop: 10 }}>
+                <button onClick={onSolo} data-testid="tatico-solo" className="rounded-[10px] border border-[#ffd24a] px-4 py-2 text-[14px] font-bold text-[#ffd24a] active:scale-[.97]">TREINO SOLO (admin)</button>
+                <p style={{ fontSize: 11, color: "#bbb", marginTop: 4 }}>Sem adversário, sem XP e sem gastar o limite diário.</p>
+              </div>
             )}
             <p style={{ fontSize: 13, marginTop: 10, color: "#ccc" }}>Desafios hoje: <b>{Math.min(3, usados)}/3</b></p>
             {erro && <p role="alert" style={{ color: "#ff8a93", fontSize: 13 }}>{erro}</p>}
@@ -274,7 +284,7 @@ function Resultado({ s, rev, onNova }: { s: Partida; rev: TaticoRevisao; onNova:
         <p style={{ fontSize: 12, letterSpacing: ".2em", opacity: 0.8 }}>{s.decidedBy === "morte_subita" ? "DECIDIDO NA MORTE SÚBITA" : s.decidedBy === "abandono" ? "ADVERSÁRIO ABANDONOU" : "RESULTADO FINAL"}</p>
         <h2 style={{ fontSize: "clamp(34px,9vw,64px)", fontWeight: 900, fontStyle: "italic" }}>{win ? "VITÓRIA" : "DERROTA"}</h2>
         <p style={{ fontSize: 22, fontWeight: 800 }}>{s.me.hits} x {s.opp.hits} <span style={{ opacity: 0.7, fontSize: 14 }}>vs {s.opp.name}</span></p>
-        <p style={{ fontSize: 26, fontWeight: 900, color: win ? "#28d46a" : "#ff6b78" }}>{s.xp == null ? "" : s.xp > 0 ? `+${s.xp} XP` : s.xp === 0 ? "0 XP (você já estava no zero)" : `${s.xp} XP`}</p>
+        <p style={{ fontSize: 26, fontWeight: 900, color: win ? "#28d46a" : "#ff6b78" }}>{s.solo ? "Treino: sem XP" : s.xp == null ? "" : s.xp > 0 ? `+${s.xp} XP` : s.xp === 0 ? "0 XP (você já estava no zero)" : `${s.xp} XP`}</p>
         <p style={{ fontSize: 13, opacity: 0.8 }}>Acertos {s.me.hits} · Erros {s.me.miss} · Melhor sequência {s.me.bestStreak}x</p>
         <div className="mt-4 flex flex-wrap justify-center gap-2">
           <button onClick={onNova} className="rounded-[10px] bg-[#c9141f] px-5 py-2 font-bold">Novo desafio</button>

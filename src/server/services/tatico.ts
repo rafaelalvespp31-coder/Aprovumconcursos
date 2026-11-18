@@ -1,6 +1,7 @@
 import "server-only";
 import { requireUser } from "../auth";
 import { createAdminClient } from "../supabase";
+import { getMyPlan } from "./plans";
 import { UserFacingError } from "./trails";
 
 /** Desafio Tático: o servidor (RPCs no banco) é a autoridade de tempo, gabarito, placar e XP. */
@@ -18,7 +19,7 @@ export type TaticoEstado =
       idx: number; total: number; msRestantes: number; questionSeconds: number;
       me: { hits: number; miss: number; streak: number; bestStreak: number; answered: boolean; choice: string | null; correct: boolean | null };
       opp: { name: string; hits: number; miss: number; answered: boolean };
-      question: TaticoQuestao | null; winner: boolean | null; decidedBy: string | null; xp: number | null; usados: number; limite: number;
+      solo?: boolean; question: TaticoQuestao | null; winner: boolean | null; decidedBy: string | null; xp: number | null; usados: number; limite: number;
     };
 export type TaticoStats = {
   partidas: number; vitorias: number; derrotas: number; vitoriasDesempate: number; acertos: number; erros: number;
@@ -44,6 +45,15 @@ export async function taticoEntrar(): Promise<TaticoEstado> {
   if (r.estado === "limite") return { estado: "limite", usados: r.usados };
   if (r.estado === "sem_questoes") return { estado: "sem_questoes" };
   return { estado: "fila", usados: r.usados ?? 0, limite: 3 };
+}
+/** Só administradores: treino solo no estande (sem adversário, sem XP, sem limite). */
+export async function taticoEntrarSolo(): Promise<TaticoEstado> {
+  const u = await requireUser("/quiz");
+  if (!(await getMyPlan(u.id)).admin) throw new UserFacingError("Recurso exclusivo para administradores.", "forbidden");
+  const r = await rpc<{ estado: string; match?: string }>("tatico_entrar_solo", { p_user: u.id });
+  if (r.estado === "partida") return taticoEstado(r.match);
+  if (r.estado === "sem_questoes") return { estado: "sem_questoes" };
+  throw new UserFacingError("Recurso exclusivo para administradores.", "forbidden");
 }
 export async function taticoEstado(match?: string): Promise<TaticoEstado> {
   const u = await requireUser("/quiz");

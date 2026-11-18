@@ -1,6 +1,6 @@
 "use server";
 
-import { taticoEntrar, taticoEstado, taticoResponder, taticoRevisao, taticoSairFila, taticoStats, type TaticoEstado, type TaticoRevisao, type TaticoStats } from "@/server/services/tatico";
+import { taticoEntrar, taticoEntrarSolo, taticoEstado, taticoResponder, taticoRevisao, taticoSairFila, taticoStats, type TaticoEstado, type TaticoRevisao, type TaticoStats } from "@/server/services/tatico";
 import { UserFacingError } from "@/server/services/trails";
 
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -22,4 +22,7 @@ export async function taticoStatsAction(): Promise<TaticoStats> { try { return a
 export async function taticoRevisaoAction(match: string): Promise<TaticoRevisao> {
   if (!UUID.test(match)) return null;
   try { return await taticoRevisao(match); } catch { return null; }
+}
+export async function taticoEntrarSoloAction(): Promise<{ ok: true; s: TaticoEstado } | { ok: false; error: string }> {
+  try { return { ok: true, s: await taticoEntrarSolo() }; } catch (e) { return { ok: false, error: falha(e) }; }
 }
