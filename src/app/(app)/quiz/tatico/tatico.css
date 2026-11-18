@@ -52,7 +52,7 @@
 .tt-spark{position:absolute;width:40px;height:40px;margin:-20px 0 0 -20px;border-radius:50%;background:radial-gradient(#fff,#ffb347 40%,transparent 70%);animation:tt-spark .3s ease-out forwards;pointer-events:none}
 .tt-tg.swing{animation:tt-swing .5s ease-out;transform-origin:50% 0}
 /* braço */
-.tt-arm{position:absolute;left:540px;top:570px;width:600px;height:371px;pointer-events:none;transform-origin:300px 371px;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+.tt-arm{position:absolute;left:410px;top:570px;width:860px;height:521px;pointer-events:none;transform-origin:430px 371px;transition:transform .35s cubic-bezier(.2,.8,.2,1)}
 .tt-arm img{width:100%;height:100%;display:block}
 .tt-arm.fire{animation:tt-recoil .26s cubic-bezier(.1,.9,.3,1)}
 .tt-world{position:absolute;left:0;top:0;width:1672px;height:941px;transform-origin:836px 470px;will-change:transform}
@@ -88,7 +88,7 @@
 .tt-full{position:fixed;inset:0;z-index:1000;background:#000;display:flex;flex-direction:column;height:100dvh;width:100vw;overflow:hidden}
 .tt-wrap-full{flex:1;min-height:0;display:flex;flex-direction:column;border:0;border-radius:0;box-shadow:none;background:#000;position:relative}
 .tt-wrap-full>.tt-box{overflow:hidden;position:relative}
-.tt-fundo{position:absolute;inset:0;background:#000 url(/tatico/estande-sm.webp) center/cover;filter:blur(22px) brightness(.45);transform:scale(1.1)}
+.tt-fundo{position:absolute;inset:0;background:#000 url(/tatico/estande-sm.webp) center/cover;filter:brightness(.42)}
 .tt-wrap-full>.tt-box,.tt-wrap-full>.tt-m-q{position:relative;z-index:1}
 .tt-ctl{position:absolute;z-index:5;right:8px;bottom:8px;display:flex;gap:6px}
 .tt-ctl button{background:rgba(0,0,0,.65);color:#fff;border:1px solid #c9141f;border-radius:8px;padding:6px 10px;font-size:12px;min-height:34px;backdrop-filter:blur(4px)}
