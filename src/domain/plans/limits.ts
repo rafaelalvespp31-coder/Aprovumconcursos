@@ -8,11 +8,13 @@ export const FREE_LIMITS = {
   lessonsPerDay: 1,
   /** Questões respondidas por dia no banco de questões e nos cadernos. */
   questionsPerDay: 5,
+  /** Questões do Modo Jogo por dia no plano gratuito (pagos e degustação têm o teto GAME_DAILY_LIMIT). */
+  gameQuestionsPerDay: 5,
   /** Redações enviadas para correção por IA por dia (plano pago e degustação seguem o limite geral da redação). */
   redacoesPerDay: 1,
 } as const;
 
-/** Modo Jogo: teto de questões por dia para TODOS os alunos (acertando ou errando), de qualquer plano. Trava e libera no dia seguinte. */
+/** Modo Jogo: teto de questões por dia de quem tem plano pago ou degustação (acertando ou errando). O gratuito tem FREE_LIMITS.gameQuestionsPerDay. Trava e libera no dia seguinte. */
 export const GAME_DAILY_LIMIT = 20;
 
 export const PLAN_IDS = ["free", "pro", "premium"] as const;
@@ -61,14 +63,20 @@ export function brDay(now: Date = new Date()): { day: string; start: string } {
 export type QuotaKind = "aula" | "questoes" | "jogo";
 
 export function quotaFor(kind: QuotaKind): number {
-  return kind === "aula" ? FREE_LIMITS.lessonsPerDay : kind === "questoes" ? FREE_LIMITS.questionsPerDay : GAME_DAILY_LIMIT;
+  return kind === "aula" ? FREE_LIMITS.lessonsPerDay : kind === "questoes" ? FREE_LIMITS.questionsPerDay : FREE_LIMITS.gameQuestionsPerDay;
 }
 
 /** Mensagem quando o limite do dia acaba. */
-export function limitMessage(kind: QuotaKind): string {
+/** Limite diário do Modo Jogo: gratuito 5, pago/degustação 20, administrador sem limite (null). */
+export function gameLimitFor(plan: { admin: boolean; unlimited: boolean }): number | null {
+  return plan.admin ? null : plan.unlimited ? GAME_DAILY_LIMIT : FREE_LIMITS.gameQuestionsPerDay;
+}
+
+export function limitMessage(kind: QuotaKind, limit?: number): string {
   if (kind === "aula") return `O plano gratuito libera ${FREE_LIMITS.lessonsPerDay} aula por dia e você já estudou a de hoje. Volte amanhã ou assine um plano para estudar sem limites.`;
   if (kind === "questoes") return `Você respondeu as ${FREE_LIMITS.questionsPerDay} questões de hoje do plano gratuito. Volte amanhã ou assine um plano para resolver sem limites.`;
-  return `Você fez as ${GAME_DAILY_LIMIT} questões do Modo Jogo de hoje. O jogo está travado e libera amanhã, a partir da meia-noite (horário de Brasília).`;
+  const n = limit ?? FREE_LIMITS.gameQuestionsPerDay;
+  return `Você fez as ${n} questões do Modo Jogo de hoje. O jogo está travado e libera amanhã, a partir da meia-noite (horário de Brasília).${n < GAME_DAILY_LIMIT ? ` Planos pagos liberam ${GAME_DAILY_LIMIT} por dia.` : ""}`;
 }
 
 /** Correções de redação por dia: o gratuito tem o limite do plano; pago/degustação, o limite geral; admin não tem. */

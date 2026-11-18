@@ -1,7 +1,7 @@
 import "server-only";
 import { createAdminClient } from "../supabase";
 import { UserFacingError } from "./trails";
-import { GAME_DAILY_LIMIT, brDay, effectivePlan, limitMessage, quotaFor, type PlanId, type QuotaKind } from "@/domain/plans/limits";
+import { brDay, gameLimitFor, effectivePlan, limitMessage, quotaFor, type PlanId, type QuotaKind } from "@/domain/plans/limits";
 import type { PromoGrant } from "@/domain/plans/promo";
 import { getActivePromo } from "./promo";
 
@@ -43,8 +43,13 @@ async function usedToday(userId: string, kind: Exclude<QuotaKind, "aula">): Prom
 /** Barra a ação quando o limite diário do plano gratuito acabou (questões ou Modo Jogo). */
 export async function assertQuota(userId: string, kind: "questoes" | "jogo"): Promise<void> {
   const plan = await getMyPlan(userId);
-  // Modo Jogo: o teto diário vale para todos os planos (só o administrador fica de fora).
-  if (kind === "jogo" ? plan.admin : plan.unlimited) return;
+  if (kind === "jogo") {
+    // Gratuito 5/dia; pago e degustação 20/dia; só o administrador fica de fora.
+    const max = gameLimitFor(plan);
+    if (max !== null && (await usedToday(userId, "jogo")) >= max) throw new UserFacingError(limitMessage("jogo", max), "plan_limit");
+    return;
+  }
+  if (plan.unlimited) return;
   if ((await usedToday(userId, kind)) >= quotaFor(kind)) throw new UserFacingError(limitMessage(kind), "plan_limit");
 }
 
@@ -83,6 +88,8 @@ export interface PlanUsage {
   unlimited: boolean;
   questionsLeft: number | null;
   gameLeft: number | null;
+  /** Teto diário do Modo Jogo deste aluno (null = administrador). */
+  gameMax: number | null;
   /** Fim da degustação premium vigente (ISO), se houver. */
   promoUntil: string | null;
 }
@@ -91,8 +98,9 @@ export interface PlanUsage {
 export async function getPlanUsage(userId: string): Promise<PlanUsage> {
   const plan = await getMyPlan(userId);
   const promoUntil = plan.promo?.expiresAt ?? null;
-  const jogo = plan.admin ? null : Math.max(0, GAME_DAILY_LIMIT - (await usedToday(userId, "jogo")));
-  if (plan.unlimited) return { paid: plan.paid, unlimited: true, questionsLeft: null, gameLeft: jogo, promoUntil };
+  const max = gameLimitFor(plan);
+  const jogo = max === null ? null : Math.max(0, max - (await usedToday(userId, "jogo")));
+  if (plan.unlimited) return { paid: plan.paid, unlimited: true, questionsLeft: null, gameLeft: jogo, gameMax: max, promoUntil };
   const q = await usedToday(userId, "questoes");
-  return { paid: false, unlimited: false, questionsLeft: Math.max(0, quotaFor("questoes") - q), gameLeft: jogo, promoUntil };
+  return { paid: false, unlimited: false, questionsLeft: Math.max(0, quotaFor("questoes") - q), gameLeft: jogo, gameMax: max, promoUntil };
 }

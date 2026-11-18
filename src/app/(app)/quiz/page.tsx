@@ -2,7 +2,6 @@ import { getQuizHome, startRound, DAILY_GOAL, LIVES } from "@/server/services/qu
 import { QuizView } from "./quiz-view";
 import { requireUser } from "@/server/auth";
 import { getPlanUsage } from "@/server/services/plans";
-import { GAME_DAILY_LIMIT } from "@/domain/plans/limits";
 import { UserFacingError } from "@/server/services/trails";
 import { ButtonLink, Notice } from "@/components/ui";
 
@@ -70,7 +69,7 @@ export default async function QuizPage({ searchParams }: { searchParams: Promise
     <>
       {usage.gameLeft !== null && (
         <p className="mb-3 rounded-[12px] border border-[#E6E7EB] bg-white px-3 py-2 text-[13px] text-[#08090B]" data-testid="cota-jogo">
-          Hoje: {usage.gameLeft === 1 ? "resta 1 questão" : `restam ${usage.gameLeft} questões`} de {GAME_DAILY_LIMIT} no Modo Jogo.
+          Hoje: {usage.gameLeft === 1 ? "resta 1 questão" : `restam ${usage.gameLeft} questões`} de {usage.gameMax} no Modo Jogo.
         </p>
       )}
       <QuizView key={round.topic.id} home={home} initialRound={round} lives={LIVES} dailyGoal={DAILY_GOAL} />
