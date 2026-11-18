@@ -137,3 +137,9 @@
   .lb *,.lb *::before,.lb *::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
   .lb-radar .fg{animation:none;stroke-dashoffset:0}
 }
+
+.lb-cd{margin:-2px 0 6px;display:flex;align-items:baseline;justify-content:center;gap:2px;font-family:"Barlow Condensed",system-ui,sans-serif;color:#fff}
+.lb-cd b{font:italic 900 56px/1 "Barlow Condensed",system-ui,sans-serif;font-variant-numeric:tabular-nums;text-shadow:0 0 18px rgba(229,32,46,.55);min-width:2ch;text-align:right}
+.lb-cd small{font:800 22px "Barlow Condensed",system-ui,sans-serif;color:#bdbdc4}
+.lb-cd.low b{color:#ff4d5a;animation:lb-low .5s ease-in-out infinite alternate}
+@keyframes lb-low{to{transform:scale(1.08);text-shadow:0 0 26px rgba(229,32,46,.95)}}

@@ -116,6 +116,7 @@ function DesafiarAluno() {
   const [mat, setMat] = useState<string | null>(null);
   const [esp, setEsp] = useState<{ id: string; para: string; materia: string | null } | null>(null);
   const [enviando, setEnviando] = useState<string | null>(null);
+  const [restante, setRestante] = useState(60);        // segundos do convite, em contagem regressiva
   const [msg, setMsg] = useState<{ tom: "erro" | "recusa"; texto: string; n: number } | null>(null);
 
   useEffect(() => { let vivo = true; taticoMateriasAction().then((m) => { if (vivo) setMaterias(m); }); return () => { vivo = false; }; }, []);
@@ -127,6 +128,13 @@ function DesafiarAluno() {
     const iv = setInterval(buscar, 5000);        // quem entra/sai da plataforma aparece/some sozinho
     return () => { vivo = false; clearTimeout(t); clearInterval(iv); };
   }, [q, esp]);
+  const esperando = !!esp;
+  useEffect(() => {
+    if (!esperando) return;
+    const t0 = Date.now();
+    const iv = setInterval(() => setRestante(Math.max(0, 60 - Math.floor((Date.now() - t0) / 1000))), 250);
+    return () => clearInterval(iv);
+  }, [esperando]);
   useEffect(() => {
     const h = (e: Event) => {
       const d = (e as CustomEvent<{ status: string; para?: string }>).detail;
@@ -143,6 +151,7 @@ function DesafiarAluno() {
     const r = await taticoDesafiarAction(a.id, mat);
     setEnviando(null);
     if (!r.ok) { setMsg((m) => ({ tom: "erro", texto: r.erro ?? "Não foi possível desafiar.", n: (m?.n ?? 0) + 1 })); return; }
+    setRestante(60);
     setEsp({ id: r.id!, para: r.para ?? a.name, materia: r.materia ?? mat });
   };
   const cancelar = async () => { if (esp) await taticoCancelarDesafioAction(esp.id); setEsp(null); };
@@ -155,10 +164,11 @@ function DesafiarAluno() {
           <i className="ping" aria-hidden /><i className="ping p2" aria-hidden />
           <span className="av">{inicial(esp.para)}</span>
         </div>
+        <p className={`lb-cd ${restante <= 10 ? "low" : ""}`} data-testid="tatico-contagem" aria-live="off"><b>{restante}</b><small>s</small></p>
         <p className="lb-k">DESAFIO ENVIADO</p>
         <h3>{esp.para}</h3>
         <p className="lb-mat"><span>{esp.materia ?? "Todas as matérias"}</span></p>
-        <p className="lb-sub">Aguardando resposta… o convite expira em 60 s</p>
+        <p className="lb-sub">Aguardando resposta… o convite expira quando chegar a zero</p>
         <button onClick={cancelar} className="lb-btn ghost">CANCELAR DESAFIO</button>
       </div>
     );
