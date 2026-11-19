@@ -116,8 +116,21 @@ function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null,
     if (!exact && !lawHit && mode && factor < 0.85) continue;
     // O nome da aula (título e sinônimos) precisa cobrir o assunto: palavras vindas só do grupo/tópico-pai ("Defesa do Estado…") não bastam.
     // (Exceção: assunto amplo que é o próprio grupo da aula, ex.: "Crimes contra o patrimônio" ↔ aulas de furto, roubo…)
-    const rGroup = it.entry.group ? recall(idx, clause, tokensOf(it.entry.group).set) : 0;
-    if (!exact && !lawHit && rName < 0.5 && rGroup < 0.8) continue;
+    const gset = it.entry.group ? tokensOf(it.entry.group).set : null;
+    const rGroup = gset && clause.all.length >= 2 && clause.all.every((t) => gset.has(t)) ? 1 : 0; // todas as palavras do assunto estão no grupo da aula
+    if (!exact && !lawHit && rName < 0.6 && rGroup < 0.8) continue;
+    // Assunto de uma palavra só ("Procedimento", "Trabalho") só liga quando é exatamente o título ou um sinônimo da aula.
+    if (!exact && !lawHit && clause.all.length < 2) continue;
+    // A palavra mais característica do assunto (a mais rara no catálogo) tem de estar no nome/sinônimos da aula.
+    if (!exact && !lawHit && rGroup < 0.8) {
+      const chave = [...clause.all].sort((a, b) => weight(idx, b) - weight(idx, a))[0];
+      if (chave && !it.names.some((n) => n.set.has(chave))) continue;
+    }
+    // Área do assunto desconhecida (ex.: Física, Geopolítica): qualquer aula do catálogo concorre, então só liga com evidência forte.
+    const soAlias = exact && fold(it.entry.title) !== key;
+    if (!mode && !lawHit && !(exact && !soAlias) && !(clause.all.length >= 2 && rName >= 0.8)) {
+      if (!(soAlias && clause.all.length >= 2)) continue;
+    }
     const base = exact || lawHit ? 1 : Math.max(rName, 0.85 * rUnion);
     // Hierarquia: o tópico do edital onde o assunto está deve ter a ver com o tópico da aula no catálogo.
     // Sem nenhuma palavra em comum, é outro contexto: pesa menos e nunca vira "completa" só por parecer.
@@ -131,7 +144,8 @@ function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null,
     const score = base * factor * (otherContext ? 0.85 : 1);
     if (score < 0.3) continue;
     const sameArea = factor >= 0.85;
-    const coverage: MatchLink["coverage"] = (exact || lawHit || (rName >= 0.8 && !otherContext)) && sameArea ? "completa" : exact || lawHit ? "conferencia" : rName >= 0.5 ? "parcial" : "conferencia";
+    const aliasSolto = exact && !lawHit && fold(it.entry.title) !== key && clause.all.length < 2; // sinônimo de uma palavra só ("trabalho", "procedimento") é fraco
+    const coverage: MatchLink["coverage"] = aliasSolto ? "conferencia" : (exact || lawHit || (rName >= 0.8 && !otherContext)) && sameArea ? "completa" : exact || lawHit ? "conferencia" : rName >= 0.6 ? "parcial" : "conferencia";
     scored.push({ catalogId: it.entry.id, coverage, score: Math.round(score * 1000) / 1000, r: rName });
   }
   scored.sort((a, b) => b.score - a.score);

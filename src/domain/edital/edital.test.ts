@@ -100,6 +100,10 @@ describe("matchTopic", () => {
     expect(r.status).toBe("nao_encontrado");
     expect(r.links).toEqual([]);
   });
+  it("assunto de uma palavra só e área desconhecida não ligam aula por palavra solta (Física 'Potência' ≠ 'Potenciação')", () => {
+    expect(matchTopic(idx, "Potência", null).status).toBe("nao_encontrado");
+    expect(matchTopic(idx, "Crimes contra a pessoa", "direito_penal").status).toBe("nao_encontrado");
+  });
   it("matéria diferente pesa menos: mesmo título em outra matéria não é completa", () => {
     const r = matchTopic(idx, "Receptação", "direito_constitucional");
     expect(r.status === "completa").toBe(false);

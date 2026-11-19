@@ -14,7 +14,7 @@ const STOP = new Set(
 );
 
 /** Palavras amplas demais para provar que uma aula cobre o assunto (só contam se não sobrar outra). */
-const GENERIC = new Set("direito direitos nocoes nocao conceito conceitos principio principios geral gerais aspecto aspectos tipo tipos especie especies regime sistema sistemas teoria tema temas questao questoes estudo analise".split(" "));
+const GENERIC = new Set("contra direito direitos nocoes nocao conceito conceitos principio principios geral gerais aspecto aspectos tipo tipos especie especies regime sistema sistemas teoria tema temas questao questoes estudo analise".split(" "));
 
 /** Radical simples (plural, -ção/-ões, -mente, gênero): suficiente para casar "obrigações"/"obrigação". */
 export function stem(w: string): string {
