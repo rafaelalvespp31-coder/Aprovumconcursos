@@ -29,6 +29,7 @@ import {
   Strikethrough,
   Timer,
   Type,
+  X,
 } from "lucide-react";
 import type { Notebook, NotebookQuestion } from "@/server/services/notebooks";
 import type { AnswerFeedback } from "@/server/services/study";
@@ -838,6 +839,7 @@ function NavCard({ questions, states, current, onPick }: { questions: NotebookQu
       <ul className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-white/75" aria-label="Legenda">
         <li className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#1E9E5A]" aria-hidden /> Respondida</li>
         <li className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-[#E50914]" aria-hidden /> Em andamento</li>
+        <li className="flex items-center gap-1.5"><span className="flex h-3 w-3 items-center justify-center rounded-[3px] bg-[#B3000C]" aria-hidden><X className="h-2.5 w-2.5 text-white" strokeWidth={4} /></span> Errada</li>
         <li className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-white/30" aria-hidden /> Não respondida</li>
       </ul>
       <ol className="mt-4 grid grid-cols-8 gap-1.5 sm:grid-cols-10" aria-label="Lista de questões do caderno">
@@ -852,9 +854,10 @@ function NavCard({ questions, states, current, onPick }: { questions: NotebookQu
                 onClick={() => onPick(idx)}
                 aria-current={cur ? "true" : undefined}
                 aria-label={`Questão ${idx + 1}${cur ? ", em andamento" : ""}${s ? (s === "certa" ? ", respondida (acertou)" : ", respondida (errou)") : ", não respondida"}`}
-                className={`qz-nav-num ${cur ? "qz-nav-atual" : s ? "qz-nav-feita" : ""}`}
+                className={`qz-nav-num ${cur ? "qz-nav-atual" : s === "errada" ? "qz-nav-errada" : s ? "qz-nav-feita" : ""}`}
               >
                 {idx + 1}
+                {s === "errada" && <X className="qz-nav-x" strokeWidth={4} aria-hidden />}
               </button>
             </li>
           );

@@ -2099,6 +2099,10 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .qz-nav-num { display: flex; width: 100%; min-height: 30px; aspect-ratio: 1 / 0.82; align-items: center; justify-content: center; border-radius: 7px; background: #1C1D21; font-size: 13px; font-weight: 600; color: #fff; }
 .qz-nav-num:hover { background: #26282D; }
 .qz-nav-feita { background: rgba(30,158,90,0.25); box-shadow: inset 0 0 0 1px rgba(30,158,90,0.7); }
+.qz-nav-num { position: relative; }
+.qz-nav-errada { background: #6B0710; box-shadow: inset 0 0 0 1.5px #FF3B44; color: #fff; }
+.qz-nav-errada:hover { background: #7E0914; }
+.qz-nav-x { position: absolute; top: 2px; right: 2px; width: 11px; height: 11px; padding: 1px; border-radius: 3px; background: #FF3B44; color: #fff; }
 .qz-nav-atual { background: #E50914; box-shadow: 0 0 14px -2px rgba(229,9,20,0.9); }
 .qz-pag { display: flex; width: 28px; height: 28px; align-items: center; justify-content: center; border-radius: 7px; color: #fff; }
 .qz-pag:disabled { opacity: 0.3; }
