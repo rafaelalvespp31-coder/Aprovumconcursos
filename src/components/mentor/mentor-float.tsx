@@ -67,6 +67,24 @@ const fraseTeaser = ({ nome, raiox, pending, sorteio }: { nome: string | null; r
   return `${nome ? `${nome}, ` : ""}${raiox ? "seu Raio-X foi publicado! " : ""}${t}`;
 };
 
+/** Mensagens curtas que o Mentor solta sozinho, de tempos em tempos, quando está minimizado. */
+const FRASES_PING = [
+  "Bora estudar um pouquinho? 15 minutos já contam.",
+  "Revisar hoje vale mais do que reler amanhã.",
+  "Resolver questões é o jeito mais rápido de fixar.",
+  "Que tal um caderno de 10 questões agora?",
+  "Errou uma questão? Revisar o erro vira ponto na prova.",
+  "Respira, bebe uma água e vem mais uma questão.",
+  "Constância vence intensidade: um bloco de estudo hoje.",
+  "Ficou com dúvida? Pergunta aqui pra mim.",
+  "Dica: leia o enunciado inteiro antes de olhar as alternativas.",
+  "Já deu uma olhada nos seus concursos previstos?",
+  "Um pouco por dia leva longe. Continua!",
+  "Hora de uma revisão rápida do que você já viu?",
+  "Bateu o cansaço? Faz 5 minutos de questões fáceis para engatar.",
+  "Anotou o que errou hoje? Eu te ajudo a revisar.",
+];
+
 export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: estados em memória (?mentor=…). */ demos?: Record<string, MentorPanelState> }) {
   const pathname = usePathname();
   const params = useSearchParams();
@@ -90,6 +108,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
   const [savedPos, setPos] = useState<Pos | null>(() => (typeof window === "undefined" ? null : read<Pos | null>(KEY_POS, null)));
   const pos = clamp(savedPos ?? defaultPos(vw), vw, vh);
   const [teaser, setTeaser] = useState(false);
+  const [ping, setPing] = useState<string | null>(null);
   const push = usePush();
   const [sinoAberto, setSinoAberto] = useState(false);
   // Sininho: um toque já pede a permissão e ativa; nos outros casos mostra o que fazer.
@@ -201,9 +220,40 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
     };
   }, [pending, open]);
 
+  // De minutos em minutos (1 a 2 min, sorteado), o Mentor minimizado solta uma mensagem curta por alguns segundos.
+  const pingCtx = useRef({ pending: 0, nome: null as string | null });
+  const nomePing = data?.state === "ok" ? data.name : null;
+  useEffect(() => {
+    pingCtx.current = { pending, nome: nomePing };
+  }, [pending, nomePing]);
+  useEffect(() => {
+    if (open || isDemo) return;
+    let t: ReturnType<typeof setTimeout>;
+    let hide: ReturnType<typeof setTimeout>;
+    const agenda = (ms: number) => {
+      t = setTimeout(() => {
+        if (document.visibilityState === "visible") {
+          const { pending: n, nome } = pingCtx.current;
+          const pool = n > 0 ? [...FRASES_PING, `${n === 1 ? "1 novidade" : `${n} novidades`} esperando por você.`] : FRASES_PING;
+          const f = pool[Math.floor(Math.random() * pool.length)]!;
+          setPing(nome && Math.random() < 0.5 ? `${nome}, ${f.charAt(0).toLowerCase()}${f.slice(1)}` : f);
+          hide = setTimeout(() => setPing(null), 9000);
+        }
+        agenda(60000 + Math.random() * 60000);
+      }, ms);
+    };
+    agenda(25000 + Math.random() * 20000);
+    return () => {
+      clearTimeout(t);
+      clearTimeout(hide);
+      setPing(null);
+    };
+  }, [open, isDemo]);
+
   const setOpenSaved = (v: boolean) => {
     setOpen(v);
     setTeaser(false);
+    setPing(null);
     save(KEY_OPEN, v);
     if (v) {
       const l = loaded.current;
@@ -284,6 +334,11 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
               <span className="mentor-conc-ponto" aria-hidden /> {concTexto.title}
             </button>
           )}
+          {!(concNovo > 0 && concTexto) && !teaser && ping && (
+            <button type="button" className="mentor-aviso mentor-aviso-ping" onClick={() => setOpenSaved(true)} data-testid="mentor-ping">
+              {ping}
+            </button>
+          )}
           {!(concNovo > 0 && concTexto) && teaser && pending > 0 && (
             <button type="button" className="mentor-aviso" onClick={() => setOpenSaved(true)} data-testid="mentor-aviso">
               {fraseTeaser({ nome: data?.state === "ok" ? data.name : null, raiox: avisos > 0, pending, sorteio })}
@@ -292,7 +347,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
           <button
             ref={bubbleRef}
             type="button"
-            className={`mentor-bolha ${dragging ? "is-arrastando" : ""} ${concNovo > 0 ? "mentor-piscando" : ""}`}
+            className={`mentor-bolha ${dragging ? "is-arrastando" : ""} ${concNovo > 0 ? "mentor-piscando" : ping ? "mentor-pulso" : ""}`}
             aria-label={`Abrir o Mentor APROVUM${pending ? ` (${pending} ${pending === 1 ? "prioridade" : "prioridades"})` : ""}`}
             aria-expanded={false}
             onPointerDown={onDown}
