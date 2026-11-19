@@ -245,18 +245,16 @@ export async function getLessonForStudy(lessonId: string) {
     .maybeSingle();
   if (!lesson) notFound();
   // Unidade do catálogo: compara com a versão publicada atual (só id e versão são expostos).
-  let catalogLatest: number | null = null;
-  if (lesson.catalog_topic_id) {
-    const v = await db.rpc("catalog_topic_versions", { p_ids: [lesson.catalog_topic_id] });
-    catalogLatest = ((v.data as Array<{ id: string; version: number }> | null) ?? [])[0]?.version ?? null;
-  }
+  const catalogLatestP: Promise<number | null> = lesson.catalog_topic_id
+    ? Promise.resolve(db.rpc("catalog_topic_versions", { p_ids: [lesson.catalog_topic_id] })).then(
+        (v) => ((v.data as Array<{ id: string; version: number }> | null) ?? [])[0]?.version ?? null,
+        () => null,
+      )
+    : Promise.resolve(null);
   // Exemplos "Na prática" do catálogo para estudos criados antes deles (só leitura; nada é gravado).
-  const practiceP: Promise<Record<string, PracticeCase[]>> = lesson.catalog_topic_id
-    ? import("./services/catalog").then((m) => m.catalogPracticeByTitle(lesson.catalog_topic_id as string)).catch(() => ({}))
-    : Promise.resolve({});
-  const modulesP: Promise<Record<string, string>> = lesson.catalog_topic_id
-    ? import("./services/catalog").then((m) => m.catalogModulesByTitle(lesson.catalog_topic_id as string)).catch(() => ({}))
-    : Promise.resolve({});
+  const extrasP: Promise<{ practice: Record<string, PracticeCase[]>; modules: Record<string, string> }> = lesson.catalog_topic_id
+    ? import("./services/catalog").then((m) => m.catalogLessonExtras(lesson.catalog_topic_id as string)).catch(() => ({ practice: {}, modules: {} }))
+    : Promise.resolve({ practice: {}, modules: {} });
   const [sections, refs, questions, progress, nodes, siblings, annotations, clarifications, marks, answerStates] = await Promise.all([
     db.from("lesson_sections").select("id, kind, title, body_markdown, sort_order, node_keys, verification_status").eq("lesson_id", lessonId).order("sort_order"),
     db.from("source_references").select("kind, citation, verified").eq("lesson_id", lessonId),
@@ -277,7 +275,7 @@ export async function getLessonForStudy(lessonId: string) {
     // Respostas já dadas nesta aula (última de cada questão + gabarito), para reabrir tudo marcado.
     db.rpc("lesson_answer_states", { p_lesson: lessonId }),
   ]);
-  const [practice, modules] = await Promise.all([practiceP, modulesP]);
+  const [{ practice, modules }, catalogLatest] = await Promise.all([extrasP, catalogLatestP]);
   const answers: Record<string, SavedAnswer> = {};
   for (const r of (answerStates.data ?? []) as Array<{ question_id: string; choice: string; correct: boolean; attempts: number; feedback: Omit<AnswerFeedback, "correct" | "attempts"> }>) {
     answers[r.question_id] = { choice: r.choice, feedback: { ...r.feedback, correct: r.correct, attempts: r.attempts } };

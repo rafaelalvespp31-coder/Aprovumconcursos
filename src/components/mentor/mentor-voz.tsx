@@ -478,6 +478,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   const tocar = (b64: string) => {
     const r = ref.current;
     if (!r.ctx) return;
+    if (r.ctx.state === "suspended") void r.ctx.resume().catch(() => undefined); // celular pode suspender no meio da conversa
     const pcm = new Int16Array(fromB64(b64));
     const f = new Float32Array(pcm.length);
     for (let i = 0; i < pcm.length; i++) f[i] = pcm[i]! / 0x8000;
@@ -558,6 +559,13 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     setMsg(null);
     setFase("conectando");
     const r = ref.current;
+    // O áudio só toca se o AudioContext for criado/liberado DENTRO do clique do aluno: depois das esperas
+    // (token e microfone) o navegador, sobretudo no celular, o deixa "suspended" e o Mentor fica mudo.
+    let pre: AudioContext | null = null;
+    try { pre = new AudioContext({ sampleRate: OUT_RATE, latencyHint: "playback" }); } catch {
+      try { pre = new AudioContext(); } catch { pre = null; }
+    }
+    void pre?.resume().catch(() => undefined);
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error("mic");
       // Microfone e liberação da conversa andam juntos (responde mais rápido). Se o microfone falhar,
@@ -597,8 +605,10 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
 
       // 24 kHz = a taxa da voz do Mentor: os blocos encaixam sem reamostrar um a um (sem estalos nem "engasgos")
       let ctx: AudioContext;
-      try { ctx = new AudioContext({ sampleRate: OUT_RATE, latencyHint: "playback" }); } catch { ctx = new AudioContext(); }
+      if (pre) ctx = pre;
+      else { try { ctx = new AudioContext({ sampleRate: OUT_RATE, latencyHint: "playback" }); } catch { ctx = new AudioContext(); } }
       r.ctx = ctx;
+      if (ctx.state !== "running") await ctx.resume().catch(() => undefined);
       const aOut = ctx.createAnalyser();
       aOut.fftSize = 256;
       aOut.smoothingTimeConstant = 0.25; // acompanha a sílaba, sem atraso
@@ -660,6 +670,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     } catch (e) {
       r.stream?.getTracks().forEach((t) => t.stop());
       r.stream = null;
+      if (pre && r.ctx !== pre) void pre.close().catch(() => undefined); // contexto criado antes e nunca usado
       const denied = e instanceof DOMException && (e.name === "NotAllowedError" || e.name === "SecurityError");
       const noMic = e instanceof DOMException && e.name === "NotFoundError";
       const wasActive = r.active;

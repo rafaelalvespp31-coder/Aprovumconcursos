@@ -30,10 +30,10 @@ const LESSON_STAGES: Record<string, string> = {
 };
 
 export default async function LessonPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ erro?: string; revisao?: string }> }) {
-  await ensureDisciplines();
   const { id } = await params;
   const sp = await searchParams;
-  const data = await getLessonForStudy(id);
+  // Em paralelo: disciplinas (cache), leitura da aula e sessão do aluno.
+  const [, data, me] = await Promise.all([ensureDisciplines(), getLessonForStudy(id), requireUser(`/aula/${id}`)]);
   const { lesson, sections, references, questions, progress, nodes, siblings } = data;
   const idx = siblings.findIndex((s) => s.id === id);
   const prev = idx > 0 ? siblings[idx - 1] : null;
@@ -100,9 +100,28 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
   }
 
   // Plano gratuito: 1 aula por dia (a do dia continua aberta quantas vezes quiser).
-  const me = await requireUser(`/aula/${id}`);
-  const gate = await claimDailyLesson(me.id, id);
+  // O limite diário, o feedback e o restante da página não dependem uns dos outros: tudo junto.
+  const discipline = lesson.study_trails.discipline_mode;
+  const gateP = claimDailyLesson(me.id, id);
+  const fbP = deveMostrarFeedback(me.id, id).catch(() => null);
+  const restP = Promise.all([
+    getNextInSubject(lesson.trail_id, next ? { id: next.id, title: next.title } : null).catch(() => null),
+    getTrailPlan(lesson.trail_id).catch(() => []),
+    listPostits(id).catch(async (e) => {
+      await logEvent("aula.postits_failed", { error: (e as Error).message });
+      return [];
+    }),
+    listPostitPdfs(id).catch(() => []),
+    lessonBannerUrl(lesson.catalog_topic_id as string | null, discipline).catch(() => null),
+    getTopicSiblings(lesson.catalog_topic_id as string | null).catch(async (e) => {
+      await logEvent("aula.topic_siblings_failed", { error: (e as Error).message });
+      return null;
+    }),
+  ]);
+  const gate = await gateP;
   if (!gate.ok) {
+    void fbP;
+    void restP.catch(() => null);
     return (
       <div className="mx-auto max-w-3xl">
         {header}
@@ -119,23 +138,9 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
     );
   }
 
-  const fb = await deveMostrarFeedback(me.id, id).catch(() => null);
+  const fb = await fbP;
   const notTaught = nodes.filter((n) => !n.taught);
-  const discipline = lesson.study_trails.discipline_mode;
-  const [nextInSubject, plan, postits, postitPdfs, banner, siblingsInTopic] = await Promise.all([
-    getNextInSubject(lesson.trail_id, next ? { id: next.id, title: next.title } : null).catch(() => null),
-    getTrailPlan(lesson.trail_id).catch(() => []),
-    listPostits(id).catch(async (e) => {
-      await logEvent("aula.postits_failed", { error: (e as Error).message });
-      return [];
-    }),
-    listPostitPdfs(id).catch(() => []),
-    lessonBannerUrl(lesson.catalog_topic_id as string | null, discipline).catch(() => null),
-    getTopicSiblings(lesson.catalog_topic_id as string | null).catch(async (e) => {
-      await logEvent("aula.topic_siblings_failed", { error: (e as Error).message });
-      return null;
-    }),
-  ]);
+  const [nextInSubject, plan, postits, postitPdfs, banner, siblingsInTopic] = await restP;
   const units = plan.flatMap((m) => m.lessons);
   const unitsDone = units.filter((l) => l.levelsPassed >= 3).length;
   const notices = (

@@ -36,26 +36,46 @@ const BANK_PER_ROUND = 15;
  * Usado na leitura: estudos criados antes dos exemplos também ganham os cards
  * (só os exemplos são lidos do catálogo; o restante da aula continua o do aluno).
  */
+const EXTRAS_TTL_MS = 2 * 60_000;
+const extrasCache = new Map<string, { at: number; value: { practice: Record<string, PracticeCase[]>; modules: Record<string, string> } }>();
+const extrasInflight = new Map<string, Promise<{ practice: Record<string, PracticeCase[]>; modules: Record<string, string> }>>();
+
+/**
+ * Exemplos e módulos da versão publicada, numa leitura só (o JSON da aula é grande: antes era
+ * baixado duas vezes por abertura) e com cache curto, já que só muda ao publicar de novo.
+ */
+export async function catalogLessonExtras(topicId: string): Promise<{ practice: Record<string, PracticeCase[]>; modules: Record<string, string> }> {
+  const hit = extrasCache.get(topicId);
+  if (hit && Date.now() - hit.at < EXTRAS_TTL_MS) return hit.value;
+  const running = extrasInflight.get(topicId);
+  if (running) return running;
+  const p = (async () => {
+    const db = createAdminClient();
+    const { data } = await db.from("catalog_topics").select("lesson").eq("id", topicId).eq("status", "publicado").maybeSingle();
+    const sections = ((data?.lesson as { sections?: Array<{ title: string; bodyMarkdown: string; module?: string }> } | null)?.sections ?? []);
+    const practice: Record<string, PracticeCase[]> = {};
+    const modules: Record<string, string> = {};
+    for (const s of sections) {
+      const key = normalizeText(s.title);
+      const { cases } = extractPractice(s.bodyMarkdown ?? "");
+      if (cases.length) practice[key] = cases;
+      if (s.module) modules[key] = s.module;
+    }
+    const value = { practice, modules };
+    extrasCache.set(topicId, { at: Date.now(), value });
+    return value;
+  })().finally(() => extrasInflight.delete(topicId));
+  extrasInflight.set(topicId, p);
+  return p;
+}
+
 export async function catalogPracticeByTitle(topicId: string): Promise<Record<string, PracticeCase[]>> {
-  const db = createAdminClient();
-  const { data } = await db.from("catalog_topics").select("lesson").eq("id", topicId).eq("status", "publicado").maybeSingle();
-  const sections = ((data?.lesson as { sections?: Array<{ title: string; bodyMarkdown: string }> } | null)?.sections ?? []);
-  const out: Record<string, PracticeCase[]> = {};
-  for (const s of sections) {
-    const { cases } = extractPractice(s.bodyMarkdown ?? "");
-    if (cases.length) out[normalizeText(s.title)] = cases;
-  }
-  return out;
+  return (await catalogLessonExtras(topicId)).practice;
 }
 
 /** Módulo (tema) de cada seção da versão publicada, por título de seção. */
 export async function catalogModulesByTitle(topicId: string): Promise<Record<string, string>> {
-  const db = createAdminClient();
-  const { data } = await db.from("catalog_topics").select("lesson").eq("id", topicId).eq("status", "publicado").maybeSingle();
-  const sections = ((data?.lesson as { sections?: Array<{ title: string; module?: string }> } | null)?.sections ?? []);
-  const out: Record<string, string> = {};
-  for (const s of sections) if (s.module) out[normalizeText(s.title)] = s.module;
-  return out;
+  return (await catalogLessonExtras(topicId)).modules;
 }
 
 // ---------------------------------------------------------------------------
