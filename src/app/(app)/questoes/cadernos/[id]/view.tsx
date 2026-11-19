@@ -33,6 +33,7 @@ import {
 import type { Notebook, NotebookQuestion } from "@/server/services/notebooks";
 import type { AnswerFeedback } from "@/server/services/study";
 import { AnswerExplanation } from "@/components/answer-explanation";
+import { QuestionComments } from "@/components/question-comments";
 import { callAction } from "@/components/safe-action";
 import { useStored } from "@/components/use-stored";
 import { canConfirm, classifyTap, DOUBLE_TAP_MS, initialChoice, selectOption, toggleStrike, type ChoiceState } from "@/domain/notebooks/elimination";
@@ -565,6 +566,7 @@ function QuestionPanel({
               {fb.correct ? "Resposta correta" : "Resposta incorreta"}
             </p>
             <AnswerExplanation fb={fb} options={options} certoErrado={ce} chosen={choice} questionLabel={`caderno-${number}`} />
+            <QuestionComments questionId={q.id} />
           </div>
         )}
 

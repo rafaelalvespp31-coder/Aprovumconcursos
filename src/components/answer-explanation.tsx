@@ -39,7 +39,7 @@ export function AnswerExplanation({
       <section aria-labelledby={titleId} className="entrar mt-3 rounded-lg border border-linha bg-superficie p-4 sm:p-5" data-testid="gabarito-comentado">
         <Header id={titleId} gabarito={gab} picked={picked} correct={fb.correct} />
         <Block tone="ok" title={`Por que o item está ${gab}`}>
-          <p className="whitespace-pre-line">{textoSemLatex(fb.justification)}</p>
+          <Comentario text={fb.justification} />
         </Block>
         <Block tone="erro" title={`Por que marcar ${other} está errado`}>
           <p>
@@ -69,7 +69,7 @@ export function AnswerExplanation({
         <Block tone="ok" title={`Por que a alternativa ${right.label} está correta`}>
           <OptionQuote label={right.label} text={right.text} tone="ok" />
           {rightWhy && <p className="mt-2 whitespace-pre-line">{textoSemLatex(rightWhy)}</p>}
-          <p className="mt-2 whitespace-pre-line">{textoSemLatex(fb.justification)}</p>
+          <Comentario text={fb.justification} />
         </Block>
       )}
 
@@ -86,6 +86,21 @@ export function AnswerExplanation({
         </Block>
       )}
     </section>
+  );
+}
+
+/** Comentário do professor: bem sinalizado, para não se perder no meio das explicações. */
+function Comentario({ text }: { text: string }) {
+  return (
+    <div className="mt-3 rounded-lg border-2 border-[#E50914]/45 bg-[#FFF5F5] p-3" data-testid="comentario-professor">
+      <p className="mb-1.5 flex items-center gap-2">
+        <span className="inline-flex items-center gap-1 rounded bg-[#E50914] px-2 py-0.5 text-[12px] font-extrabold uppercase tracking-[0.12em] text-white">
+          <Icon name="livro" className="size-3.5" /> Comentário
+        </span>
+        <span className="text-[12px] font-semibold text-[#B9000B]">explicação da questão</span>
+      </p>
+      <p className="whitespace-pre-line text-[15px] leading-relaxed text-tinta">{textoSemLatex(text)}</p>
+    </div>
   );
 }
 
