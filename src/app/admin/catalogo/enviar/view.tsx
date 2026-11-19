@@ -3,13 +3,15 @@ import { DEFAULT_MODEL_SLUG, listModelTopics, modelPrompt } from "@/server/servi
 import { importLessonUploadAction, previewLessonUploadAction, removeBannerAction, saveBannerAction } from "../actions";
 import { LessonUploadForm } from "./upload-form";
 import { subtopicPrompt } from "@/server/services/outlines";
+import { getTopic } from "@/server/services/catalog";
 
 /** Catalogar aula (colar texto). Mesma tela para o administrador e para o sócio liberado (sem banners das matérias). */
-export async function UploadLessonView({ searchParams, base, admin }: { searchParams: Promise<{ modelo?: string; plano?: string; sub?: string }>; base: string; admin: boolean }) {
+export async function UploadLessonView({ searchParams, base, admin }: { searchParams: Promise<{ modelo?: string; plano?: string; sub?: string; publicada?: string }>; base: string; admin: boolean }) {
   const sp = await searchParams;
   const slug = typeof sp.modelo === "string" && /^[a-z0-9-]{2,120}$/.test(sp.modelo) ? sp.modelo : DEFAULT_MODEL_SLUG;
   // Vindo do plano de tópicos: o comando é o do subtópico escolhido (já com Tópico/Subtópico).
   const plan = typeof sp.plano === "string" && typeof sp.sub === "string" ? await subtopicPrompt(sp.plano, sp.sub) : null;
+  const publicada = admin && typeof sp.publicada === "string" && /^[0-9a-f-]{36}$/i.test(sp.publicada) ? await getTopic(sp.publicada).catch(() => null) : null;
   const [mp, options] = await Promise.all([modelPrompt(slug).then((m) => m ?? (slug !== DEFAULT_MODEL_SLUG ? modelPrompt(DEFAULT_MODEL_SLUG) : null)), listModelTopics()]);
   return (
     <div className="flex flex-col gap-6">
@@ -27,6 +29,14 @@ export async function UploadLessonView({ searchParams, base, admin }: { searchPa
           )}
         </p>
       </div>
+      {publicada && (
+        <div className="rounded-md border-2 border-[#10B981] bg-[#ECFDF5] px-4 py-3 t-small text-[#064E3B]" role="status" data-testid="aula-publicada">
+          <p className="font-bold">Aula publicada: {publicada.title}</p>
+          <p className="mt-1">Não faltou nenhum flashcard nem questão, então ela já está no ar. Pode colar a próxima.{" "}
+            <Link href={`${base}/${publicada.id}`} className="font-semibold underline underline-offset-2">Ver a aula</Link>
+          </p>
+        </div>
+      )}
       {plan && (
         <div className="rounded-md border border-azul/25 bg-nevoa px-4 py-3 t-small" data-testid="comando-subtopico">
           <p className="font-semibold">Comando do subtópico {plan.label}</p>
@@ -41,6 +51,7 @@ export async function UploadLessonView({ searchParams, base, admin }: { searchPa
         bannerActions={admin ? { save: saveBannerAction, remove: removeBannerAction } : undefined}
         prompt={plan ? plan.novo : mp?.prompt}
         initialMode={plan ? "inteiro" : undefined}
+        planCtx={plan && typeof sp.plano === "string" && typeof sp.sub === "string" ? { plano: sp.plano, sub: sp.sub } : undefined}
         compact={plan ? null : (mp?.compact ?? null)}
         model={!plan && mp ? { title: mp.title, slug: mp.slug, stats: mp.stats, options, selfCheck: mp.selfCheck } : null}
       />

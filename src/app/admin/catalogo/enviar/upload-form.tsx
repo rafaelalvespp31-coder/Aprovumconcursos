@@ -12,7 +12,7 @@ import { IssueList, MarkedTextarea, type LineMark, type MarkedTextareaHandle } f
 
 interface Actions {
   preview: (text: string) => Promise<UploadPreviewResult>;
-  save: (text: string) => Promise<AdminResult>;
+  save: (text: string, ctx?: { plano?: string; sub?: string }) => Promise<AdminResult>;
 }
 
 const LEVEL = { facil: "Fácil", medio: "Médio", dificil: "Difícil" } as const;
@@ -37,8 +37,11 @@ export function LessonUploadForm({
   compact,
   model,
   initialMode,
+  planCtx,
 }: {
   actions: Actions;
+  /** Plano e subtópico de onde veio o comando (para voltar à tela de colar com o próximo). */
+  planCtx?: { plano?: string; sub?: string };
   bannerActions?: BannerActions;
   prompt?: string;
   /** O mesmo comando em 2 partes (aula; depois questões). */
@@ -87,7 +90,7 @@ export function LessonUploadForm({
   const save = () => {
     setSaving(true);
     start(async () => {
-      const r = await actions.save(checked);
+      const r = await actions.save(checked, planCtx);
       // Em caso de sucesso a página muda para a aula criada.
       if (!r.ok) setError(r.error ?? "Não foi possível salvar.");
       setSaving(false);

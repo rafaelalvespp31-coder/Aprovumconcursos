@@ -8,6 +8,7 @@ import { logEvent } from "@/server/observability";
 import { UserFacingError } from "@/server/services/trails";
 import {
   deleteTopic,
+  getTopic,
   topicDeleteImpact,
   type TopicDeleteImpact,
   promoteLesson,
@@ -26,6 +27,7 @@ import { addTopicQuestions, applyTopicEnrichment, importLessonUpload, previewLes
 import { createOutline, deleteOutline, getOutline, updateOutline } from "@/server/services/outlines";
 import { topicMasterPromptFor } from "@/server/services/outlines";
 import { importBulkUpload, previewBulkUpload, type BulkPreview, type BulkResult } from "@/server/services/catalog-bulk";
+import { enrichStatus, type EnrichLesson } from "@/domain/catalog/enrich";
 import { removeSubtopicFromOutlineText } from "@/domain/catalog/topic-group";
 import { createDiscipline, deleteDiscipline, updateDiscipline } from "@/server/services/disciplines";
 import { bannerUrlFor, removeBanner, removeTopicBanner, saveBanner, saveTopicBanner, topicBannerUrl } from "@/server/services/banners";
@@ -69,17 +71,35 @@ export async function previewLessonUploadAction(text: string): Promise<UploadPre
   return r.ok && preview ? { ok: true, preview } : { ok: false, error: r.error ?? "Não foi possível ler o texto." };
 }
 
-/** Cataloga a aula colada (publica na hora quando tem ≥ 10 questões por nível) e abre a página dela. */
-export async function importLessonUploadAction(text: string): Promise<AdminResult> {
+/**
+ * Cataloga a aula colada (publica na hora quando tem ≥ 10 questões por nível). Se publicou e não falta nada
+ * (flashcards e questões), o administrador volta direto para a tela de colar, com aviso de publicada, sem passar
+ * pela página da aula. Se faltar algo, abre a página da aula para completar.
+ */
+export async function importLessonUploadAction(text: string, ctx?: { plano?: string; sub?: string }): Promise<AdminResult> {
   const { user, admin } = await requireCatalogEditor();
   let id = "";
+  let completa = false;
   const r = await guard("catalog.upload", async () => {
-    id = (await importLessonUpload(user, pasted(text), "texto colado")).id;
+    const res = await importLessonUpload(user, pasted(text), "texto colado");
+    id = res.id;
+    if (admin && res.published) {
+      const t = await getTopic(id);
+      completa = Boolean(t.lesson) && enrichStatus(t.lesson as unknown as EnrichLesson).flashcards >= 4;
+    }
   });
   if (!r.ok) return r;
   revalidatePath("/admin/catalogo");
   revalidatePath("/business/catalogo/plano");
   revalidatePath("/nova-trilha");
+  if (admin && completa) {
+    const q = new URLSearchParams({ publicada: id });
+    if (ctx?.plano && ctx?.sub && /^[\w-]{1,80}$/.test(ctx.plano) && /^[\w.-]{1,40}$/.test(ctx.sub)) {
+      q.set("plano", ctx.plano);
+      q.set("sub", ctx.sub);
+    }
+    redirect(`/admin/catalogo/enviar?${q.toString()}`);
+  }
   redirect(admin ? `/admin/catalogo/${id}` : "/business/catalogo/plano");
 }
 
