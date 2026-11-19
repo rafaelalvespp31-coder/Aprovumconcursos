@@ -30,7 +30,6 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
       <div>
         <Link href="/admin/catalogo" className="t-small text-destaque underline underline-offset-2">Catálogo</Link>
         <h1 className="mt-1 t-h1">{topic.title}</h1>
-        <p className="mt-1 t-small text-tinta-suave">slug: {topic.slug}{topic.origin === "promovido" ? " · promovido de uma aula gerada pela IA" : ""}</p>
       </div>
 
       <section aria-labelledby="pub" className="rounded-lg border border-linha p-5">
@@ -54,6 +53,38 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
         </div>
       </section>
 
+      {topic.lesson && (
+        <section aria-labelledby="addv" className="rounded-lg border border-linha p-5">
+          <h2 id="addv" className="t-h2">Exemplos visuais e flashcards</h2>
+          <p className="mt-1 t-small text-tinta-suave">Os cards “Na prática” (tirinha, carimbo e esquema) no fim das seções e os flashcards da revisão final, como na aula de Homicídio.</p>
+          <div className="mt-3">
+            <AddVisualsPanel
+              topicId={id}
+              status={enrichStatus(topic.lesson as unknown as EnrichLesson)}
+              prompt={buildEnrichPrompt(topic.title, topic.lesson as unknown as EnrichLesson)}
+              lesson={{ sections: (topic.lesson as unknown as EnrichLesson).sections.map((s) => ({ kind: s.kind, title: s.title, bodyMarkdown: s.bodyMarkdown, nodeKeys: [] })) }}
+              actions={{ preview: previewTopicEnrichAction, apply: applyTopicEnrichAction }}
+            />
+          </div>
+        </section>
+      )}
+
+      <section aria-labelledby="addq" className="rounded-lg border border-linha p-5">
+        <h2 id="addq" className="t-h2">Adicionar questões</h2>
+        <p className="mt-1 t-small text-tinta-suave">Cole questões no formato do painel para completar o banco desta aula. As que já existem continuam.</p>
+        <div className="mt-3">
+          <AddQuestionsPanel
+            topicId={id}
+            counts={counts}
+            prompt={buildQuestionsPrompt({ title: topic.title, sourceText: topic.source_text, need: { facil: Math.max(12 - counts.facil, counts.facil < 10 ? 10 - counts.facil : 0), medio: Math.max(12 - counts.medio, counts.medio < 10 ? 10 - counts.medio : 0), dificil: Math.max(12 - counts.dificil, counts.dificil < 10 ? 10 - counts.dificil : 0) } })}
+            actions={{ preview: previewTopicQuestionsAction, add: addTopicQuestionsAction }}
+          />
+        </div>
+      </section>
+
+      <details className="rounded-lg border border-linha p-4" data-testid="mais-opcoes">
+        <summary className="cursor-pointer t-h3">Mais opções (dados, estrutura, texto da aula e banco de questões)</summary>
+        <div className="mt-4 flex flex-col gap-8">
       <section aria-labelledby="dados" className="rounded-lg border border-linha p-5">
         <h2 id="dados" className="t-h2">Dados e reconhecimento</h2>
         <dl className="mt-3 grid gap-x-6 gap-y-2 t-small sm:grid-cols-[max-content_1fr]">
@@ -133,40 +164,13 @@ export default async function TopicPage({ params }: { params: Promise<{ id: stri
         )}
       </section>
 
-      {topic.lesson && (
-        <section aria-labelledby="addv" className="rounded-lg border border-linha p-5">
-          <h2 id="addv" className="t-h2">Exemplos visuais e flashcards</h2>
-          <p className="mt-1 t-small text-tinta-suave">Os cards “Na prática” (tirinha, carimbo e esquema) no fim das seções e os flashcards da revisão final, como na aula de Homicídio.</p>
-          <div className="mt-3">
-            <AddVisualsPanel
-              topicId={id}
-              status={enrichStatus(topic.lesson as unknown as EnrichLesson)}
-              prompt={buildEnrichPrompt(topic.title, topic.lesson as unknown as EnrichLesson)}
-              lesson={{ sections: (topic.lesson as unknown as EnrichLesson).sections.map((s) => ({ kind: s.kind, title: s.title, bodyMarkdown: s.bodyMarkdown, nodeKeys: [] })) }}
-              actions={{ preview: previewTopicEnrichAction, apply: applyTopicEnrichAction }}
-            />
-          </div>
-        </section>
-      )}
-
-      <section aria-labelledby="addq" className="rounded-lg border border-linha p-5">
-        <h2 id="addq" className="t-h2">Adicionar questões</h2>
-        <p className="mt-1 t-small text-tinta-suave">Cole questões no formato do painel para completar o banco desta aula. As que já existem continuam.</p>
-        <div className="mt-3">
-          <AddQuestionsPanel
-            topicId={id}
-            counts={counts}
-            prompt={buildQuestionsPrompt({ title: topic.title, sourceText: topic.source_text, need: { facil: Math.max(12 - counts.facil, counts.facil < 10 ? 10 - counts.facil : 0), medio: Math.max(12 - counts.medio, counts.medio < 10 ? 10 - counts.medio : 0), dificil: Math.max(12 - counts.dificil, counts.dificil < 10 ? 10 - counts.dificil : 0) } })}
-            actions={{ preview: previewTopicQuestionsAction, add: addTopicQuestionsAction }}
-          />
-        </div>
-      </section>
-
       <section aria-labelledby="quest" className="rounded-lg border border-linha p-5">
         <h2 id="quest" className="t-h2">Banco de questões ({questions.length})</h2>
         <p className="mt-1 t-small text-tinta-suave">Cada aluno recebe 10 questões por nível, sorteadas do banco; as demais servem para a recuperação, sem IA.</p>
         <div className="mt-4"><QuestionsEditor id={id} questions={questions} nodeTitles={nodeTitles} /></div>
       </section>
+        </div>
+      </details>
     </div>
   );
 }
