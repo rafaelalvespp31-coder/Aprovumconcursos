@@ -10,6 +10,8 @@ export type TaticoQuestao = {
   pos: number; tiebreak: boolean; statement: string; topic: string; subject: string; level: string | null;
   options: TaticoOpcao[];
   correct?: string; justification?: string | null; explanations?: Record<string, string | null>; oppChoice?: string | null;
+  /** Alternativa que o rival está mirando agora (antes do tiro). */
+  oppAim?: string | null;
 };
 export type TaticoEstado =
   | { estado: "ocioso" | "fila"; usados: number; limite: number }
@@ -72,6 +74,11 @@ export async function taticoSairFila(): Promise<void> {
 export async function taticoResponder(match: string, choice: string): Promise<{ ok: boolean; erro?: string; acertou?: boolean }> {
   const u = await requireUser("/quiz");
   return rpc("tatico_responder", { p_user: u.id, p_match: match, p_choice: choice });
+}
+/** Avisa o rival (que assiste) em qual alvo estou mirando. Melhor esforço. */
+export async function taticoMirar(match: string, letter: string): Promise<void> {
+  const u = await requireUser("/quiz");
+  await rpc("tatico_mirar", { p_user: u.id, p_match: match, p_letter: letter });
 }
 export async function taticoStats(): Promise<TaticoStats> {
   const u = await requireUser("/quiz");

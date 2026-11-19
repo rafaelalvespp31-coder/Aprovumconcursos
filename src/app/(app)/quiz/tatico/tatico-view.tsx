@@ -8,7 +8,7 @@ import { breathAt } from "@/components/knowledge-map/breath";
 import { EVENTO_DESAFIO } from "@/components/tatico/desafio-watcher";
 import { Carregando, EsperaEstande } from "./carregando";
 import { Lobby } from "./lobby";
-import { taticoStatsAction, taticoEncerrarTreinoAction, taticoEstadoAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
+import { taticoStatsAction, taticoEncerrarTreinoAction, taticoEstadoAction, taticoMirarAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
 import type { TaticoEstado, TaticoQuestao, TaticoRevisao, TaticoStats } from "@/server/services/tatico";
 import "./tatico.css";
 
@@ -49,7 +49,7 @@ function useEscala(portrait: boolean) {
   return { ref, k, faixa, offX, offY, boxH: portrait ? faixa.h * k : undefined };
 }
 
-function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppShot, espectro }: { espectro?: { i: number; n: number } | null; oppShot?: number; breathClock?: (nowMs: number) => number | null; s: Partida; at: number; nivel: { level: number; into: number }; noFx: boolean; portrait: boolean; onShoot: (i: number) => void; shot: { i: number; n: number; hit: boolean | null } | null }) {
+function Cena({ s, at, nivel, noFx, portrait, onShoot, onAim, shot, breathClock, oppShot, espectro, aimOpp }: { aimOpp?: number | null; onAim?: (i: number) => void; espectro?: { i: number; n: number } | null; oppShot?: number; breathClock?: (nowMs: number) => number | null; s: Partida; at: number; nivel: { level: number; into: number }; noFx: boolean; portrait: boolean; onShoot: (i: number) => void; shot: { i: number; n: number; hit: boolean | null } | null }) {
   const { ref, k, faixa, offX, offY, boxH } = useEscala(portrait);
   const [now, setNow] = useState(0);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 200); return () => clearInterval(t); }, []);
@@ -84,7 +84,8 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
   const bloqueado = s.phase !== "responder" || !meuTurno || s.me.answered || !!shot;
   // quem assiste vê o disparo do outro: o braço mira e atira no alvo escolhido, com clarão, furo e som
   const ativo: { i: number; n: number; hit: boolean | null } | null = shot ?? (espectro ? { ...espectro, hit: null } : null);
-  const mira = ativo ? (TG_X[ativo.i]! - 840) / 55 : 0;
+  const alvoI = ativo ? ativo.i : aimOpp ?? null;
+  const mira = alvoI !== null ? (TG_X[alvoI]! - 840) / 55 : 0;
   const materia = (q?.subject ?? "").includes("_") ? (q?.subject ?? "").replace(/_/g, " ").replace(/\b\p{L}/gu, (c) => c.toUpperCase()) : (q?.subject ?? "");
   const cls = (l: string, base: string) => {
     if (rev && q?.correct) { const o = q.oppChoice === l ? " opp" : ""; if (l === q.correct) return `${base} ok${o}`; if (l === s.me.choice) return `${base} no${o}`; return `${base} dim${o}`; }
@@ -95,7 +96,7 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
   // saem do palco e viram texto real (tamanho fixo e legível) sobre a faixa de cima do estande.
   const dom = k > 0 && k < 0.62;
   const tgCls = (l: string) => {
-    const o = q?.oppChoice === l ? " opp" : "";
+    const o = (q?.oppChoice === l ? " opp" : "") + (aimOpp !== null && aimOpp !== undefined && LETRAS[aimOpp] === l && !rev ? " aim" : "");
     if (rev && q?.correct) return (l === q.correct ? "ok" : l === s.me.choice ? "no" : "") + o;
     return o;
   };
@@ -109,7 +110,7 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
           <img className="tt-bg" src="/tatico/estande.webp" alt="" draggable={false} />
           {/* alvos */}
           {q && LETRAS.map((l, i) => (
-            <button key={l} disabled={bloqueado} aria-label={`Atirar no alvo ${l}`} className={`tt-tg ${tgCls(l)} ${ativo?.i === i && ativo.hit === false ? "swing" : ""}`} style={{ left: TG_X[i]! - 56, backgroundImage: `url(/tatico/alvo${i}.webp)` }} onClick={() => onShoot(i)}>
+            <button key={l} disabled={bloqueado} onPointerEnter={() => onAim?.(i)} onPointerDown={() => onAim?.(i)} aria-label={`Atirar no alvo ${l}`} className={`tt-tg ${tgCls(l)} ${ativo?.i === i && ativo.hit === false ? "swing" : ""}`} style={{ left: TG_X[i]! - 56, backgroundImage: `url(/tatico/alvo${i}.webp)` }} onClick={() => onShoot(i)}>
               <span className="lt">{l}</span>
               {q?.oppChoice === l && <span className="adv">ADV.</span>}
               {ativo?.i === i && (<><i className="tt-hole" style={{ left: 56, top: 72 }} key={`h${ativo.n}`} /><i className="tt-spark" style={{ left: 56, top: 72 }} key={`s${ativo.n}`} /></>)}
@@ -152,7 +153,7 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
                   <div className="tt-panel tt-q">QUESTÃO <b>{String(Math.min(q.pos, s.total)).padStart(2, "0")}/{String(s.total).padStart(2, "0")}</b>{q.tiebreak ? " · MORTE SÚBITA" : ""}</div>
                   {!dom && <div className="tt-panel tt-enun" style={{ fontSize: fs(q.statement, 26, 13, 80) }}>{q.statement}</div>}
                   {!dom && q.options.map((o, i) => (
-                    <button key={o.label} disabled={bloqueado} className={cls(o.label, "tt-panel tt-opt")} style={{ left: OPT_POS[i]!.l, top: OPT_POS[i]!.t, height: OPT_POS[i]!.h, fontSize: fs(o.text, 23, 14, 50, 0.055) }} onClick={() => onShoot(i)} data-testid={`tatico-op-${o.label}`}>
+                    <button key={o.label} disabled={bloqueado} onPointerEnter={() => onAim?.(i)} className={cls(o.label, "tt-panel tt-opt")} style={{ left: OPT_POS[i]!.l, top: OPT_POS[i]!.t, height: OPT_POS[i]!.h, fontSize: fs(o.text, 23, 14, 50, 0.055) }} onClick={() => onShoot(i)} data-testid={`tatico-op-${o.label}`}>
                       <span className="lt">{o.label}</span><span className="tx">{o.text}</span>
                     </button>
                   ))}
@@ -193,7 +194,7 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
             <p className="tt-dom-q">{q.statement}</p>
             <div className="tt-dom-ops">
               {q.options.map((o, i) => (
-                <button key={o.label} disabled={bloqueado} className={cls(o.label, "tt-dom-op")} onClick={() => onShoot(i)} data-testid={`tatico-op-${o.label}`}>
+                <button key={o.label} disabled={bloqueado} onPointerDown={() => onAim?.(i)} className={cls(o.label, "tt-dom-op")} onClick={() => onShoot(i)} data-testid={`tatico-op-${o.label}`}>
                   <span className="lt">{o.label}</span><span className="tx">{o.text}</span>
                 </button>
               ))}
@@ -242,6 +243,7 @@ export function TaticoView({ inicial, nivel, retomar }: { retomar: boolean; inic
   const [som, setSom] = useState(true);
   const router = useRouter();
   const [oppShot, setOppShot] = useState(0);
+  const ultimaMira = useRef<{ pos: number; i: number; t: number } | null>(null);
   const [espectro, setEspectro] = useState<{ i: number; n: number; pos: number } | null>(null);
   // Imersão: some tudo que é flutuante do app (Mentor, ajuda, cookies) enquanto o Desafio Tático está aberto.
   useEffect(() => { document.body.classList.add("tt-imersivo"); return () => document.body.classList.remove("tt-imersivo"); }, []);
@@ -266,7 +268,7 @@ export function TaticoView({ inicial, nivel, retomar }: { retomar: boolean; inic
       if (busy.current) return; busy.current = true;
       const r = await taticoEstadoAction(s.estado === "partida" ? s.match : undefined); busy.current = false;
       if (r.ok) setS(r.s);
-    }, s.estado === "partida" && s.phase === "responder" ? 700 : 1000);
+    }, s.estado === "partida" && s.phase === "responder" ? (s.meuTurno === false && !s.solo ? 300 : 700) : 1000);
     return () => clearInterval(t);
   }, [ativo, fim, s, setS]);
 
@@ -314,6 +316,14 @@ export function TaticoView({ inicial, nivel, retomar }: { retomar: boolean; inic
     setEntrou(false); setCarregando(false); setRev(null); pos.current = -1; setShot(null); setEspectro(null);
     if (r.ok) setS(r.s); else setErro(r.error);
   }, [audio, setS]);
+  // Quem está atirando avisa o rival onde está mirando (o rival vê o braço se mexer antes do tiro).
+  const mirar = useCallback((i: number) => {
+    if (s.estado !== "partida" || s.phase !== "responder" || s.me.answered || s.solo || s.meuTurno === false || !s.question) return;
+    const u = ultimaMira.current; const now = Date.now();
+    if (u && u.pos === s.question.pos && u.i === i && now - u.t < 2500) return;
+    ultimaMira.current = { pos: s.question.pos, i, t: now };
+    void taticoMirarAction(s.match, LETRAS[i]!);
+  }, [s]);
   const atirar = useCallback(async (i: number) => {
     if (s.estado !== "partida" || s.phase !== "responder" || s.me.answered || shot) return;
     // Som e clarão saem juntos, no mesmo instante do clique (antes de ir ao servidor).
@@ -333,7 +343,7 @@ export function TaticoView({ inicial, nivel, retomar }: { retomar: boolean; inic
       <div className="tt-full" data-testid="tatico-tela-cheia">
         {/* celular em pé: o estande inteiro (idêntico à arte de referência) gira 90° e ocupa a tela toda, como um jogo em paisagem */}
         <div className={portrait ? "tt-rot" : "tt-fill"}>
-        <Cena espectro={espectro} oppShot={oppShot} breathClock={som && !noFx ? (now) => audio.breathTime(now) : undefined} s={s} at={at} nivel={nivel} noFx={noFx} portrait={false} onShoot={atirar} shot={shot} />
+        <Cena aimOpp={s.question?.oppAim ? LETRAS.indexOf(s.question.oppAim as (typeof LETRAS)[number]) : null} onAim={mirar} espectro={espectro} oppShot={oppShot} breathClock={som && !noFx ? (now) => audio.breathTime(now) : undefined} s={s} at={at} nivel={nivel} noFx={noFx} portrait={false} onShoot={atirar} shot={shot} />
         {erro && <p role="alert" className="tt-toast">{erro}</p>}
         <div className="tt-ctl">
           <button data-testid="tatico-som" onClick={() => { const v = !som; setSom(v); localStorage.setItem("tt-som", v ? "on" : "off"); if (v) audio.start(); else audio.stop(); }}>{som ? "Som: ligado" : "Som: desligado"}</button>

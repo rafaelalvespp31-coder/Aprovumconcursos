@@ -1,6 +1,6 @@
 "use server";
 
-import { taticoMaterias, type MateriaDesafio, taticoBuscar, taticoSair, taticoCancelarDesafio, taticoDesafiar, taticoDesafios, taticoResponderDesafio, taticoEntrar, taticoEntrarSolo, taticoEncerrarTreino, taticoEstado, taticoResponder, taticoRevisao, taticoSairFila, taticoStats, type AlunoBusca, type DesafiosEstado, type TaticoEstado, type TaticoRevisao, type TaticoStats } from "@/server/services/tatico";
+import { taticoMaterias, type MateriaDesafio, taticoBuscar, taticoSair, taticoCancelarDesafio, taticoDesafiar, taticoDesafios, taticoResponderDesafio, taticoEntrar, taticoEntrarSolo, taticoEncerrarTreino, taticoEstado, taticoMirar, taticoResponder, taticoRevisao, taticoSairFila, taticoStats, type AlunoBusca, type DesafiosEstado, type TaticoEstado, type TaticoRevisao, type TaticoStats } from "@/server/services/tatico";
 import { UserFacingError } from "@/server/services/trails";
 
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -17,6 +17,10 @@ export async function taticoSairFilaAction(): Promise<void> { try { await tatico
 export async function taticoResponderAction(match: string, choice: string): Promise<{ ok: boolean; erro?: string; acertou?: boolean }> {
   if (!UUID.test(match) || !/^[ABCD]$/.test(choice)) return { ok: false, erro: "alternativa_invalida" };
   try { return await taticoResponder(match, choice); } catch { return { ok: false, erro: "falha" }; }
+}
+export async function taticoMirarAction(match: string, letter: string): Promise<void> {
+  if (!UUID.test(match) || !/^[ABCD]$/.test(letter)) return;
+  try { await taticoMirar(match, letter); } catch { /* melhor esforço */ }
 }
 export async function taticoStatsAction(): Promise<TaticoStats> { try { return await taticoStats(); } catch { return null; } }
 export async function taticoRevisaoAction(match: string): Promise<TaticoRevisao> {
