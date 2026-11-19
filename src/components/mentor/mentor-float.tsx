@@ -279,7 +279,12 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
     <>
       {!open && (
         <div className={`mentor-flut ${vw - pos.dx - BUBBLE / 2 < vw / 2 ? "is-esquerda" : ""}`} style={{ right: pos.dx, bottom: pos.dy }} data-testid="mentor-flutuante" data-estado={data?.state ?? "carregando"}>
-          {teaser && pending > 0 && (
+          {concNovo > 0 && concTexto && (
+            <button type="button" className="mentor-aviso mentor-aviso-conc" onClick={() => setOpenSaved(true)} data-testid="mentor-aviso-concurso">
+              <span className="mentor-conc-ponto" aria-hidden /> {concTexto.title}
+            </button>
+          )}
+          {!(concNovo > 0 && concTexto) && teaser && pending > 0 && (
             <button type="button" className="mentor-aviso" onClick={() => setOpenSaved(true)} data-testid="mentor-aviso">
               {fraseTeaser({ nome: data?.state === "ok" ? data.name : null, raiox: avisos > 0, pending, sorteio })}
             </button>
@@ -287,7 +292,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
           <button
             ref={bubbleRef}
             type="button"
-            className={`mentor-bolha ${dragging ? "is-arrastando" : ""}`}
+            className={`mentor-bolha ${dragging ? "is-arrastando" : ""} ${concNovo > 0 ? "mentor-piscando" : ""}`}
             aria-label={`Abrir o Mentor APROVUM${pending ? ` (${pending} ${pending === 1 ? "prioridade" : "prioridades"})` : ""}`}
             aria-expanded={false}
             onPointerDown={onDown}
@@ -397,15 +402,16 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
           )}
 
           {concNovo > 0 && concTexto && (
-            <div className="flex items-start gap-2 border-b border-white/10 bg-[#2A0A0C] px-4 py-3 text-[13px] text-white" role="status" data-testid="mentor-concursos">
-              <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-[#E10600]" aria-hidden />
-              <div className="min-w-0 flex-1">
-                <p className="font-bold">{concTexto.title}</p>
-                <p className="mt-0.5 text-white/80">{concTexto.body.replace(" Toque para ver.", "")}</p>
-                <div className="mt-2 flex gap-2">
-                  <Link href={`${base}/concursos`} onClick={() => { dispensarConc(); afterNav(); }} className="rounded-lg bg-white px-3 py-1.5 text-[12.5px] font-bold text-black">Ver concursos</Link>
-                  <button type="button" onClick={dispensarConc} className="rounded-lg border border-white/30 px-3 py-1.5 text-[12.5px] font-bold">Ok</button>
-                </div>
+            <div className="mentor-conc-card" role="status" data-testid="mentor-concursos">
+              <div className="mentor-conc-topo">
+                <span className="mentor-conc-pill"><span className="mentor-conc-ponto" aria-hidden /> Novo aviso</span>
+                <BellRing className="mentor-conc-sino h-5 w-5" aria-hidden />
+              </div>
+              <p className="mentor-conc-titulo">{concTexto.title}</p>
+              <p className="mentor-conc-texto">{concTexto.body.replace(" Toque para ver.", "")}</p>
+              <div className="mt-3 flex items-center gap-2">
+                <Link href={`${base}/concursos`} onClick={() => { dispensarConc(); afterNav(); }} className="mentor-conc-cta">Ver concursos <span aria-hidden>→</span></Link>
+                <button type="button" onClick={dispensarConc} className="mentor-conc-ok">Ok</button>
               </div>
             </div>
           )}
