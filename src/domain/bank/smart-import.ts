@@ -328,7 +328,7 @@ function detectLooseOptions(body: string[]): { options: SmartOption[]; firstOpti
  * Converte para o formato que o analisador já entende, sem alterar o conteúdo da questão.
  */
 function preprocessTec(text: string): string {
-  let t = text.replace(/\[([^\]]*)\]\((?:https?:\/\/|\/)[^)\s]*\)/g, "$1");
+  const t = text.replace(/\[([^\]]*)\]\((?:https?:\/\/|\/)[^)\s]*\)/g, "$1");
   if (!/^\s*#\d{3,}\b/m.test(t) && !/^\s*[*•-]\s*\(?[A-Ea-e]\)?\s*$/m.test(t)) return t;
   let lines = t.split("\n");
   // Cabeçalho do TEC -> "BANCA — ano — resto"; leva Matéria/Assunto/número que vinham antes para depois dele.
