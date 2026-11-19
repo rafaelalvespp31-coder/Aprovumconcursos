@@ -80,6 +80,8 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
   const [loadedData, setData] = useState<MentorPanelState | null>(null);
   const data = demo ?? loadedData;
   const [loadId, setLoadId] = useState(0);
+  // Prioridades dispensadas agora: saem do número, do selo e do balão sem esperar nova carga.
+  const [chaves, setChaves] = useState<string[] | null>(null);
   const [goalOv, setGoalOv] = useState<{ goal: { contest: string } | null; plan: StudyPlan | null } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   // Lembrados no navegador (lidos só no cliente; no servidor nada é desenhado).
@@ -109,6 +111,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
   const apply = (d: MentorPanelState) => {
     loaded.current = { at: Date.now(), path: window.location.pathname };
     setData(d);
+    setChaves(null);
     setLoadId((n) => n + 1);
     setRefreshing(false);
   };
@@ -131,6 +134,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
         if (!alive) return;
         loaded.current = { at: Date.now(), path: window.location.pathname };
         setData(d);
+        setChaves(null);
         setLoadId((n) => n + 1);
       });
     return () => {
@@ -148,7 +152,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
   const [sorteio] = useState(() => Math.random());
   const concNovo = concTexto && concVisto !== hoje ? 1 : 0;
   const dispensarConc = () => { setConcVisto(hoje); save(KEY_CONC, hoje); };
-  const pending = (data?.state === "ok" && !data.result.insufficientData ? data.visible.filter((r) => r.kind !== "manutencao").length : 0) + avisos + concNovo;
+  const pending = (data?.state === "ok" && !data.result.insufficientData ? data.visible.filter((r) => r.kind !== "manutencao" && (!chaves || chaves.includes(r.key))).length : 0) + avisos + concNovo;
 
   // Selo no ícone do app instalado: novidades do Mentor + concursos abertos e previstos (some quando zera).
   const concAtivos = data?.state === "ok" && data.concursos ? data.concursos.abertos + data.concursos.previstos : 0;
@@ -423,6 +427,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
                 <section id="mentor-sec-prioridades" role="tabpanel" aria-labelledby="mentor-aba-prioridades" hidden={tab !== "prioridades"}>
                   {data.name && <p className="mb-2 text-[12.5px] text-[#64666D]">Olá, {data.name}. Isto é o que mais importa agora:</p>}
                   <MentorPriorities
+                    onVisibleChange={setChaves}
                     key={demo ? params.get("mentor") ?? "ok" : loadId}
                     result={data.result}
                     visible={data.visible}

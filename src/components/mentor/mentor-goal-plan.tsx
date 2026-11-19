@@ -8,6 +8,8 @@ import { setMentorGoalAction } from "@/app/(app)/mentor/actions";
 
 const KIND: Record<BlockKind, string> = { aula: "Aula", questoes: "Questões", revisao: "Revisão", simulado: "Simulado" };
 const KIND_COLOR: Record<BlockKind, string> = { aula: "#1f5fbf", questoes: "#b3261e", revisao: "#2e7d32", simulado: "#8a5a00" };
+const DIAS = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+const rotuloHoje = (d: Date) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} - ${DIAS[d.getDay()]}`;
 const fmt = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padStart(2, "0") : ""}` : `${m} min`);
 
 /**
@@ -19,7 +21,7 @@ export function MentorGoalPlan({ goal, plan, name, onChange }: { goal: { contest
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const today = new Date().getDay();
+  const agora = new Date();
 
   const send = () => {
     setError(null);
@@ -32,6 +34,7 @@ export function MentorGoalPlan({ goal, plan, name, onChange }: { goal: { contest
     });
   };
 
+  const diaHoje = plan?.days.find((d) => d.weekday === agora.getDay()) ?? null;
   const ask = !goal || editing;
   return (
     <div className="flex flex-col gap-3" data-testid="mentor-objetivo">
@@ -65,33 +68,32 @@ export function MentorGoalPlan({ goal, plan, name, onChange }: { goal: { contest
             <p className="mt-0.5 text-[17px] font-extrabold leading-tight text-[#08090B]">{nomeConcurso(plan.contest).nome}</p>
             {nomeConcurso(plan.contest).sigla && <p className="text-[12px] font-semibold text-[#64666D]">{nomeConcurso(plan.contest).sigla}</p>}
           </div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-[#FDECEC] px-3 py-2 text-[12.5px] font-semibold text-[#8a1b14]">
-            <Target className="h-4 w-4" aria-hidden />
-            <span>{fmt(plan.weeklyMinutes)} por semana</span>
-            <span>·</span>
-            <span>{plan.weeklyQuestions} questões</span>
-            {plan.daysToExam !== null && plan.daysToExam >= 0 && <><span>·</span><span>prova em {plan.daysToExam} dias</span></>}
-          </div>
+          {plan.daysToExam !== null && plan.daysToExam >= 0 && (
+            <div className="flex items-center gap-2 rounded-xl bg-[#FDECEC] px-3 py-2 text-[12.5px] font-semibold text-[#8a1b14]">
+              <Target className="h-4 w-4" aria-hidden />
+              <span>Prova em {plan.daysToExam} dias</span>
+            </div>
+          )}
           {plan.notes.map((n) => <p key={n} className="text-[12.5px] text-[#4D4D4D]">• {n}</p>)}
-          <ul className="flex flex-col gap-2">
-            {plan.days.map((d) => (
-              <li key={d.weekday} className={`rounded-xl border p-3 ${d.weekday === today ? "border-[#E10600] bg-[#FFF6F5]" : "border-[#E3E5EA] bg-white"}`}>
-                <div className="flex items-baseline justify-between gap-2">
-                  <b className="text-[13.5px] text-[#08090B]">{d.label}{d.weekday === today ? " · hoje" : ""}</b>
-                  <span className="text-[12px] font-semibold text-[#64666D]">{fmt(d.minutes)} · {d.questions} questões</span>
-                </div>
-                <p className="text-[11.5px] text-[#64666D]">{d.theme}</p>
+          <div className="rounded-xl border border-[#E10600] bg-[#FFF6F5] p-3" data-testid="mentor-plano-hoje">
+            <div className="flex items-baseline justify-between gap-2">
+              <b className="text-[14px] text-[#08090B]">{rotuloHoje(agora)}</b>
+              {diaHoje && <span className="text-[12px] font-semibold text-[#64666D]">{fmt(diaHoje.minutes)} · {diaHoje.questions} questões</span>}
+            </div>
+            {diaHoje ? (
+              <>
+                <p className="text-[11.5px] text-[#64666D]">{diaHoje.theme}</p>
                 <ul className="mt-1.5 flex flex-col gap-1">
-                  {d.blocks.map((b, i) => (
+                  {diaHoje.blocks.map((b, i) => (
                     <li key={i} className="flex items-start gap-2 text-[12.5px] text-[#2a2c31]">
                       <span className="mt-0.5 shrink-0 rounded px-1.5 py-px text-[10.5px] font-extrabold text-white" style={{ background: KIND_COLOR[b.kind] }}>{KIND[b.kind]}</span>
                       <span><b>{b.subject}</b> · {fmt(b.minutes)} — {b.detail}</span>
                     </li>
                   ))}
                 </ul>
-              </li>
-            ))}
-          </ul>
+              </>
+            ) : <p className="mt-1 text-[12.5px] text-[#2a2c31]">Hoje é dia de descanso no seu plano. Aproveite para recarregar.</p>}
+          </div>
         </section>
       )}
       {!ask && !plan && <p className="text-[12.5px] text-[#64666D]">Não consegui montar o plano agora. Tente de novo em instantes.</p>}

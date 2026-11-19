@@ -21,6 +21,7 @@ export function MentorPriorities({
   compact = false,
   onNavigate,
   onExpired,
+  onVisibleChange,
 }: {
   result: MentorResult;
   visible: VisibleRecommendation[];
@@ -30,6 +31,8 @@ export function MentorPriorities({
   compact?: boolean;
   onNavigate?: () => void;
   onExpired?: () => void;
+  /** Chaves das prioridades que continuam visíveis (para o selo/aviso do Mentor acompanhar as dispensas). */
+  onVisibleChange?: (keys: string[]) => void;
 }) {
   const [visible, setVisible] = useState(initialVisible);
   const [notice, setNotice] = useState<string | null>(null);
@@ -39,10 +42,12 @@ export function MentorPriorities({
     if (!r.storedId) return;
     const before = visible;
     setVisible((v) => v.filter((x) => x.key !== r.key));
+    onVisibleChange?.(before.filter((x) => x.key !== r.key).map((x) => x.key));
     if (demo) return setNotice("Recomendação dispensada (demonstração).");
     const res = await mentorStatusAction(r.storedId, "dispensada").catch(() => ({ ok: false as const, error: "Não foi possível salvar agora." }));
     if (!res.ok) {
       setVisible(before);
+      onVisibleChange?.(before.map((x) => x.key));
       setNotice(res.error);
       if ("expired" in res && res.expired) onExpired?.();
     } else setNotice("Recomendação dispensada. Ela volta se a pendência continuar.");
