@@ -74,6 +74,37 @@ export const schemeSchema = z.discriminatedUnion("tipo", [
 
 export type Strip = z.infer<typeof stripSchema>;
 
+/**
+ * JSON com defeitos comuns de resposta de IA: aspas curvas, vírgula sobrando antes de "]" ou "}",
+ * quebra de linha dentro do texto e colchete/chave que ficou sem fechar. Tenta o JSON puro primeiro.
+ */
+export function parseJsonLoose(raw: string): unknown {
+  try { return JSON.parse(raw); } catch { /* tenta reparar */ }
+  let t = raw.trim().replace(/[\u201C\u201D\u201E\u00AB\u00BB]/g, '"').replace(/[\u2018\u2019]/g, "'").replace(/\u00A0/g, " ");
+  t = t.replace(/,\s*([\]}])/g, "$1");
+  // quebra de linha dentro de string vira espaço
+  let out = "";
+  let inStr = false;
+  let esc = false;
+  const stack: string[] = [];
+  for (const ch of t) {
+    if (inStr) {
+      if (esc) { esc = false; out += ch; continue; }
+      if (ch === "\\") { esc = true; out += ch; continue; }
+      if (ch === '"') { inStr = false; out += ch; continue; }
+      out += ch === "\n" || ch === "\r" || ch === "\t" ? " " : ch;
+      continue;
+    }
+    if (ch === '"') inStr = true;
+    else if (ch === "[" || ch === "{") stack.push(ch === "[" ? "]" : "}");
+    else if (ch === "]" || ch === "}") { if (stack[stack.length - 1] === ch) stack.pop(); else continue; }
+    out += ch;
+  }
+  if (inStr) out += '"';
+  out = out.replace(/,\s*$/, "") + stack.reverse().join("");
+  try { return JSON.parse(out.replace(/,\s*([\]}])/g, "$1")); } catch { return undefined; }
+}
+
 const plain = (v: unknown) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[\s-]+/g, "_");
 const pick = <T extends string>(list: readonly T[], v: unknown): T | undefined => {
   const k = plain(v);
@@ -91,9 +122,10 @@ const cut = (v: unknown, max: number): string | undefined => {
  */
 export function lenientStrip(raw: string | undefined): Strip | undefined {
   if (!raw?.trim()) return undefined;
-  let data: unknown;
-  try { data = JSON.parse(raw); } catch { return undefined; }
-  if (!Array.isArray(data)) return undefined;
+  const parsed = parseJsonLoose(raw);
+  // aceita um quadro solto ({...}) além da lista de quadros
+  const data = Array.isArray(parsed) ? parsed : parsed && typeof parsed === "object" ? [parsed] : undefined;
+  if (!data) return undefined;
   const panels = data.slice(0, 3).map((pn): unknown => {
     const o = (pn && typeof pn === "object" ? pn : {}) as Record<string, unknown>;
     const chars = (Array.isArray(o.personagens) ? o.personagens : []).slice(0, 3).map((c) => {
@@ -116,10 +148,8 @@ export type StepState = "ok" | "erro" | "neutro" | "alerta";
 /** Lê o JSON de um campo visual; inválido = ignorado (o card continua só com texto). */
 export function parseVisual<T>(raw: string | undefined, schema: z.ZodType<T>): T | undefined {
   if (!raw?.trim()) return undefined;
-  try {
-    const r = schema.safeParse(JSON.parse(raw));
-    return r.success ? r.data : undefined;
-  } catch {
-    return undefined;
-  }
+  const data = parseJsonLoose(raw);
+  if (data === undefined) return undefined;
+  const r = schema.safeParse(data);
+  return r.success ? r.data : undefined;
 }

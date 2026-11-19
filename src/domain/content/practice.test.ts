@@ -46,4 +46,11 @@ describe("tirinha tolerante", () => {
     expect(r![0]!.fala!.quem).toBe(0);
     expect(lenientStrip("não é json")).toBeUndefined();
   });
+  it("repara JSON de IA com aspas curvas, vírgula sobrando e chave faltando", async () => {
+    const { lenientStrip, parseJsonLoose } = await import("./visual");
+    expect(parseJsonLoose('[{"a": 1,},]')).toEqual([{ a: 1 }]);
+    const r = lenientStrip('[{“cenario”: “casa”, “legenda”: “Busca na casa”, “personagens”: [{“p”: “policial_penal”,}], “fala”: {“quem”: 0, “texto”: “Mandado”}');
+    expect(r?.[0]?.cenario).toBe("casa");
+    expect(r?.[0]?.fala?.texto).toBe("Mandado");
+  });
 });
