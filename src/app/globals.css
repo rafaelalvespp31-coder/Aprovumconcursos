@@ -1835,6 +1835,12 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .mentor-painel-topo { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 14px; background: #08090B; touch-action: none; }
 .mentor-topo-btn { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; color: rgba(255,255,255,0.8); transition: background 150ms, color 150ms; }
 .mentor-topo-btn:hover { background: rgba(255,255,255,0.12); color: #fff; }
+/* Setinha animada ao lado do sino: chama o aluno a ativar os avisos no celular */
+.mentor-seta-sino { display: inline-flex; align-items: center; gap: 3px; padding: 4px 8px; border: 0; border-radius: 999px; background: #E10600; color: #fff; font: 800 11px/1 Inter, sans-serif; letter-spacing: .02em; cursor: pointer; flex: none; box-shadow: 0 0 0 0 rgba(255,59,48,.6); animation: mentor-seta-pulso 2s ease-out infinite; }
+.mentor-seta-sino svg { animation: mentor-seta-vai 1s ease-in-out infinite; }
+@keyframes mentor-seta-vai { 0%, 100% { transform: translateX(-2px); } 50% { transform: translateX(3px); } }
+@keyframes mentor-seta-pulso { 0% { box-shadow: 0 0 0 0 rgba(255,59,48,.55); } 70%, 100% { box-shadow: 0 0 0 8px rgba(255,59,48,0); } }
+@media (prefers-reduced-motion: reduce) { .mentor-seta-sino, .mentor-seta-sino svg { animation: none; } }
 .mentor-topo-btn:focus-visible { outline: 2px solid #E50914; outline-offset: 1px; }
 .mentor-abas { display: flex; gap: 4px; padding: 8px 10px 0; border-bottom: 1px solid #ECEDF0; }
 .mentor-abas button { padding: 8px 10px 9px; font-size: 13px; font-weight: 700; color: #64666D; border-bottom: 2px solid transparent; margin-bottom: -1px; }

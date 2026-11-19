@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { Bell, BellRing, Compass, GripHorizontal, Maximize2, Minus, RotateCcw } from "lucide-react";
+import { ArrowRight, Bell, BellRing, Compass, GripHorizontal, Maximize2, Minus, RotateCcw } from "lucide-react";
 import { usePush } from "@/components/push/use-push";
 import { GuiaInstalar } from "@/components/push/guia-instalar";
 import { mentorPanelAction } from "@/app/(app)/mentor/actions";
@@ -337,6 +337,11 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
               Mentor APROVUM
             </h2>
             {!mobile && <GripHorizontal className="h-4 w-4 text-white/60" aria-hidden />}
+            {!["ligado", "carregando", "sem-suporte"].includes(push.estado) && !sinoAberto && (
+              <button type="button" data-sem-arrastar onClick={tocarSino} className="mentor-seta-sino" aria-hidden tabIndex={-1} data-testid="mentor-seta-sino">
+                Ativar <ArrowRight className="h-3.5 w-3.5" aria-hidden />
+              </button>
+            )}
             <button type="button" data-sem-arrastar onClick={tocarSino} className="mentor-topo-btn relative" aria-label={push.estado === "ligado" ? "Avisos no celular ativos" : "Ativar avisos no celular"} title={push.estado === "ligado" ? "Avisos ativos" : "Ativar avisos no celular"} aria-expanded={sinoAberto} data-testid="mentor-avisos">
               {push.estado === "ligado" ? <BellRing className="h-4 w-4" aria-hidden /> : <Bell className="h-4 w-4" aria-hidden />}
               {push.estado !== "ligado" && push.estado !== "carregando" && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#FF3B30]" aria-hidden />}
