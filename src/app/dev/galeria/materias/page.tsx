@@ -3,7 +3,7 @@ import type { PreparationTree, TreeDiscipline, TreeTopic } from "@/server/servic
 
 /** Só galeria: edital de exemplo para revisar o visual. */
 const tp = (id: string, code: string | null, depth: number, title: string, status: TreeTopic["status"], done = false, n = 1): TreeTopic => ({
-  id, code, depth, title, page: null, status, done,
+  id, code, depth, title, page: null, status, done, manual: false,
   lessons: status === "nao_encontrado" || status === "pendente" ? [] : Array.from({ length: n }, (_, i) => ({ catalogId: `${id}-${i}`, title, coverage: "completa" as const, pct: done ? 100 : 20, done })),
 });
 const disc = (id: string, name: string, topics: TreeTopic[]): TreeDiscipline => ({ id, name, page: null, mode: null, modeLabel: null, topics, doneCount: topics.filter((t) => t.done).length, pct: (topics.filter((t) => t.done).length / topics.length) * 100 });

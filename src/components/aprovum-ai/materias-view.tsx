@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Check, ChevronLeft, ChevronRight, Crosshair } from "lucide-react";
 import { orgImageFor } from "@/domain/edital/org-images";
 import { StartStudyDialog, type StartTheme } from "@/app/(app)/nova-trilha/start-dialog";
 import { materiaOf, materiaOrder } from "@/domain/strategic/materias";
 import { fold } from "@/domain/edital/text";
 import type { PreparationTree, TreeTopic } from "@/server/services/edital-view";
+import { toggleTopicDoneAction } from "@/app/(app)/meu-concurso/[id]/actions";
 import "./materias-view.css";
 
 const HUES = [352, 24, 42, 145, 188, 214, 262, 318];
@@ -27,6 +28,27 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
   const [q, setQ] = useState("");
   const [theme, setTheme] = useState<StartTheme | null>(null);
   const nq = fold(q.trim());
+  // Marcação pela bolinha: aparece na hora e volta atrás se o servidor não salvar.
+  const [marc, setMarc] = useState<Record<string, boolean>>({});
+  const [, start] = useTransition();
+  const feito = (t: TreeTopic) => marc[t.id] ?? t.done;
+  const alternar = (t: TreeTopic) => {
+    const novo = !feito(t);
+    setMarc((m) => ({ ...m, [t.id]: novo }));
+    start(async () => {
+      const r = await toggleTopicDoneAction(prep.id, t.id, novo).catch(() => ({ ok: false }));
+      if (!r.ok) setMarc((m) => ({ ...m, [t.id]: !novo }));
+    });
+  };
+  const Bolinha = ({ t }: { t: TreeTopic }) => {
+    const ok = feito(t);
+    const travada = ok && !t.manual && marc[t.id] === undefined; // concluída pelas aulas: não desmarca à mão
+    return (
+      <button type="button" className="mv-ck" data-ok={ok ? 1 : undefined} disabled={travada} onClick={() => alternar(t)} aria-pressed={ok} aria-label={`${ok ? "Desmarcar" : "Marcar como concluído"}: ${t.title}`} title={travada ? "Concluído pelas aulas" : ok ? "Desmarcar" : "Marcar como concluído"} data-testid="marcar-concluido">
+        {ok && <Check size={16} strokeWidth={3} aria-hidden />}
+      </button>
+    );
+  };
 
   const blocos = useMemo(
     () =>
@@ -121,8 +143,8 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
                             </summary>
                             <ul className="mv-subs" aria-label={`Conteúdo do tópico ${ti + 1}`}>
                               {subs.length === 0 && t.lessons.map((l) => (
-                                <li key={l.catalogId} className="mv-st" style={{ ["--k" as string]: l.done ? "#1f9d55" : st.cor }}>
-                                  <span className="mv-ck" data-ok={l.done ? 1 : undefined} aria-hidden>{l.done && <Check size={14} />}</span>
+                                <li key={l.catalogId} className="mv-st" style={{ ["--k" as string]: feito(t) || l.done ? "#10b981" : st.cor }}>
+                                  <Bolinha t={t} />
                                   <span className="mv-sl"><span className="mv-sn">{l.title}</span><span className="mv-sm">{l.done ? "Concluída" : l.pct > 0 ? `${Math.round(l.pct)}% estudado` : "Aula disponível"}</span></span>
                                   <button type="button" className="mv-go" data-sub data-feito={l.done ? 1 : undefined} onClick={() => setTheme({ id: l.catalogId, title: l.title, discipline: d.name })}>{l.done ? "Revisar" : "Estudar"}</button>
                                 </li>
@@ -130,8 +152,8 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
                               {subs.map((s) => {
                                 const ssk = statusKey(s);
                                 return (
-                                  <li key={s.id} className="mv-st" style={{ ["--k" as string]: STATUS[ssk]!.cor }}>
-                                    <span className="mv-ck" data-ok={s.done ? 1 : undefined} aria-hidden>{s.done && <Check size={14} />}</span>
+                                  <li key={s.id} className="mv-st" style={{ ["--k" as string]: feito(s) ? "#10b981" : STATUS[ssk]!.cor }}>
+                                    <Bolinha t={s} />
                                     <span className="mv-sl"><span className="mv-sn">{s.code && <span className="mv-stc">{s.code}</span>}{s.title}</span><span className="mv-sm">{STATUS[ssk]!.label}{s.lessons.length > 0 ? ` · ${s.lessons.length} aula${s.lessons.length > 1 ? "s" : ""}` : ""}</span></span>
                                     {s.lessons.length > 0 && <button type="button" className="mv-go" data-sub data-feito={s.done ? 1 : undefined} onClick={() => estudar(s, d.name, [])}>{s.done ? "Revisar" : "Estudar"}</button>}
                                   </li>

@@ -28,6 +28,8 @@ export interface TreeTopic {
   lessons: LinkedLesson[];
   /** Estudado de verdade: tem aula e todas as aulas vinculadas foram concluídas pelo aluno. */
   done: boolean;
+  /** O aluno marcou este item como concluído na bolinha (vale mesmo sem aula). */
+  manual: boolean;
 }
 export interface TreeDiscipline {
   id: string;
@@ -136,8 +138,9 @@ export async function getPreparationTree(userId: string, id: string): Promise<Pr
   for (const t of (tops.data ?? []) as Row[]) {
     const lessons = (linksByTopic.get(t.id as string) ?? []).sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
     const status = t.match_status as TreeTopic["status"];
-    const done = isTopicDone(status, lessons.map((l) => l.pct));
-    const topic: TreeTopic = { id: t.id as string, code: (t.code as string | null) ?? null, depth: t.depth as number, title: t.title as string, page: (t.source_page as number | null) ?? null, status, lessons, done };
+    const manual = t.manual_done === true;
+    const done = manual || isTopicDone(status, lessons.map((l) => l.pct));
+    const topic: TreeTopic = { id: t.id as string, code: (t.code as string | null) ?? null, depth: t.depth as number, title: t.title as string, page: (t.source_page as number | null) ?? null, status, lessons, done, manual };
     const arr = byDisc.get(t.discipline_id as string) ?? [];
     arr.push(topic);
     byDisc.set(t.discipline_id as string, arr);
@@ -196,4 +199,12 @@ export async function listCatalogGaps(limit = 100): Promise<{ gaps: GapRow[]; pr
   }
   const gaps = [...map.values()].map((g) => ({ title: g.title, discipline: g.discipline, editais: g.preps.size, alunos: g.users.size })).sort((a, b) => b.editais - a.editais || b.alunos - a.alunos || a.title.localeCompare(b.title, "pt-BR")).slice(0, limit);
   return { gaps, preparations: prepCount.count ?? 0 };
+}
+
+/** Marca/desmarca manualmente um tópico ou subtópico do edital como concluído (só do próprio aluno). */
+export async function setTopicManualDone(userId: string, topicId: string, done: boolean): Promise<void> {
+  if (!UUID.test(topicId)) throw new UserFacingError("Tópico não encontrado.", "not_found");
+  const { data, error } = await createAdminClient().from("edital_topics").update({ manual_done: done }).eq("id", topicId).eq("user_id", userId).select("id");
+  if (error) throw new UserFacingError("Não foi possível salvar agora.", "internal");
+  if (!data?.length) throw new UserFacingError("Tópico não encontrado.", "not_found");
 }

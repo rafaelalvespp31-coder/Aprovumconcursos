@@ -7,6 +7,7 @@ import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
 import { requireUser } from "@/server/auth";
 import { updatePreparationInfo } from "@/server/services/edital";
+import { setTopicManualDone } from "@/server/services/edital-view";
 
 export async function updateInfoAction(id: string, form: FormData) {
   const user = await requireUser(`/meu-concurso/${id}`);
@@ -38,4 +39,16 @@ export async function startStudyAction(id: string, _: StartStudyState): Promise<
   revalidatePath("/trilhas");
   revalidatePath(`/meu-concurso/${id}`);
   redirect(`/trilhas#pasta-${folderId}`);
+}
+
+/** Bolinha da página de matérias: o aluno marca/desmarca o item como concluído. */
+export async function toggleTopicDoneAction(prepId: string, topicId: string, done: boolean): Promise<{ ok: boolean }> {
+  const user = await requireUser(`/meu-concurso/${prepId}/materias`);
+  try {
+    await setTopicManualDone(user.id, topicId, done);
+  } catch {
+    return { ok: false };
+  }
+  revalidatePath(`/meu-concurso/${prepId}/materias`);
+  return { ok: true };
 }
