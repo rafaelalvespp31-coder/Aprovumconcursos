@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createElement, useEffect, useRef, useState, useTransition } from "react";
+import { createElement, useEffect, useLayoutEffect, useRef, useState, useTransition } from "react";
+import { createPortal } from "react-dom";
 import { ChevronRight, CirclePlus, EllipsisVertical, FolderOpen, NotebookTabs, Pencil, Pin, PinOff, Trash2 } from "lucide-react";
 import type { Notebook } from "@/server/services/notebooks";
 import { brDate, byRecent, NOTEBOOK_TITLE_MAX } from "@/domain/notebooks/model";
@@ -239,9 +240,33 @@ function RowMenu({ title, pinned, onOpen, onPin, onRename, onDelete }: { title: 
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
   const btn = useRef<HTMLButtonElement>(null);
+  const menuEl = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ top: number; right: number } | null>(null);
+  // O menu sai da lista (que corta o que passa da borda) e abre na tela, para cima se faltar espaço embaixo.
+  const place = () => {
+    const r = btn.current?.getBoundingClientRect();
+    if (!r) return;
+    const h = menuEl.current?.offsetHeight ?? 190;
+    const below = r.bottom + 6;
+    const top = below + h > window.innerHeight - 8 ? Math.max(8, r.top - 6 - h) : below;
+    setPos({ top, right: Math.max(8, window.innerWidth - r.right) });
+  };
+  useLayoutEffect(() => {
+    if (open) place();
+  }, [open]);
   useEffect(() => {
     if (!open) return;
-    const onDoc = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
+    const close = () => setOpen(false);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  }, [open]);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && !menuEl.current?.contains(e.target as Node) && setOpen(false);
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setOpen(false);
@@ -250,7 +275,7 @@ function RowMenu({ title, pinned, onOpen, onPin, onRename, onDelete }: { title: 
     };
     document.addEventListener("mousedown", onDoc);
     document.addEventListener("keydown", onKey);
-    ref.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
+    menuEl.current?.querySelector<HTMLElement>("[role=menuitem]")?.focus();
     return () => {
       document.removeEventListener("mousedown", onDoc);
       document.removeEventListener("keydown", onKey);
@@ -265,8 +290,8 @@ function RowMenu({ title, pinned, onOpen, onPin, onRename, onDelete }: { title: 
       <button ref={btn} type="button" className="cq-btn-menu" aria-haspopup="menu" aria-expanded={open} aria-label={`Mais opções do caderno ${title}`} onClick={() => setOpen((o) => !o)}>
         <EllipsisVertical className="h-[18px] w-[18px]" aria-hidden />
       </button>
-      {open && (
-        <div role="menu" aria-label={`Opções de ${title}`} className="cq-menu">
+      {open && createPortal(
+        <div ref={menuEl} role="menu" aria-label={`Opções de ${title}`} className="cq-menu" style={{ position: "fixed", top: pos?.top ?? 0, right: pos?.right ?? 8, visibility: pos ? "visible" : "hidden", zIndex: 80 }}>
           <Link role="menuitem" href={onOpen} className="cq-menu-item">
             <FolderOpen className="h-4 w-4" aria-hidden /> Abrir caderno
           </Link>
@@ -279,7 +304,8 @@ function RowMenu({ title, pinned, onOpen, onPin, onRename, onDelete }: { title: 
           <button role="menuitem" type="button" className="cq-menu-item text-[#B9000B]" onClick={pick(onDelete)}>
             <Trash2 className="h-4 w-4" aria-hidden /> Excluir
           </button>
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   );
