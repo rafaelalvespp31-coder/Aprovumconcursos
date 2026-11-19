@@ -91,6 +91,9 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
     if (s.me.choice === l || (shot && LETRAS[shot.i] === l)) return `${base} sel`;
     return q?.oppChoice === l ? `${base} opp` : base;
   };
+  // Tela pequena (celular): o palco reduz tudo e o texto vira ilegível. Nesse caso a pergunta e as respostas
+  // saem do palco e viram texto real (tamanho fixo e legível) sobre a faixa de cima do estande.
+  const dom = k > 0 && k < 0.62;
   const tgCls = (l: string) => {
     const o = q?.oppChoice === l ? " opp" : "";
     if (rev && q?.correct) return (l === q.correct ? "ok" : l === s.me.choice ? "no" : "") + o;
@@ -147,8 +150,8 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
                 <>
                   <div className="tt-panel tt-mat" data-testid="tatico-materia"><span><em>MATÉRIA</em> {materia || "—"}</span><span className="sep" /><span><em>TÓPICO</em> {q.topic || "—"}</span></div>
                   <div className="tt-panel tt-q">QUESTÃO <b>{String(Math.min(q.pos, s.total)).padStart(2, "0")}/{String(s.total).padStart(2, "0")}</b>{q.tiebreak ? " · MORTE SÚBITA" : ""}</div>
-                  <div className="tt-panel tt-enun" style={{ fontSize: fs(q.statement, 26, 13, 80) }}>{q.statement}</div>
-                  {q.options.map((o, i) => (
+                  {!dom && <div className="tt-panel tt-enun" style={{ fontSize: fs(q.statement, 26, 13, 80) }}>{q.statement}</div>}
+                  {!dom && q.options.map((o, i) => (
                     <button key={o.label} disabled={bloqueado} className={cls(o.label, "tt-panel tt-opt")} style={{ left: OPT_POS[i]!.l, top: OPT_POS[i]!.t, height: OPT_POS[i]!.h, fontSize: fs(o.text, 23, 14, 50, 0.055) }} onClick={() => onShoot(i)} data-testid={`tatico-op-${o.label}`}>
                       <span className="lt">{o.label}</span><span className="tx">{o.text}</span>
                     </button>
@@ -172,15 +175,32 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, shot, breathClock, oppSho
               </div>
             </>
           )}
-          {rev && q?.correct && !portrait && (
+          {rev && q?.correct && !portrait && !dom && (
             <div className="tt-panel red tt-reveal"><b>Gabarito: {q.correct}.</b> {(q.explanations?.[q.correct] || q.justification || "").toString().slice(0, 260)}</div>
           )}
           {!!oppShot && <div key={`op${oppShot}`} className="tt-oppflash" />}
-          {s.phase === "responder" && !s.me.answered && !s.solo && (
+          {s.phase === "responder" && !s.me.answered && !s.solo && !dom && (
             <div className={`tt-wait ${meuTurno ? "vez" : ""}`} data-testid="tatico-vez">{meuTurno ? "SUA VEZ — ATIRE!" : s.opp.answered ? `${s.opp.name} ATIROU` : `VEZ DE ${s.opp.name.toUpperCase()} — ACOMPANHE`}</div>
           )}
           {s.phase === "contagem" && <div className="tt-cd"><span key={Math.ceil(ms / 1000)}>{Math.max(1, Math.ceil(ms / 1000) - 5) > 3 ? "PREPARAR" : Math.max(1, Math.ceil(ms / 1000))}</span></div>}
         </div>
+        {dom && q && (
+          <div className="tt-dom" style={{ top: offY + 104 * k, maxHeight: Math.max(90, (424 - 104) * k - 4) }} data-testid="tatico-dom">
+            <div className="tt-dom-cab">
+              <span>{String(Math.min(q.pos, s.total)).padStart(2, "0")}/{String(s.total).padStart(2, "0")} · {(materia || "—").toUpperCase()}</span>
+              <b className={meuTurno ? "vez" : ""}>{s.phase !== "responder" ? "" : s.solo ? "ATIRE!" : meuTurno ? "SUA VEZ — ATIRE!" : s.opp.answered ? `${s.opp.name.toUpperCase()} ATIROU` : `VEZ DE ${s.opp.name.toUpperCase()}`}</b>
+            </div>
+            <p className="tt-dom-q">{q.statement}</p>
+            <div className="tt-dom-ops">
+              {q.options.map((o, i) => (
+                <button key={o.label} disabled={bloqueado} className={cls(o.label, "tt-dom-op")} onClick={() => onShoot(i)} data-testid={`tatico-op-${o.label}`}>
+                  <span className="lt">{o.label}</span><span className="tx">{o.text}</span>
+                </button>
+              ))}
+            </div>
+            {rev && q.correct && <p className="tt-dom-rev"><b>Gabarito: {q.correct}.</b> {(q.explanations?.[q.correct] || q.justification || "").toString().slice(0, 260)}</p>}
+          </div>
+        )}
       </div>
       {portrait && q && (
         <div className="tt-m-q" style={{ margin: 8, flex: 1, overflowY: "auto", minHeight: 0 }}>

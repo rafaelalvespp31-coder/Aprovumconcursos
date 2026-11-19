@@ -237,8 +237,11 @@ export async function computeMentor(userId: string): Promise<MentorView> {
     const r = await admin.from("mentor_recommendations").update({ status: "nova", dismissed_at: null, resolved_at: null }).eq("user_id", userId).in("id", rec.toReactivate);
     if (r.error) throw new Error(r.error.message);
   }
+  // Dispensada some de tudo (inclusive de "outras pendências"), para sempre.
+  const dispensadasKeys = new Set(todas.filter((r) => r.status === "dispensada").map((r) => r.dedupe_key));
+  const resultFiltrado = { ...result, all: result.all.filter((r) => !dispensadasKeys.has(r.key)) };
   const gp = await loadGoalPlan(userId, snapshot, result);
-  return { name, result, visible: rec.visible, lessons: snapshot.lessons, goal: gp.goal, plan: gp.plan };
+  return { name, result: resultFiltrado, visible: rec.visible, lessons: snapshot.lessons, goal: gp.goal, plan: gp.plan };
 }
 
 const idSchema = z.uuid();

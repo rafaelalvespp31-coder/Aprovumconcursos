@@ -444,8 +444,8 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
                   <MentorPriorities
                     onVisibleChange={setChaves}
                     key={demo ? params.get("mentor") ?? "ok" : loadId}
-                    result={data.result}
-                    visible={data.visible}
+                    result={chaves ? { ...data.result, all: data.result.all.filter((r) => !data.visible.some((v) => v.key === r.key && !chaves.includes(v.key))) } : data.result}
+                    visible={chaves ? data.visible.filter((r) => chaves.includes(r.key)) : data.visible}
                     notices={data.notices}
                     base={base}
                     demo={Boolean(demo)}

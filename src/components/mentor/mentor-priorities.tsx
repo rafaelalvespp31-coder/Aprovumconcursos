@@ -36,17 +36,21 @@ export function MentorPriorities({
 }) {
   const [visible, setVisible] = useState(initialVisible);
   const [notice, setNotice] = useState<string | null>(null);
+  // Chaves dispensadas nesta sessão: somem da lista principal e de "outras pendências".
+  const [gone, setGone] = useState<string[]>([]);
   const href = (h: string) => `${base}${h}`;
 
   const dismiss = async (r: VisibleRecommendation) => {
     if (!r.storedId) return setNotice("Ainda estou registrando esta prioridade. Tente dispensar de novo em instantes.");
     const before = visible;
     setVisible((v) => v.filter((x) => x.key !== r.key));
+    setGone((g) => [...g, r.key]);
     onVisibleChange?.(before.filter((x) => x.key !== r.key).map((x) => x.key));
     if (demo) return setNotice("Recomendação dispensada (demonstração).");
     const res = await mentorStatusAction(r.storedId, "dispensada").catch(() => ({ ok: false as const, error: "Não foi possível salvar agora." }));
     if (!res.ok) {
       setVisible(before);
+      setGone((g) => g.filter((x) => x !== r.key));
       onVisibleChange?.(before.map((x) => x.key));
       setNotice(res.error);
       if ("expired" in res && res.expired) onExpired?.();
@@ -60,7 +64,7 @@ export function MentorPriorities({
   // Manutenção não é pendência: com só ela, o aluno está em dia (e ela vira sugestão).
   const actionable = visible.filter((r) => r.kind !== "manutencao");
   const upkeep = visible.filter((r) => r.kind === "manutencao");
-  const others = result.all.filter((r) => r.kind !== "manutencao" && !visible.some((v) => v.key === r.key)).slice(0, compact ? 4 : 8);
+  const others = result.all.filter((r) => r.kind !== "manutencao" && !visible.some((v) => v.key === r.key) && !gone.includes(r.key)).slice(0, compact ? 4 : 8);
   const pad = compact ? "p-3" : "p-4";
 
   const avisos = notices.length > 0 && (
