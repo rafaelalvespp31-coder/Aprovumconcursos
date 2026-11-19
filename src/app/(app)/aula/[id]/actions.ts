@@ -201,3 +201,22 @@ export async function explainSelectionAction(input: { lessonId: string; selectio
     return { ok: false, error: "Não consegui explicar agora. Tente de novo em instantes." };
   }
 }
+
+const posSchema = z.object({
+  page: z.string().regex(/^[a-z0-9-]{1,40}$/),
+  seen: z.array(z.string().max(64)).max(400),
+  scroll: z.number().int().min(0).max(500_000),
+});
+
+/** Grava onde o aluno parou na aula (página/módulo, seções lidas e rolagem) para retomar em qualquer aparelho. */
+export async function saveReadingPosAction(lessonId: string, pos: { page: string; seen: string[]; scroll: number }): Promise<{ ok: boolean }> {
+  const user = await requireUser();
+  const parsed = posSchema.safeParse(pos);
+  if (!parsed.success || !/^[0-9a-f-]{36}$/i.test(lessonId)) return { ok: false };
+  const { error } = await createAdminClient()
+    .from("learning_progress")
+    .update({ reading_pos: { ...parsed.data, at: Date.now() } })
+    .eq("user_id", user.id)
+    .eq("lesson_id", lessonId);
+  return { ok: !error };
+}

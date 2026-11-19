@@ -19,6 +19,7 @@ import { StudyTools } from "@/components/aula/study-tools";
 import { listPostitPdfs, listPostits } from "@/server/services/postits";
 import { requireUser } from "@/server/auth";
 import { claimDailyLesson } from "@/server/services/plans";
+import { createAdminClient } from "@/server/supabase";
 
 export const metadata = { title: "Aula" };
 
@@ -66,6 +67,10 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       </div>
     );
   }
+
+  // Onde o aluno parou (módulo/página, seções lidas e rolagem): a aula reabre no mesmo ponto, em qualquer aparelho.
+  const posRow = await createAdminClient().from("learning_progress").select("reading_pos").eq("user_id", me.id).eq("lesson_id", id).maybeSingle();
+  const resumePos = (posRow.data?.reading_pos as { page: string; seen: string[]; scroll: number; at: number } | null) ?? null;
 
   const hasContent = sections.length > 0 && (lesson.status === "ready" || lesson.status === "pending_validation");
   if (!hasContent) {
@@ -212,6 +217,7 @@ export default async function LessonPage({ params, searchParams }: { params: Pro
       feedbackAula={fb?.perguntar ? { lessonId: id } : null}
       position={idx >= 0 ? { index: idx, total: siblings.length } : null}
       moduleTitle={lesson.learning_modules?.title ?? null}
+      resumePos={resumePos}
       outline={siblings.map((s) => ({ id: s.id, title: s.title, module: s.module }))}
     />
     </>

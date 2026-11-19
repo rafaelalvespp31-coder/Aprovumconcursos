@@ -20,6 +20,7 @@ import { LEVELS, levelStatus, type LevelKey } from "@/domain/progress/levels";
 import { SingleLevel } from "./levels-panel";
 import { FeedbackModal } from "@/components/aula/feedback-modal";
 import { dispensarFeedbackAction, enviarFeedbackAction } from "./feedback-actions";
+import { saveReadingPosAction } from "./actions";
 import { LessonTreePortal, type BoardOutlineItem } from "@/components/aula/lesson-board";
 import { ApostilaMarkdown } from "@/components/aula/apostila-markdown";
 import { ApostilaQuestion } from "@/components/aula/apostila-question";
@@ -83,6 +84,8 @@ export interface ReaderProps {
   position?: { index: number; total: number } | null;
   /** Módulo da aula (plano do estudo). */
   moduleTitle?: string | null;
+  /** Última posição gravada no servidor (para retomar em outro aparelho). */
+  resumePos?: { page: string; seen: string[]; scroll: number; at: number } | null;
   /** Aulas do estudo, em ordem, com o módulo de cada uma (árvore da barra lateral). */
   outline?: BoardOutlineItem[];
 }
@@ -196,6 +199,94 @@ export function LessonReader(props: ReaderProps) {
     requestAnimationFrame(() => document.getElementById("apostila")?.scrollIntoView({ behavior: "smooth", block: "start" }));
   };
   const goIdx = (i: number) => pages[i] && go(pages[i]!);
+
+  // Retomar de onde parou: página/módulo, seções lidas e rolagem ficam gravados neste aparelho e no servidor (vale em qualquer aparelho).
+  const resume = props.resumePos ?? null;
+  const atKey = `na:apostila-em:${lesson.id}`;
+  const scrollKey = `na:apostila-rolagem:${lesson.id}`;
+  const pageNow = pageKey(current);
+  const posRef = useRef({ page: pageNow, seen: seenList, scroll: 0 });
+  useEffect(() => {
+    posRef.current.page = pageNow;
+    posRef.current.seen = seenList;
+  }, [pageNow, seenList]);
+  const restoredRef = useRef(false);
+  // 1) Abriu em outro aparelho (ou sem dados locais): adota a posição do servidor se for mais nova que a local.
+  useEffect(() => {
+    if (!resume) return;
+    let localAt = 0;
+    try {
+      localAt = Number(localStorage.getItem(atKey) ?? 0);
+    } catch {}
+    if (resume.at <= localAt) return;
+    setStoredPage(resume.page);
+    setSeenList([...new Set([...seenList, ...resume.seen])]);
+    try {
+      localStorage.setItem(atKey, String(resume.at));
+      localStorage.setItem(scrollKey, JSON.stringify({ page: resume.page, y: resume.scroll }));
+    } catch {}
+    // roda uma vez ao abrir a aula
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // 2) Volta à rolagem em que estava dentro da página/módulo (uma vez, ao abrir).
+  useEffect(() => {
+    if (restoredRef.current) return;
+    restoredRef.current = true;
+    let saved: { page: string; y: number } | null = null;
+    try {
+      saved = JSON.parse(localStorage.getItem(scrollKey) ?? "null");
+    } catch {}
+    if (!saved || saved.page !== pageNow || !(saved.y > 0)) return;
+    const y = saved.y;
+    let n = 0;
+    const tick = () => {
+      window.scrollTo(0, y);
+      if (++n < 6) setTimeout(tick, 120); // o conteúdo ainda está montando: reaplica por ~0,7 s
+    };
+    requestAnimationFrame(tick);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // 3) Grava ao mudar de página/seções (com pausa) e ao sair da aula; a rolagem é guardada enquanto o aluno rola.
+  const flushPos = useCallback(() => {
+    const p = posRef.current;
+    try {
+      localStorage.setItem(atKey, String(Date.now()));
+      localStorage.setItem(scrollKey, JSON.stringify({ page: p.page, y: p.scroll }));
+    } catch {}
+    void saveReadingPosAction(lesson.id, { page: p.page, seen: p.seen.slice(0, 400), scroll: Math.round(p.scroll) }).catch(() => {});
+  }, [atKey, scrollKey, lesson.id]);
+  useEffect(() => {
+    if (!restoredRef.current) return;
+    posRef.current.scroll = 0;
+    const t = setTimeout(flushPos, 900);
+    return () => clearTimeout(t);
+  }, [pageNow, seenList, flushPos]);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      posRef.current.scroll = window.scrollY;
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        try {
+          localStorage.setItem(scrollKey, JSON.stringify({ page: posRef.current.page, y: posRef.current.scroll }));
+        } catch {}
+      }, 400);
+    };
+    const onHide = () => {
+      if (document.visibilityState === "hidden") flushPos();
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    document.addEventListener("visibilitychange", onHide);
+    window.addEventListener("pagehide", flushPos);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      document.removeEventListener("visibilitychange", onHide);
+      window.removeEventListener("pagehide", flushPos);
+      if (timer) clearTimeout(timer);
+      flushPos();
+    };
+  }, [flushPos, scrollKey]);
 
   /** Conclui o módulo: marca as seções como lidas e abre a próxima página. */
   const concludeModule = (i: number) => {
