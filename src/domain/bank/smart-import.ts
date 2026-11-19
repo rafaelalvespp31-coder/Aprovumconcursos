@@ -200,6 +200,11 @@ function parseBlock(blockLines: string[], idx: number, carry: { baseCode: string
       }
     }
     if (baseText !== null && baseText.length < 10) baseText = null;
+    // "Texto associado" sem número: usa o título (primeira linha) como código, para textos diferentes não se misturarem.
+    if (baseText && baseCode && /^texto\s+associados?$/i.test(baseCode)) {
+      const title = baseText.split("\n").map((x) => x.trim()).find(Boolean);
+      if (title) baseCode = title.slice(0, 80);
+    }
   } else if (carry.baseCode && new RegExp(`\\b${carry.baseCode.replace(/^texto\s+/i, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(textLines.join(" "))) {
     // Questão que cita um texto já apresentado antes no mesmo lote (ex.: "texto CB2A1").
     baseCode = carry.baseCode;
@@ -328,8 +333,10 @@ function detectLooseOptions(body: string[]): { options: SmartOption[]; firstOpti
  * Converte para o formato que o analisador já entende, sem alterar o conteúdo da questão.
  */
 function preprocessTec(text: string): string {
-  const t = text.replace(/\[([^\]]*)\]\((?:https?:\/\/|\/)[^)\s]*\)/g, "$1");
-  if (!/^\s*#\d{3,}\b/m.test(t) && !/^\s*[*•-]\s*\(?[A-Ea-e]\)?\s*$/m.test(t)) return t;
+  const t0 = text.replace(/\[([^\]]*)\]\((?:https?:\/\/|\/)[^)\s]*\)/g, "$1");
+  if (!/^\s*#\d{3,}\b/m.test(t0) && !/^\s*[*•-]\s*\(?[A-Ea-e]\)?\s*$/m.test(t0)) return t0;
+  // "Assunto:" sozinho na linha, com o valor na linha de baixo.
+  const t = t0.replace(/^([ \t]*(?:assunto|mat[ée]ria|disciplina|tema|t[óo]pico)[ \t]*:)[ \t]*\n[ \t]*(\S[^\n]*)$/gim, "$1 $2");
   let lines = t.split("\n");
   // Cabeçalho do TEC -> "BANCA — ano — resto"; leva Matéria/Assunto/número que vinham antes para depois dele.
   const out: string[] = [];

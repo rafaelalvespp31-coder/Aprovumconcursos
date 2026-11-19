@@ -59,3 +59,59 @@ describe("matchDestino", () => {
     expect(matchDestino(subjects, "Física", "X")).toEqual({ subjectId: null, topicId: null });
   });
 });
+
+describe("modelo TEC colado como texto (sem links)", () => {
+  const txt = `Matéria: Língua Portuguesa (Português)
+Assunto:
+Ortografia - Casos Gerais e Emprego das Letras
+   8  
+ #3767074 FUNDATEC - 2026 - Agente Comunitário de Saúde (Pref Coqueiral)/PSF I (e mais 4 concursos)
+ 
+  Texto associado
+
+Instituto Butantan
+
+Por Vanessa Sardinha dos Santos
+
+ 
+O Instituto Butantan na...eu em um contexto de surto de peste bubônica, uma doença bacteriana transmitida, principalmente, pela picada de uma pulga. Em 1899, _____ doença estava se propagando do porto de Santos (SP). O laboratório, vinculado ______ Instituto Bacteriológico, foi criado ainda no mesmo ano.
+
+ 
+Posteriormente, em 1901, o laboratório foi reconhecido como uma instituição autônoma e denominado Instituto Serumtherápico.
+
+ 
+Atualmente, o Instituto, entre outras atividades, atua na produção de soros e vacinas.
+
+ 
+(Disponível em: https://mundoeducacao.uol.com.br/curiosidades/instituto-butantan.htm – texto adaptado especialmente para esta prova).
+
+ 
+De acordo com a norma ortográfica vigente, assinale a alternativa que preenche, correta e respectivamente, as lacunas pontilhadas.
+
+A
+sc – ç – c
+B
+c – ss – ss
+C
+c – s – ss
+D
+sc – ss – c
+E
+sc – ç – ss
+`;
+  it("lê matéria, assunto, banca, texto associado e alternativas", () => {
+    const { drafts, baseTexts } = parseSmart(txt);
+    expect(drafts).toHaveLength(1);
+    const d = drafts[0]!;
+    expect(d.board).toBe("FUNDATEC");
+    expect(d.year).toBe(2026);
+    expect(d.discipline).toBe("Língua Portuguesa (Português)");
+    expect(d.topic).toBe("Ortografia - Casos Gerais e Emprego das Letras");
+    expect(d.baseText).toContain("Instituto Butantan");
+    expect(d.baseText).not.toContain("De acordo com a norma");
+    expect(d.statement).toMatch(/^De acordo com a norma ortográfica vigente/);
+    expect(d.options.map((o) => o.text)).toEqual(["sc – ç – c", "c – ss – ss", "c – s – ss", "sc – ss – c", "sc – ç – ss"]);
+    expect(baseTexts).toHaveLength(1);
+    expect(baseTexts[0]!.code).toBe("Instituto Butantan");
+  });
+});
