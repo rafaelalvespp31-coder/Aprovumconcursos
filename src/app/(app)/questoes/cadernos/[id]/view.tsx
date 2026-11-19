@@ -111,6 +111,31 @@ export function NotebookView({
   const posTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const savedPos = useRef<string | null>(questions[i]?.id ?? null);
   const currentId = questions[i]?.id ?? null;
+  // Posição também no navegador, na hora (sem espera): ao atualizar a página volta exatamente na questão em que estava,
+  // mesmo que já respondida. O servidor continua guardando para outros aparelhos.
+  const posKey = `aprovum:caderno-pos:${n.id}`;
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    try {
+      const saved = window.localStorage.getItem(posKey);
+      const at = saved ? questions.findIndex((q) => q.id === saved) : -1;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (at >= 0) setI(at);
+    } catch {
+      /* sem armazenamento: usa a posição do servidor */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (!restored.current || !currentId) return;
+    try {
+      window.localStorage.setItem(posKey, currentId);
+    } catch {
+      /* ignora */
+    }
+  }, [currentId, posKey]);
   useEffect(() => {
     if (!currentId || currentId === savedPos.current) return;
     const send = () => {
