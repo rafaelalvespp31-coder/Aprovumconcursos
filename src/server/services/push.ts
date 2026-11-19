@@ -10,6 +10,8 @@ export interface PushMessage {
   url?: string;
   /** Mesma tag substitui a notificação anterior em vez de empilhar. */
   tag?: string;
+  /** Número mostrado no ícone do app (selo). */
+  badge?: number;
 }
 
 export type PushAudience = "todos" | "pagos" | "gratuitos" | "admins";
@@ -53,7 +55,7 @@ export async function sendPushToSubs(subs: SubRow[], msg: PushMessage): Promise<
   if (!subs.length) return { sent: 0, failed: 0, removed: 0 };
   const { publicKey, privateKey } = await getVapid();
   const subject = process.env.VAPID_SUBJECT || "mailto:contato@aprovum.com.br";
-  const payload = JSON.stringify({ title: msg.title.slice(0, 80), body: msg.body.slice(0, 220), url: msg.url?.startsWith("/") ? msg.url : "/painel", tag: msg.tag });
+  const payload = JSON.stringify({ title: msg.title.slice(0, 80), body: msg.body.slice(0, 220), url: msg.url?.startsWith("/") ? msg.url : "/painel", tag: msg.tag, badge: msg.badge });
   const dead: string[] = [];
   let sent = 0, failed = 0;
   for (let i = 0; i < subs.length; i += 20) {

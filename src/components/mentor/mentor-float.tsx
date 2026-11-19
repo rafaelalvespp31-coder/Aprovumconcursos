@@ -140,6 +140,16 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
   const dispensarConc = () => { setConcVisto(hoje); save(KEY_CONC, hoje); };
   const pending = (data?.state === "ok" && !data.result.insufficientData ? data.visible.filter((r) => r.kind !== "manutencao").length : 0) + avisos + concNovo;
 
+  // Selo no ícone do app instalado: mostra quantas novidades o Mentor tem (some quando zera).
+  useEffect(() => {
+    if (isDemo || data?.state !== "ok") return;
+    const nav = navigator as Navigator & { setAppBadge?: (n?: number) => Promise<void>; clearAppBadge?: () => Promise<void> };
+    try {
+      if (pending > 0) void nav.setAppBadge?.(pending)?.catch(() => undefined);
+      else void nav.clearAppBadge?.()?.catch(() => undefined);
+    } catch { /* sem suporte */ }
+  }, [pending, data?.state, isDemo]);
+
   // Um aviso discreto uma vez por sessão, quando há prioridades e o Mentor está minimizado.
   useEffect(() => {
     if (open || !pending) return;

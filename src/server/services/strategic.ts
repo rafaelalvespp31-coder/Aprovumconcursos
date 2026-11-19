@@ -1,4 +1,5 @@
 import "server-only";
+import { avisarRaioXPublicado } from "./mentor-push";
 import { createAdminClient } from "../supabase";
 import { auditLog } from "../observability";
 import { UserFacingError } from "./trails";
@@ -262,13 +263,14 @@ export const nextStatuses = (s: ExamStatus) => FLOW[s];
 export async function setExamStatus(adminId: string, id: string, to: ExamStatus) {
   if (!UUID.test(id)) throw new UserFacingError("Concurso não encontrado.", "not_found");
   const db = createAdminClient();
-  const cur = await db.from("strategic_exams").select("status").eq("id", id).maybeSingle();
+  const cur = await db.from("strategic_exams").select("status, name").eq("id", id).maybeSingle();
   if (!cur.data) throw new UserFacingError("Concurso não encontrado.", "not_found");
   const from = cur.data.status as ExamStatus;
   if (!FLOW[from].includes(to)) throw new UserFacingError(`Não é possível ir de "${STATUS_LABEL[from]}" para "${STATUS_LABEL[to]}". Siga o fluxo de revisão.`, "bad_transition");
   const up = await db.from("strategic_exams").update({ status: to, published_at: to === "publicado" ? new Date().toISOString() : null, updated_at: new Date().toISOString() }).eq("id", id);
   if (up.error) throw new Error(up.error.message);
   await auditLog(db, { actorId: adminId, userId: null, action: "strategic.status", entity: "strategic_exams", entityId: id, meta: { from, to } }).catch(() => {});
+  if (to === "publicado") await avisarRaioXPublicado(id, String((cur.data as { name?: string }).name || "seu concurso")).catch(() => undefined);
 }
 
 export async function deleteExam(adminId: string, id: string) {

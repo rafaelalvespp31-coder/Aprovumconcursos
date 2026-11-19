@@ -5,7 +5,7 @@
  * - Nunca armazena respostas de API, ações (POST) nem páginas de conta.
  * - Cache privado é apagado no logout (mensagem "clear-private").
  */
-const VERSION = "v5"; // v5: avisos Web Push (notificações com o app fechado)
+const VERSION = "v6"; // v6: selo no ícone do app
 const STATIC_CACHE = `na-static-${VERSION}`;
 const LESSON_CACHE = `na-aulas-${VERSION}`;
 const PRECACHE = ["/offline", "/icons/icon-192.png", "/icons/aprovum-mark.png", "/manifest.webmanifest"];
@@ -88,7 +88,9 @@ self.addEventListener("push", (event) => {
   let d = {};
   try { d = event.data ? event.data.json() : {}; } catch { d = { body: event.data ? event.data.text() : "" }; }
   const title = d.title || "APROVUM";
-  event.waitUntil(
+  const selo = typeof d.badge === "number" && d.badge > 0 ? d.badge : 0;
+  event.waitUntil(Promise.all([
+    selo && self.navigator && self.navigator.setAppBadge ? self.navigator.setAppBadge(selo).catch(() => undefined) : null,
     self.registration.showNotification(title, {
       body: d.body || "",
       icon: "/icons/icon-192.png",
@@ -97,7 +99,7 @@ self.addEventListener("push", (event) => {
       renotify: !!d.tag,
       data: { url: typeof d.url === "string" && d.url.startsWith("/") ? d.url : "/painel" },
     }),
-  );
+  ]));
 });
 
 self.addEventListener("notificationclick", (event) => {

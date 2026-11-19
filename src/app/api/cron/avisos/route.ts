@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { enviarAvisoDiarioConcursos } from "@/server/services/concursos-aviso";
+import { enviarAvisosMentor } from "@/server/services/mentor-push";
 import { enviarLembreteRevisoes } from "@/server/services/revisoes-aviso";
 
 export const runtime = "nodejs";
@@ -10,9 +11,10 @@ export const maxDuration = 120;
 export async function GET(req: NextRequest) {
   const segredo = process.env.CRON_SECRET;
   if (!segredo || req.headers.get("authorization") !== `Bearer ${segredo}`) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
-  const [revisoes, concursos] = await Promise.all([
+  const [revisoes, concursos, mentor] = await Promise.all([
     enviarLembreteRevisoes().catch((e) => ({ erro: String((e as Error).message).slice(0, 120) })),
     enviarAvisoDiarioConcursos().catch((e) => ({ erro: String((e as Error).message).slice(0, 120) })),
+    enviarAvisosMentor().catch((e) => ({ erro: String((e as Error).message).slice(0, 120) })),
   ]);
-  return NextResponse.json({ revisoes, concursos }, { headers: { "Cache-Control": "no-store" } });
+  return NextResponse.json({ revisoes, concursos, mentor }, { headers: { "Cache-Control": "no-store" } });
 }
