@@ -233,7 +233,9 @@ body.tt-imersivo .mentor-flut,body.tt-imersivo [data-testid="mentor-flutuante"],
 @media (min-width:1280px){.tt-page-in{max-width:1000px}}
 
 /* barra de rolagem da PÁGINA toda (vermelho neon reluzente, sempre visível); os cards não têm barra própria */
-.lb,.tt-page{overflow-y:scroll;scrollbar-width:auto;scrollbar-color:#ff1f2d #1a0507}
+.lb,.tt-page{overflow-y:scroll}
+/* No Chrome, scrollbar-color/width desligam o estilo ::-webkit-scrollbar (e deixam a barra fina que some sozinha): só o Firefox usa essas propriedades */
+@supports (-moz-appearance:none){.lb,.tt-page{scrollbar-width:auto;scrollbar-color:#ff1f2d #1a0507}}
 .lb-alunos{max-height:none!important;overflow:visible!important}
 .lb::-webkit-scrollbar,.tt-page::-webkit-scrollbar{width:16px}
 .lb::-webkit-scrollbar-track,.tt-page::-webkit-scrollbar-track{background:#12040608;background:linear-gradient(90deg,#14050780,#2a0a0e);border-left:1px solid rgba(255,31,45,.55);box-shadow:inset 0 0 12px rgba(255,31,45,.35)}
