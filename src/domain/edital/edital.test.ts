@@ -76,6 +76,8 @@ const CAT: CatalogEntry[] = [
   { id: "c5", title: "Receptação", aliases: [], mode: "direito_penal", group: "Crimes contra o patrimônio", lawCode: "CP", articles: ["180"] },
   { id: "c6", title: "Direitos e deveres individuais e coletivos", aliases: ["art. 5º da CF"], mode: "direito_constitucional", group: "Direitos fundamentais", lawCode: null, articles: [] },
   { id: "c8", title: "Organização da Segurança Pública", aliases: ["órgãos de segurança pública"], mode: "direito_constitucional", group: "Defesa do Estado e das Instituições Democráticas", lawCode: null, articles: [] },
+  { id: "g1", title: "Formação histórica e territorial do Brasil", aliases: ["formação territorial brasileira"], mode: "geopolitica", group: "O BRASIL POLÍTICO: NAÇÃO E TERRITÓRIO", lawCode: null, articles: [] },
+  { id: "g2", title: "Fronteiras nacionais, limites territoriais e questões fronteiriças", aliases: ["faixa de fronteira"], mode: "geopolitica", group: "O BRASIL POLÍTICO: NAÇÃO E TERRITÓRIO", lawCode: null, articles: [] },
   { id: "c7", title: "Tipologia textual", aliases: [], mode: "lingua_portuguesa", group: null, lawCode: null, articles: [] },
 ];
 const idx = buildIndex(CAT);
@@ -103,6 +105,12 @@ describe("matchTopic", () => {
   it("assunto de uma palavra só e área desconhecida não ligam aula por palavra solta (Física 'Potência' ≠ 'Potenciação')", () => {
     expect(matchTopic(idx, "Potência", null).status).toBe("nao_encontrado");
     expect(matchTopic(idx, "Crimes contra a pessoa", "direito_penal").status).toBe("nao_encontrado");
+  });
+  it("tópico do edital igual ao grupo das aulas (área desconhecida) liga as aulas do grupo", () => {
+    const r = matchTopic(idx, "O Brasil político: nação e território", null);
+    expect(r.status).toBe("completa");
+    expect(r.links.map((l) => l.catalogId).sort()).toEqual(["g1", "g2"]);
+    expect(matchTopic(idx, "Organização do Estado Brasileiro", null).status).toBe("nao_encontrado");
   });
   it("matéria diferente pesa menos: mesmo título em outra matéria não é completa", () => {
     const r = matchTopic(idx, "Receptação", "direito_constitucional");

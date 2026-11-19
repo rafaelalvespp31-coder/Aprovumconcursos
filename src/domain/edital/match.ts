@@ -93,14 +93,17 @@ function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null,
   if (!clause.all.length) return { status: "nao_encontrado", score: 0, links: [] };
   const key = fold(clauseText);
   const parentTok = parent ? tokensOf(parent) : null;
-  const scored: Array<MatchLink & { r: number }> = [];
+  const scored: Array<MatchLink & { r: number; g: boolean }> = [];
   for (const it of idx.items) {
     const m = it.entry.mode;
     const factor = mode ? (m === mode ? 1 : GENERIC_MODES.has(m) ? 0.85 : 0.6) : 0.92;
     let rName = 0;
     for (const n of it.names) rName = Math.max(rName, recall(idx, clause, n.set));
     const rUnion = recall(idx, clause, it.union);
-    const exact = it.exact.has(key);
+    // O assunto do edital é, palavra por palavra, o grupo (tópico) das aulas: elas são os subtópicos dele (ex.: "O Brasil político: nação e território").
+    const gset = it.entry.group ? tokensOf(it.entry.group).set : null;
+    const groupExato = !!gset && clause.all.length >= 2 && gset.size === clause.all.length && clause.all.every((t) => gset.has(t));
+    const exact = it.exact.has(key) || groupExato;
     // Dispositivo legal citado ("art. 121 do CP") conta a favor.
     const arts = [...clauseText.matchAll(/\b(\d{1,4})\b/g)].map((x) => x[1]!);
     const lawHit = !!it.entry.lawCode && it.entry.articles.some((a) => arts.includes(a)) && new RegExp(`\\b${it.entry.lawCode}\\b`, "i").test(clauseText);
@@ -116,7 +119,6 @@ function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null,
     if (!exact && !lawHit && mode && factor < 0.85) continue;
     // O nome da aula (título e sinônimos) precisa cobrir o assunto: palavras vindas só do grupo/tópico-pai ("Defesa do Estado…") não bastam.
     // (Exceção: assunto amplo que é o próprio grupo da aula, ex.: "Crimes contra o patrimônio" ↔ aulas de furto, roubo…)
-    const gset = it.entry.group ? tokensOf(it.entry.group).set : null;
     const rGroup = gset && clause.all.length >= 2 && clause.all.every((t) => gset.has(t)) ? 1 : 0; // todas as palavras do assunto estão no grupo da aula
     if (!exact && !lawHit && rName < 0.6 && rGroup < 0.8) continue;
     // Assunto de uma palavra só ("Procedimento", "Trabalho") só liga quando é exatamente o título ou um sinônimo da aula.
@@ -146,12 +148,12 @@ function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null,
     const sameArea = factor >= 0.85;
     const aliasSolto = exact && !lawHit && fold(it.entry.title) !== key && clause.all.length < 2; // sinônimo de uma palavra só ("trabalho", "procedimento") é fraco
     const coverage: MatchLink["coverage"] = aliasSolto ? "conferencia" : (exact || lawHit || (rName >= 0.8 && !otherContext)) && sameArea ? "completa" : exact || lawHit ? "conferencia" : rName >= 0.6 ? "parcial" : "conferencia";
-    scored.push({ catalogId: it.entry.id, coverage, score: Math.round(score * 1000) / 1000, r: rName });
+    scored.push({ catalogId: it.entry.id, coverage, score: Math.round(score * 1000) / 1000, r: rName, g: groupExato });
   }
   scored.sort((a, b) => b.score - a.score);
   const top = scored[0];
   if (!top) return { status: "nao_encontrado", score: 0, links: [] };
-  const links = scored.filter((s) => s.score >= top.score - 0.12).slice(0, 3).map(({ r: _r, ...l }) => l);
+  const links = scored.filter((s) => s.score >= top.score - 0.12).slice(0, top.g ? 12 : 3).map(({ r: _r, g: _g, ...l }) => l);
   return { status: top.coverage, score: top.score, links };
 }
 
