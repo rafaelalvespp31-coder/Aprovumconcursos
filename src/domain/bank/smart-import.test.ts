@@ -98,4 +98,26 @@ describe("importador inteligente", () => {
     const [q] = parseSmart(`FGV — 2021 — Técnico (Prefeitura X)\nQual?\nA) um\nB) dois\nGabarito: E`).drafts;
     expect(q!.answer).toBeNull();
   });
+  it("alternativas coladas sem marcador (uma por linha)", () => {
+    const [q] = parseSmart(`IGEDUC — 2026 — Professor (Prefeitura de Calçado)/Educação Infantil
+O domínio da ortografia oficial é uma exigência da escrita formal.
+
+Assinale a alternativa em que todas as palavras estão corretamente escritas:
+exceção, previlégio, beneficente
+excessão, privilégio, beneficente
+exceção, privilégio, beneficente
+exceção, privilégio, beneficiente`).drafts;
+    expect(q!.type).toBe("multipla_escolha");
+    expect(q!.options.map((o) => o.label)).toEqual(["A", "B", "C", "D"]);
+    expect(q!.statement).toContain("Assinale a alternativa");
+    expect(q!.options[0]!.text).toBe("exceção, previlégio, beneficente");
+  });
+  it("alternativas separadas por linha em branco", () => {
+    const [q] = parseSmart(`FGV — 2021 — Técnico (Prefeitura X)\nQual é a frase correta?\n\nEle fez a prova com atenção.\n\nEle fez a prova com atensão.\n\nEle fes a prova com atenção.`).drafts;
+    expect(q!.options).toHaveLength(3);
+  });
+  it("letra sozinha na linha e texto na seguinte", () => {
+    const [q] = parseSmart(`FGV — 2021 — Técnico (Prefeitura X)\nQual é a correta?\nA\num\nB\ndois\nC\ntrês`).drafts;
+    expect(q!.options.map((o) => o.text)).toEqual(["um", "dois", "três"]);
+  });
 });

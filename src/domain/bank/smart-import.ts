@@ -65,7 +65,7 @@ export interface SmartParse {
 }
 
 const BULLET = /^\s*(?:[-•*·▪●○◦■□►])\s+(.*\S.*)$/;
-const LABELED = /^\s*\(?([A-Ea-e])\s*[).:\-–]\s+(.*\S.*)$/;
+const LABELED = /^\s*\(?([A-Ea-e])\s*[).:\-–—]\s+(.*\S.*)$/;
 const HEADER = /^\s*(.{2,60}?)\s+[—–-]\s+((?:19|20)\d{2})\s+[—–-]\s+(.+?)\s*$/;
 const QMARK = /^\s*(?:quest[ãa]o\s*(?:n[º°.]?\s*)?\d{1,5}|q\s?\d{3,9})\s*[:.\-–—]?\s*$/i;
 const BASE_HEAD = /^\s*(texto\s+(?:[A-Z]{1,4}\d[A-Z0-9-]*|[IVX]{1,5}|\d{1,2}|associado[s]?(?:\s+[\dA-Z-]+)?|[A-Z]{1,3}\d[A-Z0-9]*))\s*[:.]?\s*$/i;
@@ -271,6 +271,8 @@ function detectOptions(body: string[]): { options: SmartOption[]; firstOptionInd
     }
   }
   if (first === null) {
+    const loose = detectLooseOptions(body);
+    if (loose) return loose;
     // "Certo" / "Errado" soltos.
     const c = body.findIndex((l) => /^\s*certo\s*\.?\s*$/i.test(l));
     const e = body.findIndex((l) => /^\s*errado\s*\.?\s*$/i.test(l));
@@ -291,6 +293,33 @@ function detectOptions(body: string[]): { options: SmartOption[]; firstOptionInd
   const labeled = options.filter((o) => o.label).length;
   if (labeled && labeled !== options.length) options.forEach((o) => (o.label = ""));
   return { options, firstOptionIndex: first };
+}
+
+/** Alternativas sem marcador (texto copiado sem "A)" nem bullets): linhas ou parágrafos logo após o enunciado. */
+function detectLooseOptions(body: string[]): { options: SmartOption[]; firstOptionIndex: number } | null {
+  // Letra sozinha na linha ("A" / "a)" / "(A)") seguida do texto na linha de baixo.
+  const alone = /^\s*\(?([A-Ea-e])\s*[).:]?\s*$/;
+  const at: number[] = [];
+  body.forEach((l, i) => { if (alone.test(l)) at.push(i); });
+  if (at.length >= 2 && at[0] !== undefined && alone.exec(body[at[0]]!)![1]!.toUpperCase() === "A") {
+    const opts: SmartOption[] = at.map((start, k) => ({
+      label: alone.exec(body[start]!)![1]!.toUpperCase(),
+      text: body.slice(start + 1, k + 1 < at.length ? at[k + 1] : body.length).map((x) => x.trim()).filter(Boolean).join("\n"),
+    }));
+    if (opts.every((o) => o.text)) return { options: opts, firstOptionIndex: at[0] };
+  }
+  // Depois da última linha que pede a resposta (termina em ":" ou "?", ou começa com "Assinale..."), cada linha/parágrafo é uma alternativa.
+  let ask = -1;
+  body.forEach((l, i) => { const t = l.trim(); if (t && (/[:?]$/.test(t) || STATEMENT_START.test(t))) ask = i; });
+  if (ask < 0) return null;
+  const tail = body.slice(ask + 1);
+  const paras = tail.join("\n").split(/\n\s*\n/).map((x) => x.trim()).filter(Boolean);
+  const lines = tail.map((x) => x.trim()).filter(Boolean);
+  const pick = paras.length >= 2 && paras.length <= 5 ? paras : lines.length >= 2 && lines.length <= 5 ? lines : null;
+  if (!pick) return null;
+  // Se a própria linha de pedido já começa a lista (ex.: sem ":" no fim), não confunde: exige que as alternativas não sejam pedidos.
+  if (pick.some((x) => /^\s*(julgue|assinale)\b/i.test(x))) return null;
+  return { options: pick.map((text) => ({ label: "", text })), firstOptionIndex: ask + 1 + (tail.findIndex((x) => x.trim()) < 0 ? 0 : tail.findIndex((x) => x.trim())) };
 }
 
 export function parseSmart(input: string): SmartParse {
