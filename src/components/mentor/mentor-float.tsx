@@ -15,6 +15,8 @@ import { MentorGoalPlan } from "./mentor-goal-plan";
 import type { StudyPlan } from "@/domain/mentor/plan";
 import { SILENCE } from "./voz-orbe";
 import type { MentorPanelState } from "./types";
+import { textoAviso } from "@/domain/concursos-aviso";
+import { brDay } from "@/domain/plans/limits";
 
 const BUBBLE = 64;
 const MARGIN = 8;
@@ -22,6 +24,7 @@ const STALE_MS = 60_000;
 const KEY_POS = "aprovum_mentor_pos";
 const KEY_OPEN = "aprovum_mentor_aberto";
 const KEY_TAB = "aprovum_mentor_aba";
+const KEY_CONC = "aprovum_mentor_concursos_dia";
 
 type Pos = { dx: number; dy: number };
 type Tab = "plano" | "prioridades" | "voz";
@@ -129,7 +132,13 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
   }, [isDemo]);
 
   const avisos = data?.state === "ok" ? (data.notices?.length ?? 0) : 0;
-  const pending = (data?.state === "ok" && !data.result.insufficientData ? data.visible.filter((r) => r.kind !== "manutencao").length : 0) + avisos;
+  // Concursos abertos/previstos: o Mentor avisa de novo a cada dia (some quando o aluno toca em "Ver" ou "Ok").
+  const hoje = brDay().day;
+  const [concVisto, setConcVisto] = useState(() => (typeof window === "undefined" ? "" : read<string>(KEY_CONC, "")));
+  const concTexto = data?.state === "ok" && data.concursos ? textoAviso(data.concursos) : null;
+  const concNovo = concTexto && concVisto !== hoje ? 1 : 0;
+  const dispensarConc = () => { setConcVisto(hoje); save(KEY_CONC, hoje); };
+  const pending = (data?.state === "ok" && !data.result.insufficientData ? data.visible.filter((r) => r.kind !== "manutencao").length : 0) + avisos + concNovo;
 
   // Um aviso discreto uma vez por sessão, quando há prioridades e o Mentor está minimizado.
   useEffect(() => {
@@ -343,6 +352,20 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
               {push.estado === "desligado" && (
                 <details className="mt-2"><summary className="cursor-pointer font-semibold">Colocar o app como ícone no celular</summary><GuiaInstalar className="mt-2" /></details>
               )}
+            </div>
+          )}
+
+          {concNovo > 0 && concTexto && (
+            <div className="flex items-start gap-2 border-b border-[#E6E7EB] bg-[#FFF4F3] px-4 py-3 text-[13px] text-[#08090B]" role="status" data-testid="mentor-concursos">
+              <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-[#E10600]" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="font-bold">{concTexto.title}</p>
+                <p className="mt-0.5 text-[#3A3C42]">{concTexto.body.replace(" Toque para ver.", "")}</p>
+                <div className="mt-2 flex gap-2">
+                  <Link href={`${base}/concursos`} onClick={() => { dispensarConc(); afterNav(); }} className="rounded-lg bg-[#0A0A0A] px-3 py-1.5 text-[12.5px] font-bold text-white">Ver concursos</Link>
+                  <button type="button" onClick={dispensarConc} className="rounded-lg border border-[#D8D8D8] px-3 py-1.5 text-[12.5px] font-bold">Ok</button>
+                </div>
+              </div>
             </div>
           )}
 
