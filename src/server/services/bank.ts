@@ -366,6 +366,10 @@ export async function getQuestion(id: string): Promise<QuestionDetail> {
   const db = createAdminClient();
   const { data: q } = await db.from("bank_questions").select("*").eq("id", id).maybeSingle();
   if (!q) notFound();
+  if (!q.case_context && q.base_text_id) {
+    const { data: bt } = await db.from("bank_base_texts").select("body").eq("id", q.base_text_id).maybeSingle();
+    if (bt?.body) q.case_context = bt.body as string;
+  }
   const [options, refs, versions, reviews, flags, ai, source, exam] = await Promise.all([
     db.from("bank_question_options").select("label, text, is_correct, explanation, sort_order").eq("question_id", id).order("sort_order"),
     db.from("bank_question_legal_refs").select("*").eq("question_id", id).order("created_at"),

@@ -21,7 +21,7 @@ import {
   type SimilarHit,
 } from "@/server/services/bank";
 import type { BankStatus } from "@/domain/bank/labels";
-import { importBankUpload, previewBankUpload, type BankUploadPreview } from "@/server/services/bank-upload";
+import { importBankUpload, loadDestinos, previewBankUpload, smartAnalyze, smartHistory, smartImport, smartItemSchema, type BankUploadPreview, type DestinoTree, type SmartAnalysis, type SmartHistoryRow, type SmartImportResult } from "@/server/services/bank-upload";
 
 export interface BankResult<T = undefined> {
   ok: boolean;
@@ -123,4 +123,34 @@ export async function importBankUploadAction(text: string): Promise<BankResult<{
     },
     ["/banco", "/banco/questoes", "/questoes"],
   );
+}
+
+// ---------------------------------------------------------------------------
+// Importador inteligente
+// ---------------------------------------------------------------------------
+
+export async function smartAnalyzeAction(text: string): Promise<BankResult<{ analysis: SmartAnalysis; destinos: DestinoTree }>> {
+  return run("smart_analyze", async () => {
+    const staff = await requireBankStaff();
+    const t = pastedQuestions(text);
+    const [analysis, destinos] = await Promise.all([smartAnalyze(staff, t), loadDestinos()]);
+    return { analysis, destinos };
+  });
+}
+
+export async function smartImportAction(items: unknown, dest: { subjectId: string; topicId: string | null }, origem: string): Promise<BankResult<SmartImportResult>> {
+  return run(
+    "smart_import",
+    async () => {
+      const staff = await requireBankStaff();
+      const list = z.array(smartItemSchema).min(1).max(300).parse(items);
+      const d = z.object({ subjectId: z.string().uuid(), topicId: z.string().uuid().nullable() }).parse(dest);
+      return smartImport(staff, list, d, typeof origem === "string" ? origem : "");
+    },
+    ["/banco", "/banco/questoes", "/questoes"],
+  );
+}
+
+export async function smartHistoryAction(): Promise<BankResult<SmartHistoryRow[]>> {
+  return run("smart_history", async () => smartHistory(await requireBankStaff()));
 }

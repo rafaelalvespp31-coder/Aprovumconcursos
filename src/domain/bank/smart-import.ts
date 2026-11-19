@@ -1,0 +1,324 @@
+/**
+ * Importador inteligente: lê questões coladas de uma fonte (ex.: TEC Concursos) e separa banca, ano,
+ * cargo/concurso, texto-base, enunciado, alternativas, gabarito e comentário.
+ *
+ * Regras: leitura pura e determinística. NUNCA reescreve, resume nem completa o conteúdo; só separa.
+ * O que não for encontrado fica ausente (null) e vira pendência para o administrador.
+ */
+
+export const KNOWN_BOARDS = [
+  "CEBRASPE", "CESPE", "FCC", "FGV", "VUNESP", "IBFC", "IDECAN", "AOCP", "CONSULPLAN", "INSTITUTO CONSULPLAN", "IGEDUC", "AVANÇASP", "AVANCASP",
+  "INSTITUTO ACCESS", "ACCESS", "QUADRIX", "IBADE", "FUNDATEC", "CESGRANRIO", "FUNCAB", "IADES", "OBJETIVA", "FEPESE", "UFPR", "NUCEPE", "COMPERVE",
+  "FUNRIO", "INSTITUTO AOCP", "CS-UFG", "FADESP", "FUMARC", "MS CONCURSOS", "SELECON", "INSTITUTO MAIS", "LEGALLE", "GUALIMP", "UECE-CEV", "CEV-UECE",
+] as const;
+
+const fold = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toUpperCase().replace(/\s+/g, " ").trim();
+const KNOWN = new Set(KNOWN_BOARDS.map(fold));
+
+export type SmartQuestionType = "multipla_escolha" | "certo_errado" | "discursiva";
+export type SmartAnswerSource = "oficial" | "administrador" | null;
+
+export interface SmartOption {
+  label: string;
+  text: string;
+}
+
+export interface SmartDraft {
+  key: string;
+  board: string | null;
+  boardKnown: boolean;
+  year: number | null;
+  /** Cargo + órgão como vieram na origem (ex.: "Professor (Prefeitura de Calçado)/Educação Infantil"). */
+  examLine: string | null;
+  role: string | null;
+  organ: string | null;
+  discipline: string | null;
+  topic: string | null;
+  type: SmartQuestionType;
+  baseTextCode: string | null;
+  baseText: string | null;
+  statement: string;
+  options: SmartOption[];
+  /** Letra (A–E) ou "certo"/"errado". */
+  answer: string | null;
+  answerSource: SmartAnswerSource;
+  comment: string | null;
+  /** Trecho original deste bloco, intacto. */
+  raw: string;
+  issues: SmartIssue[];
+}
+
+export type SmartIssue =
+  | "gabarito_ausente"
+  | "alternativas_nao_identificadas"
+  | "banca_desconhecida"
+  | "banca_ausente"
+  | "ano_ausente"
+  | "concurso_ausente"
+  | "disciplina_pendente"
+  | "enunciado_curto"
+  | "sem_alternativas";
+
+export interface SmartParse {
+  drafts: SmartDraft[];
+  baseTexts: Array<{ code: string; body: string; questions: number }>;
+}
+
+const BULLET = /^\s*(?:[-•*·▪●○◦■□►])\s+(.*\S.*)$/;
+const LABELED = /^\s*\(?([A-Ea-e])\s*[).:\-–]\s+(.*\S.*)$/;
+const HEADER = /^\s*(.{2,60}?)\s+[—–-]\s+((?:19|20)\d{2})\s+[—–-]\s+(.+?)\s*$/;
+const QMARK = /^\s*(?:quest[ãa]o\s*(?:n[º°.]?\s*)?\d{1,5}|q\s?\d{3,9})\s*[:.\-–—]?\s*$/i;
+const BASE_HEAD = /^\s*(texto\s+(?:[A-Z]{1,4}\d[A-Z0-9-]*|[IVX]{1,5}|\d{1,2}|associado[s]?(?:\s+[\dA-Z-]+)?|[A-Z]{1,3}\d[A-Z0-9]*))\s*[:.]?\s*$/i;
+const BASE_INTRO = /^\s*(leia o texto (?:a seguir|abaixo)|considere o texto (?:a seguir|abaixo)|texto (?:a seguir|abaixo))\b.*$/i;
+const STATEMENT_START = /^\s*(julgue|assinale|marque|indique|identifique|considerando|com\s+rela[çc][ãa]o|em\s+rela[çc][ãa]o|de\s+acordo|segundo|quanto|analise|avalie|qual|quais|sobre|acerca|a\s+respeito|no\s+que\s+se\s+refere|assinalar|complete|preencha|observe)\b/i;
+const ANSWER = /^\s*(?:gabarito|resposta(?:\s+correta)?|alternativa\s+correta)\s*(?:oficial)?\s*[:\-–]\s*(.+?)\s*$/i;
+const COMMENT = /^\s*(?:coment[áa]rios?(?:\s+d[oa]\s+\w+)?|justificativa|explica[çc][ãa]o|resolu[çc][ãa]o)\s*[:\-–]\s*(.*)$/i;
+const FIELD_DISC = /^\s*(?:disciplina|mat[ée]ria)\s*:\s*(.+?)\s*$/i;
+const FIELD_TOPIC = /^\s*(?:assunto|tema|t[óo]pico)\s*:\s*(.+?)\s*$/i;
+const NOISE = /^\s*(?:ver\s+coment[áa]rios?|resolver|anular|reportar|salvar|adicionar|imprimir|compartilhar|\d+\s*coment[áa]rios?|anotar|erro\s+no\s+enunciado|favoritar)\s*[.!]?\s*$/i;
+
+function normalizeAnswer(v: string): string | null {
+  const t = v.trim().replace(/[.\s]+$/g, "");
+  const f = fold(t);
+  if (/^(CERTO|C|CERTA)$/.test(f)) return "certo";
+  if (/^(ERRADO|E|ERRADA)$/.test(f)) return "errado";
+  const m = f.match(/^\(?([A-E])\)?$/);
+  return m ? m[1]! : null;
+}
+
+function splitHeader(line: string): { board: string; year: number; rest: string } | null {
+  const m = line.match(HEADER);
+  if (!m) return null;
+  const board = m[1]!.trim();
+  // Evita confundir uma frase qualquer com cabeçalho: banca não termina com ponto nem é longa demais.
+  if (/[.?!:]$/.test(board) || board.split(/\s+/).length > 6) return null;
+  return { board, year: Number(m[2]), rest: m[3]!.trim() };
+}
+
+function splitExamLine(rest: string): { role: string | null; organ: string | null } {
+  const m = rest.match(/^(.*?)\s*\(([^)]+)\)\s*(?:\/\s*(.+))?$/);
+  if (m) return { role: [m[1]!.trim(), m[3]?.trim()].filter(Boolean).join(" / ") || null, organ: m[2]!.trim() };
+  return { role: rest || null, organ: null };
+}
+
+/** Divide o texto colado em um bloco por questão. */
+function blocks(lines: string[]): string[][] {
+  const starts: number[] = [];
+  lines.forEach((l, i) => {
+    if (splitHeader(l)) starts.push(i);
+    else if (QMARK.test(l)) {
+      // "Questão 3" só abre bloco quando a linha seguinte não for cabeçalho (evita bloco vazio).
+      const next = lines.slice(i + 1).find((x) => x.trim());
+      if (!next || !splitHeader(next)) starts.push(i);
+    }
+  });
+  if (!starts.length) return [lines];
+  const out: string[][] = [];
+  starts.forEach((s, k) => out.push(lines.slice(s, k + 1 < starts.length ? starts[k + 1] : lines.length)));
+  return out;
+}
+
+/** Quantidade estimada de questões (para mostrar antes de analisar). */
+export function estimateQuestions(text: string): number {
+  const lines = text.replace(/\r\n?/g, "\n").split("\n");
+  if (!text.trim()) return 0;
+  return blocks(lines).filter((b) => b.some((l) => l.trim())).length;
+}
+
+function parseBlock(blockLines: string[], idx: number, carry: { baseCode: string | null; baseText: string | null }): SmartDraft | null {
+  const raw = blockLines.join("\n").trim();
+  if (!raw) return null;
+  let lines = blockLines.map((l) => l.replace(/\s+$/g, ""));
+  let board: string | null = null;
+  let year: number | null = null;
+  let examLine: string | null = null;
+  // Cabeçalho (banca — ano — cargo/concurso), possivelmente após "Questão N".
+  for (let i = 0; i < Math.min(lines.length, 4); i++) {
+    const h = splitHeader(lines[i]!);
+    if (h) {
+      board = h.board;
+      year = h.year;
+      examLine = h.rest;
+      lines = [...lines.slice(0, i), ...lines.slice(i + 1)];
+      break;
+    }
+  }
+  lines = lines.filter((l) => !QMARK.test(l) && !NOISE.test(l));
+
+  let discipline: string | null = null;
+  let topic: string | null = null;
+  let answer: string | null = null;
+  let comment: string | null = null;
+  const body: string[] = [];
+  let inComment = false;
+  const commentLines: string[] = [];
+  for (const l of lines) {
+    const d = l.match(FIELD_DISC);
+    if (d && !inComment) { discipline = d[1]!; continue; }
+    const t = l.match(FIELD_TOPIC);
+    if (t && !inComment) { topic = t[1]!; continue; }
+    const a = l.match(ANSWER);
+    if (a && !inComment) { answer = normalizeAnswer(a[1]!) ?? answer; continue; }
+    const c = l.match(COMMENT);
+    if (c) { inComment = true; if (c[1]) commentLines.push(c[1]); continue; }
+    if (inComment) commentLines.push(l);
+    else body.push(l);
+  }
+  if (commentLines.length) comment = commentLines.join("\n").trim() || null;
+
+  // Alternativas: bloco final de linhas com marcador.
+  const type0 = detectOptions(body);
+  const textLines = body.slice(0, type0.firstOptionIndex ?? body.length);
+  let options = type0.options;
+
+  // Texto-base e enunciado.
+  let baseCode: string | null = null;
+  let baseText: string | null = null;
+  let statementLines = textLines.slice();
+  const baseAt = statementLines.findIndex((l) => BASE_HEAD.test(l) || BASE_INTRO.test(l));
+  if (baseAt >= 0) {
+    const head = statementLines[baseAt]!;
+    const hm = head.match(BASE_HEAD);
+    baseCode = hm ? hm[1]!.replace(/\s+/g, " ").trim() : null;
+    const after = statementLines.slice(baseAt + 1);
+    let stmtAt = -1;
+    for (let i = after.length - 1; i >= 0; i--) if (STATEMENT_START.test(after[i]!) && (i === 0 || !after[i - 1]!.trim() || true)) { stmtAt = i; if (i > 0 && after[i - 1]!.trim() === "") break; }
+    // Usa a última linha que inicia enunciado, desde que não seja a primeira linha do próprio texto.
+    const lastStart = (() => { let k = -1; after.forEach((l, i) => { if (STATEMENT_START.test(l) && i > 0) k = i; }); return k; })();
+    stmtAt = lastStart >= 0 ? lastStart : stmtAt;
+    if (stmtAt > 0) {
+      baseText = [head.match(BASE_INTRO) ? head : "", ...after.slice(0, stmtAt)].filter((x, i) => i > 0 || x).join("\n").replace(/^\n+|\n+$/g, "");
+      statementLines = after.slice(stmtAt);
+    } else {
+      // Sem enunciado separado: o último parágrafo vira enunciado.
+      const paras = after.join("\n").split(/\n\s*\n/);
+      if (paras.length > 1) {
+        statementLines = paras[paras.length - 1]!.split("\n");
+        baseText = paras.slice(0, -1).join("\n\n").trim();
+      } else {
+        statementLines = after;
+      }
+    }
+    if (baseText !== null && baseText.length < 10) baseText = null;
+  } else if (carry.baseCode && new RegExp(`\\b${carry.baseCode.replace(/^texto\s+/i, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(textLines.join(" "))) {
+    // Questão que cita um texto já apresentado antes no mesmo lote (ex.: "texto CB2A1").
+    baseCode = carry.baseCode;
+    baseText = carry.baseText;
+  }
+  const statement = statementLines.join("\n").replace(/^\n+|\n+$/g, "").trim();
+
+  // Tipo.
+  const onlyCE = options.length === 2 && options.every((o) => /^(certo|errado)$/i.test(o.text.trim().replace(/[.]$/, "")));
+  let type: SmartQuestionType = "multipla_escolha";
+  if (onlyCE || (!options.length && /^\s*julgue\b|julgue o(s)? iten?s?\b/i.test(statement + " " + textLines.join(" ")))) {
+    type = "certo_errado";
+    options = [];
+  } else if (!options.length) type = "discursiva";
+
+  // Rotula alternativas sem letra e valida sequência.
+  options = options.map((o, i) => ({ label: o.label || "ABCDE"[i] || String(i + 1), text: o.text }));
+
+  const issues: SmartIssue[] = [];
+  const { role, organ } = examLine ? splitExamLine(examLine) : { role: null, organ: null };
+  if (!board) issues.push("banca_ausente");
+  else if (!KNOWN.has(fold(board.replace(/\s*\(.*\)\s*$/, ""))) && !KNOWN.has(fold(board))) issues.push("banca_desconhecida");
+  if (!year) issues.push("ano_ausente");
+  if (!examLine) issues.push("concurso_ausente");
+  if (!discipline) issues.push("disciplina_pendente");
+  if (type === "multipla_escolha" && options.length < 2) issues.push("alternativas_nao_identificadas");
+  if (type === "discursiva") issues.push("sem_alternativas");
+  if (!answer) issues.push("gabarito_ausente");
+  if (statement.length < 10) issues.push("enunciado_curto");
+  if (answer && type === "multipla_escolha" && !options.some((o) => o.label === answer)) answer = null;
+  if (answer && type === "certo_errado" && answer !== "certo" && answer !== "errado") answer = null;
+
+  return {
+    key: `q${idx + 1}`,
+    board,
+    boardKnown: board ? KNOWN.has(fold(board.replace(/\s*\(.*\)\s*$/, ""))) || KNOWN.has(fold(board)) : false,
+    year,
+    examLine,
+    role,
+    organ,
+    discipline,
+    topic,
+    type,
+    baseTextCode: baseCode,
+    baseText,
+    statement,
+    options,
+    answer,
+    answerSource: answer ? "oficial" : null,
+    comment,
+    raw,
+    issues: dedupe(issues),
+  };
+}
+
+const dedupe = <T,>(a: T[]) => [...new Set(a)];
+
+function detectOptions(body: string[]): { options: SmartOption[]; firstOptionIndex: number | null } {
+  // Procura o último trecho contínuo de linhas com marcador (letra ou lista) ou as linhas "Certo"/"Errado".
+  const isMarked = (l: string) => LABELED.test(l) || BULLET.test(l);
+  let first: number | null = null;
+  for (let i = 0; i < body.length; i++) {
+    if (isMarked(body[i]!)) {
+      // Letras só valem quando começam em A (evita "a) ..." no meio de um texto).
+      const lm = body[i]!.match(LABELED);
+      if (lm && lm[1]!.toUpperCase() !== "A") continue;
+      first = i;
+      break;
+    }
+  }
+  if (first === null) {
+    // "Certo" / "Errado" soltos.
+    const c = body.findIndex((l) => /^\s*certo\s*\.?\s*$/i.test(l));
+    const e = body.findIndex((l) => /^\s*errado\s*\.?\s*$/i.test(l));
+    if (c >= 0 && e >= 0) return { options: [{ label: "", text: "Certo" }, { label: "", text: "Errado" }], firstOptionIndex: Math.min(c, e) };
+    return { options: [], firstOptionIndex: null };
+  }
+  const options: SmartOption[] = [];
+  let cur: SmartOption | null = null;
+  for (let i = first; i < body.length; i++) {
+    const l = body[i]!;
+    const lm = l.match(LABELED);
+    const bm = l.match(BULLET);
+    if (lm) { cur = { label: lm[1]!.toUpperCase(), text: lm[2]!.trim() }; options.push(cur); }
+    else if (bm) { cur = { label: "", text: bm[1]!.trim() }; options.push(cur); }
+    else if (l.trim() && cur) cur.text += `\n${l.trim()}`;
+  }
+  // Rótulos ou lista simples: se havia rótulos mas faltou algum, descarta rótulos para renumerar.
+  const labeled = options.filter((o) => o.label).length;
+  if (labeled && labeled !== options.length) options.forEach((o) => (o.label = ""));
+  return { options, firstOptionIndex: first };
+}
+
+export function parseSmart(input: string): SmartParse {
+  const text = input.replace(/\r\n?/g, "\n").replace(/ /g, " ");
+  const lines = text.split("\n");
+  const bl = blocks(lines);
+  const drafts: SmartDraft[] = [];
+  const carry = { baseCode: null as string | null, baseText: null as string | null };
+  bl.forEach((b, i) => {
+    const d = parseBlock(b, i, carry);
+    if (!d) return;
+    if (!d.statement && !d.options.length) return;
+    if (d.baseTextCode && d.baseText) { carry.baseCode = d.baseTextCode; carry.baseText = d.baseText; }
+    drafts.push(d);
+  });
+  drafts.forEach((d, i) => (d.key = `q${i + 1}`));
+  const map = new Map<string, { code: string; body: string; questions: number }>();
+  for (const d of drafts) {
+    if (!d.baseTextCode || !d.baseText) continue;
+    const k = d.baseTextCode.toLowerCase();
+    const cur = map.get(k);
+    if (cur) cur.questions++;
+    else map.set(k, { code: d.baseTextCode, body: d.baseText, questions: 1 });
+  }
+  return { drafts, baseTexts: [...map.values()] };
+}
+
+/** Comparação de duplicidade: ignora espaços, quebras de linha e caixa. */
+export function normalizeForCompare(s: string): string {
+  return s.replace(/\s+/g, " ").trim().toLowerCase();
+}

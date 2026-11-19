@@ -384,7 +384,7 @@ export async function openNotebook(userId: string, id: string): Promise<{ notebo
   const ids = index.filter((q) => matchQuestion(q, notebook.filters, mctx)).map((q) => q.id).slice(0, 500);
 
   type Row = {
-    id: string; public_code: string | null; question_type: NotebookQuestion["type"]; statement: string; case_context: string | null;
+    id: string; public_code: string | null; question_type: NotebookQuestion["type"]; statement: string; case_context: string | null; bank_base_texts?: { body: string } | Array<{ body: string }> | null;
     board_slug: string | null; year: number | null; origin: string; exam_id: string | null; subject_id: string | null; topic_id: string | null; seq: number;
     bank_question_options: Array<{ id: string; label: string; text: string; sort_order: number }> | null;
   };
@@ -392,7 +392,7 @@ export async function openNotebook(userId: string, id: string): Promise<{ notebo
   for (let i = 0; i < ids.length; i += 100) {
     const part = await admin
       .from("bank_questions")
-      .select("id, seq, public_code, question_type, statement, case_context, board_slug, year, origin, exam_id, subject_id, topic_id, bank_question_options(id, label, text, sort_order)")
+      .select("id, seq, public_code, question_type, statement, case_context, board_slug, year, origin, exam_id, subject_id, topic_id, bank_base_texts(body), bank_question_options(id, label, text, sort_order)")
       .eq("status", "publicada")
       .in("id", ids.slice(i, i + 100));
     if (part.error) throw new Error(part.error.message);
@@ -454,7 +454,7 @@ export async function openNotebook(userId: string, id: string): Promise<{ notebo
       code: r.public_code,
       type: r.question_type,
       statement: r.statement,
-      caseContext: r.case_context,
+      caseContext: r.case_context || (Array.isArray(r.bank_base_texts) ? r.bank_base_texts[0]?.body : r.bank_base_texts?.body) || null,
       board: r.board_slug ? (names.board(r.board_slug) ?? r.board_slug) : null,
       year: r.year,
       examName: r.exam_id ? (names.exam(r.exam_id) ?? null) : null,

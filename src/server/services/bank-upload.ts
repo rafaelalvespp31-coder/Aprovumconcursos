@@ -1,5 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { z } from "zod";
+import { KNOWN_BOARDS, parseSmart, type SmartDraft, type SmartParse } from "@/domain/bank/smart-import";
 import { matchByName, parseBankUpload, summarizeBankUpload, type BankUploadPreview, type ParsedBankQuestion } from "@/domain/bank/upload";
 import { slugify } from "@/domain/bank/schema";
 import { createAdminClient } from "../supabase";
@@ -267,4 +269,232 @@ export async function importBankUpload(staff: BankStaff, text: string, file: { n
     .eq("id", importId);
   await auditLog(db, { actorId: staff.id, userId: null, action: "bank.questions_uploaded", entity: "question_imports", entityId: importId, meta: { created, skipped, fileName: file.name.slice(0, 200) } });
   return { importId, created, skipped, published, codes };
+}
+
+// ---------------------------------------------------------------------------
+// Importador inteligente (colar texto de uma fonte → revisar → escolher a pasta → importar)
+// ---------------------------------------------------------------------------
+
+export type DuplicateState = "inedita" | "ja_cadastrada" | "repetida_no_lote";
+
+export interface SmartAnalysis {
+  drafts: Array<SmartDraft & { duplicate: DuplicateState; duplicateCode: string | null; suggestedSubjectId: string | null }>;
+  baseTexts: SmartParse["baseTexts"];
+}
+
+/** Lê o texto colado e confere duplicidades no banco inteiro. Não grava nada. */
+export async function smartAnalyze(staff: BankStaff, text: string): Promise<SmartAnalysis> {
+  if (!staff.roles.autor) throw new UserFacingError("Somente autores cadastram questões.", "forbidden");
+  const parsed = parseSmart(text);
+  if (!parsed.drafts.length) throw new UserFacingError("Não encontrei nenhuma questão no texto colado.", "invalid_input");
+  const db = createAdminClient();
+  const l = await lookups();
+  const hashes = parsed.drafts.map((d) => contentHash(d.statement));
+  const existing = new Map<string, string>();
+  for (let i = 0; i < hashes.length; i += 200) {
+    const { data } = await db.from("bank_questions").select("content_hash, public_code").in("content_hash", hashes.slice(i, i + 200));
+    for (const r of data ?? []) existing.set(r.content_hash as string, (r.public_code as string) ?? "");
+  }
+  const seen = new Set<string>();
+  const drafts = parsed.drafts.map((d, i) => {
+    const h = hashes[i]!;
+    let duplicate: DuplicateState = "inedita";
+    if (existing.has(h)) duplicate = "ja_cadastrada";
+    else if (seen.has(h)) duplicate = "repetida_no_lote";
+    seen.add(h);
+    return { ...d, duplicate, duplicateCode: existing.get(h) || null, suggestedSubjectId: d.discipline ? (findSubject(l, d.discipline)?.id ?? null) : null };
+  });
+  return { drafts, baseTexts: parsed.baseTexts };
+}
+
+const optionZ = z.object({ label: z.string().regex(/^[A-E]$/), text: z.string().min(1).max(3000) });
+export const smartItemSchema = z.object({
+  key: z.string().max(20),
+  type: z.enum(["multipla_escolha", "certo_errado", "discursiva"]),
+  board: z.string().trim().max(120).nullable(),
+  year: z.number().int().min(1950).max(2100).nullable(),
+  examLine: z.string().trim().max(300).nullable(),
+  organ: z.string().trim().max(200).nullable(),
+  role: z.string().trim().max(200).nullable(),
+  baseTextCode: z.string().trim().max(60).nullable(),
+  baseText: z.string().max(60000).nullable(),
+  statement: z.string().trim().min(10).max(6000),
+  options: z.array(optionZ).max(5),
+  answer: z.string().max(10).nullable(),
+  answerSource: z.enum(["oficial", "administrador"]).nullable(),
+  comment: z.string().max(6000).nullable(),
+  raw: z.string().max(80000),
+  subjectId: z.string().uuid().nullable(),
+  topicId: z.string().uuid().nullable(),
+  confirmBoard: z.boolean(),
+  allowDuplicate: z.boolean(),
+  duplicate: z.enum(["inedita", "ja_cadastrada", "repetida_no_lote"]),
+});
+export type SmartItemInput = z.infer<typeof smartItemSchema>;
+
+export interface SmartItemResult {
+  key: string;
+  status: "importada" | "publicada" | "ignorada" | "erro";
+  code: string | null;
+  message: string;
+}
+
+export interface SmartImportResult {
+  importId: string;
+  results: SmartItemResult[];
+  imported: number;
+  published: number;
+  ignored: number;
+  errors: number;
+}
+
+async function ensureBaseText(db: ReturnType<typeof createAdminClient>, staffId: string, code: string, body: string): Promise<string> {
+  const { data: hit } = await db.from("bank_base_texts").select("id, body_hash").eq("code", code).limit(50);
+  const want = createHash("md5").update(body.trim()).digest("hex");
+  const found = (hit ?? []).find((r) => r.body_hash === want);
+  if (found) return found.id as string;
+  const ins = await db.from("bank_base_texts").insert({ code, body: body.trim(), created_by: staffId }).select("id").single();
+  if (ins.error) throw new UserFacingError(`Não foi possível salvar o texto-base ${code}: ${ins.error.message}`, "db_rule");
+  return ins.data.id as string;
+}
+
+/** Salva as questões revisadas na pasta escolhida. Cada questão tem resultado próprio; uma falha não desfaz as outras. */
+export async function smartImport(staff: BankStaff, items: SmartItemInput[], dest: { subjectId: string; topicId: string | null }, origem: string): Promise<SmartImportResult> {
+  if (!staff.roles.autor) throw new UserFacingError("Somente autores cadastram questões.", "forbidden");
+  if (!items.length) throw new UserFacingError("Nenhuma questão selecionada.", "invalid_input");
+  const db = createAdminClient();
+  const l = await lookups();
+  const checkDest = async (subjectId: string, topicId: string | null) => {
+    if (!l.subjects.some((s) => s.id === subjectId)) throw new UserFacingError("Matéria de destino inválida.", "invalid_input");
+    if (topicId) {
+      const { data } = await db.from("subject_topics").select("id").eq("id", topicId).eq("subject_id", subjectId).maybeSingle();
+      if (!data) throw new UserFacingError("O assunto escolhido não pertence à matéria de destino.", "invalid_input");
+    }
+  };
+  await checkDest(dest.subjectId, dest.topicId);
+  const sha = createHash("sha256").update(JSON.stringify(items.map((i) => i.raw))).digest("hex");
+  const imp = await db
+    .from("question_imports")
+    .insert({ created_by: staff.id, kind: "txt", file_name: "importador-inteligente", file_sha256: sha, file_size: Math.max(1, Math.min(20_000_000, new TextEncoder().encode(items.map((i) => i.raw).join("\n")).length)), status: "processando" })
+    .select("id")
+    .single();
+  if (imp.error) throw new UserFacingError(`Não foi possível registrar a importação: ${imp.error.message}`, "db_rule");
+  const importId = imp.data.id as string;
+
+  const examCache = new Map<string, { exam: string; source: string; board: string }>();
+  const verified = new Set<string>();
+  const quick = staff.roles.admin;
+  const results: SmartItemResult[] = [];
+  const auditItems: Array<Record<string, unknown>> = [];
+
+  for (let i = 0; i < items.length; i++) {
+    const it = items[i]!;
+    const done = (r: Omit<SmartItemResult, "key">, qid: string | null = null) => {
+      results.push({ key: it.key, ...r });
+      auditItems.push({ import_id: importId, item_number: i + 1, parsed: { ...it, destino: dest, resultado: r }, issues: r.status === "erro" ? [r.message] : [], question_id: qid, decision: r.status === "erro" || r.status === "ignorada" ? "rejeitado" : "aceito", decided_by: staff.id, decided_at: new Date().toISOString() });
+    };
+    try {
+      if (it.duplicate !== "inedita" && !it.allowDuplicate) { done({ status: "ignorada", code: null, message: "Possível duplicidade: não importada (você pode liberar a importação na revisão)." }); continue; }
+      if (it.type === "discursiva") { done({ status: "erro", code: null, message: "Questão sem alternativas: o banco só aceita múltipla escolha ou certo/errado. Cadastre manualmente." }); continue; }
+      if (!it.board || !it.year || !it.examLine) { done({ status: "erro", code: null, message: "Informe banca, ano e concurso (a prova de origem é obrigatória)." }); continue; }
+      const boardKnown = Boolean(matchByName(l.boards, it.board)) || KNOWN_BOARDS.some((b) => fold(b) === fold(it.board!.replace(/\s*\(.*\)\s*$/, "")) || fold(b) === fold(it.board!));
+      if (!boardKnown && !it.confirmBoard) { done({ status: "erro", code: null, message: `Banca “${it.board}” desconhecida: confirme o nome na revisão.` }); continue; }
+      if (it.type === "multipla_escolha") {
+        if (it.options.length < 2 || it.options.length > 5) { done({ status: "erro", code: null, message: "Múltipla escolha precisa de 2 a 5 alternativas." }); continue; }
+        if (it.answer && !it.options.some((o) => o.label === it.answer)) { done({ status: "erro", code: null, message: "O gabarito não corresponde a nenhuma alternativa." }); continue; }
+      } else if (it.answer !== "certo" && it.answer !== "errado") {
+        done({ status: "erro", code: null, message: "Informe o gabarito (Certo ou Errado): o banco exige para esse tipo de questão." });
+        continue;
+      }
+      const subjectId = it.subjectId ?? dest.subjectId;
+      const topicId = it.subjectId ? it.topicId : (it.topicId ?? dest.topicId);
+      if (it.subjectId) await checkDest(it.subjectId, it.topicId);
+      const fake: ParsedBankQuestion = { number: String(i + 1), line: 0, subject: "", topicPath: [], board: it.board, year: it.year, exam: it.examLine, organ: it.organ, role: it.role, difficulty: "dificil", type: it.type, caseContext: null, statement: it.statement, options: [], answer: null, justification: null, legalBasis: null };
+      const ex = await ensureExamAndSource(staff, l, fake, examCache);
+      if (quick && !verified.has(ex.source)) { await authorizeSource(staff, ex.source); verified.add(ex.source); }
+      const baseId = it.baseTextCode && it.baseText ? await ensureBaseText(db, staff.id, it.baseTextCode, it.baseText) : null;
+      const caseContext = it.baseText && it.baseText.length <= 6000 ? it.baseText : "";
+      const payload = {
+        subject_id: subjectId, topic_id: topicId ?? "", source_id: ex.source, exam_id: ex.exam, origin: "prova_anterior", question_type: it.type,
+        statement: it.statement, case_context: caseContext, board_slug: ex.board, board_style: "", year: String(it.year), original_number: "",
+        initial_difficulty: "dificil", correct_answer_true: it.type === "certo_errado" ? it.answer === "certo" : null,
+        justification: it.comment ?? "", legal_basis: "", usage_rights: quick ? "autorizado" : "nao_verificado", verified_at: "", status: "aguardando_conferencia",
+        generation_batch_id: "", options: it.type === "multipla_escolha" ? it.options.map((o) => ({ label: o.label, text: o.text, is_correct: o.label === it.answer, explanation: "" })) : [], legal_refs: [],
+      };
+      const { data, error } = await db.rpc("bank_save_question", { p_actor: staff.id, p_id: null, p: payload });
+      if (error) { done({ status: "erro", code: null, message: error.message.replace(/^.*?ERROR:\s*/, "") }); continue; }
+      const qid = data as string;
+      if (baseId) await db.from("bank_questions").update({ base_text_id: baseId }).eq("id", qid);
+      const { data: row } = await db.from("bank_questions").select("public_code").eq("id", qid).maybeSingle();
+      const code = (row?.public_code as string) ?? null;
+      let status: SmartItemResult["status"] = "importada";
+      let message = it.answer ? "Importada (aguardando conferência)." : "Importada sem gabarito (aguardando conferência).";
+      if (quick && it.answer) {
+        const pub = await db.rpc("bank_quick_publish", { p_actor: staff.id, p_id: qid });
+        if (!pub.error && pub.data === "publicada") { status = "publicada"; message = "Importada e publicada."; }
+        else if (!it.comment || it.comment.trim().length < 10) message = "Importada. Para publicar, falta o comentário/justificativa (mín. 10 caracteres).";
+      }
+      done({ status, code, message }, qid);
+    } catch (e) {
+      done({ status: "erro", code: null, message: e instanceof Error ? e.message.slice(0, 300) : "Erro inesperado." });
+    }
+  }
+  if (auditItems.length) await db.from("question_import_items").insert(auditItems);
+  const count = (s: SmartItemResult["status"]) => results.filter((r) => r.status === s).length;
+  const published = count("publicada");
+  const imported = count("importada") + published;
+  const ignored = count("ignorada");
+  const errors = count("erro");
+  await db.from("question_imports").update({ status: errors === items.length ? "falhou" : "concluido", stats: { origem: origem.slice(0, 200), total: items.length, importadas: imported, publicadas: published, ignoradas: ignored, erros: errors, destino: dest }, error: errors ? `${errors} questão(ões) com erro` : null, updated_at: new Date().toISOString() }).eq("id", importId);
+  await auditLog(db, { actorId: staff.id, userId: null, action: "bank.smart_import", entity: "question_imports", entityId: importId, meta: { total: items.length, imported, ignored, errors } });
+  return { importId, results, imported, published, ignored, errors };
+}
+
+export interface SmartHistoryRow {
+  id: string;
+  createdAt: string;
+  by: string;
+  status: string;
+  stats: Record<string, unknown>;
+  destino: string;
+}
+
+/** Últimas importações feitas por esta ferramenta. */
+export async function smartHistory(staff: BankStaff): Promise<SmartHistoryRow[]> {
+  if (!staff.roles.autor) return [];
+  const db = createAdminClient();
+  const { data } = await db.from("question_imports").select("id, created_at, created_by, status, stats").eq("file_name", "importador-inteligente").order("created_at", { ascending: false }).limit(30);
+  const rows = data ?? [];
+  const subjectIds = [...new Set(rows.map((r) => (r.stats as { destino?: { subjectId?: string } })?.destino?.subjectId).filter(Boolean) as string[])];
+  const names = new Map<string, string>();
+  if (subjectIds.length) {
+    const { data: s } = await db.from("subjects").select("id, name").in("id", subjectIds);
+    for (const x of s ?? []) names.set(x.id as string, x.name as string);
+  }
+  const users = new Map<string, string>();
+  for (const id of new Set(rows.map((r) => r.created_by as string))) {
+    const { data: u } = await db.auth.admin.getUserById(id);
+    users.set(id, u?.user?.email ?? id.slice(0, 8));
+  }
+  return rows.map((r) => ({ id: r.id as string, createdAt: r.created_at as string, by: users.get(r.created_by as string) ?? "", status: r.status as string, stats: (r.stats ?? {}) as Record<string, unknown>, destino: names.get((r.stats as { destino?: { subjectId?: string } })?.destino?.subjectId ?? "") ?? "—" }));
+}
+
+export interface DestinoTree {
+  subjects: Array<{ id: string; name: string; topics: Array<{ id: string; name: string; parentId: string | null }> }>;
+}
+
+/** Pastas existentes (matérias e assuntos) para o administrador escolher o destino. */
+export async function loadDestinos(): Promise<DestinoTree> {
+  const db = createAdminClient();
+  const [s, t] = await Promise.all([
+    db.from("subjects").select("id, name").eq("status", "ativa").order("sort_order").order("name"),
+    db.from("subject_topics").select("id, subject_id, parent_id, name").eq("status", "ativo").order("sort_order").order("name").limit(5000),
+  ]);
+  return {
+    subjects: (s.data ?? []).map((x) => ({
+      id: x.id as string,
+      name: x.name as string,
+      topics: (t.data ?? []).filter((y) => y.subject_id === x.id).map((y) => ({ id: y.id as string, name: y.name as string, parentId: (y.parent_id as string) ?? null })),
+    })),
+  };
 }
