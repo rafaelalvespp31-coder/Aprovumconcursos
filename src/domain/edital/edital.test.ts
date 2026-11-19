@@ -78,6 +78,9 @@ const CAT: CatalogEntry[] = [
   { id: "c8", title: "Organização da Segurança Pública", aliases: ["órgãos de segurança pública"], mode: "direito_constitucional", group: "Defesa do Estado e das Instituições Democráticas", lawCode: null, articles: [] },
   { id: "g1", title: "Formação histórica e territorial do Brasil", aliases: ["formação territorial brasileira"], mode: "geopolitica", group: "O BRASIL POLÍTICO: NAÇÃO E TERRITÓRIO", lawCode: null, articles: [] },
   { id: "g2", title: "Fronteiras nacionais, limites territoriais e questões fronteiriças", aliases: ["faixa de fronteira"], mode: "geopolitica", group: "O BRASIL POLÍTICO: NAÇÃO E TERRITÓRIO", lawCode: null, articles: [] },
+  { id: "t1", title: "Código de Trânsito Brasileiro: disposições preliminares", aliases: ["Capítulo I do CTB"], mode: "ctb_codigo_de_transito_brasileiro", group: "CÓDIGO DE TRÂNSITO BRASILEIRO (CTB) — LEI Nº 9.503/1997", lawCode: null, articles: [] },
+  { id: "t2", title: "Sinalização de trânsito", aliases: ["sinais de trânsito"], mode: "ctb_codigo_de_transito_brasileiro", group: "CÓDIGO DE TRÂNSITO BRASILEIRO (CTB) — LEI Nº 9.503/1997", lawCode: null, articles: [] },
+  { id: "t3", title: "Legislação de Trânsito — CTB (Lei 9.503/1997)", aliases: ["código de trânsito brasileiro", "lei 9.503"], mode: "legislacao_especial", group: null, lawCode: "CTB", articles: ["1"] },
   { id: "c7", title: "Tipologia textual", aliases: [], mode: "lingua_portuguesa", group: null, lawCode: null, articles: [] },
 ];
 const idx = buildIndex(CAT);
@@ -111,6 +114,12 @@ describe("matchTopic", () => {
     expect(r.status).toBe("completa");
     expect(r.links.map((l) => l.catalogId).sort()).toEqual(["g1", "g2"]);
     expect(matchTopic(idx, "Organização do Estado Brasileiro", null).status).toBe("nao_encontrado");
+  });
+  it("lei citada pelo número liga as aulas dessa lei (CTB), em qualquer área", () => {
+    const r = matchTopic(idx, "Lei nº 9.503/1997 (Código de Trânsito Brasileiro) e suas alterações, inclusive as da Lei nº 14.071/2020", "legislacao_especial");
+    expect(r.status).toBe("completa");
+    expect(r.links.map((l) => l.catalogId).sort()).toEqual(["t1", "t2", "t3"]);
+    expect(matchTopic(idx, "Lei nº 5.970/1973", "legislacao_especial").status).toBe("nao_encontrado");
   });
   it("matéria diferente pesa menos: mesmo título em outra matéria não é completa", () => {
     const r = matchTopic(idx, "Receptação", "direito_constitucional");

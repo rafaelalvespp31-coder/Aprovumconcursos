@@ -88,6 +88,16 @@ export function clausesOf(text: string): string[] {
   return [t];
 }
 
+
+/** Leis citadas pelo número ("Lei nº 9.503/1997" → "9503/1997" e "9503"): o número da lei identifica o assunto sem depender das palavras. */
+export function lawKeys(text: string): Set<string> {
+  const out = new Set<string>();
+  for (const m of text.matchAll(/(\d{1,3}(?:\.\d{3})+|\d{3,5})\s*\/\s*(\d{4})/g)) out.add(`${m[1]!.replace(/\./g, "")}/${m[2]}`);
+  for (const m of text.matchAll(/\blei\s*(?:complementar\s*)?(?:n[ºo°.]*\s*)?(\d{1,3}(?:\.\d{3})+|\d{3,5})\b/gi)) out.add(m[1]!.replace(/\./g, ""));
+  return out;
+}
+const sharesLaw = (a: Set<string>, b: Set<string>) => [...a].some((k) => b.has(k));
+
 function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null, parent: string | null = null): MatchResult {
   const clause = tokensOf(clauseText);
   if (!clause.all.length) return { status: "nao_encontrado", score: 0, links: [] };
@@ -106,7 +116,13 @@ function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null,
     const exact = it.exact.has(key) || groupExato;
     // Dispositivo legal citado ("art. 121 do CP") conta a favor.
     const arts = [...clauseText.matchAll(/\b(\d{1,4})\b/g)].map((x) => x[1]!);
-    const lawHit = !!it.entry.lawCode && it.entry.articles.some((a) => arts.includes(a)) && new RegExp(`\\b${it.entry.lawCode}\\b`, "i").test(clauseText);
+    const lawHitArt = !!it.entry.lawCode && it.entry.articles.some((a) => arts.includes(a)) && new RegExp(`\\b${it.entry.lawCode}\\b`, "i").test(clauseText);
+    // Mesma lei pelo número (título/sinônimos da aula) ou pelo grupo dela (ex.: grupo "CÓDIGO DE TRÂNSITO BRASILEIRO — LEI Nº 9.503/1997").
+    const clauseLaws = lawKeys(clauseText);
+    const lawNum = clauseLaws.size > 0 && sharesLaw(clauseLaws, lawKeys(`${it.entry.title} ${it.entry.aliases.join(" ")}`));
+    const lawNumGrupo = clauseLaws.size > 0 && !!it.entry.group && !/cap[ií]tulo|\bart\b|artigos?|se[cç][aã]o/i.test(clauseText) && sharesLaw(clauseLaws, lawKeys(it.entry.group));
+    const lawRef = lawNum || lawNumGrupo;
+    const lawHit = lawHitArt || lawRef;
     const matched = clause.all.filter((t) => it.union.has(t)).length;
     if (!exact && !lawHit && matched < Math.min(2, clause.all.length)) continue;
     // Casar só por palavras genéricas ("crimes contra…") liga aulas de outro assunto: exige ao menos uma palavra específica em comum.
@@ -143,17 +159,18 @@ function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null,
       const ps = parentTok.all.filter((t) => !idx.weak.has(t));
       if (gs.length && ps.length) otherContext = !ps.some((t) => g.set.has(t)) && !gs.some((t) => parentTok.set.has(t));
     }
-    const score = base * factor * (otherContext ? 0.85 : 1);
+    const score = base * (lawRef ? Math.max(factor, 0.92) : factor) * (otherContext ? 0.85 : 1);
     if (score < 0.3) continue;
-    const sameArea = factor >= 0.85;
+    const sameArea = factor >= 0.85 || lawRef; // lei citada pelo número vale em qualquer área
     const aliasSolto = exact && !lawHit && fold(it.entry.title) !== key && clause.all.length < 2; // sinônimo de uma palavra só ("trabalho", "procedimento") é fraco
     const coverage: MatchLink["coverage"] = aliasSolto ? "conferencia" : (exact || lawHit || (rName >= 0.8 && !otherContext)) && sameArea ? "completa" : exact || lawHit ? "conferencia" : rName >= 0.6 ? "parcial" : "conferencia";
-    scored.push({ catalogId: it.entry.id, coverage, score: Math.round(score * 1000) / 1000, r: rName, g: groupExato });
+    scored.push({ catalogId: it.entry.id, coverage, score: Math.round(score * 1000) / 1000, r: rName, g: groupExato || lawNumGrupo });
   }
   scored.sort((a, b) => b.score - a.score);
   const top = scored[0];
   if (!top) return { status: "nao_encontrado", score: 0, links: [] };
-  const links = scored.filter((s) => s.score >= top.score - 0.12).slice(0, top.g ? 12 : 3).map(({ r: _r, g: _g, ...l }) => l);
+  const near = scored.filter((s) => s.score >= top.score - 0.12);
+  const links = near.slice(0, near.some((s) => s.g) ? 16 : 3).map(({ r: _r, g: _g, ...l }) => l);
   return { status: top.coverage, score: top.score, links };
 }
 
