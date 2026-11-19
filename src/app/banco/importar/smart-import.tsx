@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
-import { estimateQuestions, type SmartIssue } from "@/domain/bank/smart-import";
+import { estimateQuestions, matchDestino, type SmartIssue } from "@/domain/bank/smart-import";
 import type { DestinoTree, SmartAnalysis, SmartHistoryRow, SmartImportResult } from "@/server/services/bank-upload";
 import type { BankResult } from "../actions";
 import { DBadge, DCard, DNotice, dButton, dInput, dLabel, dTextarea, fmtDate } from "../ui";
@@ -86,9 +86,14 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
       if (!r.ok || !r.data) return setError(r.error ?? "Não foi possível analisar.");
       const { analysis, destinos: d } = r.data;
       setDestinos(d);
-      setRows(analysis.drafts.map((x) => ({ ...x, selected: x.duplicate === "inedita", open: false, subjectId: null, topicId: null, confirmBoard: false, allowDuplicate: false, removed: false })));
-      const sug = analysis.drafts.find((x) => x.suggestedSubjectId)?.suggestedSubjectId;
-      if (sug) setSubjectId(sug);
+      const matched = analysis.drafts.map((x) => matchDestino(d.subjects, x.discipline, x.topic));
+      setRows(analysis.drafts.map((x, i) => ({ ...x, selected: x.duplicate === "inedita", open: false, subjectId: matched[i]!.subjectId, topicId: matched[i]!.topicId, confirmBoard: false, allowDuplicate: false, removed: false })));
+      const sug = matched.find((m) => m.subjectId)?.subjectId ?? analysis.drafts.find((x) => x.suggestedSubjectId)?.suggestedSubjectId;
+      if (sug) {
+        setSubjectId(sug);
+        const first = matched.find((m) => m.subjectId === sug && m.topicId);
+        setTopicId(first?.topicId ?? "");
+      }
     });
   };
   const patch = (key: string, p: Partial<Row>) => setRows((cur) => cur && cur.map((r) => (r.key === key ? { ...r, ...p } : r)));

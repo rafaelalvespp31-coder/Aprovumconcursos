@@ -44,3 +44,18 @@ describe("formato TEC Concursos", () => {
     expect(drafts[1]!.options).toHaveLength(5);
   });
 });
+
+import { matchDestino } from "./smart-import";
+describe("matchDestino", () => {
+  const subjects = [
+    { id: "s1", name: "Língua Portuguesa", topics: [{ id: "t1", name: "Ortografia", parentId: null }, { id: "t2", name: "Crase", parentId: null }] },
+    { id: "s2", name: "Direito Penal", topics: [] },
+  ];
+  it("casa matéria e assunto existentes", () => {
+    expect(matchDestino(subjects, "Língua Portuguesa (Português)", "Ortografia - Casos Gerais e Emprego das Letras")).toEqual({ subjectId: "s1", topicId: "t1" });
+  });
+  it("matéria sem assunto correspondente deixa o assunto vazio e não inventa pasta", () => {
+    expect(matchDestino(subjects, "Direito Penal", "Teoria do crime")).toEqual({ subjectId: "s2", topicId: null });
+    expect(matchDestino(subjects, "Física", "X")).toEqual({ subjectId: null, topicId: null });
+  });
+});

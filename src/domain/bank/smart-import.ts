@@ -390,3 +390,36 @@ export function parseSmart(input: string): SmartParse {
 export function normalizeForCompare(s: string): string {
   return s.replace(/\s+/g, " ").trim().toLowerCase();
 }
+
+export interface DestinoMatch { subjectId: string | null; topicId: string | null }
+interface DestinoSubject { id: string; name: string; topics: Array<{ id: string; name: string; parentId: string | null }> }
+
+const key = (s: string) => fold(s.replace(/\([^)]*\)/g, " ")).replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+const tokens = (s: string) => new Set(key(s).split(" ").filter((w) => w.length > 2));
+
+/** Acha a melhor pasta já existente: igual > uma contém a outra (a mais longa vence) > palavras em comum. */
+function best<T extends { name: string }>(items: T[], wanted: string): T | null {
+  const w = key(wanted);
+  if (!w) return null;
+  const exact = items.find((i) => key(i.name) === w);
+  if (exact) return exact;
+  const part = items.filter((i) => { const k = key(i.name); return k.length >= 4 && (w.includes(k) || k.includes(w)); }).sort((a, b) => key(b.name).length - key(a.name).length);
+  if (part[0]) return part[0];
+  const wt = tokens(wanted);
+  let top: { item: T; score: number } | null = null;
+  for (const i of items) {
+    const it = tokens(i.name);
+    const common = [...wt].filter((x) => it.has(x)).length;
+    const score = common / Math.max(1, Math.min(wt.size, it.size));
+    if (common >= 1 && score >= 0.75 && (!top || score > top.score)) top = { item: i, score };
+  }
+  return top?.item ?? null;
+}
+
+/** Casa a matéria/assunto lidos do texto com as pastas existentes (sem criar nada). */
+export function matchDestino(subjects: DestinoSubject[], discipline: string | null, topic: string | null): DestinoMatch {
+  const s = discipline ? best(subjects, discipline) : null;
+  if (!s) return { subjectId: null, topicId: null };
+  const t = topic ? best(s.topics, topic) : null;
+  return { subjectId: s.id, topicId: t?.id ?? null };
+}
