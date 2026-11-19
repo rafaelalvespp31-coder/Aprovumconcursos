@@ -10,7 +10,7 @@ export function GuiaInstalar({ className = "" }: { className?: string }) {
     <div className={className} data-testid="guia-instalar">
       <div className="flex gap-2" role="tablist" aria-label="Seu celular">
         {(["android", "ios"] as const).map((t) => (
-          <button key={t} type="button" role="tab" aria-selected={aba === t} onClick={() => setAba(t)} className={`rounded-full border px-3 py-1 text-[12.5px] font-bold ${aba === t ? "border-[#0A0A0A] bg-[#0A0A0A] text-white" : "border-[#D8D8D8]"}`}>
+          <button key={t} type="button" role="tab" aria-selected={aba === t} onClick={() => setAba(t)} className={`rounded-full border px-3 py-1 text-[12.5px] font-bold ${aba === t ? "border-current bg-white text-black" : "border-current/40"}`}>
             {t === "android" ? "Android" : "iPhone (iOS)"}
           </button>
         ))}

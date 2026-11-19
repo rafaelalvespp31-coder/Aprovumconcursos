@@ -12,6 +12,12 @@ const b64 = (v: string) => {
 export const isIos = () => /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 export const isStandalone = () => window.matchMedia("(display-mode: standalone)").matches || (navigator as unknown as { standalone?: boolean }).standalone === true;
 
+/** Service worker pronto; registra se ainda não houver e desiste depois de alguns segundos (nunca fica pendurado). */
+async function swPronto(ms = 6000): Promise<ServiceWorkerRegistration> {
+  if (!(await navigator.serviceWorker.getRegistration())) await navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" });
+  return Promise.race([navigator.serviceWorker.ready, new Promise<never>((_, rej) => setTimeout(() => rej(new Error("sw")), ms))]);
+}
+
 /** Estado e ações dos avisos Web Push deste aparelho (chegam com o app fechado). */
 export function usePush() {
   const [estado, setEstado] = useState<EstadoPush>("carregando");
@@ -26,7 +32,7 @@ export function usePush() {
       if (!("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return set("sem-suporte");
       if (Notification.permission === "denied") return set("bloqueado");
       try {
-        const reg = await navigator.serviceWorker.ready;
+        const reg = await swPronto(3000);
         const sub = await reg.pushManager.getSubscription();
         set(sub && Notification.permission === "granted" ? "ligado" : "desligado");
       } catch {
@@ -45,7 +51,7 @@ export function usePush() {
         setEstado(perm === "denied" ? "bloqueado" : "desligado");
         return;
       }
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await swPronto();
       const { key } = (await (await fetch("/api/push/key", { cache: "no-store" })).json()) as { key: string };
       const sub = (await reg.pushManager.getSubscription()) ?? (await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64(key) }));
       const r = await fetch("/api/push/subscribe", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(sub.toJSON()) });
@@ -63,7 +69,7 @@ export function usePush() {
     setBusy(true);
     setMsg(null);
     try {
-      const reg = await navigator.serviceWorker.ready;
+      const reg = await swPronto();
       const sub = await reg.pushManager.getSubscription();
       if (sub) {
         await fetch("/api/push/subscribe", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ endpoint: sub.endpoint }) }).catch(() => undefined);

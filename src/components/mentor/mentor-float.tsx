@@ -325,18 +325,18 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
           )}
 
           {sinoAberto && (
-            <div className="border-b border-[#E6E7EB] bg-[#F7F7F8] px-4 py-3 text-[13px] text-[#08090B]" role="region" aria-label="Avisos no celular" data-testid="mentor-avisos-painel">
+            <div className="border-b border-white/10 bg-[#141416] px-4 py-3 text-[13px] text-white" role="region" aria-label="Avisos no celular" data-testid="mentor-avisos-painel">
               <p className="font-bold">Avisos no celular</p>
               {push.estado === "ligado" && (
                 <>
-                  <p className="mt-1 text-green-700">Ativos neste aparelho: revisões, concursos e novidades chegam mesmo com o app fechado.</p>
-                  <button type="button" onClick={() => void push.desligar()} disabled={push.busy} className="mt-2 rounded-lg border border-[#D8D8D8] px-3 py-1.5 text-[12.5px] font-bold disabled:opacity-60">Desativar</button>
+                  <p className="mt-1 text-[#4ADE80]">Ativos neste aparelho: revisões, concursos e novidades chegam mesmo com o app fechado.</p>
+                  <button type="button" onClick={() => void push.desligar()} disabled={push.busy} className="mt-2 rounded-lg border border-white/30 px-3 py-1.5 text-[12.5px] font-bold disabled:opacity-60">Desativar</button>
                 </>
               )}
               {push.estado === "desligado" && (
                 <>
                   <p className="mt-1">{push.busy ? "Aguardando a sua permissão…" : "Toque em permitir quando o celular perguntar."}</p>
-                  {!push.busy && <button type="button" onClick={() => void push.ligar()} className="mt-2 rounded-lg bg-[#0A0A0A] px-3 py-1.5 text-[12.5px] font-bold text-white">Ativar avisos</button>}
+                  {!push.busy && <button type="button" onClick={() => void push.ligar()} className="mt-2 rounded-lg bg-white px-3 py-1.5 text-[12.5px] font-bold text-black">Ativar avisos</button>}
                 </>
               )}
               {push.estado === "bloqueado" && <p className="mt-1">Os avisos estão bloqueados neste aparelho. Libere nas configurações do navegador ou do app para a APROVUM e toque no sino de novo.</p>}
@@ -348,7 +348,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
                 </>
               )}
               {push.estado === "carregando" && <p className="mt-1">Verificando…</p>}
-              {push.msg && push.estado !== "ligado" && <p className="mt-1 text-red-700" role="alert">{push.msg}</p>}
+              {push.msg && push.estado !== "ligado" && <p className="mt-1 text-[#FF6B6B]" role="alert">{push.msg}</p>}
               {push.estado === "desligado" && (
                 <details className="mt-2"><summary className="cursor-pointer font-semibold">Colocar o app como ícone no celular</summary><GuiaInstalar className="mt-2" /></details>
               )}
@@ -356,14 +356,14 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
           )}
 
           {concNovo > 0 && concTexto && (
-            <div className="flex items-start gap-2 border-b border-[#E6E7EB] bg-[#FFF4F3] px-4 py-3 text-[13px] text-[#08090B]" role="status" data-testid="mentor-concursos">
+            <div className="flex items-start gap-2 border-b border-white/10 bg-[#2A0A0C] px-4 py-3 text-[13px] text-white" role="status" data-testid="mentor-concursos">
               <BellRing className="mt-0.5 h-4 w-4 shrink-0 text-[#E10600]" aria-hidden />
               <div className="min-w-0 flex-1">
                 <p className="font-bold">{concTexto.title}</p>
-                <p className="mt-0.5 text-[#3A3C42]">{concTexto.body.replace(" Toque para ver.", "")}</p>
+                <p className="mt-0.5 text-white/80">{concTexto.body.replace(" Toque para ver.", "")}</p>
                 <div className="mt-2 flex gap-2">
-                  <Link href={`${base}/concursos`} onClick={() => { dispensarConc(); afterNav(); }} className="rounded-lg bg-[#0A0A0A] px-3 py-1.5 text-[12.5px] font-bold text-white">Ver concursos</Link>
-                  <button type="button" onClick={dispensarConc} className="rounded-lg border border-[#D8D8D8] px-3 py-1.5 text-[12.5px] font-bold">Ok</button>
+                  <Link href={`${base}/concursos`} onClick={() => { dispensarConc(); afterNav(); }} className="rounded-lg bg-white px-3 py-1.5 text-[12.5px] font-bold text-black">Ver concursos</Link>
+                  <button type="button" onClick={dispensarConc} className="rounded-lg border border-white/30 px-3 py-1.5 text-[12.5px] font-bold">Ok</button>
                 </div>
               </div>
             </div>
