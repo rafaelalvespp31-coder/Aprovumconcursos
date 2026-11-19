@@ -57,7 +57,6 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
   const [destinos, setDestinos] = useState<DestinoTree | null>(null);
   const [subjectId, setSubjectId] = useState("");
   const [topicId, setTopicId] = useState("");
-  const [authorized, setAuthorized] = useState(false);
   const [result, setResult] = useState<SmartImportResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<SmartHistoryRow[] | null>(null);
@@ -104,7 +103,6 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
 
   const importNow = () => {
     if (!subjectId) return setError("Escolha a matéria de destino.");
-    if (!authorized) return setError("Confirme que o uso destas questões é autorizado.");
     setError(null);
     const items = ready.map((r) => ({
       key: r.key,
@@ -259,11 +257,7 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
                 </select>
               </div>
             </div>
-            <p className="mt-2 text-[13px] text-white/60">Só pastas já existentes. Nenhuma pasta é criada automaticamente. Para criar uma nova, use “Matérias e assuntos”.</p>
-            <label className="mt-3 flex items-start gap-2 text-[14px]">
-              <input type="checkbox" checked={authorized} onChange={(e) => setAuthorized(e.target.checked)} className="mt-1 h-4 w-4 accent-[#e10600]" />
-              <span>Confirmo que o uso e o armazenamento destas questões são autorizados (material próprio ou com permissão).</span>
-            </label>
+            <p className="mt-2 text-[13px] text-white/60">Matéria: só pastas já existentes. O assunto lido do texto é criado automaticamente se ainda não existir.</p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <button type="button" onClick={importNow} disabled={pending || ready.length === 0} className={dButton("primario")}>{pending ? "Importando…" : `IMPORTAR ${ready.length} QUESTÃO(ÕES)`}</button>
               {chosen.length > ready.length && <span className="text-[13px] text-amber-200">{chosen.length - ready.length} selecionada(s) ainda com pendência e não serão importadas.</span>}
