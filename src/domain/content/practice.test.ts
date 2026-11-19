@@ -35,3 +35,15 @@ describe("Na prática", () => {
     expect(extractPractice("abc")).toEqual({ body: "abc", cases: [] });
   });
 });
+
+describe("tirinha tolerante", () => {
+  it("corta legenda longa e corrige cenário/personagem fora da lista em vez de descartar a tirinha", async () => {
+    const { lenientStrip } = await import("./visual");
+    const long = "x".repeat(120);
+    const r = lenientStrip(JSON.stringify([{ cenario: "Residência", legenda: long, personagens: [{ p: "Policial", lado: "dir", pose: "bracos_cruzados", humor: "neutro" }], fala: { quem: 5, texto: long } }]));
+    expect(r).toBeDefined();
+    expect(r![0]!.legenda!.length).toBeLessThanOrEqual(90);
+    expect(r![0]!.fala!.quem).toBe(0);
+    expect(lenientStrip("não é json")).toBeUndefined();
+  });
+});

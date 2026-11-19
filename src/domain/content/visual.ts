@@ -73,6 +73,41 @@ export const schemeSchema = z.discriminatedUnion("tipo", [
 ]);
 
 export type Strip = z.infer<typeof stripSchema>;
+
+const plain = (v: unknown) => String(v ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+const pick = <T extends string>(list: readonly T[], v: unknown): T | undefined => {
+  const k = plain(v);
+  return list.find((x) => x === k);
+};
+const cut = (v: unknown, max: number): string | undefined => {
+  const t = String(v ?? "").trim();
+  if (!t) return undefined;
+  return t.length <= max ? t : `${t.slice(0, max - 1).replace(/\s+\S*$/, "")}…`.slice(0, max);
+};
+
+/**
+ * Leitura tolerante da tirinha que a IA devolve: em vez de jogar a tirinha inteira fora por um detalhe
+ * (legenda longa, cenário ou personagem fora da lista, índice de fala errado), corta ou corrige o detalhe.
+ */
+export function lenientStrip(raw: string | undefined): Strip | undefined {
+  if (!raw?.trim()) return undefined;
+  let data: unknown;
+  try { data = JSON.parse(raw); } catch { return undefined; }
+  if (!Array.isArray(data)) return undefined;
+  const panels = data.slice(0, 3).map((pn): unknown => {
+    const o = (pn && typeof pn === "object" ? pn : {}) as Record<string, unknown>;
+    const chars = (Array.isArray(o.personagens) ? o.personagens : []).slice(0, 3).map((c) => {
+      const k = (c && typeof c === "object" ? c : {}) as Record<string, unknown>;
+      return { p: pick(ROLES, k.p) ?? "cidadao", lado: pick(["esq", "centro", "dir"] as const, k.lado) ?? "centro", pose: pick(POSES, k.pose) ?? "neutro", humor: pick(MOODS, k.humor) ?? "neutro", ...(pick(PROPS, k.objeto) ? { objeto: pick(PROPS, k.objeto) } : {}), ...(pick(["esq", "dir"] as const, k.olha) ? { olha: pick(["esq", "dir"] as const, k.olha) } : {}) };
+    });
+    const f = (o.fala && typeof o.fala === "object" ? o.fala : null) as Record<string, unknown> | null;
+    const texto = f ? cut(f.texto, 80) : undefined;
+    const quem = f ? Math.max(0, Math.min(Math.max(0, chars.length - 1), Number.isFinite(Number(f.quem)) ? Math.trunc(Number(f.quem)) : 0)) : 0;
+    return { cenario: pick(SCENES, o.cenario) ?? "rua", legenda: cut(o.legenda, 90), personagens: chars, ...(texto && chars.length ? { fala: { quem, texto } } : {}), efeito: cut(o.efeito, 12) };
+  });
+  const r = stripSchema.safeParse(panels);
+  return r.success ? r.data : undefined;
+}
 export type StripPanel = Strip[number];
 export type StripCharacter = StripPanel["personagens"][number];
 export type Scheme = z.infer<typeof schemeSchema>;

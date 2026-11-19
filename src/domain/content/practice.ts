@@ -12,7 +12,7 @@
  * Na aula, o bloco vira um card interativo; no PDF e em outros lugares, vira texto comum.
  */
 
-import { parseVisual, schemeSchema, stripSchema, type Scheme, type Strip } from "./visual";
+import { lenientStrip, parseVisual, schemeSchema, stripSchema, type Scheme, type Strip } from "./visual";
 
 export interface PracticeCase {
   situation: string;
@@ -44,7 +44,7 @@ function parseBlock(raw: string): PracticeCase | null {
   }
   const get = (k: string) => (out[k] ?? []).join("\n").trim();
   const c: PracticeCase = { situation: get("situation"), question: get("question"), answer: get("answer") };
-  const strip = parseVisual(get("strip"), stripSchema);
+  const strip = parseVisual(get("strip"), stripSchema) ?? lenientStrip(get("strip"));
   const scheme = parseVisual(get("scheme"), schemeSchema);
   if (strip) c.strip = strip;
   if (scheme) c.scheme = scheme;
