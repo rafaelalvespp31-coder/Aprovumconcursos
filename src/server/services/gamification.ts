@@ -301,6 +301,7 @@ export async function saveContest(adminId: string, id: string | null, input: unk
     info_updated_at: new Date().toISOString().slice(0, 10),
     updated_at: new Date().toISOString(),
   };
+  const before = id ? await db.from("contest_catalog").select("status").eq("id", contestId).maybeSingle() : null;
   const r = id
     ? await db.from("contest_catalog").update(row).eq("id", contestId)
     : await db.from("contest_catalog").insert({ ...row, id: contestId, created_by: adminId });
@@ -309,4 +310,9 @@ export async function saveContest(adminId: string, id: string | null, input: unk
     throw new Error(r.error.message);
   }
   if (previous && previous !== imagePath) await db.storage.from("concursos").remove([previous]);
+  // Aviso no celular: concurso novo ou que mudou de situação para previsto/aberto (nunca derruba o salvamento).
+  if (v.active && (v.status === "inscricoes_abertas" || v.status === "previsto" || v.status === "autorizado") && (!before || before.data?.status !== v.status)) {
+    const { notifyContestPush } = await import("@/server/services/push");
+    await notifyContestPush({ id: contestId, name: v.name, institution: v.institution ?? null, uf: v.uf || null, status: v.status }).catch(() => undefined);
+  }
 }

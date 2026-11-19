@@ -121,3 +121,27 @@ export async function countPushDevices(): Promise<{ devices: number; users: numb
   if (error) throw new Error(error.message);
   return { devices: (data ?? []).length, users: new Set((data ?? []).map((r) => r.user_id as string)).size };
 }
+
+/**
+ * Aviso de concurso previsto ou aberto: vai a quem ativou o alerta (todos os concursos "*" ou o estado do
+ * concurso) e a quem favoritou esse concurso. Quem não ligou os avisos no celular não recebe.
+ */
+export async function notifyContestPush(c: { id: string; name: string; institution: string | null; uf: string | null; status: string }): Promise<{ sent: number }> {
+  const aberto = c.status === "inscricoes_abertas";
+  const db = createAdminClient();
+  const scopes = c.uf ? ["*", c.uf] : ["*"];
+  const [al, fav] = await Promise.all([
+    db.from("contest_alerts").select("user_id").in("scope", scopes),
+    db.from("contest_favorites").select("user_id").eq("contest_id", c.id),
+  ]);
+  const ids = [...new Set([...(al.data ?? []), ...(fav.data ?? [])].map((r) => r.user_id as string))];
+  if (!ids.length) return { sent: 0 };
+  const onde = [c.institution, c.uf].filter(Boolean).join(" · ");
+  const r = await sendPushToUsers(ids, {
+    title: aberto ? "Concurso aberto!" : "Novo concurso previsto",
+    body: `${c.name}${onde ? ` (${onde})` : ""}. ${aberto ? "Inscrições abertas: veja prazo e edital." : "Comece a se preparar desde já."}`,
+    url: "/concursos",
+    tag: `concurso-${c.id}-${aberto ? "aberto" : "previsto"}`,
+  });
+  return { sent: r.sent };
+}
