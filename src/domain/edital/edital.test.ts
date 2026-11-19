@@ -75,6 +75,7 @@ const CAT: CatalogEntry[] = [
   { id: "c4", title: "Lei penal no espaço", aliases: ["territorialidade"], mode: "direito_penal", group: "Aplicação da lei penal", lawCode: null, articles: [] },
   { id: "c5", title: "Receptação", aliases: [], mode: "direito_penal", group: "Crimes contra o patrimônio", lawCode: "CP", articles: ["180"] },
   { id: "c6", title: "Direitos e deveres individuais e coletivos", aliases: ["art. 5º da CF"], mode: "direito_constitucional", group: "Direitos fundamentais", lawCode: null, articles: [] },
+  { id: "c8", title: "Organização da Segurança Pública", aliases: ["órgãos de segurança pública"], mode: "direito_constitucional", group: "Defesa do Estado e das Instituições Democráticas", lawCode: null, articles: [] },
   { id: "c7", title: "Tipologia textual", aliases: [], mode: "lingua_portuguesa", group: null, lawCode: null, articles: [] },
 ];
 const idx = buildIndex(CAT);
@@ -93,6 +94,11 @@ describe("matchTopic", () => {
     const r = matchTopic(idx, "Lei penal no tempo; Lei penal no espaço; Conflito aparente de normas", "direito_penal");
     expect(r.status).toBe("parcial");
     expect(r.links.map((l) => l.catalogId).sort()).toEqual(["c3", "c4"]);
+  });
+  it("não liga aula de outra área só por palavras do grupo ou do nome (Organização do Estado Brasileiro ≠ Segurança Pública)", () => {
+    const r = matchTopic(idx, "Organização do Estado Brasileiro", "geopolitica");
+    expect(r.status).toBe("nao_encontrado");
+    expect(r.links).toEqual([]);
   });
   it("matéria diferente pesa menos: mesmo título em outra matéria não é completa", () => {
     const r = matchTopic(idx, "Receptação", "direito_constitucional");

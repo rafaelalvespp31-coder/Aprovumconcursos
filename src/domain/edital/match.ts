@@ -112,6 +112,12 @@ function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null,
     if (!exact && !lawHit && hasStrong && strongMatched < 1) continue;
     // Assunto feito só de palavras genéricas ("crimes contra a fé pública"): só liga se o nome da aula for praticamente o mesmo.
     if (!exact && !lawHit && !hasStrong && rName < 0.85) continue;
+    // Aula de OUTRA área (ex.: Direito Constitucional para um tópico de Geopolítica) não cobre o assunto só por dividir palavras.
+    if (!exact && !lawHit && mode && factor < 0.85) continue;
+    // O nome da aula (título e sinônimos) precisa cobrir o assunto: palavras vindas só do grupo/tópico-pai ("Defesa do Estado…") não bastam.
+    // (Exceção: assunto amplo que é o próprio grupo da aula, ex.: "Crimes contra o patrimônio" ↔ aulas de furto, roubo…)
+    const rGroup = it.entry.group ? recall(idx, clause, tokensOf(it.entry.group).set) : 0;
+    if (!exact && !lawHit && rName < 0.5 && rGroup < 0.8) continue;
     const base = exact || lawHit ? 1 : Math.max(rName, 0.85 * rUnion);
     // Hierarquia: o tópico do edital onde o assunto está deve ter a ver com o tópico da aula no catálogo.
     // Sem nenhuma palavra em comum, é outro contexto: pesa menos e nunca vira "completa" só por parecer.
@@ -125,7 +131,7 @@ function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null,
     const score = base * factor * (otherContext ? 0.85 : 1);
     if (score < 0.3) continue;
     const sameArea = factor >= 0.85;
-    const coverage: MatchLink["coverage"] = (exact || lawHit || (rName >= 0.8 && !otherContext)) && sameArea ? "completa" : exact || lawHit ? "conferencia" : rName >= 0.5 || (rUnion >= 0.75 && matched >= 2) ? "parcial" : "conferencia";
+    const coverage: MatchLink["coverage"] = (exact || lawHit || (rName >= 0.8 && !otherContext)) && sameArea ? "completa" : exact || lawHit ? "conferencia" : rName >= 0.5 ? "parcial" : "conferencia";
     scored.push({ catalogId: it.entry.id, coverage, score: Math.round(score * 1000) / 1000, r: rName });
   }
   scored.sort((a, b) => b.score - a.score);
