@@ -191,6 +191,7 @@ export function PastelShell({
   const isAula = path.startsWith(`${basePath}/aula`);
   // Telas de estudo (aula e assunto): mostram o cronômetro de estudo do dia.
   const isNovoEstudo = path.startsWith(`${basePath}/nova-trilha`);
+  const isQuestoes = path.startsWith(`${basePath}/questoes`);
   const isStudy = isAula || path.startsWith(`${basePath}/trilhas/`) || path === `${basePath}/trilha`;
   // Páginas internas com cabeçalho próprio (título e linha de apoio).
   const heading =
@@ -239,7 +240,7 @@ export function PastelShell({
             )}
           </aside>
           {collapsed && (
-            <button type="button" onClick={toggleCollapsed} className={`mt-abrir max-lg:hidden ${isAula || isStudy || isNovoEstudo ? "mt-abrir-fino" : ""}`} aria-label="Abrir menu lateral" data-testid="abrir-menu-lateral">
+            <button type="button" onClick={toggleCollapsed} className={`mt-abrir max-lg:hidden ${isAula || isStudy || isNovoEstudo || isQuestoes ? "mt-abrir-fino" : ""}`} aria-label="Abrir menu lateral" data-testid="abrir-menu-lateral">
               <ChevronRight aria-hidden /><span>Abrir menu</span>
             </button>
           )}
