@@ -49,6 +49,8 @@ const RIFLE = {
 };
 /** Coordenadas medidas na arte em 2000 px de largura → px da arte (3344). */
 const d = (x: number, y: number): [number, number] => [Math.round(x * 1.672), Math.round(y * 1.672)];
+/** Ponto da TELA (computador 16:9, ~1366x728) para px da arte: assim os cards caem nas áreas livres, longe do menu, do fuzil e dos painéis. */
+const sp = (x: number, y: number): [number, number] => [Math.round((x + 160) / 0.484), Math.round((y + 16) / 0.484)];
 /** Fumaça: colunas que sobem dos incêndios e névoa baixa sobre o campo (coordenadas da arte). */
 const SMOKE: Array<{
   x: number;
@@ -115,8 +117,8 @@ export const ART_SLOTS: Record<string, ArtSlot> = {
   },
   matematica: { plate: d(1180, 690), base: d(1150, 725), drawn: true },
   legislacao_especial: {
-    plate: d(1040, 790),
-    base: d(1050, 830),
+    plate: sp(690, 585),
+    base: sp(690, 640),
     drawn: false,
   },
   conhecimentos_especificos: {
@@ -131,7 +133,7 @@ export const ART_ORDER_DRAWN = ["direito_penal", "lingua_portuguesa", "raciocini
 const CORE = d(948, 522);
 
 /** Posições livres do campo para matérias cadastradas pelo admin (que não existem na arte). */
-const EXTRA_PLATES: Array<[number, number]> = [d(230, 800), d(560, 950), d(1080, 950), d(1420, 800), d(1740, 930), d(1400, 480), d(300, 330), d(1000, 150)];
+const EXTRA_PLATES: Array<[number, number]> = [sp(520, 190), sp(1000, 185), sp(570, 292), sp(600, 400), sp(1040, 400), sp(470, 445), sp(1150, 572), sp(440, 560)];
 const extraSlots = new Map<string, ArtSlot>();
 /** Dá a cada matéria nova (fora da arte) o seu lugar no campo, sempre o mesmo para o mesmo conjunto. */
 export function registerExtraSlots(ids: readonly string[]) {
