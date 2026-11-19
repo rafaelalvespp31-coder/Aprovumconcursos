@@ -55,23 +55,48 @@ function excerpt(md: string, max = 280): string {
   return plain.length > max ? `${plain.slice(0, max).replace(/\s+\S*$/, "")}…` : plain;
 }
 
-/** Comando para a IA devolver só os blocos que faltam. */
+/** Só as regras dos exemplos visuais (sem o bloco genérico de flashcards, que aqui é pedido à parte e de forma completa). */
+function visualOnlyRules(): string {
+  const r = visualRules();
+  const i = r.indexOf("\n\nFLASHCARDS");
+  return i >= 0 ? r.slice(0, i) : r;
+}
+
+const DIGEST_MAX = 14_000;
+
+/** Resumo de TODA a aula (título + trecho de cada seção) para a IA montar flashcards que cubram o assunto inteiro. */
+function lessonDigest(lesson: EnrichLesson): string {
+  const body = lesson.sections.filter((s) => s.kind !== "flashcards" && s.kind !== "texto_legal");
+  const per = Math.max(260, Math.min(900, Math.floor(DIGEST_MAX / Math.max(1, body.length))));
+  let out = "";
+  for (const s of body) {
+    const text = s.kind === "resumo" || s.kind === "checklist" ? extractPractice(s.bodyMarkdown).body.trim().slice(0, 3000) : excerpt(s.bodyMarkdown, per);
+    if (!text) continue;
+    const piece = `### ${s.title}\n${text}\n\n`;
+    if (out.length + piece.length > DIGEST_MAX + 6000) break;
+    out += piece;
+  }
+  return out.trim();
+}
+
+/** Comando para a IA devolver só os blocos que faltam (exemplos visuais e/ou flashcards completos). */
 export function buildEnrichPrompt(title: string, lesson: EnrichLesson): string {
   const st = enrichStatus(lesson);
   const targets = st.missing.map((m) => lesson.sections[m.index]!);
-  const list = targets.map((s, n) => `${n + 1}. ${s.title}\n   Assunto: ${excerpt(s.bodyMarkdown)}`).join("\n");
-  const resumo = lesson.sections.find((s) => s.kind === "resumo");
+  const list = targets.map((s, n) => `${n + 1}. ${s.title}\n   Assunto: ${excerpt(s.bodyMarkdown, 600)}`).join("\n");
   const needFlash = st.flashcards < 4;
-  return `Vou te passar as seções de uma aula já pronta sobre "${title}". Escreva SÓ os blocos que faltam: um exemplo visual para cada seção listada${needFlash ? " e os flashcards de revisão" : ""}. Não reescreva a aula.
+  const needEx = targets.length > 0;
+  const what = [needEx ? "um exemplo visual para cada seção listada" : "", needFlash ? "os flashcards de revisão da aula inteira" : ""].filter(Boolean).join(" e ");
+  return `Vou te passar as seções de uma aula já pronta sobre "${title}". Escreva SÓ os blocos que faltam: ${what}. Não reescreva a aula.
 
-${visualRules()}
-
-FORMATO DA RESPOSTA (obrigatório)
+${needEx ? `${visualOnlyRules()}\n\n` : ""}FORMATO DA RESPOSTA (obrigatório)
 - Responda SOMENTE com o texto abaixo, dentro de UM único bloco de código, sem nada antes ou depois.
-- Use o título de cada seção EXATAMENTE como está na lista.
+${needEx ? `- Use o título de cada seção EXATAMENTE como está na lista.
 - Para cada seção: a linha "--- SEÇÃO: título ---" e, embaixo, um bloco :::exemplo completo (Situação, Pergunta, Resposta, Tirinha, Carimbo e Esquema), fechado com ":::".
 - O exemplo tem que ser sobre o assunto da seção e estar correto. Não invente lei, súmula, número de processo nem dado.
-
+` : ""}${needFlash ? `- Os flashcards vêm no fim, sob a linha "=== FLASHCARDS ===", e são OBRIGATÓRIOS.
+` : ""}- Entregue tudo completo, sem resumir nem deixar "etc.". Se a resposta for cortada por tamanho, eu peço "continue": retome exatamente de onde parou, sem repetir nada.
+${needEx ? `
 === EXEMPLOS VISUAIS ===
 --- SEÇÃO: (título exato) ---
 :::exemplo
@@ -82,15 +107,22 @@ Tirinha: [ … ]
 Carimbo: … | erro
 Esquema: { … }
 :::
-${needFlash ? `
+(repita para TODAS as ${targets.length} seções da lista, uma por uma, na ordem)
+` : ""}${needFlash ? `
 === FLASHCARDS ===
-(12 a 15 cartões, separados por linha em branco)
+(EXATAMENTE 15 cartões, separados por linha em branco, cobrindo a aula INTEIRA: pelo menos um cartão por tema do material abaixo — conceitos, elementos, penas e prazos, exceções, pegadinhas e diferenças entre institutos parecidos —, sem repetir pergunta)
 **Pergunta curta?**
 → Resposta curta, com **negrito** no essencial.
-` : ""}
+
+Regras dos flashcards: só o que está no material abaixo ou é lei/jurisprudência que você tem certeza que existe; nada de pergunta vaga ("fale sobre…"); a resposta cabe em até 2 linhas; cada cartão começa com "**" e a resposta começa com "→ " na linha seguinte.
+` : ""}${needEx ? `
 SEÇÕES QUE PRECISAM DE EXEMPLO (${targets.length})
-${list || "(nenhuma — todas já têm)"}
-${needFlash && resumo ? `\nRESUMO DA AULA (base para os flashcards)\n${extractPractice(resumo.bodyMarkdown).body.slice(0, 2500)}\n` : ""}`;
+${list}
+` : ""}${needFlash ? `
+MATERIAL DA AULA (base dos flashcards)
+${lessonDigest(lesson)}
+` : ""}
+CONFERÊNCIA FINAL (por dentro, sem escrever): ${needEx ? `há um :::exemplo para cada uma das ${targets.length} seções? ` : ""}${needFlash ? "há 15 flashcards no formato certo? " : ""}Se faltar algo, complete antes de responder.`;
 }
 
 export interface EnrichParse {
