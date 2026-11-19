@@ -19,6 +19,7 @@ const delay = (ms = 250) => new Promise((r) => setTimeout(r, ms));
 const KEY: Record<string, { label?: string; truth?: boolean; why: string }> = {
   [bank[0]!.id]: { label: "B", why: "Documento falso é vício de legalidade: o ato deve ser anulado, com efeitos em regra retroativos." },
   [bank[1]!.id]: { truth: false, why: "Revogar é juízo de conveniência e oportunidade, exclusivo de quem praticou o ato. O Judiciário, ao julgar, só anula por ilegalidade." },
+  [bank[3]!.id]: { label: "C", why: "Vício de competência em ato não exclusivo é sanável: pode ser convalidado, sem prejuízo a terceiros nem ao interesse público." },
   [bank[2]!.id]: { label: "B", why: "Só vícios sanáveis podem ser convalidados, e desde que não haja prejuízo ao interesse público nem a terceiros." },
 };
 

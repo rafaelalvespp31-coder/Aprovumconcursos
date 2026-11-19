@@ -61,6 +61,7 @@ export const bank: BankQuestion[] = [
   }),
   q(2, { type: "certo_errado", statement: "A revogação de ato administrativo pode ser feita pelo Poder Judiciário no exercício de sua função jurisdicional.", difficulty: 1, history: [{ correct: true, at: "2026-10-09T10:00:00Z", context: "fixacao", confidence: 2 }] }),
   q(3, { statement: "Sobre a convalidação de atos administrativos, é correto afirmar que:", difficulty: 3, marked: true, options: opts(3, ["alcança qualquer vício de finalidade", "só é possível para vícios sanáveis, sem prejuízo a terceiros nem ao interesse público", "depende sempre de autorização legislativa", "produz efeitos apenas a partir da data da convalidação, nunca retroagindo"]) }),
+  q(4, { statement: "Servidor teve licença concedida por autoridade incompetente, sem má-fé de ninguém e sem prejuízo a terceiros. Sobre o ato, é correto afirmar que:", difficulty: 4, options: opts(4, ["deve ser revogado, por conveniência e oportunidade, mesmo sendo legal", "é nulo de pleno direito e não admite correção, em nenhuma hipótese", "pode ser convalidado, pois o vício de competência é sanável quando não se trata de competência exclusiva", "só o Judiciário pode corrigi-lo, por tratar-se de ilegalidade"]) }),
   ...Array.from({ length: 9 }, (_, k) => q(10 + k, { statement: `Questão de exemplo ${k + 4}.`, options: opts(10 + k, ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"]), history: k % 3 === 0 ? [{ correct: k % 2 === 0, at: "2026-10-07T10:00:00Z", context: "fixacao", confidence: null }] : [] })),
 ];
 
@@ -90,7 +91,7 @@ export const reader: ReaderProps = {
     { id: id(209), module: "3. Convalidação e tribunais", kind: "flashcards", title: "Flashcards de revisão", node_keys: ["N0006", "N0007"], verification_status: "nao_aplicavel", body_markdown: "**Ato ilegal: anula ou revoga?**\n→ **Anula**, com efeitos retroativos (*ex tunc*).\n\n**O Judiciário pode revogar ato de outro Poder?**\n→ **Não.** Só anula por ilegalidade.\n\n**Quando cabe convalidar?**\n→ Vício **sanável**, sem prejuízo a terceiros nem ao interesse público." },
     { id: id(208), module: "3. Convalidação e tribunais", kind: "resumo", title: "Resumo", node_keys: ["N0006", "N0007"], verification_status: "nao_aplicavel", body_markdown: "1. Ilegal → **anula** (retroage).\n2. Válido, mas inconveniente → **revoga** (não retroage).\n3. Vício sanável, sem prejuízo → pode **convalidar**." },
   ],
-  questions: bank.slice(0, 3).map((b, i) => ({ ...b, nodeKey: i === 2 ? "N0007" : "N0006", level: i === 2 ? ("medio" as const) : ("facil" as const), recovery_of: null })),
+  questions: bank.slice(0, 4).map((b, i) => ({ ...b, nodeKey: i >= 2 ? "N0007" : "N0006", level: i === 3 ? ("dificil" as const) : i === 2 ? ("medio" as const) : ("facil" as const), recovery_of: null })),
   levelsPassed: 0,
   markedQuestionIds: [id(503)],
   // Questão já respondida em outra visita: abre marcada, com o gabarito comentado.

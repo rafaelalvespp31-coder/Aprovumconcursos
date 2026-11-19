@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegistration } from "@/components/pwa";
+import { VisitaBeacon } from "@/components/visitas/visita-beacon";
 import { CookieNotice } from "@/components/legal/cookie-notice";
 import "./globals.css";
 
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
       <body className="min-h-dvh antialiased">
         <a href="#conteudo" className="skip-link">Ir para o conteúdo</a>
         {children}
+        <VisitaBeacon />
         <CookieNotice />
         <ServiceWorkerRegistration />
       </body>
