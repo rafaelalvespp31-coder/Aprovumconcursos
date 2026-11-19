@@ -2741,3 +2741,58 @@
   margin: -20px 0 0 -20px;
   background: radial-gradient(circle closest-side, rgba(150, 200, 255, 0.45), rgba(120, 160, 255, 0.12) 65%, rgba(100, 120, 255, 0));
 }
+
+/* Cabeçalho do TÓPICO: faixa vermelha preenchida, bem sinalizada */
+.km-folders .km-folder {
+  border: 1px solid rgba(255, 45, 55, 0.7);
+  box-shadow: 0 0 14px -4px rgba(255, 31, 45, 0.7);
+}
+.km-folders .km-folder > summary {
+  min-height: 56px;
+  padding: 9px 12px;
+  border-left: 5px solid #ff1f2d;
+  background: linear-gradient(90deg, rgba(215, 25, 32, 0.85), rgba(120, 10, 18, 0.7));
+}
+.km-folders .km-folder > summary:hover {
+  background: linear-gradient(90deg, rgba(240, 35, 45, 0.95), rgba(140, 12, 20, 0.8));
+}
+.km-folders .km-folderName {
+  font-size: 14.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff;
+}
+.km-folders .km-folderName .km-folderTag {
+  align-self: flex-start;
+  margin-bottom: 3px;
+  padding: 1px 7px;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  color: #7a0a12;
+  background: #fff;
+  border-radius: 2px;
+}
+.km-folders .km-folder > summary > em {
+  padding: 3px 8px;
+  font-size: 12px;
+  font-weight: 800;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+}
+.km-folders .km-folderChevron,
+.km-folders .km-folder[open] .km-folderChevron {
+  color: #fff;
+}
+.km-folders .km-folder[data-done] > summary {
+  border-left-color: #22c55e;
+  background: linear-gradient(90deg, rgba(22, 163, 74, 0.85), rgba(6, 78, 59, 0.7));
+}
+.km-folders .km-folder[data-done] .km-folderTag {
+  color: #064e3b;
+}
+.km-folders .km-folder[data-done] > summary > em.km-on {
+  color: #fff;
+}

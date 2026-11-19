@@ -1319,6 +1319,7 @@ export function KnowledgeOps({ themes, disciplines, base = "", name, onStart }: 
                             >
                               <ChevronDown className={"km-folderChevron"} aria-hidden />
                               <span className={"km-folderName"}>
+                                <small className={"km-folderTag"}>Tópico</small>
                                 <span>
                                   {f.title}
                                 </span>
