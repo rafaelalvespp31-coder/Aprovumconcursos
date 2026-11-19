@@ -166,6 +166,16 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
     } catch { /* sem suporte */ }
   }, [seloTotal, data?.state, isDemo]);
 
+  // Notificações do Mentor já entregues no aparelho: some a de uma prioridade que o aluno dispensou ou concluiu.
+  const chavesAtivas = useMemo(() => (data?.state === "ok" ? (chaves ?? data.visible.map((r) => r.key)) : null), [data, chaves]);
+  useEffect(() => {
+    if (isDemo || !chavesAtivas || typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;
+    void navigator.serviceWorker.ready
+      .then((reg) => reg.getNotifications({ tag: "mentor-diario" }))
+      .then((lista) => { for (const n of lista) { const ref = (n.data as { ref?: string | null } | null)?.ref; if (ref && !chavesAtivas.includes(ref)) n.close(); } })
+      .catch(() => undefined);
+  }, [chavesAtivas, isDemo]);
+
   // Um aviso discreto uma vez por sessão, quando há prioridades e o Mentor está minimizado.
   useEffect(() => {
     if (open || !pending) return;
@@ -422,7 +432,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
             ) : (
               <>
                 <section id="mentor-sec-plano" role="tabpanel" aria-labelledby="mentor-aba-plano" hidden={tab !== "plano"}>
-                  <MentorGoalPlan goal={goalOv ? goalOv.goal : (data.goal ?? null)} plan={goalOv ? goalOv.plan : (data.plan ?? null)} name={data.name} onChange={(g, p) => setGoalOv({ goal: g, plan: p })} />
+                  <MentorGoalPlan goal={goalOv ? goalOv.goal : (data.goal ?? null)} plan={goalOv ? goalOv.plan : (data.plan ?? null)} name={data.name} base={base} onNavigate={afterNav} onChange={(g, p) => setGoalOv({ goal: g, plan: p })} />
                 </section>
                 <section id="mentor-sec-prioridades" role="tabpanel" aria-labelledby="mentor-aba-prioridades" hidden={tab !== "prioridades"}>
                   {data.name && <p className="mb-2 text-[12.5px] text-[#64666D]">Olá, {data.name}. Isto é o que mais importa agora:</p>}

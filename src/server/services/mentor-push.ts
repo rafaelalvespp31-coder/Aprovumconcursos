@@ -8,13 +8,13 @@ import { sortear, type Rand } from "@/domain/mentor/variar";
 import { brDay } from "@/domain/plans/limits";
 
 /** Aviso do Mentor: sorteia entre Raio-X, cada prioridade e concursos, com frases diferentes. `total` alimenta o selo. */
-export function textoMentor(raiox: number, prioridades: string[], concursos = 0, rand: Rand = Math.random): { title: string; body: string; total: number } | null {
+export function textoMentor(raiox: number, prioridades: Array<{ key: string; texto: string }>, concursos = 0, rand: Rand = Math.random): { title: string; body: string; total: number; ref?: string } | null {
   const total = raiox + prioridades.length + concursos;
   if (!total) return null;
-  const opcoes: Array<{ title: string; body: string }> = [];
+  const opcoes: Array<{ title: string; body: string; ref?: string }> = [];
   const titulos = ["Mentor APROVUM", "Recado do Mentor", "Hora de evoluir", "Seu Mentor chamou"];
   if (raiox) opcoes.push({ title: "Seu Raio-X foi publicado!", body: raiox === 1 ? "Seu Raio-X está pronto. Toque para ver." : `${raiox} Raio-X publicados! Toque para ver.` });
-  for (const p of prioridades) opcoes.push({ title: sortear(titulos, rand), body: sortear([p, `Prioridade de hoje: ${p}`, `Que tal agora? ${p}`], rand) });
+  for (const p of prioridades) opcoes.push({ ref: p.key, title: sortear(titulos, rand), body: sortear([p.texto, `Prioridade de hoje: ${p.texto}`, `Que tal agora? ${p.texto}`], rand) });
   if (concursos) opcoes.push({ title: sortear(["Concursos no radar", "Olho nos editais", "Mentor avisa"], rand), body: sortear([concursos === 1 ? "Há 1 concurso aberto ou previsto para acompanhar." : `Há ${concursos} concursos abertos ou previstos para acompanhar.`, "Tem concurso aberto ou previsto. Veja se combina com você."], rand) });
   return { ...sortear(opcoes, rand), total };
 }
@@ -35,10 +35,11 @@ export async function enviarAvisosMentor(): Promise<{ users: number; sent: numbe
     await Promise.all(users.slice(i, i + 5).map(async (id) => {
       try {
         const [m, rx] = await Promise.all([computeMentor(id), getRaioXNotices(id)]);
-        const pri = m.result.insufficientData ? [] : m.visible.filter((r) => r.kind !== "manutencao").map((r) => r.explanation);
+        // Só o que está ativo no banco do aluno agora (dispensadas ficam de fora).
+        const pri = m.result.insufficientData ? [] : m.visible.filter((r) => r.kind !== "manutencao" && r.status !== "dispensada").map((r) => ({ key: r.key, texto: r.explanation }));
         const t = textoMentor(rx.length, pri, concAtivos);
         if (!t) return;
-        const r = await sendPushToUsers([id], { title: t.title, body: t.body, url: rx[0]?.href ?? "/painel", tag: "mentor-diario", badge: t.total });
+        const r = await sendPushToUsers([id], { title: t.title, body: t.body, url: rx[0]?.href ?? "/painel", tag: "mentor-diario", badge: t.total, ref: t.ref });
         sent += r.sent;
       } catch { /* um aluno com erro não derruba o lote */ }
     }));

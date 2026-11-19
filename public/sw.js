@@ -5,7 +5,7 @@
  * - Nunca armazena respostas de API, ações (POST) nem páginas de conta.
  * - Cache privado é apagado no logout (mensagem "clear-private").
  */
-const VERSION = "v6"; // v6: selo no ícone do app
+const VERSION = "v7"; // v7: notificação do Mentor com referência (some ao dispensar)
 const STATIC_CACHE = `na-static-${VERSION}`;
 const LESSON_CACHE = `na-aulas-${VERSION}`;
 const PRECACHE = ["/offline", "/icons/icon-192.png", "/icons/aprovum-mark.png", "/manifest.webmanifest"];
@@ -97,7 +97,7 @@ self.addEventListener("push", (event) => {
       badge: "/icons/aprovum-mark.png",
       tag: d.tag || undefined,
       renotify: !!d.tag,
-      data: { url: typeof d.url === "string" && d.url.startsWith("/") ? d.url : "/painel" },
+      data: { url: typeof d.url === "string" && d.url.startsWith("/") ? d.url : "/painel", ref: typeof d.ref === "string" ? d.ref : null },
     }),
   ]));
 });

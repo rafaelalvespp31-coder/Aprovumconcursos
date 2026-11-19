@@ -9,11 +9,11 @@ import { textoMentor } from "./mentor-push";
 
 describe("textoMentor", () => {
   it("não avisa sem novidades", () => expect(textoMentor(0, [])).toBeNull());
-  it("pode sortear o Raio-X", () => expect(textoMentor(1, ["x"], 0, () => 0)?.body).toContain("Raio-X"));
+  it("pode sortear o Raio-X", () => expect(textoMentor(1, [{ key: "x", texto: "x" }], 0, () => 0)?.body).toContain("Raio-X"));
   it("rotaciona entre prioridades e concursos", () => {
-    const vistos = new Set(Array.from({ length: 200 }, () => textoMentor(0, ["Revise Matemática", "Faça 10 questões"], 2)?.body));
+    const vistos = new Set(Array.from({ length: 200 }, () => textoMentor(0, [{ key: "a", texto: "Revise Matemática" }, { key: "b", texto: "Faça 10 questões" }], 2)?.body));
     expect(vistos.size).toBeGreaterThan(4);
-    expect(textoMentor(0, ["a", "b", "c"])?.total).toBe(3);
+    expect(textoMentor(0, [{ key: "a", texto: "a" }, { key: "b", texto: "b" }, { key: "c", texto: "c" }])?.total).toBe(3);
   });
 });
 
@@ -23,5 +23,5 @@ describe("textoMentor com concursos", () => {
     expect(t?.total).toBe(3);
     expect(t?.body).toContain("3 concursos");
   });
-  it("soma ao selo com prioridades", () => expect(textoMentor(0, ["a", "b"], 3)?.total).toBe(5));
+  it("soma ao selo com prioridades", () => expect(textoMentor(0, [{ key: "a", texto: "a" }, { key: "b", texto: "b" }], 3)?.total).toBe(5));
 });

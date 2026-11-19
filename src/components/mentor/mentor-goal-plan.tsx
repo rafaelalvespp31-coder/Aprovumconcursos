@@ -1,6 +1,6 @@
 "use client";
 
-import { nomeConcurso } from "@/domain/mentor/nome-concurso";
+import { MentorPlanoHoje } from "./mentor-plano-hoje";
 import { useState, useTransition } from "react";
 import { Send, Target, Pencil } from "lucide-react";
 import type { BlockKind, StudyPlan } from "@/domain/mentor/plan";
@@ -16,7 +16,7 @@ const fmt = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? String(m
  * Mensagem principal do Mentor: "Já sabe qual concurso você quer ser aprovado?". O aluno responde por
  * escrito e, a partir daí, o Mentor monta o plano (dias, horas, questões, revisões) para esse concurso.
  */
-export function MentorGoalPlan({ goal, plan, name, onChange }: { goal: { contest: string } | null; plan: StudyPlan | null; name?: string | null; onChange: (goal: { contest: string } | null, plan: StudyPlan | null) => void }) {
+export function MentorGoalPlan({ goal, plan, name, onChange, base = "", onNavigate }: { base?: string; onNavigate?: () => void; goal: { contest: string } | null; plan: StudyPlan | null; name?: string | null; onChange: (goal: { contest: string } | null, plan: StudyPlan | null) => void }) {
   const [text, setText] = useState("");
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,39 +62,7 @@ export function MentorGoalPlan({ goal, plan, name, onChange }: { goal: { contest
       {error && <p role="alert" className="text-[12.5px] font-semibold text-[#b3261e]">{error}</p>}
 
       {!ask && plan && (
-        <section aria-label={`Plano de estudo para ${plan.contest}`} className="flex flex-col gap-2.5" data-testid="mentor-plano">
-          <div className="rounded-xl border border-[#E10600] bg-[#FFF6F5] px-3.5 py-3" data-testid="mentor-plano-concurso">
-            <p className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#E50914]">Plano de estudo para</p>
-            <p className="mt-0.5 text-[17px] font-extrabold leading-tight text-[#08090B]">{nomeConcurso(plan.contest).nome}</p>
-            {nomeConcurso(plan.contest).sigla && <p className="text-[12px] font-semibold text-[#64666D]">{nomeConcurso(plan.contest).sigla}</p>}
-          </div>
-          {plan.daysToExam !== null && plan.daysToExam >= 0 && (
-            <div className="flex items-center gap-2 rounded-xl bg-[#FDECEC] px-3 py-2 text-[12.5px] font-semibold text-[#8a1b14]">
-              <Target className="h-4 w-4" aria-hidden />
-              <span>Prova em {plan.daysToExam} dias</span>
-            </div>
-          )}
-          {plan.notes.map((n) => <p key={n} className="text-[12.5px] text-[#4D4D4D]">• {n}</p>)}
-          <div className="rounded-xl border border-[#E10600] bg-[#FFF6F5] p-3" data-testid="mentor-plano-hoje">
-            <div className="flex items-baseline justify-between gap-2">
-              <b className="text-[14px] text-[#08090B]">{rotuloHoje(agora)}</b>
-              {diaHoje && <span className="text-[12px] font-semibold text-[#64666D]">{fmt(diaHoje.minutes)} · {diaHoje.questions} questões</span>}
-            </div>
-            {diaHoje ? (
-              <>
-                <p className="text-[11.5px] text-[#64666D]">{diaHoje.theme}</p>
-                <ul className="mt-1.5 flex flex-col gap-1">
-                  {diaHoje.blocks.map((b, i) => (
-                    <li key={i} className="flex items-start gap-2 text-[12.5px] text-[#2a2c31]">
-                      <span className="mt-0.5 shrink-0 rounded px-1.5 py-px text-[10.5px] font-extrabold text-white" style={{ background: KIND_COLOR[b.kind] }}>{KIND[b.kind]}</span>
-                      <span><b>{b.subject}</b> · {fmt(b.minutes)} — {b.detail}</span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            ) : <p className="mt-1 text-[12.5px] text-[#2a2c31]">Hoje é dia de descanso no seu plano. Aproveite para recarregar.</p>}
-          </div>
-        </section>
+        <MentorPlanoHoje plan={plan} base={base} onNavigate={onNavigate} />
       )}
       {!ask && !plan && <p className="text-[12.5px] text-[#64666D]">Não consegui montar o plano agora. Tente de novo em instantes.</p>}
     </div>
