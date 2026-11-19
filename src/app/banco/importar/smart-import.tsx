@@ -19,6 +19,7 @@ interface Row extends Draft {
   open: boolean;
   subjectId: string | null;
   topicId: string | null;
+  createTopic: boolean;
   confirmBoard: boolean;
   allowDuplicate: boolean;
   removed: boolean;
@@ -87,7 +88,7 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
       const { analysis, destinos: d } = r.data;
       setDestinos(d);
       const matched = analysis.drafts.map((x) => matchDestino(d.subjects, x.discipline, x.topic));
-      setRows(analysis.drafts.map((x, i) => ({ ...x, selected: x.duplicate === "inedita", open: false, subjectId: matched[i]!.subjectId, topicId: matched[i]!.topicId, confirmBoard: false, allowDuplicate: false, removed: false })));
+      setRows(analysis.drafts.map((x, i) => ({ ...x, selected: x.duplicate === "inedita", open: false, subjectId: matched[i]!.subjectId, topicId: matched[i]!.topicId, createTopic: true, confirmBoard: false, allowDuplicate: false, removed: false })));
       const sug = matched.find((m) => m.subjectId)?.subjectId ?? analysis.drafts.find((x) => x.suggestedSubjectId)?.suggestedSubjectId;
       if (sug) {
         setSubjectId(sug);
@@ -124,6 +125,7 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
       raw: r.raw,
       subjectId: r.subjectId,
       topicId: r.subjectId ? r.topicId : null,
+      newTopicName: r.createTopic && r.topic && !r.topicId && (r.subjectId || subjectId) ? r.topic.slice(0, 200) : null,
       confirmBoard: r.confirmBoard,
       allowDuplicate: r.allowDuplicate,
       duplicate: r.duplicate,
@@ -345,6 +347,9 @@ function QuestionCard({ r, destinos, patch }: { r: Row; destinos: DestinoTree | 
                 <option value="">Sem assunto específico</option>
                 {own?.topics.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
               </select>
+              {r.topic && !r.topicId && (
+                <label className="mt-2 flex items-start gap-2 text-[13px]"><input type="checkbox" className="mt-0.5 h-4 w-4 accent-[#e10600]" checked={r.createTopic} onChange={(e) => patch({ createTopic: e.target.checked })} /> <span>Criar o assunto “{r.topic}” nesta matéria (não existe ainda)</span></label>
+              )}
             </Field>
           </div>
           {(r.baseTextCode || r.baseText) && (

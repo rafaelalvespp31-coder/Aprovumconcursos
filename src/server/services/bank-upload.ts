@@ -326,6 +326,7 @@ export const smartItemSchema = z.object({
   raw: z.string().max(80000),
   subjectId: z.string().uuid().nullable(),
   topicId: z.string().uuid().nullable(),
+  newTopicName: z.string().trim().min(2).max(200).nullable().optional(),
   confirmBoard: z.boolean(),
   allowDuplicate: z.boolean(),
   duplicate: z.enum(["inedita", "ja_cadastrada", "repetida_no_lote"]),
@@ -360,6 +361,7 @@ async function ensureBaseText(db: ReturnType<typeof createAdminClient>, staffId:
 
 /** Salva as questões revisadas na pasta escolhida. Cada questão tem resultado próprio; uma falha não desfaz as outras. */
 export async function smartImport(staff: BankStaff, items: SmartItemInput[], dest: { subjectId: string; topicId: string | null }, origem: string): Promise<SmartImportResult> {
+  const topicCache = new Map<string, string>();
   if (!staff.roles.autor) throw new UserFacingError("Somente autores cadastram questões.", "forbidden");
   if (!items.length) throw new UserFacingError("Nenhuma questão selecionada.", "invalid_input");
   const db = createAdminClient();
@@ -407,8 +409,10 @@ export async function smartImport(staff: BankStaff, items: SmartItemInput[], des
         continue;
       }
       const subjectId = it.subjectId ?? dest.subjectId;
-      const topicId = it.subjectId ? it.topicId : (it.topicId ?? dest.topicId);
+      let topicId = it.subjectId ? it.topicId : (it.topicId ?? dest.topicId);
       if (it.subjectId) await checkDest(it.subjectId, it.topicId);
+      // Assunto lido do texto que ainda não existe na matéria: cria (ou reaproveita) só quando o administrador deixou marcado.
+      if (!topicId && it.newTopicName) topicId = await ensureTopic(subjectId, [it.newTopicName], topicCache);
       const fake: ParsedBankQuestion = { number: String(i + 1), line: 0, subject: "", topicPath: [], board: it.board, year: it.year, exam: it.examLine, organ: it.organ, role: it.role, difficulty: "dificil", type: it.type, caseContext: null, statement: it.statement, options: [], answer: null, justification: null, legalBasis: null };
       const ex = await ensureExamAndSource(staff, l, fake, examCache);
       if (quick && !verified.has(ex.source)) { await authorizeSource(staff, ex.source); verified.add(ex.source); }
