@@ -28,7 +28,8 @@ export function novoDitado(largo: boolean, so = false): EstadoDitado {
   return { W, ncols, colW, margem, y: 8, colY: Array(ncols).fill(0), rowTop: 0, col: -1, caixas: 0, temCaixa: false, cenas: {}, camadas: 0, pirY: 0, so, yL: -1, yR: -1, ym: 0, linhasTab: [], corConta: 0, marcos: 0, resumo: false, resumoY: 0, itens: [] };
 }
 
-const cw = (tam: number) => tam * 0.56;
+/** Largura média de uma letra da escrita à mão (medida nos glifos: ~0,65 do corpo; caixa-alta ~0,74). */
+const cw = (tam: number) => tam * 0.7;
 const tx = (x: number, y: number, s: string, cor: Cor, tam: number, d: number): ItemDesenho => ({ t: "texto", x: Math.max(0, Math.round(x)), y: Math.round(y), s: s.slice(0, 40), cor, tam, d });
 const lin = (x1: number, y1: number, x2: number, y2: number, cor: Cor, d: number, seta?: boolean): ItemDesenho => ({ t: "linha", x1: Math.max(0, Math.round(x1)), y1: Math.round(y1), x2: Math.max(0, Math.round(x2)), y2: Math.round(y2), cor, d, seta });
 

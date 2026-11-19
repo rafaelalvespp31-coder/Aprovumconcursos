@@ -178,3 +178,6 @@
 .lz-gs path { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .lz-gs path.lz-gl { stroke-dasharray: 1; stroke-dashoffset: 1; animation: lz-gl 200ms cubic-bezier(.42,0,.58,1) both; }
 .lz-pronto .lz-gs path.lz-gl { animation: none; stroke-dashoffset: 0; }
+
+/* Celular: o ícone e a logo ficavam por cima do texto escrito */
+@media (max-width: 720px) { .lz-ico, .lz-logo { display: none; } }
