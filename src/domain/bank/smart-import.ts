@@ -96,7 +96,7 @@ function splitHeader(line: string): { board: string; year: number; rest: string 
 }
 
 function splitExamLine(rest: string): { role: string | null; organ: string | null } {
-  const m = rest.match(/^(.*?)\s*\(([^)]+)\)\s*(?:\/\s*(.+))?$/);
+  const m = rest.match(/^(.*?)\s*\(((?:[^()]|\([^()]*\))+)\)\s*(?:\/\s*(.+))?$/);
   if (m) return { role: [m[1]!.trim(), m[3]?.trim()].filter(Boolean).join(" / ") || null, organ: m[2]!.trim() };
   return { role: rest || null, organ: null };
 }
@@ -120,8 +120,8 @@ function blocks(lines: string[]): string[][] {
 
 /** Quantidade estimada de questões (para mostrar antes de analisar). */
 export function estimateQuestions(text: string): number {
-  const lines = text.replace(/\r\n?/g, "\n").split("\n");
   if (!text.trim()) return 0;
+  const lines = preprocessTec(text.replace(/\r\n?/g, "\n")).split("\n");
   return blocks(lines).filter((b) => b.some((l) => l.trim())).length;
 }
 
@@ -322,8 +322,47 @@ function detectLooseOptions(body: string[]): { options: SmartOption[]; firstOpti
   return { options: pick.map((text) => ({ label: "", text })), firstOptionIndex: ask + 1 + (tail.findIndex((x) => x.trim()) < 0 ? 0 : tail.findIndex((x) => x.trim())) };
 }
 
+/**
+ * Formato copiado do TEC Concursos: links em markdown, "#id BANCA - ano - concurso",
+ * Matéria/Assunto antes do cabeçalho, número da questão solto e alternativas "* A" com o texto na linha seguinte.
+ * Converte para o formato que o analisador já entende, sem alterar o conteúdo da questão.
+ */
+function preprocessTec(text: string): string {
+  let t = text.replace(/\[([^\]]*)\]\((?:https?:\/\/|\/)[^)\s]*\)/g, "$1");
+  if (!/^\s*#\d{3,}\b/m.test(t) && !/^\s*[*•-]\s*\(?[A-Ea-e]\)?\s*$/m.test(t)) return t;
+  let lines = t.split("\n");
+  // Cabeçalho do TEC -> "BANCA — ano — resto"; leva Matéria/Assunto/número que vinham antes para depois dele.
+  const out: string[] = [];
+  for (const l of lines) {
+    const h = l.match(/^\s*#\d{3,}\s+(.+?)\s+-\s+((?:19|20)\d{2})\s+-\s+(.+?)\s*$/);
+    if (!h) { out.push(l); continue; }
+    const moved: string[] = [];
+    while (out.length) {
+      const prev = out[out.length - 1]!;
+      if (!prev.trim()) { out.pop(); continue; }
+      if (FIELD_DISC.test(prev) || FIELD_TOPIC.test(prev) || /^\s*\d{1,5}\s*$/.test(prev)) { moved.unshift(out.pop()!); continue; }
+      break;
+    }
+    const rest = h[3]!.replace(/\s*\(e mais \d+ concursos?\)\s*$/i, "");
+    out.push(`${h[1]} — ${h[2]} — ${rest}`, ...moved.filter((x) => !/^\s*\d{1,5}\s*$/.test(x)));
+  }
+  lines = out;
+  // "* A" + texto na linha de baixo -> "A) texto".
+  const res: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i]!.match(/^\s*[*•-]\s*\(?([A-Ea-e])\)?\s*$/);
+    if (m) {
+      let j = i + 1;
+      while (j < lines.length && !lines[j]!.trim()) j++;
+      if (j < lines.length) { res.push(`${m[1]!.toUpperCase()}) ${lines[j]!.trim()}`); i = j; continue; }
+    }
+    res.push(lines[i]!);
+  }
+  return res.join("\n");
+}
+
 export function parseSmart(input: string): SmartParse {
-  const text = input.replace(/\r\n?/g, "\n").replace(/ /g, " ");
+  const text = preprocessTec(input.replace(/\r\n?/g, "\n").replace(/ /g, " "));
   const lines = text.split("\n");
   const bl = blocks(lines);
   const drafts: SmartDraft[] = [];
