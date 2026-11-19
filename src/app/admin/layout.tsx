@@ -128,6 +128,12 @@ export default async function AdminLayout({
                 Depoimentos
               </Link>
               <Link
+                href="/admin/pagamentos"
+                className="text-destaque underline-offset-2 hover:underline"
+              >
+                Pagamentos
+              </Link>
+              <Link
                 href="/admin/indicacoes"
                 className="text-destaque underline-offset-2 hover:underline"
               >
