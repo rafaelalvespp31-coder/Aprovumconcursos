@@ -232,9 +232,10 @@ body.tt-imersivo .mentor-flut,body.tt-imersivo [data-testid="mentor-flutuante"],
 .tt-page{overscroll-behavior:contain;height:100dvh}
 @media (min-width:1280px){.tt-page-in{max-width:1000px}}
 
-/* barra de rolagem vermelho neon (sempre visível) nas telas do desafio */
-.lb,.tt-page,.lb-alunos{overflow-y:scroll;scrollbar-width:thin;scrollbar-color:#ff1f2d rgba(255,31,45,.12)}
-.lb::-webkit-scrollbar,.tt-page::-webkit-scrollbar,.lb-alunos::-webkit-scrollbar{width:12px}
-.lb::-webkit-scrollbar-track,.tt-page::-webkit-scrollbar-track,.lb-alunos::-webkit-scrollbar-track{background:rgba(255,31,45,.10);border-left:1px solid rgba(255,31,45,.25)}
-.lb::-webkit-scrollbar-thumb,.tt-page::-webkit-scrollbar-thumb,.lb-alunos::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#ff4d5a,#ff1f2d 50%,#e5000f);border-radius:8px;border:2px solid #0a0a0b;box-shadow:0 0 10px 2px rgba(255,31,45,.9),0 0 22px 4px rgba(255,31,45,.55)}
-.lb::-webkit-scrollbar-thumb:hover,.tt-page::-webkit-scrollbar-thumb:hover,.lb-alunos::-webkit-scrollbar-thumb:hover{background:linear-gradient(180deg,#ff8a93,#ff3b44 50%,#ff1f2d)}
+/* barra de rolagem da PÁGINA toda (vermelho neon reluzente, sempre visível); os cards não têm barra própria */
+.lb,.tt-page{overflow-y:scroll;scrollbar-width:auto;scrollbar-color:#ff1f2d #1a0507}
+.lb-alunos{max-height:none!important;overflow:visible!important}
+.lb::-webkit-scrollbar,.tt-page::-webkit-scrollbar{width:16px}
+.lb::-webkit-scrollbar-track,.tt-page::-webkit-scrollbar-track{background:#12040608;background:linear-gradient(90deg,#14050780,#2a0a0e);border-left:1px solid rgba(255,31,45,.55);box-shadow:inset 0 0 12px rgba(255,31,45,.35)}
+.lb::-webkit-scrollbar-thumb,.tt-page::-webkit-scrollbar-thumb{min-height:60px;border-radius:10px;border:2px solid #1a0507;background:linear-gradient(90deg,#ff6b74,#ff1f2d 45%,#ff0a1c);box-shadow:0 0 6px 1px #ff3b44,0 0 16px 3px rgba(255,31,45,.95),0 0 32px 6px rgba(255,31,45,.6),inset 0 0 6px rgba(255,255,255,.55)}
+.lb::-webkit-scrollbar-thumb:hover,.tt-page::-webkit-scrollbar-thumb:hover{background:linear-gradient(90deg,#ffb0b6,#ff4d5a 45%,#ff1f2d);box-shadow:0 0 8px 2px #ff6b74,0 0 22px 5px #ff1f2d,0 0 44px 10px rgba(255,31,45,.8),inset 0 0 8px rgba(255,255,255,.7)}
