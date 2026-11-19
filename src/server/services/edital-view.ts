@@ -139,7 +139,7 @@ export async function getPreparationTree(userId: string, id: string): Promise<Pr
     const lessons = (linksByTopic.get(t.id as string) ?? []).sort((a, b) => a.title.localeCompare(b.title, "pt-BR"));
     const status = t.match_status as TreeTopic["status"];
     const manual = t.manual_done === true;
-    const done = manual || isTopicDone(status, lessons.map((l) => l.pct));
+    const done = isTopicDone(status, lessons.map((l) => l.pct));
     const topic: TreeTopic = { id: t.id as string, code: (t.code as string | null) ?? null, depth: t.depth as number, title: t.title as string, page: (t.source_page as number | null) ?? null, status, lessons, done, manual };
     const arr = byDisc.get(t.discipline_id as string) ?? [];
     arr.push(topic);

@@ -53,12 +53,8 @@
 .mv-subs { margin: 0; padding: 4px 8px 8px; list-style: none; background: #fff; }
 .mv-st { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; padding: 12px 8px; border-bottom: 1px solid #eeeef2; }
 .mv-st:last-child { border-bottom: 0; }
-.mv-ck { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 2px solid var(--k); background: transparent; color: #fff; cursor: pointer; transition: background-color .16s, border-color .16s, transform .12s, box-shadow .16s; }
-.mv-ck:active:not(:disabled) { transform: scale(.92); }
-.mv-ck:focus-visible { outline: 3px solid #10b98180; outline-offset: 2px; }
-@media (hover: hover) { .mv-ck:hover:not([data-ok]) { background: #10b9811f; border-color: #10b981; box-shadow: 0 0 0 4px #10b9812e; } }
+.mv-ck { display: grid; cursor: default; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 50%; border: 2px solid var(--k); background: transparent; color: #fff; cursor: pointer; transition: background-color .16s, border-color .16s, transform .12s, box-shadow .16s; }
 .mv-ck[data-ok] { background: #10b981; border-color: #059669; box-shadow: 0 0 10px #10b98180; }
-.mv-ck:disabled { cursor: default; }
 .mv-sl { display: grid; gap: 3px; min-width: 0; }
 .mv-sn { overflow-wrap: anywhere; font: 500 15px/1.3 Inter, sans-serif; color: #15151a; }
 .mv-stc { font-variant-numeric: tabular-nums; color: #6b6b76; margin-right: 6px; font-weight: 700; }
@@ -96,3 +92,9 @@
 @media (hover: hover) { .mv-go[data-sub]:hover { filter: brightness(1.1); transform: translateY(-1px); } }
 @media (prefers-reduced-motion: no-preference) { .mv-go[data-sub]:not([data-feito]) { animation: mv-pulso 2.4s ease-in-out infinite; } }
 @keyframes mv-pulso { 0%, 100% { box-shadow: 0 6px 16px -4px rgba(217, 15, 28, .55), inset 0 1px 0 rgba(255, 255, 255, .35); } 50% { box-shadow: 0 8px 24px -2px rgba(255, 40, 50, .95), inset 0 1px 0 rgba(255, 255, 255, .35); } }
+
+/* Aula disponível (azul forte) e indisponível (vermelho forte) */
+.mv-pill[data-disp] { color: #fff; background: linear-gradient(180deg, #2f6bff, #1746c9); font-weight: 900; box-shadow: 0 4px 12px -3px rgba(23, 70, 201, .6); padding: 8px 14px; font-size: 12px; }
+.mv-pill[data-sem] { font-size: 12px; padding: 8px 14px; font-weight: 900; box-shadow: 0 4px 12px -3px rgba(217, 15, 28, .6); }
+.mv-sm[data-disp] { color: #1746c9; font-weight: 800; }
+.mv-sm[data-sem] { font-size: 13px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }

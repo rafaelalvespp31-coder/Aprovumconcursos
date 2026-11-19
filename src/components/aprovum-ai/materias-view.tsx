@@ -1,14 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState } from "react";
 import { Check, ChevronLeft, ChevronRight, Crosshair } from "lucide-react";
 import { orgImageFor } from "@/domain/edital/org-images";
 import { StartStudyDialog, type StartTheme } from "@/app/(app)/nova-trilha/start-dialog";
 import { materiaOf, materiaOrder } from "@/domain/strategic/materias";
 import { fold } from "@/domain/edital/text";
 import type { PreparationTree, TreeTopic } from "@/server/services/edital-view";
-import { toggleTopicDoneAction } from "@/app/(app)/meu-concurso/[id]/actions";
 import "./materias-view.css";
 
 const HUES = [352, 24, 42, 145, 188, 214, 262, 318];
@@ -28,27 +27,12 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
   const [q, setQ] = useState("");
   const [theme, setTheme] = useState<StartTheme | null>(null);
   const nq = fold(q.trim());
-  // Marcação pela bolinha: aparece na hora e volta atrás se o servidor não salvar.
-  const [marc, setMarc] = useState<Record<string, boolean>>({});
-  const [, start] = useTransition();
-  const feito = (t: TreeTopic) => marc[t.id] ?? t.done;
-  const alternar = (t: TreeTopic) => {
-    const novo = !feito(t);
-    setMarc((m) => ({ ...m, [t.id]: novo }));
-    start(async () => {
-      const r = await toggleTopicDoneAction(prep.id, t.id, novo).catch(() => ({ ok: false }));
-      if (!r.ok) setMarc((m) => ({ ...m, [t.id]: !novo }));
-    });
-  };
-  const Bolinha = ({ t }: { t: TreeTopic }) => {
-    const ok = feito(t);
-    const travada = ok && !t.manual && marc[t.id] === undefined; // concluída pelas aulas: não desmarca à mão
-    return (
-      <button type="button" className="mv-ck" data-ok={ok ? 1 : undefined} disabled={travada} onClick={() => alternar(t)} aria-pressed={ok} aria-label={`${ok ? "Desmarcar" : "Marcar como concluído"}: ${t.title}`} title={travada ? "Concluído pelas aulas" : ok ? "Desmarcar" : "Marcar como concluído"} data-testid="marcar-concluido">
-        {ok && <Check size={16} strokeWidth={3} aria-hidden />}
-      </button>
-    );
-  };
+  // A bolinha só indica: fica verde sozinha quando a aula é concluída (ou já foi estudada antes). Não se marca à mão.
+  const Bolinha = ({ t }: { t: TreeTopic }) => (
+    <span className="mv-ck" data-ok={t.done ? 1 : undefined} role="img" aria-label={`${t.done ? "Concluído" : "Não concluído"}: ${t.title}`}>
+      {t.done && <Check size={16} strokeWidth={3} aria-hidden />}
+    </span>
+  );
 
   const blocos = useMemo(
     () =>
@@ -139,22 +123,22 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
                                 <ChevronRight className="mv-tseta" size={16} aria-hidden />
                                 <span className="mv-tt">{t.code && <span className="mv-cod">{t.code}.</span>} {t.title}</span>
                               </span>
-                              <span className="mv-pill" data-sem={sk === "nao_encontrado" ? 1 : undefined}>{t.done && <Check size={14} aria-hidden />}{st.label}</span>
+                              <span className="mv-pill" data-sem={sk === "nao_encontrado" ? 1 : undefined} data-disp={sk !== "nao_encontrado" ? 1 : undefined}>{t.done && <Check size={14} aria-hidden />}{st.label}</span>
                             </summary>
                             <ul className="mv-subs" aria-label={`Conteúdo do tópico ${ti + 1}`}>
                               {subs.length === 0 && t.lessons.map((l) => (
-                                <li key={l.catalogId} className="mv-st" style={{ ["--k" as string]: feito(t) || l.done ? "#10b981" : st.cor }}>
+                                <li key={l.catalogId} className="mv-st" style={{ ["--k" as string]: t.done || l.done ? "#10b981" : st.cor }}>
                                   {t.lessons.length === 1 ? <Bolinha t={t} /> : <span className="mv-ck" data-ok={l.done ? 1 : undefined} aria-hidden>{l.done && <Check size={16} strokeWidth={3} />}</span>}
-                                  <span className="mv-sl"><span className="mv-sn">{l.title}</span><span className="mv-sm">{l.done ? "Concluída" : l.pct > 0 ? `${Math.round(l.pct)}% estudado` : "Aula disponível"}</span></span>
+                                  <span className="mv-sl"><span className="mv-sn">{l.title}</span><span className="mv-sm" data-disp={l.done ? undefined : 1}>{l.done ? "Concluída" : l.pct > 0 ? `${Math.round(l.pct)}% estudado` : "Aula disponível"}</span></span>
                                   <button type="button" className="mv-go" data-sub data-feito={l.done ? 1 : undefined} onClick={() => setTheme({ id: l.catalogId, title: l.title, discipline: d.name })}>{l.done ? "Revisar" : "Estudar"}</button>
                                 </li>
                               ))}
                               {subs.map((s) => {
                                 const ssk = statusKey(s);
                                 return (
-                                  <li key={s.id} className="mv-st" style={{ ["--k" as string]: feito(s) ? "#10b981" : STATUS[ssk]!.cor }}>
+                                  <li key={s.id} className="mv-st" style={{ ["--k" as string]: s.done ? "#10b981" : STATUS[ssk]!.cor }}>
                                     <Bolinha t={s} />
-                                    <span className="mv-sl"><span className="mv-sn">{s.code && <span className="mv-stc">{s.code}</span>}{s.title}</span><span className="mv-sm" data-sem={ssk === "nao_encontrado" ? 1 : undefined}>{STATUS[ssk]!.label}{s.lessons.length > 0 ? ` · ${s.lessons.length} aula${s.lessons.length > 1 ? "s" : ""}` : ""}</span></span>
+                                    <span className="mv-sl"><span className="mv-sn">{s.code && <span className="mv-stc">{s.code}</span>}{s.title}</span><span className="mv-sm" data-sem={ssk === "nao_encontrado" ? 1 : undefined} data-disp={ssk !== "nao_encontrado" ? 1 : undefined}>{STATUS[ssk]!.label}{s.lessons.length > 0 ? ` · ${s.lessons.length} aula${s.lessons.length > 1 ? "s" : ""}` : ""}</span></span>
                                     {s.lessons.length > 0 && <button type="button" className="mv-go" data-sub data-feito={s.done ? 1 : undefined} onClick={() => estudar(s, d.name, [])}>{s.done ? "Revisar" : "Estudar"}</button>}
                                   </li>
                                 );
