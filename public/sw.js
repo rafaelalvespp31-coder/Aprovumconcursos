@@ -5,7 +5,7 @@
  * - Nunca armazena respostas de API, ações (POST) nem páginas de conta.
  * - Cache privado é apagado no logout (mensagem "clear-private").
  */
-const VERSION = "v4"; // v4: ícone e mark do app = logo AV com caveira
+const VERSION = "v5"; // v5: avisos Web Push (notificações com o app fechado)
 const STATIC_CACHE = `na-static-${VERSION}`;
 const LESSON_CACHE = `na-aulas-${VERSION}`;
 const PRECACHE = ["/offline", "/icons/icon-192.png", "/icons/aprovum-mark.png", "/manifest.webmanifest"];
@@ -80,5 +80,38 @@ self.addEventListener("fetch", (event) => {
         }
         return (await caches.match("/offline")) || new Response("Sem conexão", { status: 503 });
       }),
+  );
+});
+
+/* Notificações Web Push: chegam com o app fechado (aparelho com o ícone instalado). */
+self.addEventListener("push", (event) => {
+  let d = {};
+  try { d = event.data ? event.data.json() : {}; } catch { d = { body: event.data ? event.data.text() : "" }; }
+  const title = d.title || "APROVUM";
+  event.waitUntil(
+    self.registration.showNotification(title, {
+      body: d.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/aprovum-mark.png",
+      tag: d.tag || undefined,
+      renotify: !!d.tag,
+      data: { url: typeof d.url === "string" && d.url.startsWith("/") ? d.url : "/painel" },
+    }),
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = (event.notification.data && event.notification.data.url) || "/painel";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const c of list) {
+        if ("focus" in c) {
+          if ("navigate" in c) c.navigate(url).catch(() => undefined);
+          return c.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    }),
   );
 });

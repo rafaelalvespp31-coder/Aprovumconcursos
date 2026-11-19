@@ -12,6 +12,7 @@ import { ProfileForm } from "./form";
 import { PainelAdmin, type AdminItem, type AdminNote } from "./painel-admin";
 import { listRaioXRequests, studentLabel } from "@/server/services/strategic";
 import { Indicacao } from "./indicacao";
+import { AvisosPush } from "./avisos-push";
 import { getMyReferral } from "@/server/services/referral";
 import { publicEnv } from "@/lib/env";
 import { PastelProfile } from "./pastel-profile";
@@ -75,6 +76,10 @@ export default async function ProfilePage() {
       <PastelCard noTilt className="p-6" testId="seus-dados-card">
         <h2 className="mb-3 text-[13px] font-bold">Seus dados</h2>
         <SeusDados />
+      </PastelCard>
+      <PastelCard noTilt className="p-6" testId="avisos-card">
+        <h2 className="mb-1 text-[13px] font-bold">Avisos no celular</h2>
+        <AvisosPush />
       </PastelCard>
       {indicacao?.code && (
         <PastelCard noTilt className="p-6" testId="indique">
