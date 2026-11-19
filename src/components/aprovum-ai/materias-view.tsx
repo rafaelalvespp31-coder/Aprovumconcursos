@@ -139,12 +139,12 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
                                 <ChevronRight className="mv-tseta" size={16} aria-hidden />
                                 <span className="mv-tt">{t.code && <span className="mv-cod">{t.code}.</span>} {t.title}</span>
                               </span>
-                              <span className="mv-pill">{t.done && <Check size={14} aria-hidden />}{st.label}</span>
+                              <span className="mv-pill" data-sem={sk === "nao_encontrado" ? 1 : undefined}>{t.done && <Check size={14} aria-hidden />}{st.label}</span>
                             </summary>
                             <ul className="mv-subs" aria-label={`Conteúdo do tópico ${ti + 1}`}>
                               {subs.length === 0 && t.lessons.map((l) => (
                                 <li key={l.catalogId} className="mv-st" style={{ ["--k" as string]: feito(t) || l.done ? "#10b981" : st.cor }}>
-                                  <Bolinha t={t} />
+                                  {t.lessons.length === 1 ? <Bolinha t={t} /> : <span className="mv-ck" data-ok={l.done ? 1 : undefined} aria-hidden>{l.done && <Check size={16} strokeWidth={3} />}</span>}
                                   <span className="mv-sl"><span className="mv-sn">{l.title}</span><span className="mv-sm">{l.done ? "Concluída" : l.pct > 0 ? `${Math.round(l.pct)}% estudado` : "Aula disponível"}</span></span>
                                   <button type="button" className="mv-go" data-sub data-feito={l.done ? 1 : undefined} onClick={() => setTheme({ id: l.catalogId, title: l.title, discipline: d.name })}>{l.done ? "Revisar" : "Estudar"}</button>
                                 </li>
@@ -154,7 +154,7 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
                                 return (
                                   <li key={s.id} className="mv-st" style={{ ["--k" as string]: feito(s) ? "#10b981" : STATUS[ssk]!.cor }}>
                                     <Bolinha t={s} />
-                                    <span className="mv-sl"><span className="mv-sn">{s.code && <span className="mv-stc">{s.code}</span>}{s.title}</span><span className="mv-sm">{STATUS[ssk]!.label}{s.lessons.length > 0 ? ` · ${s.lessons.length} aula${s.lessons.length > 1 ? "s" : ""}` : ""}</span></span>
+                                    <span className="mv-sl"><span className="mv-sn">{s.code && <span className="mv-stc">{s.code}</span>}{s.title}</span><span className="mv-sm" data-sem={ssk === "nao_encontrado" ? 1 : undefined}>{STATUS[ssk]!.label}{s.lessons.length > 0 ? ` · ${s.lessons.length} aula${s.lessons.length > 1 ? "s" : ""}` : ""}</span></span>
                                     {s.lessons.length > 0 && <button type="button" className="mv-go" data-sub data-feito={s.done ? 1 : undefined} onClick={() => estudar(s, d.name, [])}>{s.done ? "Revisar" : "Estudar"}</button>}
                                   </li>
                                 );
@@ -162,7 +162,7 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
                               {tem && subs.length > 0 && (
                                 <li className="mv-tudo"><button type="button" className="mv-go" data-feito={t.done ? 1 : undefined} onClick={() => estudar(t, d.name, subs)}>{t.done ? "Revisar tópico inteiro" : "Estudar tópico inteiro"}</button></li>
                               )}
-                              {subs.length === 0 && t.lessons.length === 0 && <li className="mv-vz">Sem aula disponível para este tópico ainda.</li>}
+                              {subs.length === 0 && t.lessons.length === 0 && <li className="mv-vz" data-sem>Sem aula disponível para este tópico ainda.</li>}
                             </ul>
                           </details>
                         );

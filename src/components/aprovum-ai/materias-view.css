@@ -83,3 +83,16 @@
   .mv-st .mv-go { grid-column: 1 / -1; width: 100%; }
 }
 @media (prefers-reduced-motion: reduce) { .mv-barra i, .mv-seta, .mv-tseta, .mv-go { transition: none; } }
+
+/* "Sem aula ainda": vermelho e negrito, para não passar despercebido */
+.mv-sm[data-sem], .mv-vz[data-sem] { color: #d90f1c; font-weight: 800; }
+.mv-pill[data-sem] { color: #fff; background: #d90f1c; font-weight: 800; }
+
+/* "Estudar": botão vermelho cheio, com ▶ e brilho, bem à vista (Revisar fica verde) */
+.mv-go[data-sub] { position: relative; min-height: 46px; padding: 0 20px; gap: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 900; letter-spacing: .12em; color: #fff; background: linear-gradient(180deg, #ff3b3b, #c4101b); box-shadow: 0 6px 16px -4px rgba(217, 15, 28, .65), inset 0 1px 0 rgba(255, 255, 255, .35); }
+.mv-go[data-sub]::before { content: "▶"; font-size: 11px; }
+.mv-go[data-sub][data-feito] { background: linear-gradient(180deg, #10b981, #047857); box-shadow: 0 6px 16px -4px rgba(16, 185, 129, .6), inset 0 1px 0 rgba(255, 255, 255, .35); }
+.mv-go[data-sub][data-feito]::before { content: "↺"; font-size: 14px; }
+@media (hover: hover) { .mv-go[data-sub]:hover { filter: brightness(1.1); transform: translateY(-1px); } }
+@media (prefers-reduced-motion: no-preference) { .mv-go[data-sub]:not([data-feito]) { animation: mv-pulso 2.4s ease-in-out infinite; } }
+@keyframes mv-pulso { 0%, 100% { box-shadow: 0 6px 16px -4px rgba(217, 15, 28, .55), inset 0 1px 0 rgba(255, 255, 255, .35); } 50% { box-shadow: 0 8px 24px -2px rgba(255, 40, 50, .95), inset 0 1px 0 rgba(255, 255, 255, .35); } }
