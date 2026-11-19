@@ -3449,6 +3449,17 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .is-escuro .mentor-painel-corpo [class*="text-[#64666D]"] { color: #9CA3AF; }
 .is-escuro .mentor-painel-corpo [class*="text-[#3A3C42]"] { color: #D1D5DB; }
 .is-escuro .mentor-painel-corpo [class*="text-[#E50914]"] { color: #FF4D4D; }
+/* Plano semanal no Mentor escuro: textos cinza-escuros ficavam ilegíveis sobre o fundo preto */
+.is-escuro .mentor-painel-corpo [class*="text-[#2a2c31]"],
+.is-escuro .mentor-painel-corpo [class*="text-[#2A2C31]"] { color: #F3F4F6; }
+.is-escuro .mentor-painel-corpo [class*="text-[#4D4D4D]"],
+.is-escuro .mentor-painel-corpo [class*="text-[#5C5C5C]"],
+.is-escuro .mentor-painel-corpo [class*="text-[#6B6E75]"] { color: #D1D5DB; }
+.is-escuro .mentor-painel-corpo [class*="text-[#64666D]"] { color: #B6BCC6; }
+.is-escuro .mentor-painel-corpo li[class*="bg-[#FFF6F5]"] { background: rgb(255 26 26 / 0.12); border-color: rgb(255 26 26 / 0.6); border-radius: 18px; }
+.is-escuro .mentor-painel-corpo [class*="bg-[#FDECEC]"] { background: rgb(255 26 26 / 0.16); color: #FFD0CC; }
+.is-escuro .mentor-painel-corpo [class*="text-[#8a1b14]"] { color: #FFD0CC; }
+.is-escuro .mentor-painel-corpo [class*="text-[#b3261e]"] { color: #FF8A80; }
 .is-escuro .mentor-painel-corpo li[class*="bg-white"] { background: rgb(255 255 255 / 0.04); border-color: rgb(255 255 255 / 0.09); border-radius: 18px; backdrop-filter: blur(2px); }
 .is-escuro .mentor-painel-corpo [class*="divide-[#ECEDF0]"] > * + * { border-color: rgb(255 255 255 / 0.08); }
 .is-escuro .mentor-painel-corpo [class*="bg-[#ECEDF0]"] { background: rgb(255 255 255 / 0.08); }

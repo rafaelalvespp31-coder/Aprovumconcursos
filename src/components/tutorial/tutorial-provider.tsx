@@ -8,6 +8,7 @@ import { passoValido, TOUR_ID, TUTORIAIS, tutorialPorId } from "@/domain/tutoria
 import type { EstadoTutoriais, ProgressoTutorial } from "@/server/services/tutorial";
 import { salvarProgressoTutorialAction } from "@/app/(app)/tutorial-actions";
 import type { Controle } from "./engine";
+import { GuiaInstalar } from "@/components/push/guia-instalar";
 
 interface Ctx { iniciar: (id: string, desde?: number) => void; abrirAjuda: () => void }
 const TutorialCtx = createContext<Ctx>({ iniciar: () => undefined, abrirAjuda: () => undefined });
@@ -131,6 +132,10 @@ export function TutorialProvider({ estado, loginId, children }: { estado: Estado
                 ? "Seja bem-vindo ao APROVUM! Preparamos uma experiência para você conhecer todas as ferramentas que vão ajudar na sua preparação. Vou te mostrar como utilizar cada recurso e aproveitar o máximo da plataforma."
                 : `Você parou no passo ${passoRetomar + 1} de ${totalTour} do tour guiado. Quer retomar daqui?`}
             </p>
+            <details className="tour-instalar">
+              <summary>Instale o app: ícone na tela do celular</summary>
+              <GuiaInstalar className="mt-2" />
+            </details>
             <div className="tour-acoes">
               {boasVindas === "novo" ? (
                 <>
@@ -168,6 +173,11 @@ export function TutorialProvider({ estado, loginId, children }: { estado: Estado
                   </button>
                 ) : <p className="tour-vazio">O tour completo está desativado no momento.</p>}
                 {p0?.ocultar && <button type="button" className="tour-linha" onClick={() => gravar(TOUR_ID, { ocultar: false })}><RotateCcw aria-hidden /><span><b>Voltar a mostrar boas-vindas no login</b><small>Hoje a janela está desligada</small></span></button>}
+              </section>
+              <section data-testid="ajuda-instalar">
+                <h3>Ícone na tela do celular e avisos</h3>
+                <p className="tour-vazio">Instale o APROVUM como app e ative os avisos (revisões e concursos chegam mesmo com o app fechado).</p>
+                <GuiaInstalar className="mt-2" />
               </section>
               <section>
                 <h3>Tutoriais por ferramenta</h3>

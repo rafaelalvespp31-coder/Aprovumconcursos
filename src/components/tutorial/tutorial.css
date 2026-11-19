@@ -139,3 +139,7 @@
   .tour-cam.trava, .tour-cam.trava b { animation: none !important; }
   .tour-cam b { display: none; }
 }
+
+/* Boas-vindas: como instalar o app (recolhível, herda a cor do cartão) */
+.tour-instalar { margin: 10px 0 2px; border: 1px solid currentColor; border-radius: 12px; padding: 8px 12px; font-size: 13px; opacity: .92; }
+.tour-instalar summary { cursor: pointer; font-weight: 700; }
