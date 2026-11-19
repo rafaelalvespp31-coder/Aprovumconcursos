@@ -143,3 +143,8 @@
 .lb-alunos .nm small.emj{color:#f5b942}
 .lb-alunos li:has(small.emj) .av i{background:#f5b942;animation:none}
 .lb-alunos li:has(small.emj) .lb-btn{background:#2a2a30;color:#f5b942;border-color:#f5b942;box-shadow:none;opacity:1}
+
+/* desktop largo: o lobby usa mais da tela */
+@media (min-width:1280px){.lb-in{max-width:1240px}}
+@media (min-width:1700px){.lb-in{max-width:1480px}}
+.lb{overscroll-behavior:contain;height:100dvh}

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SoldierAudio } from "@/components/knowledge-map/soldier-audio";
@@ -222,7 +223,19 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, onAim, shot, breathClock,
   );
 }
 
-export function TaticoView({ inicial, nivel, retomar }: { retomar: boolean; inicial: TaticoEstado; nivel: { level: number; into: number } }) {
+const semAssinatura = () => () => {};
+
+/**
+ * As telas do desafio (lobby, estande, resultado) são camadas de tela cheia. Elas saem do layout do app e vão para o
+ * <body>, para que o zoom, as transições e o overflow do conteúdo da página não cortem nem travem a rolagem.
+ */
+export function TaticoView(props: { retomar: boolean; inicial: TaticoEstado; nivel: { level: number; into: number } }) {
+  const montado = useSyncExternalStore(semAssinatura, () => true, () => false);
+  if (!montado) return null;
+  return createPortal(<TaticoViewInterno {...props} />, document.body);
+}
+
+function TaticoViewInterno({ inicial, nivel, retomar }: { retomar: boolean; inicial: TaticoEstado; nivel: { level: number; into: number } }) {
   const [s, setSraw] = useState<TaticoEstado>(inicial);
   // Já tem partida/fila ativa ao abrir (ex.: acabou de aceitar um desafio)? Passa pela tela de carregamento e cai no estande.
   // Pelo card do Modo Jogo sempre cai na página de desafiar alguém; só vai direto ao estande quando o desafio acabou de ser aceito
