@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { Bell, BellRing, Compass, GripHorizontal, Maximize2, Minus, RotateCcw } from "lucide-react";
 import { usePush } from "@/components/push/use-push";
 import { GuiaInstalar } from "@/components/push/guia-instalar";
@@ -60,6 +60,13 @@ const clamp = (p: Pos, w: number, h: number): Pos => ({
  * número de prioridades (arrastável); aberto, mostra as prioridades e o assistente guiado.
  * Carrega uma vez e só recalcula ao abrir, se os dados estiverem velhos ou a tela mudou.
  */
+const fraseTeaser = ({ nome, raiox, pending, sorteio }: { nome: string | null; raiox: boolean; pending: number; sorteio: number }) => {
+  const n = pending === 1 ? "1 novidade" : `${pending} novidades`;
+  const f = [`${n} para você.`, `passa aqui: ${n}.`, `olha só, ${n}.`, `tenho ${n} esperando.`, `bora ver? ${n}.`];
+  const t = f[Math.min(f.length - 1, Math.floor(sorteio * f.length))] as string;
+  return `${nome ? `${nome}, ` : ""}${raiox ? "seu Raio-X foi publicado! " : ""}${t}`;
+};
+
 export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: estados em memória (?mentor=…). */ demos?: Record<string, MentorPanelState> }) {
   const pathname = usePathname();
   const params = useSearchParams();
@@ -135,7 +142,10 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
   // Concursos abertos/previstos: o Mentor avisa de novo a cada dia (some quando o aluno toca em "Ver" ou "Ok").
   const hoje = brDay().day;
   const [concVisto, setConcVisto] = useState(() => (typeof window === "undefined" ? "" : read<string>(KEY_CONC, "")));
-  const concTexto = data?.state === "ok" && data.concursos ? textoAviso(data.concursos) : null;
+  const concRes = data?.state === "ok" ? data.concursos : null;
+  // Sorteia uma vez por carregamento (sem mudar a cada render).
+  const concTexto = useMemo(() => (concRes ? textoAviso(concRes) : null), [concRes]);
+  const [sorteio] = useState(() => Math.random());
   const concNovo = concTexto && concVisto !== hoje ? 1 : 0;
   const dispensarConc = () => { setConcVisto(hoje); save(KEY_CONC, hoje); };
   const pending = (data?.state === "ok" && !data.result.insufficientData ? data.visible.filter((r) => r.kind !== "manutencao").length : 0) + avisos + concNovo;
@@ -257,7 +267,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
         <div className={`mentor-flut ${vw - pos.dx - BUBBLE / 2 < vw / 2 ? "is-esquerda" : ""}`} style={{ right: pos.dx, bottom: pos.dy }} data-testid="mentor-flutuante" data-estado={data?.state ?? "carregando"}>
           {teaser && pending > 0 && (
             <button type="button" className="mentor-aviso" onClick={() => setOpenSaved(true)} data-testid="mentor-aviso">
-              {data?.state === "ok" && data.name ? `${data.name}, ` : ""}{avisos > 0 ? "seu Raio-X foi publicado! " : ""}tenho {pending === 1 ? "1 novidade" : `${pending} novidades`} para você.
+              {fraseTeaser({ nome: data?.state === "ok" ? data.name : null, raiox: avisos > 0, pending, sorteio })}
             </button>
           )}
           <button

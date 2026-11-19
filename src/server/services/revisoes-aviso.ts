@@ -1,6 +1,7 @@
 import "server-only";
 import { createAdminClient } from "../supabase";
 import { sendPushToUsers } from "./push";
+import { sortear } from "@/domain/mentor/variar";
 
 /** Lembrete de revisões vencidas, no celular de quem ativou os avisos. */
 export async function enviarLembreteRevisoes(): Promise<{ users: number; comRevisao: number; sent: number }> {
@@ -15,7 +16,7 @@ export async function enviarLembreteRevisoes(): Promise<{ users: number; comRevi
   }
   let sent = 0;
   for (const [id, n] of due) {
-    const r = await sendPushToUsers([id], { title: "Hora de revisar", body: n === 1 ? "Você tem 1 revisão pendente. Reforce agora e não deixe o conteúdo esfriar." : `Você tem ${n} revisões pendentes. Reforce agora e não deixe o conteúdo esfriar.`, url: "/revisoes", tag: "revisoes" });
+    const r = await sendPushToUsers([id], { title: sortear(["Hora de revisar", "Revisão na área", "Não deixe esfriar", "Reforce o que aprendeu"]), body: sortear([n === 1 ? "Você tem 1 revisão pendente. Reforce agora e não deixe o conteúdo esfriar." : `Você tem ${n} revisões pendentes. Reforce agora e não deixe o conteúdo esfriar.`, n === 1 ? "1 revisão esperando por você. Leva poucos minutos." : `${n} revisões esperando por você. Comece pela mais antiga.`, "Revisar hoje fixa o conteúdo para a prova. Toque e comece."]), url: "/revisoes", tag: "revisoes" });
     sent += r.sent;
   }
   return { users: users.length, comRevisao: due.size, sent };

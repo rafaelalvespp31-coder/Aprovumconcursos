@@ -1,6 +1,7 @@
 /** Aviso diário de concursos abertos e previstos (push no celular e faixa no Mentor). Puro, sem banco. */
 export interface ConcursoAviso { name: string; uf: string | null; status: string }
-export interface ResumoConcursos { abertos: number; previstos: number; destaque: ConcursoAviso | null }
+export interface ResumoConcursos { abertos: number; previstos: number; destaque: ConcursoAviso | null; /** Até 8 concursos do grupo em destaque; o aviso sorteia um a cada vez. */ destaques?: ConcursoAviso[] }
+import { sortear, type Rand } from "./mentor/variar";
 
 export const STATUS_ABERTO = "inscricoes_abertas";
 export const STATUS_PREVISTOS = ["previsto", "autorizado"] as const;
@@ -13,14 +14,18 @@ export function resumir(lista: ConcursoAviso[], hoje: Date = new Date()): Resumo
   const previstos = lista.filter((c) => (STATUS_PREVISTOS as readonly string[]).includes(c.status));
   const pool = abertos.length ? abertos : previstos;
   const dia = Math.floor(hoje.getTime() / 86_400_000);
-  return { abertos: abertos.length, previstos: previstos.length, destaque: pool.length ? (pool[dia % pool.length] ?? null) : null };
+  return { abertos: abertos.length, previstos: previstos.length, destaque: pool.length ? (pool[dia % pool.length] ?? null) : null, destaques: pool.slice(0, 8) };
 }
 
-/** Texto do aviso do dia; null quando não há concurso aberto nem previsto. */
-export function textoAviso(r: ResumoConcursos): { title: string; body: string } | null {
+/** Texto do aviso; muda de frase e de concurso em destaque a cada sorteio. null quando não há concurso aberto nem previsto. */
+export function textoAviso(r: ResumoConcursos, rand: Rand = Math.random): { title: string; body: string } | null {
   if (!r.abertos && !r.previstos) return null;
-  const partes = [r.abertos ? plural(r.abertos, "concurso aberto", "concursos abertos") : "", r.previstos ? plural(r.previstos, "previsto", "previstos") : ""].filter(Boolean);
-  const d = r.destaque;
-  const dest = d ? ` Destaque: ${d.name}${d.uf ? ` (${d.uf})` : ""}.` : "";
-  return { title: r.abertos ? "Concursos abertos agora" : "Concursos previstos", body: `${partes.join(" e ")}.${dest} Toque para ver.` };
+  const partes = [r.abertos ? plural(r.abertos, "concurso aberto", "concursos abertos") : "", r.previstos ? plural(r.previstos, "previsto", "previstos") : ""].filter(Boolean).join(" e ");
+  const d = r.destaques?.length ? sortear(r.destaques, rand) : r.destaque;
+  const nome = d ? `${d.name}${d.uf ? ` (${d.uf})` : ""}` : "";
+  const titulos = r.abertos ? ["Concursos abertos agora", "Inscrições abertas!", "Olho no edital", "Sua chance está aberta"] : ["Concursos previstos", "Edital a caminho", "Fique de olho", "Vem concurso por aí"];
+  const corpos = d
+    ? [`${partes}. Destaque: ${nome}. Toque para ver.`, `${nome} está em evidência. Temos ${partes}. Toque para ver.`, `Já viu ${nome}? No total: ${partes}. Toque para ver.`, `${partes}, e ${nome} merece sua atenção. Toque para ver.`]
+    : [`${partes}. Toque para ver.`, `Temos ${partes}. Toque para ver.`];
+  return { title: sortear(titulos, rand), body: sortear(corpos, rand) };
 }

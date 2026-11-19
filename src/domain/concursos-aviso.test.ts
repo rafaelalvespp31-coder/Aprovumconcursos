@@ -19,8 +19,13 @@ describe("aviso diário de concursos", () => {
     expect(a).not.toBe(b);
   });
   it("sem abertos usa os previstos; sem nada, não avisa", () => {
-    expect(textoAviso(resumir([L[2]!]))?.title).toBe("Concursos previstos");
+    expect(["Concursos previstos", "Edital a caminho", "Fique de olho", "Vem concurso por aí"]).toContain(textoAviso(resumir([L[2]!]))?.title);
     expect(textoAviso(resumir([]))).toBeNull();
     expect(textoAviso(resumir(L))?.body).toMatch(/2 concursos abertos e 1 previsto/);
+  });
+  it("varia frase e destaque entre sorteios", () => {
+    const r = resumir(L);
+    const corpos = new Set(Array.from({ length: 40 }, (_, i) => textoAviso(r, () => (i % 10) / 10)?.body));
+    expect(corpos.size).toBeGreaterThan(3);
   });
 });

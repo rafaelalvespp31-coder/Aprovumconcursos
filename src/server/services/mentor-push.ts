@@ -4,17 +4,19 @@ import { sendPushToUsers } from "./push";
 import { computeMentor } from "./mentor";
 import { getRaioXNotices } from "./raiox-notice";
 import { resumoConcursos } from "./concursos-aviso";
+import { sortear, type Rand } from "@/domain/mentor/variar";
 import { brDay } from "@/domain/plans/limits";
 
-/** Texto do aviso do Mentor: Raio-X publicado primeiro, depois a prioridade mais importante. */
-export function textoMentor(raiox: number, prioridades: string[], concursos = 0): { title: string; body: string; total: number } | null {
+/** Aviso do Mentor: sorteia entre Raio-X, cada prioridade e concursos, com frases diferentes. `total` alimenta o selo. */
+export function textoMentor(raiox: number, prioridades: string[], concursos = 0, rand: Rand = Math.random): { title: string; body: string; total: number } | null {
   const total = raiox + prioridades.length + concursos;
   if (!total) return null;
-  if (!raiox && !prioridades.length) return { title: "Mentor APROVUM", body: concursos === 1 ? "Há 1 concurso aberto ou previsto para você acompanhar." : `Há ${concursos} concursos abertos ou previstos para você acompanhar.`, total };
-  if (raiox) return { title: "Mentor APROVUM", body: raiox === 1 ? "Seu Raio-X foi publicado! Toque para ver." : `${raiox} Raio-X publicados! Toque para ver.`, total };
-  const [primeira] = prioridades;
-  const mais = prioridades.length > 1 ? ` (+${prioridades.length - 1})` : "";
-  return { title: "Mentor APROVUM", body: `${primeira}${mais}`, total };
+  const opcoes: Array<{ title: string; body: string }> = [];
+  const titulos = ["Mentor APROVUM", "Recado do Mentor", "Hora de evoluir", "Seu Mentor chamou"];
+  if (raiox) opcoes.push({ title: "Seu Raio-X foi publicado!", body: raiox === 1 ? "Seu Raio-X está pronto. Toque para ver." : `${raiox} Raio-X publicados! Toque para ver.` });
+  for (const p of prioridades) opcoes.push({ title: sortear(titulos, rand), body: sortear([p, `Prioridade de hoje: ${p}`, `Que tal agora? ${p}`], rand) });
+  if (concursos) opcoes.push({ title: sortear(["Concursos no radar", "Olho nos editais", "Mentor avisa"], rand), body: sortear([concursos === 1 ? "Há 1 concurso aberto ou previsto para acompanhar." : `Há ${concursos} concursos abertos ou previstos para acompanhar.`, "Tem concurso aberto ou previsto. Veja se combina com você."], rand) });
+  return { ...sortear(opcoes, rand), total };
 }
 
 /** Todo dia: leva as prioridades e avisos do Mentor ao celular de quem ativou os avisos (1 por aluno/dia). */

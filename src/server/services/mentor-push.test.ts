@@ -9,17 +9,17 @@ import { textoMentor } from "./mentor-push";
 
 describe("textoMentor", () => {
   it("não avisa sem novidades", () => expect(textoMentor(0, [])).toBeNull());
-  it("Raio-X tem prioridade", () => expect(textoMentor(1, ["x"])?.body).toContain("Raio-X"));
-  it("mostra a primeira prioridade e quantas mais", () => {
-    const t = textoMentor(0, ["Revise Matemática", "b", "c"]);
-    expect(t?.body).toBe("Revise Matemática (+2)");
-    expect(t?.total).toBe(3);
+  it("pode sortear o Raio-X", () => expect(textoMentor(1, ["x"], 0, () => 0)?.body).toContain("Raio-X"));
+  it("rotaciona entre prioridades e concursos", () => {
+    const vistos = new Set(Array.from({ length: 200 }, () => textoMentor(0, ["Revise Matemática", "Faça 10 questões"], 2)?.body));
+    expect(vistos.size).toBeGreaterThan(4);
+    expect(textoMentor(0, ["a", "b", "c"])?.total).toBe(3);
   });
 });
 
 describe("textoMentor com concursos", () => {
   it("só concursos ativos geram aviso e entram no selo", () => {
-    const t = textoMentor(0, [], 3);
+    const t = textoMentor(0, [], 3, () => 0);
     expect(t?.total).toBe(3);
     expect(t?.body).toContain("3 concursos");
   });
