@@ -1,5 +1,6 @@
 "use client";
 
+import { nomeConcurso } from "@/domain/mentor/nome-concurso";
 import { useState, useTransition } from "react";
 import { Send, Target, Pencil } from "lucide-react";
 import type { BlockKind, StudyPlan } from "@/domain/mentor/plan";
@@ -36,7 +37,7 @@ export function MentorGoalPlan({ goal, plan, name, onChange }: { goal: { contest
     <div className="flex flex-col gap-3" data-testid="mentor-objetivo">
       <div className="rounded-2xl rounded-tl-sm bg-[#111] p-3.5 text-white">
         <p className="text-[14px] font-bold leading-snug">
-          {ask ? <>{name ? `${name}, já` : "Já"} sabe qual concurso você quer ser aprovado?</> : <>Foco total: <span className="text-[#ff6b63]">{goal!.contest}</span></>}
+          {ask ? <>{name ? `${name}, já` : "Já"} sabe qual concurso você quer ser aprovado?</> : <>Seu plano está pronto. Foco total!</>}
         </p>
         {ask && <p className="mt-1 text-[12px] text-white/70">Me diga o concurso e o cargo (ex.: Polícia Penal MG, PRF, PF). Eu monto o seu plano: o que estudar, quais dias, quantas horas e questões.</p>}
       </div>
@@ -59,6 +60,11 @@ export function MentorGoalPlan({ goal, plan, name, onChange }: { goal: { contest
 
       {!ask && plan && (
         <section aria-label={`Plano de estudo para ${plan.contest}`} className="flex flex-col gap-2.5" data-testid="mentor-plano">
+          <div className="rounded-xl border border-[#E10600] bg-[#FFF6F5] px-3.5 py-3" data-testid="mentor-plano-concurso">
+            <p className="text-[10.5px] font-extrabold uppercase tracking-wider text-[#E50914]">Plano de estudo para</p>
+            <p className="mt-0.5 text-[17px] font-extrabold leading-tight text-[#08090B]">{nomeConcurso(plan.contest).nome}</p>
+            {nomeConcurso(plan.contest).sigla && <p className="text-[12px] font-semibold text-[#64666D]">{nomeConcurso(plan.contest).sigla}</p>}
+          </div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-xl bg-[#FDECEC] px-3 py-2 text-[12.5px] font-semibold text-[#8a1b14]">
             <Target className="h-4 w-4" aria-hidden />
             <span>{fmt(plan.weeklyMinutes)} por semana</span>

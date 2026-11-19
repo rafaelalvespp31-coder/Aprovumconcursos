@@ -3,12 +3,14 @@ import { createAdminClient } from "../supabase";
 import { sendPushToUsers } from "./push";
 import { computeMentor } from "./mentor";
 import { getRaioXNotices } from "./raiox-notice";
+import { resumoConcursos } from "./concursos-aviso";
 import { brDay } from "@/domain/plans/limits";
 
 /** Texto do aviso do Mentor: Raio-X publicado primeiro, depois a prioridade mais importante. */
-export function textoMentor(raiox: number, prioridades: string[]): { title: string; body: string; total: number } | null {
-  const total = raiox + prioridades.length;
+export function textoMentor(raiox: number, prioridades: string[], concursos = 0): { title: string; body: string; total: number } | null {
+  const total = raiox + prioridades.length + concursos;
   if (!total) return null;
+  if (!raiox && !prioridades.length) return { title: "Mentor APROVUM", body: concursos === 1 ? "Há 1 concurso aberto ou previsto para você acompanhar." : `Há ${concursos} concursos abertos ou previstos para você acompanhar.`, total };
   if (raiox) return { title: "Mentor APROVUM", body: raiox === 1 ? "Seu Raio-X foi publicado! Toque para ver." : `${raiox} Raio-X publicados! Toque para ver.`, total };
   const [primeira] = prioridades;
   const mais = prioridades.length > 1 ? ` (+${prioridades.length - 1})` : "";
@@ -24,13 +26,15 @@ export async function enviarAvisosMentor(): Promise<{ users: number; sent: numbe
   const { data: subs, error } = await db.from("push_subscriptions").select("user_id").limit(10000);
   if (error) throw new Error(error.message);
   const users = [...new Set((subs ?? []).map((s) => s.user_id as string))];
+  const rc = await resumoConcursos().catch(() => null);
+  const concAtivos = rc ? rc.abertos + rc.previstos : 0;
   let sent = 0;
   for (let i = 0; i < users.length; i += 5) {
     await Promise.all(users.slice(i, i + 5).map(async (id) => {
       try {
         const [m, rx] = await Promise.all([computeMentor(id), getRaioXNotices(id)]);
         const pri = m.result.insufficientData ? [] : m.visible.filter((r) => r.kind !== "manutencao").map((r) => r.explanation);
-        const t = textoMentor(rx.length, pri);
+        const t = textoMentor(rx.length, pri, concAtivos);
         if (!t) return;
         const r = await sendPushToUsers([id], { title: t.title, body: t.body, url: rx[0]?.href ?? "/painel", tag: "mentor-diario", badge: t.total });
         sent += r.sent;

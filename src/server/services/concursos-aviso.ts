@@ -19,12 +19,13 @@ export async function resumoConcursos(): Promise<ResumoConcursos> {
 /** Aviso diário no celular (1 por dia, para todos com avisos ativos) quando há concurso aberto ou previsto. */
 export async function enviarAvisoDiarioConcursos(): Promise<{ enviado: boolean; sent: number; motivo?: string }> {
   cache = null;
-  const texto = textoAviso(await resumoConcursos());
+  const resumo = await resumoConcursos();
+  const texto = textoAviso(resumo);
   if (!texto) return { enviado: false, sent: 0, motivo: "sem concursos abertos ou previstos" };
   const db = createAdminClient();
   const claim = await db.from("push_daily").insert({ kind: "concursos", day: brDay().day });
   if (claim.error) return { enviado: false, sent: 0, motivo: "já enviado hoje" };
-  const r = await sendPushToAudience("todos", { ...texto, url: "/concursos", tag: "concursos-diario" });
+  const r = await sendPushToAudience("todos", { ...texto, url: "/concursos", tag: "concursos-diario", badge: resumo.abertos + resumo.previstos });
   await db.from("push_daily").update({ sent: r.sent }).eq("kind", "concursos").eq("day", brDay().day);
   return { enviado: true, sent: r.sent };
 }
