@@ -63,7 +63,7 @@ export async function sendPushToSubs(subs: SubRow[], msg: PushMessage): Promise<
   for (let i = 0; i < subs.length; i += 20) {
     await Promise.all(subs.slice(i, i + 20).map(async (s) => {
       try {
-        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { vapidDetails: { subject, publicKey, privateKey }, TTL: 60 * 60 * 12, urgency: "normal" });
+        await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload, { vapidDetails: { subject, publicKey, privateKey }, TTL: 60 * 60 * 12, urgency: "high" });
         sent++;
       } catch (e) {
         const code = (e as { statusCode?: number }).statusCode;
