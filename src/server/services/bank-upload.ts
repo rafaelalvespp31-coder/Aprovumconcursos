@@ -302,7 +302,9 @@ export async function smartAnalyze(staff: BankStaff, text: string): Promise<Smar
     if (existing.has(h)) duplicate = "ja_cadastrada";
     else if (seen.has(h)) duplicate = "repetida_no_lote";
     seen.add(h);
-    return { ...d, duplicate, duplicateCode: existing.get(h) || null, suggestedSubjectId: d.discipline ? (findSubject(l, d.discipline)?.id ?? null) : null };
+    // Banca já cadastrada no banco (inclusive as confirmadas antes) deixa de ser "desconhecida".
+    const inDb = Boolean(d.board && findBoard(l, d.board));
+    return { ...d, boardKnown: d.boardKnown || inDb, issues: inDb ? d.issues.filter((x) => x !== "banca_desconhecida") : d.issues, duplicate, duplicateCode: existing.get(h) || null, suggestedSubjectId: d.discipline ? (findSubject(l, d.discipline)?.id ?? null) : null };
   });
   return { drafts, baseTexts: parsed.baseTexts };
 }
@@ -501,4 +503,11 @@ export async function loadDestinos(): Promise<DestinoTree> {
       topics: (t.data ?? []).filter((y) => y.subject_id === x.id).map((y) => ({ id: y.id as string, name: y.name as string, parentId: (y.parent_id as string) ?? null })),
     })),
   };
+}
+
+/** Grava na hora uma banca confirmada pelo administrador, para não pedir a confirmação de novo. */
+export async function saveBoard(staff: BankStaff, name: string): Promise<void> {
+  if (!staff.roles.autor) throw new UserFacingError("Somente autores cadastram bancas.", "forbidden");
+  const n = z.string().trim().min(2).max(120).parse(name);
+  await ensureBoard(await lookups(), n);
 }

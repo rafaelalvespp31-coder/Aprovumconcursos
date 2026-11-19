@@ -21,7 +21,7 @@ import {
   type SimilarHit,
 } from "@/server/services/bank";
 import type { BankStatus } from "@/domain/bank/labels";
-import { importBankUpload, loadDestinos, previewBankUpload, smartAnalyze, smartHistory, smartImport, smartItemSchema, type BankUploadPreview, type DestinoTree, type SmartAnalysis, type SmartHistoryRow, type SmartImportResult } from "@/server/services/bank-upload";
+import { importBankUpload, loadDestinos, saveBoard, previewBankUpload, smartAnalyze, smartHistory, smartImport, smartItemSchema, type BankUploadPreview, type DestinoTree, type SmartAnalysis, type SmartHistoryRow, type SmartImportResult } from "@/server/services/bank-upload";
 
 export interface BankResult<T = undefined> {
   ok: boolean;
@@ -153,4 +153,11 @@ export async function smartImportAction(items: unknown, dest: { subjectId: strin
 
 export async function smartHistoryAction(): Promise<BankResult<SmartHistoryRow[]>> {
   return run("smart_history", async () => smartHistory(await requireBankStaff()));
+}
+
+export async function saveBoardAction(name: string): Promise<BankResult> {
+  return run("smart_save_board", async () => {
+    await saveBoard(await requireBankStaff(), name);
+    return undefined;
+  });
 }

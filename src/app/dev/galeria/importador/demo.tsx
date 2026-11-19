@@ -13,6 +13,7 @@ export function ImportadorDemo() {
           analyze: async (t) => ({ ok: true, data: { destinos, analysis: { baseTexts: [], drafts: parseSmart(t).drafts.map((d, i) => ({ ...d, duplicate: i === 1 ? ("ja_cadastrada" as const) : ("inedita" as const), duplicateCode: i === 1 ? "Q-000123" : null, suggestedSubjectId: destinos.subjects[0]!.id })) } } }),
           save: async (items) => ({ ok: true, data: { importId: "x", imported: (items as unknown[]).length, published: 0, ignored: 0, errors: 0, results: (items as Array<{ key: string }>).map((i) => ({ key: i.key, status: "importada" as const, code: null, message: "Simulado." })) } }),
           history: async () => ({ ok: true, data: [] }),
+          saveBoard: async () => ({ ok: true }),
         }}
       />
     </div>

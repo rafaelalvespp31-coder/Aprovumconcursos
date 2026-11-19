@@ -11,6 +11,7 @@ export interface SmartActions {
   analyze: (text: string) => Promise<BankResult<{ analysis: SmartAnalysis; destinos: DestinoTree }>>;
   save: (items: unknown, dest: { subjectId: string; topicId: string | null }, origem: string) => Promise<BankResult<SmartImportResult>>;
   history: () => Promise<BankResult<SmartHistoryRow[]>>;
+  saveBoard: (name: string) => Promise<BankResult>;
 }
 
 type Draft = SmartAnalysis["drafts"][number];
@@ -92,6 +93,18 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
         setSubjectId(sug);
         const first = matched.find((m) => m.subjectId === sug && m.topicId);
         setTopicId(first?.topicId ?? "");
+      }
+    });
+  };
+  // Ao confirmar uma banca nova, ela é gravada na hora (vale para todas as questões do lote com a mesma banca).
+  const confirmBoard = (board: string, on: boolean) => {
+    const same = (b: string | null) => (b ?? "").trim().toLowerCase() === board.trim().toLowerCase();
+    setRows((cur) => cur && cur.map((r) => (same(r.board) ? { ...r, confirmBoard: on } : r)));
+    if (!on) return;
+    void actions.saveBoard(board).then((res) => {
+      if (!res.ok) {
+        setError(res.error ?? "Não foi possível gravar a banca.");
+        setRows((cur) => cur && cur.map((r) => (same(r.board) ? { ...r, confirmBoard: false } : r)));
       }
     });
   };
@@ -237,7 +250,7 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
           </DCard>
 
           {visible.map((r) => (
-            <QuestionCard key={r.key} r={r} destinos={destinos} patch={(p) => patch(r.key, p)} />
+            <QuestionCard key={r.key} r={r} destinos={destinos} patch={(p) => patch(r.key, p)} confirmBoard={confirmBoard} />
           ))}
 
           <DCard title="Pasta de destino">
@@ -269,7 +282,7 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
   );
 }
 
-function QuestionCard({ r, destinos, patch }: { r: Row; destinos: DestinoTree | null; patch: (p: Partial<Row>) => void }) {
+function QuestionCard({ r, destinos, patch, confirmBoard }: { r: Row; destinos: DestinoTree | null; patch: (p: Partial<Row>) => void; confirmBoard: (board: string, on: boolean) => void }) {
   const block = blocker(r);
   const own = destinos?.subjects.find((s) => s.id === r.subjectId) ?? null;
   const setOption = (i: number, text: string) => patch({ options: r.options.map((o, k) => (k === i ? { ...o, text } : o)) });
@@ -323,7 +336,7 @@ function QuestionCard({ r, destinos, patch }: { r: Row; destinos: DestinoTree | 
             <Field label="Órgão"><input className={dInput} value={r.organ ?? ""} onChange={(e) => patch({ organ: e.target.value || null })} /></Field>
           </div>
           {r.issues.includes("banca_desconhecida") && (
-            <label className="flex items-center gap-2 text-[14px]"><input type="checkbox" className="h-4 w-4 accent-[#e10600]" checked={r.confirmBoard} onChange={(e) => patch({ confirmBoard: e.target.checked })} /> Confirmo a banca “{r.board}” (será cadastrada como nova banca)</label>
+            <label className="flex items-center gap-2 text-[14px]"><input type="checkbox" className="h-4 w-4 accent-[#e10600]" checked={r.confirmBoard} onChange={(e) => confirmBoard(r.board!, e.target.checked)} /> Confirmo a banca “{r.board}” (fica gravada: não pergunto de novo)</label>
           )}
           {r.duplicate !== "inedita" && (
             <label className="flex items-center gap-2 text-[14px]"><input type="checkbox" className="h-4 w-4 accent-[#e10600]" checked={r.allowDuplicate} onChange={(e) => patch({ allowDuplicate: e.target.checked })} /> Importar mesmo assim (não é duplicada)</label>

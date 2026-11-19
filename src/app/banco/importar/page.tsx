@@ -1,6 +1,6 @@
 import { requireBankStaff } from "@/server/services/bank";
 import Link from "next/link";
-import { importBankUploadAction, previewBankUploadAction, smartAnalyzeAction, smartHistoryAction, smartImportAction } from "../actions";
+import { importBankUploadAction, previewBankUploadAction, smartAnalyzeAction, smartHistoryAction, saveBoardAction, smartImportAction } from "../actions";
 import { DNotice } from "../ui";
 import { BankUploadForm } from "./upload-form";
 import { SmartImporter } from "./smart-import";
@@ -18,7 +18,7 @@ export default async function BankImportPage({ searchParams }: { searchParams: P
         <Link href="/banco/importar?modo=modelo" className={tab(modo === "modelo")} aria-current={modo === "modelo" ? "page" : undefined}>Colar no modelo APROVUM</Link>
       </div>
       {modo === "inteligente" ? (
-        staff.roles.autor ? <SmartImporter actions={{ analyze: smartAnalyzeAction, save: smartImportAction, history: smartHistoryAction }} /> : <DNotice tone="erro">Somente autores cadastram questões.</DNotice>
+        staff.roles.autor ? <SmartImporter actions={{ analyze: smartAnalyzeAction, save: smartImportAction, history: smartHistoryAction, saveBoard: saveBoardAction }} /> : <DNotice tone="erro">Somente autores cadastram questões.</DNotice>
       ) : (
       <>
       <div>
