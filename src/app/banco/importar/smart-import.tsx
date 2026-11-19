@@ -296,6 +296,15 @@ function QuestionCard({ r, destinos, patch }: { r: Row; destinos: DestinoTree | 
       {!r.open && <p className="mt-2 line-clamp-2 text-[14px] text-white/75">{r.statement}</p>}
       {block && <p className="mt-1 text-[13px] text-amber-200">{block}</p>}
       {!r.open && pendingIssues.length > 0 && <p className="mt-1 text-[12px] text-white/50">{pendingIssues.map((i) => ISSUE_LABEL[i]).join(" · ")}</p>}
+      <div className="mt-3 grid gap-3 border-t border-white/10 pt-3 sm:grid-cols-[220px_1fr]">
+        <Field label="Gabarito">
+          <select className={dInput} value={answerValue} onChange={(e) => patch({ answer: e.target.value || null, answerSource: e.target.value ? (e.target.value === r.answer ? r.answerSource : "administrador") : null })}>
+            <option value="">Sem gabarito informado</option>
+            {r.type === "multipla_escolha" ? r.options.map((o) => <option key={o.label} value={o.label}>{o.label}</option>) : <><option value="certo">Certo</option><option value="errado">Errado</option></>}
+          </select>
+        </Field>
+        <Field label="Comentário da questão (o que veio no material, ou o seu)"><textarea className={`${dTextarea} min-h-20`} value={r.comment ?? ""} onChange={(e) => patch({ comment: e.target.value || null })} placeholder="Comentário / justificativa do gabarito" /></Field>
+      </div>
 
       {r.open && (
         <div className="mt-3 flex flex-col gap-3">
@@ -356,15 +365,6 @@ function QuestionCard({ r, destinos, patch }: { r: Row; destinos: DestinoTree | 
               {r.options.length < 5 && <button type="button" className={`${dButton("discreto")} self-start`} onClick={() => patch({ options: [...r.options, { label: "ABCDE"[r.options.length]!, text: "" }].filter((o) => o.text || true) })}>+ Alternativa</button>}
             </div>
           )}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Gabarito">
-              <select className={dInput} value={answerValue} onChange={(e) => patch({ answer: e.target.value || null, answerSource: e.target.value ? (e.target.value === r.answer ? r.answerSource : "administrador") : null })}>
-                <option value="">Sem gabarito informado</option>
-                {r.type === "multipla_escolha" ? r.options.map((o) => <option key={o.label} value={o.label}>{o.label}</option>) : <><option value="certo">Certo</option><option value="errado">Errado</option></>}
-              </select>
-            </Field>
-          </div>
-          <Field label="Comentário (só o que veio no material, ou o seu)"><textarea className={`${dTextarea} min-h-20`} value={r.comment ?? ""} onChange={(e) => patch({ comment: e.target.value || null })} /></Field>
           <details className="text-[13px] text-white/60"><summary className="cursor-pointer">Conteúdo bruto original</summary><pre className="mt-2 max-h-60 overflow-auto whitespace-pre-wrap rounded-md bg-black/40 p-2 text-white/70">{r.raw}</pre></details>
         </div>
       )}
