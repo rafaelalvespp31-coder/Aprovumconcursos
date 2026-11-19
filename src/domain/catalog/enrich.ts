@@ -100,14 +100,14 @@ ${needEx ? `
 === EXEMPLOS VISUAIS ===
 --- SEÇÃO: (título exato) ---
 :::exemplo
-Situação: …
-Pergunta: …
-Resposta: …
-Tirinha: [ … ]
-Carimbo: … | erro
-Esquema: { … }
+Situação: (caso curto sobre o assunto da seção)
+Pergunta: (o que decidir)
+Resposta: (resposta com **negrito** no essencial)
+Tirinha: [{"cenario": "rua", "legenda": "(quadro 1)", "personagens": [{"p": "investigado", "lado": "esq", "pose": "pega", "humor": "serio", "objeto": "celular"}, {"p": "cidadao", "lado": "dir", "pose": "fala", "humor": "surpreso"}], "fala": {"quem": 1, "texto": "(fala curta)"}}, {"cenario": "delegacia", "legenda": "(quadro 2)", "personagens": [{"p": "delegado", "lado": "centro", "pose": "fala", "humor": "serio"}], "fala": {"quem": 0, "texto": "(fala curta)"}, "efeito": "PÁ!"}]
+Carimbo: (resultado em poucas palavras) | ok
+Esquema: {"tipo": "fluxo", "titulo": "(título)", "passos": [{"rotulo": "(pergunta 1)", "estado": "ok", "detalhe": "(resposta)"}, {"rotulo": "(pergunta 2)", "estado": "ok"}, {"rotulo": "(conclusão)", "estado": "neutro"}]}
 :::
-(repita para TODAS as ${targets.length} seções da lista, uma por uma, na ordem)
+(repita para TODAS as ${targets.length} seções da lista, uma por uma, na ordem. TODO exemplo leva Tirinha, Carimbo e Esquema preenchidos com JSON válido: aspas retas, uma linha cada, nada de "…" nem de linha faltando. Exemplo sem Tirinha/Esquema é recusado.)
 ` : ""}${needFlash ? `
 === FLASHCARDS ===
 (EXATAMENTE 15 cartões, separados por linha em branco, cobrindo a aula INTEIRA: pelo menos um cartão por tema do material abaixo — conceitos, elementos, penas e prazos, exceções, pegadinhas e diferenças entre institutos parecidos —, sem repetir pergunta)
@@ -122,7 +122,7 @@ ${list}
 MATERIAL DA AULA (base dos flashcards)
 ${lessonDigest(lesson)}
 ` : ""}
-CONFERÊNCIA FINAL (por dentro, sem escrever): ${needEx ? `há um :::exemplo para cada uma das ${targets.length} seções? ` : ""}${needFlash ? "há 15 flashcards no formato certo? " : ""}Se faltar algo, complete antes de responder.`;
+CONFERÊNCIA FINAL (por dentro, sem escrever): ${needEx ? `há um :::exemplo para cada uma das ${targets.length} seções, e cada um com as linhas Tirinha, Carimbo e Esquema completas (JSON válido)? ` : ""}${needFlash ? "há 15 flashcards no formato certo? " : ""}Se faltar algo, complete antes de responder.`;
 }
 
 export interface EnrichParse {
