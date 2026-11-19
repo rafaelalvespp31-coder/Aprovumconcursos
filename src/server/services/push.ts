@@ -149,3 +149,40 @@ export async function notifyContestPush(c: { id: string; name: string; instituti
   });
   return { sent: r.sent };
 }
+
+export interface PushDeviceRow {
+  id: string;
+  student: string;
+  device: string;
+  since: string;
+  lastSentAt: string | null;
+}
+
+/** Descrição curta do aparelho a partir do user-agent (ex.: "Android · Chrome"). */
+export function describeDevice(ua: string | null): string {
+  const u = ua ?? "";
+  const os = /iPhone|iPad|iPod/i.test(u) ? "iPhone/iPad" : /Android/i.test(u) ? "Android" : /Windows/i.test(u) ? "Windows" : /Mac OS X|Macintosh/i.test(u) ? "Mac" : /Linux/i.test(u) ? "Linux" : "Aparelho";
+  const br = /Edg\//i.test(u) ? "Edge" : /OPR\/|Opera/i.test(u) ? "Opera" : /SamsungBrowser/i.test(u) ? "Samsung Internet" : /Firefox|FxiOS/i.test(u) ? "Firefox" : /Chrome|CriOS/i.test(u) ? "Chrome" : /Safari/i.test(u) ? "Safari" : "";
+  return br ? `${os} · ${br}` : os;
+}
+
+/** Quem tem aviso ativo, em qual aparelho, desde quando e quando recebeu o último aviso. */
+export async function listPushDevices(): Promise<PushDeviceRow[]> {
+  const db = createAdminClient();
+  const { data, error } = await db.from("push_subscriptions").select("id, user_id, user_agent, created_at, last_sent_at").order("created_at", { ascending: false }).limit(500);
+  if (error) throw new Error(error.message);
+  const rows = data ?? [];
+  const ids = [...new Set(rows.map((r) => r.user_id as string))];
+  const names = new Map<string, string>();
+  if (ids.length) {
+    const { data: p } = await db.from("profiles").select("id, display_name").in("id", ids);
+    for (const x of p ?? []) names.set(x.id as string, ((x.display_name as string | null) ?? "").trim());
+  }
+  return rows.map((r) => ({
+    id: r.id as string,
+    student: names.get(r.user_id as string) || "Sem nome",
+    device: describeDevice((r.user_agent as string | null) ?? null),
+    since: r.created_at as string,
+    lastSentAt: (r.last_sent_at as string | null) ?? null,
+  }));
+}
