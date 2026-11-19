@@ -15,6 +15,7 @@ import { logEvent } from "@/server/observability";
 import { getEstadoTutoriais } from "@/server/services/tutorial";
 import { BoasVindas } from "@/components/plano/boas-vindas";
 import { DesafioWatcher } from "@/components/tatico/desafio-watcher";
+import { InstalarAppCard } from "@/components/push/instalar-app-card";
 import { TutorialProvider } from "@/components/tutorial/tutorial-provider";
 
 export default async function AppLayout({
@@ -57,6 +58,7 @@ export default async function AppLayout({
       </PastelShell>
       <DesafioWatcher />
       <BoasVindas />
+      <InstalarAppCard />
       {promo && !promo.popupSeenAt && (
         <CaveiraPopup campaignId={promo.campaignId} days={Math.max(1, Math.round((new Date(promo.expiresAt).getTime() - new Date(promo.startsAt).getTime()) / 86_400_000))} markSeen={markPopupSeenAction} />
       )}
