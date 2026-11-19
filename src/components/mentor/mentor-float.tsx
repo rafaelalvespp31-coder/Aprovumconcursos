@@ -3,7 +3,9 @@
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState, useSyncExternalStore } from "react";
-import { Compass, GripHorizontal, Maximize2, Minus, RotateCcw } from "lucide-react";
+import { Bell, BellRing, Compass, GripHorizontal, Maximize2, Minus, RotateCcw } from "lucide-react";
+import { usePush } from "@/components/push/use-push";
+import { GuiaInstalar } from "@/components/push/guia-instalar";
 import { mentorPanelAction } from "@/app/(app)/mentor/actions";
 import { MentorPriorities } from "./mentor-priorities";
 import { MentorVoz } from "./mentor-voz";
@@ -76,6 +78,13 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
   const [savedPos, setPos] = useState<Pos | null>(() => (typeof window === "undefined" ? null : read<Pos | null>(KEY_POS, null)));
   const pos = clamp(savedPos ?? defaultPos(vw), vw, vh);
   const [teaser, setTeaser] = useState(false);
+  const push = usePush();
+  const [sinoAberto, setSinoAberto] = useState(false);
+  // Sininho: um toque já pede a permissão e ativa; nos outros casos mostra o que fazer.
+  const tocarSino = () => {
+    if (push.estado === "desligado" && !push.busy) void push.ligar();
+    setSinoAberto((v) => !v);
+  };
   const [dragging, setDragging] = useState(false);
   const loaded = useRef<{ at: number; path: string } | null>(null);
   const panelRef = useRef<HTMLDivElement>(null);
@@ -283,6 +292,10 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
               Mentor APROVUM
             </h2>
             {!mobile && <GripHorizontal className="h-4 w-4 text-white/60" aria-hidden />}
+            <button type="button" data-sem-arrastar onClick={tocarSino} className="mentor-topo-btn relative" aria-label={push.estado === "ligado" ? "Avisos no celular ativos" : "Ativar avisos no celular"} title={push.estado === "ligado" ? "Avisos ativos" : "Ativar avisos no celular"} aria-expanded={sinoAberto} data-testid="mentor-avisos">
+              {push.estado === "ligado" ? <BellRing className="h-4 w-4" aria-hidden /> : <Bell className="h-4 w-4" aria-hidden />}
+              {push.estado !== "ligado" && push.estado !== "carregando" && <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#FF3B30]" aria-hidden />}
+            </button>
             <Link href={`${base}/mentor`} onClick={() => setOpenSaved(false)} className="mentor-topo-btn" aria-label="Abrir o Mentor em tela cheia" title="Tela cheia">
               <Maximize2 className="h-4 w-4" aria-hidden />
             </Link>
@@ -299,6 +312,37 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
                 </button>
               ))}
               {refreshing && <span className="ml-auto self-center pr-1 text-[11px] text-[#64666D]">Atualizando…</span>}
+            </div>
+          )}
+
+          {sinoAberto && (
+            <div className="border-b border-[#E6E7EB] bg-[#F7F7F8] px-4 py-3 text-[13px] text-[#08090B]" role="region" aria-label="Avisos no celular" data-testid="mentor-avisos-painel">
+              <p className="font-bold">Avisos no celular</p>
+              {push.estado === "ligado" && (
+                <>
+                  <p className="mt-1 text-green-700">Ativos neste aparelho: revisões, concursos e novidades chegam mesmo com o app fechado.</p>
+                  <button type="button" onClick={() => void push.desligar()} disabled={push.busy} className="mt-2 rounded-lg border border-[#D8D8D8] px-3 py-1.5 text-[12.5px] font-bold disabled:opacity-60">Desativar</button>
+                </>
+              )}
+              {push.estado === "desligado" && (
+                <>
+                  <p className="mt-1">{push.busy ? "Aguardando a sua permissão…" : "Toque em permitir quando o celular perguntar."}</p>
+                  {!push.busy && <button type="button" onClick={() => void push.ligar()} className="mt-2 rounded-lg bg-[#0A0A0A] px-3 py-1.5 text-[12.5px] font-bold text-white">Ativar avisos</button>}
+                </>
+              )}
+              {push.estado === "bloqueado" && <p className="mt-1">Os avisos estão bloqueados neste aparelho. Libere nas configurações do navegador ou do app para a APROVUM e toque no sino de novo.</p>}
+              {push.estado === "sem-suporte" && <p className="mt-1">Este navegador não aceita avisos. No Android use o Chrome; no iPhone, o Safari com o app na Tela de Início.</p>}
+              {push.estado === "ios-instalar" && (
+                <>
+                  <p className="mt-1">No iPhone, os avisos só funcionam com o app instalado na Tela de Início:</p>
+                  <GuiaInstalar className="mt-2" />
+                </>
+              )}
+              {push.estado === "carregando" && <p className="mt-1">Verificando…</p>}
+              {push.msg && push.estado !== "ligado" && <p className="mt-1 text-red-700" role="alert">{push.msg}</p>}
+              {push.estado === "desligado" && (
+                <details className="mt-2"><summary className="cursor-pointer font-semibold">Colocar o app como ícone no celular</summary><GuiaInstalar className="mt-2" /></details>
+              )}
             </div>
           )}
 
