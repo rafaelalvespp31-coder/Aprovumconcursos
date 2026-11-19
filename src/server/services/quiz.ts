@@ -11,9 +11,9 @@ import { requireUser } from "../auth";
 import { getStudyStats } from "../queries";
 import { createAdminClient, createUserClient } from "../supabase";
 import { enforceRateLimit, UserFacingError } from "./trails";
+import { assertHasLives, getLives, loseLife, type LivesState } from "./game-lives";
 
-/** Vidas por rodada e meta do desafio do dia. A rodada vai até o próximo nível (10 questões). */
-export const LIVES = 3;
+/** Meta do desafio do dia. As vidas (gratuito 2, pago 5) ficam em game-lives e valem entre rodadas. */
 export const DAILY_GOAL = 20;
 
 interface QuizTopic {
@@ -175,6 +175,8 @@ export interface QuizRound {
   level: QuizLevel;
   /** Preenchido quando o tema pedido não tinha mais perguntas inéditas e a rodada mudou de tema. */
   movedFrom: string | null;
+  /** Vidas do aluno agora (valem entre rodadas; ao zerar o jogo trava por 24 h). */
+  lives: LivesState;
 }
 
 /** Dispositivos que o aluno já respondeu neste tema (certo ou errado), consultados direto no banco. */
@@ -230,6 +232,7 @@ async function freshGame(topicId: string, seen: Set<string>, rnd: () => number):
  */
 export async function startRound(topicId: string): Promise<QuizRound> {
   const user = await requireUser("/quiz");
+  const lives = await assertHasLives(user.id);
   await assertQuota(user.id, "jogo");
   const [topics, attempts] = await Promise.all([loadTopics(), myAttempts()]);
   const asked = topics.find((t) => t.id === topicId);
@@ -258,7 +261,7 @@ export async function startRound(topicId: string): Promise<QuizRound> {
   const s = summarize(attempts, [topic]);
   const rnd = seeded(`${topic.id}:${Date.now()}:${Math.random()}`);
   const items = shuffle(fresh, rnd).slice(0, lv.toNext).map(({ answers, ...rest }) => ({ ...rest, blanks: answers.length }));
-  return { topic: s.topics[0]!, items, level: lv, movedFrom: topic.id !== asked.id ? asked.title : null };
+  return { topic: s.topics[0]!, items, level: lv, movedFrom: topic.id !== asked.id ? asked.title : null, lives };
 }
 
 export interface QuizHelp {
@@ -277,6 +280,8 @@ export interface QuizCheck {
   /** Preenchido quando esta resposta completou 10 questões e o aluno subiu de nível. */
   levelUp: { from: QuizLevel; to: QuizLevel } | null;
   help: QuizHelp;
+  /** Vidas depois desta resposta; lockedUntil preenchido quando acabaram. */
+  lives: LivesState;
 }
 
 /** Quanto o aluno perde ao errar: metade do que ganharia ao acertar. */
@@ -286,6 +291,7 @@ export async function checkAnswer(topicId: string, nodeKey: string, given: strin
   const user = await requireUser("/quiz");
   // Um humano responde bem menos que isso por minuto; o teto barra automação (XP em massa).
   await enforceRateLimit(user.id, "quiz_check", 40);
+  await assertHasLives(user.id);
   await assertQuota(user.id, "jogo");
   const [topics, before] = await Promise.all([loadTopics(), myAttempts()]);
   const topic = topics.find((t) => t.id === topicId);
@@ -315,6 +321,7 @@ export async function checkAnswer(topicId: string, nodeKey: string, given: strin
   // Grava só pelo servidor, depois de conferir (o aluno não grava XP direto no banco).
   const { error } = repeated ? { error: null } : await createAdminClient().from("quiz_attempts").insert({ user_id: user.id, topic_id: topicId, node_key: nodeKey, correct, xp, tier: tier.tier, response_ms: typeof responseMs === "number" && Number.isFinite(responseMs) ? Math.min(3_600_000, Math.max(0, Math.round(responseMs))) : null });
   if (error) throw new Error(error.message);
+  const lives = !correct && !repeated ? await loseLife(user.id) : await getLives(user.id);
   const after: AttemptRow[] = repeated ? before : [{ topic_id: topicId, node_key: nodeKey, correct, xp, created_at: new Date().toISOString() }, ...before];
   const s = summarize(after, topics);
   const next = levelInfo(after.length);
@@ -326,6 +333,7 @@ export async function checkAnswer(topicId: string, nodeKey: string, given: strin
     totals: { xp: s.xp, todayHits: s.todayHits, mastered: s.topics.find((t) => t.id === topicId)?.mastered ?? 0 },
     level: next,
     levelUp: next.level > current.level ? { from: current, to: next } : null,
+    lives,
     help: game ? { explicacao: `**${game.subject}**\n\n${game.explanation}`, banca: null, dica: null } : helpFor({ ...topic, sections: await sectionsOf(topic.id) }, item),
   };
 }

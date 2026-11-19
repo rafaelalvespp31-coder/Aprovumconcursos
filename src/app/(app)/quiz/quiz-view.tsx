@@ -35,6 +35,7 @@ import type {
   RankingRow,
 } from "@/server/services/quiz";
 import { checkAnswerAction, startRoundAction } from "./actions";
+import { faltaPara } from "@/domain/quiz/lives";
 import { Countdown, QUESTION_SECONDS } from "./countdown";
 import { GameBanner } from "./game-banner";
 import { JogoHero } from "./jogo-hero";
@@ -110,7 +111,8 @@ export function QuizView({
     Array(initialRound.items[0]?.blanks ?? 0).fill(null),
   );
   const [check, setCheck] = useState<QuizCheck | null>(null);
-  const [hearts, setHearts] = useState(lives);
+  const [hearts, setHearts] = useState(initialRound.lives.left);
+  const [lockedUntil, setLockedUntil] = useState<string | null>(initialRound.lives.lockedUntil);
   const [hits, setHits] = useState(0);
   const [roundXp, setRoundXp] = useState(0);
   const [xp, setXp] = useState(home.xp);
@@ -291,7 +293,8 @@ export function QuizView({
       setMastered((m) => new Map(m).set(topic.id, r.check.totals.mastered));
       setRoundXp((x) => x + r.check.xp);
       if (r.check.correct) setHits((h) => h + 1);
-      else setHearts((h) => h - 1);
+      setHearts(r.check.lives.left);
+      setLockedUntil(r.check.lives.lockedUntil);
     });
   };
   const verify = () => {
@@ -328,7 +331,8 @@ export function QuizView({
       setHint(false);
       setRoundNo((x) => x + 1);
       setSlots(Array(r.round.items[0]?.blanks ?? 0).fill(null));
-      setHearts(lives);
+      setHearts(r.round.lives.left);
+      setLockedUntil(r.round.lives.lockedUntil);
       setHits(0);
       setRoundXp(0);
       setMastered((m) =>
@@ -522,6 +526,7 @@ export function QuizView({
               roundXp={roundXp}
               pending={pending}
               level={level}
+              lockedUntil={lockedUntil}
               onAgain={() => newRound()}
               onRanking={() => setDialog("ranking")}
             />
@@ -1048,9 +1053,11 @@ function RoundEnd({
   roundXp,
   pending,
   level,
+  lockedUntil,
   onAgain,
   onRanking,
 }: {
+  lockedUntil: string | null;
   hearts: number;
   hits: number;
   total: number;
@@ -1078,7 +1085,7 @@ function RoundEnd({
       </p>
       <p className="mt-2 text-[15px] text-white/85">
         {lost
-          ? "A banca venceu esta. Revise e volte para a próxima rodada."
+          ? `A banca venceu esta. ${lockedUntil ? `O Modo Jogo volta daqui a ${faltaPara(lockedUntil)}.` : "Revise e volte para a próxima rodada."}`
           : "Rodada concluída. Mantenha o ritmo."}
       </p>
       <div className="mx-auto mt-6 grid max-w-sm grid-cols-3 gap-3">
@@ -1095,6 +1102,11 @@ function RoundEnd({
           </div>
         ))}
       </div>
+      {lockedUntil ? (
+        <Link href="/questoes" className="mx-auto mt-7 flex min-h-14 w-full max-w-sm items-center justify-center gap-2 rounded-full bg-white text-[15px] font-black uppercase tracking-[0.1em] text-[#B10400]">
+          Estudar em Questões
+        </Link>
+      ) : (
       <button
         type="button"
         onClick={onAgain}
@@ -1104,6 +1116,7 @@ function RoundEnd({
         <RotateCcw className="h-5 w-5" aria-hidden />{" "}
         {pending ? "Preparando…" : "Nova rodada"}
       </button>
+      )}
       <p className="mt-4 text-[13px] text-white/80">
         Nível {level.level} • {level.patente} • faltam {level.toNext}{" "}
         {level.toNext === 1 ? "questão" : "questões"} para {level.nextPatente}

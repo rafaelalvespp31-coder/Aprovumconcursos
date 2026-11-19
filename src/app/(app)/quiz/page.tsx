@@ -1,4 +1,5 @@
-import { getQuizHome, startRound, DAILY_GOAL, LIVES } from "@/server/services/quiz";
+import { getQuizHome, startRound, DAILY_GOAL } from "@/server/services/quiz";
+import { getLives, mensagemTravado } from "@/server/services/game-lives";
 import { QuizView } from "./quiz-view";
 import { requireUser } from "@/server/auth";
 import { getPlanUsage } from "@/server/services/plans";
@@ -34,6 +35,23 @@ export default async function QuizPage({ searchParams }: { searchParams: Promise
     if (!(e instanceof UserFacingError)) throw e;
     limit = e.message;
     exhausted = e.code === "quiz_exhausted";
+    if (e.code === "quiz_locked") {
+      const l = await getLives(user.id);
+      limit = l.lockedUntil ? mensagemTravado(l.lockedUntil) : e.message;
+      return (
+        <div className="mx-auto max-w-2xl" data-testid="jogo-sem-vidas">
+          <h1 className="t-h1">Modo Jogo</h1>
+          <div className="mt-4">
+            <Notice tone="alerta" title={`Sem vidas (${l.max} de ${l.max} perdidas)`}>
+              {limit}
+            </Notice>
+          </div>
+          <ButtonLink href="/questoes" className="mt-4">
+            Estudar em Questões enquanto isso
+          </ButtonLink>
+        </div>
+      );
+    }
   }
   if (!round && exhausted) {
     return (
@@ -72,7 +90,7 @@ export default async function QuizPage({ searchParams }: { searchParams: Promise
           Plano gratuito: {usage.gameLeft === 1 ? "resta 1 questão" : `restam ${usage.gameLeft} questões`} no Modo Jogo hoje.
         </p>
       )}
-      <QuizView key={round.topic.id} home={home} initialRound={round} lives={LIVES} dailyGoal={DAILY_GOAL} />
+      <QuizView key={round.topic.id} home={home} initialRound={round} lives={round.lives.max} dailyGoal={DAILY_GOAL} />
     </>
   );
 }

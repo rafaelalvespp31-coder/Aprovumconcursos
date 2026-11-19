@@ -33,6 +33,7 @@ const TOPIC = "00000000-0000-4000-8000-0000000000t1".replace("t", "a");
 vi.mock("@/server/supabase", () => ({ createAdminClient: () => ({ from, rpc: async () => ({ data: [], error: null }) }), createUserClient: async () => ({ from }) }));
 vi.mock("@/server/auth", () => ({ requireUser: async () => ({ id: U, email: null }) }));
 vi.mock("@/server/services/plans", () => ({ assertQuota: async () => undefined }));
+vi.mock("@/server/services/game-lives", () => ({ assertHasLives: async () => ({ max: 2, left: 2, lockedUntil: null }), getLives: async () => ({ max: 2, left: 2, lockedUntil: null }), loseLife: async () => ({ max: 2, left: 1, lockedUntil: null }) }));
 vi.mock("@/server/services/disciplines", () => ({ ensureDisciplines: async () => undefined }));
 vi.mock("@/server/services/trails", () => ({ enforceRateLimit: async () => undefined, UserFacingError: class extends Error { code = "x"; } }));
 vi.mock("@/server/queries", () => ({ getStudyStats: async () => ({}) }));
