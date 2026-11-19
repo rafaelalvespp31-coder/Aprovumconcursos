@@ -1,65 +1,86 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 /**
  * Barra de rolagem própria (vermelho neon), sempre visível, para a tela que a contém (o pai mais próximo que rola).
- * A barra nativa depende do navegador/sistema (some sozinha, fica fina), por isso esta é desenhada e arrastável.
+ * Move o polegar direto no DOM (sem re-render do React) e responde na hora: arrastar rola junto e clicar no trilho
+ * pula para o ponto clicado.
  */
 export function BarraNeon() {
-  const marca = useRef<HTMLDivElement>(null);
-  const [m, setM] = useState({ top: 0, h: 0, ativo: false });
-  const arrasto = useRef<{ y: number; scroll: number } | null>(null);
+  const trilho = useRef<HTMLDivElement>(null);
+  const polegar = useRef<HTMLDivElement>(null);
+  const arrasto = useRef<{ dy: number } | null>(null);
 
   useEffect(() => {
-    const el = marca.current?.parentElement;
-    if (!el) return;
+    const t = trilho.current;
+    const th = polegar.current;
+    const el = t?.parentElement;
+    if (!t || !th || !el) return;
+    let raf = 0;
     const medir = () => {
+      raf = 0;
       const { scrollHeight, clientHeight, scrollTop } = el;
-      if (scrollHeight <= clientHeight + 1) return setM((o) => (o.ativo ? { top: 0, h: 0, ativo: false } : o));
+      if (scrollHeight <= clientHeight + 1) {
+        t.dataset.ativo = "false";
+        return;
+      }
+      t.dataset.ativo = "true";
       const h = Math.max(64, (clientHeight * clientHeight) / scrollHeight);
-      const top = (scrollTop / (scrollHeight - clientHeight)) * (clientHeight - h);
-      setM({ top, h, ativo: true });
+      th.style.height = `${h}px`;
+      th.style.transform = `translate3d(0,${(scrollTop / (scrollHeight - clientHeight)) * (clientHeight - h)}px,0)`;
     };
-    const ro = new ResizeObserver(medir);
+    const agendar = () => {
+      if (!raf) raf = requestAnimationFrame(medir);
+    };
+    const ro = new ResizeObserver(agendar);
     ro.observe(el);
     Array.from(el.children).forEach((c) => ro.observe(c));
-    const mo = new MutationObserver(medir);
+    const mo = new MutationObserver(agendar);
     mo.observe(el, { childList: true, subtree: true });
     el.addEventListener("scroll", medir, { passive: true });
-    window.addEventListener("resize", medir);
+    window.addEventListener("resize", agendar);
+    agendar();
     return () => {
+      cancelAnimationFrame(raf);
       ro.disconnect();
       mo.disconnect();
       el.removeEventListener("scroll", medir);
-      window.removeEventListener("resize", medir);
+      window.removeEventListener("resize", agendar);
     };
   }, []);
 
-  const el = () => marca.current?.parentElement ?? null;
+  /** Leva o centro do polegar até a posição do ponteiro e rola na hora. */
+  const irPara = (clientY: number, dy: number) => {
+    const t = trilho.current;
+    const th = polegar.current;
+    const el = t?.parentElement;
+    if (!t || !th || !el) return;
+    const h = th.offsetHeight;
+    const livre = el.clientHeight - h;
+    if (livre <= 0) return;
+    const topo = Math.min(livre, Math.max(0, clientY - dy - t.getBoundingClientRect().top));
+    el.scrollTo({ top: (topo / livre) * (el.scrollHeight - el.clientHeight), behavior: "instant" });
+  };
   const baixar = (e: React.PointerEvent) => {
-    const p = el();
-    if (!p) return;
+    const th = polegar.current;
+    if (!th) return;
+    e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
-    arrasto.current = { y: e.clientY, scroll: p.scrollTop };
+    const r = th.getBoundingClientRect();
+    // Clicou no polegar: segura onde pegou. Clicou no trilho: o polegar pula para lá (pelo centro) e já segue o mouse.
+    const dentro = e.target === th;
+    arrasto.current = { dy: dentro ? e.clientY - r.top : r.height / 2 };
+    if (!dentro) irPara(e.clientY, r.height / 2);
   };
   const mover = (e: React.PointerEvent) => {
-    const p = el();
-    const a = arrasto.current;
-    if (!p || !a) return;
-    const livre = p.clientHeight - m.h;
-    if (livre <= 0) return;
-    p.scrollTop = a.scroll + ((e.clientY - a.y) / livre) * (p.scrollHeight - p.clientHeight);
+    if (arrasto.current) irPara(e.clientY, arrasto.current.dy);
   };
-  const clicarTrilho = (e: React.MouseEvent) => {
-    const p = el();
-    if (!p || e.target !== e.currentTarget) return;
-    p.scrollBy({ top: (e.clientY < m.top + m.h / 2 ? -1 : 1) * p.clientHeight * 0.85, behavior: "smooth" });
-  };
+  const soltar = () => (arrasto.current = null);
 
   return (
-    <div ref={marca} className="bn-trilho" data-ativo={m.ativo} onClick={clicarTrilho} aria-hidden>
-      <div className="bn-polegar" style={{ height: m.h, transform: `translateY(${m.top}px)` }} onPointerDown={baixar} onPointerMove={mover} onPointerUp={() => (arrasto.current = null)} onPointerCancel={() => (arrasto.current = null)} />
+    <div ref={trilho} className="bn-trilho" data-ativo="false" onPointerDown={baixar} onPointerMove={mover} onPointerUp={soltar} onPointerCancel={soltar} aria-hidden>
+      <div ref={polegar} className="bn-polegar" />
     </div>
   );
 }

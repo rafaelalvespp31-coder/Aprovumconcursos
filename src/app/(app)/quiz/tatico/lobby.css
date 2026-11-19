@@ -1,6 +1,7 @@
 /* Lobby do Desafio Tático — mesma linguagem do estande: metal escuro, vermelho APROVUM, cantos chanfrados */
 .lb{position:fixed;inset:0;z-index:1000;overflow-y:auto;overflow-x:hidden;color:#fff;background:#050506;-webkit-overflow-scrolling:touch;font-family:"Barlow Semi Condensed",system-ui,sans-serif;--r:#e5202e;--r2:#c9141f;--g:#ffd24a}
-.lb-bg{position:fixed;inset:0;background:#000 url(/tatico/estande-sm.webp) center/cover;filter:brightness(.38) saturate(1.1);transform:scale(1.06);animation:lb-bg 18s ease-in-out infinite alternate}
+.lb-bg{position:fixed;inset:0;background:#000 url(/tatico/estande-sm.webp) center/cover;transform:scale(1.06);will-change:transform;animation:lb-bg 18s ease-in-out infinite alternate}
+.lb-bg::after{content:"";position:absolute;inset:0;background:rgba(0,0,0,.62)}
 .lb-bg::after{content:"";position:absolute;inset:0;background:radial-gradient(ellipse at 50% 0%,rgba(229,32,46,.28),transparent 60%),linear-gradient(180deg,rgba(0,0,0,.35),rgba(0,0,0,.88))}
 @keyframes lb-bg{to{transform:scale(1.12) translate3d(0,-1.2%,0)}}
 .lb-in{position:relative;max-width:1000px;margin:0 auto;padding:max(14px,env(safe-area-inset-top)) 16px 40px}

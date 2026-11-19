@@ -247,5 +247,6 @@ body.tt-imersivo .mentor-flut,body.tt-imersivo [data-testid="mentor-flutuante"],
 .lb::-webkit-scrollbar,.tt-page::-webkit-scrollbar{display:none!important;width:0}
 .bn-trilho{position:fixed;top:0;right:0;bottom:0;width:18px;z-index:1200;background:linear-gradient(90deg,rgba(20,5,7,.5),rgba(42,10,14,.92));border-left:1px solid rgba(255,31,45,.6);box-shadow:inset 0 0 12px rgba(255,31,45,.35);touch-action:none}
 .bn-trilho[data-ativo="false"]{display:none}
-.bn-polegar{position:absolute;left:2px;right:2px;top:0;border-radius:10px;cursor:grab;background:linear-gradient(90deg,#ff6b74,#ff1f2d 45%,#ff0a1c);box-shadow:0 0 6px 1px #ff3b44,0 0 16px 3px rgba(255,31,45,.95),0 0 32px 6px rgba(255,31,45,.6),inset 0 0 6px rgba(255,255,255,.55)}
+.bn-polegar{position:absolute;will-change:transform;left:2px;right:2px;top:0;border-radius:10px;cursor:grab;background:linear-gradient(90deg,#ff6b74,#ff1f2d 45%,#ff0a1c);box-shadow:0 0 6px 1px #ff3b44,0 0 16px 3px rgba(255,31,45,.95),0 0 32px 6px rgba(255,31,45,.6),inset 0 0 6px rgba(255,255,255,.55)}
 .bn-polegar:active{cursor:grabbing}
+.lb,.tt-page{scroll-behavior:auto!important}
