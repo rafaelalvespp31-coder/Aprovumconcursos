@@ -92,14 +92,13 @@ export function AnswerExplanation({
 /** Comentário do professor: bem sinalizado, para não se perder no meio das explicações. */
 function Comentario({ text }: { text: string }) {
   return (
-    <div className="mt-3 rounded-lg border-2 border-[#E50914]/45 bg-[#FFF5F5] p-3" data-testid="comentario-professor">
-      <p className="mb-1.5 flex items-center gap-2">
-        <span className="inline-flex items-center gap-1 rounded bg-[#E50914] px-2 py-0.5 text-[12px] font-extrabold uppercase tracking-[0.12em] text-white">
-          <Icon name="livro" className="size-3.5" /> Comentário
-        </span>
-        <span className="text-[12px] font-semibold text-[#B9000B]">explicação da questão</span>
-      </p>
-      <p className="whitespace-pre-line text-[15px] leading-relaxed text-tinta">{textoSemLatex(text)}</p>
+    <div className="mt-3 overflow-hidden rounded-xl border-2 border-[#10B981] border-l-[8px] bg-[#ECFDF5] shadow-[0_6px_20px_-8px_rgba(16,185,129,0.55)]" data-testid="comentario-professor">
+      <div className="flex items-center gap-2 bg-[#10B981] px-3 py-1.5">
+        <Icon name="livro" className="size-4 text-white" />
+        <span className="text-[14px] font-black uppercase tracking-[0.16em] text-white">Comentário</span>
+        <span className="ml-auto text-[12px] font-bold text-white/90">explicação da questão</span>
+      </div>
+      <p className="whitespace-pre-line p-3 text-[16px] font-medium leading-relaxed text-[#064E3B]">{textoSemLatex(text)}</p>
     </div>
   );
 }
