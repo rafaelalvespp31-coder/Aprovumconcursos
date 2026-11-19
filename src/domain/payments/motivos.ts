@@ -38,6 +38,7 @@ export function motivoPagamento(detail: string | null | undefined): string {
   if (!d) return "";
   const k = MOTIVOS[d];
   if (k) return k;
+  if (/^401\b/.test(d)) return "Falha de credencial do Mercado Pago (chave de produção inválida na época)";
   if (/^cc_rejected/.test(d)) return `Cartão recusado (${d})`;
   return d;
 }

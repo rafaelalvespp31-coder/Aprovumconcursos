@@ -53,7 +53,7 @@ export async function listAdminPayments(limit = 300): Promise<AdminPagamento[]> 
     else if (r.status === "cancelado") situacao = pix && r.mp_status_detail === "expired" ? "pix_expirado" : "cancelado";
     else if (pix) situacao = r.pix_expires_at && Date.parse(r.pix_expires_at) < agora ? "pix_expirado" : "pix_aguardando";
     else situacao = "pendente";
-    const motivo = r.status === "aprovado" ? "" : situacao === "pix_expirado" ? "PIX expirou sem pagamento" : situacao === "pix_aguardando" ? "Aguardando o aluno pagar o PIX" : motivoPagamento(r.mp_status_detail);
+    const motivo = r.status === "aprovado" ? "" : situacao === "pix_expirado" ? "PIX expirou sem pagamento" : situacao === "pix_aguardando" ? "Aguardando o aluno pagar o PIX" : motivoPagamento(r.mp_status_detail) || (situacao === "recusado" ? "Sem motivo registrado" : "");
     const p = nome.get(r.user_id);
     return {
       id: r.id, userId: r.user_id, nome: p?.display_name ?? null, email: email.get(r.user_id) ?? null, whatsapp: p?.whatsapp ?? null,

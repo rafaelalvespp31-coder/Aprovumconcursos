@@ -9,7 +9,7 @@ const fmt = (iso: string) => new Date(iso).toLocaleString("pt-BR", { timeZone: "
 const brl = (c: number) => `R$ ${(c / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`;
 
 const ROTULO: Record<PagamentoSituacao, string> = {
-  pago: "Pago", pix_aguardando: "PIX gerado (aguardando)", pix_expirado: "PIX expirado", recusado: "Cartão recusado",
+  pago: "Pago", pix_aguardando: "PIX gerado (aguardando)", pix_expirado: "PIX expirado", recusado: "Recusado",
   reembolsado: "Reembolsado", cancelado: "Cancelado", pendente: "Em análise",
 };
 const COR: Record<PagamentoSituacao, string> = {
