@@ -6,8 +6,8 @@
  *    chamadas concorrentes não duplicam; a constraint única no banco garante o mesmo).
  *  - Contexto mudou de verdade (ex.: aprovou um nível): grava uma nova linha; a anterior fica no
  *    histórico como concluída.
- *  - Dispensada: some por DISMISS_DAYS dias no mesmo contexto; depois disso, se a pendência
- *    continua, volta (não esconde para sempre algo ainda relevante).
+ *  - Dispensada: some para sempre (gravada no banco por chave, em qualquer contexto e sem prazo),
+ *    mesmo saindo e entrando de novo no app. Só o aluno a traz de volta (não existe expiração).
  *  - Concluída: só quando a recomendação deixa de valer pelos dados reais (o motor não a gera
  *    mais) — nunca por um clique.
  */
@@ -15,7 +15,6 @@ import { DEFAULT_MENTOR_CONFIG, pickTop, type MentorConfig, type Recommendation 
 
 export const RECOMMENDATION_STATUSES = ["nova", "visualizada", "concluida", "dispensada"] as const;
 export type RecommendationStatus = (typeof RECOMMENDATION_STATUSES)[number];
-export const DISMISS_DAYS = 7;
 
 export interface StoredRecommendation {
   id: string;
@@ -47,6 +46,8 @@ export function reconcile(all: readonly Recommendation[], stored: readonly Store
   const latest = new Map<string, StoredRecommendation>();
   for (const r of [...stored].sort((a, b) => a.createdAt.localeCompare(b.createdAt))) latest.set(id(r.key, r.contextHash), r);
   const current = new Set(all.map((r) => id(r.key, r.contextHash)));
+  // Dispensada vale para a chave toda: mudar o contexto ou passar dias não a traz de volta.
+  const dispensadas = new Set(stored.filter((r) => r.status === "dispensada").map((r) => r.key));
 
   const shown: VisibleRecommendation[] = [];
   const reactivate = new Set<string>();
@@ -55,17 +56,10 @@ export function reconcile(all: readonly Recommendation[], stored: readonly Store
     const k = id(r.key, r.contextHash);
     if (seen.has(k)) continue; // duplicada na própria lista
     seen.add(k);
+    if (dispensadas.has(r.key)) continue;
     const s = latest.get(k);
     if (!s) {
       shown.push({ ...r, storedId: null, status: "nova" });
-      continue;
-    }
-    if (s.status === "dispensada") {
-      const at = s.dismissedAt ? new Date(s.dismissedAt).getTime() : NaN;
-      const fresh = !Number.isNaN(at) && now.getTime() - at < DISMISS_DAYS * 86_400_000;
-      if (fresh) continue;
-      reactivate.add(s.id);
-      shown.push({ ...r, storedId: s.id, status: "nova" });
       continue;
     }
     if (s.status === "concluida") {

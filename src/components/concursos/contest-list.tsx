@@ -1,6 +1,6 @@
 import { CalendarDays, ExternalLink, GraduationCap, Landmark, MapPin, Star, Users, Wallet } from "lucide-react";
 import { CONTEST_STATUS, daysUntil } from "@/domain/gamification/home";
-import { UF_NAME, bucketOf, formatDescription, type Bucket } from "@/domain/concursos";
+import { UF_NAME, bucketOf, formatDescription, inlineParts, type Bucket } from "@/domain/concursos";
 import type { Contest } from "@/server/services/gamification";
 
 const dateBR = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("pt-BR", { timeZone: "America/Sao_Paulo" });
@@ -56,16 +56,35 @@ export function ContestList({ list, today, favs, onFav, empty, showForecast }: {
   );
 }
 
+/** Texto com **negrito** em destaque (os asteriscos nunca aparecem). */
+function Inline({ text }: { text: string }) {
+  return <>{inlineParts(text).map((p, i) => (p.b ? <strong key={i} className="cn-desc-forte">{p.t}</strong> : <span key={i}>{p.t}</span>))}</>;
+}
+
 /** Descrição organizada: parágrafos, cargos com requisito e salário, e listas. */
 function Descricao({ text }: { text: string }) {
   const blocks = formatDescription(text);
   return (
     <div className="cn-item-desc" data-testid="descricao-concurso">
       {blocks.map((b, i) =>
-        b.kind === "text" ? (
-          <p key={i} className="cn-desc-txt">{b.text}</p>
+        b.kind === "titulo" ? (
+          <p key={i} className={`cn-desc-titulo n${Math.min(b.nivel, 3)}`}>{b.text}</p>
+        ) : b.kind === "tabela" ? (
+          <div key={i} className="cn-desc-tabela" role="region" aria-label="Tabela" tabIndex={0}>
+            <table>
+              <thead><tr>{b.head.map((h, j) => <th key={j} className={j > 0 && b.rows.every((r) => /^[\d.,%R$\s*]+$/.test(r[j] ?? "")) ? "num" : undefined}>{h}</th>)}</tr></thead>
+              <tbody>
+                {b.rows.map((r, j) => {
+                  const total = /^\**\s*total/i.test(r[0] ?? "");
+                  return <tr key={j} className={total ? "total" : undefined}>{b.head.map((_, k) => <td key={k} className={k > 0 && /^[\d.,%R$\s*]+$/.test(r[k] ?? "") ? "num" : undefined}><Inline text={r[k] ?? ""} /></td>)}</tr>;
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : b.kind === "text" ? (
+          <p key={i} className="cn-desc-txt"><Inline text={b.text} /></p>
         ) : b.kind === "list" ? (
-          <ul key={i} className="cn-desc-lista">{b.items.map((t, j) => <li key={j}>{t}</li>)}</ul>
+          <ul key={i} className="cn-desc-lista">{b.items.map((t, j) => <li key={j}><Inline text={t} /></li>)}</ul>
         ) : (
           <ul key={i} className="cn-desc-cargos">
             {b.rows.map((r, j) => (

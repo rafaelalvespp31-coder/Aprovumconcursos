@@ -64,6 +64,8 @@ export function byUf<T extends { uf?: string | null }>(list: readonly T[]): Map<
 
 export type DescBlock =
   | { kind: "text"; text: string }
+  | { kind: "titulo"; text: string; nivel: number }
+  | { kind: "tabela"; head: string[]; rows: string[][] }
   | { kind: "list"; items: string[] }
   | { kind: "cargos"; rows: Array<{ cargo: string; requisito: string | null; valor: string | null }> };
 
@@ -73,6 +75,14 @@ const money = (v: string) => (/^\d{1,3}(\.\d{3})*(,\d{1,2})?$|^\d+(,\d{1,2})?$/.
  * Organiza a descrição digitada pelo admin (uma informação por linha): linhas "Cargo - requisito: valor"
  * viram uma tabela de cargos, linhas com "-" ou "•" viram lista e o resto vira parágrafo.
  */
+/** Pedaços de um texto com **negrito**; os marcadores não aparecem. */
+export function inlineParts(text: string): Array<{ t: string; b: boolean }> {
+  return text.split(/\*\*(.+?)\*\*/).map((t, k) => ({ t, b: k % 2 === 1 })).filter((x) => x.t !== "");
+}
+
+const cells = (l: string) => l.replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+const isSep = (l: string) => /^\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?$/.test(l);
+
 export function formatDescription(raw: string | null | undefined): DescBlock[] {
   const lines = (raw ?? "").split(/\r?\n/).map((l) => l.trim()).filter(Boolean);
   const blocks: DescBlock[] = [];
@@ -82,7 +92,19 @@ export function formatDescription(raw: string | null | undefined): DescBlock[] {
     else if (last && last.kind === "list" && b.kind === "list") last.items.push(...b.items);
     else blocks.push(b);
   };
-  for (const l of lines) {
+  for (let i = 0; i < lines.length; i++) {
+    const l = lines[i]!;
+    // Tabela em markdown: cabeçalho, linha "|---|---|" e as linhas de dados.
+    if (l.startsWith("|") && lines[i + 1] && isSep(lines[i + 1]!)) {
+      const rows: string[][] = [];
+      let j = i + 2;
+      while (j < lines.length && lines[j]!.startsWith("|")) rows.push(cells(lines[j++]!));
+      blocks.push({ kind: "tabela", head: cells(l), rows });
+      i = j - 1;
+      continue;
+    }
+    const h = /^(#{1,6})\s+(.+)$/.exec(l);
+    if (h) { blocks.push({ kind: "titulo", text: h[2]!.replace(/\*\*/g, "").trim(), nivel: h[1]!.length }); continue; }
     const cargo = /^(.{2,60}?)\s+[-–—]\s+(.+?):\s*(R\$\s*)?([\d.]+(?:,\d{1,2})?)(\s*(?:até|a)\s*(?:R\$\s*)?[\d.]+(?:,\d{1,2})?)?\s*$/.exec(l);
     if (cargo) push({ kind: "cargos", rows: [{ cargo: cargo[1]!.trim(), requisito: cargo[2]!.trim(), valor: money(`${cargo[4]}${cargo[5] ?? ""}`) }] });
     else if (/^[-•*]\s+/.test(l)) push({ kind: "list", items: [l.replace(/^[-•*]\s+/, "")] });

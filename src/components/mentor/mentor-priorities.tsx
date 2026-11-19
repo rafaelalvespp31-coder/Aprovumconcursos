@@ -39,7 +39,7 @@ export function MentorPriorities({
   const href = (h: string) => `${base}${h}`;
 
   const dismiss = async (r: VisibleRecommendation) => {
-    if (!r.storedId) return;
+    if (!r.storedId) return setNotice("Ainda estou registrando esta prioridade. Tente dispensar de novo em instantes.");
     const before = visible;
     setVisible((v) => v.filter((x) => x.key !== r.key));
     onVisibleChange?.(before.filter((x) => x.key !== r.key).map((x) => x.key));
@@ -50,7 +50,7 @@ export function MentorPriorities({
       onVisibleChange?.(before.map((x) => x.key));
       setNotice(res.error);
       if ("expired" in res && res.expired) onExpired?.();
-    } else setNotice("Recomendação dispensada. Ela volta se a pendência continuar.");
+    } else setNotice("Prioridade dispensada. Ela não volta mais.");
   };
   const opened = (r: VisibleRecommendation) => {
     if (!demo && r.storedId && r.status === "nova") void mentorStatusAction(r.storedId, "visualizada").catch(() => undefined);

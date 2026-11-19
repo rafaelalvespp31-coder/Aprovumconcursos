@@ -22,14 +22,18 @@ describe("histórico e deduplicação do Mentor", () => {
     expect(reconcile(all, [row({}), row({ id: "s0", createdAt: "2026-10-26T00:00:00.000Z" })], NOW).toInsert).toEqual([]);
   });
 
-  it("13. dispensada some no mesmo contexto por 7 dias; depois volta se ainda for pendência", () => {
+  it("13. dispensada some para sempre: nem o tempo nem a mudança de contexto a trazem de volta", () => {
     const { all } = recommend(snap([lesson()]));
     const recent = reconcile(all, [row({ status: "dispensada", dismissedAt: "2026-10-27T12:00:00.000Z" })], NOW);
     expect(recent.visible).toEqual([]);
     expect(recent.toInsert).toEqual([]);
-    const old = reconcile(all, [row({ status: "dispensada", dismissedAt: "2026-10-10T12:00:00.000Z" })], NOW);
-    expect(old.visible).toHaveLength(1);
-    expect(old.toReactivate).toEqual(["s1"]);
+    const old = reconcile(all, [row({ status: "dispensada", dismissedAt: "2026-01-10T12:00:00.000Z" })], NOW);
+    expect(old.visible).toEqual([]);
+    expect(old.toReactivate).toEqual([]);
+    // contexto diferente (ex.: avançou um nível) com a mesma chave dispensada continua oculto
+    const outro = reconcile(all, [row({ status: "dispensada", contextHash: "r1-l1", dismissedAt: "2026-10-27T12:00:00.000Z" })], NOW);
+    expect(outro.visible).toEqual([]);
+    expect(outro.toInsert).toEqual([]);
   });
 
   it("14. conclusão só quando os dados confirmam: a pendência resolvida vira concluída", () => {

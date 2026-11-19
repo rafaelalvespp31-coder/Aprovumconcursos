@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { UFS, bucketOf, byUf, countBuckets } from "./concursos";
+import { UFS, bucketOf, byUf, countBuckets, inlineParts } from "./concursos";
 
 describe("concursos", () => {
   it("tem os 26 estados e o DF", () => {
@@ -44,4 +44,19 @@ describe("formatDescription", () => {
     expect(b[2]).toEqual({ kind: "list", items: ["Prova objetiva", "Prova física"] });
   });
   it("aceita vazio", () => expect(formatDescription(null)).toEqual([]));
+});
+
+describe("descrição em markdown (PC TO)", () => {
+  const md = ["# CONCURSO PC TO — RESUMO", "## 2. CARGOS E VAGAS", "| Cargo | Vagas |", "|---|---:|", "| Delegado | 69 |", "| **Total** | **452** |", "Delegado exige **bacharelado em Direito**.", "- PcD: 10%;", "- Negros: 10%;"].join("\n");
+  it("vira título, tabela, texto e lista (sem símbolos soltos)", () => {
+    const b = formatDescription(md);
+    expect(b.map((x) => x.kind)).toEqual(["titulo", "titulo", "tabela", "text", "list"]);
+    const t = b[2] as { head: string[]; rows: string[][] };
+    expect(t.head).toEqual(["Cargo", "Vagas"]);
+    expect(t.rows).toEqual([["Delegado", "69"], ["**Total**", "**452**"]]);
+    expect((b[1] as { nivel: number }).nivel).toBe(2);
+  });
+  it("negrito vira trecho marcado", () => {
+    expect(inlineParts("exige **Direito** sim")).toEqual([{ t: "exige ", b: false }, { t: "Direito", b: true }, { t: " sim", b: false }]);
+  });
 });

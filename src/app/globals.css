@@ -3758,7 +3758,17 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .cn-dados > div { display: flex; justify-content: space-between; gap: 10px; }
 .cn-dados dt { display: flex; align-items: center; gap: 6px; color: #6b7280; flex: none; } .cn-dados dd { margin: 0; font-weight: 700; text-align: right; }
 .cn-item-desc { margin: 6px 0 2px; font-size: 13px; line-height: 1.45; color: #374151; display: grid; gap: 8px; }
-.cn-desc-txt { margin: 0; font-weight: 700; color: #111827; }
+.cn-desc-txt { margin: 0; font-weight: 500; color: #374151; }
+.cn-desc-forte { font-weight: 800; color: #b91c1c; }
+.cn-desc-titulo { margin: 8px 0 0; padding: 5px 10px; border-left: 4px solid #E10600; border-radius: 0 8px 8px 0; background: #fff1f0; font-size: 12.5px; font-weight: 800; letter-spacing: .03em; text-transform: uppercase; color: #8a1b14; }
+.cn-desc-titulo.n1 { margin-top: 2px; padding: 8px 12px; background: #E10600; border-color: #8a1b14; color: #fff; font-size: 13.5px; }
+.cn-desc-tabela { overflow-x: auto; border: 1px solid #e5e7eb; border-radius: 12px; background: #fff; }
+.cn-desc-tabela table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.cn-desc-tabela th { padding: 8px 12px; background: #08090B; color: #fff; text-align: left; font-weight: 800; font-size: 12px; letter-spacing: .03em; }
+.cn-desc-tabela td { padding: 8px 12px; border-top: 1px solid #eef0f3; color: #111827; }
+.cn-desc-tabela tr:nth-child(even) td { background: #f9fafb; }
+.cn-desc-tabela .num { text-align: right; font-variant-numeric: tabular-nums; font-weight: 800; }
+.cn-desc-tabela tr.total td { background: #fff1f0; color: #b91c1c; font-weight: 800; border-top: 2px solid #E10600; }
 .cn-desc-lista { margin: 0; padding-left: 18px; display: grid; gap: 3px; list-style: disc; }
 .cn-desc-cargos { margin: 0; padding: 0; list-style: none; border: 1px solid #e5e7eb; border-radius: 12px; overflow: hidden; background: #fff; }
 .cn-desc-cargos li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; }

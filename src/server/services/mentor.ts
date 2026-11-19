@@ -189,7 +189,12 @@ export async function computeMentor(userId: string): Promise<MentorView> {
     .order("created_at", { ascending: false })
     .limit(LIMIT.stored);
   if (stored.error) throw new Error(stored.error.message);
-  const rows: StoredRecommendation[] = ((stored.data ?? []) as StoredRow[]).map((r) => ({ id: r.id, key: r.dedupe_key, contextHash: r.context_hash, status: r.status, createdAt: r.created_at, dismissedAt: r.dismissed_at }));
+  // As dispensadas valem para sempre: busca todas à parte, mesmo as antigas além do limite do histórico recente.
+  const dispensadas = await admin.from("mentor_recommendations").select("id, dedupe_key, context_hash, status, created_at, dismissed_at").eq("user_id", userId).eq("status", "dispensada").limit(1000);
+  if (dispensadas.error) throw new Error(dispensadas.error.message);
+  const vistos = new Set(((stored.data ?? []) as StoredRow[]).map((r) => r.id));
+  const todas = [...((stored.data ?? []) as StoredRow[]), ...((dispensadas.data ?? []) as StoredRow[]).filter((r) => !vistos.has(r.id))];
+  const rows: StoredRecommendation[] = todas.map((r) => ({ id: r.id, key: r.dedupe_key, contextHash: r.context_hash, status: r.status, createdAt: r.created_at, dismissedAt: r.dismissed_at }));
   const rec = reconcile(result.all, rows, new Date(snapshot.now));
   const now = new Date().toISOString();
 
