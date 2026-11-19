@@ -1,5 +1,6 @@
 "use client";
 
+import { BarraNeon } from "./barra-neon";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { EVENTO_DESAFIO } from "@/components/tatico/desafio-watcher";
@@ -32,6 +33,7 @@ export function Lobby({ s, stats, erro, onRetomar, onEncerrar }: {
   const wr = stats && stats.partidas ? Math.round((100 * stats.vitorias) / stats.partidas) : 0;
   return (
     <div className="lb" data-testid="tatico-lobby">
+      <BarraNeon />
       <div className="lb-bg" aria-hidden />
       <div className="lb-in">
         <header className="lb-top">

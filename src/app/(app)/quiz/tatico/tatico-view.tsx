@@ -9,6 +9,7 @@ import { breathAt } from "@/components/knowledge-map/breath";
 import { EVENTO_DESAFIO } from "@/components/tatico/desafio-watcher";
 import { Carregando, EsperaEstande } from "./carregando";
 import { Lobby } from "./lobby";
+import { BarraNeon } from "./barra-neon";
 import { taticoStatsAction, taticoEncerrarTreinoAction, taticoEstadoAction, taticoMirarAction, taticoResponderAction, taticoRevisaoAction, taticoSairFilaAction } from "./actions";
 import type { TaticoEstado, TaticoQuestao, TaticoRevisao, TaticoStats } from "@/server/services/tatico";
 import "./tatico.css";
@@ -377,7 +378,7 @@ function TaticoViewInterno({ inicial, nivel, retomar }: { retomar: boolean; inic
 function Resultado({ s, rev, onNova }: { s: Partida; rev: TaticoRevisao; onNova: () => void }) {
   const win = s.winner === true;
   return (
-    <div className="tt-page" data-testid="tatico-resultado"><div className="tt-page-in">
+    <div className="tt-page" data-testid="tatico-resultado"><BarraNeon /><div className="tt-page-in">
       <div className="rounded-[16px] p-6 text-center text-white" style={{ background: win ? "linear-gradient(160deg,#052e16,#000)" : "linear-gradient(160deg,#3b0a0e,#000)", border: `2px solid ${win ? "#28d46a" : "#e5202e"}` }}>
         <p style={{ fontSize: 12, letterSpacing: ".2em", opacity: 0.8 }}>{s.decidedBy === "morte_subita" ? "DECIDIDO NA MORTE SÚBITA" : s.decidedBy === "abandono" ? "ADVERSÁRIO ABANDONOU" : "RESULTADO FINAL"}</p>
         <h2 style={{ fontSize: "clamp(34px,9vw,64px)", fontWeight: 900, fontStyle: "italic" }}>{win ? "VITÓRIA" : "DERROTA"}</h2>

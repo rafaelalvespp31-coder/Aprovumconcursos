@@ -241,3 +241,11 @@ body.tt-imersivo .mentor-flut,body.tt-imersivo [data-testid="mentor-flutuante"],
 .lb::-webkit-scrollbar-track,.tt-page::-webkit-scrollbar-track{background:#12040608;background:linear-gradient(90deg,#14050780,#2a0a0e);border-left:1px solid rgba(255,31,45,.55);box-shadow:inset 0 0 12px rgba(255,31,45,.35)}
 .lb::-webkit-scrollbar-thumb,.tt-page::-webkit-scrollbar-thumb{min-height:60px;border-radius:10px;border:2px solid #1a0507;background:linear-gradient(90deg,#ff6b74,#ff1f2d 45%,#ff0a1c);box-shadow:0 0 6px 1px #ff3b44,0 0 16px 3px rgba(255,31,45,.95),0 0 32px 6px rgba(255,31,45,.6),inset 0 0 6px rgba(255,255,255,.55)}
 .lb::-webkit-scrollbar-thumb:hover,.tt-page::-webkit-scrollbar-thumb:hover{background:linear-gradient(90deg,#ffb0b6,#ff4d5a 45%,#ff1f2d);box-shadow:0 0 8px 2px #ff6b74,0 0 22px 5px #ff1f2d,0 0 44px 10px rgba(255,31,45,.8),inset 0 0 8px rgba(255,255,255,.7)}
+
+/* Barra de rolagem própria (BarraNeon): vermelho neon reluzente, sempre visível; a nativa é escondida */
+.lb,.tt-page{scrollbar-width:none!important}
+.lb::-webkit-scrollbar,.tt-page::-webkit-scrollbar{display:none!important;width:0}
+.bn-trilho{position:fixed;top:0;right:0;bottom:0;width:18px;z-index:1200;background:linear-gradient(90deg,rgba(20,5,7,.5),rgba(42,10,14,.92));border-left:1px solid rgba(255,31,45,.6);box-shadow:inset 0 0 12px rgba(255,31,45,.35);touch-action:none}
+.bn-trilho[data-ativo="false"]{display:none}
+.bn-polegar{position:absolute;left:2px;right:2px;top:0;border-radius:10px;cursor:grab;background:linear-gradient(90deg,#ff6b74,#ff1f2d 45%,#ff0a1c);box-shadow:0 0 6px 1px #ff3b44,0 0 16px 3px rgba(255,31,45,.95),0 0 32px 6px rgba(255,31,45,.6),inset 0 0 6px rgba(255,255,255,.55)}
+.bn-polegar:active{cursor:grabbing}
