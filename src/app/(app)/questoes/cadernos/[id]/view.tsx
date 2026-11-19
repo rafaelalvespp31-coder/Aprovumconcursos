@@ -15,6 +15,7 @@ import {
   CircleX,
   ClipboardList,
   Crosshair,
+  ArrowDown,
   EllipsisVertical,
   Flag,
   FolderOpen,
@@ -492,9 +493,24 @@ function QuestionPanel({
         </p>
         <div ref={textRef}>
           {q.caseContext && (
-            <p data-resumo className={`mb-3 whitespace-pre-line rounded-[10px] bg-[#F5F6F8] p-3 text-[14.5px] leading-relaxed text-[#3A3C42] ${clamp ? "line-clamp-3" : ""}`}>
-              {q.caseContext}
-            </p>
+            <>
+              <div className="overflow-hidden rounded-[12px] border-2 border-[#2563EB] bg-[#EFF5FF]" data-testid="texto-base">
+                <p className="flex items-center gap-2 bg-[#2563EB] px-3 py-1.5 text-[12.5px] font-black uppercase tracking-[0.14em] text-white">
+                  <BookOpen className="h-4 w-4" aria-hidden /> Texto base
+                  <span className="ml-auto text-[11px] font-bold normal-case tracking-normal text-white/90">leia, mas não é a pergunta</span>
+                </p>
+                <p data-resumo className={`whitespace-pre-line p-3 text-[14.5px] leading-relaxed text-[#1E2A44] ${clamp ? "line-clamp-3" : ""}`}>
+                  {q.caseContext}
+                </p>
+              </div>
+              <div className="my-3 flex items-center gap-2" role="note" data-testid="aviso-enunciado-abaixo">
+                <span className="h-0.5 flex-1 bg-[#F59E0B]" aria-hidden />
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-[#F59E0B] px-3 py-1 text-[12px] font-black uppercase tracking-[0.1em] text-[#3B2500]">
+                  <ArrowDown className="h-4 w-4" aria-hidden /> O enunciado da questão está abaixo <ArrowDown className="h-4 w-4" aria-hidden />
+                </span>
+                <span className="h-0.5 flex-1 bg-[#F59E0B]" aria-hidden />
+              </div>
+            </>
           )}
           <p data-resumo data-testid="enunciado" className={`whitespace-pre-line text-[17px] font-bold leading-snug text-[#08090B] sm:text-[19px] ${clamp ? "line-clamp-3" : ""}`}>
             {q.statement}
