@@ -2,6 +2,7 @@ import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 import { KNOWN_BOARDS, parseSmart, type SmartDraft, type SmartParse } from "@/domain/bank/smart-import";
+import { splitCommentByOption } from "@/domain/bank/option-notes";
 import { matchByName, parseBankUpload, summarizeBankUpload, type BankUploadPreview, type ParsedBankQuestion } from "@/domain/bank/upload";
 import { slugify } from "@/domain/bank/schema";
 import { createAdminClient } from "../supabase";
@@ -420,12 +421,15 @@ export async function smartImport(staff: BankStaff, items: SmartItemInput[], des
       if (quick && !verified.has(ex.source)) { await authorizeSource(staff, ex.source); verified.add(ex.source); }
       const baseId = it.baseTextCode && it.baseText ? await ensureBaseText(db, staff.id, it.baseTextCode, it.baseText) : null;
       const caseContext = it.baseText && it.baseText.length <= 6000 ? it.baseText : "";
+      // Comentário com uma explicação por alternativa: cada trecho vai para a alternativa certa; o resto é o comentário geral.
+      const notes = it.type === "multipla_escolha" ? splitCommentByOption(it.comment) : null;
+      const generalComment = notes ? (notes.rest.length >= 10 ? notes.rest : (it.comment ?? "")) : (it.comment ?? "");
       const payload = {
         subject_id: subjectId, topic_id: topicId ?? "", source_id: ex.source, exam_id: ex.exam, origin: "prova_anterior", question_type: it.type,
         statement: it.statement, case_context: caseContext, board_slug: ex.board, board_style: "", year: String(it.year), original_number: "",
         initial_difficulty: "dificil", correct_answer_true: it.type === "certo_errado" ? it.answer === "certo" : null,
-        justification: it.comment ?? "", legal_basis: "", usage_rights: quick ? "autorizado" : "nao_verificado", verified_at: "", status: "aguardando_conferencia",
-        generation_batch_id: "", options: it.type === "multipla_escolha" ? it.options.map((o) => ({ label: o.label, text: o.text, is_correct: o.label === it.answer, explanation: "" })) : [], legal_refs: [],
+        justification: generalComment, legal_basis: "", usage_rights: quick ? "autorizado" : "nao_verificado", verified_at: "", status: "aguardando_conferencia",
+        generation_batch_id: "", options: it.type === "multipla_escolha" ? it.options.map((o) => ({ label: o.label, text: o.text, is_correct: o.label === it.answer, explanation: notes?.byLabel[o.label] ?? "" })) : [], legal_refs: [],
       };
       const { data, error } = await db.rpc("bank_save_question", { p_actor: staff.id, p_id: null, p: payload });
       if (error) { done({ status: "erro", code: null, message: error.message.replace(/^.*?ERROR:\s*/, "") }); continue; }

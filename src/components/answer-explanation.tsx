@@ -1,6 +1,7 @@
 import type { AnswerFeedback } from "@/server/services/study";
 import { Icon } from "./icons";
 import { textoSemLatex } from "@/domain/lesson/math-text";
+import { splitCommentByOption } from "@/domain/bank/option-notes";
 
 type Opt = { id: string; label: string; text: string };
 
@@ -57,9 +58,20 @@ export function AnswerExplanation({
   const wrong = options.filter((o) => !byId.get(o.id)?.isCorrect);
   const pickedOpt = options.find((o) => o.id === chosen);
   const squash = (t: string) => t.toLowerCase().replace(/\s+/g, " ").trim();
-  const why = meaningful(right ? byId.get(right.id)?.explanation : undefined);
+  // Comentário escrito com uma explicação por alternativa ("A) Errada…", "E) Correta…"): cada trecho vai para a alternativa certa.
+  const split = options.some((o) => !byId.get(o.id)?.explanation?.trim()) ? splitCommentByOption(fb.justification) : null;
+  const flat = (t: string) => t.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+  const noteFor = (o: Opt): string => {
+    const own = byId.get(o.id)?.explanation?.trim();
+    if (own || !split) return own ?? "";
+    // Prefere o trecho que cita o texto da alternativa (vale mesmo se as letras foram embaralhadas); senão usa a letra.
+    const hits = Object.entries(split.byLabel).filter(([, v]) => o.text.trim().length >= 3 && flat(v).includes(flat(o.text)));
+    return (hits.length === 1 ? hits[0]![1] : split.byLabel[o.label]) ?? "";
+  };
+  const geral = split ? split.rest : fb.justification;
+  const why = meaningful(right ? noteFor(right) : undefined);
   // Não repete o texto quando a explicação da alternativa já está na justificativa.
-  const rightWhy = why && !squash(fb.justification).includes(squash(why)) ? why : "";
+  const rightWhy = why && !squash(geral).includes(squash(why)) ? why : "";
 
   return (
     <section aria-labelledby={titleId} className="entrar mt-3 rounded-lg border border-linha bg-superficie p-4 sm:p-5" data-testid="gabarito-comentado">
@@ -69,7 +81,7 @@ export function AnswerExplanation({
         <Block tone="ok" title={`Por que a alternativa ${right.label} está correta`}>
           <OptionQuote label={right.label} text={right.text} tone="ok" />
           {rightWhy && <p className="mt-2 whitespace-pre-line">{textoSemLatex(rightWhy)}</p>}
-          <Comentario text={fb.justification} />
+          {geral.trim() && <Comentario text={geral} />}
         </Block>
       )}
 
@@ -79,7 +91,7 @@ export function AnswerExplanation({
             {wrong.map((o) => (
               <li key={o.id} className={`rounded-md p-3 ${o.id === chosen ? "bg-erro-fundo ring-1 ring-erro/40" : "bg-nevoa"}`}>
                 <OptionQuote label={o.label} text={o.text} tone="erro" mine={o.id === chosen} />
-                <p className="mt-1.5 whitespace-pre-line">{textoSemLatex(byId.get(o.id)?.explanation?.trim()) || "Não corresponde à regra explicada na alternativa correta."}</p>
+                <p className="mt-1.5 whitespace-pre-line">{textoSemLatex(noteFor(o)) || "Não corresponde à regra explicada na alternativa correta."}</p>
               </li>
             ))}
           </ul>
