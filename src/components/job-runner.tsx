@@ -87,6 +87,10 @@ export function JobRunner({
       window.scrollTo({ top: 0 });
       router.replace(doneHref);
       router.refresh();
+      // Se a página ainda mostrar "Preparando" (o servidor demorou a enxergar a aula pronta), insiste até trocar; este componente some quando a aula aparece.
+      let n = 0;
+      const again = setInterval(() => { if (++n > 12) clearInterval(again); else router.refresh(); }, 2000);
+      return () => clearInterval(again);
     }
     // Pedido de esclarecimento: a página do servidor mostra a pergunta.
     if (job.status === "failed" && job.errorCode === "needs_clarification") router.refresh();

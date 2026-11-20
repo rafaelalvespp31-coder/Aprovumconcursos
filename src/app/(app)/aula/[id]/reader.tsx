@@ -20,7 +20,6 @@ import { LEVELS, levelStatus, type LevelKey } from "@/domain/progress/levels";
 import { SingleLevel } from "./levels-panel";
 import { FeedbackModal } from "@/components/aula/feedback-modal";
 import { dispensarFeedbackAction, enviarFeedbackAction } from "./feedback-actions";
-import { saveReadingPosAction } from "./actions";
 import { LessonTreePortal, type BoardOutlineItem } from "@/components/aula/lesson-board";
 import { ApostilaMarkdown } from "@/components/aula/apostila-markdown";
 import { ApostilaQuestion } from "@/components/aula/apostila-question";
@@ -124,7 +123,7 @@ export function LessonReader(props: ReaderProps) {
 
   // Registra a abertura da aula (máquina de estados no servidor).
   useEffect(() => {
-    void api.startLesson(lesson.id);
+    void Promise.resolve(api.startLesson(lesson.id)).catch(() => {});
   }, [lesson.id, api]);
 
   // Logo após a geração, a página troca o "Preparando…" pela aula: leva a tela ao início da aula.
@@ -172,7 +171,9 @@ export function LessonReader(props: ReaderProps) {
   // "Pensei — ver a resposta": fica gravado por seção; e é o mínimo para concluir o módulo.
   const [practice, setPractice] = useStored<PracticeProgress>(`na:pratica:${lesson.id}`, {});
   const practiceRef = useRef(practice);
-  practiceRef.current = practice;
+  useEffect(() => {
+    practiceRef.current = practice;
+  }, [practice]);
   const updatePractice = useCallback((key: string, next: PracticeState) => setPractice({ ...practiceRef.current, [key]: next }), [setPractice]);
   const practiceCtx = useMemo(() => ({ progress: practice, update: updatePractice }), [practice, updatePractice]);
   const hasPractice = (s: ReaderSection) => (extractPractice(s.body_markdown).cases.length || s.practice?.length || 0) > 0;
@@ -247,13 +248,20 @@ export function LessonReader(props: ReaderProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   // 3) Grava ao mudar de página/seções (com pausa) e ao sair da aula; a rolagem é guardada enquanto o aluno rola.
+  const lastSent = useRef("");
   const flushPos = useCallback(() => {
     const p = posRef.current;
     try {
       localStorage.setItem(atKey, String(Date.now()));
       localStorage.setItem(scrollKey, JSON.stringify({ page: p.page, y: p.scroll }));
     } catch {}
-    void saveReadingPosAction(lesson.id, { page: p.page, seen: p.seen.slice(0, 400), scroll: Math.round(p.scroll) }).catch(() => {});
+    const body = JSON.stringify({ page: p.page, seen: p.seen.slice(0, 400), scroll: Math.round(p.scroll) });
+    if (body === lastSent.current) return;
+    lastSent.current = body;
+    // Rota comum com keepalive (não ação de servidor): não entra na fila de ações nem trava a navegação.
+    try {
+      void fetch(`/api/aula/${lesson.id}/posicao`, { method: "POST", body, keepalive: true, headers: { "Content-Type": "application/json" } }).catch(() => {});
+    } catch {}
   }, [atKey, scrollKey, lesson.id]);
   useEffect(() => {
     if (!restoredRef.current) return;
@@ -310,8 +318,13 @@ export function LessonReader(props: ReaderProps) {
     };
     if (!readingDone && sections.every((s) => nextSeen.has(s.id))) {
       startCompleting(async () => {
-        await api.completeReading(lesson.id);
-        setReadingDone(true);
+        try {
+          await api.completeReading(lesson.id);
+          setReadingDone(true);
+        } catch {
+          // Falha ao registrar agora: o aluno não fica preso — avança e a conclusão é registrada na próxima abertura.
+          setLockMsg("Não consegui registrar a conclusão agora, mas seu progresso foi guardado. Se persistir, atualize a página.");
+        }
         next();
       });
       return;
