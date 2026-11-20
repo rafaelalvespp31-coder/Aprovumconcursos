@@ -1,22 +1,19 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { enviarAvisoDiarioConcursos } from "@/server/services/concursos-aviso";
-import { enviarPromoPlanos } from "@/server/services/promo-planos";
-import { enviarAvisosMentor } from "@/server/services/mentor-push";
-import { enviarLembreteRevisoes } from "@/server/services/revisoes-aviso";
+import { chaveValida, rodarAgenda } from "@/server/services/avisos-agenda";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 export const maxDuration = 120;
 
-/** Cron da Vercel (8h em Brasília): lembrete de revisões e aviso diário de concursos abertos/previstos. Exige CRON_SECRET. */
+/**
+ * Agendador dos avisos automáticos no celular. Chamado de hora em hora pelo pg_cron do Supabase (e uma vez por dia pelo cron da Vercel).
+ * Cada dia o sistema sorteia quais avisos saem e em que horas; aqui só se envia o que já está na hora. Exige a chave interna.
+ */
 export async function GET(req: NextRequest) {
-  const segredo = process.env.CRON_SECRET;
-  if (!segredo || req.headers.get("authorization") !== `Bearer ${segredo}`) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
-  const [revisoes, concursos, mentor, planos] = await Promise.all([
-    enviarLembreteRevisoes().catch((e) => ({ erro: String((e as Error).message).slice(0, 120) })),
-    enviarAvisoDiarioConcursos().catch((e) => ({ erro: String((e as Error).message).slice(0, 120) })),
-    enviarAvisosMentor().catch((e) => ({ erro: String((e as Error).message).slice(0, 120) })),
-    enviarPromoPlanos().catch((e) => ({ erro: String((e as Error).message).slice(0, 120) })),
-  ]);
-  return NextResponse.json({ revisoes, concursos, mentor, planos }, { headers: { "Cache-Control": "no-store" } });
+  if (!(await chaveValida(req.headers.get("authorization")))) return NextResponse.json({ error: "Não autorizado." }, { status: 401 });
+  try {
+    return NextResponse.json(await rodarAgenda(), { headers: { "Cache-Control": "no-store" } });
+  } catch (e) {
+    return NextResponse.json({ error: String((e as Error).message).slice(0, 160) }, { status: 500, headers: { "Cache-Control": "no-store" } });
+  }
 }
