@@ -39,7 +39,7 @@ import {
 import { callAction } from "@/components/safe-action";
 import { createNotebookAction, type Result } from "../../actions";
 
-type Panel = null | "banca" | "orgao" | "ano" | "favoritas" | "dificuldade";
+type Panel = null | "banca" | "orgao" | "cargo" | "ano" | "favoritas" | "dificuldade";
 type ListKey = "subjects" | "topics" | "boards" | "exams" | "years" | "difficulty";
 
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -103,6 +103,33 @@ export function NewNotebookForm({
       }
       return next;
     });
+  const setExams = (ids: string[], on: boolean) =>
+    setF((x) => {
+      const set = new Set(x.exams);
+      for (const id of ids) { if (on) set.add(id); else set.delete(id); }
+      return { ...x, exams: [...set] };
+    });
+  // Pastas dos filtros: banca → concursos, órgão → concursos, cargo → concursos.
+  const groups = useMemo(() => {
+    const cnt = new Map<string, number>();
+    const examsOfBoard = new Map<string, Set<string>>();
+    for (const q of lookups.index) {
+      if (q.exam) cnt.set(q.exam, (cnt.get(q.exam) ?? 0) + 1);
+      if (q.board && q.exam) { if (!examsOfBoard.has(q.board)) examsOfBoard.set(q.board, new Set()); examsOfBoard.get(q.board)!.add(q.exam); }
+    }
+    const byId = new Map(lookups.exams.map((e) => [e.id, e]));
+    const item = (e: (typeof lookups.exams)[number], hintKeys: Array<"organ" | "role" | "year">) => ({ value: e.id, label: e.name, hint: hintKeys.map((k) => e[k]).filter(Boolean).join(" · "), count: cnt.get(e.id) ?? 0 });
+    const by = (key: "organ" | "role", none: string, hintKeys: Array<"organ" | "role" | "year">) => {
+      const m = new Map<string, typeof lookups.exams>();
+      for (const e of lookups.exams) { const k = (e[key] ?? "").trim() || none; m.set(k, [...(m.get(k) ?? []), e]); }
+      return [...m.entries()].sort((a, b) => (a[0] === none ? 1 : b[0] === none ? -1 : a[0].localeCompare(b[0], "pt-BR"))).map(([label, es]) => ({ id: label, label, ids: es.map((e) => e.id), count: es.reduce((n, e) => n + (cnt.get(e.id) ?? 0), 0), items: es.map((e) => item(e, hintKeys)) }));
+    };
+    const banca = lookups.boards.map((b) => {
+      const es = [...(examsOfBoard.get(b.slug) ?? [])].map((id) => byId.get(id)).filter(Boolean) as typeof lookups.exams;
+      return { id: b.slug, label: b.name, ids: es.map((e) => e.id), count: lookups.index.filter((q) => q.board === b.slug).length, items: es.map((e) => item(e, ["organ", "role", "year"])) };
+    });
+    return { banca, orgao: by("organ", "Órgão não informado", ["role", "year"]), cargo: by("role", "Cargo não informado", ["organ", "year"]) };
+  }, [lookups]);
   // Marcar (ou desmarcar) um tópico com itens dentro marca (ou desmarca) todos eles de uma vez.
   const setTopics = (ids: string[], on: boolean) =>
     setF((x) => {
@@ -167,7 +194,8 @@ export function NewNotebookForm({
               </ColumnTitle>
               <ul className="mt-4 flex flex-col gap-2">
                 <FilterRow icon={Landmark} label="Banca" value={summary(f.boards.map((b) => names.board.get(b) ?? b), "Todas as bancas")} onOpen={() => setPanel("banca")} />
-                <FilterRow icon={BriefcaseBusiness} label="Órgão e cargo" value={summary(f.exams.map((e) => names.exam.get(e) ?? ""), "Todos os órgãos e cargos")} onOpen={() => setPanel("orgao")} />
+                <FilterRow icon={Landmark} label="Órgão" value={summary(f.exams.map((e) => lookups.exams.find((x) => x.id === e)?.organ ?? "").filter((v, i, a) => v && a.indexOf(v) === i), "Todos os órgãos")} onOpen={() => setPanel("orgao")} />
+                <FilterRow icon={BriefcaseBusiness} label="Cargo" value={summary(f.exams.map((e) => lookups.exams.find((x) => x.id === e)?.role ?? "").filter((v, i, a) => v && a.indexOf(v) === i), "Todos os cargos")} onOpen={() => setPanel("cargo")} />
                 <FilterRow icon={CalendarDays} label="Ano" value={summary(f.years.map(String), "Todos os anos")} onOpen={() => setPanel("ano")} />
                 <FilterRow icon={UsersRound} label="Área (carreira)" value="Em breve" disabled />
                 <FilterRow icon={GraduationCap} label="Escolaridade" value="Em breve" disabled />
@@ -187,22 +215,29 @@ export function NewNotebookForm({
               </ul>
             </>
           ) : panel === "banca" ? (
-            <OptionsPanel
+            <GroupPanel
               title="Banca"
               onBack={() => setPanel(null)}
-              onClear={() => clearKey("boards")}
-              options={lookups.boards.map((b) => ({ value: b.slug, label: b.name, count: lookups.index.filter((q) => q.board === b.slug).length }))}
-              selected={f.boards}
-              onToggle={(v) => toggle("boards", v)}
+              onClear={() => { clearKey("boards"); clearKey("exams"); }}
+              hasSelection={f.boards.length + f.exams.length > 0}
+              groups={groups.banca}
+              folderOn={(g) => f.boards.includes(g.id)}
+              onFolder={(g) => toggle("boards", g.id)}
+              itemOn={(v) => f.exams.includes(v)}
+              onItem={(v) => toggle("exams", v)}
+              empty="Nenhuma banca cadastrada ainda."
             />
-          ) : panel === "orgao" ? (
-            <OptionsPanel
-              title="Órgão e cargo"
+          ) : panel === "orgao" || panel === "cargo" ? (
+            <GroupPanel
+              title={panel === "orgao" ? "Órgão" : "Cargo"}
               onBack={() => setPanel(null)}
               onClear={() => clearKey("exams")}
-              options={lookups.exams.map((e) => ({ value: e.id, label: e.name, hint: [e.organ, e.role, e.year].filter(Boolean).join(" · "), count: lookups.index.filter((q) => q.exam === e.id).length }))}
-              selected={f.exams}
-              onToggle={(v) => toggle("exams", v)}
+              hasSelection={f.exams.length > 0}
+              groups={panel === "orgao" ? groups.orgao : groups.cargo}
+              folderOn={(g) => g.ids.length > 0 && g.ids.every((id) => f.exams.includes(id))}
+              onFolder={(g) => setExams(g.ids, !g.ids.every((id) => f.exams.includes(id)))}
+              itemOn={(v) => f.exams.includes(v)}
+              onItem={(v) => toggle("exams", v)}
               empty="Nenhum concurso cadastrado ainda."
             />
           ) : panel === "ano" ? (
@@ -434,6 +469,74 @@ function OptionsPanel({
           <p className="px-2 py-6 text-center text-[13px] text-[#8A8C93]">{q ? "Nada encontrado." : empty}</p>
         )}
       </div>
+    </div>
+  );
+}
+
+type Group = { id: string; label: string; ids: string[]; count: number; items: Array<{ value: string; label: string; hint?: string; count?: number }> };
+function GroupPanel({ title, groups, folderOn, onFolder, itemOn, onItem, onBack, onClear, hasSelection, empty }: {
+  title: string; groups: Group[]; folderOn: (g: Group) => boolean; onFolder: (g: Group) => void; itemOn: (v: string) => boolean; onItem: (v: string) => void;
+  onBack: () => void; onClear?: () => void; hasSelection: boolean; empty: string;
+}) {
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState<Set<string>>(new Set());
+  const query = norm(q);
+  const shown = groups
+    .map((g) => ({ g, items: query && !norm(g.label).includes(query) ? g.items.filter((i) => norm(`${i.label} ${i.hint ?? ""}`).includes(query)) : g.items }))
+    .filter(({ g, items }) => !query || norm(g.label).includes(query) || items.length);
+  const flip = (id: string) => setOpen((cur) => { const nx = new Set(cur); if (nx.has(id)) nx.delete(id); else nx.add(id); return nx; });
+  return (
+    <div className="flex min-h-0 flex-col" role="group" aria-label={title}>
+      <div className="flex items-center justify-between gap-2">
+        <button type="button" onClick={onBack} className="inline-flex items-center gap-2 rounded-md py-1 pr-2 text-[16px] font-extrabold text-[#08090B]">
+          <ArrowLeft className="h-5 w-5 text-[#E50914]" aria-hidden /> {title}
+        </button>
+        {onClear && hasSelection && <button type="button" onClick={onClear} className="text-[13px] font-bold text-[#E50914]">Limpar</button>}
+      </div>
+      <label className="nq-busca mt-4">
+        <Search className="h-[18px] w-[18px] text-[#64666D]" aria-hidden />
+        <span className="sr-only">Buscar em {title}</span>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Buscar ${title.toLowerCase()}…`} className="min-w-0 flex-1 bg-transparent outline-none" />
+      </label>
+      <ul className="mt-3 max-h-[470px] overflow-y-auto pr-1">
+        {shown.length ? shown.map(({ g, items }) => {
+          const isOpen = !!query || open.has(g.id);
+          return (
+            <li key={g.id}>
+              <div className="flex items-center">
+                <label className="nq-opcao min-w-0 flex-1">
+                  <input type="checkbox" checked={folderOn(g)} onChange={() => onFolder(g)} className="sr-only" />
+                  <Box on={folderOn(g)} />
+                  <span className="min-w-0 flex-1 truncate" onClick={g.items.length ? (e) => { e.preventDefault(); flip(g.id); } : undefined}>{g.label}</span>
+                  <span className="text-[11.5px] font-semibold tabular-nums text-[#8A8C93]">{g.count}</span>
+                </label>
+                {g.items.length > 0 && (
+                  <button type="button" aria-expanded={isOpen} aria-label={`${isOpen ? "Fechar" : "Abrir"} ${g.label}`} onClick={() => flip(g.id)} className="grid h-8 w-8 shrink-0 place-items-center text-[#8A8C93]">
+                    <ChevronRight className={`h-[18px] w-[18px] transition-transform ${isOpen ? "rotate-90" : ""}`} aria-hidden />
+                  </button>
+                )}
+              </div>
+              {isOpen && items.length > 0 && (
+                <ul className="mb-1 ml-5 border-l border-[#ECEDF0] pl-2">
+                  {items.map((o) => (
+                    <li key={o.value}>
+                      <label className="nq-opcao">
+                        <input type="checkbox" checked={itemOn(o.value)} onChange={() => onItem(o.value)} className="sr-only" />
+                        <Box on={itemOn(o.value)} />
+                        <span className="min-w-0 flex-1">
+                          <span className="block truncate">{o.label}</span>
+                          {o.hint && <span className="block truncate text-[11.5px] font-normal text-[#8A8C93]">{o.hint}</span>}
+                        </span>
+                        {o.count !== undefined && <span className="text-[11.5px] font-semibold tabular-nums text-[#8A8C93]">{o.count}</span>}
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        }) : <li className="px-2 py-6 text-center text-[13px] text-[#8A8C93]">{q ? "Nada encontrado." : empty}</li>}
+      </ul>
     </div>
   );
 }
