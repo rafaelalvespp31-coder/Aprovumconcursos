@@ -71,6 +71,9 @@ export interface CreateInput {
   email: string | null;
   /** Código do cupom de parceiro (opcional). O desconto é calculado aqui, no servidor. */
   coupon?: unknown;
+  /** Origem guardada pelo link do parceiro (cookies do servidor). */
+  refCode?: string | null;
+  visitorId?: string | null;
 }
 
 export interface PublicPayment {
@@ -138,7 +141,7 @@ export async function createPayment(userId: string, input: CreateInput): Promise
   const row = ins.data as unknown as Row;
   if (resolved) {
     try {
-      await recordRedemption(row.id, userId, resolved);
+      await recordRedemption(row.id, userId, resolved, input.visitorId, input.refCode);
     } catch (e) {
       await db.from("mp_payments").update({ status: "cancelado", mp_status: "error", mp_status_detail: "falha ao registrar o cupom", updated_at: new Date().toISOString() }).eq("id", row.id);
       throw e;

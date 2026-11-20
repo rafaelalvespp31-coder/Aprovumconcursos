@@ -60,3 +60,32 @@ export const ALL_OFFERS: readonly OfferKey[] = OFFER_KEYS;
 
 /** Link exclusivo do parceiro. */
 export const partnerLink = (code: string, site = "https://aprovumconcursos.com.br") => `${site.replace(/\/$/, "")}/?ref=${encodeURIComponent(code)}`;
+
+/** Janela de atribuição: a indicação só vale se a primeira visita foi há no máximo `days` dias. */
+export function withinWindow(firstSeenAt: string | Date, days: number, now: Date = new Date()): boolean {
+  const t = typeof firstSeenAt === "string" ? Date.parse(firstSeenAt) : firstSeenAt.getTime();
+  return Number.isFinite(t) && days > 0 && now.getTime() - t <= days * 86_400_000;
+}
+
+export type CommissionStatus = "nenhuma" | "calculada" | "aprovada" | "paga" | "cancelada";
+/**
+ * Comissão por etapas. Pagamento aprovado com comissão > 0 → "calculada" (o administrador depois marca aprovada e paga).
+ * Estorno/reembolso/cancelamento cancela a comissão, a menos que ela já tenha sido paga (fica para acerto manual).
+ */
+export function nextCommissionStatus(paymentStatus: string, pct: number, current: CommissionStatus): CommissionStatus {
+  if (pct <= 0) return "nenhuma";
+  if (paymentStatus === "aprovado") return current === "nenhuma" || current === "cancelada" ? "calculada" : current;
+  if (paymentStatus === "reembolsado" || paymentStatus === "cancelado" || paymentStatus === "recusado") return current === "paga" ? "paga" : "cancelada";
+  return current;
+}
+
+export type Attribution = { source: "link" | "cupom_digitado"; useReferral: boolean };
+/**
+ * Regra de prioridade (explícita): o cupom digitado manualmente sempre decide o desconto e a origem.
+ * Se o cupom digitado é o mesmo do link guardado e a indicação está dentro da janela, a venda é "link" e herda a indicação.
+ * Se for outro cupom, vale o digitado (ação explícita do aluno) e a indicação guardada não é usada.
+ */
+export function pickAttribution(typedCode: string, storedRefCode: string | null, referralInWindow: boolean): Attribution {
+  const same = !!storedRefCode && storedRefCode === typedCode && referralInWindow;
+  return { source: same ? "link" : "cupom_digitado", useReferral: same };
+}

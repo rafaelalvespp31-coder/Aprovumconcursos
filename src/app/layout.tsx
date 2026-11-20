@@ -1,3 +1,4 @@
+import { PartnerRefBeacon } from "@/components/partner-ref-beacon";
 import type { Metadata, Viewport } from "next";
 import { ServiceWorkerRegistration } from "@/components/pwa";
 import { VisitaBeacon } from "@/components/visitas/visita-beacon";
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
         <a href="#conteudo" className="skip-link">Ir para o conteúdo</a>
         {children}
         <VisitaBeacon />
+        <PartnerRefBeacon />
         <CookieNotice />
         <ServiceWorkerRegistration />
       </body>

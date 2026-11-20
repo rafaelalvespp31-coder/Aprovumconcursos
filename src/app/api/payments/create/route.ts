@@ -4,6 +4,7 @@ import { getSessionUser } from "@/server/auth";
 import { createPayment } from "@/server/services/payments";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
+import { PARTNER_COOKIE, VISITOR_COOKIE, linkReferralToUser } from "@/server/services/referrals";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,8 +20,11 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: "Pedido inválido." }, { status: 400 });
   }
+  const visitorId = req.cookies.get(VISITOR_COOKIE)?.value ?? null;
+  const refCode = req.cookies.get(PARTNER_COOKIE)?.value ?? null;
+  await linkReferralToUser(user.id, visitorId);
   try {
-    const payment = await createPayment(user.id, { offer: body.offer, formData: body.formData, deviceId: body.deviceId, coupon: body.coupon, ip: (req.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || req.headers.get("x-real-ip"), email: user.email ?? null });
+    const payment = await createPayment(user.id, { offer: body.offer, formData: body.formData, deviceId: body.deviceId, coupon: body.coupon, refCode, visitorId, ip: (req.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || req.headers.get("x-real-ip"), email: user.email ?? null });
     return NextResponse.json({ payment });
   } catch (e) {
     if (e instanceof UserFacingError) return NextResponse.json({ error: e.message }, { status: e.code === "rate_limited" ? 429 : 400 });

@@ -40,3 +40,27 @@ describe("cupom", () => {
     expect(partnerLink("NUNESDOUGLASPM")).toBe("https://aprovumconcursos.com.br/?ref=NUNESDOUGLASPM");
   });
 });
+
+import { nextCommissionStatus, pickAttribution, withinWindow } from "./coupon";
+describe("atribuição e comissão", () => {
+  const now = new Date("2026-11-20T12:00:00Z");
+  it("janela de atribuição", () => {
+    expect(withinWindow("2026-11-01T12:00:00Z", 30, now)).toBe(true);
+    expect(withinWindow("2026-10-01T12:00:00Z", 30, now)).toBe(false);
+    expect(withinWindow("lixo", 30, now)).toBe(false);
+  });
+  it("prioridade: digitado decide; link só vale quando é o mesmo cupom e dentro da janela", () => {
+    expect(pickAttribution("NUNESDOUGLASPM", "NUNESDOUGLASPM", true)).toEqual({ source: "link", useReferral: true });
+    expect(pickAttribution("NUNESDOUGLASPM", "NUNESDOUGLASPM", false).source).toBe("cupom_digitado");
+    expect(pickAttribution("OUTRO", "NUNESDOUGLASPM", true).useReferral).toBe(false);
+    expect(pickAttribution("OUTRO", null, true).source).toBe("cupom_digitado");
+  });
+  it("comissão 0% nunca gera valor; pendente não conta; estorno cancela; paga não some", () => {
+    expect(nextCommissionStatus("aprovado", 0, "nenhuma")).toBe("nenhuma");
+    expect(nextCommissionStatus("pendente", 10, "nenhuma")).toBe("nenhuma");
+    expect(nextCommissionStatus("aprovado", 10, "nenhuma")).toBe("calculada");
+    expect(nextCommissionStatus("aprovado", 10, "aprovada")).toBe("aprovada");
+    expect(nextCommissionStatus("reembolsado", 10, "calculada")).toBe("cancelada");
+    expect(nextCommissionStatus("reembolsado", 10, "paga")).toBe("paga");
+  });
+});

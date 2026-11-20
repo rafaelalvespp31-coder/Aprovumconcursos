@@ -74,14 +74,6 @@ export function PayBox({ offer, publicKey, email, refCupom, onClose, onPaid }: {
       setCupomBusy(false);
     }
   };
-  // Cupom que veio do link do parceiro: aplica sozinho ao abrir o pagamento.
-  useEffect(() => {
-    if (!refCupom) return;
-    const t = setTimeout(() => void applyCoupon(refCupom), 0);
-    return () => clearTimeout(t);
-    // só ao abrir
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
   const [cpf, setCpf] = useState(() => {
     try {
       return typeof window === "undefined" ? "" : maskCpf(window.localStorage.getItem("na:cpf-pix") ?? "");
@@ -249,10 +241,10 @@ export function PayBox({ offer, publicKey, email, refCupom, onClose, onPaid }: {
       </div>
       <div className="ck-cupom" data-testid="plano-cupom">
         {applied ? (
-          <p className="ck-ok" role="status"><Check />Cupom {applied.code} aplicado: −{applied.discountPct}% ({applied.partner}) <button type="button" className="ck-cupom-x" onClick={() => { setApplied(null); setCupomMsg(null); }}>remover</button></p>
+          <p className="ck-ok" role="status"><Check />Cupom aplicado com sucesso! {applied.code} (−{applied.discountPct}%, {applied.partner}). De {money(applied.listCents)} por {money(applied.finalCents)}: desconto de {money(applied.listCents - applied.finalCents)}. <button type="button" className="ck-cupom-x" onClick={() => { setApplied(null); setCupomMsg(null); }}>remover</button></p>
         ) : (
           <label className="ck-campo">
-            <span>Cupom de desconto (opcional)</span>
+            <span>Tem um cupom de desconto?{refCupom ? " Encontramos um cupom do seu link de indicação: toque em Aplicar." : ""}</span>
             <span className="ck-cupom-linha">
               <input value={cupom} onChange={(e) => setCupom(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 40))} placeholder="Digite o cupom" autoComplete="off" autoCapitalize="characters" data-testid="plano-cupom-input" />
               <button type="button" className="ck-cupom-btn" disabled={cupomBusy || !cupom.trim()} onClick={() => void applyCoupon()} data-testid="plano-cupom-aplicar">{cupomBusy ? "…" : "APLICAR"}</button>
