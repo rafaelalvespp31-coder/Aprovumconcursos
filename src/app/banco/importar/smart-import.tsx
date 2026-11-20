@@ -361,7 +361,7 @@ function QuestionCard({ r, destinos, patch, confirmBoard }: { r: Row; destinos: 
           </div>
           {(r.baseTextCode || r.baseText) && (
             <div className="grid gap-2">
-              <Field label="Identificação do texto-base"><input className={dInput} value={r.baseTextCode ?? ""} maxLength={120} onChange={(e) => patch({ baseTextCode: e.target.value || null })} /></Field>
+              <Field label="Identificação do texto-base"><input className={dInput} value={r.baseTextCode ?? ""} maxLength={60} onChange={(e) => patch({ baseTextCode: e.target.value || null })} /></Field>
               <Field label="Texto-base (preservado integralmente)"><textarea className={`${dTextarea} min-h-40`} value={r.baseText ?? ""} onChange={(e) => patch({ baseText: e.target.value || null })} /></Field>
             </div>
           )}
