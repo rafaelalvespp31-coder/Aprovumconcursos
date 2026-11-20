@@ -319,7 +319,7 @@ export const smartItemSchema = z.object({
   examLine: z.string().trim().max(300).nullable(),
   organ: z.string().trim().max(200).nullable(),
   role: z.string().trim().max(200).nullable(),
-  baseTextCode: z.string().trim().max(60).nullable(),
+  baseTextCode: z.string().trim().max(120).nullable(),
   baseText: z.string().max(60000).nullable(),
   statement: z.string().trim().min(10).max(6000),
   options: z.array(optionZ).max(5),

@@ -179,7 +179,7 @@ function parseBlock(blockLines: string[], idx: number, carry: { baseCode: string
   if (baseAt >= 0) {
     const head = statementLines[baseAt]!;
     const hm = head.match(BASE_HEAD);
-    baseCode = hm ? hm[1]!.replace(/\s+/g, " ").trim() : null;
+    baseCode = hm ? hm[1]!.replace(/\s+/g, " ").trim().slice(0, 60) : null;
     const after = statementLines.slice(baseAt + 1);
     let stmtAt = -1;
     for (let i = after.length - 1; i >= 0; i--) if (STATEMENT_START.test(after[i]!) && (i === 0 || !after[i - 1]!.trim() || true)) { stmtAt = i; if (i > 0 && after[i - 1]!.trim() === "") break; }
@@ -203,7 +203,7 @@ function parseBlock(blockLines: string[], idx: number, carry: { baseCode: string
     // "Texto associado" sem número: usa o título (primeira linha) como código, para textos diferentes não se misturarem.
     if (baseText && baseCode && /^texto\s+associados?$/i.test(baseCode)) {
       const title = baseText.split("\n").map((x) => x.trim()).find(Boolean);
-      if (title) baseCode = title.slice(0, 80);
+      if (title) baseCode = title.slice(0, 60);
     }
   } else if (carry.baseCode && new RegExp(`\\b${carry.baseCode.replace(/^texto\s+/i, "").replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "i").test(textLines.join(" "))) {
     // Questão que cita um texto já apresentado antes no mesmo lote (ex.: "texto CB2A1").
