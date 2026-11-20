@@ -90,7 +90,18 @@ export function NewNotebookForm({
   const toggle = <K extends ListKey>(key: K, value: NotebookFilters[K][number]) =>
     setF((x) => {
       const list = x[key] as Array<typeof value>;
-      return { ...x, [key]: list.includes(value) ? list.filter((v) => v !== value) : [...list, value] };
+      const adding = !list.includes(value);
+      const next = { ...x, [key]: adding ? [...list, value] : list.filter((v) => v !== value) };
+      // Escolher um tópico filtra só ele: tira a matéria inteira da seleção (e vice-versa), senão a matéria traria todas as questões.
+      if (adding && key === "topics") {
+        const owner = lookups.subjects.find((s) => s.topics.some((t) => t.id === value));
+        if (owner) next.subjects = next.subjects.filter((id) => id !== owner.id);
+      }
+      if (adding && key === "subjects") {
+        const own = new Set(lookups.subjects.find((s) => s.id === value)?.topics.map((t) => t.id) ?? []);
+        next.topics = next.topics.filter((id) => !own.has(id));
+      }
+      return next;
     });
   const clearKey = (key: ListKey) => setF((x) => ({ ...x, [key]: [] }));
 
@@ -433,7 +444,18 @@ function SubjectsColumn({
   const selectedCount = f.subjects.length + f.topics.length;
   const query = norm(q);
   const subjects = lookups.subjects
-    .map((s) => ({ ...s, topicsShown: query ? s.topics.filter((t) => norm(t.name).includes(query)) : s.topics }))
+    // Na pasta só aparecem os tópicos principais; os subtópicos ficam dentro da questão. A busca também acha pelo nome de um subtópico.
+    .map((s) => {
+      const roots: typeof s.topics = [];
+      let cur: (typeof s.topics)[number] | null = null;
+      let hit = false;
+      const flush = () => { if (cur && (!query || hit)) roots.push(cur); };
+      for (const t of s.topics) {
+        if (t.depth === 0) { flush(); cur = t; hit = norm(t.name).includes(query); } else if (!hit && norm(t.name).includes(query)) hit = true;
+      }
+      flush();
+      return { ...s, topicsShown: roots };
+    })
     .filter((s) => !query || norm(s.name).includes(query) || s.topicsShown.length);
   const countIn = (s: (typeof subjects)[number]) => (f.subjects.includes(s.id) ? 1 : 0) + s.topics.filter((t) => f.topics.includes(t.id)).length;
 
@@ -483,7 +505,7 @@ function SubjectsColumn({
                     {s.topicsShown.length ? (
                       s.topicsShown.map((t) => (
                         <li key={t.id}>
-                          <label className="nq-opcao" style={{ paddingLeft: 8 + t.depth * 14 }}>
+                          <label className="nq-opcao" style={{ paddingLeft: 8 }}>
                             <input type="checkbox" checked={f.topics.includes(t.id)} onChange={() => toggle("topics", t.id)} className="sr-only" />
                             <Box on={f.topics.includes(t.id)} />
                             <span className="truncate">{t.name}</span>
