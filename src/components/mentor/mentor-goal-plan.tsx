@@ -1,16 +1,11 @@
 "use client";
 
-import { MentorPlanoHoje } from "./mentor-plano-hoje";
+import { MentorPlanoMini } from "./mentor-plano-mini";
 import { useState, useTransition } from "react";
-import { Send, Target, Pencil } from "lucide-react";
-import type { BlockKind, StudyPlan } from "@/domain/mentor/plan";
+import { Send, Pencil } from "lucide-react";
+import type { StudyPlan } from "@/domain/mentor/plan";
 import { setMentorGoalAction } from "@/app/(app)/mentor/actions";
 
-const KIND: Record<BlockKind, string> = { aula: "Aula", questoes: "Questões", revisao: "Revisão", simulado: "Simulado" };
-const KIND_COLOR: Record<BlockKind, string> = { aula: "#1f5fbf", questoes: "#b3261e", revisao: "#2e7d32", simulado: "#8a5a00" };
-const DIAS = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
-const rotuloHoje = (d: Date) => `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")} - ${DIAS[d.getDay()]}`;
-const fmt = (m: number) => (m >= 60 ? `${Math.floor(m / 60)}h${m % 60 ? String(m % 60).padStart(2, "0") : ""}` : `${m} min`);
 
 /**
  * Mensagem principal do Mentor: "Já sabe qual concurso você quer ser aprovado?". O aluno responde por
@@ -21,7 +16,6 @@ export function MentorGoalPlan({ goal, plan, name, onChange, base = "", onNaviga
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
-  const agora = new Date();
 
   const send = () => {
     setError(null);
@@ -34,7 +28,6 @@ export function MentorGoalPlan({ goal, plan, name, onChange, base = "", onNaviga
     });
   };
 
-  const diaHoje = plan?.days.find((d) => d.weekday === agora.getDay()) ?? null;
   const ask = !goal || editing;
   return (
     <div className="flex flex-col gap-3" data-testid="mentor-objetivo">
@@ -62,7 +55,7 @@ export function MentorGoalPlan({ goal, plan, name, onChange, base = "", onNaviga
       {error && <p role="alert" className="text-[12.5px] font-semibold text-[#b3261e]">{error}</p>}
 
       {!ask && plan && (
-        <MentorPlanoHoje plan={plan} base={base} onNavigate={onNavigate} />
+        <MentorPlanoMini plan={plan} base={base} onNavigate={onNavigate} />
       )}
       {!ask && !plan && <p className="text-[12.5px] text-[#64666D]">Não consegui montar o plano agora. Tente de novo em instantes.</p>}
     </div>
