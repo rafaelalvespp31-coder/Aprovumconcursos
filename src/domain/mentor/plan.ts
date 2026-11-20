@@ -8,6 +8,8 @@ export interface PlanSubject {
   /** Percentual de acerto nas questões (null = sem dados). */
   pct: number | null;
   pendingLessons: number;
+  /** Quando a matéria vem do edital do aluno: quantos tópicos o edital tem nela. */
+  editalTopics?: number;
 }
 
 export interface PlanInput {
@@ -91,7 +93,7 @@ export function buildStudyPlan(i: PlanInput): StudyPlan {
       const a = round5(perDay * lessonShare);
       const q = round5(perDay * questionShare);
       const r = Math.max(5, perDay - a - q);
-      blocks.push({ kind: "aula", subject: s.name, minutes: a, detail: s.pendingLessons > 0 ? `Aula nova (${s.pendingLessons} pendente${s.pendingLessons === 1 ? "" : "s"} nessa matéria).` : "Aula nova ou reforço do assunto." });
+      blocks.push({ kind: "aula", subject: s.name, minutes: a, detail: s.editalTopics ? `Aula nova do edital (${s.editalTopics} tópicos nessa matéria).` : s.pendingLessons > 0 ? `Aula nova (${s.pendingLessons} pendente${s.pendingLessons === 1 ? "" : "s"} nessa matéria).` : "Aula nova ou reforço do assunto." });
       blocks.push({ kind: "questoes", subject: s.name, minutes: q, detail: `${qPerDay ?? Math.max(5, Math.round(q / MIN_PER_QUESTION))} questões de ${s.name}.` });
       blocks.push({ kind: "revisao", subject: pick().name, minutes: r, detail: wd === 3 && i.reviewsDue > 0 ? "Zere as revisões vencidas." : "Revisão rápida do que estudou ontem (flashcards e post-its)." });
     }

@@ -8,7 +8,7 @@ import { getRaioXNotices } from "@/server/services/raiox-notice";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
 import type { MentorPanelState } from "@/components/mentor/types";
-import { setMentorGoal } from "@/server/services/mentor-goal";
+import { listContestOptions, setMentorGoal, type ContestOption } from "@/server/services/mentor-goal";
 import type { StudyPlan } from "@/domain/mentor/plan";
 
 /** Mentor flutuante: a identidade vem só da sessão; sem sessão, avisa (sem dados). */
@@ -43,11 +43,11 @@ export async function mentorStatusAction(id: string, status: "visualizada" | "di
 }
 
 /** O aluno responde "qual concurso você quer passar?": guarda e devolve o plano novo. Vazio remove o foco. */
-export async function setMentorGoalAction(contest: string): Promise<{ ok: true; goal: { contest: string } | null; plan: StudyPlan | null } | { ok: false; error: string }> {
+export async function setMentorGoalAction(contest: string, contestId?: string): Promise<{ ok: true; goal: { contest: string } | null; plan: StudyPlan | null } | { ok: false; error: string }> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Sua sessão expirou. Entre novamente." };
   try {
-    await setMentorGoal(user.id, contest);
+    await setMentorGoal(user.id, contest, contestId ?? null);
     const m = await computeMentor(user.id);
     return { ok: true, goal: m.goal ? { contest: m.goal.contest } : null, plan: m.plan };
   } catch (e) {
@@ -55,4 +55,11 @@ export async function setMentorGoalAction(contest: string): Promise<{ ok: true; 
     await logEvent("mentor.goal_failed", { error: (e as Error).message });
     return { ok: false, error: "Não foi possível salvar agora. Tente de novo." };
   }
+}
+
+/** Concursos cadastrados na plataforma, para o aluno escolher o dele. */
+export async function listMentorContestsAction(): Promise<ContestOption[]> {
+  const user = await getSessionUser();
+  if (!user) return [];
+  return listContestOptions().catch(() => []);
 }

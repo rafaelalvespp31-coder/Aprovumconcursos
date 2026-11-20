@@ -1,6 +1,8 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ExcluirPlano } from "./excluir-plano";
 import { useMemo, useState } from "react";
 import { BookOpen, Check, ChevronLeft, ChevronRight, ListChecks, RotateCcw, Swords, Timer, Trophy } from "lucide-react";
 import type { BlockKind, StudyPlan } from "@/domain/mentor/plan";
@@ -24,6 +26,7 @@ export function PlanoCalendario({ plan, today, examDay }: { plan: StudyPlan; tod
   const [ym, setYm] = useState({ y: Number(today.slice(0, 4)), m: Number(today.slice(5, 7)) - 1 });
   const [sel, setSel] = useState<string | null>(today);
   const feitos = useFeitos();
+  const router = useRouter();
   const { nome, sigla } = nomeConcurso(plan.contest);
   const cells = useMemo(() => monthCells(plan, ym.y, ym.m, today, examDay), [plan, ym, today, examDay]);
   const offset = cells[0]?.weekday ?? 0;
@@ -72,6 +75,8 @@ export function PlanoCalendario({ plan, today, examDay }: { plan: StudyPlan; tod
           <span className="inline-flex items-center gap-1.5"><span className="size-3 rounded bg-[#08090B]" /> Dia da prova</span>
         </p>
       </section>
+
+      <div className="flex justify-center"><ExcluirPlano onDone={() => router.refresh()} /></div>
 
       {cel && <Detalhe c={cel} feitos={feitos[cel.key] ?? []} />}
     </div>

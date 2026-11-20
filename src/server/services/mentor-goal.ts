@@ -4,9 +4,11 @@ import { brDay } from "@/domain/plans/limits";
 import { buildStudyPlan, type PlanSubject, type StudyPlan } from "@/domain/mentor/plan";
 import type { MentorResult, MentorSnapshot } from "@/domain/mentor/engine";
 import { UserFacingError, enforceRateLimit } from "./trails";
+import { EDITAL_MIN_SCORE, nameScore } from "@/domain/mentor/edital-match";
 
 /** Concurso que o aluno quer passar, dito por ele ao Mentor. Fica em profiles.preferences.mentor_goal. */
-export interface MentorGoal { contest: string; setAt: string }
+export interface MentorGoal { contest: string; setAt: string; contestId?: string }
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 const CONTROL = /[\u0000-\u001f\u007f<>`{}]/g;
 export function cleanGoal(v: unknown): string {
@@ -15,30 +17,77 @@ export function cleanGoal(v: unknown): string {
 
 export async function getMentorGoal(userId: string): Promise<MentorGoal | null> {
   const { data } = await createAdminClient().from("profiles").select("preferences").eq("id", userId).maybeSingle();
-  const g = ((data?.preferences ?? {}) as { mentor_goal?: { contest?: unknown; setAt?: unknown } }).mentor_goal;
+  const g = ((data?.preferences ?? {}) as { mentor_goal?: { contest?: unknown; setAt?: unknown; contestId?: unknown } }).mentor_goal;
   const contest = cleanGoal(g?.contest);
-  return contest ? { contest, setAt: typeof g?.setAt === "string" ? g.setAt : "" } : null;
+  const contestId = typeof g?.contestId === "string" && UUID.test(g.contestId) ? g.contestId : undefined;
+  return contest ? { contest, setAt: typeof g?.setAt === "string" ? g.setAt : "", ...(contestId ? { contestId } : {}) } : null;
 }
 
 /** Guarda a resposta do aluno ("Qual concurso você quer passar?"). Vazio apaga. */
-export async function setMentorGoal(userId: string, raw: unknown): Promise<MentorGoal | null> {
+export async function setMentorGoal(userId: string, raw: unknown, contestId?: string | null): Promise<MentorGoal | null> {
   await enforceRateLimit(userId, "mentor_goal", 20, 3600);
-  const contest = cleanGoal(raw);
+  let contest = cleanGoal(raw);
+  let catalogId: string | undefined;
+  if (contestId) {
+    // O nome vem do cadastro da plataforma, nunca do navegador.
+    if (!UUID.test(contestId)) throw new UserFacingError("Concurso inválido.", "invalid");
+    const { data: row } = await createAdminClient().from("contest_catalog").select("id, name").eq("id", contestId).eq("active", true).maybeSingle();
+    if (!row) throw new UserFacingError("Esse concurso não está mais disponível. Escolha outro.", "invalid");
+    contest = cleanGoal((row as { name: string }).name);
+    catalogId = contestId;
+    raw = contest;
+  }
   if (raw !== "" && contest.length < 2) throw new UserFacingError("Escreva o nome do concurso (ex.: Polícia Penal MG, PRF, PF).", "invalid");
   const db = await createUserClient();
   const cur = await db.from("profiles").select("preferences").eq("id", userId).maybeSingle();
   const prefs = { ...((cur.data?.preferences ?? {}) as Record<string, unknown>) };
-  if (contest) prefs.mentor_goal = { contest, setAt: new Date().toISOString() };
+  if (contest) prefs.mentor_goal = { contest, setAt: new Date().toISOString(), ...(catalogId ? { contestId: catalogId } : {}) };
   else delete prefs.mentor_goal;
   const up = await db.from("profiles").update({ preferences: prefs }).eq("id", userId);
   if (up.error) throw new UserFacingError("Não foi possível salvar agora. Tente de novo.", "save_failed");
-  return contest ? { contest, setAt: new Date().toISOString() } : null;
+  return contest ? { contest, setAt: new Date().toISOString(), ...(catalogId ? { contestId: catalogId } : {}) } : null;
+}
+
+export interface ContestOption { id: string; name: string; institution: string; role: string | null; uf: string | null; status: string; examDate: string | null }
+
+/** Concursos cadastrados na plataforma (ativos) para o aluno escolher. */
+export async function listContestOptions(): Promise<ContestOption[]> {
+  const { data } = await createAdminClient().from("contest_catalog").select("id, name, institution, role_name, uf, status, exam_date").eq("active", true).order("featured", { ascending: false }).order("exam_date", { ascending: true, nullsFirst: false }).order("name").limit(100);
+  return ((data ?? []) as Array<{ id: string; name: string; institution: string; role_name: string | null; uf: string | null; status: string; exam_date: string | null }>).map((r) => ({ id: r.id, name: r.name, institution: r.institution, role: r.role_name, uf: r.uf, status: r.status, examDate: r.exam_date }));
+}
+
+/** Edital que o próprio aluno enviou e que corresponde ao concurso escolhido: disciplinas e quantidade de tópicos. */
+async function findEditalSubjects(userId: string, query: string): Promise<{ label: string; subjects: Array<{ name: string; topics: number }> } | null> {
+  const admin = createAdminClient();
+  const { data: preps } = await admin.from("edital_preparations").select("id, contest_name, role_name, status, created_at").eq("user_id", userId).in("status", ["concluido", "conferencia"]).order("created_at", { ascending: false }).limit(50);
+  const ranked = ((preps ?? []) as Array<{ id: string; contest_name: string | null; role_name: string | null }>)
+    .map((p) => ({ p, score: nameScore(query, `${p.contest_name ?? ""} ${p.role_name ?? ""}`) }))
+    .filter((x) => x.score >= EDITAL_MIN_SCORE)
+    .sort((a, b) => b.score - a.score);
+  for (const { p } of ranked) {
+    const [d, t] = await Promise.all([
+      admin.from("edital_disciplines").select("id, name, position").eq("preparation_id", p.id).order("position").limit(100),
+      admin.from("edital_topics").select("discipline_id").eq("preparation_id", p.id).limit(5000),
+    ]);
+    const discs = (d.data ?? []) as Array<{ id: string; name: string }>;
+    if (!discs.length) continue;
+    const count = new Map<string, number>();
+    for (const x of (t.data ?? []) as Array<{ discipline_id: string }>) count.set(x.discipline_id, (count.get(x.discipline_id) ?? 0) + 1);
+    const label = [p.contest_name, p.role_name].filter(Boolean).join(" — ");
+    return { label, subjects: discs.map((x) => ({ name: x.name, topics: count.get(x.id) ?? 0 })) };
+  }
+  return null;
 }
 
 const words = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
 
 /** Procura o concurso no catálogo da plataforma para pegar data da prova e banca (melhor correspondência). */
-async function findCatalogContest(contest: string): Promise<{ examDate: string | null; banca: string | null } | null> {
+async function findCatalogContest(contest: string, contestId?: string): Promise<{ examDate: string | null; banca: string | null; query: string } | null> {
+  if (contestId) {
+    const { data: r } = await createAdminClient().from("contest_catalog").select("name, institution, role_name, banca, exam_date").eq("id", contestId).maybeSingle();
+    const row = r as { name: string; institution: string; role_name: string | null; banca: string | null; exam_date: string | null } | null;
+    if (row) return { examDate: row.exam_date, banca: row.banca && !/confirmar/i.test(row.banca) ? row.banca : null, query: `${row.name} ${row.institution} ${row.role_name ?? ""}` };
+  }
   const ws = words(contest);
   if (!ws.length) return null;
   const { data } = await createAdminClient().from("contest_catalog").select("name, institution, role_name, banca, exam_date, active").eq("active", true).limit(400);
@@ -48,7 +97,7 @@ async function findCatalogContest(contest: string): Promise<{ examDate: string |
     const score = ws.filter((w) => hay.has(w)).length / ws.length;
     if (score >= 0.6 && (!best || score > best.score)) best = { score, examDate: r.exam_date, banca: r.banca };
   }
-  return best ? { examDate: best.examDate, banca: best.banca } : null;
+  return best ? { examDate: best.examDate, banca: best.banca, query: contest } : null;
 }
 
 export interface GoalPlan { goal: MentorGoal | null; plan: StudyPlan | null }
@@ -60,7 +109,7 @@ export async function loadGoalPlan(userId: string, snapshot: MentorSnapshot, res
   try {
     const [prof, cat] = await Promise.all([
       createAdminClient().from("profiles").select("daily_goal_minutes, daily_questions_goal").eq("id", userId).maybeSingle(),
-      findCatalogContest(goal.contest).catch(() => null),
+      findCatalogContest(goal.contest, goal.contestId).catch(() => null),
     ]);
     const subj = new Map<string, { correct: number; valid: number; pending: number }>();
     const get = (n: string) => subj.get(n) ?? subj.set(n, { correct: 0, valid: 0, pending: 0 }).get(n)!;
@@ -76,7 +125,16 @@ export async function loadGoalPlan(userId: string, snapshot: MentorSnapshot, res
       s.correct += t.correct;
       s.valid += t.valid;
     }
-    const subjects: PlanSubject[] = [...subj].map(([name, s]) => ({ name, pct: s.valid >= 5 ? Math.round((s.correct / s.valid) * 100) : null, pendingLessons: s.pending }));
+    const platform: PlanSubject[] = [...subj].map(([name, s]) => ({ name, pct: s.valid >= 5 ? Math.round((s.correct / s.valid) * 100) : null, pendingLessons: s.pending }));
+    // Plano pelo edital: se o aluno tem o edital deste concurso na plataforma, as matérias são as dele.
+    const edital = await findEditalSubjects(userId, cat?.query ?? goal.contest).catch(() => null);
+    const norm = (x: string) => x.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+    const subjects: PlanSubject[] = edital
+      ? edital.subjects.map((e) => {
+          const hit = platform.find((p) => { const a = norm(p.name), b = norm(e.name); return !!a && !!b && (a.includes(b) || b.includes(a)); });
+          return { name: e.name, pct: hit?.pct ?? null, pendingLessons: Math.ceil(e.topics / 5), editalTopics: e.topics };
+        })
+      : platform;
     const row = (prof.data ?? {}) as { daily_goal_minutes?: number | null; daily_questions_goal?: number | null };
     const plan = buildStudyPlan({
       contest: goal.contest,
@@ -88,6 +146,9 @@ export async function loadGoalPlan(userId: string, snapshot: MentorSnapshot, res
       reviewsDue: snapshot.reviews.filter((r) => r.dueAt && new Date(r.dueAt) <= new Date(snapshot.now)).length,
       today: brDay().day,
     });
+    plan.notes.unshift(edital
+      ? `Plano montado com o seu edital: ${edital.label || "edital enviado"} (${edital.subjects.length} disciplinas).`
+      : "Ainda não há edital deste concurso na sua conta: o plano usa as matérias da plataforma. Envie o edital em Meu concurso para um plano específico.");
     return { goal, plan };
   } catch {
     return { goal, plan: null };
