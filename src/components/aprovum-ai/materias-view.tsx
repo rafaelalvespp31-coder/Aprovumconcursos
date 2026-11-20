@@ -143,9 +143,15 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
                                   </li>
                                 );
                               })}
-                              {tem && subs.length > 0 && (
-                                <li className="mv-tudo"><button type="button" className="mv-go" data-feito={t.done ? 1 : undefined} onClick={() => estudar(t, d.name, subs)}>{t.done ? "Revisar tópico inteiro" : "Estudar tópico inteiro"}</button></li>
-                              )}
+                              {tem && subs.length > 0 && (() => {
+                                  const tudo = subs.every((x) => ["concluido", "completa"].includes(statusKey(x)));
+                                  return (
+                                    <li className="mv-tudo">
+                                      <button type="button" className="mv-go" data-feito={t.done ? 1 : undefined} disabled={!tudo} title={tudo ? undefined : "Disponível quando todos os subtópicos tiverem aula catalogada"} onClick={() => estudar(t, d.name, subs)}>{t.done ? "Revisar tópico inteiro" : "Estudar tópico inteiro"}</button>
+                                      {!tudo && <span className="mv-tudo-aviso">Libera quando todos os subtópicos tiverem aula</span>}
+                                    </li>
+                                  );
+                              })()}
                               {subs.length === 0 && t.lessons.length === 0 && <li className="mv-vz" data-sem>Sem aula disponível para este tópico ainda.</li>}
                             </ul>
                           </details>
