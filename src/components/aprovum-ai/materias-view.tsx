@@ -37,14 +37,23 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
   const blocos = useMemo(
     () =>
       disciplines.map((d, i) => {
-        const porMateria = new Map<string, TreeTopic[]>();
+        // Estrutura do edital: tópico (nível mais alto) → subtópicos, na ordem do edital.
+        // A matéria vem do tópico; os subtópicos acompanham o tópico (não são separados por título).
+        const topo = d.topics.reduce((m, t) => Math.min(m, t.depth), Infinity);
+        const arvore: Array<{ t: TreeTopic; subs: TreeTopic[] }> = [];
         for (const t of d.topics) {
-          if (nq && !fold(t.title).includes(nq) && !fold(d.name).includes(nq)) continue;
-          const k = materiaOf(d.name, t.title);
-          porMateria.set(k, [...(porMateria.get(k) ?? []), t]);
+          const last = arvore[arvore.length - 1];
+          if (t.depth > topo && last) last.subs.push(t);
+          else arvore.push({ t, subs: [] });
+        }
+        const porMateria = new Map<string, Array<{ t: TreeTopic; subs: TreeTopic[] }>>();
+        for (const b of arvore) {
+          if (nq && !fold(d.name).includes(nq) && ![b.t, ...b.subs].some((x) => fold(x.title).includes(nq))) continue;
+          const k = materiaOf(d.name, b.t.title);
+          porMateria.set(k, [...(porMateria.get(k) ?? []), b]);
         }
         const materias = [...porMateria].sort((a, b) => materiaOrder(a[0]) - materiaOrder(b[0]));
-        return { d, hue: HUES[i % HUES.length]!, materias, n: materias.reduce((s, [, ts]) => s + ts.length, 0) };
+        return { d, hue: HUES[i % HUES.length]!, materias, n: materias.reduce((s, [, ts]) => s + ts.reduce((m, b) => m + 1 + b.subs.length, 0), 0) };
       }).filter((b) => b.n > 0),
     [disciplines, nq],
   );
@@ -101,13 +110,7 @@ export function MateriasView({ tree }: { tree: PreparationTree }) {
               </summary>
               <div className="mv-grupo">
                 {materias.map(([materia, ts]) => {
-                  // tópico (nível 0) e seus subtópicos ficam num bloco só; o resto da lista segue em sequência
-                  const blocosT: Array<{ t: TreeTopic; subs: TreeTopic[] }> = [];
-                  for (const t of ts) {
-                    const last = blocosT[blocosT.length - 1];
-                    if (t.depth > 0 && last) last.subs.push(t);
-                    else blocosT.push({ t, subs: [] });
-                  }
+                  const blocosT = ts;
                   return (
                     <section key={materia}>
                       {materias.length > 1 && <h3 className="mv-mat">{materia}</h3>}
