@@ -16,12 +16,12 @@ export function Pill({ kind, children }: { kind: string; children: React.ReactNo
   return <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 t-tiny font-bold ring-1 ring-inset ${PILL[kind] ?? PILL.cancelado}`}>{children}</span>;
 }
 
-/** Cartão de indicador: número grande, rótulo pequeno; `accent` marca o dado principal com a barra vermelha da marca. */
+/** Cartão de indicador: número grande, rótulo pequeno; `accent` pinta o número de vermelho (dado principal). */
 export function Stat({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className={`relative overflow-hidden rounded-xl border border-linha bg-superficie p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] ${accent ? "before:absolute before:inset-x-0 before:top-0 before:h-[3px] before:bg-[#E10600]" : ""}`}>
+    <div className="rounded-xl border border-linha bg-superficie p-4">
       <dt className="t-tiny font-semibold uppercase tracking-wide text-tinta-fraca">{label}</dt>
-      <dd className="mt-1.5 text-2xl font-extrabold tabular-nums tracking-tight">{value}</dd>
+      <dd className={`mt-1.5 text-2xl font-extrabold tabular-nums tracking-tight ${accent ? "text-destaque" : ""}`}>{value}</dd>
     </div>
   );
 }

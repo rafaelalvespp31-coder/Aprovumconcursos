@@ -35,7 +35,7 @@ export default async function ParceirosPage({ searchParams }: { searchParams: Pr
         {cards.map(([k, v], i) => <Stat key={k} label={k} value={v} accent={i === 3 || i === 4} />)}
       </dl>
 
-      <details className="group mt-5 rounded-xl border border-linha bg-superficie shadow-[0_1px_2px_rgba(0,0,0,0.04)]" open={!!sp.erro}>
+      <details className="group mt-5 rounded-xl border border-linha bg-superficie" open={!!sp.erro}>
         <summary className="flex cursor-pointer list-none items-center justify-between p-4"><span className="t-small font-bold">+ Cadastrar parceiro</span><span className="t-tiny text-tinta-fraca group-open:hidden">Abrir formulário</span></summary>
         <div className="border-t border-linha p-4"><PartnerForm action={createPartnerAction} submit="Cadastrar parceiro" /></div>
       </details>
@@ -51,7 +51,7 @@ export default async function ParceirosPage({ searchParams }: { searchParams: Pr
       {rows.length === 0 ? (
         <p className="mt-4 rounded-lg border border-linha bg-superficie p-4 t-small">{total === 0 && kpis.partners === 0 ? "Nenhum parceiro cadastrado ainda." : "Nenhum parceiro encontrado com esse filtro."}</p>
       ) : (
-        <div className="mt-3 overflow-x-auto rounded-xl border border-linha bg-superficie shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+        <div className="mt-3 overflow-x-auto rounded-xl border border-linha bg-superficie">
           <table className="w-full min-w-[920px] text-left t-small">
             <thead className="border-b border-linha bg-nevoa t-tiny uppercase tracking-wide text-tinta-fraca"><tr><th className="p-3">Parceiro</th><th className="p-3">Cupom</th><th className="p-3">Desconto</th><th className="p-3">Comissão</th><th className="p-3">Indicações</th><th className="p-3">Vendas</th><th className="p-3">Faturamento</th><th className="p-3">Status</th><th className="p-3">Ações</th></tr></thead>
             <tbody>
@@ -82,7 +82,7 @@ export default async function ParceirosPage({ searchParams }: { searchParams: Pr
         </nav>
       )}
 
-      <details className="mt-6 rounded-xl border border-linha bg-superficie p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]" aria-label="Regras de atribuição">
+      <details className="mt-6 rounded-xl border border-linha bg-superficie p-4" aria-label="Regras de atribuição">
         <summary className="cursor-pointer t-small font-bold">Regras de atribuição e janela</summary>
         <ul className="mt-2 list-disc pl-5 t-small text-tinta-suave">
           <li>O link <code>?ref=CÓDIGO</code> guarda a origem e vincula ao aluno quando ele entra. O desconto só vale quando o aluno clica em Aplicar no pagamento.</li>

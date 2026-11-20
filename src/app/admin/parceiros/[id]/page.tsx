@@ -41,7 +41,7 @@ export default async function ParceiroDetalhe({ params, searchParams }: { params
       <dl className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-5">
         {([["Indicações", String(p.referrals)], ["Vendas aprovadas", String(p.sales)], ["Faturamento", brl(p.grossCents)], ["Descontos", brl(p.discountCents)], ["Comissão devida", brl(p.commissionDueCents)]] as const).map(([k, v], i) => <Stat key={k} label={k} value={v} accent={i === 2} />)}
       </dl>
-      <details className="mt-5 rounded-xl border border-linha bg-superficie p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+      <details className="mt-5 rounded-xl border border-linha bg-superficie p-4">
         <summary className="cursor-pointer t-small font-semibold">Editar parceiro e cupom</summary>
         <div className="mt-3"><PartnerForm action={updatePartnerAction} p={p} submit="Salvar alterações" /></div>
       </details>
@@ -49,7 +49,7 @@ export default async function ParceiroDetalhe({ params, searchParams }: { params
       {sales.length === 0 ? (
         <p className="mt-2 rounded-lg border border-linha bg-superficie p-4 t-small">Nenhuma venda ainda. Elas aparecem aqui quando um aluno usa o cupom no pagamento.</p>
       ) : (
-        <div className="mt-2 overflow-x-auto rounded-xl border border-linha bg-superficie shadow-[0_1px_2px_rgba(0,0,0,0.04)]">
+        <div className="mt-2 overflow-x-auto rounded-xl border border-linha bg-superficie">
           <table className="w-full min-w-[1100px] text-left t-small">
             <thead className="border-b border-linha bg-nevoa t-tiny uppercase tracking-wide text-tinta-fraca"><tr><th className="p-3">Indicação</th><th className="p-3">Contratação</th><th className="p-3">Aluno</th><th className="p-3">Plano</th><th className="p-3">Original</th><th className="p-3">Desconto</th><th className="p-3">Pago</th><th className="p-3">Cupom / origem</th><th className="p-3">Pagamento</th><th className="p-3">Mercado Pago</th><th className="p-3">Comissão</th></tr></thead>
             <tbody>

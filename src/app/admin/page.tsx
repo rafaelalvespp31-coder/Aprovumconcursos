@@ -107,7 +107,7 @@ export default async function AdminHome() {
           <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {g.items.map((i) => (
               <li key={i.href}>
-                <Link href={i.href} className="group relative flex h-full items-start gap-3.5 overflow-hidden rounded-2xl border border-linha bg-superficie p-4 shadow-[0_1px_2px_rgba(0,0,0,0.04)] transition duration-200 hover:-translate-y-0.5 hover:border-[#E10600]/50 hover:shadow-[0_12px_28px_-14px_rgba(0,0,0,0.35)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
+                <Link href={i.href} className="group relative flex h-full items-start gap-3.5 overflow-hidden rounded-2xl border border-linha bg-superficie p-4 transition duration-200 hover:-translate-y-0.5 hover:border-[#E10600]/50 hover:shadow-[0_12px_28px_-14px_rgba(0,0,0,0.35)] motion-reduce:transition-none motion-reduce:hover:translate-y-0">
                   <span aria-hidden className="absolute inset-y-0 left-0 w-[3px] origin-top scale-y-0 bg-[#E10600] transition-transform duration-200 group-hover:scale-y-100" />
                   <span className="grid size-11 shrink-0 place-items-center rounded-xl bg-tinta text-white transition group-hover:bg-[#E10600]"><Ico d={i.icon} /></span>
                   <span className="min-w-0 flex-1">

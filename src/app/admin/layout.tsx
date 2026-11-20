@@ -38,8 +38,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <Suspense fallback={<AdminNav badges={{ planos: 0, avatares: 0, raiox: 0 }} />}>
           <MenuComAvisos />
         </Suspense>
-        <div className="min-w-0 flex-1 bg-nevoa/60">
-          <div className="flex items-center justify-end gap-3 border-b border-linha bg-superficie px-5 py-2.5">
+        <div className="adm min-w-0 flex-1">
+          <div className="flex items-center justify-end gap-3 border-b border-linha bg-white/80 px-5 py-2.5 backdrop-blur">
             <Suspense fallback={null}>
               <BarraSuperior />
             </Suspense>
