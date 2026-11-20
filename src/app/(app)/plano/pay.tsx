@@ -40,7 +40,7 @@ const REASON: Record<string, string> = {
 };
 
 /** Pagamento dentro do app: Payment Brick (PIX e cartão em até 12x). Quem confirma é o servidor. */
-export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: OfferKey; publicKey: string; email: string | null; onClose: () => void; onPaid: () => void }) {
+export function PayBox({ offer, publicKey, email, refCupom, onClose, onPaid }: { offer: OfferKey; publicKey: string; email: string | null; refCupom?: string | null; onClose: () => void; onPaid: () => void }) {
   const [result, setResult] = useState<PayResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [ready, setReady] = useState(false);
@@ -49,6 +49,39 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
   const [tab, setTab] = useState<"pix" | "cartao">("pix");
   const [cardOpened, setCardOpened] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  // Cupom de parceiro: o servidor confere e calcula; aqui só se mostra o valor. O código do link (?ref=) já vem preenchido.
+  const [cupom, setCupom] = useState(refCupom ?? "");
+  const [applied, setApplied] = useState<{ code: string; partner: string; discountPct: number; listCents: number; finalCents: number } | null>(null);
+  const [cupomMsg, setCupomMsg] = useState<string | null>(null);
+  const [cupomBusy, setCupomBusy] = useState(false);
+  const applyCoupon = async (code = cupom) => {
+    if (cupomBusy || !code.trim()) return;
+    setCupomBusy(true);
+    setCupomMsg(null);
+    try {
+      const r = await fetch("/api/payments/coupon", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, code }) });
+      const j = (await r.json().catch(() => ({}))) as { coupon?: { code: string; partner: string; discountPct: number }; quote?: { listCents: number; finalCents: number }; error?: string };
+      if (!r.ok || !j.coupon || !j.quote) {
+        setApplied(null);
+        setCupomMsg(j.error ?? "Cupom inválido.");
+      } else {
+        setApplied({ code: j.coupon.code, partner: j.coupon.partner, discountPct: j.coupon.discountPct, listCents: j.quote.listCents, finalCents: j.quote.finalCents });
+        setCupom(j.coupon.code);
+      }
+    } catch {
+      setCupomMsg("Sem conexão. Tente novamente.");
+    } finally {
+      setCupomBusy(false);
+    }
+  };
+  // Cupom que veio do link do parceiro: aplica sozinho ao abrir o pagamento.
+  useEffect(() => {
+    if (!refCupom) return;
+    const t = setTimeout(() => void applyCoupon(refCupom), 0);
+    return () => clearTimeout(t);
+    // só ao abrir
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [cpf, setCpf] = useState(() => {
     try {
       return typeof window === "undefined" ? "" : maskCpf(window.localStorage.getItem("na:cpf-pix") ?? "");
@@ -69,7 +102,7 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
       /* sem armazenamento: só não lembra o CPF */
     }
     try {
-      const r = await fetch("/api/payments/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, formData: { payment_method_id: "pix", payer: { identification: { type: "CPF", number: cpf.replace(/\D/g, "") } } }, deviceId: deviceId() }) });
+      const r = await fetch("/api/payments/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, coupon: applied?.code, formData: { payment_method_id: "pix", payer: { identification: { type: "CPF", number: cpf.replace(/\D/g, "") } } }, deviceId: deviceId() }) });
       const j = (await r.json().catch(() => ({}))) as { payment?: PayResult; error?: string };
       if (!r.ok || !j.payment) setError(j.error ?? "Não foi possível gerar o PIX agora. Tente novamente.");
       else setResult(j.payment);
@@ -110,6 +143,8 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
   }, [result?.status, onPaid]);
 
   const o = OFFERS[offer];
+  const cents = applied ? applied.finalCents : o.cents;
+  const priceTxt = money(cents);
   ensureSdk(publicKey);
   const parcelado = INSTALLMENT_OFFERS.includes(offer);
   const parc = installmentOf(offer);
@@ -123,7 +158,7 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
       <p className="ck-pill"><Crown />PLANO {o.label.toUpperCase()}</p>
       {result === null && (
         <>
-          <p className="ck-preco"><small>APENAS</small> {o.price}</p>
+          <p className="ck-preco"><small>APENAS</small> {applied ? <><s className="ck-de">{o.price}</s> {priceTxt}</> : o.price}</p>
           <p className="ck-acesso">{offer === "vitalicio" ? <><span>ACESSO PARA SEMPRE</span><Infinito /></> : <span>{o.per.toUpperCase()}</span>}</p>
           <p className="ck-faixa"><Raio />{parcelado ? "PIX OU CARTÃO EM ATÉ 12X" : "PIX OU CARTÃO"}</p>
         </>
@@ -212,10 +247,24 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
           <i className="ck-mark" aria-hidden>{tab === "cartao" && <Check />}</i>
         </button>
       </div>
+      <div className="ck-cupom" data-testid="plano-cupom">
+        {applied ? (
+          <p className="ck-ok" role="status"><Check />Cupom {applied.code} aplicado: −{applied.discountPct}% ({applied.partner}) <button type="button" className="ck-cupom-x" onClick={() => { setApplied(null); setCupomMsg(null); }}>remover</button></p>
+        ) : (
+          <label className="ck-campo">
+            <span>Cupom de desconto (opcional)</span>
+            <span className="ck-cupom-linha">
+              <input value={cupom} onChange={(e) => setCupom(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 40))} placeholder="Digite o cupom" autoComplete="off" autoCapitalize="characters" data-testid="plano-cupom-input" />
+              <button type="button" className="ck-cupom-btn" disabled={cupomBusy || !cupom.trim()} onClick={() => void applyCoupon()} data-testid="plano-cupom-aplicar">{cupomBusy ? "…" : "APLICAR"}</button>
+            </span>
+          </label>
+        )}
+        {cupomMsg && <p role="alert" className="ck-erro">{cupomMsg}</p>}
+      </div>
       {error && <p role="alert" className="ck-erro">{error}</p>}
 
       <section id="ck-pn-pix" role="tabpanel" aria-labelledby="ck-tab-pix" hidden={tab !== "pix"} className="ck-painel">
-        <p className="ck-valor">Valor da transação: <b>{o.price}</b></p>
+        <p className="ck-valor">Valor da transação: <b>{priceTxt}</b></p>
         <label className="ck-campo">
           <span>CPF do pagador</span>
           <input inputMode="numeric" autoComplete="off" placeholder="000.000.000-00" value={cpf} onChange={(e) => setCpf(maskCpf(e.target.value))} data-testid="plano-cpf" maxLength={14} aria-invalid={!!cpf && !isValidCpf(cpf)} />
@@ -227,14 +276,15 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
       </section>
 
       <section id="ck-pn-cartao" role="tabpanel" aria-labelledby="ck-tab-cartao" hidden={tab !== "cartao"} className="ck-painel">
-        {parc && <p className="ck-valor">Em até <b>12x de {parc.value}</b> · total {o.price}</p>}
-        {!parc && <p className="ck-valor">Valor: <b>{o.price}</b></p>}
+        {parc && <p className="ck-valor">Em até <b>12x de {money(Math.round(cents / 12))}</b> · total {priceTxt}</p>}
+        {!parc && <p className="ck-valor">Valor: <b>{priceTxt}</b></p>}
         <p className="ck-bandeiras" aria-label="Bandeiras aceitas">VISA · MASTERCARD · ELO · AMEX · HIPERCARD</p>
         {cardOpened && !ready && <p className="ck-s">Carregando pagamento seguro…</p>}
         <div className="ck-brick" data-testid="plano-brick">
           {cardOpened && (
             <Payment
-              initialization={{ amount: o.cents / 100, ...(email ? { payer: { email } } : {}) }}
+              key={cents}
+              initialization={{ amount: cents / 100, ...(email ? { payer: { email } } : {}) }}
               customization={{
                 paymentMethods: { creditCard: "all", maxInstallments: 12 },
                 visual: {
@@ -246,7 +296,7 @@ export function PayBox({ offer, publicKey, email, onClose, onPaid }: { offer: Of
               onError={() => setError("Não foi possível carregar o pagamento. Atualize a página e tente de novo.")}
               onSubmit={async ({ formData }) => {
                 setError(null);
-                const r = await fetch("/api/payments/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, formData, deviceId: deviceId() }) });
+                const r = await fetch("/api/payments/create", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ offer, coupon: applied?.code, formData, deviceId: deviceId() }) });
                 const j = (await r.json().catch(() => ({}))) as { payment?: PayResult; error?: string };
                 if (!r.ok || !j.payment) {
                   setError(j.error ?? "Não foi possível processar o pagamento.");

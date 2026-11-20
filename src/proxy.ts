@@ -2,12 +2,22 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createServerClient } from "@supabase/ssr";
 import { ENDED_ELSEWHERE, isEndedElsewhere } from "@/lib/session";
 import { canonicalRedirect } from "@/domain/auth/identity";
+import { normalizeCouponCode } from "@/domain/partners/coupon";
+import { normalizeReferralCode } from "@/domain/referral/code";
 
 /**
  * Renova a sessão do Supabase a cada requisição e protege as rotas privadas.
  * A autorização definitiva acontece no servidor (requireUser) e no banco (RLS).
  */
 const PRIVATE_PREFIXES = ["/questoes", "/painel", "/trilhas", "/nova-trilha", "/aula", "/desempenho", "/perfil", "/admin", "/revisoes", "/banco", "/quiz", "/mentor", "/business", "/plano", "/depoimentos", "/concursos", "/area-do-aluno"];
+
+/** Link de parceiro (?ref=CODIGO): guarda o código por 30 dias para sugerir o cupom no pagamento. Indicação de aluno (APV-XXXXXX) não entra aqui. */
+function guardarParceiro(request: NextRequest, response: NextResponse): NextResponse {
+  const ref = request.nextUrl.searchParams.get("ref");
+  const code = ref && normalizeReferralCode(ref) === null ? normalizeCouponCode(ref) : null;
+  if (code) response.cookies.set("apv_parceiro", code, { maxAge: 60 * 60 * 24 * 30, path: "/", sameSite: "lax", httpOnly: true, secure: process.env.NODE_ENV === "production" });
+  return response;
+}
 
 export async function proxy(request: NextRequest) {
   // Produção: sempre no endereço oficial (aprovumconcursos.com.br), com o mesmo caminho.
@@ -16,7 +26,7 @@ export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) return response;
+  if (!url || !key) return guardarParceiro(request, response);
 
   const supabase = createServerClient(url, key, {
     cookies: {
@@ -53,7 +63,7 @@ export async function proxy(request: NextRequest) {
     to.search = `?next=${encodeURIComponent(path)}`;
     return NextResponse.redirect(to);
   }
-  return response;
+  return guardarParceiro(request, response);
 }
 
 export const config = {

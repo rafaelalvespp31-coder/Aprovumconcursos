@@ -4140,6 +4140,13 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .ck-campo input { width: 100%; min-height: 48px; padding: 0 14px; border-radius: 10px; border: 1px solid #34343a; background: #0b0b0c; color: #F5F5F5; font-size: 16px; letter-spacing: 0.04em; transition: border-color 160ms, box-shadow 160ms; }
 .ck-campo input:focus-visible { outline: none; border-color: #FF101A; box-shadow: 0 0 0 3px rgba(255,16,26,0.25); }
 .ck-campo input[aria-invalid="true"] { border-color: #ff6b61; }
+.ck-cupom { margin: 0 0 12px; }
+.ck-cupom .ck-campo > span.ck-cupom-linha { display: flex; gap: 8px; margin: 0; }
+.ck-cupom-linha input { flex: 1; min-width: 0; }
+.ck-cupom-btn { min-height: 48px; padding: 0 16px; border-radius: 10px; border: 1px solid #ff5a60; background: #1a0a0b; color: #fff; font-size: 13px; font-weight: 900; letter-spacing: 0.08em; }
+.ck-cupom-btn:disabled { opacity: 0.45; }
+.ck-cupom-x { margin-left: 8px; background: none; border: 0; color: #c7c9cc; text-decoration: underline; font-size: 12px; }
+.ck-de { color: #8b8f94; font-size: 0.6em; margin-right: 6px; }
 .ck-bandeiras { margin: 0 0 10px; text-align: center; font-size: 10.5px; font-weight: 800; letter-spacing: 0.14em; color: #8b8f94; }
 .ck-brick { text-align: left; min-height: 8px; }
 .ck-final { position: relative; display: block; width: 100%; min-height: 54px; margin-top: 10px; overflow: hidden; border-radius: 12px; border: 1px solid #ff5a60; background: linear-gradient(180deg, #FF101A, #B8000A); color: #fff; font-size: 16px; font-weight: 900; letter-spacing: 0.08em; box-shadow: 0 0 22px rgba(255,16,26,0.55), inset 0 1px 0 rgba(255,255,255,0.35); transition: transform 160ms, box-shadow 160ms, filter 160ms; }

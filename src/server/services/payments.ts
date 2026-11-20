@@ -8,6 +8,7 @@ import { OFFERS, isOfferKey, type OfferKey } from "@/domain/plans/offers";
 import { accessEnd, isValidCpf, mapStatus, toCents, type PayStatus } from "@/domain/payments/mercadopago";
 import { effectivePlan } from "@/domain/plans/limits";
 import { cancelOnRefund, rewardOnPurchase } from "./referral";
+import { recordRedemption, resolveCoupon, syncRedemption } from "./coupons";
 
 /** Configuração do Mercado Pago (o Access Token fica só no servidor). */
 export function mpConfigured(): boolean {
@@ -68,6 +69,8 @@ export interface CreateInput {
   /** IP do comprador (antifraude do Mercado Pago). */
   ip?: string | null;
   email: string | null;
+  /** Código do cupom de parceiro (opcional). O desconto é calculado aqui, no servidor. */
+  coupon?: unknown;
 }
 
 export interface PublicPayment {
@@ -122,9 +125,25 @@ export async function createPayment(userId: string, input: CreateInput): Promise
   await enforceRateLimit(userId, "pay_create", 8);
   const price = OFFERS[offer];
   const db = createAdminClient();
-  const ins = await db.from("mp_payments").insert({ user_id: userId, offer, amount_cents: price.cents, method: isPix ? "pix" : "cartao", installments }).select(COLS).single();
+  // Cupom de parceiro: conferido de novo aqui (nunca confia no valor que o navegador mostrou). Desconto só sobre o preço vigente do plano.
+  const couponCode = typeof input.coupon === "string" ? input.coupon.trim() : "";
+  const resolved = couponCode ? await resolveCoupon(couponCode, offer) : null;
+  const amountCents = resolved ? resolved.quote.finalCents : price.cents;
+  const ins = await db
+    .from("mp_payments")
+    .insert({ user_id: userId, offer, amount_cents: amountCents, list_amount_cents: price.cents, discount_cents: resolved?.quote.discountCents ?? 0, coupon_id: resolved?.coupon.id ?? null, method: isPix ? "pix" : "cartao", installments })
+    .select(COLS)
+    .single();
   if (ins.error || !ins.data) throw new Error(ins.error?.message ?? "falha ao registrar o pagamento");
   const row = ins.data as unknown as Row;
+  if (resolved) {
+    try {
+      await recordRedemption(row.id, userId, resolved);
+    } catch (e) {
+      await db.from("mp_payments").update({ status: "cancelado", mp_status: "error", mp_status_detail: "falha ao registrar o cupom", updated_at: new Date().toISOString() }).eq("id", row.id);
+      throw e;
+    }
+  }
 
   // Dados que o antifraude do Mercado Pago usa para confiar no pagamento: nome do pagador e dispositivo.
   const prof = await db.from("profiles").select("display_name, created_at, whatsapp").eq("id", userId).maybeSingle();
@@ -143,20 +162,20 @@ export async function createPayment(userId: string, input: CreateInput): Promise
   let mp: MpPayment;
   try {
     const body: Record<string, unknown> = {
-      transaction_amount: price.cents / 100,
+      transaction_amount: amountCents / 100,
       description: `APROVUM — ${price.label}`,
       payment_method_id: methodId,
       installments,
       payer: { email, ...(firstName ? { first_name: firstName } : {}), ...(lastName ? { last_name: lastName } : {}), ...(identification ? { identification } : {}) },
       additional_info: {
-        items: [{ id: offer, title: `APROVUM — ${price.label}`, description: `Acesso à plataforma APROVUM (${price.label})`, category_id: "learnings", quantity: 1, unit_price: price.cents / 100 }],
+        items: [{ id: offer, title: `APROVUM — ${price.label}`, description: `Acesso à plataforma APROVUM (${price.label})`, category_id: "learnings", quantity: 1, unit_price: amountCents / 100 }],
         ...(firstName || phone || registration ? { payer: { ...(firstName ? { first_name: firstName } : {}), ...(lastName ? { last_name: lastName } : {}), ...(phone ? { phone } : {}), ...(registration ? { registration_date: registration } : {}) } } : {}),
         ...(ip ? { ip_address: ip } : {}),
       },
       external_reference: row.id,
       notification_url: `${siteUrl()}/api/webhooks/mercadopago`,
       statement_descriptor: "APROVUM",
-      metadata: { user_id: userId, offer },
+      metadata: { user_id: userId, offer, ...(resolved ? { coupon: resolved.coupon.code } : {}) },
     };
     if (!isPix) {
       body.token = token;
@@ -210,6 +229,7 @@ async function recordFromMp(row: Row, mp: MpPayment): Promise<Row> {
   const { data, error } = await db.from("mp_payments").update(upd).eq("id", row.id).select(COLS).single();
   if (error || !data) throw new Error(error?.message ?? "falha ao atualizar o pagamento");
   const out = data as unknown as Row;
+  await syncRedemption(out.id, out.status, out.approved_at);
   if (out.status === "aprovado") await activate(out);
   else if (out.status === "reembolsado" && out.applied_at) await revoke(out);
   return out;

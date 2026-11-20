@@ -1,4 +1,6 @@
+import { cookies } from "next/headers";
 import { requireUser } from "@/server/auth";
+import { normalizeCouponCode } from "@/domain/partners/coupon";
 import { listMyPayments, mpConfigured } from "@/server/services/payments";
 import { OFFERS } from "@/domain/plans/offers";
 import { PAY_STATUS_LABEL } from "@/domain/payments/mercadopago";
@@ -16,7 +18,9 @@ export default async function PlanoPage() {
   const sub = subscription as unknown as { plan_id: string; status: string; current_period_end?: string | null; billing_period?: string | null } | null;
   const eff = effectivePlan(sub ? { planId: sub.plan_id, status: sub.status, currentPeriodEnd: sub.current_period_end ?? null } : null);
   const publicKey = process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY?.trim();
-  const mp = publicKey && mpConfigured() ? { publicKey, email: user.email ?? null } : null;
+  // Link de parceiro (?ref=CODIGO): o código fica guardado por 30 dias e já vem no campo de cupom do pagamento.
+  const refCupom = normalizeCouponCode((await cookies()).get("apv_parceiro")?.value);
+  const mp = publicKey && mpConfigured() ? { publicKey, email: user.email ?? null, refCupom } : null;
   const history = await listMyPayments(user.id).catch(() => []);
   return (
     <>

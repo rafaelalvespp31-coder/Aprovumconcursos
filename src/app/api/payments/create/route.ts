@@ -13,14 +13,14 @@ export async function POST(req: NextRequest) {
   if (!sameOrigin(req)) return NextResponse.json({ error: "Origem não permitida." }, { status: 403 });
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sessão expirada. Entre novamente." }, { status: 401 });
-  let body: { offer?: unknown; formData?: unknown; deviceId?: unknown };
+  let body: { offer?: unknown; formData?: unknown; deviceId?: unknown; coupon?: unknown };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Pedido inválido." }, { status: 400 });
   }
   try {
-    const payment = await createPayment(user.id, { offer: body.offer, formData: body.formData, deviceId: body.deviceId, ip: (req.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || req.headers.get("x-real-ip"), email: user.email ?? null });
+    const payment = await createPayment(user.id, { offer: body.offer, formData: body.formData, deviceId: body.deviceId, coupon: body.coupon, ip: (req.headers.get("x-forwarded-for") ?? "").split(",")[0]?.trim() || req.headers.get("x-real-ip"), email: user.email ?? null });
     return NextResponse.json({ payment });
   } catch (e) {
     if (e instanceof UserFacingError) return NextResponse.json({ error: e.message }, { status: e.code === "rate_limited" ? 429 : 400 });

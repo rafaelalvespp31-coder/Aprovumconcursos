@@ -134,6 +134,12 @@ export default async function AdminLayout({
                 Pagamentos
               </Link>
               <Link
+                href="/admin/parceiros"
+                className="text-destaque underline-offset-2 hover:underline"
+              >
+                Parceiros
+              </Link>
+              <Link
                 href="/admin/avisos-push"
                 className="text-destaque underline-offset-2 hover:underline"
               >

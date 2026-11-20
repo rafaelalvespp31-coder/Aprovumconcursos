@@ -143,7 +143,7 @@ function MobileCard({ id, current, onPick }: { id: Card["id"]; current: boolean;
   );
 }
 
-export function PlanoView({ current, choose, mp = null }: { current: "gratuito" | OfferKey; choose: (plan: string) => Promise<ChoosePlanResult>; mp?: { publicKey: string; email: string | null } | null }) {
+export function PlanoView({ current, choose, mp = null }: { current: "gratuito" | OfferKey; choose: (plan: string) => Promise<ChoosePlanResult>; mp?: { publicKey: string; email: string | null; refCupom?: string | null } | null }) {
   const router = useRouter();
   const paid = useCallback(() => router.refresh(), [router]);
   const [sel, setSel] = useState<OfferKey | null>(null);
@@ -183,7 +183,7 @@ export function PlanoView({ current, choose, mp = null }: { current: "gratuito" 
         <div className="plano-fundo" role="dialog" aria-modal="true" aria-label={OFFERS[sel].label} data-testid="plano-dialogo" onClick={(e) => e.target === e.currentTarget && close()}>
           <div className={`plano-caixa ${mp ? "plano-caixa-pg ck-caixa" : ""}`}>
             {mp ? (
-              <PayBox offer={sel} publicKey={mp.publicKey} email={mp.email} onClose={close} onPaid={paid} />
+              <PayBox offer={sel} publicKey={mp.publicKey} email={mp.email} refCupom={mp.refCupom ?? null} onClose={close} onPaid={paid} />
             ) : done ? (
               <>
                 <p className="plano-k">PEDIDO ENVIADO</p>
