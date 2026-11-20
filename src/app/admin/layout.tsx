@@ -1,4 +1,5 @@
 import { AdminNav } from "@/components/admin/admin-nav";
+import { EMPTY_BADGES, type NavBadges } from "@/components/admin/nav-data";
 import { requireAdmin } from "@/server/services/catalog";
 import { DisciplinesSync } from "@/components/disciplines-sync";
 import { ensureDisciplines } from "@/server/services/disciplines";
@@ -11,7 +12,7 @@ export const metadata = { title: "Administração" };
 
 const PEND_VAZIA = { total: 0, items: [] as Awaited<ReturnType<typeof getAdminPendencias>>["items"] };
 const nPend = (p: typeof PEND_VAZIA, key: string) => p.items.find((i) => i.key === key)?.count ?? 0;
-const badgesOf = (p: typeof PEND_VAZIA) => ({ planos: nPend(p, "planos"), avatares: nPend(p, "avatares"), raiox: nPend(p, "raiox") });
+const badgesOf = (p: typeof PEND_VAZIA): NavBadges => ({ planos: nPend(p, "planos"), avatares: nPend(p, "avatares"), raiox: nPend(p, "raiox"), pagamentos: nPend(p, "pagamentos"), feedbacks: nPend(p, "feedbacks"), indicacoes: nPend(p, "indicacoes"), parceiros: nPend(p, "parceiros") });
 
 // As pendências carregam à parte: a página não espera por elas para aparecer.
 async function MenuComAvisos() {
@@ -35,7 +36,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   return (
     <DisciplinesSync list={disciplines}>
       <div className="min-h-dvh lg:flex">
-        <Suspense fallback={<AdminNav badges={{ planos: 0, avatares: 0, raiox: 0 }} />}>
+        <Suspense fallback={<AdminNav badges={EMPTY_BADGES} />}>
           <MenuComAvisos />
         </Suspense>
         <div className="adm min-w-0 flex-1">

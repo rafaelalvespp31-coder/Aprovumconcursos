@@ -38,6 +38,7 @@ export function PendenciasSino({ initial }: { initial: Data }) {
       const novos = next.items.filter((i) => i.count > (prev.current[i.key] ?? 0));
       prev.current = Object.fromEntries(next.items.map((i) => [i.key, i.count]));
       setData(next);
+      window.dispatchEvent(new CustomEvent("admin:pendencias-dados", { detail: next }));
       if (novos.length) setToast(`Novo pedido: ${novos.map((n) => n.label.toLowerCase()).join(", ")}`);
     } catch {
       /* sem rede: tenta de novo no próximo ciclo */

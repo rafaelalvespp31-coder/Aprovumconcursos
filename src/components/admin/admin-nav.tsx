@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LogoMark } from "@/components/logo";
 
-import { NAV_GROUPS, type NavBadges } from "./nav-data";
+import { NAV_GROUPS, SEEN_KEYS, type NavBadges } from "./nav-data";
 export type { NavBadges };
 
 const GROUPS = [{ title: "Visão geral", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10", items: [{ href: "/admin", label: "Painel", desc: "", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10", badge: undefined as keyof NavBadges | undefined }] }, ...NAV_GROUPS];
@@ -17,12 +17,32 @@ function Icon({ d }: { d: string }) {
 }
 
 /** Menu lateral do painel da equipe: grupos por assunto, página atual destacada, avisos em vermelho. No celular vira uma gaveta. */
-export function AdminNav({ badges }: { badges: NavBadges }) {
+export function AdminNav({ badges: initial }: { badges: NavBadges }) {
   const path = usePathname() ?? "";
   const [open, setOpen] = useState(false);
+  const [badges, setBadges] = useState<NavBadges>(initial);
+  // Os números chegam do sino (a cada minuto e a cada ação da equipe) e valem para o menu também.
+  useEffect(() => {
+    const on = (e: Event) => {
+      const items = (e as CustomEvent<{ items: Array<{ key: string; count: number }> }>).detail?.items ?? [];
+      setBadges((b) => ({ ...b, ...Object.fromEntries(items.map((i) => [i.key, i.count])) }));
+    };
+    window.addEventListener("admin:pendencias-dados", on);
+    return () => window.removeEventListener("admin:pendencias-dados", on);
+  }, []);
   // Entre dois links que começam igual (/admin/catalogo e /admin/catalogo/enviar), vale o mais específico.
   const all = GROUPS.flatMap((g) => g.items.map((i) => i.href));
   const active = all.filter((h) => path === h || (h !== "/admin" && path.startsWith(h + "/"))).sort((a, b) => b.length - a.length)[0] ?? "";
+  // Abrir uma área sem fila própria (pagamentos, feedbacks, parceiros) zera o aviso dela.
+  const item = GROUPS.flatMap((g) => g.items).find((i) => i.href === active);
+  const seenKey = item?.badge && SEEN_KEYS.includes(item.badge) ? item.badge : null;
+  const cur = seenKey ? badges[seenKey] : 0;
+  useEffect(() => {
+    if (!seenKey) return;
+    void fetch("/api/admin/visto", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ feature: seenKey }) })
+      .then(() => window.dispatchEvent(new Event("admin:pendencias")))
+      .catch(() => undefined);
+  }, [seenKey, path, cur]);
   const here = GROUPS.flatMap((g) => g.items).find((i) => i.href === active)?.label ?? "Painel";
   return (
     <>
