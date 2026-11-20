@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { splitCommentByOption } from "@/domain/bank/option-notes";
 import { useMemo, useState, useTransition } from "react";
 import { estimateQuestions, matchDestino, type SmartIssue } from "@/domain/bank/smart-import";
@@ -63,6 +64,7 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
   const [error, setError] = useState<string | null>(null);
   const [history, setHistory] = useState<SmartHistoryRow[] | null>(null);
   const [pending, start] = useTransition();
+  const router = useRouter();
 
   const estimate = useMemo(() => estimateQuestions(text), [text]);
   const subject = destinos?.subjects.find((s) => s.id === subjectId) ?? null;
@@ -146,7 +148,18 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
       if (!res.ok || !res.data) return setError(res.error ?? "Não foi possível importar.");
       setResult(res.data);
       const done = new Set(res.data.results.filter((x) => x.status === "importada" || x.status === "publicada").map((x) => x.key));
+      const gone = rows?.filter((x) => done.has(x.key)) ?? [];
+      const left = (rows?.filter((x) => !done.has(x.key) && !x.removed) ?? []).length;
+      // Some da caixa de texto o que acabou de ser importado; se não sobrou nenhuma questão, limpa tudo.
+      setText((cur) => {
+        if (left === 0) return "";
+        let t = cur;
+        for (const g of gone) if (g.raw && t.includes(g.raw)) t = t.replace(g.raw, "");
+        return t.replace(/\n{3,}/g, "\n\n").trim();
+      });
       setRows((cur) => cur && cur.filter((x) => !done.has(x.key)));
+      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+      router.refresh();
     });
   };
   const loadHistory = () => start(async () => { const r = await actions.history(); if (r.ok && r.data) setHistory(r.data); else setError(r.error ?? "Não foi possível carregar o histórico."); });
