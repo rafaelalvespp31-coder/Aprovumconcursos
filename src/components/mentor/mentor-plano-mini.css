@@ -1,0 +1,18 @@
+.mpm{position:relative;display:grid;grid-template-columns:auto 1fr auto;grid-template-areas:"i c g" "x x x";align-items:center;gap:12px;overflow:hidden;border-radius:20px;padding:14px;text-decoration:none;background:linear-gradient(135deg,#ff2a1f 0%,#e10600 45%,#a30400 100%);box-shadow:0 10px 24px -8px rgba(225,6,0,.65),inset 0 1px 0 rgba(255,255,255,.28);transition:transform .2s cubic-bezier(.2,.8,.2,1),box-shadow .2s;animation:mpm-pulso 2.8s ease-in-out infinite}
+.mpm:hover{transform:translateY(-3px) scale(1.012);box-shadow:0 16px 30px -8px rgba(225,6,0,.8),inset 0 1px 0 rgba(255,255,255,.35)}
+.mpm:active{transform:scale(.975)}
+.mpm:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.mpm-brilho{position:absolute;inset:0;background:linear-gradient(105deg,transparent 35%,rgba(255,255,255,.28) 50%,transparent 65%);transform:translateX(-120%);animation:mpm-varre 3.6s ease-in-out infinite;pointer-events:none}
+.mpm-ico{grid-area:i;display:grid;place-items:center;width:52px;height:52px;border-radius:16px;background:#08090b;color:#fff;box-shadow:0 4px 10px rgba(0,0,0,.35)}
+.mpm-corpo{grid-area:c;display:flex;min-width:0;flex-direction:column;gap:2px}
+.mpm-kicker{font-size:10.5px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;opacity:.85}
+.mpm-nome{font-size:18px;font-weight:900;line-height:1.15;letter-spacing:-.015em;overflow-wrap:anywhere}
+.mpm-chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:5px}
+.mpm-chip{display:inline-flex;align-items:center;gap:4px;border-radius:999px;background:rgba(0,0,0,.28);padding:3px 8px;font-size:11px;font-weight:700}
+.mpm-chip.is-prova{background:#fff;color:#b30500!important;-webkit-text-fill-color:#b30500!important}
+.mpm-go{grid-area:g;display:grid;place-items:center;width:40px;height:40px;border-radius:999px;background:#fff;color:#e10600;transition:transform .2s}
+.mpm:hover .mpm-go{transform:translateX(4px)}
+.mpm-cta{grid-area:x;text-align:center;border-radius:12px;background:rgba(0,0,0,.3);padding:9px;font-size:13px;font-weight:800;letter-spacing:.02em}
+@keyframes mpm-varre{0%,55%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+@keyframes mpm-pulso{0%,100%{box-shadow:0 10px 24px -8px rgba(225,6,0,.6),inset 0 1px 0 rgba(255,255,255,.28)}50%{box-shadow:0 12px 30px -6px rgba(225,6,0,.95),inset 0 1px 0 rgba(255,255,255,.28)}}
+@media (prefers-reduced-motion:reduce){.mpm,.mpm-brilho{animation:none}.mpm:hover{transform:none}}

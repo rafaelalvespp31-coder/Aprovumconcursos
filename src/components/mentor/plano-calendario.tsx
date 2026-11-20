@@ -62,11 +62,12 @@ export function PlanoCalendario({ plan, today, examDay }: { plan: StudyPlan; tod
         </div>
         <ol className="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-7">
           {Array.from({ length: offset }, (_, i) => <li key={`v${i}`} className="hidden md:block" aria-hidden />)}
-          {cells.map((c) => <Dia key={c.key} c={c} feito={diaConcluido(c.plan, feitos[c.key] ?? [])} ativo={sel === c.key} onSelect={() => setSel(c.key)} />)}
+          {cells.map((c) => <Dia key={c.key} c={c} idx={c.day} qtd={(feitos[c.key] ?? []).filter((n) => n < (c.plan?.blocks.length ?? 0)).length} feito={diaConcluido(c.plan, feitos[c.key] ?? [])} ativo={sel === c.key} onSelect={() => setSel(c.key)} />)}
         </ol>
 
         <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[11.5px] text-[#64666D]">
           <span className="inline-flex items-center gap-1.5"><span className="size-3 rounded border border-[#86CFA0] bg-[#DDF5E4]" /> Dia concluído</span>
+          <span className="inline-flex items-center gap-1.5"><span className="size-3 rounded border border-[#F5B8B3] bg-[#FDECEA]" /><span className="size-3 rounded border border-[#D3D5DA] bg-[#ECEDEF]" /> Dias de estudo</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-3 rounded border-2 border-[#E10600] bg-white" /> Hoje</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-3 rounded bg-[#08090B]" /> Dia da prova</span>
         </p>
@@ -77,14 +78,16 @@ export function PlanoCalendario({ plan, today, examDay }: { plan: StudyPlan; tod
   );
 }
 
-function Dia({ c, feito, ativo, onSelect }: { c: CalCell; feito: boolean; ativo: boolean; onSelect: () => void }) {
-  const base = "relative flex min-h-[136px] w-full flex-col rounded-xl border p-2.5 text-left transition focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E10600]";
+function Dia({ c, idx, qtd, feito, ativo, onSelect }: { c: CalCell; idx: number; qtd: number; feito: boolean; ativo: boolean; onSelect: () => void }) {
+  const base = "group relative flex min-h-[136px] w-full flex-col rounded-xl border p-2.5 text-left transition duration-200 ease-out hover:-translate-y-1 hover:scale-[1.03] hover:shadow-lg active:scale-[0.97] motion-reduce:transition-none motion-reduce:hover:transform-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#E10600]";
   const tema = c.isExam
     ? "border-[#08090B] bg-[#08090B] text-white"
     : feito
       ? "border-[#86CFA0] bg-[#DDF5E4] text-[#14532D]"
       : c.plan
-        ? "border-[#E4E4E7] bg-white text-[#08090B] hover:border-[#B8B8BF] hover:shadow-sm"
+        ? idx % 2 === 1
+          ? "border-[#F5B8B3] bg-[#FDECEA] text-[#3a0b08] hover:border-[#E10600]"
+          : "border-[#D3D5DA] bg-[#ECEDEF] text-[#26272B] hover:border-[#5b5d64]"
         : "border-dashed border-[#E4E4E7] bg-[#FAFAFB] text-[#8B8D94]";
   const hoje = c.isToday ? " ring-2 ring-[#E10600] ring-offset-1" : "";
   const sel = ativo && !c.isToday ? " outline outline-2 outline-[#08090B]" : "";
@@ -106,6 +109,9 @@ function Dia({ c, feito, ativo, onSelect }: { c: CalCell; feito: boolean; ativo:
           </span>
         ) : (
           <span className="mt-auto pt-2 text-[11.5px] font-semibold">{c.afterExam ? "Após a prova" : "Descanso"}</span>
+        )}
+        {c.plan && !feito && qtd > 0 && (
+          <span className="mt-auto block pt-1.5" aria-hidden><span className="block h-1.5 overflow-hidden rounded-full bg-black/10"><span className="block h-full rounded-full bg-[#2e7d32] transition-all duration-300" style={{ width: `${Math.round((qtd / c.plan.blocks.length) * 100)}%` }} /></span></span>
         )}
         {feito && c.plan && <span className="mt-auto pt-1.5 text-[11px] font-extrabold uppercase tracking-wide text-[#166534]">Concluído · {horas(c.plan.minutes)}</span>}
       </button>
