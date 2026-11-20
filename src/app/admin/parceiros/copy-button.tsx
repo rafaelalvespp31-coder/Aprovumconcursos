@@ -8,7 +8,7 @@ export function CopyButton({ text, label }: { text: string; label: string }) {
   return (
     <button
       type="button"
-      className="rounded-md border border-linha px-2 py-1 t-tiny font-semibold hover:bg-fundo"
+      className="rounded-md border border-linha px-2 py-1 t-tiny font-semibold hover:bg-nevoa"
       onClick={() => {
         void navigator.clipboard?.writeText(text).then(() => {
           setDone(true);

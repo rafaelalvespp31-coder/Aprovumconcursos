@@ -5,6 +5,7 @@ import { partnerDetail } from "@/server/services/parceiros-admin";
 import { OFFERS, isOfferKey } from "@/domain/plans/offers";
 import { commissionStepAction, setPartnerStatusAction, updatePartnerAction } from "../actions";
 import { CopyButton } from "../copy-button";
+import { DeleteButton } from "../delete-button";
 import { PartnerForm } from "../partner-form";
 import { Flash, brl } from "../ui";
 
@@ -28,7 +29,10 @@ export default async function ParceiroDetalhe({ params, searchParams }: { params
       <Link href="/admin/parceiros" className="t-small underline">← APROVUM PARCEIROS</Link>
       <div className="mt-2 flex flex-wrap items-baseline justify-between gap-2">
         <h1 className="t-h1">{p.name}</h1>
-        <form action={setPartnerStatusAction}><input type="hidden" name="partnerId" value={p.id} /><input type="hidden" name="to" value={p.status === "ativo" ? "inativo" : "ativo"} /><button className="rounded-md border border-linha px-3 py-1.5 t-small font-semibold">{p.status === "ativo" ? "Suspender parceiro" : "Ativar parceiro"}</button></form>
+        <div className="flex items-center gap-2">
+          <form action={setPartnerStatusAction}><input type="hidden" name="partnerId" value={p.id} /><input type="hidden" name="to" value={p.status === "ativo" ? "inativo" : "ativo"} /><button className="rounded-md border border-linha px-3 py-1.5 t-small font-semibold">{p.status === "ativo" ? "Suspender parceiro" : "Ativar parceiro"}</button></form>
+        <DeleteButton partnerId={p.id} name={p.name} />
+        </div>
       </div>
       <Flash ok={sp.ok} erro={sp.erro} />
       {p.code && p.link ? (
@@ -61,7 +65,7 @@ export default async function ParceiroDetalhe({ params, searchParams }: { params
                   <td className="p-3">
                     {COM[r.commissionStatus] ?? r.commissionStatus}{r.commissionCents > 0 ? ` · ${brl(r.commissionCents)}` : ""}
                     {r.status === "aprovado" && (r.commissionStatus === "calculada" || r.commissionStatus === "aprovada") ? (
-                      <form action={commissionStepAction} className="mt-1"><input type="hidden" name="partnerId" value={p.id} /><input type="hidden" name="redemptionId" value={r.id} /><input type="hidden" name="to" value={r.commissionStatus === "calculada" ? "aprovada" : "paga"} /><button className="rounded-md border border-linha px-2 py-1 t-tiny font-semibold hover:bg-fundo">{r.commissionStatus === "calculada" ? "Aprovar" : "Marcar paga"}</button></form>
+                      <form action={commissionStepAction} className="mt-1"><input type="hidden" name="partnerId" value={p.id} /><input type="hidden" name="redemptionId" value={r.id} /><input type="hidden" name="to" value={r.commissionStatus === "calculada" ? "aprovada" : "paga"} /><button className="rounded-md border border-linha px-2 py-1 t-tiny font-semibold hover:bg-nevoa">{r.commissionStatus === "calculada" ? "Aprovar" : "Marcar paga"}</button></form>
                     ) : null}
                   </td>
                 </tr>

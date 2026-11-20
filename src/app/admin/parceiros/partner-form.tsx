@@ -1,7 +1,7 @@
 import { OFFERS, OFFER_KEYS } from "@/domain/plans/offers";
 import type { PartnerRow } from "@/server/services/parceiros-admin";
 
-const input = "mt-1 w-full rounded-md border border-linha bg-fundo px-3 py-2 t-small";
+const input = "mt-1 w-full rounded-md border border-linha bg-nevoa px-3 py-2 t-small";
 const toLocal = (iso: string | null) => (iso ? new Date(iso).toISOString().slice(0, 16) : "");
 
 /** Formulário de parceiro + cupom. Sem JavaScript no navegador: envia direto para o servidor, que valida tudo. */
@@ -26,7 +26,7 @@ export function PartnerForm({ action, p, submit }: { action: (fd: FormData) => P
         </div>
       </fieldset>
       <p className="t-tiny text-tinta-fraca sm:col-span-2">Cupom nunca acumula com outro cupom. O preço dos planos não muda; o desconto é calculado no servidor.</p>
-      <div className="sm:col-span-2"><button type="submit" className="rounded-md bg-tinta px-4 py-2 t-small font-semibold text-fundo">{submit}</button></div>
+      <div className="sm:col-span-2"><button type="submit" className="rounded-md bg-tinta px-4 py-2 t-small font-semibold text-white hover:bg-tinta-suave">{submit}</button></div>
     </form>
   );
 }

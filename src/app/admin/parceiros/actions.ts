@@ -6,7 +6,7 @@ import { z } from "zod";
 import { requireAdmin } from "@/server/services/catalog";
 import { enforceRateLimit, UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
-import { createPartnerWithCoupon, setAttributionWindow, setCommissionStatus, setPartnerStatus, updatePartnerWithCoupon } from "@/server/services/parceiros-admin";
+import { createPartnerWithCoupon, deletePartner, setAttributionWindow, setCommissionStatus, setPartnerStatus, updatePartnerWithCoupon } from "@/server/services/parceiros-admin";
 
 const s = (v: FormDataEntryValue | null) => (typeof v === "string" ? v : "");
 const fromForm = (fd: FormData) => ({
@@ -46,4 +46,9 @@ export async function commissionStepAction(fd: FormData) {
 }
 export async function windowAction(fd: FormData) {
   await run("/admin/parceiros", "partners.window", (id) => setAttributionWindow(id, s(fd.get("days"))), "Janela de atribuição salva.");
+}
+
+export async function deletePartnerAction(fd: FormData) {
+  const pid = s(fd.get("partnerId"));
+  await run(s(fd.get("back")) === "list" ? "/admin/parceiros" : `/admin/parceiros/${encodeURIComponent(pid)}`, "partners.delete", async (id) => { await deletePartner(id, pid); return `/admin/parceiros?ok=${encodeURIComponent("Parceiro excluído.")}`; }, "Parceiro excluído.");
 }

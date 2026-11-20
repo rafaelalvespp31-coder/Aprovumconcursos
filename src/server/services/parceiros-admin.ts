@@ -161,3 +161,18 @@ export async function partnerDetail(id: string): Promise<{ partner: PartnerRow; 
   });
   return { partner, sales };
 }
+
+/** Exclui o parceiro só se ele nunca teve venda registrada (histórico financeiro não se apaga: nesse caso, suspender). */
+export async function deletePartner(adminId: string, partnerId: string): Promise<void> {
+  const db = createAdminClient();
+  const { data: p } = await db.from("partners").select("id, display_name").eq("id", partnerId).maybeSingle();
+  if (!p) throw new UserFacingError("Parceiro não encontrado.", "not_found");
+  const red = await db.from("partner_coupon_redemptions").select("id", { count: "exact", head: true }).eq("partner_id", partnerId);
+  if ((red.count ?? 0) > 0) throw new UserFacingError("Este parceiro já tem vendas registradas e não pode ser excluído. Suspenda o parceiro para desativar o cupom.", "has_sales");
+  const a = await db.from("partner_referrals").delete().eq("partner_id", partnerId);
+  const b = await db.from("partner_coupons").delete().eq("partner_id", partnerId);
+  if (a.error || b.error) throw new UserFacingError("Não foi possível excluir o parceiro.", "delete");
+  const c = await db.from("partners").delete().eq("id", partnerId);
+  if (c.error) throw new UserFacingError("Não foi possível excluir o parceiro.", "delete");
+  await auditLog(db, { actorId: adminId, userId: null, action: "partners.deleted", entity: "partners", entityId: partnerId, meta: { name: p.display_name } });
+}
