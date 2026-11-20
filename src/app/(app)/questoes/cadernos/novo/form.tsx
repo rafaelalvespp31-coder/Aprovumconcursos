@@ -441,20 +441,29 @@ function SubjectsColumn({
 }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
+  const [openT, setOpenT] = useState<Set<string>>(new Set());
   const selectedCount = f.subjects.length + f.topics.length;
   const query = norm(q);
   const subjects = lookups.subjects
-    // Na pasta só aparecem os tópicos principais; os subtópicos ficam dentro da questão. A busca também acha pelo nome de um subtópico.
+    // Árvore de tópicos: a pasta mostra só os principais; clicar no tópico abre os de dentro. A busca abre o caminho até o que achou.
     .map((s) => {
-      const roots: typeof s.topics = [];
-      let cur: (typeof s.topics)[number] | null = null;
-      let hit = false;
-      const flush = () => { if (cur && (!query || hit)) roots.push(cur); };
-      for (const t of s.topics) {
-        if (t.depth === 0) { flush(); cur = t; hit = norm(t.name).includes(query); } else if (!hit && norm(t.name).includes(query)) hit = true;
+      const rows: Array<{ t: (typeof s.topics)[number]; hasKids: boolean; isOpen: boolean }> = [];
+      const n = s.topics.length;
+      const match = s.topics.map((t) => norm(t.name).includes(query));
+      // um nó "aparece" na busca se ele ou qualquer descendente combina
+      const subtreeHit = s.topics.map((t, i) => { for (let j = i; j < n && (j === i || s.topics[j]!.depth > t.depth); j++) if (match[j]) return true; return false; });
+      let hideBelow = Infinity;
+      for (let i = 0; i < n; i++) {
+        const t = s.topics[i]!;
+        if (t.depth > hideBelow) continue;
+        hideBelow = Infinity;
+        if (query && !subtreeHit[i]) { hideBelow = t.depth; continue; }
+        const hasKids = i + 1 < n && s.topics[i + 1]!.depth > t.depth;
+        const isOpen = query ? true : openT.has(t.id);
+        rows.push({ t, hasKids, isOpen });
+        if (hasKids && !isOpen) hideBelow = t.depth;
       }
-      flush();
-      return { ...s, topicsShown: roots };
+      return { ...s, topicsShown: rows };
     })
     .filter((s) => !query || norm(s.name).includes(query) || s.topicsShown.length);
   const countIn = (s: (typeof subjects)[number]) => (f.subjects.includes(s.id) ? 1 : 0) + s.topics.filter((t) => f.topics.includes(t.id)).length;
@@ -503,12 +512,17 @@ function SubjectsColumn({
                 {expanded && (
                   <ul className="mb-1 ml-5 mt-1 border-l border-[#ECEDF0] pl-2" aria-label={`Assuntos de ${s.name}`}>
                     {s.topicsShown.length ? (
-                      s.topicsShown.map((t) => (
-                        <li key={t.id}>
-                          <label className="nq-opcao" style={{ paddingLeft: 8 }}>
+                      s.topicsShown.map(({ t, hasKids, isOpen }) => (
+                        <li key={t.id} className="flex items-center" style={{ paddingLeft: t.depth * 14 }}>
+                          {hasKids ? (
+                            <button type="button" aria-expanded={isOpen} aria-label={`${isOpen ? "Fechar" : "Abrir"} ${t.name}`} onClick={() => setOpenT((cur) => { const nx = new Set(cur); if (nx.has(t.id)) nx.delete(t.id); else nx.add(t.id); return nx; })} className="grid h-8 w-6 shrink-0 place-items-center text-[#8A8C93]">
+                              <ChevronRight className={`h-4 w-4 transition-transform ${isOpen ? "rotate-90" : ""}`} aria-hidden />
+                            </button>
+                          ) : <span className="w-6 shrink-0" aria-hidden />}
+                          <label className="nq-opcao min-w-0 flex-1" style={{ paddingLeft: 4 }}>
                             <input type="checkbox" checked={f.topics.includes(t.id)} onChange={() => toggle("topics", t.id)} className="sr-only" />
                             <Box on={f.topics.includes(t.id)} />
-                            <span className="truncate">{t.name}</span>
+                            <span className="truncate" onClick={hasKids ? (e) => { e.preventDefault(); setOpenT((cur) => { const nx = new Set(cur); if (nx.has(t.id)) nx.delete(t.id); else nx.add(t.id); return nx; }); } : undefined}>{t.name}</span>
                           </label>
                         </li>
                       ))
