@@ -6,7 +6,8 @@ import { UserFacingError } from "./trails";
 import { attributionWindowDays } from "./referrals";
 import { ALL_OFFERS, normalizeCouponCode, partnerLink } from "@/domain/partners/coupon";
 
-const site = () => process.env.NEXT_PUBLIC_SITE_URL ?? "https://aprovumconcursos.com.br";
+// Link do parceiro sempre no endereço oficial, independente de variável de ambiente.
+const site = () => "https://aprovumconcursos.com.br";
 const pct = (min: number) => z.coerce.number().min(min, "Percentual inválido.").max(100, "Percentual inválido.");
 const optInt = z.preprocess((v) => (v === "" || v == null ? null : v), z.coerce.number().int().positive("Limite inválido.").nullable());
 const optDate = z.preprocess((v) => (v === "" || v == null ? null : v), z.string().refine((s) => !Number.isNaN(Date.parse(s)), "Data inválida.").nullable());
