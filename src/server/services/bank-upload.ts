@@ -404,9 +404,11 @@ export async function smartImport(staff: BankStaff, items: SmartItemInput[], des
       if (!it.board || !it.year || !it.examLine) { done({ status: "erro", code: null, message: "Informe banca, ano e concurso (a prova de origem é obrigatória)." }); continue; }
       const boardKnown = Boolean(matchByName(l.boards, it.board)) || KNOWN_BOARDS.some((b) => fold(b) === fold(it.board!.replace(/\s*\(.*\)\s*$/, "")) || fold(b) === fold(it.board!));
       if (!boardKnown && !it.confirmBoard) { done({ status: "erro", code: null, message: `Banca “${it.board}” desconhecida: confirme o nome na revisão.` }); continue; }
+      const notes0 = it.type === "multipla_escolha" ? splitCommentByOption(it.comment) : null;
+      const answer = it.answer ?? (notes0?.answer && it.options.some((o) => o.label === notes0.answer) ? notes0.answer : null);
       if (it.type === "multipla_escolha") {
         if (it.options.length < 2 || it.options.length > 5) { done({ status: "erro", code: null, message: "Múltipla escolha precisa de 2 a 5 alternativas." }); continue; }
-        if (it.answer && !it.options.some((o) => o.label === it.answer)) { done({ status: "erro", code: null, message: "O gabarito não corresponde a nenhuma alternativa." }); continue; }
+        if (answer && !it.options.some((o) => o.label === answer)) { done({ status: "erro", code: null, message: "O gabarito não corresponde a nenhuma alternativa." }); continue; }
       } else if (it.answer !== "certo" && it.answer !== "errado") {
         done({ status: "erro", code: null, message: "Informe o gabarito (Certo ou Errado): o banco exige para esse tipo de questão." });
         continue;
@@ -422,14 +424,14 @@ export async function smartImport(staff: BankStaff, items: SmartItemInput[], des
       const baseId = it.baseTextCode && it.baseText ? await ensureBaseText(db, staff.id, it.baseTextCode, it.baseText) : null;
       const caseContext = it.baseText && it.baseText.length <= 6000 ? it.baseText : "";
       // Comentário com uma explicação por alternativa: cada trecho vai para a alternativa certa; o resto é o comentário geral.
-      const notes = it.type === "multipla_escolha" ? splitCommentByOption(it.comment) : null;
+      const notes = notes0;
       const generalComment = notes ? (notes.rest.length >= 10 ? notes.rest : (it.comment ?? "")) : (it.comment ?? "");
       const payload = {
         subject_id: subjectId, topic_id: topicId ?? "", source_id: ex.source, exam_id: ex.exam, origin: "prova_anterior", question_type: it.type,
         statement: it.statement, case_context: caseContext, board_slug: ex.board, board_style: "", year: String(it.year), original_number: "",
         initial_difficulty: "dificil", correct_answer_true: it.type === "certo_errado" ? it.answer === "certo" : null,
         justification: generalComment, legal_basis: "", usage_rights: quick ? "autorizado" : "nao_verificado", verified_at: "", status: "aguardando_conferencia",
-        generation_batch_id: "", options: it.type === "multipla_escolha" ? it.options.map((o) => ({ label: o.label, text: o.text, is_correct: o.label === it.answer, explanation: notes?.byLabel[o.label] ?? "" })) : [], legal_refs: [],
+        generation_batch_id: "", options: it.type === "multipla_escolha" ? it.options.map((o) => ({ label: o.label, text: o.text, is_correct: o.label === answer, explanation: notes?.byLabel[o.label] ?? "" })) : [], legal_refs: [],
       };
       const { data, error } = await db.rpc("bank_save_question", { p_actor: staff.id, p_id: null, p: payload });
       if (error) { done({ status: "erro", code: null, message: error.message.replace(/^.*?ERROR:\s*/, "") }); continue; }
@@ -438,8 +440,8 @@ export async function smartImport(staff: BankStaff, items: SmartItemInput[], des
       const { data: row } = await db.from("bank_questions").select("public_code").eq("id", qid).maybeSingle();
       const code = (row?.public_code as string) ?? null;
       let status: SmartItemResult["status"] = "importada";
-      let message = it.answer ? "Importada (aguardando conferência)." : "Importada sem gabarito (aguardando conferência).";
-      if (quick && it.answer) {
+      let message = answer ? "Importada (aguardando conferência)." : "Importada sem gabarito (aguardando conferência).";
+      if (quick && answer) {
         const pub = await db.rpc("bank_quick_publish", { p_actor: staff.id, p_id: qid });
         if (!pub.error && pub.data === "publicada") { status = "publicada"; message = "Importada e publicada."; }
         else if (!it.comment || it.comment.trim().length < 10) message = "Importada. Para publicar, falta o comentário/justificativa (mín. 10 caracteres).";

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { splitCommentByOption } from "@/domain/bank/option-notes";
 import { useMemo, useState, useTransition } from "react";
 import { estimateQuestions, matchDestino, type SmartIssue } from "@/domain/bank/smart-import";
 import type { DestinoTree, SmartAnalysis, SmartHistoryRow, SmartImportResult } from "@/server/services/bank-upload";
@@ -316,7 +317,7 @@ function QuestionCard({ r, destinos, patch, confirmBoard }: { r: Row; destinos: 
             {r.type === "multipla_escolha" ? r.options.map((o) => <option key={o.label} value={o.label}>{o.label}</option>) : <><option value="certo">Certo</option><option value="errado">Errado</option></>}
           </select>
         </Field>
-        <Field label="Comentário da questão (o que veio no material, ou o seu)"><textarea className={`${dTextarea} min-h-20`} value={r.comment ?? ""} onChange={(e) => patch({ comment: e.target.value || null })} placeholder="Comentário / justificativa do gabarito" /></Field>
+        <Field label="Comentário da questão (o que veio no material, ou o seu)"><textarea className={`${dTextarea} min-h-20`} value={r.comment ?? ""} onChange={(e) => { const v = e.target.value; const n = r.type === "multipla_escolha" ? splitCommentByOption(v) : null; patch(!r.answer && n?.answer && r.options.some((o) => o.label === n.answer) ? { comment: v || null, answer: n.answer, answerSource: "administrador" } : { comment: v || null }); }} placeholder="Cole o comentário: Gabarito: A) … e depois B) …, C) … para as erradas" /></Field>
       </div>
 
       {r.open && (

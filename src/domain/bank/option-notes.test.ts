@@ -23,4 +23,26 @@ Regra-chave: A palavra é escrita com X e S: extensão.`);
     expect(splitCommentByOption("A regra diz que a palavra é escrita com x. Portanto, extensão.")).toBeNull();
     expect(splitCommentByOption("a) só uma linha")).toBeNull();
   });
+  it("modelo 'Gabarito: A) …': nota do gabarito certo + notas das erradas", () => {
+    const r = splitCommentByOption(`Gabarito: A) z – x – z – s.
+Preenchimento correto:
+* Dezempenho → Z.
+* Exigente → X.
+* Visualizado → Z.
+B) Errada. Troca o S de esgotamento por Z.
+C) Errada. Usa X em desempenho.`);
+    expect(r!.answer).toBe("A");
+    expect(r!.byLabel.A).toBe("z – x – z – s.\nPreenchimento correto:\n* Dezempenho → Z.\n* Exigente → X.\n* Visualizado → Z.");
+    expect(r!.byLabel.B).toBe("Errada. Troca o S de esgotamento por Z.");
+    expect(r!.byLabel.C).toBe("Errada. Usa X em desempenho.");
+    expect(r!.rest).toBe("");
+  });
+  it("só o bloco do gabarito já vira nota da alternativa certa", () => {
+    const r = splitCommentByOption("Gabarito: A) z – x – z – s.\nPreenchimento correto:\n* Exigente → X.");
+    expect(r!.answer).toBe("A");
+    expect(Object.keys(r!.byLabel)).toEqual(["A"]);
+  });
+  it("'Gabarito: Certo' não é tratado como letra", () => {
+    expect(splitCommentByOption("Gabarito: Certo. A regra é X.")).toBeNull();
+  });
 });

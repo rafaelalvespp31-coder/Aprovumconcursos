@@ -6,9 +6,13 @@
 export interface OptionNotes {
   byLabel: Record<string, string>;
   rest: string;
+  /** Letra do cabeçalho "Gabarito: A) …", quando existe (a nota dessa letra é o comentário do gabarito certo). */
+  answer: string | null;
 }
 
 const LINE = /^\s*(?:[-•*·▪●]\s*)?(?:alternativa|letra|item)?\s*\(?([A-Ea-e])\)?\s*[).:\-–—]\s*(.*\S.*)$/i;
+// "Gabarito: A) …" / "Resposta correta: B) …": abre o comentário da alternativa certa (as erradas vêm depois como "B) …").
+const GAB = /^\s*(?:[-•*·▪●]\s*)?(?:gabarito|resposta(?:\s+correta)?|alternativa\s+correta)\s*[:\-–—]?\s*\(?([A-Ea-e])(?![A-Za-zÀ-ÿ0-9])\s*[).:\-–—]?\s*(.*)$/i;
 const STOP = /^\s*(?:regra(?:[- ]chave)?|resumo|conclus[ãa]o|portanto|dica|macete|obs(?:erva[çc][ãa]o)?|gabarito|fundamento|base legal|resposta)\b[^\n]{0,40}[:\-–—]/i;
 
 export function splitCommentByOption(text: string | null | undefined): OptionNotes | null {
@@ -17,10 +21,17 @@ export function splitCommentByOption(text: string | null | undefined): OptionNot
   const lines = src.split("\n");
   const head: string[] = [];
   const rest: string[] = [];
-  const segs: Array<{ label: string; lines: string[] }> = [];
+  const segs: Array<{ label: string; lines: string[]; gab?: boolean }> = [];
   let inRest = false;
+  let answer: string | null = null;
   for (const l of lines) {
     if (inRest) { rest.push(l); continue; }
+    const g = l.match(GAB);
+    if (g) {
+      answer = g[1]!.toUpperCase();
+      segs.push({ label: answer, lines: g[2]!.trim() ? [g[2]!.trim()] : [], gab: true });
+      continue;
+    }
     const m = l.match(LINE);
     if (m) {
       segs.push({ label: m[1]!.toUpperCase(), lines: [m[2]!.trim()] });
@@ -31,8 +42,13 @@ export function splitCommentByOption(text: string | null | undefined): OptionNot
     if (l.trim()) segs[segs.length - 1]!.lines.push(l.trim());
   }
   const labels = new Set(segs.map((s) => s.label));
-  if (segs.length < 2 || labels.size < 2) return null;
+  if (!answer && (segs.length < 2 || labels.size < 2)) return null;
   const byLabel: Record<string, string> = {};
-  for (const s of segs) byLabel[s.label] = byLabel[s.label] ? `${byLabel[s.label]}\n${s.lines.join(" ")}` : s.lines.join(" ");
-  return { byLabel, rest: [...head, ...rest].join("\n").trim() };
+  for (const s of segs) {
+    const txt = s.lines.join(s.gab ? "\n" : " ");
+    if (!txt) continue;
+    byLabel[s.label] = byLabel[s.label] ? `${byLabel[s.label]}\n${txt}` : txt;
+  }
+  if (Object.keys(byLabel).length === 0) return null;
+  return { byLabel, rest: [...head, ...rest].join("\n").trim(), answer };
 }
