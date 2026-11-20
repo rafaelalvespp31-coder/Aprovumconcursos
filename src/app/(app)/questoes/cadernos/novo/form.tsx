@@ -103,6 +103,14 @@ export function NewNotebookForm({
       }
       return next;
     });
+  // Marcar (ou desmarcar) um tópico com itens dentro marca (ou desmarca) todos eles de uma vez.
+  const setTopics = (ids: string[], on: boolean) =>
+    setF((x) => {
+      const set = new Set(x.topics);
+      for (const id of ids) { if (on) set.add(id); else set.delete(id); }
+      const subjects = on ? x.subjects.filter((sid) => !lookups.subjects.find((s) => s.id === sid)?.topics.some((t) => ids.includes(t.id))) : x.subjects;
+      return { ...x, topics: [...set], subjects };
+    });
   const clearKey = (key: ListKey) => setF((x) => ({ ...x, [key]: [] }));
 
   const chips: Array<{ key: string; label: string; icon: LucideIcon; remove: () => void }> = [
@@ -148,7 +156,7 @@ export function NewNotebookForm({
 
       <div className="grid gap-5 lg:grid-cols-3 lg:gap-5">
         {/* Matéria e assunto */}
-        <SubjectsColumn lookups={lookups} f={f} toggle={toggle} />
+        <SubjectsColumn lookups={lookups} f={f} toggle={toggle} setTopics={setTopics} />
 
         {/* Filtros de questões */}
         <section className="pc nq-col min-w-0 p-4 sm:p-5" aria-labelledby="nq-filtros">
@@ -434,10 +442,12 @@ function SubjectsColumn({
   lookups,
   f,
   toggle,
+  setTopics,
 }: {
   lookups: NotebookLookups;
   f: NotebookFilters;
   toggle: (key: "subjects" | "topics", value: string) => void;
+  setTopics: (ids: string[], on: boolean) => void;
 }) {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState<string | null>(null);
@@ -522,7 +532,7 @@ function SubjectsColumn({
                             </button>
                           ) : <span className="w-6 shrink-0" aria-hidden />}
                           <label className="nq-opcao min-w-0 flex-1" style={{ paddingLeft: 4 }}>
-                            <input type="checkbox" checked={f.topics.includes(t.id)} onChange={() => toggle("topics", t.id)} className="sr-only" />
+                            <input type="checkbox" checked={f.topics.includes(t.id)} onChange={() => { const i = s.topics.findIndex((x) => x.id === t.id); const ids = [t.id]; for (let j = i + 1; j < s.topics.length && s.topics[j]!.depth > t.depth; j++) if (s.topics[j]!.depth <= 1) ids.push(s.topics[j]!.id); setTopics(ids, !f.topics.includes(t.id)); }} className="sr-only" />
                             <Box on={f.topics.includes(t.id)} />
                             <span className="truncate" onClick={hasKids ? (e) => { e.preventDefault(); setOpenT((cur) => { const nx = new Set(cur); if (nx.has(t.id)) nx.delete(t.id); else nx.add(t.id); return nx; }); } : undefined}>{t.name}</span>
                           </label>
