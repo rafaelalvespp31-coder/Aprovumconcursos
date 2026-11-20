@@ -446,7 +446,9 @@ function SubjectsColumn({
   const query = norm(q);
   const subjects = lookups.subjects
     // Árvore de tópicos: a pasta mostra só os principais; clicar no tópico abre os de dentro. A busca abre o caminho até o que achou.
-    .map((s) => {
+    .map((s0) => {
+      // Só os dois primeiros níveis aparecem na pasta; os subtópicos mais fundos ficam dentro da questão.
+      const s = { ...s0, topics: s0.topics.filter((t) => t.depth <= 1) };
       const rows: Array<{ t: (typeof s.topics)[number]; hasKids: boolean; isOpen: boolean }> = [];
       const n = s.topics.length;
       const match = s.topics.map((t) => norm(t.name).includes(query));
