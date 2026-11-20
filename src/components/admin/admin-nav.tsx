@@ -5,37 +5,10 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { LogoMark } from "@/components/logo";
 
-export interface NavBadges { planos: number; avatares: number; raiox: number }
-type Item = { href: string; label: string; badge?: keyof NavBadges };
-type Group = { title: string; icon: string; items: Item[] };
+import { NAV_GROUPS, type NavBadges } from "./nav-data";
+export type { NavBadges };
 
-const GROUPS: Group[] = [
-  { title: "Visão geral", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10", items: [{ href: "/admin", label: "Painel" }] },
-  {
-    title: "Conteúdo", icon: "M4 5a2 2 0 012-2h12v18H6a2 2 0 01-2-2V5zm4 0v14",
-    items: [
-      { href: "/admin/catalogo", label: "Catálogo" }, { href: "/admin/catalogo/enviar", label: "Catalogar aula" }, { href: "/admin/catalogo/plano", label: "Plano de tópicos" },
-      { href: "/admin/legislacao", label: "Legislação" }, { href: "/admin/editais", label: "Editais" }, { href: "/admin/concursos", label: "Concursos" },
-      { href: "/banco", label: "Banco de questões" }, { href: "/admin/redacao", label: "Redação" }, { href: "/admin/tutoriais", label: "Tutoriais" },
-    ],
-  },
-  { title: "Inteligência artificial", icon: "M12 3v3m0 12v3M3 12h3m12 0h3M7 7l2 2m6 6l2 2m0-10l-2 2M9 15l-2 2", items: [{ href: "/admin/fila", label: "Fila da IA" }, { href: "/admin/estrategico", label: "Estratégico", badge: "raiox" }] },
-  {
-    title: "Alunos e comunidade", icon: "M16 11a4 4 0 10-8 0m-4 9a8 8 0 0116 0",
-    items: [
-      { href: "/admin/alunos", label: "Alunos", badge: "planos" }, { href: "/admin/avatares", label: "Avatares", badge: "avatares" }, { href: "/admin/feedbacks", label: "Feedbacks" },
-      { href: "/admin/depoimentos", label: "Depoimentos" }, { href: "/admin/aprovados", label: "Aprovados" },
-    ],
-  },
-  {
-    title: "Vendas e crescimento", icon: "M3 17l6-6 4 4 8-8M15 7h6v6",
-    items: [
-      { href: "/admin/pagamentos", label: "Pagamentos" }, { href: "/admin/parceiros", label: "Parceiros" }, { href: "/admin/indicacoes", label: "Indicações" },
-      { href: "/admin/campanha-caveira", label: "Campanha Caveira" }, { href: "/admin/catalogo/banners", label: "Banners" }, { href: "/admin/avisos-push", label: "Avisos no celular" },
-    ],
-  },
-  { title: "Equipe", icon: "M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z", items: [{ href: "/admin/socio", label: "Sócio admin" }] },
-];
+const GROUPS = [{ title: "Visão geral", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10", items: [{ href: "/admin", label: "Painel", desc: "", icon: "M3 12l9-9 9 9M5 10v10h5v-6h4v6h5V10", badge: undefined as keyof NavBadges | undefined }] }, ...NAV_GROUPS];
 
 function Icon({ d }: { d: string }) {
   return (
@@ -86,7 +59,7 @@ export function AdminNav({ badges }: { badges: NavBadges }) {
                         aria-current={on ? "page" : undefined}
                         className={`flex items-center justify-between rounded-lg border-l-2 px-3 py-2 t-small font-medium transition-colors ${on ? "border-[#E10600] bg-white/10 text-white" : "border-transparent text-white/75 hover:bg-white/5 hover:text-white"}`}
                       >
-                        <span>{i.label}</span>
+                        <span className="flex items-center gap-2.5"><span className={`grid size-7 shrink-0 place-items-center rounded-md ${on ? "bg-[#E10600] text-white" : "bg-white/8 text-white/70"}`}><Icon d={i.icon} /></span>{i.label}</span>
                         {n > 0 && <span className="rounded-full bg-[#E10600] px-1.5 py-0.5 text-[0.65rem] font-bold leading-none text-white" aria-label={`${n} pendentes`}>{n}</span>}
                       </Link>
                     </li>

@@ -1,3 +1,4 @@
+import { cache } from "react";
 import "server-only";
 import { createHash } from "node:crypto";
 import { notFound } from "next/navigation";
@@ -323,7 +324,8 @@ export async function recoveryFromBank(
 // ---------------------------------------------------------------------------
 // Administração
 // ---------------------------------------------------------------------------
-export async function requireAdmin(): Promise<SessionUser> {
+/** Uma conferência por requisição: o layout e a página do admin chamam, e a segunda chamada reaproveita a primeira. */
+export const requireAdmin = cache(async function requireAdmin(): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user || !(await isAdmin())) {
     // Sócio tentando o ADMIN MASTER: nega e registra.
@@ -334,7 +336,7 @@ export async function requireAdmin(): Promise<SessionUser> {
   // Matérias cadastradas pela equipe: rótulos e validações de toda a área do admin.
   await ensureDisciplines();
   return user;
-}
+});
 
 /**
  * Acesso às telas "Plano de tópicos" e "Catalogar aula": o ADMIN MASTER, ou o sócio ativo a quem o admin

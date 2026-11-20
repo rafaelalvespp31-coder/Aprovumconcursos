@@ -4,7 +4,6 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 type Row = Record<string, unknown>;
 const tables: Record<string, Row[]> = {};
 let admin = true;
-let raio: Array<{ createdAt: string }> = [];
 
 function from(table: string) {
   const filters: Array<(r: Row) => boolean> = [];
@@ -12,6 +11,8 @@ function from(table: string) {
   const q = {
     select: () => q,
     eq: (c: string, v: unknown) => (filters.push((r) => r[c] === v), q),
+    not: () => q,
+    in: () => q,
     order: () => q,
     limit: () => q,
     maybeSingle: async () => ({ data: rows()[0] ?? null, error: null }),
@@ -21,16 +22,15 @@ function from(table: string) {
 }
 
 vi.mock("@/server/supabase", () => ({ createAdminClient: () => ({ from }) }));
-vi.mock("@/server/services/strategic", () => ({ listRaioXRequests: async () => raio }));
 vi.mock("@/server/auth", () => ({ getSessionUser: async () => ({ id: "u1", email: null }), isAdmin: async () => admin }));
 
-const { getAdminPendencias } = await import("@/server/services/admin-pendencias");
+const { getAdminPendencias, resetAdminPendenciasCache } = await import("@/server/services/admin-pendencias");
 const { GET } = await import("@/app/api/admin/pendencias/route");
 
 beforeEach(() => {
   for (const k of Object.keys(tables)) delete tables[k];
   admin = true;
-  raio = [];
+  resetAdminPendenciasCache();
 });
 
 describe("pendências da equipe", () => {
@@ -48,7 +48,7 @@ describe("pendências da equipe", () => {
       { status: "em_producao", created_at: "2026-11-10T08:00:00Z" },
       { status: "concluida", created_at: "2026-11-09T08:00:00Z" },
     ];
-    raio = [{ createdAt: "2026-11-10T12:00:00Z" }];
+    tables.edital_preparations = [{ strategic_exam_id: "e1", created_at: "2026-11-10T12:00:00Z" }];
     const r = await getAdminPendencias();
     expect(Object.fromEntries(r.items.map((i) => [i.key, i.count]))).toEqual({ planos: 2, avatares: 1, raiox: 1 });
     expect(r.total).toBe(4);
