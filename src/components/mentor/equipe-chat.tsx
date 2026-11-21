@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, useTransition } from "react";
-import { Camera, ImagePlus, MessageCircle, Send, X } from "lucide-react";
+import { Camera, MessageCircle, Send, X } from "lucide-react";
 import type { TeamMessage } from "@/server/services/team-chat";
 import { Recibo } from "./recibo";
 import { equipeListAction, equipeSendAction } from "@/app/(app)/mentor/actions";
@@ -65,7 +65,9 @@ export function EquipeChat({ tema = "escuro" }: { tema?: "claro" | "escuro" }) {
     return () => { vivo = false; clearInterval(t); };
   }, []);
 
-  useEffect(() => { fim.current?.scrollIntoView({ block: "nearest" }); }, [msgs?.length]);
+  const total = msgs?.length ?? 0;
+  const ultimo = msgs?.[total - 1]?.sender;
+  useEffect(() => { fim.current?.scrollIntoView({ block: "nearest" }); }, [total, ultimo]);
 
   const enviar = () => start(async () => {
     setErro(null);
@@ -113,11 +115,16 @@ export function EquipeChat({ tema = "escuro" }: { tema?: "claro" | "escuro" }) {
             <span className="mt-0.5 flex items-center justify-end gap-2 text-[10.5px] opacity-80">{hora(m.createdAt)}{m.sender === "aluno" && <Recibo deliveredAt={m.deliveredAt} readAt={m.readAt} escuro />}</span>
           </div>
         ))}
+        {msgs && msgs.length > 0 && msgs[msgs.length - 1]!.sender === "aluno" && (
+          <p className="self-end pr-1 text-right text-[12px] italic" style={{ color: dim, WebkitTextFillColor: dim }} data-testid="equipe-observacao">
+            Observação: um Operador Tático já irá atender você.
+          </p>
+        )}
         <div ref={fim} />
       </div>
 
       <form onSubmit={(e) => { e.preventDefault(); if ((texto.trim() || foto) && !pending && !preparando) enviar(); }} className="flex flex-col gap-2">
-        <textarea value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={1000} rows={3} placeholder="Escreva a sua dúvida (ou anexe um print do erro)…" aria-label="Mensagem para a Equipe APROVUM" data-testid="equipe-input"
+        <textarea value={texto} onChange={(e) => setTexto(e.target.value)} maxLength={1000} rows={3} placeholder="Escreva a sua dúvida…" aria-label="Mensagem para a Equipe APROVUM" data-testid="equipe-input"
           onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && texto.trim() && !pending) { e.preventDefault(); enviar(); } }}
           className="w-full resize-none rounded-xl border border-[#D4D4D4] bg-white p-3 text-[16px] text-[#08090B] caret-[#08090B] outline-none focus:border-[#E10600]" style={{ color: "#08090B", WebkitTextFillColor: "#08090B" }} />
         {foto && (
@@ -127,19 +134,15 @@ export function EquipeChat({ tema = "escuro" }: { tema?: "claro" | "escuro" }) {
             <button type="button" onClick={limparFoto} aria-label="Remover a imagem" className="absolute -right-2 -top-2 grid size-7 place-items-center rounded-full bg-[#E10600]" style={{ color: "#fff", WebkitTextFillColor: "#fff" }}><X className="h-4 w-4" aria-hidden /></button>
           </div>
         )}
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-xl border border-white/30 bg-white px-3 text-[13px] font-bold text-[#08090B]" data-testid="equipe-foto">
-            <Camera className="h-4 w-4" aria-hidden /> Tirar foto
-            <input type="file" accept="image/*" capture="environment" className="sr-only" onChange={(e) => { void aoEscolher(e.target.files?.[0]); e.target.value = ""; }} />
-          </label>
-          <label className="inline-flex min-h-11 cursor-pointer items-center gap-1.5 rounded-xl border border-white/30 bg-white px-3 text-[13px] font-bold text-[#08090B]" data-testid="equipe-anexar">
-            <ImagePlus className="h-4 w-4" aria-hidden /> Anexar imagem
-            <input type="file" accept="image/jpeg,image/png,image/webp,image/*" className="sr-only" onChange={(e) => { void aoEscolher(e.target.files?.[0]); e.target.value = ""; }} />
-          </label>
-          {preparando && <span className="text-[12px]" style={{ color: dim, WebkitTextFillColor: dim }}>Preparando imagem…</span>}
-        </div>
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[11px]" style={{ color: dim, WebkitTextFillColor: dim }}>{texto.length}/1000</span>
+          <span className="flex items-center gap-2">
+            <label className="grid size-11 cursor-pointer place-items-center rounded-xl border-2 border-white/40 bg-[#1b1b1f] focus-within:outline focus-within:outline-2 focus-within:outline-[#E10600]" title="Tirar foto ou anexar imagem" data-testid="equipe-anexo">
+              <Camera className="h-5 w-5" aria-hidden style={{ color: "#fff", stroke: "#fff" }} />
+              <span className="sr-only">Tirar foto ou anexar imagem</span>
+              <input type="file" accept="image/*" className="sr-only" onChange={(e) => { void aoEscolher(e.target.files?.[0]); e.target.value = ""; }} />
+            </label>
+            <span className="text-[11px]" style={{ color: dim, WebkitTextFillColor: dim }}>{preparando ? "Preparando imagem…" : `${texto.length}/1000`}</span>
+          </span>
           <button type="submit" disabled={pending || preparando || (!texto.trim() && !foto)} className="inline-flex min-h-11 items-center gap-1.5 rounded-xl bg-[#E10600] px-5 text-[14px] font-extrabold disabled:opacity-50" style={{ color: "#fff", WebkitTextFillColor: "#fff" }} data-testid="equipe-enviar">
             <Send className="h-4 w-4" aria-hidden /> {pending ? "Enviando…" : "Enviar"}
           </button>
