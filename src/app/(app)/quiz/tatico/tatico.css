@@ -214,13 +214,14 @@ body.tt-imersivo .mentor-flut,body.tt-imersivo [data-testid="mentor-flutuante"],
 .tt-rot .tt-toast{top:6px;font-size:12px;padding:5px 10px}
 
 /* celular: pergunta e respostas em texto real (tamanho legível), sobre a faixa de cima do estande */
-.tt-dom{position:absolute;z-index:4;left:6%;right:6%;overflow-y:auto;padding:6px 8px 8px;border:1px solid #c9141f;border-radius:10px;background:rgba(8,8,10,.94);color:#fff;font-family:system-ui,"Segoe UI",sans-serif;-webkit-overflow-scrolling:touch}
+.tt-dom{position:absolute;z-index:4;left:2%;right:2%;overflow-y:auto;padding:5px 10px 7px;border:1px solid #c9141f;border-radius:10px;background:rgba(8,8,10,.94);color:#fff;font-family:system-ui,"Segoe UI",sans-serif;-webkit-overflow-scrolling:touch}
 .tt-dom-cab{display:flex;justify-content:space-between;gap:8px;font-size:11px;font-weight:800;letter-spacing:.05em;color:#ffd24a;line-height:1.1}
 .tt-dom-cab b{color:#bbb}.tt-dom-cab b.vez{color:#28d46a}
-.tt-dom-q{margin:4px 0 6px;font-size:14.5px;line-height:1.25;font-weight:600}
+.tt-dom-q{margin:3px 0 4px;font-size:17px;line-height:1.22;font-weight:600}
+.tt-dom-col{position:absolute;z-index:4;display:flex;flex-direction:column}
 .tt-dom-ops{display:grid;grid-template-columns:1fr 1fr;gap:5px}
-.tt-dom-op{display:flex;gap:6px;align-items:flex-start;text-align:left;padding:5px 7px;min-height:38px;font-size:13.5px;line-height:1.2;color:#fff;background:#101012;border:1px solid #3a3a40;border-radius:8px}
-.tt-dom-op .lt{flex:0 0 22px;height:22px;display:grid;place-items:center;border:1.5px solid #c9141f;border-radius:5px;background:#1a0709;font-weight:800;font-size:13px}
+.tt-dom-op{flex:1 1 0;min-height:0;overflow:hidden;display:flex;gap:8px;align-items:center;text-align:left;padding:5px 8px;font-size:15px;line-height:1.18;color:#fff;background:#101012;border:1px solid #3a3a40;border-radius:8px}
+.tt-dom-op .lt{flex:0 0 32px;height:32px;display:grid;place-items:center;border:1.5px solid #c9141f;border-radius:7px;background:#1a0709;font-weight:800;font-size:18px}
 .tt-dom-op .tx{flex:1;min-width:0}
 .tt-dom-op.sel{outline:2px solid #ffd24a;outline-offset:-2px}
 .tt-dom-op.opp{border-color:#ffd24a}

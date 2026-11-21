@@ -35,6 +35,9 @@ function sairTelaCheia() {
 const mmss = (ms: number) => { const s = Math.max(0, Math.ceil(ms / 1000)); return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`; };
 const fs = (txt: string, base: number, min: number, soft: number, k = 0.07) => Math.max(min, base - Math.max(0, txt.length - soft) * k);
 
+/** Maior fonte (13 a 21 px) em que o texto cabe na caixa sem rolar: ~0,65·fs² de área por caractere. */
+const encaixa = (chars: number, w: number, h: number) => Math.max(13, Math.min(21, Math.floor(Math.sqrt((Math.max(40, w) * Math.max(30, h) * 0.85) / (Math.max(20, chars) * 0.65)))));
+
 function useEscala(portrait: boolean) {
   const ref = useRef<HTMLDivElement>(null);
   const [dim, setDim] = useState({ w: 0, h: 0 });
@@ -48,11 +51,11 @@ function useEscala(portrait: boolean) {
   const k = portrait ? dim.w / faixa.w : Math.min(dim.w / faixa.w, dim.h / faixa.h);
   const offX = portrait ? 0 : (dim.w - faixa.w * k) / 2;
   const offY = portrait ? 0 : (dim.h - faixa.h * k) / 2;
-  return { ref, k, faixa, offX, offY, boxH: portrait ? faixa.h * k : undefined };
+  return { ref, k, faixa, offX, offY, boxH: portrait ? faixa.h * k : undefined, bw: dim.w, bh: dim.h };
 }
 
 function Cena({ s, at, nivel, noFx, portrait, onShoot, onAim, shot, breathClock, oppShot, espectro, aimOpp }: { aimOpp?: number | null; onAim?: (i: number) => void; espectro?: { i: number; n: number } | null; oppShot?: number; breathClock?: (nowMs: number) => number | null; s: Partida; at: number; nivel: { level: number; into: number }; noFx: boolean; portrait: boolean; onShoot: (i: number) => void; shot: { i: number; n: number; hit: boolean | null } | null }) {
-  const { ref, k, faixa, offX, offY, boxH } = useEscala(portrait);
+  const { ref, k, faixa, offX, offY, boxH, bw } = useEscala(portrait);
   const [now, setNow] = useState(0);
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 200); return () => clearInterval(t); }, []);
   // Respiração: a cena inteira (fundo, alvos e braço) se move junto, como a câmera de quem respira; o braço
@@ -187,23 +190,45 @@ function Cena({ s, at, nivel, noFx, portrait, onShoot, onAim, shot, breathClock,
           )}
           {s.phase === "contagem" && <div className="tt-cd"><span key={Math.ceil(ms / 1000)}>{Math.max(1, Math.ceil(ms / 1000) - 5) > 3 ? "PREPARAR" : Math.max(1, Math.ceil(ms / 1000))}</span></div>}
         </div>
-        {dom && q && (
-          <div className="tt-dom" style={{ top: offY + 104 * k, maxHeight: Math.max(90, (424 - 104) * k - 4) }} data-testid="tatico-dom">
-            <div className="tt-dom-cab">
-              <span>{String(Math.min(q.pos, s.total)).padStart(2, "0")}/{String(s.total).padStart(2, "0")} · {(materia || "—").toUpperCase()}</span>
-              <b className={meuTurno ? "vez" : ""}>{s.phase !== "responder" ? "" : s.solo ? "ATIRE!" : meuTurno ? "SUA VEZ — ATIRE!" : s.opp.answered ? `${s.opp.name.toUpperCase()} ATIROU` : `VEZ DE ${s.opp.name.toUpperCase()}`}</b>
+        {dom && q && (() => {
+          // Pergunta em faixa larga no alto; as 4 respostas ficam nas laterais do estande (A/C à esquerda, B/D à direita),
+          // onde a arte está vazia: nada cobre os alvos nem o braço.
+          const topQ = offY + 120 * k;
+          const hQ = Math.max(84, (392 - 120) * k);
+          const colTop = offY + 398 * k + 4;
+          const colH = Math.max(100, (748 - 398) * k - 4);
+          const gapX = 8, margem = 8;
+          const wEsq = Math.max(110, offX + (TG_X[0]! - 56 - 14) * k - margem);
+          const xDir = offX + (TG_X[3]! + 56 + 14) * k;
+          const wDir = Math.max(110, bw - xDir - margem);
+          const fsQ = encaixa(q.statement.length + (rev ? 120 : 0), bw * 0.96 - 22, hQ - (rev ? 56 : 34));
+          const col = (idx: [number, number], left: number, width: number) => (
+            <div className="tt-dom-col" style={{ left, width, top: colTop, height: colH, gap: gapX }}>
+              {idx.map((i) => {
+                const o = q.options[i]; if (!o) return null;
+                return (
+                  <button key={o.label} disabled={bloqueado} onPointerDown={() => onAim?.(i)} className={cls(o.label, "tt-dom-op")} style={{ fontSize: encaixa(o.text.length, width - 54, (colH - gapX) / 2 - 12) }} onClick={() => onShoot(i)} data-testid={`tatico-op-${o.label}`}>
+                    <span className="lt">{o.label}</span><span className="tx">{o.text}</span>
+                  </button>
+                );
+              })}
             </div>
-            <p className="tt-dom-q">{q.statement}</p>
-            <div className="tt-dom-ops">
-              {q.options.map((o, i) => (
-                <button key={o.label} disabled={bloqueado} onPointerDown={() => onAim?.(i)} className={cls(o.label, "tt-dom-op")} onClick={() => onShoot(i)} data-testid={`tatico-op-${o.label}`}>
-                  <span className="lt">{o.label}</span><span className="tx">{o.text}</span>
-                </button>
-              ))}
-            </div>
-            {rev && q.correct && <p className="tt-dom-rev"><b>Gabarito: {q.correct}.</b> {(q.explanations?.[q.correct] || q.justification || "").toString().slice(0, 260)}</p>}
-          </div>
-        )}
+          );
+          return (
+            <>
+              <div className="tt-dom" style={{ top: topQ, maxHeight: hQ }} data-testid="tatico-dom">
+                <div className="tt-dom-cab">
+                  <span>{String(Math.min(q.pos, s.total)).padStart(2, "0")}/{String(s.total).padStart(2, "0")} · {(materia || "—").toUpperCase()}</span>
+                  <b className={meuTurno ? "vez" : ""}>{s.phase !== "responder" ? "" : s.solo ? "ATIRE!" : meuTurno ? "SUA VEZ — ATIRE!" : s.opp.answered ? `${s.opp.name.toUpperCase()} ATIROU` : `VEZ DE ${s.opp.name.toUpperCase()}`}</b>
+                </div>
+                <p className="tt-dom-q" style={{ fontSize: fsQ }}>{q.statement}</p>
+                {rev && q.correct && <p className="tt-dom-rev" style={{ fontSize: Math.max(12, fsQ - 3) }}><b>Gabarito: {q.correct}.</b> {(q.explanations?.[q.correct] || q.justification || "").toString().slice(0, 120)}</p>}
+              </div>
+              {col([0, 2], margem, wEsq)}
+              {col([1, 3], xDir, wDir)}
+            </>
+          );
+        })()}
       </div>
       {portrait && q && (
         <div className="tt-m-q" style={{ margin: 8, flex: 1, overflowY: "auto", minHeight: 0 }}>
