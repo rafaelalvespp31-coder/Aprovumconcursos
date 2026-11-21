@@ -31,7 +31,7 @@ export default async function StudentsPage() {
       </p>
       <OnlineAgora />
       <AlunosNotificacoes initial={atividade} />
-      <MensagensEquipe threads={threads} reply={replyTeamAction} markRead={markTeamReadAction} seen={seenTeamAction} />
+      <MensagensEquipe students={students.filter((s) => !s.isAdmin).map((s) => ({ id: s.id, name: s.name, email: s.email, ghost: s.isGhost }))} threads={threads} reply={replyTeamAction} markRead={markTeamReadAction} seen={seenTeamAction} />
       <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5" data-testid="alunos-resumo">
         {(
           [

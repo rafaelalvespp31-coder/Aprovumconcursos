@@ -115,6 +115,9 @@ export async function replyToStudent(userId: string, raw: unknown): Promise<void
   const body = cleanBody(raw);
   if (!body) throw new UserFacingError("Escreva a resposta antes de enviar.", "invalid");
   const db = createAdminClient();
+  // A equipe pode puxar conversa com qualquer aluno cadastrado: confere que a conta existe.
+  const { data: u, error: ue } = await db.auth.admin.getUserById(userId);
+  if (ue || !u?.user) throw new UserFacingError("Aluno não encontrado.", "not_found");
   const ins = await db.from("team_messages").insert({ user_id: userId, sender: "equipe", body });
   if (ins.error) throw new Error(ins.error.message);
   await db.from("team_messages").update({ status: "lido", read_at: new Date().toISOString() }).eq("user_id", userId).eq("sender", "aluno").eq("status", "novo");
