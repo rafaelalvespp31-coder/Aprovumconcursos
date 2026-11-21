@@ -51,7 +51,7 @@ describe("pendências da equipe", () => {
     ];
     tables.edital_preparations = [{ strategic_exam_id: "e1", created_at: "2026-11-10T12:00:00Z" }];
     const r = await getAdminPendencias();
-    expect(Object.fromEntries(r.items.map((i) => [i.key, i.count]))).toEqual({ planos: 2, avatares: 1, pagamentos: 0, feedbacks: 0, indicacoes: 0, parceiros: 0, raiox: 1 });
+    expect(Object.fromEntries(r.items.map((i) => [i.key, i.count]))).toEqual({ planos: 2, equipe: 0, avatares: 1, pagamentos: 0, feedbacks: 0, indicacoes: 0, parceiros: 0, raiox: 1 });
     expect(r.total).toBe(4);
     expect(r.items.find((i) => i.key === "planos")?.latestAt).toBe("2026-11-10T11:00:00Z");
   });

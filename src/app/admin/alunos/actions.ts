@@ -6,6 +6,7 @@ import { requireAdmin } from "@/server/services/catalog";
 import { markStudentPaid, resetStudentPassword, setStudentGhost, setStudentPlan } from "@/server/services/students";
 import { UserFacingError, enforceRateLimit } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
+import { markThreadRead, replyToStudent } from "@/server/services/team-chat";
 import { resolvePlanRequest } from "@/server/services/plan-requests";
 
 export type StudentActionResult = { ok: true; message: string; password?: string } | { ok: false; error: string };
@@ -71,6 +72,27 @@ export async function resolvePlanRequestAction(id: string): Promise<StudentActio
     await enforceRateLimit(admin.id, "admin_students", 60);
     await resolvePlanRequest(str(id));
     return { message: "Pedido marcado como atendido." };
+  });
+  if (r.ok) revalidatePath("/admin/alunos");
+  return r;
+}
+
+export async function replyTeamAction(userId: string, text: string): Promise<StudentActionResult> {
+  const admin = await requireAdmin();
+  const r = await guard("admin.team_reply", async () => {
+    await enforceRateLimit(admin.id, "admin_team_reply", 60);
+    await replyToStudent(z.string().uuid().parse(userId), text);
+    return { message: "Resposta enviada." };
+  });
+  if (r.ok) revalidatePath("/admin/alunos");
+  return r;
+}
+
+export async function markTeamReadAction(userId: string): Promise<StudentActionResult> {
+  await requireAdmin();
+  const r = await guard("admin.team_read", async () => {
+    await markThreadRead(z.string().uuid().parse(userId));
+    return { message: "Marcada como atendida." };
   });
   if (r.ok) revalidatePath("/admin/alunos");
   return r;

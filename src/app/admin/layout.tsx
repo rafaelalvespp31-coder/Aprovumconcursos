@@ -12,7 +12,7 @@ export const metadata = { title: "Administração" };
 
 const PEND_VAZIA = { total: 0, items: [] as Awaited<ReturnType<typeof getAdminPendencias>>["items"] };
 const nPend = (p: typeof PEND_VAZIA, key: string) => p.items.find((i) => i.key === key)?.count ?? 0;
-const badgesOf = (p: typeof PEND_VAZIA): NavBadges => ({ planos: nPend(p, "planos"), avatares: nPend(p, "avatares"), raiox: nPend(p, "raiox"), pagamentos: nPend(p, "pagamentos"), feedbacks: nPend(p, "feedbacks"), indicacoes: nPend(p, "indicacoes"), parceiros: nPend(p, "parceiros") });
+const badgesOf = (p: typeof PEND_VAZIA): NavBadges => ({ planos: nPend(p, "planos"), equipe: nPend(p, "equipe"), avatares: nPend(p, "avatares"), raiox: nPend(p, "raiox"), pagamentos: nPend(p, "pagamentos"), feedbacks: nPend(p, "feedbacks"), indicacoes: nPend(p, "indicacoes"), parceiros: nPend(p, "parceiros") });
 
 // As pendências carregam à parte: a página não espera por elas para aparecer.
 async function MenuComAvisos() {

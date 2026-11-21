@@ -8,6 +8,7 @@ import { getRaioXNotices } from "@/server/services/raiox-notice";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
 import type { MentorPanelState } from "@/components/mentor/types";
+import { listMyMessages, sendStudentMessage, unreadReplies, type TeamMessage } from "@/server/services/team-chat";
 import { listEditalOptions, setMentorGoal, type EditalOption } from "@/server/services/mentor-goal";
 import type { StudyPlan } from "@/domain/mentor/plan";
 
@@ -62,4 +63,38 @@ export async function listMentorContestsAction(): Promise<EditalOption[]> {
   const user = await getSessionUser();
   if (!user) return [];
   return listEditalOptions(user.id).catch(() => []);
+}
+
+export type EquipeState = { ok: true; messages: TeamMessage[] } | { ok: false; error: string };
+
+/** Conversa do aluno logado com a Equipe APROVUM (a identidade vem só da sessão). */
+export async function equipeListAction(): Promise<EquipeState> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Sua sessão expirou. Entre novamente." };
+  try {
+    return { ok: true, messages: await listMyMessages(user.id) };
+  } catch (e) {
+    await logEvent("equipe.list_failed", { error: (e as Error).message });
+    return { ok: false, error: "Não foi possível carregar a conversa agora." };
+  }
+}
+
+export async function equipeSendAction(text: string): Promise<EquipeState> {
+  const user = await getSessionUser();
+  if (!user) return { ok: false, error: "Sua sessão expirou. Entre novamente." };
+  try {
+    await sendStudentMessage(user.id, text);
+    return { ok: true, messages: await listMyMessages(user.id, false) };
+  } catch (e) {
+    if (e instanceof UserFacingError) return { ok: false, error: e.message };
+    await logEvent("equipe.send_failed", { error: (e as Error).message });
+    return { ok: false, error: "Não foi possível enviar agora. Tente de novo." };
+  }
+}
+
+/** Quantas respostas da equipe o aluno ainda não leu (selo na aba e no aviso). */
+export async function equipeNaoLidasAction(): Promise<number> {
+  const user = await getSessionUser();
+  if (!user) return 0;
+  return unreadReplies(user.id).catch(() => 0);
 }

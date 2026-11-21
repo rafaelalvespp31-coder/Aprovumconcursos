@@ -1,7 +1,9 @@
 import { requireAdmin } from "@/server/services/catalog";
 import { listStudents, studentSummary } from "@/server/services/students";
 import { FREE_LIMITS } from "@/domain/plans/limits";
-import { markPaidAction, resetPasswordAction, resolvePlanRequestAction, setGhostAction, setPlanAction } from "./actions";
+import { listThreads } from "@/server/services/team-chat";
+import { MensagensEquipe } from "./mensagens-equipe";
+import { markTeamReadAction, replyTeamAction, markPaidAction, resetPasswordAction, resolvePlanRequestAction, setGhostAction, setPlanAction } from "./actions";
 import { StudentsTable } from "./students-table";
 import { listOpenPlanRequests } from "@/server/services/plan-requests";
 import { OFFERS } from "@/domain/plans/offers";
@@ -19,6 +21,7 @@ export default async function StudentsPage() {
   const count = studentSummary(students);
   const requests = await listOpenPlanRequests().catch(() => []);
   const atividade = await listStudentActivity().catch(() => []);
+  const threads = await listThreads().catch(() => []);
   return (
     <div>
       <h1 className="t-h1">Alunos</h1>
@@ -28,6 +31,7 @@ export default async function StudentsPage() {
       </p>
       <OnlineAgora />
       <AlunosNotificacoes initial={atividade} />
+      <MensagensEquipe threads={threads} reply={replyTeamAction} markRead={markTeamReadAction} />
       <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5" data-testid="alunos-resumo">
         {(
           [

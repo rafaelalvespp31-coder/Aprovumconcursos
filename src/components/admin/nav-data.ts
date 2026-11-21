@@ -1,6 +1,6 @@
 /** Mapa do painel da equipe: o mesmo cadastro alimenta o menu lateral e os cartões da página inicial. */
-export interface NavBadges { planos: number; avatares: number; raiox: number; pagamentos: number; feedbacks: number; indicacoes: number; parceiros: number }
-export const EMPTY_BADGES: NavBadges = { planos: 0, avatares: 0, raiox: 0, pagamentos: 0, feedbacks: 0, indicacoes: 0, parceiros: 0 };
+export interface NavBadges { planos: number; equipe: number; avatares: number; raiox: number; pagamentos: number; feedbacks: number; indicacoes: number; parceiros: number }
+export const EMPTY_BADGES: NavBadges = { planos: 0, equipe: 0, avatares: 0, raiox: 0, pagamentos: 0, feedbacks: 0, indicacoes: 0, parceiros: 0 };
 /** Áreas sem fila própria: abrir a tela zera o aviso de novidades. */
 export const SEEN_KEYS: ReadonlyArray<keyof NavBadges> = ["pagamentos", "feedbacks", "parceiros"];
 export interface NavItem { href: string; label: string; desc: string; icon: string; badge?: keyof NavBadges }
@@ -32,6 +32,7 @@ export const NAV_GROUPS: NavGroup[] = [
     id: "alunos", title: "Alunos e comunidade", icon: "M16 20v-1a4 4 0 00-4-4H8a4 4 0 00-4 4v1M10 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7z",
     items: [
       { href: "/admin/alunos", label: "Alunos", desc: "Contas, planos e pedidos", icon: "M16 20v-1a4 4 0 00-4-4H8a4 4 0 00-4 4v1M10 11a3.5 3.5 0 100-7 3.5 3.5 0 000 7zM20 20v-1a3 3 0 00-2-2.8M16 4.3a3.5 3.5 0 010 6.4", badge: "planos" },
+      { href: "/admin/alunos#mensagens", label: "Mensagens", desc: "Dúvidas dos alunos para a Equipe", icon: "M4 5h16v11H9l-5 4V5zM8 9h8M8 12h5", badge: "equipe" },
       { href: "/admin/avatares", label: "Avatares", desc: "Avatares personalizados", icon: "M12 21a9 9 0 100-18 9 9 0 000 18zM8.5 14a4.5 4.5 0 007 0M9 9.5h.01M15 9.5h.01", badge: "avatares" },
       { href: "/admin/feedbacks", label: "Feedbacks", desc: "Retornos dos alunos", icon: "M4 5h16v11H9l-5 4V5z", badge: "feedbacks" },
       { href: "/admin/depoimentos", label: "Depoimentos", desc: "Depoimentos do site", icon: "M7 17h3l2-4V7H6v6h3M15 17h3l2-4V7h-6v6h3" },

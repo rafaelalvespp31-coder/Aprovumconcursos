@@ -2,7 +2,7 @@ import "server-only";
 import { createAdminClient } from "../supabase";
 
 export interface AdminPendencia {
-  key: "planos" | "avatares" | "raiox" | "pagamentos" | "feedbacks" | "indicacoes" | "parceiros";
+  key: "planos" | "equipe" | "avatares" | "raiox" | "pagamentos" | "feedbacks" | "indicacoes" | "parceiros";
   label: string;
   count: number;
   href: string;
@@ -80,7 +80,7 @@ export async function getAdminPendencias(): Promise<AdminPendencias> {
   if (memo && Date.now() - memo.at < TTL_MS) return memo.value;
   const none = { count: 0, latestAt: null as string | null };
   const seen = await seenMap().catch(() => ({}) as Record<string, string>);
-  const [planos, avatares, raiox, pagamentos, feedbacks, indicacoes, parceiros] = await Promise.all([
+  const [planos, avatares, raiox, pagamentos, feedbacks, indicacoes, parceiros, equipe] = await Promise.all([
     countOpen("plan_requests", [["status", "novo"]], "created_at").catch(() => none),
     countOpen("avatar_requests", [["status", "enviada"]], "created_at").catch(() => none),
     raioXPending().catch(() => none),
@@ -88,9 +88,11 @@ export async function getAdminPendencias(): Promise<AdminPendencias> {
     countOpen("lesson_feedbacks", [["status", "enviado"]], "created_at", seen.feedbacks ?? EPOCH).catch(() => none),
     countOpen("referral_rewards", [["status", "pendente"]], "created_at").catch(() => none),
     countOpen("partner_coupon_redemptions", [["status", "aprovado"]], "approved_at", seen.parceiros ?? EPOCH).catch(() => none),
+    countOpen("team_messages", [["sender", "aluno"], ["status", "novo"]], "created_at").catch(() => none),
   ]);
   const items: AdminPendencia[] = [
     { key: "planos", label: "Pedidos de plano", count: planos.count, href: "/admin/alunos", latestAt: planos.latestAt },
+    { key: "equipe", label: "Mensagens de alunos", count: equipe.count, href: "/admin/alunos#mensagens", latestAt: equipe.latestAt },
     { key: "avatares", label: "Avatares personalizados", count: avatares.count, href: "/admin/avatares", latestAt: avatares.latestAt },
     { key: "pagamentos", label: "Novas compras", count: pagamentos.count, href: "/admin/pagamentos", latestAt: pagamentos.latestAt },
     { key: "feedbacks", label: "Novos feedbacks de aula", count: feedbacks.count, href: "/admin/feedbacks", latestAt: feedbacks.latestAt },
