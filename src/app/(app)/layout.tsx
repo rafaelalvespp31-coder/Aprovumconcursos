@@ -6,6 +6,7 @@ import { ensureDisciplines } from "@/server/services/disciplines";
 import { signOut } from "../(auth)/actions";
 import { LogoutButton } from "./logout-button";
 import { Suspense } from "react";
+import { EquipePopup } from "@/components/mentor/equipe-popup";
 import { DailyPlanReminder } from "@/components/mentor/daily-plan-reminder";
 import { MentorFloat } from "@/components/mentor/mentor-float";
 import { ensurePromo } from "@/server/services/promo";
@@ -56,6 +57,7 @@ export default async function AppLayout({
       >
         {children}
       </PastelShell>
+      <EquipePopup />
       <DesafioWatcher />
       <BoasVindas />
       <InstalarAppCard />

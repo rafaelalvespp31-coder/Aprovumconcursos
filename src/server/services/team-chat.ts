@@ -4,22 +4,42 @@ import { UserFacingError, enforceRateLimit } from "./trails";
 import { resetAdminPendenciasCache } from "./admin-pendencias";
 import { sendPushToUsers } from "./push";
 
-export interface TeamMessage { id: string; sender: "aluno" | "equipe"; body: string; createdAt: string }
+/** deliveredAt: chegou ao app/painel de quem recebe ("Recebido"); readAt: a conversa foi aberta ("Lido"). */
+export interface TeamMessage { id: string; sender: "aluno" | "equipe"; body: string; createdAt: string; deliveredAt: string | null; readAt: string | null }
+type Row = { id: string; sender: string; body: string; created_at: string; delivered_at: string | null; read_at: string | null };
+const COLS = "id, sender, body, created_at, delivered_at, read_at";
 
 const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f<>]/g;
 export function cleanBody(v: unknown): string {
   return typeof v === "string" ? v.normalize("NFC").replace(CONTROL, " ").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 1000) : "";
 }
 
-const map = (r: { id: string; sender: string; body: string; created_at: string }): TeamMessage => ({ id: r.id, sender: r.sender === "equipe" ? "equipe" : "aluno", body: r.body, createdAt: r.created_at });
+const map = (r: Row): TeamMessage => ({ id: r.id, sender: r.sender === "equipe" ? "equipe" : "aluno", body: r.body, createdAt: r.created_at, deliveredAt: r.delivered_at ?? null, readAt: r.read_at ?? null });
 
 /** Conversa do aluno com a Equipe. Abrir a conversa marca as respostas da equipe como lidas. */
 export async function listMyMessages(userId: string, markRead = true): Promise<TeamMessage[]> {
   const db = createAdminClient();
-  const { data, error } = await db.from("team_messages").select("id, sender, body, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(100);
+  const now = new Date().toISOString();
+  if (markRead) {
+    // Abrir a conversa = recebeu e leu as respostas da equipe.
+    await db.from("team_messages").update({ status: "lido", read_at: now }).eq("user_id", userId).eq("sender", "equipe").is("read_at", null);
+    await db.from("team_messages").update({ delivered_at: now }).eq("user_id", userId).eq("sender", "equipe").is("delivered_at", null);
+  }
+  const { data, error } = await db.from("team_messages").select(COLS).eq("user_id", userId).order("created_at", { ascending: false }).limit(100);
   if (error) throw new Error(error.message);
-  if (markRead) await db.from("team_messages").update({ status: "lido" }).eq("user_id", userId).eq("sender", "equipe").eq("status", "novo");
-  return (data ?? []).map(map).reverse();
+  return ((data ?? []) as Row[]).map(map).reverse();
+}
+
+export interface TeamPopup { id: string; body: string; createdAt: string }
+
+/** Respostas da equipe que o aluno ainda não leu, para o pop-up em qualquer tela. Buscar = "Recebido". */
+export async function newTeamReplies(userId: string): Promise<TeamPopup[]> {
+  const db = createAdminClient();
+  const { data, error } = await db.from("team_messages").select("id, body, created_at").eq("user_id", userId).eq("sender", "equipe").eq("status", "novo").order("created_at", { ascending: false }).limit(3);
+  if (error) throw new Error(error.message);
+  const rows = (data ?? []) as Array<{ id: string; body: string; created_at: string }>;
+  if (rows.length) await db.from("team_messages").update({ delivered_at: new Date().toISOString() }).in("id", rows.map((r) => r.id)).is("delivered_at", null);
+  return rows.map((r) => ({ id: r.id, body: r.body, createdAt: r.created_at }));
 }
 
 /** Respostas da equipe ainda não lidas pelo aluno. */
@@ -32,10 +52,10 @@ export async function sendStudentMessage(userId: string, raw: unknown): Promise<
   const body = cleanBody(raw);
   if (!body) throw new UserFacingError("Escreva a sua dúvida antes de enviar.", "invalid");
   await enforceRateLimit(userId, "team_msg", 20, 3600);
-  const { data, error } = await createAdminClient().from("team_messages").insert({ user_id: userId, sender: "aluno", body }).select("id, sender, body, created_at").single();
+  const { data, error } = await createAdminClient().from("team_messages").insert({ user_id: userId, sender: "aluno", body }).select(COLS).single();
   if (error) throw new Error(error.message);
   resetAdminPendenciasCache();
-  return map(data as { id: string; sender: string; body: string; created_at: string });
+  return map(data as Row);
 }
 
 export interface TeamThread {
@@ -50,10 +70,12 @@ export interface TeamThread {
 /** Conversas para o painel da equipe: as com mensagem nova primeiro, depois as mais recentes. */
 export async function listThreads(): Promise<TeamThread[]> {
   const db = createAdminClient();
-  const { data, error } = await db.from("team_messages").select("id, user_id, sender, body, status, created_at").order("created_at", { ascending: false }).limit(600);
+  // Abrir o painel = a equipe "recebeu" as mensagens dos alunos.
+  await db.from("team_messages").update({ delivered_at: new Date().toISOString() }).eq("sender", "aluno").is("delivered_at", null);
+  const { data, error } = await db.from("team_messages").select("id, user_id, sender, body, status, created_at, delivered_at, read_at").order("created_at", { ascending: false }).limit(600);
   if (error) throw new Error(error.message);
   const by = new Map<string, TeamThread>();
-  for (const r of (data ?? []) as Array<{ id: string; user_id: string; sender: string; body: string; status: string; created_at: string }>) {
+  for (const r of (data ?? []) as Array<Row & { user_id: string; status: string }>) {
     const t = by.get(r.user_id) ?? { userId: r.user_id, name: null, email: null, unread: 0, lastAt: r.created_at, messages: [] };
     if (r.sender === "aluno" && r.status === "novo") t.unread++;
     t.messages.unshift(map(r));
@@ -77,12 +99,18 @@ export async function replyToStudent(userId: string, raw: unknown): Promise<void
   const db = createAdminClient();
   const ins = await db.from("team_messages").insert({ user_id: userId, sender: "equipe", body });
   if (ins.error) throw new Error(ins.error.message);
-  await db.from("team_messages").update({ status: "lido" }).eq("user_id", userId).eq("sender", "aluno").eq("status", "novo");
+  await db.from("team_messages").update({ status: "lido", read_at: new Date().toISOString() }).eq("user_id", userId).eq("sender", "aluno").eq("status", "novo");
+  await db.from("team_messages").update({ read_at: new Date().toISOString() }).eq("user_id", userId).eq("sender", "aluno").is("read_at", null);
   resetAdminPendenciasCache();
   await sendPushToUsers([userId], { title: "A Equipe APROVUM respondeu", body: body.slice(0, 120), url: "/mentor#equipe", tag: "equipe-resposta" }).catch(() => undefined);
 }
 
+/** A equipe abriu a conversa: as mensagens do aluno ficam "Lidas" (continuam pendentes até responder ou marcar como atendida). */
+export async function markThreadSeen(userId: string): Promise<void> {
+  await createAdminClient().from("team_messages").update({ read_at: new Date().toISOString() }).eq("user_id", userId).eq("sender", "aluno").is("read_at", null);
+}
+
 export async function markThreadRead(userId: string): Promise<void> {
-  await createAdminClient().from("team_messages").update({ status: "lido" }).eq("user_id", userId).eq("sender", "aluno").eq("status", "novo");
+  await createAdminClient().from("team_messages").update({ status: "lido", read_at: new Date().toISOString() }).eq("user_id", userId).eq("sender", "aluno").eq("status", "novo");
   resetAdminPendenciasCache();
 }

@@ -13,6 +13,7 @@ import { MentorIcone } from "./mentor-icone";
 import { VozView } from "./voz-view";
 import { MentorGoalPlan } from "./mentor-goal-plan";
 import { EquipeChat } from "./equipe-chat";
+import { ABRIR_EQUIPE } from "./equipe-popup";
 import type { StudyPlan } from "@/domain/mentor/plan";
 import { SILENCE } from "./voz-orbe";
 import type { MentorPanelState } from "./types";
@@ -267,6 +268,14 @@ export function MentorFloat({ base = "", demos, loginId }: { base?: string; /** 
       requestAnimationFrame(() => panelRef.current?.focus());
     } else requestAnimationFrame(() => bubbleRef.current?.focus());
   };
+  // Pop-up da Equipe: "Ver e responder" abre o Mentor direto no chat.
+  useEffect(() => {
+    const abrir = (e: Event) => { e.preventDefault(); dispensarEquipe(); setTab("equipe"); save(KEY_TAB, "equipe"); setOpen(true); save(KEY_OPEN, true); };
+    window.addEventListener(ABRIR_EQUIPE, abrir);
+    return () => window.removeEventListener(ABRIR_EQUIPE, abrir);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loginId]);
+
   const setTabSaved = (t: Tab) => {
     setTab(t);
     save(KEY_TAB, t);

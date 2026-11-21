@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { MessageCircle, Send } from "lucide-react";
 import type { TeamMessage } from "@/server/services/team-chat";
+import { Recibo } from "./recibo";
 import { equipeListAction, equipeSendAction } from "@/app/(app)/mentor/actions";
 
 const hora = (iso: string) => new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" });
@@ -21,7 +22,7 @@ export function EquipeChat({ tema = "escuro" }: { tema?: "claro" | "escuro" }) {
     let vivo = true;
     const carregar = () => equipeListAction().then((r) => { if (!vivo) return; if (r.ok) setMsgs(r.messages); else setErro((e) => e ?? r.error); }).catch(() => undefined);
     carregar();
-    const t = setInterval(() => { if (document.visibilityState === "visible") carregar(); }, 20000);
+    const t = setInterval(() => { if (document.visibilityState === "visible") carregar(); }, 8000);
     return () => { vivo = false; clearInterval(t); };
   }, []);
 
@@ -50,7 +51,7 @@ export function EquipeChat({ tema = "escuro" }: { tema?: "claro" | "escuro" }) {
             style={m.sender === "aluno" ? { color: "#fff", WebkitTextFillColor: "#fff" } : { color: "#08090B", WebkitTextFillColor: "#08090B" }} data-testid={m.sender === "aluno" ? "equipe-msg-aluno" : "equipe-msg-equipe"}>
             {m.sender === "equipe" && <b className="mb-0.5 block text-[11px] uppercase tracking-wide text-[#E10600]" style={{ WebkitTextFillColor: "#E10600" }}>Equipe APROVUM</b>}
             {m.body}
-            <span className="mt-0.5 block text-[10.5px] opacity-65">{hora(m.createdAt)}</span>
+            <span className="mt-0.5 flex items-center justify-end gap-2 text-[10.5px] opacity-80">{hora(m.createdAt)}{m.sender === "aluno" && <Recibo deliveredAt={m.deliveredAt} readAt={m.readAt} escuro />}</span>
           </div>
         ))}
         <div ref={fim} />

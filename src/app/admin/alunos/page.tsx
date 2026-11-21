@@ -3,7 +3,7 @@ import { listStudents, studentSummary } from "@/server/services/students";
 import { FREE_LIMITS } from "@/domain/plans/limits";
 import { listThreads } from "@/server/services/team-chat";
 import { MensagensEquipe } from "./mensagens-equipe";
-import { markTeamReadAction, replyTeamAction, markPaidAction, resetPasswordAction, resolvePlanRequestAction, setGhostAction, setPlanAction } from "./actions";
+import { markTeamReadAction, replyTeamAction, seenTeamAction, markPaidAction, resetPasswordAction, resolvePlanRequestAction, setGhostAction, setPlanAction } from "./actions";
 import { StudentsTable } from "./students-table";
 import { listOpenPlanRequests } from "@/server/services/plan-requests";
 import { OFFERS } from "@/domain/plans/offers";
@@ -31,7 +31,7 @@ export default async function StudentsPage() {
       </p>
       <OnlineAgora />
       <AlunosNotificacoes initial={atividade} />
-      <MensagensEquipe threads={threads} reply={replyTeamAction} markRead={markTeamReadAction} />
+      <MensagensEquipe threads={threads} reply={replyTeamAction} markRead={markTeamReadAction} seen={seenTeamAction} />
       <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5" data-testid="alunos-resumo">
         {(
           [

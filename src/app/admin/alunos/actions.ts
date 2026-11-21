@@ -6,7 +6,7 @@ import { requireAdmin } from "@/server/services/catalog";
 import { markStudentPaid, resetStudentPassword, setStudentGhost, setStudentPlan } from "@/server/services/students";
 import { UserFacingError, enforceRateLimit } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
-import { markThreadRead, replyToStudent } from "@/server/services/team-chat";
+import { markThreadRead, markThreadSeen, replyToStudent } from "@/server/services/team-chat";
 import { resolvePlanRequest } from "@/server/services/plan-requests";
 
 export type StudentActionResult = { ok: true; message: string; password?: string } | { ok: false; error: string };
@@ -96,4 +96,13 @@ export async function markTeamReadAction(userId: string): Promise<StudentActionR
   });
   if (r.ok) revalidatePath("/admin/alunos");
   return r;
+}
+
+/** Abrir a conversa no painel: as mensagens do aluno passam a "Lido" para ele. */
+export async function seenTeamAction(userId: string): Promise<StudentActionResult> {
+  await requireAdmin();
+  return guard("admin.team_seen", async () => {
+    await markThreadSeen(z.string().uuid().parse(userId));
+    return { message: "ok" };
+  });
 }

@@ -8,7 +8,7 @@ import { getRaioXNotices } from "@/server/services/raiox-notice";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
 import type { MentorPanelState } from "@/components/mentor/types";
-import { listMyMessages, sendStudentMessage, unreadReplies, type TeamMessage } from "@/server/services/team-chat";
+import { listMyMessages, newTeamReplies, sendStudentMessage, unreadReplies, type TeamMessage, type TeamPopup } from "@/server/services/team-chat";
 import { listEditalOptions, setMentorGoal, type EditalOption } from "@/server/services/mentor-goal";
 import type { StudyPlan } from "@/domain/mentor/plan";
 
@@ -97,4 +97,11 @@ export async function equipeNaoLidasAction(): Promise<number> {
   const user = await getSessionUser();
   if (!user) return 0;
   return unreadReplies(user.id).catch(() => 0);
+}
+
+/** Pop-up da Equipe: respostas novas, em qualquer tela do app (a identidade vem da sessão). */
+export async function equipeNovasAction(): Promise<TeamPopup[]> {
+  const user = await getSessionUser();
+  if (!user) return [];
+  return newTeamReplies(user.id).catch(() => []);
 }
