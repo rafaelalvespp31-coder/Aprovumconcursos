@@ -24,6 +24,8 @@ export function CaveiraPopup({ campaignId, days, markSeen }: Props) {
   const [saindo, setSaindo] = useState(false);
   const registrado = useRef(false);
   const botao = useRef<HTMLButtonElement>(null);
+  // A trava de rolagem é solta ao FECHAR (o popup fica montado no layout; só o cleanup do efeito não bastava e a página ficava presa).
+  const destravar = useRef<(() => void) | null>(null);
 
   const fechar = () => {
     if (saindo) return;
@@ -32,7 +34,7 @@ export function CaveiraPopup({ campaignId, days, markSeen }: Props) {
       void markSeen(campaignId).catch(() => undefined);
     }
     setSaindo(true);
-    window.setTimeout(() => setOpen(false), 280);
+    window.setTimeout(() => { destravar.current?.(); setOpen(false); }, 280);
   };
 
   useEffect(() => {
@@ -43,6 +45,7 @@ export function CaveiraPopup({ campaignId, days, markSeen }: Props) {
     }
     botao.current?.focus();
     const unlock = lockScroll();
+    destravar.current = unlock;
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") fechar();
     };
