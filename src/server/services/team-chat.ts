@@ -52,7 +52,7 @@ export async function newTeamReplies(userId: string): Promise<TeamPopup[]> {
   if (error) throw new Error(error.message);
   const rows = (data ?? []) as Array<{ id: string; body: string; created_at: string }>;
   if (rows.length) await db.from("team_messages").update({ delivered_at: new Date().toISOString() }).in("id", rows.map((r) => r.id)).is("delivered_at", null);
-  return rows.map((r) => ({ id: r.id, body: r.body, createdAt: r.created_at }));
+  return rows.map((r) => ({ id: r.id, body: r.body || "📷 A Equipe enviou uma imagem", createdAt: r.created_at }));
 }
 
 /** Respostas da equipe ainda não lidas pelo aluno. */
@@ -111,19 +111,22 @@ export async function listThreads(): Promise<TeamThread[]> {
 }
 
 /** A equipe responde: grava, marca as perguntas do aluno como atendidas e avisa o aluno no celular. */
-export async function replyToStudent(userId: string, raw: unknown): Promise<void> {
+export async function replyToStudent(userId: string, raw: unknown, attachmentPath?: string | null): Promise<void> {
   const body = cleanBody(raw);
-  if (!body) throw new UserFacingError("Escreva a resposta antes de enviar.", "invalid");
+  // A imagem da equipe fica na pasta do aluno da conversa (mesmo caminho/bucket dos anexos do aluno).
+  const path = attachmentPath && ANEXO_PATH.test(attachmentPath) && attachmentPath.startsWith(`${userId}/`) ? attachmentPath : null;
+  if (attachmentPath && !path) throw new UserFacingError("Anexo inválido. Envie a imagem de novo.", "invalid");
+  if (!body && !path) throw new UserFacingError("Escreva a resposta ou anexe uma imagem antes de enviar.", "invalid");
   const db = createAdminClient();
   // A equipe pode puxar conversa com qualquer aluno cadastrado: confere que a conta existe.
   const { data: u, error: ue } = await db.auth.admin.getUserById(userId);
   if (ue || !u?.user) throw new UserFacingError("Aluno não encontrado.", "not_found");
-  const ins = await db.from("team_messages").insert({ user_id: userId, sender: "equipe", body });
+  const ins = await db.from("team_messages").insert({ user_id: userId, sender: "equipe", body, attachment_path: path });
   if (ins.error) throw new Error(ins.error.message);
   await db.from("team_messages").update({ status: "lido", read_at: new Date().toISOString() }).eq("user_id", userId).eq("sender", "aluno").eq("status", "novo");
   await db.from("team_messages").update({ read_at: new Date().toISOString() }).eq("user_id", userId).eq("sender", "aluno").is("read_at", null);
   resetAdminPendenciasCache();
-  await sendPushToUsers([userId], { title: "A Equipe APROVUM respondeu", body: body.slice(0, 120), url: "/mentor#equipe", tag: "equipe-resposta" }).catch(() => undefined);
+  await sendPushToUsers([userId], { title: "A Equipe APROVUM respondeu", body: body ? body.slice(0, 120) : "📷 A Equipe enviou uma imagem", url: "/mentor#equipe", tag: "equipe-resposta" }).catch(() => undefined);
 }
 
 /** A equipe abriu a conversa: as mensagens do aluno ficam "Lidas" (continuam pendentes até responder ou marcar como atendida). */

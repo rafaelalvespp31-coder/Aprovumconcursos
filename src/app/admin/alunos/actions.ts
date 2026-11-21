@@ -77,11 +77,11 @@ export async function resolvePlanRequestAction(id: string): Promise<StudentActio
   return r;
 }
 
-export async function replyTeamAction(userId: string, text: string): Promise<StudentActionResult> {
+export async function replyTeamAction(userId: string, text: string, attachmentPath?: string | null): Promise<StudentActionResult> {
   const admin = await requireAdmin();
   const r = await guard("admin.team_reply", async () => {
     await enforceRateLimit(admin.id, "admin_team_reply", 60);
-    await replyToStudent(z.string().uuid().parse(userId), text);
+    await replyToStudent(z.string().uuid().parse(userId), text, attachmentPath ?? null);
     return { message: "Resposta enviada." };
   });
   if (r.ok) revalidatePath("/admin/alunos");

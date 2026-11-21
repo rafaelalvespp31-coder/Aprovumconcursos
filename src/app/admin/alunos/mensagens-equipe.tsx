@@ -2,14 +2,15 @@
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Search, Send } from "lucide-react";
+import { ArrowLeft, Camera, Search, Send, X } from "lucide-react";
 import { Recibo } from "@/components/mentor/recibo";
+import { prepararImagem } from "@/lib/preparar-imagem";
 import { dataLista, hora, rotuloDia, rotuloPresenca } from "@/domain/presenca";
 import type { TeamMessage, TeamThread } from "@/server/services/team-chat";
 import type { StudentActionResult } from "./actions";
 
 export interface AlunoChat { id: string; name: string | null; email: string | null; ghost?: boolean }
-type Acao = (id: string, text: string) => Promise<StudentActionResult>;
+type Acao = (id: string, text: string, attachmentPath?: string | null) => Promise<StudentActionResult>;
 type Linha = { userId: string; name: string | null; email: string | null; ghost: boolean; thread: TeamThread | null };
 type Pres = Record<string, { online: boolean; vistoEm: string | null }>;
 
@@ -81,10 +82,43 @@ function Painel({ l, pres, reply, markRead, seen, voltar }: { l: Linha; pres: Pr
   // Sempre mostra o fim da conversa, como no WhatsApp.
   useEffect(() => { const el = rolagem.current; if (el) el.scrollTop = el.scrollHeight; }, [msgs.length, l.userId]);
 
+  const [foto, setFoto] = useState<{ blob: Blob; url: string } | null>(null);
+  const [preparando, setPreparando] = useState(false);
+  const limparFoto = () => setFoto((a) => { if (a) URL.revokeObjectURL(a.url); return null; });
+  const aoEscolher = async (file: File | undefined) => {
+    if (!file) return;
+    setErro(null);
+    if (!file.type.startsWith("image/")) return setErro("Escolha uma imagem (foto ou print).");
+    setPreparando(true);
+    try {
+      const blob = await prepararImagem(file);
+      if (blob.size > 4 * 1024 * 1024) return setErro("A imagem é grande demais. Use uma menor.");
+      setFoto((a) => { if (a) URL.revokeObjectURL(a.url); return { blob, url: URL.createObjectURL(blob) }; });
+    } catch {
+      setErro("Não consegui ler essa imagem. Tente outra.");
+    } finally {
+      setPreparando(false);
+    }
+  };
+  const podeEnviar = !pending && !preparando && (!!texto.trim() || !!foto);
   const enviar = () => start(async () => {
     setErro(null);
-    const r = await reply(l.userId, texto);
-    if (r.ok) { setTexto(""); if (campo.current) campo.current.style.height = "auto"; } else setErro(r.error);
+    let path: string | null = null;
+    if (foto) {
+      const fd = new FormData();
+      fd.append("file", foto.blob, "anexo");
+      fd.append("userId", l.userId);
+      try {
+        const res = await fetch("/api/admin/equipe/anexo", { method: "POST", body: fd });
+        const j = (await res.json().catch(() => null)) as { ok?: boolean; path?: string; error?: string } | null;
+        if (!res.ok || !j?.ok || !j.path) return setErro(j?.error ?? "Não foi possível enviar a imagem agora.");
+        path = j.path;
+      } catch {
+        return setErro("Sem conexão para enviar a imagem. Tente de novo.");
+      }
+    }
+    const r = await reply(l.userId, texto, path);
+    if (r.ok) { setTexto(""); limparFoto(); if (campo.current) campo.current.style.height = "auto"; } else setErro(r.error);
   });
   const cresce = (el: HTMLTextAreaElement) => { el.style.height = "auto"; el.style.height = `${Math.min(el.scrollHeight, 128)}px`; };
 
@@ -113,7 +147,7 @@ function Painel({ l, pres, reply, markRead, seen, voltar }: { l: Linha; pres: Pr
                 {m.attachmentUrl && (
                   <a href={m.attachmentUrl} target="_blank" rel="noopener noreferrer" className="mb-1 block" aria-label="Abrir a imagem em tamanho cheio">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={m.attachmentUrl} alt="Imagem enviada pelo aluno" loading="lazy" className="max-h-64 w-full rounded-md object-contain" />
+                    <img src={m.attachmentUrl} alt="Imagem da conversa" loading="lazy" className="max-h-64 w-full rounded-md object-contain" />
                   </a>
                 )}
                 {m.body}
@@ -124,13 +158,26 @@ function Painel({ l, pres, reply, markRead, seen, voltar }: { l: Linha; pres: Pr
         })}
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); if (texto.trim() && !pending) enviar(); }} className="px-2 py-2" style={{ background: "#f0f2f5" }}>
+      <form onSubmit={(e) => { e.preventDefault(); if (podeEnviar) enviar(); }} className="px-2 py-2" style={{ background: "#f0f2f5" }}>
         {erro && <p role="alert" className="px-2 pb-1 text-xs font-semibold" style={{ color: "#b3261e" }}>{erro}</p>}
+        {foto && (
+          <div className="mb-2 flex items-center gap-2 rounded-lg p-2" style={{ background: "#fff" }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={foto.url} alt="Imagem a enviar" className="size-16 rounded-md object-cover" />
+            <span className="flex-1 text-xs" style={{ color: "#54656f" }}>Imagem pronta para enviar</span>
+            <button type="button" onClick={limparFoto} aria-label="Remover imagem" className="flex size-8 items-center justify-center rounded-full" style={{ color: "#54656f" }}><X className="size-4" /></button>
+          </div>
+        )}
         <div className="flex items-end gap-2">
+          <label className="flex size-10 shrink-0 cursor-pointer items-center justify-center rounded-full focus-within:outline focus-within:outline-2" style={{ color: "#54656f" }} title="Anexar imagem ou tirar foto" data-testid="equipe-anexo-admin">
+            <Camera className="size-6" aria-hidden />
+            <span className="sr-only">Anexar imagem ou tirar foto</span>
+            <input type="file" accept="image/*" className="sr-only" onChange={(e) => { void aoEscolher(e.target.files?.[0]); e.target.value = ""; }} />
+          </label>
           <textarea ref={campo} value={texto} rows={1} maxLength={1000} onChange={(e) => { setTexto(e.target.value); cresce(e.currentTarget); }}
-            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) { e.preventDefault(); if (texto.trim() && !pending) enviar(); } }}
+            onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && window.matchMedia("(pointer: fine)").matches) { e.preventDefault(); if (podeEnviar) enviar(); } }}
             placeholder="Digite uma mensagem" aria-label="Mensagem para o aluno" className="max-h-32 min-h-10 flex-1 resize-none rounded-3xl border-0 bg-white px-4 py-2.5 text-[15px] outline-none" style={{ color: "#111b21", WebkitTextFillColor: "#111b21" }} />
-          <button type="submit" disabled={pending || !texto.trim()} aria-label="Enviar mensagem" className="flex size-10 shrink-0 items-center justify-center rounded-full text-white transition-opacity disabled:opacity-50" style={{ background: VERDE, WebkitTextFillColor: "#fff" }}><Send className="size-5" /></button>
+          <button type="submit" disabled={!podeEnviar} aria-label="Enviar mensagem" className="flex size-10 shrink-0 items-center justify-center rounded-full text-white transition-opacity disabled:opacity-50" style={{ background: VERDE, WebkitTextFillColor: "#fff" }}><Send className="size-5" /></button>
         </div>
       </form>
     </>
