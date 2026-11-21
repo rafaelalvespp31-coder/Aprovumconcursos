@@ -26,6 +26,7 @@ const KEY_POS = "aprovum_mentor_pos";
 const KEY_OPEN = "aprovum_mentor_aberto";
 const KEY_TAB = "aprovum_mentor_aba";
 const KEY_CONC = "aprovum_mentor_concursos_dia";
+const KEY_EQUIPE = "aprovum_mentor_equipe_login";
 
 type Pos = { dx: number; dy: number };
 type Tab = "plano" | "prioridades" | "voz" | "equipe";
@@ -86,7 +87,7 @@ const FRASES_PING = [
   "Anotou o que errou hoje? Eu te ajudo a revisar.",
 ];
 
-export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: estados em memória (?mentor=…). */ demos?: Record<string, MentorPanelState> }) {
+export function MentorFloat({ base = "", demos, loginId }: { base?: string; /** Identifica o login atual: a cada login novo o Mentor avisa do chat com a Equipe. */ loginId?: string; /** Galeria: estados em memória (?mentor=…). */ demos?: Record<string, MentorPanelState> }) {
   const pathname = usePathname();
   const params = useSearchParams();
   const demo = demos ? (demos[params.get("mentor") ?? "ok"] ?? demos.ok) : undefined;
@@ -105,9 +106,12 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
   const [refreshing, setRefreshing] = useState(false);
   // Lembrados no navegador (lidos só no cliente; no servidor nada é desenhado).
   const [open, setOpen] = useState(() => (typeof window === "undefined" ? false : read<boolean>(KEY_OPEN, false)));
-  const [tab, setTab] = useState<Tab>(() => (typeof window === "undefined" ? "plano" : read<string>(KEY_TAB, "plano") === "voz" ? "voz" : read<string>(KEY_TAB, "plano") === "equipe" ? "equipe" : read<string>(KEY_TAB, "plano") === "prioridades" ? "prioridades" : "plano"));
+  const [tab, setTab] = useState<Tab>(() => (typeof window === "undefined" ? "plano" : loginId && read<string>(KEY_EQUIPE, "") !== loginId && read<boolean>(KEY_OPEN, false) ? "equipe" : read<string>(KEY_TAB, "plano") === "voz" ? "voz" : read<string>(KEY_TAB, "plano") === "equipe" ? "equipe" : read<string>(KEY_TAB, "plano") === "prioridades" ? "prioridades" : "plano"));
   const [savedPos, setPos] = useState<Pos | null>(() => (typeof window === "undefined" ? null : read<Pos | null>(KEY_POS, null)));
   const pos = clamp(savedPos ?? defaultPos(vw), vw, vh);
+  // A cada login novo, o Mentor avisa na hora que dá para falar com a Equipe pelo chat.
+  const [equipeAviso, setEquipeAviso] = useState(() => (typeof window === "undefined" || !loginId ? false : read<string>(KEY_EQUIPE, "") !== loginId));
+  const dispensarEquipe = () => { setEquipeAviso(false); if (loginId) save(KEY_EQUIPE, loginId); };
   const [teaser, setTeaser] = useState(false);
   const [ping, setPing] = useState<string | null>(null);
   const push = usePush();
@@ -252,6 +256,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
   }, [open, isDemo]);
 
   const setOpenSaved = (v: boolean) => {
+    if (v && equipeAviso) { dispensarEquipe(); setTab("equipe"); save(KEY_TAB, "equipe"); }
     setOpen(v);
     setTeaser(false);
     setPing(null);
@@ -330,17 +335,23 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
     <>
       {!open && (
         <div className={`mentor-flut ${vw - pos.dx - BUBBLE / 2 < vw / 2 ? "is-esquerda" : ""}`} style={{ right: pos.dx, bottom: pos.dy }} data-testid="mentor-flutuante" data-estado={data?.state ?? "carregando"}>
-          {concNovo > 0 && concTexto && (
+          {equipeAviso && (
+            <button type="button" className="mentor-aviso mentor-aviso-equipe" onClick={() => setOpenSaved(true)} data-testid="mentor-aviso-equipe">
+              <b>Fale com a nossa Equipe</b>
+              <span>Precisou de ajuda? É só abrir o chat do Mentor e mandar a sua dúvida.</span>
+            </button>
+          )}
+          {!equipeAviso && concNovo > 0 && concTexto && (
             <button type="button" className="mentor-aviso mentor-aviso-conc" onClick={() => setOpenSaved(true)} data-testid="mentor-aviso-concurso">
               <span className="mentor-conc-ponto" aria-hidden /> {concTexto.title}
             </button>
           )}
-          {!(concNovo > 0 && concTexto) && !teaser && ping && (
+          {!equipeAviso && !(concNovo > 0 && concTexto) && !teaser && ping && (
             <button type="button" className="mentor-aviso mentor-aviso-ping" onClick={() => setOpenSaved(true)} data-testid="mentor-ping">
               {ping}
             </button>
           )}
-          {!(concNovo > 0 && concTexto) && teaser && pending > 0 && (
+          {!equipeAviso && !(concNovo > 0 && concTexto) && teaser && pending > 0 && (
             <button type="button" className="mentor-aviso" onClick={() => setOpenSaved(true)} data-testid="mentor-aviso">
               {fraseTeaser({ nome: data?.state === "ok" ? data.name : null, raiox: avisos > 0, pending, sorteio })}
             </button>
@@ -348,7 +359,7 @@ export function MentorFloat({ base = "", demos }: { base?: string; /** Galeria: 
           <button
             ref={bubbleRef}
             type="button"
-            className={`mentor-bolha ${dragging ? "is-arrastando" : ""} ${concNovo > 0 ? "mentor-piscando" : ping ? "mentor-pulso" : ""}`}
+            className={`mentor-bolha ${dragging ? "is-arrastando" : ""} ${equipeAviso ? "mentor-pulso" : ""} ${concNovo > 0 ? "mentor-piscando" : ping ? "mentor-pulso" : ""}`}
             aria-label={`Abrir o Mentor APROVUM${pending ? ` (${pending} ${pending === 1 ? "prioridade" : "prioridades"})` : ""}`}
             aria-expanded={false}
             onPointerDown={onDown}

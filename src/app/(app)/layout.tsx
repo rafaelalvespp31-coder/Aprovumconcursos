@@ -6,7 +6,6 @@ import { ensureDisciplines } from "@/server/services/disciplines";
 import { signOut } from "../(auth)/actions";
 import { LogoutButton } from "./logout-button";
 import { Suspense } from "react";
-import { EquipeAviso } from "@/components/mentor/equipe-aviso";
 import { DailyPlanReminder } from "@/components/mentor/daily-plan-reminder";
 import { MentorFloat } from "@/components/mentor/mentor-float";
 import { ensurePromo } from "@/server/services/promo";
@@ -44,7 +43,7 @@ export default async function AppLayout({
       <PastelShell
         floating={
           <Suspense fallback={null}>
-            <MentorFloat />
+            <MentorFloat loginId={user.signedInAt ?? "s"} />
             <DailyPlanReminder />
           </Suspense>
         }
@@ -57,7 +56,6 @@ export default async function AppLayout({
       >
         {children}
       </PastelShell>
-      <EquipeAviso loginId={user.signedInAt ?? "s"} />
       <DesafioWatcher />
       <BoasVindas />
       <InstalarAppCard />
