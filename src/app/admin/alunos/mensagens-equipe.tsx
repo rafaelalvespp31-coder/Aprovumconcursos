@@ -35,6 +35,12 @@ function Conversa({ t, reply, markRead, seen }: { t: TeamThread; reply: (id: str
           <ul className="flex max-h-72 flex-col gap-2 overflow-y-auto">
             {t.messages.map((m) => (
               <li key={m.id} className={`max-w-[85%] whitespace-pre-wrap rounded-xl px-3 py-2 t-small ${m.sender === "aluno" ? "self-start bg-[#F1F1F3] text-[#08090B]" : "self-end bg-[#08090B] text-white"}`}>
+                {m.attachmentUrl && (
+                  <a href={m.attachmentUrl} target="_blank" rel="noopener noreferrer" className="mb-1 block" aria-label="Abrir a imagem em tamanho cheio">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={m.attachmentUrl} alt="Imagem enviada pelo aluno" loading="lazy" className="max-h-64 w-full rounded-lg object-contain" />
+                  </a>
+                )}
                 {m.body}
                 <span className="mt-0.5 flex items-center gap-2 t-tiny opacity-70">{m.sender === "aluno" ? "Aluno" : "Equipe"} · {quando(m.createdAt)}{m.sender === "equipe" && <Recibo deliveredAt={m.deliveredAt} readAt={m.readAt} escuro />}</span>
               </li>

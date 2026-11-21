@@ -79,11 +79,11 @@ export async function equipeListAction(): Promise<EquipeState> {
   }
 }
 
-export async function equipeSendAction(text: string): Promise<EquipeState> {
+export async function equipeSendAction(text: string, attachmentPath?: string | null): Promise<EquipeState> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Sua sessão expirou. Entre novamente." };
   try {
-    await sendStudentMessage(user.id, text);
+    await sendStudentMessage(user.id, text, attachmentPath ?? null);
     return { ok: true, messages: await listMyMessages(user.id, false) };
   } catch (e) {
     if (e instanceof UserFacingError) return { ok: false, error: e.message };

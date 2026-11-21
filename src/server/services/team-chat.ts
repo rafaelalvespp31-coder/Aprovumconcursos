@@ -3,18 +3,31 @@ import { createAdminClient } from "../supabase";
 import { UserFacingError, enforceRateLimit } from "./trails";
 import { resetAdminPendenciasCache } from "./admin-pendencias";
 import { sendPushToUsers } from "./push";
+import { ANEXO_PATH } from "@/domain/equipe-anexo";
+
+const BUCKET = "equipe-anexos";
 
 /** deliveredAt: chegou ao app/painel de quem recebe ("Recebido"); readAt: a conversa foi aberta ("Lido"). */
-export interface TeamMessage { id: string; sender: "aluno" | "equipe"; body: string; createdAt: string; deliveredAt: string | null; readAt: string | null }
-type Row = { id: string; sender: string; body: string; created_at: string; delivered_at: string | null; read_at: string | null };
-const COLS = "id, sender, body, created_at, delivered_at, read_at";
+export interface TeamMessage { id: string; sender: "aluno" | "equipe"; body: string; createdAt: string; deliveredAt: string | null; readAt: string | null; /** Foto/print anexado (link temporário). */ attachmentUrl: string | null }
+type Row = { id: string; sender: string; body: string; created_at: string; delivered_at: string | null; read_at: string | null; attachment_path?: string | null };
+const COLS = "id, sender, body, created_at, delivered_at, read_at, attachment_path";
 
 const CONTROL = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f<>]/g;
 export function cleanBody(v: unknown): string {
   return typeof v === "string" ? v.normalize("NFC").replace(CONTROL, " ").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim().slice(0, 1000) : "";
 }
 
-const map = (r: Row): TeamMessage => ({ id: r.id, sender: r.sender === "equipe" ? "equipe" : "aluno", body: r.body, createdAt: r.created_at, deliveredAt: r.delivered_at ?? null, readAt: r.read_at ?? null });
+const map = (r: Row): TeamMessage => ({ id: r.id, sender: r.sender === "equipe" ? "equipe" : "aluno", body: r.body, createdAt: r.created_at, deliveredAt: r.delivered_at ?? null, readAt: r.read_at ?? null, attachmentUrl: null });
+
+/** Troca o caminho do anexo por um link assinado de 1 hora (o bucket é privado). */
+async function sign(rows: Row[]): Promise<TeamMessage[]> {
+  const msgs = rows.map(map);
+  const paths = [...new Set(rows.map((r) => r.attachment_path).filter((x): x is string => !!x))];
+  if (!paths.length) return msgs;
+  const { data } = await createAdminClient().storage.from(BUCKET).createSignedUrls(paths, 3600);
+  const url = new Map((data ?? []).filter((d) => d.path && d.signedUrl).map((d) => [d.path as string, d.signedUrl]));
+  return msgs.map((m, i) => ({ ...m, attachmentUrl: rows[i]!.attachment_path ? (url.get(rows[i]!.attachment_path!) ?? null) : null }));
+}
 
 /** Conversa do aluno com a Equipe. Abrir a conversa marca as respostas da equipe como lidas. */
 export async function listMyMessages(userId: string, markRead = true): Promise<TeamMessage[]> {
@@ -27,7 +40,7 @@ export async function listMyMessages(userId: string, markRead = true): Promise<T
   }
   const { data, error } = await db.from("team_messages").select(COLS).eq("user_id", userId).order("created_at", { ascending: false }).limit(100);
   if (error) throw new Error(error.message);
-  return ((data ?? []) as Row[]).map(map).reverse();
+  return (await sign((data ?? []) as Row[])).reverse();
 }
 
 export interface TeamPopup { id: string; body: string; createdAt: string }
@@ -48,14 +61,17 @@ export async function unreadReplies(userId: string): Promise<number> {
   return count ?? 0;
 }
 
-export async function sendStudentMessage(userId: string, raw: unknown): Promise<TeamMessage> {
+export async function sendStudentMessage(userId: string, raw: unknown, attachmentPath?: string | null): Promise<TeamMessage> {
   const body = cleanBody(raw);
-  if (!body) throw new UserFacingError("Escreva a sua dúvida antes de enviar.", "invalid");
+  // O anexo só vale se estiver na pasta do próprio aluno e no formato esperado.
+  const path = attachmentPath && ANEXO_PATH.test(attachmentPath) && attachmentPath.startsWith(`${userId}/`) ? attachmentPath : null;
+  if (attachmentPath && !path) throw new UserFacingError("Anexo inválido. Envie a foto de novo.", "invalid");
+  if (!body && !path) throw new UserFacingError("Escreva a sua dúvida ou anexe uma foto antes de enviar.", "invalid");
   await enforceRateLimit(userId, "team_msg", 20, 3600);
-  const { data, error } = await createAdminClient().from("team_messages").insert({ user_id: userId, sender: "aluno", body }).select(COLS).single();
+  const { data, error } = await createAdminClient().from("team_messages").insert({ user_id: userId, sender: "aluno", body, attachment_path: path }).select(COLS).single();
   if (error) throw new Error(error.message);
   resetAdminPendenciasCache();
-  return map(data as Row);
+  return (await sign([data as Row]))[0]!;
 }
 
 export interface TeamThread {
@@ -72,13 +88,15 @@ export async function listThreads(): Promise<TeamThread[]> {
   const db = createAdminClient();
   // Abrir o painel = a equipe "recebeu" as mensagens dos alunos.
   await db.from("team_messages").update({ delivered_at: new Date().toISOString() }).eq("sender", "aluno").is("delivered_at", null);
-  const { data, error } = await db.from("team_messages").select("id, user_id, sender, body, status, created_at, delivered_at, read_at").order("created_at", { ascending: false }).limit(600);
+  const { data, error } = await db.from("team_messages").select("id, user_id, sender, body, status, created_at, delivered_at, read_at, attachment_path").order("created_at", { ascending: false }).limit(600);
   if (error) throw new Error(error.message);
   const by = new Map<string, TeamThread>();
-  for (const r of (data ?? []) as Array<Row & { user_id: string; status: string }>) {
+  const all = (data ?? []) as Array<Row & { user_id: string; status: string }>;
+  const signed = await sign(all);
+  for (const [i, r] of all.entries()) {
     const t = by.get(r.user_id) ?? { userId: r.user_id, name: null, email: null, unread: 0, lastAt: r.created_at, messages: [] };
     if (r.sender === "aluno" && r.status === "novo") t.unread++;
-    t.messages.unshift(map(r));
+    t.messages.unshift(signed[i]!);
     by.set(r.user_id, t);
   }
   const threads = [...by.values()].slice(0, 100);
