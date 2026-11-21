@@ -16,8 +16,10 @@ export async function POST(req: NextRequest) {
   if (!user) return new NextResponse(null, { status: 204, headers: noStore });
   const db = createAdminClient();
   const sair = req.nextUrl.searchParams.get("sair") === "1";
+  const agora = new Date().toISOString();
+  // last_seen_at guarda o horário real (base do "visto por último"); seen_at é empurrado para trás ao sair, só para sumir de "online".
   const { error } = await db.from("tatico_presence").upsert(
-    { user_id: user.id, seen_at: sair ? new Date(Date.now() - 3_600_000).toISOString() : new Date().toISOString() },
+    { user_id: user.id, seen_at: sair ? new Date(Date.now() - 3_600_000).toISOString() : agora, last_seen_at: agora },
     { onConflict: "user_id" },
   );
   return new NextResponse(null, { status: error ? 500 : 204, headers: noStore });
