@@ -117,7 +117,7 @@ export function EquipeChat({ tema = "escuro" }: { tema?: "claro" | "escuro" }) {
         ))}
         {msgs && msgs.length > 0 && msgs[msgs.length - 1]!.sender === "aluno" && (
           <p className="self-end pr-1 text-right text-[12px] italic" style={{ color: dim, WebkitTextFillColor: dim }} data-testid="equipe-observacao">
-            Observação: um Operador Tático já irá atender você.
+            Um Operador Tático já irá atender você.
           </p>
         )}
         <div ref={fim} />
