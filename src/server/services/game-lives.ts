@@ -2,7 +2,7 @@ import "server-only";
 import { createAdminClient } from "../supabase";
 import { UserFacingError } from "./trails";
 import { getMyPlan } from "./plans";
-import { LOCK_MS, faltaPara, maxLives } from "@/domain/quiz/lives";
+import { LOCK_MS, faltaPara, maxLives, semTrava } from "@/domain/quiz/lives";
 
 export interface LivesState {
   max: number;
@@ -26,11 +26,11 @@ async function read(userId: string): Promise<Row> {
   return row;
 }
 
-/** Vidas atuais do aluno (gratuito 2, pago 5). O administrador joga sem bloqueio. */
+/** Vidas atuais do aluno. Gratuito: 2 vidas e trava de 24 h. Plano pago (qualquer) e administrador: sem perda de vidas e sem bloqueio (`admin` = "sem trava"). */
 export async function getLives(userId: string): Promise<LivesState & { admin: boolean }> {
   const [plan, row] = await Promise.all([getMyPlan(userId), read(userId)]);
   const max = maxLives(plan.unlimited);
-  if (plan.admin) return { max, left: max, lockedUntil: null, admin: true };
+  if (semTrava(plan)) return { max, left: max, lockedUntil: null, admin: true };
   const locked = row.locked_until && Date.parse(row.locked_until) > Date.now() ? row.locked_until : null;
   return { max, left: locked ? 0 : Math.max(0, max - row.lost), lockedUntil: locked, admin: false };
 }

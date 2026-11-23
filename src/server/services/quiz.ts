@@ -13,7 +13,7 @@ import { createAdminClient, createUserClient } from "../supabase";
 import { enforceRateLimit, UserFacingError } from "./trails";
 import { assertHasLives, getLives, loseLife, type LivesState } from "./game-lives";
 
-/** Meta do desafio do dia. As vidas (gratuito 2, pago 5) ficam em game-lives e valem entre rodadas. */
+/** Meta do desafio do dia. As vidas (gratuito 2; plano pago sem trava) ficam em game-lives e valem entre rodadas. */
 export const DAILY_GOAL = 20;
 
 interface QuizTopic {
@@ -175,7 +175,7 @@ export interface QuizRound {
   level: QuizLevel;
   /** Preenchido quando o tema pedido não tinha mais perguntas inéditas e a rodada mudou de tema. */
   movedFrom: string | null;
-  /** Vidas do aluno agora (valem entre rodadas; ao zerar o jogo trava por 24 h). */
+  /** Vidas do aluno agora (valem entre rodadas; no plano gratuito, ao zerar o jogo trava por 24 h). */
   lives: LivesState;
 }
 
