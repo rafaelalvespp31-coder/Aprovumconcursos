@@ -101,9 +101,9 @@ export function FalarComMentor({ ativo, onAtivo, onNivel, onConn, onFase }: { at
 }
 
 /**
- * Frequência de voz ao lado do botão, no estilo de espectro de rádio: muitas barras finas espelhadas que oscilam de forma
- * irregular (chiado), com marca de pico que cai devagar e um fio de portadora no centro. A energia segue o áudio real
- * (voz do Mentor e microfone do aluno); em repouso é só um chiado baixo e discreto.
+ * Frequência de voz ao lado do botão: linhas de sinal distorcidas (estilo osciloscópio de rádio). Enquanto o Mentor não fala
+ * é só um fio reto; quando ele fala, as linhas se distorcem e tremem de forma irregular, com a energia do áudio real da voz
+ * do Mentor (o microfone do aluno não mexe nela).
  */
 function OndaVoz({ lado, fonte, ativo }: { lado: "e" | "d"; fonte: RefObject<(() => Bands) | null>; ativo: boolean }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
@@ -113,10 +113,13 @@ function OndaVoz({ lado, fonte, ativo }: { lado: "e" | "d"; fonte: RefObject<(()
     const cv = ref.current; if (!cv) return;
     const ctx = cv.getContext("2d"); if (!ctx) return;
     const reduzir = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    let w = 0, h = 0, dpr = 1, raf = 0, ultimo = 0, nivel = 0, visivel = true;
-    const MAX = 28;
-    const altura = new Float32Array(MAX), alvoR = new Float32Array(MAX), pico = new Float32Array(MAX), relogio = new Float32Array(MAX);
-    for (let i = 0; i < MAX; i++) { alvoR[i] = Math.random(); relogio[i] = Math.random() * 0.1; }
+    let w = 0, h = 0, dpr = 1, raf = 0, ultimo = 0, nivel = 0, fase = 0, visivel = true;
+    const K = 20;                                          // pontos de controle do ruído por linha
+    // linhas: [frequência da portadora, velocidade, peso do ruído, espessura, alfa, branca, deslocamento de fase]
+    const linhas: [number, number, number, number, number, boolean, number][] = [
+      [5.2, 7.5, 0.85, 1.2, 0.95, true, 0], [3.4, -5.1, 0.7, 1.8, 0.55, false, 1.9], [7.8, 9.3, 1, 1.1, 0.4, false, 4.1],
+    ];
+    const pts = linhas.map(() => new Float32Array(K)), alvos = linhas.map(() => new Float32Array(K)), tempo = linhas.map(() => 0);
     const medir = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1);
       w = cv.clientWidth; h = cv.clientHeight;
@@ -126,50 +129,44 @@ function OndaVoz({ lado, fonte, ativo }: { lado: "e" | "d"; fonte: RefObject<(()
     medir();
     const ro = new ResizeObserver(medir); ro.observe(cv);
     const io = new IntersectionObserver(([en]) => { visivel = !!en?.isIntersecting; }); io.observe(cv);
+    const suave = (x: number) => x * x * (3 - 2 * x);
     const desenhar = (t: number) => {
       const dt = Math.min(0.05, (t - ultimo) / 1000 || 0.016); ultimo = t;
       const b = ativoRef.current ? fonte.current?.() : null;
-      const alvo = b ? Math.min(1, Math.max(b.me ?? b.vol ?? 0, (b.mic ?? 0) * 1.1)) : 0;
-      nivel += (alvo - nivel) * (1 - Math.exp(-dt * (alvo > nivel ? 18 : 7)));
+      // só a voz do Mentor mexe na linha; parado, o nível cai rápido até o fio ficar reto
+      const alvo = b ? Math.min(1, Math.max(0, b.me ?? 0)) : 0;
+      nivel += (alvo - nivel) * (1 - Math.exp(-dt * (alvo > nivel ? 22 : 9)));
+      fase += dt * (1 + nivel * 6);
       ctx.clearRect(0, 0, w, h);
-      const n = Math.max(8, Math.min(MAX, Math.floor(w / 3.3)));
-      const meio = h / 2, passo = w / n, larg = Math.max(1.4, passo * 0.5), maxMeia = h * 0.5 - 1;
-      // fio de portadora central, que some nas pontas
-      const fio = ctx.createLinearGradient(0, 0, w, 0);
-      const forte = `rgba(255,86,92,${0.45 + 0.4 * nivel})`, fraco = "rgba(255,86,92,0)";
-      if (lado === "e") { fio.addColorStop(0, fraco); fio.addColorStop(1, forte); } else { fio.addColorStop(0, forte); fio.addColorStop(1, fraco); }
-      ctx.fillStyle = fio; ctx.fillRect(0, meio - 0.5, w, 1);
-      ctx.lineCap = "butt"; ctx.lineWidth = larg;
-      for (let i = 0; i < n; i++) {
-        const d = i / (n - 1);                         // 0 = junto ao botão, 1 = ponta externa
-        const x = lado === "e" ? w - passo * (i + 0.5) : passo * (i + 0.5);
-        // chiado: cada barra sorteia um novo alvo a cada ~50–110 ms e corre para ele (movimento irregular de espectro)
-        relogio[i] = (relogio[i] ?? 0) - dt;
-        if ((relogio[i] ?? 0) <= 0) { alvoR[i] = Math.random(); relogio[i] = 0.05 + Math.random() * 0.06; }
-        const ruido = alvoR[i] ?? 0;
-        const env = Math.pow(1 - d, 0.9) * 0.78 + 0.22;
-        const forma = 0.25 + 0.75 * ruido * ruido * (3 - 2 * ruido);  // realça picos, como espectro real
-        const alvoBarra = ativoRef.current
-          ? Math.min(1, 0.04 + nivel * forma * env * 1.35 + 0.03 * ruido)
-          : 0.05 + 0.08 * ruido * env;
-        const atual = altura[i] ?? 0;
-        const nova = atual + (alvoBarra - atual) * (1 - Math.exp(-dt * (alvoBarra > atual ? 38 : 12)));
-        altura[i] = nova;
-        const meia = Math.max(0.8, nova * maxMeia);
-        // marca de pico: sobe junto e desce devagar
-        const p = Math.max(nova, (pico[i] ?? 0) - dt * 0.55); pico[i] = p;
-        const q = 1 - d;                                // branco quente junto ao botão → vermelho na ponta
-        const cor = `rgb(255,${Math.round(60 + 150 * q * q)},${Math.round(66 + 140 * q * q)})`;
-        ctx.shadowColor = "rgba(255,37,45,0.9)"; ctx.shadowBlur = 3 + 9 * nivel;
-        ctx.strokeStyle = cor; ctx.globalAlpha = 0.6 + 0.4 * env;
-        ctx.beginPath(); ctx.moveTo(x, meio - meia); ctx.lineTo(x, meio + meia); ctx.stroke();
-        if (p > nova + 0.02) {
-          const pm = Math.max(0.8, p * maxMeia);
-          ctx.shadowBlur = 0; ctx.globalAlpha = 0.9; ctx.fillStyle = "rgba(255,238,234,0.95)";
-          ctx.fillRect(x - larg / 2, meio - pm - 1.6, larg, 1.4); ctx.fillRect(x - larg / 2, meio + pm + 0.2, larg, 1.4);
+      const meio = h / 2, ampMax = h * 0.47;
+      const amp = nivel < 0.01 ? 0 : Math.min(1, nivel * 1.7) * ampMax;
+      linhas.forEach(([f, v, ruidoPeso, esp, alfa, branca, deslocamento], li) => {
+        const P = pts[li]!, A = alvos[li]!;
+        tempo[li] = (tempo[li] ?? 0) - dt;
+        if ((tempo[li] ?? 0) <= 0) { for (let i = 0; i < K; i++) A[i] = Math.random() * 2 - 1; tempo[li] = 0.04 + Math.random() * 0.05; }
+        for (let i = 0; i < K; i++) P[i] = (P[i] ?? 0) + ((A[i] ?? 0) - (P[i] ?? 0)) * (1 - Math.exp(-dt * 30));
+        const grad = ctx.createLinearGradient(0, 0, w, 0);
+        const cor = branca ? "255,240,236" : "255,48,56";
+        if (lado === "e") { grad.addColorStop(0, `rgba(${cor},0)`); grad.addColorStop(0.35, `rgba(${cor},${alfa})`); grad.addColorStop(1, `rgba(${cor},${alfa})`); }
+        else { grad.addColorStop(0, `rgba(${cor},${alfa})`); grad.addColorStop(0.65, `rgba(${cor},${alfa})`); grad.addColorStop(1, `rgba(${cor},0)`); }
+        ctx.strokeStyle = grad; ctx.lineWidth = esp; ctx.lineJoin = "round"; ctx.lineCap = "round";
+        ctx.shadowColor = "rgba(255,37,45,0.95)"; ctx.shadowBlur = branca ? 5 + 7 * nivel : 7 + 9 * nivel;
+        ctx.beginPath();
+        for (let x = 0; x <= w; x += 1) {
+          const u = x / w;
+          const lu = lado === "e" ? 1 - u : u;               // 0 = junto ao botão, 1 = ponta externa
+          // envelope: a distorção nasce no botão e vai se apagando para fora
+          const env = Math.pow(1 - lu, 0.7) * (0.35 + 0.65 * Math.sin(Math.PI * Math.min(1, lu * 0.9 + 0.1)));
+          // ruído de valor com suavização cosseno entre pontos de controle
+          const pos = Math.min(K - 1.001, u * (K - 1)), i0 = Math.floor(pos), fr = suave(pos - i0);
+          const ruido = (P[i0] ?? 0) * (1 - fr) + (P[i0 + 1] ?? 0) * fr;
+          const sinal = Math.sin(lu * Math.PI * 2 * f - fase * v + deslocamento) * (0.6 + 0.4 * Math.sin(lu * 11 + fase * 1.7 + deslocamento));
+          const y = meio + amp * env * (ruidoPeso * 0.85 * ruido + (1 - ruidoPeso * 0.35) * 0.55 * sinal);
+          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
-      }
-      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
+        ctx.stroke();
+      });
+      ctx.shadowBlur = 0;
     };
     const laco = (t: number) => { raf = requestAnimationFrame(laco); if (visivel && !document.hidden) desenhar(t); };
     if (reduzir) desenhar(0); else raf = requestAnimationFrame(laco);
