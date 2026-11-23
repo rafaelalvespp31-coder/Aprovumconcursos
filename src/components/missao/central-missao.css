@@ -187,6 +187,10 @@
 .hm-folha .mc-painel { flex: 1; min-height: 0; }
 .hm-folha .mc-rolagem { flex: 1; min-height: 0; max-height: none; }
 
+/* abertura: a Central fica carregando por baixo (a cena 3D já aquece) e só entra quando o clarão cobre a tela */
+.hm[data-intro="ativa"] > :not(.hm-intro) { visibility: hidden; }
+.hm[data-intro="ativa"] :is(.hm-topo, .hm-cena, .hm-corpo, .hm-card, .hm-voz, .hm-rodape) { animation-play-state: paused; }
+
 /* entrada cinematográfica */
 @keyframes hm-aparece { from { opacity: 0; } }
 @keyframes hm-surge { from { opacity: 0; transform: scale(1.05); filter: blur(6px); } }

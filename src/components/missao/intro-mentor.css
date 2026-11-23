@@ -1,0 +1,64 @@
+/* abertura antes da Central: retrato do Mentor + transição cinematográfica para a caveira */
+.hm-intro { position: absolute; inset: 0; z-index: 60; overflow: hidden; background: #000; }
+.hm-intro[data-etapa="revela"] { animation: hmi-some 0.9s ease forwards; pointer-events: none; }
+@keyframes hmi-some { from { opacity: 1; } to { opacity: 0; } }
+.hm-intro-fundo { position: absolute; inset: 0; background: radial-gradient(60% 45% at 50% 62%, rgb(215 25 32 / 0.28), transparent 70%), #000; }
+
+/* o retrato mantém a proporção (941x1672) e fica centrado; o botão é uma área sobre o botão desenhado na arte */
+.hm-intro-cena { position: absolute; left: 50%; top: 50%; height: min(100dvh, calc(100vw * 1672 / 941)); aspect-ratio: 941 / 1672; translate: -50% -50%;
+  -webkit-mask-image: linear-gradient(180deg, transparent, #000 5%, #000 95%, transparent), linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(180deg, transparent, #000 5%, #000 95%, transparent), linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); mask-composite: intersect; }
+.hm-intro-zoom { position: absolute; inset: 0; transform-origin: 50% 27%; animation: hmi-entra 1.3s cubic-bezier(0.22, 1, 0.36, 1) both; will-change: transform, filter; }
+@keyframes hmi-entra { from { opacity: 0; transform: scale(1.06); filter: blur(8px); } }
+.hm-intro-arte { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; pointer-events: none; animation: hmi-respira 12s ease-in-out infinite alternate; }
+@keyframes hmi-respira { to { transform: scale(1.03); } }
+
+.hm-intro-brasas { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; }
+.hm-intro-brasas i { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); border-radius: 50%; background: #ff9a52; box-shadow: 0 0 8px 2px rgb(255 80 40 / 0.85); opacity: 0; animation: hmi-brasa var(--d) ease-in infinite var(--a); }
+@keyframes hmi-brasa { 0% { opacity: 0; transform: translate(0, 0) scale(1); } 15% { opacity: 0.95; } 100% { opacity: 0; transform: translate(calc(var(--s) * 9), -26dvh) scale(0.35); } }
+
+.hm-intro-botao { position: absolute; left: 2.3%; top: 77.6%; width: 95.4%; height: 14.6%; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; border-radius: 4% / 22%; transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
+.hm-intro-botao:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
+.hm-intro-botao:active:not(:disabled) { transform: scale(0.97); }
+.hm-intro-botao:disabled { cursor: default; }
+/* respira como convite e varre uma luz quando o dedo ou o mouse chegam */
+.hm-intro-brilho { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; box-shadow: 0 0 26px 2px rgb(255 37 45 / 0.0); animation: hmi-convite 2.6s ease-in-out infinite; }
+.hm-intro-brilho::after { content: ""; position: absolute; top: 0; bottom: 0; left: -35%; width: 28%; background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.28), transparent); transform: skewX(-18deg); opacity: 0; }
+@keyframes hmi-convite { 50% { box-shadow: 0 0 34px 4px rgb(255 37 45 / 0.38); } }
+@media (hover: hover) { .hm-intro-botao:hover:not(:disabled) .hm-intro-brilho::after { opacity: 1; animation: hmi-varre 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; } }
+.hm-intro-botao:active:not(:disabled) .hm-intro-brilho { box-shadow: 0 0 40px 8px rgb(255 60 64 / 0.6); }
+@keyframes hmi-varre { to { transform: skewX(-18deg) translateX(520%); } }
+
+/* camadas da transição (invisíveis até o toque) */
+.hm-intro-linhas, .hm-intro-onda, .hm-intro-clarao, .hm-intro-barra, .hm-intro-preto { position: absolute; pointer-events: none; opacity: 0; }
+.hm-intro-linhas { inset: -40%; background: repeating-conic-gradient(from 0deg at 50% 50%, transparent 0 2.4deg, rgb(255 90 80 / 0.55) 2.6deg 3deg, transparent 3.2deg 7deg);
+  -webkit-mask-image: radial-gradient(circle at 50% 50%, transparent 18%, #000 60%); mask-image: radial-gradient(circle at 50% 50%, transparent 18%, #000 60%); mix-blend-mode: screen; }
+.hm-intro-onda { left: 50%; top: 85%; width: 28vmin; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; border: 3px solid rgb(255 120 110 / 0.95); box-shadow: 0 0 40px 6px rgb(255 37 45 / 0.8), inset 0 0 30px rgb(255 37 45 / 0.6); }
+.hm-intro-clarao { inset: 0; background: radial-gradient(circle at 50% 38%, #fff 0, #ffb0a0 14%, #ff2a35 38%, #6a0008 68%, #000 100%); }
+.hm-intro-barra { left: 0; right: 0; height: 9dvh; background: #000; z-index: 2; }
+.hm-intro-barra-c { top: 0; transform: translateY(-100%); }
+.hm-intro-barra-b { bottom: 0; transform: translateY(100%); }
+.hm-intro-preto { inset: 0; background: #000; z-index: 3; }
+
+.hm-intro[data-etapa="indo"] .hm-intro-zoom { animation: hmi-dolly 1.25s cubic-bezier(0.6, 0, 0.9, 0.4) forwards; }
+@keyframes hmi-dolly { from { transform: scale(1); filter: blur(0) brightness(1); } 60% { filter: blur(2px) brightness(1.25); } to { transform: scale(3.1); filter: blur(9px) brightness(1.9); } }
+.hm-intro[data-etapa="indo"] .hm-intro-arte { animation: none; }
+.hm-intro[data-etapa="indo"] .hm-intro-linhas { animation: hmi-linhas 1.15s cubic-bezier(0.3, 0, 0.7, 1) 0.15s forwards; }
+@keyframes hmi-linhas { 0% { opacity: 0; transform: scale(0.7) rotate(0); } 30% { opacity: 0.9; } 100% { opacity: 0; transform: scale(1.7) rotate(8deg); } }
+.hm-intro[data-etapa="indo"] .hm-intro-onda { animation: hmi-onda 0.8s cubic-bezier(0.1, 0.7, 0.3, 1) forwards; }
+@keyframes hmi-onda { 0% { opacity: 1; transform: scale(0.2); } 100% { opacity: 0; transform: scale(9); } }
+.hm-intro[data-etapa="indo"] .hm-intro-clarao { animation: hmi-clarao 0.75s ease-in 0.55s forwards; }
+@keyframes hmi-clarao { from { opacity: 0; } to { opacity: 1; } }
+.hm-intro[data-etapa="indo"] .hm-intro-barra { opacity: 1; animation: hmi-barra 0.7s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+@keyframes hmi-barra { to { transform: translateY(0); } }
+.hm-intro[data-etapa="indo"] .hm-intro-preto { animation: hmi-preto 0.35s ease-in 1s forwards; }
+@keyframes hmi-preto { from { opacity: 0; } to { opacity: 1; } }
+.hm-intro[data-etapa="revela"] .hm-intro-preto, .hm-intro[data-etapa="revela"] .hm-intro-barra { opacity: 1; }
+.hm-intro[data-etapa="revela"] .hm-intro-barra { transform: translateY(0); }
+
+@media (prefers-reduced-motion: reduce) {
+  .hm-intro *, .hm-intro *::before, .hm-intro *::after { animation: none !important; transition: none !important; }
+  .hm-intro-brasas { display: none; }
+  .hm-intro[data-etapa="indo"] .hm-intro-preto { opacity: 1; }
+  .hm-intro[data-etapa="revela"] { animation: hmi-some 0.25s ease forwards; }
+}

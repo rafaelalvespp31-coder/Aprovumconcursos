@@ -9,6 +9,7 @@ import { FalarComMentor, type FaseMentor } from "./falar-mentor";
 import { PainelEscolha } from "./painel-escolha";
 import { MentorOrbita } from "./mentor-orbita";
 import { MentorScene } from "@/components/mentor-cena/mentor-scene";
+import { IntroMentor } from "./intro-mentor";
 import "./central-missao.css";
 
 export interface CentralMissaoProps {
@@ -19,6 +20,8 @@ export interface CentralMissaoProps {
   materias: MateriaCatalogo[];
   /** Concursos com edital publicado pela equipe. */
   concursos: ConcursoCard[];
+  /** Mostra a abertura (retrato + "Começar a estudar") antes da Central. O servidor liga na primeira visita da sessão. */
+  intro?: boolean;
 }
 
 type Folha = "concursos" | "materias";
@@ -32,7 +35,9 @@ const FOLHAS: Record<Folha, { titulo: string; kicker: string }> = {
 const FAISCAS = Array.from({ length: 12 }, (_, i) => ({ x: 4 + ((i * 37) % 26), d: ((i * 0.41) % 3.2).toFixed(2), t: (2.6 + ((i * 7) % 5) * 0.35).toFixed(2) }));
 
 /** Home pós-login: o Mentor segurando a esfera, o botão de voz e só dois caminhos, Concursos e Matérias. */
-export function CentralMissao({ primeiroNome, email, objetivo, materias, concursos }: CentralMissaoProps) {
+export function CentralMissao({ primeiroNome, email, objetivo, materias, concursos, intro: introInicial = false }: CentralMissaoProps) {
+  // abertura: "ativa" (cobre a Central), "revelando" (a Central entra por baixo do clarão), "fim"
+  const [intro, setIntro] = useState<"ativa" | "revelando" | "fim">(introInicial ? "ativa" : "fim");
   const [falando, setFalando] = useState(false);
   const [conn, setConn] = useState<Conexao>("live");
   const [fase, setFase] = useState<FaseMentor>("repouso");
@@ -77,7 +82,7 @@ export function CentralMissao({ primeiroNome, email, objetivo, materias, concurs
   }, [folha, voltar]);
 
   return (
-    <main className="hm" data-fase={fase} data-folha={folha ?? undefined} data-motor={motor}>
+    <main className="hm" data-fase={fase} data-folha={folha ?? undefined} data-motor={motor} data-intro={intro}>
       <div className="hm-fundo" aria-hidden />
       <div className="hm-fumaca" aria-hidden />
 
@@ -175,6 +180,7 @@ export function CentralMissao({ primeiroNome, email, objetivo, materias, concurs
           </div>
         </div>
       )}
+      {intro !== "fim" && <IntroMentor aoRevelar={() => setIntro("revelando")} aoFim={() => setIntro("fim")} />}
     </main>
   );
 }
