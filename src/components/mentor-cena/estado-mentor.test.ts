@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alvoDaFase, escalaDaVoz, REPOUSO, suavizar, suavizarAudio } from "./estado-mentor";
+import { alvoDaFase, escalaDaVoz, intensidadeOlhos, REPOUSO, suavizar, suavizarAudio, suavizarOlhos } from "./estado-mentor";
 import { nivelAbaixo, nivelInicial, qualidadeDe } from "./qualidade";
 
 describe("alvoDaFase", () => {
@@ -98,5 +98,26 @@ describe("escalaDaVoz", () => {
     expect(escalaDaVoz(1, 0)).toBeCloseTo(0.93, 5);
     expect(escalaDaVoz(1, 1)).toBeCloseTo(1.08, 5);
     expect(escalaDaVoz(1, 0.5)).toBeGreaterThan(escalaDaVoz(1, 0.1));
+  });
+});
+
+describe("brasa dos olhos", () => {
+  it("só acende quando ele fala e acompanha a voz sem apagar no silêncio", () => {
+    expect(intensidadeOlhos(0, 1)).toBe(0);
+    expect(intensidadeOlhos(1, 0)).toBeCloseTo(0.6, 5);
+    expect(intensidadeOlhos(1, 1)).toBe(1);
+    expect(intensidadeOlhos(2, 5)).toBe(1);
+    expect(intensidadeOlhos(1, 0.3)).toBeGreaterThan(intensidadeOlhos(1, 0));
+  });
+  it("acende em cerca de 1 s e esfria mais devagar, sem pular", () => {
+    let a = 0;
+    for (let i = 0; i < 60; i++) a = suavizarOlhos(a, 1, 1 / 60);
+    expect(a).toBeGreaterThan(0.8);
+    expect(a).toBeLessThan(1);
+    let b = 1;
+    for (let i = 0; i < 60; i++) b = suavizarOlhos(b, 0, 1 / 60);
+    expect(b).toBeGreaterThan(0.2);
+    expect(suavizarOlhos(0.5, 0.5, 0.1)).toBeCloseTo(0.5, 10);
+    expect(suavizarOlhos(0.3, 1, -1)).toBe(0.3);
   });
 });

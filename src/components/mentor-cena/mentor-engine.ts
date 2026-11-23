@@ -2,10 +2,11 @@ import * as THREE from "three";
 import type { RefObject } from "react";
 import type { Bands } from "@/components/mentor/skull-orb-fx";
 import type { FaseMentor } from "@/components/missao/falar-mentor";
-import { alvoDaFase, escalaDaVoz, REPOUSO, suavizar, suavizarAudio, type AlvoCena } from "./estado-mentor";
+import { alvoDaFase, escalaDaVoz, intensidadeOlhos, REPOUSO, suavizar, suavizarAudio, type AlvoCena } from "./estado-mentor";
 import { lerAparelho, nivelAbaixo, nivelInicial, qualidadeDe } from "./qualidade";
 import { MentorOrb3D, type UniformsComuns } from "./mentor-orb-3d";
 import { ARTE, EmberEnvironment } from "./ember-environment";
+import { OlhosBrasa } from "./mentor-olhos";
 
 export interface OpcoesMotor {
   fonte: RefObject<(() => Bands) | null>;
@@ -55,7 +56,8 @@ export function criarMotor(canvas: HTMLCanvasElement, op: OpcoesMotor): MotorCen
 
   const brasas = new EmberEnvironment(q, comuns);
   const orb = new MentorOrb3D(q, comuns);
-  scene.add(brasas.atras, orb.grupo, brasas.frente);
+  const olhos = new OlhosBrasa();
+  scene.add(brasas.atras, orb.grupo, brasas.frente, olhos.grupo);
 
   let fase: FaseMentor = "repouso";
   let atual: AlvoCena = { ...REPOUSO };
@@ -98,6 +100,7 @@ export function criarMotor(canvas: HTMLCanvasElement, op: OpcoesMotor): MotorCen
     atual = suavizar(atual, alvoDaFase(fase, audio), dt, 2.2);
     orb.atualizar(dt, atual, audio, escalaDaVoz(fala, audio), audio * fala);
     brasas.atualizar(dt, atual, tempo);
+    olhos.atualizar(dt, intensidadeOlhos(fala, audio), tempo);
   };
   const desenhar = () => renderer.render(scene, camera);
 
@@ -107,6 +110,7 @@ export function criarMotor(canvas: HTMLCanvasElement, op: OpcoesMotor): MotorCen
     if (tempo < 4) { for (let i = 0; i < 240; i++) passo(1 / 60); }
     atual = alvoDaFase(fase, 0);
     orb.atualizar(0.0001, atual, 0);
+    olhos.atualizar(0, fase === "respondendo" ? 0.8 : 0, tempo, true);
     desenhar();
   }
 
@@ -154,7 +158,7 @@ export function criarMotor(canvas: HTMLCanvasElement, op: OpcoesMotor): MotorCen
       cancelAnimationFrame(raf);
       ro.disconnect(); io.disconnect();
       canvas.removeEventListener("webglcontextlost", perdido);
-      orb.liberar(); brasas.liberar();
+      orb.liberar(); brasas.liberar(); olhos.liberar();
       matte?.dispose(); branco.dispose();
       renderer.dispose();
       renderer.forceContextLoss();

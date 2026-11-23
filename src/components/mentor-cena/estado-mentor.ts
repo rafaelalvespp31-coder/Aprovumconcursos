@@ -59,3 +59,19 @@ export function escalaDaVoz(fala: number, audio: number): number {
   const a = Math.min(1, Math.max(0, audio));
   return 1 + f * (-0.07 + 0.15 * Math.min(1, a * 1.3));
 }
+
+/**
+ * Brasa dos olhos do Mentor (0 a 1): acende enquanto ele fala (`fala`, já suavizada) e acompanha de leve a energia da voz,
+ * sem apagar no silêncio entre as palavras (piso de 60% do brilho da fala).
+ */
+export function intensidadeOlhos(fala: number, audio: number): number {
+  const f = Math.min(1, Math.max(0, fala));
+  const a = Math.min(1, Math.max(0, audio));
+  return f * (0.6 + 0.4 * Math.min(1, a * 1.4));
+}
+
+/** Brasa de verdade: acende em ~1 s e esfria devagar (~2 s), como carvão, nunca liga e desliga de uma vez. */
+export function suavizarOlhos(atual: number, alvo: number, dt: number): number {
+  const taxa = alvo > atual ? 2.4 : 1.3;
+  return atual + (alvo - atual) * (1 - Math.exp(-Math.max(0, dt) * taxa));
+}

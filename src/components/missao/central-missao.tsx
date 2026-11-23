@@ -104,12 +104,13 @@ export function CentralMissao({ primeiroNome, email, objetivo, materias, concurs
         <div className="hm-cena">
           {/* eslint-disable-next-line @next/next/no-img-element -- arte fixa do Mentor; WebP já otimizado em public/home */}
           <img className="hm-arte" src="/home/mentor-caveira.webp" alt="" width={1086} height={732} fetchPriority="high" decoding="async" />
-          <span className="hm-olho hm-olho-e" aria-hidden />
-          <span className="hm-olho hm-olho-d" aria-hidden />
           {motor !== "falhou" ? (
             <MentorScene fase={fase} fonte={nivel} pausado={!!folha} aoFalha={aoFalha} aoPronto={aoPronto} />
           ) : (
             <>
+              {/* olhos em brasa do fallback 2D (com WebGL quem acende os olhos é a cena 3D) */}
+              <span className="hm-olho hm-olho-e" aria-hidden />
+              <span className="hm-olho hm-olho-d" aria-hidden />
               <span className="hm-reflexo" aria-hidden />
               <div className="hm-aura" aria-hidden />
               <div className="hm-orb">
