@@ -4,7 +4,7 @@ import { descreverQuadro } from "@/domain/mentor/catalogo-lousa";
 import { comandoDitado, fimDitado, frasesDe, linhaDitado, novoDitado, type EstadoDitado } from "@/domain/mentor/ditado";
 import { esquemasDe, fimTempo, novoCtx, type Ctx as EsquemaCtx } from "@/domain/mentor/esquemas";
 import { travaDeAssunto } from "@/domain/mentor/trava";
-import { interpretarComando, perguntaDoMentor, type Comando } from "@/domain/mentor/navegacao";
+import { comandoDaFalaDoMentor, interpretarComando, perguntaDoMentor, type Comando } from "@/domain/mentor/navegacao";
 import { ehConversa, linhaSchema, tituloDaFala, linhaDeFala, linhaTitulo, pedeLousa, pedeFechar, pedidoDeCalculo, linhaDeNumero, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
@@ -63,7 +63,7 @@ export function MentorVoz({ navegacao, base = "", getStudy, autoStart = false, o
   useEffect(() => { navegacaoRef.current = navegacao; });
   const cmdTurno = useRef(false); // já tratei o pedido de navegação deste turno do aluno
   const perguntou = useRef({ concurso: false, aula: false }); // a última fala do Mentor perguntou qual concurso / qual aula
-  const saida = useRef<{ fn: () => void; timer: ReturnType<typeof setInterval> | null } | null>(null);
+  const debCmd = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ofertaQuadro = useRef(false); // o Mentor terminou a explicação oferecendo exemplificar no quadro
   const pedidoAnterior = useRef(""); // a pergunta do aluno que ele acabou de explicar
   const debLousa = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -450,7 +450,7 @@ export function MentorVoz({ navegacao, base = "", getStudy, autoStart = false, o
     window.addEventListener("pagehide", out);
     return () => {
       window.removeEventListener("pagehide", out);
-      if (saida.current?.timer) clearInterval(saida.current.timer);
+      if (debCmd.current) clearTimeout(debCmd.current);
       void encerrar("saida");
     };
   }, [encerrar]);
@@ -504,27 +504,20 @@ export function MentorVoz({ navegacao, base = "", getStudy, autoStart = false, o
     else if (!q.timer) q.timer = setTimeout(flushFala, 45);
   };
 
-  /** Navegação por voz: a página só troca depois que o Mentor termina de confirmar em voz alta (ou em no máximo 14 s). */
-  const aposFala = (fn: () => void) => {
-    if (saida.current?.timer) clearInterval(saida.current.timer);
-    const t0 = Date.now();
-    const timer = setInterval(() => {
-      const rr = ref.current;
-      const falta = rr.ctx ? Math.max(0, rr.next - rr.ctx.currentTime) : 0;
-      if ((!modeloTurno.current && falta < 0.3 && Date.now() - t0 > 900) || Date.now() - t0 > 14000) {
-        clearInterval(timer);
-        saida.current = null;
-        fn();
-      }
-    }, 250);
-    saida.current = { fn, timer };
-  };
+  /** Navegação por voz: abre NA HORA (o Mentor confirma em uma frase, mas a página não espera ele terminar). */
   const tratarComando = async (cmd: Comando) => {
     let res: ResultadoComando = null;
     try { res = (await navegacaoRef.current?.(cmd)) ?? null; } catch { res = null; }
     if (!res) return;
     if (res.aviso) { try { ref.current.session?.sendRealtimeInput({ text: res.aviso }); } catch { /* sessão já encerrada */ } }
-    if (res.depois) aposFala(res.depois);
+    if (res.depois) res.depois();
+  };
+  /** Lê o que o aluno falou até agora e abre, uma vez por turno. */
+  const lerPedido = () => {
+    const r = ref.current;
+    if (!navegacaoRef.current || cmdTurno.current || !r.turn) return;
+    const cmd = interpretarComando(r.turn, { perguntouConcurso: perguntou.current.concurso, perguntouAula: perguntou.current.aula });
+    if (cmd) { cmdTurno.current = true; void tratarComando(cmd); }
   };
 
   const onMessage = (m: LiveServerMessage) => {
@@ -553,10 +546,16 @@ export function MentorVoz({ navegacao, base = "", getStudy, autoStart = false, o
     // despedida, deixa o Mentor se despedir e encerra a conversa em seguida.
     const starts = !!replied || (m.serverContent?.modelTurn?.parts ?? []).some((p) => p.inlineData?.data);
     if (starts) modeloTurno.current = true;
-    // Pedido de navegação (menu, página, concurso ou aula): lido no que o aluno FALOU, uma vez por turno.
-    if (navegacaoRef.current && !cmdTurno.current && r.turn && (starts || m.serverContent?.turnComplete)) {
-      const cmd = interpretarComando(r.turn, { perguntouConcurso: perguntou.current.concurso, perguntouAula: perguntou.current.aula });
-      if (cmd) { cmdTurno.current = true; void tratarComando(cmd); }
+    // Pedido de navegação (menu, página, concurso ou aula): lido assim que o aluno para de falar (~0,45 s), sem esperar o Mentor.
+    if (said && navegacaoRef.current) {
+      if (debCmd.current) clearTimeout(debCmd.current);
+      debCmd.current = setTimeout(lerPedido, 450);
+    }
+    if (starts || m.serverContent?.turnComplete) lerPedido();
+    // rede de segurança: se a transcrição do aluno falhou, "Já abro a aula de X" dito pelo Mentor também abre
+    if (replied && navegacaoRef.current && !cmdTurno.current) {
+      const cm = comandoDaFalaDoMentor(`${falaTurno.current}${replied}`);
+      if (cm) { cmdTurno.current = true; void tratarComando(cm); }
     }
     if (starts && !r.bye && isFarewell(r.turn)) {
       r.bye = true;

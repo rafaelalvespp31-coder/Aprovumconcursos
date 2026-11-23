@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { acharAula, interpretarComando, perguntaDoMentor, pontuarTitulo, type Candidato } from "./navegacao";
+import { acharAula, comandoDaFalaDoMentor, interpretarComando, perguntaDoMentor, pontuarTitulo, type Candidato } from "./navegacao";
 
 const c = (f: string, ctx = {}) => interpretarComando(f, ctx);
 
@@ -97,5 +97,20 @@ describe("acharAula com títulos reais do catálogo", () => {
     expect(acharAula("porcentagem", reais)).toMatchObject({ tipo: "varios" });
     expect(acharAula("regra de três", reais)).toMatchObject({ tipo: "varios" });
     expect(acharAula("princípios do direito penal", reais)).toMatchObject({ tipo: "varios" });
+  });
+});
+
+describe("comandoDaFalaDoMentor (rede de segurança)", () => {
+  it("o Mentor dizendo que está abrindo vale como comando", () => {
+    expect(comandoDaFalaDoMentor("Já abro a aula de MMC. Bons estudos!")).toEqual({ tipo: "aula", consulta: "mmc" });
+    expect(comandoDaFalaDoMentor("Abrindo a aula de regra de três simples.")).toEqual({ tipo: "aula", consulta: "regra de tres simples" });
+    expect(comandoDaFalaDoMentor("Abrindo as matérias.")).toEqual({ tipo: "menu", alvo: "materias" });
+    expect(comandoDaFalaDoMentor("Claro, abrindo o seu desempenho.")).toMatchObject({ tipo: "pagina", rota: "/desempenho" });
+  });
+  it("oferta, pergunta ou explicação não abre nada", () => {
+    expect(comandoDaFalaDoMentor("Posso abrir a aula de MMC se você quiser.")).toBeNull();
+    expect(comandoDaFalaDoMentor("Quer que eu abra a aula de crase?")).toBeNull();
+    expect(comandoDaFalaDoMentor("O MMC é o menor múltiplo comum entre dois números.")).toBeNull();
+    expect(comandoDaFalaDoMentor("")).toBeNull();
   });
 });

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
-import { ArrowLeft, ChevronRight, Settings } from "lucide-react";
+import { ArrowLeft, ChevronRight, Loader2, Settings } from "lucide-react";
 import type { ConcursoCard, MateriaCatalogo } from "@/domain/missao/materias";
 import type { Bands, Conexao } from "@/components/mentor/skull-orb-fx";
 import { FalarComMentor, type FaseMentor } from "./falar-mentor";
@@ -72,7 +72,8 @@ export function CentralMissao({ primeiroNome, email, materias, concursos, intro:
   // o Mentor abre menus e páginas pelo que o aluno pede falando
   const abrirMenuPorVoz = useCallback((qual: Folha) => { clearTimeout(temporizador.current); setToque(null); setFolha(qual); }, []);
   const fecharMenuPorVoz = useCallback(() => setFolha(null), []);
-  const navegar = useNavegarPorVoz({ concursos, abrirMenu: abrirMenuPorVoz, fecharMenu: fecharMenuPorVoz });
+  const [abrindo, setAbrindo] = useState<string | null>(null);
+  const navegar = useNavegarPorVoz({ concursos, abrirMenu: abrirMenuPorVoz, fecharMenu: fecharMenuPorVoz, aoAbrir: setAbrindo });
 
   const voltar = useCallback(() => {
     setFolha(null);
@@ -191,6 +192,9 @@ export function CentralMissao({ primeiroNome, email, materias, concursos, intro:
             </div>
           </div>
         </div>
+      )}
+      {abrindo && (
+        <div className="hm-abrindo" role="status" aria-live="polite"><Loader2 size={18} className="hm-gira" aria-hidden />{abrindo}</div>
       )}
       {intro !== "fim" && <IntroMentor aoRevelar={() => setIntro("revelando")} aoFim={() => setIntro("fim")} />}
     </main>

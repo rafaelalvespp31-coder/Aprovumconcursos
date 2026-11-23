@@ -220,3 +220,7 @@
   .hm-card:hover, .hm-card[data-toca] { transform: none; }
   .hm-faiscas { display: none; }
 }
+
+/* "Abrindo…" na hora em que o Mentor atende um pedido por voz */
+.hm-abrindo { position: fixed; left: 50%; bottom: max(28px, env(safe-area-inset-bottom)); z-index: 60; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); padding: 12px 20px; transform: translateX(-50%); font-size: 15px; font-weight: 700; color: #fff; background: rgb(12 6 6 / 0.92); border: 1px solid rgb(255 48 56 / 0.7); border-radius: 999px; box-shadow: 0 0 24px rgb(255 37 45 / 0.35); animation: hm-abrindo-entra 0.2s ease-out both; }
+@keyframes hm-abrindo-entra { from { opacity: 0; transform: translate(-50%, 8px); } }

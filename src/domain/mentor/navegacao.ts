@@ -45,7 +45,7 @@ function limparFim(s: string): string {
   return s.replace(/\b(por favor|pra mim|para mim|agora|ai|ja|rapidinho|ok|valeu|obrigado|ta bom|tudo bem)\b.*$/, "").trim();
 }
 
-const VERBO_ABRIR = /\b(abr(?:e|a|ir|indo)|abre|acess(?:a|ar|e)|entr(?:a|ar|e) (?:na|no|nas|nos|em)|mostr(?:a|ar|e)|(?:vai|va|ir|vamos|leva|levar|me leva|me levar|bora)(?: ate| para| pra| pro| ao| a| na| no)|quero (?:ver|ir|abrir|acessar|entrar|a |o )|pode (?:abrir|me levar|mostrar|ir)|me (?:leva|mostra)|coloca|poe)\b/;
+const VERBO_ABRIR = /\b(abr(?:e|a|ir|indo|o)|abre|acess(?:a|ar|e)|entr(?:a|ar|e) (?:na|no|nas|nos|em)|mostr(?:a|ar|e)|(?:vai|va|ir|vamos|leva|levar|me leva|me levar|bora)(?: ate| para| pra| pro| ao| a| na| no)|quero (?:ver|ir|abrir|acessar|entrar|a |o )|pode (?:abrir|me levar|mostrar|ir)|me (?:leva|mostra)|coloca|poe)\b/;
 const VERBO_INICIAR = /\b(comec(?:a|ar|e|o|emos)|inici(?:a|ar|e|o|emos)|quero (?:estudar|comecar|iniciar|fazer|ver)|vamos (?:estudar|comecar|iniciar|ver|fazer)|bora (?:estudar|comecar)|estudar|pode (?:comecar|iniciar|dar inicio)|da inicio|dar inicio|me ensina|abr(?:e|a|ir))\b/;
 
 function restoDepois(t: string, re: RegExp): string {
@@ -162,4 +162,17 @@ export function acharAula(consulta: string, candidatos: readonly Candidato[]): A
   // com a pergunta toda coberta e um título só (ou o do aluno e o do catálogo iguais), não precisa perguntar
   if (titulosDistintos.size > 1 && normalizar(topo.c.titulo) !== normalizar(consulta)) return { tipo: "varios", opcoes: [...new Map(perto.map((x) => [normalizar(x.c.titulo), x.c])).values()].slice(0, 4) };
   return { tipo: "um", escolhido: topo.c };
+}
+
+/**
+ * Rede de segurança: se a transcrição do que o aluno falou falhar, a primeira frase do próprio Mentor ("Já abro a aula de
+ * MMC.", "Abrindo as matérias.") também vale como comando. Ofertas ("posso abrir", "quer que eu abra") não valem.
+ */
+export function comandoDaFalaDoMentor(fala: string): Comando | null {
+  const frase = fala.split(/[.!?\n]/).map((x) => x.trim()).find((x) => x.length > 0) ?? "";
+  const t = normalizar(frase);
+  if (!/^(?:(?:ja|vou|entao|claro|certo|beleza|ok|pronto|perfeito|show|tranquilo|bora)\s+)*(?:abrindo|abro|vou abrir|vou abrir ja|abrindo ja|iniciando|vou iniciar|inicio)\b/.test(t)) return null;
+  if (/\b(posso|quer|quiser|gostaria|talvez|se voce|que eu|caso)\b/.test(t)) return null;
+  const c = interpretarComando(t.replace(/^(?:(?:ja|vou|entao|claro|certo|beleza|ok|pronto|perfeito|show|tranquilo|bora)\s+)*(?:vou\s+)?(?:abrindo|abro|abrir|iniciando|inicio|iniciar)\b(?: ja)?/, "abre"));
+  return c;
 }
