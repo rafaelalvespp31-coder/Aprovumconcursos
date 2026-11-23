@@ -135,15 +135,17 @@ export function ConteudoProgramatico({ conteudo: c, lendo, especialista, montar,
           <li data-disp="sim"><span aria-hidden /> Aula disponível no Aprovum</li>
           <li data-disp="nao"><span aria-hidden /> Aula ainda não disponível</li>
         </ul>
-        <p className="cp-leitor" data-nivel={confere ? (pct! >= 90 ? "ok" : "atencao") : "atencao"} role="status">
-          {confere ? <ShieldCheck size={16} aria-hidden /> : <TriangleAlert size={16} aria-hidden />}
+        <p className="cp-leitor" data-nivel={c.publicado || confere ? (c.publicado || pct! >= 90 ? "ok" : "atencao") : "atencao"} role="status">
+          {c.publicado || confere ? <ShieldCheck size={16} aria-hidden /> : <TriangleAlert size={16} aria-hidden />}
           <span>
-            {confere
+            {c.publicado
+              ? "Conteúdo programático do edital deste concurso, lido e conferido pela equipe Aprovum."
+              : confere
               ? `Lido pelo especialista Gemini; cada tópico foi conferido no texto do edital e ${pct}% do conteúdo programático virou tópico.`
               : "Leitura estrutural (por regras): pode ter deixado matérias ou tópicos de fora. Confira abaixo com o edital."}
           </span>
         </p>
-        {c.leitor !== "gemini" && especialista && !releitura && (
+        {!c.publicado && c.leitor !== "gemini" && especialista && !releitura && (
           <button type="button" className="cp-sec" onClick={() => void refazerLeitura()}><RefreshCw size={15} aria-hidden /> Reler com o especialista</button>
         )}
         {releitura && (
@@ -228,7 +230,7 @@ export function ConteudoProgramatico({ conteudo: c, lendo, especialista, montar,
 
       <div className="cp-barra">
         <div className="cp-barra-in">
-          <Link href="/painel" className="cp-sec">Anexar outro edital</Link>
+          <Link href="/painel" className="cp-sec">Escolher outro concurso</Link>
           <button type="button" className="cp-primario" onClick={() => void montarPlano()} disabled={montando || releitura || c.disciplinas.length === 0} data-testid="conteudo-montar-plano">
             {montando ? <><Loader2 size={16} className="cp-gira" aria-hidden /> Montando…</> : "Montar meu plano de estudo"}
           </button>

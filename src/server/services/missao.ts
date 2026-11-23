@@ -2,7 +2,8 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { disciplineLabel } from "@/ai/pedagogy";
 import { createAdminClient } from "../supabase";
-import { agruparCatalogo, type MateriaCatalogo } from "@/domain/missao/materias";
+import { agruparCatalogo, type ConcursoCard, type MateriaCatalogo } from "@/domain/missao/materias";
+import { listarConcursosParaEstudo } from "./concurso-edital";
 import { ensureDisciplines } from "./disciplines";
 import { getMentorGoal } from "./mentor-goal";
 
@@ -12,6 +13,8 @@ export interface DadosMissao {
   objetivo: string | null;
   /** Matérias catalogadas na plataforma (aulas publicadas), para os quadrados da Central. */
   materias: MateriaCatalogo[];
+  /** Concursos cujo edital a equipe publicou: o aluno escolhe e estuda sem anexar nada. */
+  concursos: ConcursoCard[];
 }
 
 /** O catálogo publicado é igual para todos os alunos: cache de 5 minutos. */
@@ -32,15 +35,17 @@ export async function carregarMateriasCatalogo(): Promise<MateriaCatalogo[]> {
 
 export async function carregarMissao(userId: string): Promise<DadosMissao> {
   const db = createAdminClient();
-  const [perfil, objetivo, materias] = await Promise.all([
+  const [perfil, objetivo, materias, concursos] = await Promise.all([
     db.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
     getMentorGoal(userId).catch(() => null),
     carregarMateriasCatalogo().catch(() => []),
+    listarConcursosParaEstudo().catch(() => []),
   ]);
   const nome = ((perfil.data?.display_name as string | null) ?? "").trim();
   return {
     primeiroNome: nome ? nome.split(/\s+/)[0]! : null,
     objetivo: objetivo?.contest ?? null,
     materias,
+    concursos: concursos.map((c): ConcursoCard => ({ id: c.id, nome: c.name, orgao: c.orgao || c.institution, cargo: c.roleName, uf: c.uf ?? null, imagem: c.imageUrl })),
   };
 }

@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/server/services/catalog";
 import { saveContest } from "@/server/services/gamification";
+import { vincularEdital } from "@/server/services/concurso-edital";
 import { UserFacingError } from "@/server/services/trails";
 
 export async function saveContestAction(id: string | null, form: FormData): Promise<{ ok: boolean; error?: string }> {
@@ -32,5 +33,18 @@ export async function saveContestAction(id: string | null, form: FormData): Prom
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof UserFacingError ? e.message : "Não foi possível salvar." };
+  }
+}
+
+/** Liga o edital já lido (do próprio admin) ao concurso, para o aluno escolher o concurso e estudar sem anexar nada. prepId null desliga. */
+export async function vincularEditalAction(contestId: string, prepId: string | null): Promise<{ ok: boolean; error?: string }> {
+  const admin = await requireAdmin();
+  try {
+    await vincularEdital(admin.id, contestId, prepId);
+    revalidatePath("/admin/concursos");
+    revalidatePath("/painel");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof UserFacingError ? e.message : "Não foi possível vincular o edital." };
   }
 }

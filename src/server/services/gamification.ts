@@ -202,7 +202,7 @@ export async function ackLevelUps(userId: string): Promise<void> {
 // ---------------------------------------------------------------------------
 // Catálogo de concursos (equipe)
 // ---------------------------------------------------------------------------
-type ContestRow = {
+export type ContestRow = {
   id: string; name: string; institution: string; role_name: string | null; status: string; vacancies: number | null;
   salary: string | null; exam_date: string | null; exam_date_confirmed: boolean; info_confirmed: boolean;
   source_name: string; source_url: string | null; info_updated_at: string; active: boolean; image_path: string | null;
@@ -210,7 +210,7 @@ type ContestRow = {
   description: string | null; registration_start: string | null; registration_end: string | null; detail_url: string | null;
   featured: boolean; forecast: boolean;
 };
-const toContest = (c: ContestRow): Contest => ({
+export const toContest = (c: ContestRow): Contest => ({
   id: c.id, name: c.name, institution: c.institution, roleName: c.role_name, status: c.status, vacancies: c.vacancies,
   salary: c.salary, examDate: c.exam_date, examDateConfirmed: c.exam_date_confirmed, infoConfirmed: c.info_confirmed,
   sourceName: c.source_name, sourceUrl: c.source_url, infoUpdatedAt: c.info_updated_at,

@@ -36,7 +36,21 @@ const CORES: Array<[string, string]> = [
 ];
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
-const estilo = (i: number): CSSProperties => ({ "--c1": CORES[i % CORES.length]![0], "--c2": CORES[i % CORES.length]![1], "--i": i }) as CSSProperties;
+export const estilo = (i: number): CSSProperties => ({ "--c1": CORES[i % CORES.length]![0], "--c2": CORES[i % CORES.length]![1], "--i": i }) as CSSProperties;
+
+/** O brilho segue o dedo/mouse dentro do quadrado (variáveis CSS, sem re-renderizar). */
+export function seguir(e: PointerEvent<HTMLButtonElement>) {
+  const r = e.currentTarget.getBoundingClientRect();
+  const x = (e.clientX - r.left) / r.width;
+  const y = (e.clientY - r.top) / r.height;
+  e.currentTarget.style.setProperty("--mx", `${Math.round(x * 100)}%`);
+  e.currentTarget.style.setProperty("--my", `${Math.round(y * 100)}%`);
+  e.currentTarget.style.setProperty("--rx", `${((0.5 - y) * 10).toFixed(1)}deg`);
+  e.currentTarget.style.setProperty("--ry", `${((x - 0.5) * 12).toFixed(1)}deg`);
+}
+export function soltar(e: PointerEvent<HTMLButtonElement>) {
+  for (const v of ["--rx", "--ry"]) e.currentTarget.style.setProperty(v, "0deg");
+}
 
 /** Quadrados das matérias catalogadas no Aprovum: tocar abre os assuntos e leva ao estudo da matéria. */
 export function MateriasCatalogo({ materias, desabilitado }: { materias: MateriaCatalogo[]; desabilitado?: boolean }) {
@@ -60,20 +74,6 @@ export function MateriasCatalogo({ materias, desabilitado }: { materias: Materia
   if (!materias.length) return null;
   const m = aberta != null ? materias[aberta] : null;
   const Ico = (slug: string) => ICONES[slug] ?? BookMarked;
-
-  // O brilho segue o dedo/mouse dentro do quadrado (variáveis CSS, sem re-renderizar).
-  const seguir = (e: PointerEvent<HTMLButtonElement>) => {
-    const r = e.currentTarget.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width;
-    const y = (e.clientY - r.top) / r.height;
-    e.currentTarget.style.setProperty("--mx", `${Math.round(x * 100)}%`);
-    e.currentTarget.style.setProperty("--my", `${Math.round(y * 100)}%`);
-    e.currentTarget.style.setProperty("--rx", `${((0.5 - y) * 10).toFixed(1)}deg`);
-    e.currentTarget.style.setProperty("--ry", `${((x - 0.5) * 12).toFixed(1)}deg`);
-  };
-  const soltar = (e: PointerEvent<HTMLButtonElement>) => {
-    for (const v of ["--rx", "--ry"]) e.currentTarget.style.setProperty(v, "0deg");
-  };
 
   return (
     <>

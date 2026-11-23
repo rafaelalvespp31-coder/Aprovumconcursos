@@ -12,6 +12,7 @@ import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match
 import { crossSources } from "@/domain/edital/cross";
 import { filterPagesByRole } from "@/domain/edital/role-filter";
 import { topicosDe } from "./edital-topicos";
+import { caminhoCopia, chaveCopia, ehCopiaPublicada, statsDaCopia, type InfoPublicado } from "@/domain/edital/publicado";
 import { COBERTURA_PARA_COMPARTILHAR, LEITURA_V, chaveCargo, podeCompartilhar, validarCompartilhada, type LeituraCompartilhada } from "@/domain/edital/leitura-compartilhada";
 import { avancarEspecialista, type EstadoLeitura, type LeituraResumo } from "./edital-especialista";
 import type { Identificacao } from "@/domain/edital/especialista";
@@ -87,6 +88,8 @@ export interface PrepStats {
   readerModel?: string;
   /** Auditoria da leitura do especialista: fração do texto do conteúdo programático classificada em tópicos, trechos lidos e o que ficou sem classificação. */
   leitura?: { cobertura: number; trechos: number; descartados: number; naoClassificados: string[] };
+  /** Cópia de um edital publicado pelo admin num concurso: a leitura é mantida pela equipe (o aluno não relê nem reanexa). */
+  publicado?: InfoPublicado;
   /** Como o conteúdo foi separado por cargo (PDF e texto colado). */
   roleFilter?: { role: string | null; pdf?: { applied: boolean; removed: number }; text?: { applied: boolean; removed: number } };
 }
@@ -659,6 +662,7 @@ export async function advancePreparation(userId: string, id: string): Promise<Pr
 /** Refaz a leitura do mesmo edital (texto já guardado, sem novo envio): o que já está montado só é trocado quando a nova leitura termina. */
 export async function refazerLeitura(userId: string, id: string): Promise<void> {
   const p = await own(userId, id);
+  if (ehCopiaPublicada(p.stats)) throw new UserFacingError("Este edital é mantido pela equipe Aprovum.", "invalid_input");
   if (p.status !== "concluido" && p.status !== "conferencia" && p.status !== "erro") throw new UserFacingError("A leitura deste edital já está em andamento.", "invalid_input");
   await enforceRateLimit(userId, "edital_releitura", 6, 3600);
   // A extração gravada para este PDF e cargo é descartada: a nova leitura a substitui para todos os alunos (se tiver boa cobertura).
@@ -712,6 +716,8 @@ export interface ConteudoProgramatico {
   paginas: number | null;
   status: PrepStatus;
   leitor: "gemini" | "estrutural";
+  /** Cópia do edital publicado pela equipe num concurso (sem releitura pelo aluno). */
+  publicado: boolean;
   modelo: string | null;
   /** Fração do texto do conteúdo programático classificada em tópicos (só a leitura do especialista mede isso). */
   cobertura: number | null;
@@ -736,6 +742,7 @@ export async function metaConteudoProgramatico(userId: string, id: string): Prom
     paginas: (p.page_count as number | null) ?? null,
     status: p.status as PrepStatus,
     leitor: st.reader === "gemini" ? "gemini" : "estrutural",
+    publicado: !!st.publicado,
     modelo: st.readerModel ?? null,
     cobertura: st.reader === "gemini" && st.leitura ? st.leitura.cobertura : null,
     naoClassificados: st.reader === "gemini" ? (st.leitura?.naoClassificados ?? []) : [],
@@ -790,11 +797,99 @@ export async function deletePreparation(userId: string, id: string) {
   await auditLog(db, { actorId: userId, userId, action: "edital.excluido", entity: "edital_preparations", entityId: id }).catch(() => {});
 }
 
+/**
+ * O aluno escolheu, na Central, um concurso cujo edital a equipe já publicou: recebe uma cópia própria da estrutura
+ * (matérias e tópicos já lidos e revisados) e os vínculos com as aulas são recalculados com o catálogo de agora.
+ * Sem PDF, sem leitura e sem espera. Escolher o mesmo concurso de novo devolve a mesma cópia.
+ */
+export async function escolherConcursoPublicado(userId: string, contestId: unknown): Promise<{ id: string }> {
+  if (typeof contestId !== "string" || !UUID.test(contestId)) throw new UserFacingError("Concurso não encontrado.", "not_found");
+  await enforceRateLimit(userId, "concurso_escolher", 30, 3600);
+  const db = createAdminClient();
+  const c = await db.from("contest_catalog").select("id, name, role_name, banca, active, edital_prep_id").eq("id", contestId).maybeSingle();
+  const contest = c.data as { id: string; name: string; role_name: string | null; banca: string | null; active: boolean; edital_prep_id: string | null } | null;
+  if (!contest || !contest.active || !contest.edital_prep_id) throw new UserFacingError("Este concurso ainda não está disponível para estudo.", "not_found");
+  const f = await db.from("edital_preparations").select("*").eq("id", contest.edital_prep_id).maybeSingle();
+  const fonte = f.data as Row | null;
+  if (!fonte || fonte.status !== "concluido") throw new UserFacingError("Este concurso ainda não está disponível para estudo.", "not_found");
+
+  const chave = chaveCopia(contestId);
+  const ja = await db.from("edital_preparations").select("id, status").eq("user_id", userId).eq("file_hash", chave).maybeSingle();
+  if (ja.data?.status === "concluido") return { id: ja.data.id as string };
+  if (ja.data) throw new UserFacingError("Estamos preparando o seu concurso. Tente de novo em instantes.", "busy");
+
+  const discs = await db.from("edital_disciplines").select("id, position, name, discipline_mode, source_page").eq("preparation_id", fonte.id as string).order("position");
+  if (discs.error) throw new Error(discs.error.message);
+  const topicos = await topicosDe(db, fonte.id as string, "discipline_id, position, code, depth, title, title_key, source_page");
+  if (topicos.error) throw new Error(topicos.error.message);
+  const listaDiscs = (discs.data ?? []) as Row[];
+  if (!listaDiscs.length || !topicos.data.length) throw new UserFacingError("Este concurso ainda não está disponível para estudo.", "not_found");
+
+  const id = crypto.randomUUID();
+  const info: InfoPublicado = { contestId, fonteEditalId: fonte.id as string, fonteEm: fonte.updated_at as string };
+  const ins = await db.from("edital_preparations").insert({
+    id,
+    user_id: userId,
+    contest_name: contest.name,
+    role_name: contest.role_name ?? ((fonte.role_name as string | null) ?? null),
+    board: contest.banca ?? ((fonte.board as string | null) ?? null),
+    contest_year: fonte.contest_year ?? null,
+    file_name: fonte.file_name,
+    file_size: fonte.file_size,
+    file_hash: chave,
+    file_path: caminhoCopia(contestId),
+    page_count: fonte.page_count ?? null,
+    org_logo: fonte.org_logo ?? null,
+    status: "organizando",
+    step: STEP_OF.organizando,
+    extras_checked: true,
+    stats: statsDaCopia((fonte.stats as Record<string, unknown>) ?? {}, info, PARSER_V),
+  });
+  if (ins.error) {
+    // Duas abas escolhendo ao mesmo tempo: a outra cópia vence.
+    const outra = await db.from("edital_preparations").select("id, status").eq("user_id", userId).eq("file_hash", chave).maybeSingle();
+    if (outra.data?.status === "concluido") return { id: outra.data.id as string };
+    throw new Error(ins.error.message);
+  }
+  try {
+    const novoId = new Map<string, string>(listaDiscs.map((d) => [d.id as string, crypto.randomUUID()]));
+    const dIns = await db.from("edital_disciplines").insert(
+      listaDiscs.map((d) => ({ id: novoId.get(d.id as string)!, preparation_id: id, user_id: userId, position: d.position, name: d.name, discipline_mode: d.discipline_mode ?? null, source_page: d.source_page ?? null })),
+    );
+    if (dIns.error) throw new Error(dIns.error.message);
+    const linhas = (topicos.data as Row[]).filter((t) => novoId.has(t.discipline_id as string)).map((t) => ({
+      preparation_id: id,
+      discipline_id: novoId.get(t.discipline_id as string)!,
+      user_id: userId,
+      position: t.position,
+      code: t.code ?? null,
+      depth: t.depth ?? 1,
+      title: t.title,
+      title_key: t.title_key,
+      source_page: t.source_page ?? null,
+    }));
+    for (let o = 0; o < linhas.length; o += 500) {
+      const r = await db.from("edital_topics").insert(linhas.slice(o, o + 500));
+      if (r.error) throw new Error(r.error.message);
+    }
+    const copia = await own(userId, id);
+    const { stats } = await applyMatches(copia);
+    await setStatus(id, "concluido", { stats: { ...stats, disciplines: listaDiscs.length, topics: linhas.length } });
+    await auditLog(db, { actorId: userId, userId, action: "edital.concurso_escolhido", entity: "edital_preparations", entityId: id, meta: { contestId } }).catch(() => {});
+    return { id };
+  } catch (e) {
+    await db.from("edital_preparations").delete().eq("id", id).then(() => undefined, () => undefined);
+    await logEvent("edital.concurso_escolhido.erro", { contestId, error: (e as Error).message.slice(0, 200) });
+    if (e instanceof UserFacingError) throw e;
+    throw new UserFacingError("Não foi possível abrir este concurso agora. Tente de novo.", "internal");
+  }
+}
+
 /** Preparação feita por uma versão antiga do leitor: refaz a análise com o texto já guardado (sem reenviar o PDF). */
 export async function reanalyzeIfStale(userId: string, id: string): Promise<boolean> {
   const p = await own(userId, id);
   const st = (p.stats as PrepStats) ?? {};
-  if (p.status !== "concluido" || (st.parserV ?? 1) >= PARSER_V) return false;
+  if (st.publicado || p.status !== "concluido" || (st.parserV ?? 1) >= PARSER_V) return false;
   const db = createAdminClient();
   if ((st.parserV ?? 1) < 4) {
     // Leituras antigas guardaram só parte do texto: descarta o cache e relê o PDF guardado (sem novo upload).

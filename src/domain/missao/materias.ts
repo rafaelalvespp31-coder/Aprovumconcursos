@@ -33,3 +33,14 @@ export function agruparCatalogo(
   }
   return fim.sort((a, b) => b.aulas - a.aulas || a.nome.localeCompare(b.nome, "pt-BR"));
 }
+
+/** Concurso com edital publicado pela equipe, para os quadrados "Concursos" da Central. */
+export interface ConcursoCard {
+  id: string;
+  nome: string;
+  /** Órgão/instituição. */
+  orgao: string;
+  cargo: string | null;
+  uf: string | null;
+  imagem: string | null;
+}

@@ -1,26 +1,26 @@
 /* Quadrados das matérias do catálogo (Central de Missão). Faixa rolável: a tela é de altura fixa. */
-.mc-grade { display: flex; gap: 12px; margin: 0; padding: 10px 20px 14px; list-style: none; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; width: 100vw; max-width: 100vw; position: relative; left: 50%; transform: translateX(-50%);
+.mc-grade { display: flex; gap: 10px; margin: 0; padding: 6px 20px 8px; list-style: none; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; width: 100vw; max-width: 100vw; position: relative; left: 50%; transform: translateX(-50%);
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 16px), transparent); mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 16px), transparent); }
 .mc-grade::-webkit-scrollbar { display: none; }
 .mc-grade li { flex: 0 0 auto; scroll-snap-align: center; animation: mc-entra 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i) * 45ms + 350ms); }
 @keyframes mc-entra { from { opacity: 0; transform: translateY(18px) scale(0.92); } }
 @media (min-width: 900px) { .mc-grade { justify-content: safe center; padding-inline: 40px; } }
 
-.mc-quadrado { --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 30%; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 4px; width: 140px; aspect-ratio: 1; padding: 12px; overflow: hidden; font: inherit; text-align: left; color: #fff; cursor: pointer; isolation: isolate;
+.mc-quadrado { --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 30%; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 4px; width: 124px; aspect-ratio: 1; padding: 10px; overflow: hidden; font: inherit; text-align: left; color: #fff; cursor: pointer; isolation: isolate;
   background: radial-gradient(120% 90% at var(--mx) var(--my), rgb(255 255 255 / 0.22), transparent 55%), linear-gradient(150deg, var(--c1), var(--c2));
   border: 1px solid rgb(255 255 255 / 0.28); border-radius: 22px; box-shadow: 0 10px 28px -10px var(--c1), inset 0 1px 0 rgb(255 255 255 / 0.35);
   transform: perspective(600px) rotateX(var(--rx)) rotateY(var(--ry)); transition: transform 0.18s ease-out, box-shadow 0.25s, filter 0.25s; }
-@media (min-width: 900px) { .mc-quadrado { width: 156px; padding: 14px; } }
+@media (min-width: 900px) { .mc-quadrado { width: 132px; padding: 11px; } }
 .mc-quadrado:hover:not(:disabled) { box-shadow: 0 16px 38px -8px var(--c1), 0 0 0 1px rgb(255 255 255 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.45); filter: saturate(1.15); }
 .mc-quadrado:active:not(:disabled) { transform: scale(0.96); transition-duration: 0.08s; }
 .mc-quadrado:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
 .mc-quadrado:disabled { opacity: 0.6; cursor: default; }
-.mc-marca { position: absolute; right: -16px; top: -14px; width: 92px; height: 92px; color: rgb(255 255 255 / 0.2); transform: rotate(-12deg); transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1); z-index: -1; }
+.mc-marca { position: absolute; right: -14px; top: -12px; width: 78px; height: 78px; color: rgb(255 255 255 / 0.2); transform: rotate(-12deg); transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1); z-index: -1; }
 .mc-quadrado:hover .mc-marca { transform: rotate(0deg) scale(1.12); }
-.mc-icone { position: absolute; left: 12px; top: 12px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; background: rgb(0 0 0 / 0.28); backdrop-filter: blur(4px); }
-.mc-icone svg { width: 19px; height: 19px; }
-.mc-nome { font-size: 13px; font-weight: 800; line-height: 1.12; letter-spacing: -0.01em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 0 1px 8px rgb(0 0 0 / 0.35); }
-.mc-aulas { font-size: 11.5px; padding: 3px 9px; border-radius: 999px; background: rgb(0 0 0 / 0.32); font-variant-numeric: tabular-nums; }
+.mc-icone { position: absolute; left: 10px; top: 10px; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 12px; background: rgb(0 0 0 / 0.28); backdrop-filter: blur(4px); }
+.mc-icone svg { width: 17px; height: 17px; }
+.mc-nome { font-size: 12px; font-weight: 800; line-height: 1.12; letter-spacing: -0.01em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 0 1px 8px rgb(0 0 0 / 0.35); }
+.mc-aulas { font-size: 11px; padding: 2px 8px; border-radius: 999px; background: rgb(0 0 0 / 0.32); font-variant-numeric: tabular-nums; }
 .mc-aulas b { font-weight: 800; }
 
 /* Folha com os assuntos */
@@ -49,3 +49,12 @@
   .mc-grade li, .mc-fundo, .mc-folha { animation: none; }
   .mc-quadrado, .mc-marca { transition: none; transform: none; }
 }
+
+/* Concursos publicados: mesma linguagem dos quadrados, com a arte do concurso quando houver */
+.mc-concurso[data-imagem] { background: linear-gradient(180deg, rgb(0 0 0 / 0.05) 20%, rgb(0 0 0 / 0.82)), var(--img) center / cover, linear-gradient(150deg, var(--c1), var(--c2)); }
+.mc-concurso .mc-aulas { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mc-gira { animation: mc-gira 0.9s linear infinite; }
+@keyframes mc-gira { to { transform: rotate(360deg); } }
+.mc-erro { min-height: 18px; margin: 0; font-size: 12.5px; color: #ff6b6b; }
+.mc-rotulo { margin: 4px 0 0; font-size: 11px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: #a1a1a6; }
+@media (prefers-reduced-motion: reduce) { .mc-gira { animation: none; } }

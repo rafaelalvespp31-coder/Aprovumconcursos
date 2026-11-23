@@ -4,17 +4,20 @@ import { useState, useTransition } from "react";
 import { CONTEST_STATUS } from "@/domain/gamification/home";
 import { UFS } from "@/domain/concursos";
 import type { Contest } from "@/server/services/gamification";
+import type { VinculoEdital } from "@/server/services/concurso-edital";
+import { EditalDoConcurso } from "./edital-do-concurso";
 
 type Action = (id: string | null, form: FormData) => Promise<{ ok: boolean; error?: string }>;
 
 const input = "mt-1 w-full rounded border border-linha bg-superficie px-2 py-1.5 text-sm";
 
 /** Formulário de um concurso (novo ou edição). Só dados com fonte; nada é preenchido automaticamente. */
-export function ContestForm({ contest, action }: { contest: (Contest & { active: boolean }) | null; action: Action }) {
+export function ContestForm({ contest, action, vinculo = null, vincular }: { contest: (Contest & { active: boolean }) | null; action: Action; vinculo?: VinculoEdital | null; vincular?: (contestId: string, prepId: string | null) => Promise<{ ok: boolean; error?: string }> }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const c = contest;
   return (
+    <div className="space-y-2">
     <form
       className="grid gap-3 rounded-lg border border-linha bg-superficie p-4 sm:grid-cols-2"
       data-testid={c ? `concurso-form-${c.id}` : "concurso-form-novo"}
@@ -103,5 +106,7 @@ export function ContestForm({ contest, action }: { contest: (Contest & { active:
         {msg && <span role="status" className="t-small">{msg}</span>}
       </div>
     </form>
+    {c && vincular && <EditalDoConcurso contestId={c.id} vinculo={vinculo} vincular={vincular} />}
+    </div>
   );
 }
