@@ -4,9 +4,10 @@ import { unstable_cache } from "next/cache";
 import { createAdminClient } from "../supabase";
 import { auditLog } from "../observability";
 import { analiseDoBanco, lerAnalise, type AnaliseConcurso } from "@/domain/edital/analise";
-import type { DisciplinaVisao, TopicoVisao } from "@/domain/missao/analise-conteudo";
+import { focosComoConteudo, type DisciplinaVisao, type TopicoVisao } from "@/domain/missao/analise-conteudo";
 import { UserFacingError } from "./trails";
-import { refreshMatchesIfStale } from "./edital";
+import { loadCatalog, refreshMatchesIfStale } from "./edital";
+import { fundoDoConcurso } from "@/domain/missao/fundos";
 import { carregarConteudoCompleto } from "./edital-view";
 
 export interface ResumoAnaliseAdmin {
@@ -56,6 +57,10 @@ export interface AnaliseParaAluno {
   analise: AnaliseConcurso | null;
   /** Conteúdo programático do edital publicado, com a disponibilidade de aula de cada tópico (pode não existir ainda). */
   conteudo: DisciplinaVisao[] | null;
+  /** edital: tópicos literais do edital publicado; focos: itens extraídos dos "principais focos" da análise (edital ainda não importado). */
+  conteudoOrigem: "edital" | "focos" | null;
+  /** Arte de fundo (marca d'água) da página, quando há. */
+  marca: string | null;
   atualizadaEm: string | null;
 }
 
@@ -85,15 +90,40 @@ const conteudoDoEdital = unstable_cache(
   { revalidate: 120 },
 );
 
+/**
+ * Sem edital importado, os "principais focos" de cada disciplina da análise viram itens de conteúdo e são conferidos contra as aulas catalogadas
+ * (mesma correspondência do edital): verde = há aula, vermelho = ainda não. Não é o edital literal; a página avisa isso.
+ */
+const conteudoPelosFocos = unstable_cache(
+  async (contestId: string): Promise<DisciplinaVisao[] | null> => {
+    const db = createAdminClient();
+    const { data } = await db.from("contest_catalog").select("analise").eq("id", contestId).maybeSingle();
+    const analise = analiseDoBanco((data as { analise: unknown } | null)?.analise);
+    if (!analise) return null;
+    const r = focosComoConteudo(analise.disciplinas, await loadCatalog());
+    return r.length ? r : null;
+  },
+  ["analise-concurso-focos-v1"],
+  { revalidate: 300 },
+);
+
 /** Análise e conteúdo de um concurso ativo, para o aluno. Null se o concurso não tem nem uma coisa nem outra. */
 export async function carregarAnaliseDoConcurso(contestId: string): Promise<AnaliseParaAluno | null> {
   const id = z.uuid().safeParse(contestId);
   if (!id.success) return null;
-  const { data } = await createAdminClient().from("contest_catalog").select("id, name, institution, orgao, role_name, banca, analise, analise_em, active, edital_prep_id").eq("id", id.data).eq("active", true).maybeSingle();
+  const db = createAdminClient();
+  const { data } = await db.from("contest_catalog").select("id, name, institution, orgao, role_name, banca, analise, analise_em, active, edital_prep_id, image_path").eq("id", id.data).eq("active", true).maybeSingle();
   if (!data) return null;
-  const l = data as { id: string; name: string; institution: string | null; orgao: string | null; role_name: string | null; banca: string | null; analise: unknown; analise_em: string | null; edital_prep_id: string | null };
+  const l = data as { id: string; name: string; institution: string | null; orgao: string | null; role_name: string | null; banca: string | null; analise: unknown; analise_em: string | null; edital_prep_id: string | null; image_path: string | null };
   const analise = analiseDoBanco(l.analise);
-  const conteudo = l.edital_prep_id ? await conteudoDoEdital(l.edital_prep_id).catch(() => null) : null;
+  let conteudo = l.edital_prep_id ? await conteudoDoEdital(l.edital_prep_id).catch(() => null) : null;
+  let conteudoOrigem: AnaliseParaAluno["conteudoOrigem"] = conteudo ? "edital" : null;
+  if (!conteudo && analise) {
+    conteudo = await conteudoPelosFocos(l.id).catch(() => null);
+    conteudoOrigem = conteudo?.length ? "focos" : null;
+    if (!conteudoOrigem) conteudo = null;
+  }
   if (!analise && !conteudo) return null;
-  return { concurso: { id: l.id, nome: l.name, orgao: l.orgao ?? l.institution, cargo: l.role_name, banca: l.banca }, analise, conteudo, atualizadaEm: l.analise_em };
+  const marca = fundoDoConcurso(l.name, l.institution, l.orgao) ?? (l.image_path ? db.storage.from("concursos").getPublicUrl(l.image_path).data.publicUrl : null);
+  return { concurso: { id: l.id, nome: l.name, orgao: l.orgao ?? l.institution, cargo: l.role_name, banca: l.banca }, analise, conteudo, conteudoOrigem, marca, atualizadaEm: l.analise_em };
 }

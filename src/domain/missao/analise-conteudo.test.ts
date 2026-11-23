@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { agruparTopicos, combinarComEdital, parearDisciplinas, resumoDisponibilidade, type TopicoVisao } from "./analise-conteudo";
+import { agruparTopicos, combinarComEdital, focosComoConteudo, parearDisciplinas, resumoDisponibilidade, type TopicoVisao } from "./analise-conteudo";
 
 const t = (nivel: number, titulo: string, disponivel: boolean): TopicoVisao => ({ codigo: null, nivel, titulo, disponivel, aulas: disponivel ? ["Aula"] : [] });
 
@@ -38,5 +38,20 @@ describe("combinarComEdital", () => {
     const r = combinarComEdital(["DIREITO PENAL", "CRIMINOLOGIA"], edital);
     expect(r.pares.map((p) => p?.nome ?? null)).toEqual(["Direito Penal", null]);
     expect(r.extras.map((e) => e.nome)).toEqual(["Física"]);
+  });
+});
+
+describe("focosComoConteudo", () => {
+  const cat = [
+    { id: "1", title: "Atos Administrativos: conceito e atributos", aliases: ["Atos administrativos"], mode: "direito_administrativo", group: "ATOS", lawCode: null, articles: [] },
+    { id: "2", title: "Poderes da Administração", aliases: [], mode: "direito_administrativo", group: "PODERES", lawCode: null, articles: [] },
+    { id: "3", title: "Crase", aliases: [], mode: "lingua_portuguesa", group: "CRASE", lawCode: null, articles: [] },
+  ];
+  it("liga o foco à aula catalogada (verde) e deixa sem aula o que não existe (vermelho)", () => {
+    const r = focosComoConteudo([{ nome: "NOÇÕES DE DIREITO ADMINISTRATIVO", focos: ["Atos administrativos", "Responsabilidade civil do Estado"] }, { nome: "VAZIA", focos: [] }], cat);
+    expect(r).toHaveLength(1);
+    expect(r[0]!.topicos.map((t) => [t.titulo, t.disponivel])).toEqual([["Atos administrativos", true], ["Responsabilidade civil do Estado", false]]);
+    expect(r[0]!.topicos[0]!.aulas[0]).toContain("Atos Administrativos");
+    expect(r[0]!.topicos[1]!.aulas).toEqual([]);
   });
 });

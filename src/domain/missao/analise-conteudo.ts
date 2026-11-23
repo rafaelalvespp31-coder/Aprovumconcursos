@@ -1,3 +1,6 @@
+import { modeOfDiscipline } from "@/domain/edital/disciplines";
+import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match";
+
 /** Conteúdo programático dentro da análise do concurso: pareia as disciplinas da análise com as do edital e agrupa os tópicos em cartões. Puro. */
 
 export interface TopicoVisao {
@@ -85,4 +88,27 @@ export function combinarComEdital(nomesAnalise: readonly string[], conteudo: rea
   const idx = parearDisciplinas(nomesAnalise, conteudo.map((d) => d.nome));
   const usados = new Set(idx.filter((i): i is number => i != null));
   return { pares: idx.map((i) => (i == null ? null : conteudo[i]!)), extras: conteudo.filter((_, i) => !usados.has(i)) };
+}
+
+/**
+ * Conteúdo derivado da análise: cada "principal foco" da disciplina vira um item, conferido contra as aulas catalogadas
+ * (mesma correspondência usada para o edital). Verde = há aula (completa, parcial ou a conferir); vermelho = ainda não.
+ */
+export function focosComoConteudo(disciplinas: ReadonlyArray<{ nome: string; focos: readonly string[] }>, catalogo: readonly CatalogEntry[]): DisciplinaVisao[] {
+  const idx = buildIndex(catalogo);
+  const titulos = new Map(catalogo.map((c) => [c.id, c.title]));
+  return disciplinas
+    .filter((d) => d.focos.length)
+    .map((d) => {
+      const mode = modeOfDiscipline(d.nome);
+      return {
+        nome: d.nome,
+        topicos: d.focos.map((f, i): TopicoVisao => {
+          const r = matchTopic(idx, f, mode);
+          const achou = r.status !== "nao_encontrado";
+          const aulas = achou ? [...new Set(r.links.map((l) => titulos.get(l.catalogId)).filter((t): t is string => !!t))].slice(0, 4) : [];
+          return { codigo: String(i + 1), nivel: 1, titulo: f, disponivel: achou, aulas };
+        }),
+      };
+    });
 }

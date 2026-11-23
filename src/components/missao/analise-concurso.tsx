@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
-import { ArrowLeft, BookOpenCheck, ChevronDown, Clock, Compass, Flag, Layers, ListChecks, Search, Target } from "lucide-react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
+import { ArrowLeft, BookOpenCheck, ChevronDown, Clock, Compass, Flag, Info, Layers, ListChecks, Search, Target } from "lucide-react";
 import { tomPrioridade, type AnaliseDisciplina } from "@/domain/edital/analise";
-import { agruparTopicos, combinarComEdital, resumoDisponibilidade, type DisciplinaVisao, type TopicoVisao } from "@/domain/missao/analise-conteudo";
+import { agruparTopicos, combinarComEdital, resumoDisponibilidade, type TopicoVisao } from "@/domain/missao/analise-conteudo";
 import type { AnaliseParaAluno } from "@/server/services/concurso-analise";
 import "./analise-concurso.css";
 
@@ -12,10 +12,11 @@ const pct = (n: number | null) => (n == null ? "" : `${n.toLocaleString("pt-BR",
 const hrs = (n: number) => `${n.toLocaleString("pt-BR")}h`;
 const sem = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const plural = (n: number, um: string, varios: string) => `${n.toLocaleString("pt-BR")} ${n === 1 ? um : varios}`;
+const reduzido = () => typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 type FiltroAula = "todos" | "com" | "sem";
 type Ordem = "prioridade" | "questoes" | "edital";
-/** Uma disciplina da página: a da análise (se houver) e o conteúdo do edital (se houver). */
+/** Uma disciplina da página: a da análise (se houver) e o conteúdo (se houver). */
 interface Item {
   id: string;
   nome: string;
@@ -24,13 +25,50 @@ interface Item {
   topicos: TopicoVisao[] | null;
 }
 
-/** Cobertura de aulas: verde = disponível no Aprovum, vermelho = ainda não. */
-function Cobertura({ ok, total, grande = false }: { ok: number; total: number; grande?: boolean }) {
-  const p = total ? (ok / total) * 100 : 0;
+/** O brilho segue o mouse dentro do cartão (variáveis CSS, sem re-renderizar). */
+function mover(e: PointerEvent<HTMLElement>) {
+  if (e.pointerType === "touch") return;
+  const el = e.currentTarget;
+  const r = el.getBoundingClientRect();
+  el.style.setProperty("--mx", `${Math.round(((e.clientX - r.left) / r.width) * 100)}%`);
+  el.style.setProperty("--my", `${Math.round(((e.clientY - r.top) / r.height) * 100)}%`);
+}
+
+/** Número que sobe até o valor quando a página abre (sem animação se o sistema pede menos movimento). */
+function Contador({ valor }: { valor: number }) {
+  const [v, setV] = useState(valor);
+  useEffect(() => {
+    if (reduzido()) return;
+    let raf = 0;
+    const ini = performance.now();
+    const passo = (t: number) => {
+      const k = Math.min(1, (t - ini) / 900);
+      setV(Math.round(valor * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) raf = requestAnimationFrame(passo);
+    };
+    raf = requestAnimationFrame(passo);
+    return () => cancelAnimationFrame(raf);
+  }, [valor]);
+  return <>{v.toLocaleString("pt-BR")}</>;
+}
+
+/** Anel de cobertura: verde = aula catalogada, vermelho = ainda não. O arco verde cresce ao aparecer. */
+function Anel({ ok, total, tam = 120, esp = 12, rotulo = true }: { ok: number; total: number; tam?: number; esp?: number; rotulo?: boolean }) {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const r = requestAnimationFrame(() => setOn(true));
+    return () => cancelAnimationFrame(r);
+  }, []);
+  const raio = (tam - esp) / 2;
+  const c = 2 * Math.PI * raio;
+  const p = total ? ok / total : 0;
   return (
-    <span className="an-cob" data-grande={grande || undefined} style={{ "--pv": `${p}%` } as CSSProperties}>
-      <span className="an-cob-barra" aria-hidden />
-      <span className="an-cob-txt"><b>{ok}</b> de {total} com aula · {Math.round(p)}%</span>
+    <span className="an-anel" style={{ width: tam, height: tam }}>
+      <svg width={tam} height={tam} viewBox={`0 0 ${tam} ${tam}`} role="img" aria-label={`${ok} de ${total} com aula`}>
+        <circle cx={tam / 2} cy={tam / 2} r={raio} fill="none" stroke="#ef4444" strokeOpacity={total ? 0.85 : 0.2} strokeWidth={esp} />
+        <circle className="an-anel-ok" cx={tam / 2} cy={tam / 2} r={raio} fill="none" stroke="#22c55e" strokeWidth={esp} strokeDasharray={c} strokeDashoffset={on ? c * (1 - p) : c} transform={`rotate(-90 ${tam / 2} ${tam / 2})`} />
+      </svg>
+      {rotulo && <span className="an-anel-txt"><b>{Math.round(p * 100)}%</b><small>com aula</small></span>}
     </span>
   );
 }
@@ -46,9 +84,9 @@ function Aulas({ t }: { t: TopicoVisao }) {
   );
 }
 
-/** Tópicos da disciplina em cartões: cada tópico principal com seus subtópicos e as aulas catalogadas (verde) ou a falta delas (vermelho). */
-function Conteudo({ topicos, termo, aula }: { topicos: TopicoVisao[]; termo: string; aula: FiltroAula }) {
-  const [limite, setLimite] = useState(18);
+/** Tópicos em cartões: cada tópico principal com seus subtópicos e as aulas catalogadas (verde) ou a falta delas (vermelho). */
+function Cartoes({ topicos, termo, aula }: { topicos: TopicoVisao[]; termo: string; aula: FiltroAula }) {
+  const [limite, setLimite] = useState(24);
   const cartoes = useMemo(() => {
     const q = sem(termo).split(/\s+/).filter(Boolean);
     const passa = (t: TopicoVisao) => (aula === "com" ? t.disponivel : aula === "sem" ? !t.disponivel : true) && q.every((w) => sem(`${t.codigo ?? ""} ${t.titulo} ${t.aulas.join(" ")}`).includes(w));
@@ -66,7 +104,7 @@ function Conteudo({ topicos, termo, aula }: { topicos: TopicoVisao[]; termo: str
             <article key={`${c.raiz.codigo ?? ""}-${i}`} className="an-top" data-estado={p === 100 ? "ok" : p === 0 ? "no" : "mix"} style={{ "--pv": `${p}%` } as CSSProperties}>
               <header>
                 <h5>{c.raiz.codigo && <span className="an-top-cod">{c.raiz.codigo}</span>}{c.raiz.titulo}</h5>
-                <b className="an-top-n" title="Tópicos com aula neste cartão">{c.disponiveis}/{c.total}</b>
+                <b className="an-top-n" title="Itens com aula neste cartão">{c.disponiveis}/{c.total}</b>
               </header>
               {c.mostra && (c.raiz.disponivel || !c.filhos.length) && <div className="an-top-aulas"><Aulas t={c.raiz} /></div>}
               {c.filhos.length > 0 && (
@@ -83,65 +121,16 @@ function Conteudo({ topicos, termo, aula }: { topicos: TopicoVisao[]; termo: str
           );
         })}
       </div>
-      {cartoes.length > limite && (
-        <button type="button" className="an-mais" onClick={() => setLimite((l) => l + 30)}>Mostrar mais {Math.min(30, cartoes.length - limite)} de {cartoes.length - limite} restantes</button>
-      )}
+      {cartoes.length > limite && <button type="button" className="an-mais" onClick={() => setLimite((l) => l + 30)}>Mostrar mais {Math.min(30, cartoes.length - limite)} de {cartoes.length - limite} restantes</button>}
     </>
   );
 }
 
-function CartaoDisciplina({ it, n, aberta, aoAlternar, termo, aula }: { it: Item; n: number; aberta: boolean; aoAlternar: () => void; termo: string; aula: FiltroAula }) {
-  const [aba, setAba] = useState<"conteudo" | "estrategia">(it.topicos ? "conteudo" : "estrategia");
-  const r = it.topicos ? resumoDisponibilidade(it.topicos) : null;
-  const a = it.analise;
-  const tom = a ? tomPrioridade(a.prioridade) : 4;
-  return (
-    <article id={it.id} className="an-disc" data-aberta={aberta || undefined} data-tom={tom}>
-      <button type="button" className="an-disc-cab" aria-expanded={aberta} aria-controls={`${it.id}-corpo`} onClick={aoAlternar}>
-        <span className="an-disc-n" aria-hidden>{n}</span>
-        <span className="an-disc-info">
-          <span className="an-disc-nome">{it.nome}</span>
-          <span className="an-disc-chips">
-            {a?.questoes != null && <b className="an-chip">{a.questoes} questões{a.percentual != null ? ` · ${pct(a.percentual)}` : ""}</b>}
-            {a?.prioridade && <b className="an-chip an-prio">{a.prioridade}</b>}
-            {r && <b className="an-chip">{plural(r.total, "tópico", "tópicos")}</b>}
-          </span>
-          {r && <Cobertura ok={r.comAula} total={r.total} />}
-        </span>
-        <ChevronDown className="an-seta" size={20} aria-hidden />
-      </button>
-      {aberta && (
-        <div id={`${it.id}-corpo`} className="an-disc-corpo">
-          {a && it.topicos && (
-            <div className="an-abas" role="group" aria-label="Ver">
-              <button type="button" aria-pressed={aba === "conteudo"} onClick={() => setAba("conteudo")}><ListChecks size={14} aria-hidden /> Conteúdo e aulas</button>
-              <button type="button" aria-pressed={aba === "estrategia"} onClick={() => setAba("estrategia")}><Target size={14} aria-hidden /> Estratégia</button>
-            </div>
-          )}
-          {(aba === "estrategia" || !it.topicos) && a && (
-            <div className="an-estr">
-              {a.descricao && <p className="an-texto">{a.descricao}</p>}
-              {a.focos.length > 0 && (
-                <>
-                  <h4>Principais focos de preparação</h4>
-                  <ul className="an-focos">{a.focos.map((f) => <li key={f}>{f}</li>)}</ul>
-                </>
-              )}
-              {a.estrategia && (
-                <div className="an-estrategia"><h4>Como estudar</h4><p>{a.estrategia}</p></div>
-              )}
-            </div>
-          )}
-          {(aba === "conteudo" || !a) && it.topicos && <Conteudo topicos={it.topicos} termo={termo} aula={aula} />}
-        </div>
-      )}
-    </article>
-  );
-}
+const SECOES = ["visao", "materias", "conteudo", "dificuldades", "rotina", "conclusao"] as const;
 
-/** Análise do concurso: estrutura da prova, matérias com conteúdo e aulas, prioridades, dificuldades, rotina e conclusão. Navegação por abas fixas, filtros e cartões. */
+/** Análise do concurso: estrutura da prova, matérias, conteúdo completo com as aulas catalogadas, prioridades, dificuldades, rotina e conclusão. */
 export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; voltar: string }) {
-  const { concurso: c, analise: a, conteudo } = dados;
+  const { concurso: c, analise: a, conteudo, conteudoOrigem, marca } = dados;
 
   const { itens, extras } = useMemo(() => {
     const nomes = a?.disciplinas.map((d) => d.nome) ?? [];
@@ -151,75 +140,100 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
     return { itens: base, extras: ex };
   }, [a, conteudo]);
   const todas = useMemo(() => [...itens, ...extras], [itens, extras]);
+  const comTopicos = useMemo(() => todas.filter((i) => i.topicos?.length), [todas]);
 
-  const geral = useMemo(() => resumoDisponibilidade(todas.flatMap((i) => i.topicos ?? [])), [todas]);
-  const temConteudo = !!conteudo && geral.total > 0;
+  const geral = useMemo(() => resumoDisponibilidade(comTopicos.flatMap((i) => i.topicos ?? [])), [comTopicos]);
+  const temConteudo = comTopicos.length > 0;
   const total = a ? (a.estrutura.total?.questoes ?? a.disciplinas.reduce((s, d) => s + (d.questoes ?? 0), 0)) : 0;
 
   const [termo, setTermo] = useState("");
-  const [aula, setAula] = useState<FiltroAula>("todos");
   const [bloco, setBloco] = useState("");
   const [ordem, setOrdem] = useState<Ordem>("prioridade");
-  const [abertas, setAbertas] = useState<Set<string>>(new Set());
+  const [aberta, setAberta] = useState<string | null>(null);
+  const [sel, setSel] = useState<string>(comTopicos[0]?.id ?? "");
+  const [aula, setAula] = useState<FiltroAula>("todos");
+  const [termoTop, setTermoTop] = useState("");
   const [ativa, setAtiva] = useState("visao");
-  const [destaque, setDestaque] = useState<string | null>(null);
-  const secoes = useRef<Record<string, HTMLElement | null>>({});
+  const raiz = useRef<HTMLElement>(null);
+  const marcaRef = useRef<HTMLDivElement>(null);
+  const progresso = useRef<HTMLDivElement>(null);
 
-  const blocos = useMemo(() => [...new Set(itens.map((i) => i.bloco).filter(Boolean))], [itens]);
-  const q = sem(termo).trim();
-  const visiveis = todas.filter((i) => {
-    if (bloco && i.bloco !== bloco) return false;
-    if (!q) return true;
-    const palavras = q.split(/\s+/);
-    return palavras.every((w) => sem(i.nome).includes(w)) || (i.topicos ?? []).some((t) => palavras.every((w) => sem(t.titulo).includes(w)));
-  });
-
-  const abas: Array<[string, string]> = [["visao", "Visão geral"], ["materias", "Matérias e aulas"]];
+  const temAnalise = !!a && itens.length > 0;
+  const abas: Array<[(typeof SECOES)[number], string]> = [["visao", "Visão geral"]];
+  if (temAnalise) abas.push(["materias", "Matérias"]);
+  abas.push(["conteudo", "Conteúdo e aulas"]);
   if (a?.dificuldades.length) abas.push(["dificuldades", "Dificuldades"]);
   if (a && (a.organizacao.horas.length || a.organizacao.ciclo.length)) abas.push(["rotina", "Rotina"]);
   if (a && (a.conclusao.decisoes.length || a.conclusao.recomendacao.length || a.conclusao.notas.length)) abas.push(["conclusao", "Conclusão"]);
 
-  // Destaca na barra fixa a seção que está na tela.
+  // Barra de progresso, movimento suave da marca d'água, aparição dos blocos e destaque da seção atual.
   useEffect(() => {
-    const els = abas.map(([id]) => secoes.current[id]).filter((e): e is HTMLElement => !!e);
-    if (!els.length || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(
-      (es) => {
-        const v = es.filter((e) => e.isIntersecting).sort((x, y) => x.boundingClientRect.top - y.boundingClientRect.top)[0];
-        if (v) setAtiva(v.target.id.replace("an-", ""));
-      },
-      { rootMargin: "-25% 0px -65% 0px" },
-    );
-    els.forEach((e) => io.observe(e));
-    return () => io.disconnect();
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- as seções só mudam com os dados
+    const el = raiz.current;
+    if (!el) return;
+    const calmo = reduzido();
+    let raf = 0;
+    const atualizar = () => {
+      raf = 0;
+      const max = document.documentElement.scrollHeight - innerHeight;
+      const y = window.scrollY;
+      if (progresso.current) progresso.current.style.transform = `scaleX(${max > 0 ? Math.min(1, y / max) : 0})`;
+      if (marcaRef.current && !calmo) marcaRef.current.style.transform = `translate3d(0, ${Math.round(-y * 0.05)}px, 0)`;
+    };
+    const aoRolar = () => {
+      if (!raf) raf = requestAnimationFrame(atualizar);
+    };
+    atualizar();
+    window.addEventListener("scroll", aoRolar, { passive: true });
+
+    let io1: IntersectionObserver | null = null;
+    let io2: IntersectionObserver | null = null;
+    if (typeof IntersectionObserver !== "undefined") {
+      el.classList.add("an-js");
+      io1 = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { (e.target as HTMLElement).dataset.in = "1"; io1?.unobserve(e.target); } }), { rootMargin: "0px 0px -8% 0px", threshold: 0.05 });
+      el.querySelectorAll(".an-rev").forEach((n) => io1!.observe(n));
+      io2 = new IntersectionObserver(
+        (es) => {
+          const v = es.filter((e) => e.isIntersecting).sort((x, y) => x.boundingClientRect.top - y.boundingClientRect.top)[0];
+          if (v) setAtiva(v.target.id.replace("an-", ""));
+        },
+        { rootMargin: "-25% 0px -65% 0px" },
+      );
+      for (const id of SECOES) {
+        const s = document.getElementById(`an-${id}`);
+        if (s) io2.observe(s);
+      }
+    }
+    return () => {
+      window.removeEventListener("scroll", aoRolar);
+      if (raf) cancelAnimationFrame(raf);
+      io1?.disconnect();
+      io2?.disconnect();
+      el.classList.remove("an-js");
+    };
   }, [dados]);
 
-  const rolar = (id: string) => {
-    const el = secoes.current[id];
-    if (!el) return;
-    const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollIntoView({ behavior: reduzido ? "auto" : "smooth", block: "start" });
+  const rolarPara = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: reduzido() ? "auto" : "smooth", block: "start" });
+  const verConteudo = (id: string) => {
+    if (!todas.find((i) => i.id === id)?.topicos?.length) return;
+    setSel(id);
+    setAula("todos");
+    setTermoTop("");
+    requestAnimationFrame(() => requestAnimationFrame(() => rolarPara("an-conteudo")));
   };
-  const alternar = (id: string) =>
-    setAbertas((s) => {
-      const n = new Set(s);
-      if (n.has(id)) n.delete(id);
-      else n.add(id);
-      return n;
-    });
-  const irParaDisciplina = (id: string) => {
+  const abrirMateria = (id: string) => {
     setBloco("");
     setTermo("");
-    setAbertas((s) => new Set(s).add(id));
-    setDestaque(id);
-    requestAnimationFrame(() =>
-      requestAnimationFrame(() => {
-        document.getElementById(id)?.scrollIntoView({ behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth", block: "center" });
-      }),
-    );
-    window.setTimeout(() => setDestaque((d) => (d === id ? null : d)), 1800);
+    setAberta(id);
+    requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: reduzido() ? "auto" : "smooth", block: "center" })));
   };
+
+  const blocos = useMemo(() => [...new Set(itens.map((i) => i.bloco).filter(Boolean))], [itens]);
+  const q = sem(termo).trim();
+  const visiveis = itens.filter((i) => {
+    if (bloco && i.bloco !== bloco) return false;
+    if (!q) return true;
+    return q.split(/\s+/).every((w) => sem(`${i.nome} ${i.analise?.focos.join(" ") ?? ""} ${i.analise?.prioridade ?? ""}`).includes(w));
+  });
 
   const maxQ = Math.max(1, ...itens.map((i) => i.analise?.questoes ?? 0));
   const maxH = Math.max(1, ...(a?.organizacao.horas.map((h) => h.horas) ?? [1]));
@@ -228,189 +242,303 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
     : ordem === "questoes" ? (y.analise?.questoes ?? 0) - (x.analise?.questoes ?? 0)
     : tomPrioridade(x.analise?.prioridade ?? "") - tomPrioridade(y.analise?.prioridade ?? "") || (y.analise?.questoes ?? 0) - (x.analise?.questoes ?? 0));
 
+  const atual = comTopicos.find((i) => i.id === sel) ?? comTopicos[0] ?? null;
+  const rAtual = atual?.topicos ? resumoDisponibilidade(atual.topicos) : null;
+
   return (
-    <main className="an">
-      <header className="an-topo">
-        <Link href={voltar} className="an-voltar"><ArrowLeft size={16} aria-hidden /> Voltar</Link>
-        {/* eslint-disable-next-line @next/next/no-img-element -- logo oficial, versão para fundo escuro */}
-        <img className="an-logo" src="/images/aprovum-login-logo.png" alt="Aprovum" width={523} height={107} />
-      </header>
+    <main className="an" ref={raiz}>
+      <div className="an-fundo" aria-hidden>
+        {marca && <div className="an-marca" ref={marcaRef} style={{ backgroundImage: `url("${marca.replace(/"/g, "%22")}")` }} />}
+        <div className="an-brilho" />
+        <div className="an-vinheta" />
+      </div>
+      <div className="an-progresso" ref={progresso} aria-hidden />
 
-      <section className="an-cab">
-        <p className="an-kicker">ANÁLISE DO CONCURSO</p>
-        <h1 className="an-titulo">{c.nome}</h1>
-        <ul className="an-meta">{[c.cargo, c.orgao, c.banca].filter(Boolean).map((m) => <li key={m}>{m}</li>)}</ul>
-        <dl className="an-numeros">
-          {total > 0 && <div><dt><Flag size={13} aria-hidden /> Questões</dt><dd>{total}</dd></div>}
-          <div><dt><Layers size={13} aria-hidden /> Disciplinas</dt><dd>{todas.length}</dd></div>
-          {temConteudo && <div><dt><ListChecks size={13} aria-hidden /> Tópicos</dt><dd>{geral.total.toLocaleString("pt-BR")}</dd></div>}
-          {a?.organizacao.totalHoras != null && <div><dt><Clock size={13} aria-hidden /> Horas/semana</dt><dd>{a.organizacao.totalHoras}</dd></div>}
-        </dl>
-        {temConteudo && (
-          <div className="an-geral" data-testid="cobertura-geral">
-            <div className="an-geral-cab"><BookOpenCheck size={16} aria-hidden /> <b>Aulas catalogadas neste concurso</b></div>
-            <Cobertura ok={geral.comAula} total={geral.total} grande />
-            <ul className="an-legenda" aria-label="Legenda">
-              <li><span className="an-dot an-ok" aria-hidden /> Verde: aula disponível no Aprovum ({geral.comAula.toLocaleString("pt-BR")})</li>
-              <li><span className="an-dot an-no" aria-hidden /> Vermelho: aula ainda não disponível ({geral.semAula.toLocaleString("pt-BR")})</li>
-            </ul>
+      <div className="an-pagina">
+        <header className="an-topo">
+          <Link href={voltar} className="an-voltar"><ArrowLeft size={16} aria-hidden /> Voltar</Link>
+          {/* eslint-disable-next-line @next/next/no-img-element -- logo oficial, versão para fundo escuro */}
+          <img className="an-logo" src="/images/aprovum-login-logo.png" alt="Aprovum" width={523} height={107} />
+        </header>
+
+        <section className="an-hero">
+          <div className="an-hero-txt">
+            <p className="an-kicker">ANÁLISE DO CONCURSO</p>
+            <h1 className="an-titulo">{c.nome}</h1>
+            <ul className="an-meta">{[c.cargo, c.orgao, c.banca].filter(Boolean).map((m) => <li key={m}>{m}</li>)}</ul>
+            <dl className="an-numeros">
+              {total > 0 && <div><dt><Flag size={13} aria-hidden /> Questões</dt><dd><Contador valor={total} /></dd></div>}
+              <div><dt><Layers size={13} aria-hidden /> Disciplinas</dt><dd><Contador valor={todas.length} /></dd></div>
+              {temConteudo && <div><dt><ListChecks size={13} aria-hidden /> {conteudoOrigem === "focos" ? "Itens de conteúdo" : "Tópicos"}</dt><dd><Contador valor={geral.total} /></dd></div>}
+              {a?.organizacao.totalHoras != null && <div><dt><Clock size={13} aria-hidden /> Horas/semana</dt><dd><Contador valor={a.organizacao.totalHoras} /></dd></div>}
+            </dl>
           </div>
-        )}
-      </section>
-
-      <nav className="an-nav" aria-label="Seções da análise">
-        {abas.map(([id, rotulo]) => (
-          <button key={id} type="button" aria-current={ativa === id ? "true" : undefined} onClick={() => rolar(id)}>{rotulo}</button>
-        ))}
-      </nav>
-
-      <section id="an-visao" ref={(e) => { secoes.current.visao = e; }} className="an-secao" aria-labelledby="an-h-visao">
-        <h2 id="an-h-visao"><Compass size={15} aria-hidden /> Visão geral da prova</h2>
-        {a && a.estrutura.blocos.length > 0 && (
-          <ul className="an-blocos">
-            {a.estrutura.blocos.map((b) => (
-              <li key={b.nome} style={{ "--w": `${b.percentual ?? (total && b.questoes ? (b.questoes / total) * 100 : 0)}%` } as CSSProperties}>
-                <span className="an-blocos-nome">{b.nome}</span>
-                <span className="an-blocos-pct">{pct(b.percentual)}</span>
-                <span className="an-blocos-barra" aria-hidden />
-                <span className="an-blocos-info">{[b.disciplinas != null && `${b.disciplinas} disciplinas`, b.questoes != null && `${b.questoes} questões`].filter(Boolean).join(" · ")}</span>
-              </li>
-            ))}
-          </ul>
-        )}
-        {a?.estrutura.notas.filter((n) => !/^considerando\b/i.test(n)).map((n) => <p key={n} className="an-texto">{n}</p>)}
-
-        {itens.length > 0 && (
-          <>
-            <div className="an-barra-cab">
-              <h3>Peso de cada matéria</h3>
-              <div className="an-abas" role="group" aria-label="Ordenar por">
-                {([["prioridade", "Prioridade"], ["questoes", "Questões"], ["edital", "Ordem do edital"]] as Array<[Ordem, string]>).map(([id, r]) => (
-                  <button key={id} type="button" aria-pressed={ordem === id} onClick={() => setOrdem(id)}>{r}</button>
-                ))}
-              </div>
-            </div>
-            <ul className="an-barras">
-              {grafico.map((i) => (
-                <li key={i.id} data-tom={tomPrioridade(i.analise?.prioridade ?? "")}>
-                  <button type="button" onClick={() => irParaDisciplina(i.id)} aria-label={`${i.nome}: ${i.analise?.questoes ?? "?"} questões. Ver a matéria`}>
-                    <span className="an-barras-nome">{i.nome}</span>
-                    <span className="an-barras-num">{i.analise?.questoes ?? "?"}{i.analise?.percentual != null ? ` · ${pct(i.analise.percentual)}` : ""}</span>
-                    <span className="an-barras-barra" aria-hidden style={{ "--w": `${((i.analise?.questoes ?? 0) / maxQ) * 100}%` } as CSSProperties} />
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <p className="an-dica">Toque numa barra para abrir a matéria.</p>
-          </>
-        )}
-
-        {a && a.distribuicao.classificacao.length > 0 && (
-          <div className="an-classe">
-            {a.distribuicao.classificacao.map((n) => (
-              <div key={n.nivel} data-tom={tomPrioridade(n.nivel)}>
-                <h4>Prioridade {n.nivel.toLowerCase()}</h4>
-                <ul>{n.disciplinas.map((x) => <li key={x}>{x}</li>)}</ul>
-              </div>
-            ))}
-          </div>
-        )}
-        {a?.distribuicao.notas.filter((n) => !/^considerando\b/i.test(n)).map((n) => <p key={n} className="an-texto">{n}</p>)}
-      </section>
-
-      <section id="an-materias" ref={(e) => { secoes.current.materias = e; }} className="an-secao" aria-labelledby="an-h-mat">
-        <h2 id="an-h-mat"><Layers size={15} aria-hidden /> Matérias, tópicos e aulas</h2>
-        <div className="an-ferr">
-          <label className="an-busca">
-            <Search size={15} aria-hidden />
-            <span className="sr-only">Buscar matéria ou tópico</span>
-            <input type="search" value={termo} onChange={(e) => setTermo(e.target.value)} placeholder="Buscar matéria ou tópico" autoComplete="off" enterKeyHint="search" />
-          </label>
           {temConteudo && (
-            <div className="an-abas an-filtro-aula" role="group" aria-label="Filtrar tópicos">
-              <button type="button" aria-pressed={aula === "todos"} onClick={() => setAula("todos")}>Todos</button>
-              <button type="button" data-cor="ok" aria-pressed={aula === "com"} onClick={() => setAula("com")}>Com aula</button>
-              <button type="button" data-cor="no" aria-pressed={aula === "sem"} onClick={() => setAula("sem")}>Sem aula</button>
+            <div className="an-hero-cob" data-testid="cobertura-geral">
+              <Anel ok={geral.comAula} total={geral.total} tam={150} esp={14} />
+              <div className="an-hero-cob-txt">
+                <p><BookOpenCheck size={15} aria-hidden /> Aulas catalogadas neste concurso</p>
+                <ul className="an-legenda" aria-label="Legenda">
+                  <li><span className="an-dot an-ok" aria-hidden /> <b>{geral.comAula.toLocaleString("pt-BR")}</b> com aula no Aprovum</li>
+                  <li><span className="an-dot an-no" aria-hidden /> <b>{geral.semAula.toLocaleString("pt-BR")}</b> ainda sem aula</li>
+                </ul>
+                <button type="button" className="an-cta" onClick={() => rolarPara("an-conteudo")}>Ver conteúdo e aulas <ChevronDown size={15} aria-hidden /></button>
+              </div>
             </div>
           )}
-          {blocos.length > 1 && (
-            <div className="an-abas" role="group" aria-label="Bloco">
-              <button type="button" aria-pressed={bloco === ""} onClick={() => setBloco("")}>Todos os blocos</button>
-              {blocos.map((b) => <button key={b} type="button" aria-pressed={bloco === b} onClick={() => setBloco(b)}>{b.replace(/^conhecimentos\s+/i, "")}</button>)}
-            </div>
-          )}
-        </div>
-        <p className="an-contagem" role="status" aria-live="polite">{plural(visiveis.length, "matéria", "matérias")}{q || bloco ? " encontradas" : ""}</p>
-        <div className="an-lista">
-          {visiveis.map((i) => (
-            <div key={i.id} data-destaque={destaque === i.id || undefined}>
-              {i === extras[0] && !bloco && !q && <h3 className="an-outras">Outras matérias do edital</h3>}
-              <CartaoDisciplina it={i} n={todas.indexOf(i) + 1} aberta={abertas.has(i.id) || (q.length > 1 && !!i.topicos?.some((t) => sem(t.titulo).includes(q)))} aoAlternar={() => alternar(i.id)} termo={termo} aula={aula} />
-            </div>
-          ))}
-          {!visiveis.length && <p className="an-vazio">Nenhuma matéria encontrada.</p>}
-        </div>
-      </section>
-
-      {a && a.dificuldades.length > 0 && (
-        <section id="an-dificuldades" ref={(e) => { secoes.current.dificuldades = e; }} className="an-secao" aria-labelledby="an-h-dif">
-          <h2 id="an-h-dif"><Flag size={15} aria-hidden /> Onde está a maior dificuldade</h2>
-          <div className="an-cartoes">
-            {a.dificuldades.map((g, i) => (
-              <article key={g.grupo} className="an-cartao">
-                <p className="an-cartao-n">Grupo {i + 1}</p>
-                <h3>{g.grupo}</h3>
-                <ul className="an-tags">{g.disciplinas.map((x) => <li key={x}>{x}</li>)}</ul>
-                {g.texto && <p className="an-texto">{g.texto}</p>}
-              </article>
-            ))}
-          </div>
         </section>
-      )}
 
-      {a && (a.organizacao.horas.length > 0 || a.organizacao.ciclo.length > 0) && (
-        <section id="an-rotina" ref={(e) => { secoes.current.rotina = e; }} className="an-secao" aria-labelledby="an-h-rotina">
-          <h2 id="an-h-rotina"><Clock size={15} aria-hidden /> Como organizar o estudo</h2>
-          {a.organizacao.notas.map((n) => <p key={n} className="an-texto">{n}</p>)}
-          {a.organizacao.horas.length > 0 && (
-            <ul className="an-horas">
-              {a.organizacao.horas.map((h) => (
-                <li key={h.disciplina} style={{ "--w": `${(h.horas / maxH) * 100}%` } as CSSProperties}>
-                  <span className="an-barras-nome">{h.disciplina}</span>
-                  <span className="an-barras-num">{hrs(h.horas)}</span>
-                  <span className="an-barras-barra" aria-hidden />
+        <nav className="an-nav" aria-label="Seções da análise">
+          {abas.map(([id, rotulo]) => (
+            <button key={id} type="button" aria-current={ativa === id ? "true" : undefined} onClick={() => rolarPara(`an-${id}`)}>{rotulo}</button>
+          ))}
+        </nav>
+
+        <section id="an-visao" className="an-secao" aria-labelledby="an-h-visao">
+          <h2 id="an-h-visao" className="an-rev"><Compass size={15} aria-hidden /> Visão geral da prova</h2>
+          {a && a.estrutura.blocos.length > 0 && (
+            <ul className="an-blocos an-rev">
+              {a.estrutura.blocos.map((b) => (
+                <li key={b.nome} className="an-vidro" onPointerMove={mover} style={{ "--w": `${b.percentual ?? (total && b.questoes ? (b.questoes / total) * 100 : 0)}%` } as CSSProperties}>
+                  <span className="an-blocos-nome">{b.nome}</span>
+                  <span className="an-blocos-pct">{pct(b.percentual)}</span>
+                  <span className="an-blocos-barra" aria-hidden />
+                  <span className="an-blocos-info">{[b.disciplinas != null && `${b.disciplinas} disciplinas`, b.questoes != null && `${b.questoes} questões`].filter(Boolean).join(" · ")}</span>
                 </li>
               ))}
             </ul>
           )}
-          {a.organizacao.ciclo.length > 0 && (
-            <ol className="an-ciclo" aria-label="Ciclo recomendado">
-              {a.organizacao.ciclo.map((e) => <li key={e.etapa}><b>{e.etapa}</b><span>{e.texto}</span></li>)}
-            </ol>
-          )}
-        </section>
-      )}
+          {a?.estrutura.notas.filter((n) => !/^considerando\b/i.test(n)).map((n) => <p key={n} className="an-texto an-rev">{n}</p>)}
 
-      {a && (a.conclusao.decisoes.length > 0 || a.conclusao.recomendacao.length > 0 || a.conclusao.notas.length > 0) && (
-        <section id="an-conclusao" ref={(e) => { secoes.current.conclusao = e; }} className="an-secao" aria-labelledby="an-h-conc">
-          <h2 id="an-h-conc"><Target size={15} aria-hidden /> Conclusão estratégica</h2>
-          {a.conclusao.notas.map((n) => <p key={n} className="an-texto">{n}</p>)}
-          {a.conclusao.decisoes.length > 0 && (
-            <ol className="an-decisoes">
-              {a.conclusao.decisoes.map((d) => <li key={d.titulo}><b>{d.titulo}</b><span>{d.texto}</span></li>)}
-            </ol>
-          )}
-          {a.conclusao.recomendacao.length > 0 && (
-            <div className="an-estrategia">
-              <h4>Recomendação final</h4>
-              {a.conclusao.recomendacao.map((r) => <p key={r}>{r}</p>)}
+          {itens.length > 0 && (
+            <div className="an-peso an-vidro an-rev">
+              <div className="an-barra-cab">
+                <h3>Peso de cada matéria</h3>
+                <div className="an-abas" role="group" aria-label="Ordenar por">
+                  {([["prioridade", "Prioridade"], ["questoes", "Questões"], ["edital", "Ordem do edital"]] as Array<[Ordem, string]>).map(([id, r]) => (
+                    <button key={id} type="button" aria-pressed={ordem === id} onClick={() => setOrdem(id)}>{r}</button>
+                  ))}
+                </div>
+              </div>
+              <ul className="an-barras">
+                {grafico.map((i) => (
+                  <li key={i.id} data-tom={tomPrioridade(i.analise?.prioridade ?? "")}>
+                    <button type="button" onClick={() => abrirMateria(i.id)} aria-label={`${i.nome}: ${i.analise?.questoes ?? "?"} questões. Abrir a análise da matéria`}>
+                      <span className="an-barras-nome">{i.nome}</span>
+                      <span className="an-barras-num">{i.analise?.questoes ?? "?"}{i.analise?.percentual != null ? ` · ${pct(i.analise.percentual)}` : ""}</span>
+                      <span className="an-barras-barra" aria-hidden style={{ "--w": `${((i.analise?.questoes ?? 0) / maxQ) * 100}%` } as CSSProperties} />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              <p className="an-dica">Toque numa barra para abrir a análise da matéria.</p>
             </div>
           )}
-          {a.conclusao.observacao && <p className="an-obs">{a.conclusao.observacao}</p>}
+
+          {a && a.distribuicao.classificacao.length > 0 && (
+            <div className="an-classe an-rev">
+              {a.distribuicao.classificacao.map((n) => (
+                <div key={n.nivel} className="an-vidro" data-tom={tomPrioridade(n.nivel)} onPointerMove={mover}>
+                  <h4>Prioridade {n.nivel.toLowerCase()}</h4>
+                  <ul>{n.disciplinas.map((x) => <li key={x}>{x}</li>)}</ul>
+                </div>
+              ))}
+            </div>
+          )}
+          {a?.distribuicao.notas.filter((n) => !/^considerando\b/i.test(n)).map((n) => <p key={n} className="an-texto an-rev">{n}</p>)}
         </section>
-      )}
+
+        {temAnalise && (
+          <section id="an-materias" className="an-secao" aria-labelledby="an-h-mat">
+            <h2 id="an-h-mat" className="an-rev"><Target size={15} aria-hidden /> Análise por matéria</h2>
+            <div className="an-ferr an-rev">
+              <label className="an-busca">
+                <Search size={15} aria-hidden />
+                <span className="sr-only">Buscar matéria ou foco</span>
+                <input type="search" value={termo} onChange={(e) => setTermo(e.target.value)} placeholder="Buscar matéria ou foco" autoComplete="off" enterKeyHint="search" />
+              </label>
+              {blocos.length > 1 && (
+                <div className="an-abas" role="group" aria-label="Bloco">
+                  <button type="button" aria-pressed={bloco === ""} onClick={() => setBloco("")}>Todos</button>
+                  {blocos.map((b) => <button key={b} type="button" aria-pressed={bloco === b} onClick={() => setBloco(b)}>{b.replace(/^conhecimentos\s+/i, "")}</button>)}
+                </div>
+              )}
+            </div>
+            <p className="an-contagem" role="status" aria-live="polite">{plural(visiveis.length, "matéria", "matérias")}{q || bloco ? " encontradas" : ""}</p>
+            <div className="an-grade">
+              {visiveis.map((i) => {
+                const d = i.analise!;
+                const abre = aberta === i.id;
+                const r = i.topicos ? resumoDisponibilidade(i.topicos) : null;
+                return (
+                  <article key={i.id} id={i.id} className="an-disc an-vidro" data-aberta={abre || undefined} data-tom={tomPrioridade(d.prioridade)} onPointerMove={mover}>
+                    <button type="button" className="an-disc-cab" aria-expanded={abre} aria-controls={`${i.id}-corpo`} onClick={() => setAberta(abre ? null : i.id)}>
+                      <span className="an-disc-n" aria-hidden>{d.ordem}</span>
+                      <span className="an-disc-info">
+                        <span className="an-disc-nome">{i.nome}</span>
+                        <span className="an-disc-chips">
+                          {d.questoes != null && <b className="an-chip">{d.questoes} questões{d.percentual != null ? ` · ${pct(d.percentual)}` : ""}</b>}
+                          {d.prioridade && <b className="an-chip an-prio">{d.prioridade}</b>}
+                        </span>
+                      </span>
+                      {r ? <Anel ok={r.comAula} total={r.total} tam={46} esp={6} rotulo={false} /> : null}
+                      <ChevronDown className="an-seta" size={18} aria-hidden />
+                    </button>
+                    {abre && (
+                      <div id={`${i.id}-corpo`} className="an-disc-corpo">
+                        {d.descricao && <p className="an-texto">{d.descricao}</p>}
+                        {d.focos.length > 0 && (
+                          <>
+                            <h4>Principais focos de preparação</h4>
+                            <ul className="an-focos">{d.focos.map((f) => <li key={f}>{f}</li>)}</ul>
+                          </>
+                        )}
+                        {d.estrategia && <div className="an-estrategia"><h4>Como estudar</h4><p>{d.estrategia}</p></div>}
+                        {r && (
+                          <button type="button" className="an-cta an-cta-bloco" onClick={() => verConteudo(i.id)}>
+                            <ListChecks size={15} aria-hidden /> Ver conteúdo e aulas · {r.comAula} de {r.total} com aula
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </article>
+                );
+              })}
+            </div>
+            {!visiveis.length && <p className="an-vazio">Nenhuma matéria encontrada.</p>}
+          </section>
+        )}
+
+        <section id="an-conteudo" className="an-secao" aria-labelledby="an-h-cont">
+          <h2 id="an-h-cont" className="an-rev"><ListChecks size={15} aria-hidden /> Conteúdo completo e aulas</h2>
+          <ul className="an-legenda an-legenda-faixa an-rev" aria-label="Legenda">
+            <li><span className="an-dot an-ok" aria-hidden /> Verde: aula catalogada no Aprovum</li>
+            <li><span className="an-dot an-no" aria-hidden /> Vermelho: ainda não catalogada</li>
+          </ul>
+
+          {!temConteudo && (
+            <div className="an-aviso-grande an-vidro an-rev" data-testid="sem-conteudo">
+              <Info size={20} aria-hidden />
+              <div>
+                <b>O conteúdo programático deste concurso ainda não foi importado.</b>
+                <p>Assim que a equipe importar o edital, esta seção mostra todos os tópicos, cada um em verde (aula catalogada) ou vermelho (ainda sem aula).</p>
+              </div>
+            </div>
+          )}
+
+          {temConteudo && (
+            <>
+              {conteudoOrigem === "focos" && (
+                <div className="an-aviso an-rev" role="note">
+                  <Info size={16} aria-hidden />
+                  <span>Estes itens vêm dos <b>principais focos da análise</b>, conferidos com as aulas catalogadas. O conteúdo programático literal do edital aparece aqui quando for importado.</span>
+                </div>
+              )}
+              <div className="an-seletor an-rev" role="tablist" aria-label="Matéria">
+                {comTopicos.map((i) => {
+                  const r = resumoDisponibilidade(i.topicos!);
+                  return (
+                    <button key={i.id} type="button" role="tab" aria-selected={atual?.id === i.id} className="an-sel" onClick={() => setSel(i.id)} onPointerMove={mover}>
+                      <Anel ok={r.comAula} total={r.total} tam={44} esp={6} rotulo={false} />
+                      <span className="an-sel-txt"><b>{i.nome}</b><small>{r.comAula} de {r.total} com aula</small></span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {atual && rAtual && (
+                <div className="an-painel an-vidro" role="tabpanel" aria-label={atual.nome}>
+                  <div className="an-painel-cab">
+                    <Anel ok={rAtual.comAula} total={rAtual.total} tam={96} esp={10} />
+                    <div className="an-painel-tit">
+                      <h3>{atual.nome}</h3>
+                      <p>{plural(rAtual.total, conteudoOrigem === "focos" ? "item" : "tópico", conteudoOrigem === "focos" ? "itens" : "tópicos")}</p>
+                      <div className="an-painel-n">
+                        <button type="button" data-cor="ok" aria-pressed={aula === "com"} onClick={() => setAula(aula === "com" ? "todos" : "com")}><b>{rAtual.comAula}</b> com aula</button>
+                        <button type="button" data-cor="no" aria-pressed={aula === "sem"} onClick={() => setAula(aula === "sem" ? "todos" : "sem")}><b>{rAtual.semAula}</b> sem aula</button>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="an-ferr">
+                    <label className="an-busca">
+                      <Search size={15} aria-hidden />
+                      <span className="sr-only">Buscar tópico ou aula</span>
+                      <input type="search" value={termoTop} onChange={(e) => setTermoTop(e.target.value)} placeholder="Buscar tópico ou aula" autoComplete="off" enterKeyHint="search" />
+                    </label>
+                    <div className="an-abas" role="group" aria-label="Filtrar">
+                      <button type="button" aria-pressed={aula === "todos"} onClick={() => setAula("todos")}>Todos</button>
+                      <button type="button" data-cor="ok" aria-pressed={aula === "com"} onClick={() => setAula("com")}>Com aula</button>
+                      <button type="button" data-cor="no" aria-pressed={aula === "sem"} onClick={() => setAula("sem")}>Sem aula</button>
+                    </div>
+                  </div>
+                  <Cartoes key={atual.id} topicos={atual.topicos!} termo={termoTop} aula={aula} />
+                </div>
+              )}
+            </>
+          )}
+        </section>
+
+        {a && a.dificuldades.length > 0 && (
+          <section id="an-dificuldades" className="an-secao" aria-labelledby="an-h-dif">
+            <h2 id="an-h-dif" className="an-rev"><Flag size={15} aria-hidden /> Onde está a maior dificuldade</h2>
+            <div className="an-cartoes an-rev">
+              {a.dificuldades.map((g, i) => (
+                <article key={g.grupo} className="an-cartao an-vidro" onPointerMove={mover}>
+                  <p className="an-cartao-n">Grupo {i + 1}</p>
+                  <h3>{g.grupo}</h3>
+                  <ul className="an-tags">{g.disciplinas.map((x) => <li key={x}>{x}</li>)}</ul>
+                  {g.texto && <p className="an-texto">{g.texto}</p>}
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {a && (a.organizacao.horas.length > 0 || a.organizacao.ciclo.length > 0) && (
+          <section id="an-rotina" className="an-secao" aria-labelledby="an-h-rotina">
+            <h2 id="an-h-rotina" className="an-rev"><Clock size={15} aria-hidden /> Como organizar o estudo</h2>
+            {a.organizacao.notas.map((n) => <p key={n} className="an-texto an-rev">{n}</p>)}
+            {a.organizacao.horas.length > 0 && (
+              <div className="an-peso an-vidro an-rev">
+                <div className="an-barra-cab"><h3>Horas por semana</h3>{a.organizacao.totalHoras != null && <b className="an-chip">{hrs(a.organizacao.totalHoras)} no total</b>}</div>
+                <ul className="an-horas">
+                  {a.organizacao.horas.map((h) => (
+                    <li key={h.disciplina} style={{ "--w": `${(h.horas / maxH) * 100}%` } as CSSProperties}>
+                      <span className="an-barras-nome">{h.disciplina}</span>
+                      <span className="an-barras-num">{hrs(h.horas)}</span>
+                      <span className="an-barras-barra" aria-hidden />
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {a.organizacao.ciclo.length > 0 && (
+              <ol className="an-ciclo an-rev" aria-label="Ciclo recomendado">
+                {a.organizacao.ciclo.map((e) => <li key={e.etapa} className="an-vidro" onPointerMove={mover}><b>{e.etapa}</b><span>{e.texto}</span></li>)}
+              </ol>
+            )}
+          </section>
+        )}
+
+        {a && (a.conclusao.decisoes.length > 0 || a.conclusao.recomendacao.length > 0 || a.conclusao.notas.length > 0) && (
+          <section id="an-conclusao" className="an-secao" aria-labelledby="an-h-conc">
+            <h2 id="an-h-conc" className="an-rev"><Target size={15} aria-hidden /> Conclusão estratégica</h2>
+            {a.conclusao.notas.map((n) => <p key={n} className="an-texto an-rev">{n}</p>)}
+            {a.conclusao.decisoes.length > 0 && (
+              <ol className="an-decisoes an-rev">
+                {a.conclusao.decisoes.map((d) => <li key={d.titulo} className="an-vidro" onPointerMove={mover}><b>{d.titulo}</b><span>{d.texto}</span></li>)}
+              </ol>
+            )}
+            {a.conclusao.recomendacao.length > 0 && (
+              <div className="an-estrategia an-vidro an-rev">
+                <h4>Recomendação final</h4>
+                {a.conclusao.recomendacao.map((r) => <p key={r}>{r}</p>)}
+              </div>
+            )}
+            {a.conclusao.observacao && <p className="an-obs an-rev">{a.conclusao.observacao}</p>}
+          </section>
+        )}
+      </div>
     </main>
   );
 }
-
-export type { DisciplinaVisao };
