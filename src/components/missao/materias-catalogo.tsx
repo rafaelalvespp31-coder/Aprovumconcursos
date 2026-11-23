@@ -54,7 +54,7 @@ export function soltar(e: PointerEvent<HTMLButtonElement>) {
 }
 
 /** Matérias do catálogo da plataforma, em dois grupos (básicas e específicas). Tocar num quadrado abre os assuntos e leva ao estudo. */
-export function MateriasCatalogo({ materias, termo = "" }: { materias: MateriaCatalogo[]; termo?: string }) {
+export function MateriasCatalogo({ materias, termo = "", grupos: mostrar = ["basicas", "especificas"] }: { materias: MateriaCatalogo[]; termo?: string; grupos?: GrupoMateria[] }) {
   const [aberta, setAberta] = useState<string | null>(null);
   const origem = useRef<HTMLElement | null>(null);
   const fechar = useRef<HTMLButtonElement>(null);
@@ -80,7 +80,7 @@ export function MateriasCatalogo({ materias, termo = "" }: { materias: MateriaCa
 
   return (
     <>
-      {(["basicas", "especificas"] as GrupoMateria[]).map((g) => {
+      {mostrar.map((g) => {
         const lista = grupos[g];
         if (!lista.length) return null;
         const aulas = lista.reduce((s, x) => s + x.aulas, 0);

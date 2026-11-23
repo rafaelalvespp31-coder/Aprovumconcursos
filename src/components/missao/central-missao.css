@@ -1,11 +1,11 @@
 /* Central de Missão: preto profundo, vermelho como única cor viva. Mobile primeiro. */
 .cm, .cm *, .cm *::before, .cm *::after { box-sizing: border-box; }
-.cm { --cm-bg: #030303; --cm-bg2: #090909; --cm-red: #d71920; --cm-red2: #ff252d; --cm-gelo: #f5f5f5; --cm-cinza: #777;
+.cm { --cm-bg: #000; --cm-bg2: #000; --cm-red: #d71920; --cm-red2: #ff252d; --cm-gelo: #f5f5f5; --cm-cinza: #777;
   position: fixed; inset: 0; overflow: hidden; color: var(--cm-gelo); background: var(--cm-bg);
   display: grid; grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
   transition: opacity 0.6s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1), filter 0.6s ease; }
 .cm-fundo { position: absolute; inset: 0; pointer-events: none; z-index: 0;
-  background: radial-gradient(ellipse 80% 55% at 50% 38%, var(--cm-bg2) 0%, var(--cm-bg) 70%), var(--cm-bg); }
+  background: #000; }
 .cm-topo, .cm-corpo { position: relative; z-index: 1; }
 /* o palco não cria contexto de empilhamento: o canvas da órbita usa mix-blend-mode e precisa enxergar o fundo do .cm */
 

@@ -1,13 +1,17 @@
 /* Escolha na Central: busca, atalhos e quadrados (concursos, matérias básicas e específicas). */
-.mc-painel { display: flex; flex-direction: column; gap: 10px; width: 100%; text-align: left; }
-.mc-ferramentas { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 10px; }
-.mc-atalhos { display: flex; gap: 6px; }
-.mc-atalhos button { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; font: inherit; font-size: 12.5px; font-weight: 700; color: #d4d4d8; cursor: pointer; background: rgb(255 255 255 / 0.06); border: 1px solid rgb(255 255 255 / 0.12); border-radius: 999px; transition: background 0.2s, border-color 0.2s, transform 0.15s; }
-.mc-atalhos button span { font-size: 11px; font-weight: 800; color: #fff; background: var(--cm-red, #d71920); border-radius: 999px; padding: 1px 7px; font-variant-numeric: tabular-nums; }
-.mc-atalhos button:hover { background: rgb(255 255 255 / 0.12); border-color: rgb(255 255 255 / 0.3); }
-.mc-atalhos button:active { transform: scale(0.97); }
-.mc-atalhos button:focus-visible, .mc-busca:focus-within { outline: 2px solid var(--cm-red2, #ff252d); outline-offset: 2px; }
-.mc-busca { display: flex; align-items: center; gap: 8px; min-height: 36px; padding: 0 12px; color: #a1a1a6; background: rgb(255 255 255 / 0.06); border: 1px solid rgb(255 255 255 / 0.12); border-radius: 999px; flex: 1 1 220px; max-width: 340px; }
+.mc-painel { --mc-painel: #070708; display: flex; flex-direction: column; gap: 10px; width: 100%; padding: 12px 10px 4px; text-align: left; background: var(--mc-painel); border: 1px solid #1a1a1d; border-radius: 24px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05), 0 40px 90px -40px #000, 0 0 0 1px #000; }
+@media (min-width: 900px) { .mc-painel { padding: 16px 18px 6px; } }
+.mc-ferramentas { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; padding: 0 2px; }
+.mc-abas { display: flex; gap: 4px; padding: 3px; max-width: 100%; overflow-x: auto; scrollbar-width: none; background: #000; border: 1px solid #1a1a1d; border-radius: 999px; }
+.mc-abas button { display: inline-flex; flex: none; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px; font: inherit; font-size: 12.5px; font-weight: 700; color: #a1a1a6; cursor: pointer; background: transparent; border: 0; border-radius: 999px; transition: background 0.2s, color 0.2s, transform 0.15s; }
+.mc-abas button span { font-size: 11px; font-weight: 800; color: #d4d4d8; background: rgb(255 255 255 / 0.09); border-radius: 999px; padding: 1px 7px; font-variant-numeric: tabular-nums; transition: background 0.2s; }
+.mc-abas button:hover { color: #fff; }
+.mc-abas button[aria-pressed="true"] { color: #fff; background: var(--cm-red, #d71920); box-shadow: 0 0 22px -4px rgb(215 25 32 / 0.7); }
+.mc-abas button[aria-pressed="true"] span { background: rgb(0 0 0 / 0.28); }
+.mc-abas button:active { transform: scale(0.97); }
+.mc-abas button:focus-visible, .mc-busca:focus-within { outline: 2px solid var(--cm-red2, #ff252d); outline-offset: 2px; }
+.mc-busca { display: flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 14px; color: #a1a1a6; background: #000; border: 1px solid #1a1a1d; border-radius: 999px; flex: 1 1 200px; max-width: 360px; transition: border-color 0.2s; }
+.mc-busca:focus-within { border-color: var(--cm-red, #d71920); }
 .mc-busca input { flex: 1; min-width: 0; font: inherit; font-size: 16px; color: #f5f5f5; background: none; border: 0; outline: 0; }
 .mc-busca input::placeholder { color: #77777c; }
 @media (min-width: 900px) { .mc-busca input { font-size: 13.5px; } }
@@ -15,9 +19,9 @@
 /* Área rolável: a tela é de altura fixa; o Mentor fica em cima e as matérias rolam aqui. */
 .mc-rolagem { position: relative; max-height: min(38dvh, 420px); overflow-y: auto; overscroll-behavior: contain; padding: 0 4px 18px; scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / 0.2) transparent;
   -webkit-mask-image: linear-gradient(180deg, transparent, #000 10px, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(180deg, transparent, #000 10px, #000 calc(100% - 22px), transparent); }
-@media (max-height: 700px) { .mc-rolagem { max-height: 36dvh; } .mc-atalhos { display: none; } }
+@media (max-height: 700px) { .mc-rolagem { max-height: 34dvh; } .mc-abas { display: none; } }
 .mc-grupo { padding-top: 4px; }
-.mc-grupo-cab { position: sticky; top: 0; z-index: 3; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 8px 2px 8px; background: linear-gradient(180deg, #030303 70%, transparent); }
+.mc-grupo-cab { position: sticky; top: 0; z-index: 3; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 8px 2px 8px; background: linear-gradient(180deg, var(--mc-painel, #070708) 70%, transparent); }
 .mc-grupo-cab h2 { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #f5f5f5; }
 .mc-grupo-cab h2::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; background: var(--cm-red, #d71920); box-shadow: 0 0 10px var(--cm-red, #d71920); }
 .mc-grupo-cab p { margin: 0; font-size: 11.5px; color: #8e8e93; font-variant-numeric: tabular-nums; }
@@ -87,4 +91,21 @@
 @media (prefers-reduced-motion: reduce) {
   .mc-grade li, .mc-fundo, .mc-folha, .mc-fatias i, .mc-gira { animation: none; }
   .mc-quadrado, .mc-marca, .mc-fatias i { transition: none; transform: none; }
+}
+
+/* Celular: a busca ocupa a linha toda e as abas mostram a contagem só na aba ativa (cabem as quatro). */
+.mc-busca { min-width: 0; }
+@media (max-width: 520px) {
+  .mc-ferramentas { flex-direction: column; align-items: stretch; }
+  .mc-busca { flex: none; max-width: none; width: 100%; }
+  .mc-abas { justify-content: space-between; }
+  .mc-abas button { padding: 0 11px; }
+  .mc-abas button:not([aria-pressed="true"]) span { display: none; }
+}
+.mc-grupo-cab p { white-space: nowrap; }
+@media (max-width: 400px) {
+  .mc-abas { gap: 2px; }
+  .mc-abas button { padding: 0 7px; font-size: 12px; }
+  .mc-abas button span { display: none; }
+  .mc-grupo-cab p { font-size: 11px; }
 }
