@@ -1,6 +1,6 @@
 import { notFound, redirect } from "next/navigation";
 import { requireUser } from "@/server/auth";
-import { carregarConteudoProgramatico } from "@/server/services/edital";
+import { carregarConteudoCompleto } from "@/server/services/edital-view";
 import { ConteudoProgramatico } from "@/components/missao/conteudo-programatico";
 import { montarPlanoAction, refazerLeituraAction } from "./actions";
 
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function ConteudoProgramaticoPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser(`/conteudo-programatico/${id}`);
-  const c = await carregarConteudoProgramatico(user.id, id).catch(() => null);
+  const c = await carregarConteudoCompleto(user.id, id).catch(() => null);
   if (!c) notFound();
   const lendo = ["recebendo", "lendo", "identificando", "mapeando", "organizando"].includes(c.status);
   if (!lendo && !c.disciplinas.length) redirect(`/meu-concurso/${id}`);

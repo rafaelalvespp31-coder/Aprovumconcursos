@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ArrowLeft, ChevronDown, FileText, Loader2, RefreshCw, Search, ShieldCheck, TriangleAlert } from "lucide-react";
-import type { ConteudoProgramatico as Conteudo } from "@/server/services/edital";
+import type { ConteudoProgramatico as Conteudo, TopicoConteudo } from "@/server/services/edital";
 import "./conteudo-programatico.css";
 
 type Resultado = { ok: true; destino: string } | { ok: false; error: string };
@@ -22,10 +22,16 @@ export interface ConteudoProgramaticoProps {
 const sem = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
 const n = (v: number) => v.toLocaleString("pt-BR");
 
+type Filtro = "todos" | "com" | "sem";
+/** Aula do Aprovum disponível para o tópico (completa, parcial ou a conferir) ou ainda não. */
+const temAula = (t: TopicoConteudo) => t.status === "completa" || t.status === "parcial" || t.status === "conferencia";
+const ROTULO: Record<TopicoConteudo["status"], string> = { completa: "Aula completa", parcial: "Aula parcial", conferencia: "Aula a conferir", nao_encontrado: "Sem aula ainda", pendente: "Sem aula ainda" };
+
 /** O conteúdo programático completo do edital, separado por matéria e tópico, antes de o plano de estudo ser montado. */
 export function ConteudoProgramatico({ conteudo: c, lendo, especialista, montar, refazer }: ConteudoProgramaticoProps) {
   const router = useRouter();
   const [busca, setBusca] = useState("");
+  const [filtro, setFiltro] = useState<Filtro>("todos");
   const [fechadas, setFechadas] = useState<Set<string>>(new Set());
   const [montando, setMontando] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
@@ -34,11 +40,23 @@ export function ConteudoProgramatico({ conteudo: c, lendo, especialista, montar,
   const rodada = useRef(0);
   useEffect(() => () => { rodada.current++; }, []);
 
-  const totalTopicos = useMemo(() => c.disciplinas.reduce((t, d) => t + d.topicos.length, 0), [c.disciplinas]);
+  const totais = useMemo(() => {
+    const todos = c.disciplinas.flatMap((d) => d.topicos);
+    const com = todos.filter(temAula).length;
+    return { topicos: todos.length, com, sem: todos.length - com };
+  }, [c.disciplinas]);
   const q = sem(busca.trim());
+  const filtrando = !!q || filtro !== "todos";
   const visiveis = useMemo(
-    () => c.disciplinas.map((d) => ({ ...d, achados: q ? d.topicos.filter((t) => sem(`${t.codigo ?? ""} ${t.titulo}`).includes(q) || sem(d.nome).includes(q)) : d.topicos })).filter((d) => !q || d.achados.length > 0),
-    [c.disciplinas, q],
+    () =>
+      c.disciplinas
+        .map((d) => {
+          const com = d.topicos.filter(temAula).length;
+          const achados = d.topicos.filter((t) => (filtro === "todos" || (filtro === "com") === temAula(t)) && (!q || sem(`${t.codigo ?? ""} ${t.titulo}`).includes(q) || sem(d.nome).includes(q)));
+          return { ...d, achados, com, sem: d.topicos.length - com };
+        })
+        .filter((d) => !filtrando || d.achados.length > 0),
+    [c.disciplinas, q, filtro, filtrando],
   );
   const alternar = (id: string) => setFechadas((a) => { const b = new Set(a); if (b.has(id)) b.delete(id); else b.add(id); return b; });
 
@@ -109,9 +127,14 @@ export function ConteudoProgramatico({ conteudo: c, lendo, especialista, montar,
         </p>
         <dl className="cp-numeros">
           <div><dt>Matérias</dt><dd>{n(c.disciplinas.length)}</dd></div>
-          <div><dt>Tópicos</dt><dd>{n(totalTopicos)}</dd></div>
-          {pct !== null && <div><dt>Texto classificado</dt><dd>{pct}%</dd></div>}
+          <div><dt>Tópicos</dt><dd>{n(totais.topicos)}</dd></div>
+          <div data-disp="sim"><dt>Com aula</dt><dd>{n(totais.com)}</dd></div>
+          <div data-disp="nao"><dt>Sem aula ainda</dt><dd>{n(totais.sem)}</dd></div>
         </dl>
+        <ul className="cp-legenda" aria-label="Legenda">
+          <li data-disp="sim"><span aria-hidden /> Aula disponível no Aprovum</li>
+          <li data-disp="nao"><span aria-hidden /> Aula ainda não disponível</li>
+        </ul>
         <p className="cp-leitor" data-nivel={confere ? (pct! >= 90 ? "ok" : "atencao") : "atencao"} role="status">
           {confere ? <ShieldCheck size={16} aria-hidden /> : <TriangleAlert size={16} aria-hidden />}
           <span>
@@ -138,6 +161,11 @@ export function ConteudoProgramatico({ conteudo: c, lendo, especialista, montar,
           <span className="cp-so-leitor">Buscar matéria ou tópico</span>
           <input type="search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar matéria ou tópico" autoComplete="off" />
         </label>
+        <div className="cp-filtro" role="group" aria-label="Mostrar">
+          {([["todos", `Todos ${n(totais.topicos)}`], ["com", `Com aula ${n(totais.com)}`], ["sem", `Sem aula ${n(totais.sem)}`]] as const).map(([k, rot]) => (
+            <button key={k} type="button" aria-pressed={filtro === k} data-f={k} onClick={() => setFiltro(k)}>{rot}</button>
+          ))}
+        </div>
         <div className="cp-acoes">
           <button type="button" className="cp-link" onClick={() => setFechadas(new Set())}>Abrir todas</button>
           <button type="button" className="cp-link" onClick={() => setFechadas(new Set(c.disciplinas.map((d) => d.id)))}>Recolher todas</button>
@@ -149,25 +177,37 @@ export function ConteudoProgramatico({ conteudo: c, lendo, especialista, montar,
       </nav>
 
       <div className="cp-lista" aria-busy={releitura}>
-        {visiveis.length === 0 && <p className="cp-vazio">Nada encontrado para “{busca}”.</p>}
+        {visiveis.length === 0 && <p className="cp-vazio">{q ? `Nada encontrado para “${busca}”.` : "Nenhum tópico neste filtro."}</p>}
         {visiveis.map((d) => {
-          const aberta = !!q || !fechadas.has(d.id);
+          const aberta = filtrando || !fechadas.has(d.id);
           const indice = c.disciplinas.findIndex((x) => x.id === d.id) + 1;
           return (
             <section key={d.id} id={`m-${d.id}`} className="cp-materia" data-aberta={aberta || undefined}>
               <h2>
-                <button type="button" aria-expanded={aberta} aria-controls={`t-${d.id}`} onClick={() => alternar(d.id)} disabled={!!q}>
+                <button type="button" aria-expanded={aberta} aria-controls={`t-${d.id}`} onClick={() => alternar(d.id)} disabled={filtrando}>
                   <span className="cp-num" aria-hidden>{indice}</span>
                   <span className="cp-nome">{d.nome}</span>
-                  <span className="cp-qtd">{q ? `${d.achados.length} de ${d.topicos.length}` : d.topicos.length} {d.topicos.length === 1 ? "tópico" : "tópicos"}</span>
+                  <span className="cp-qtd">{filtrando ? `${d.achados.length} de ${d.topicos.length}` : d.topicos.length} {d.topicos.length === 1 ? "tópico" : "tópicos"}</span>
                   <ChevronDown size={16} aria-hidden className="cp-seta" />
                 </button>
               </h2>
+              <div className="cp-disp" aria-label={`${d.com} com aula e ${d.sem} sem aula`}>
+                <span className="cp-barra-disp" aria-hidden><i style={{ width: `${d.topicos.length ? (d.com / d.topicos.length) * 100 : 0}%` }} /></span>
+                <span data-disp="sim">{d.com} com aula</span>
+                <span data-disp="nao">{d.sem} sem aula</span>
+              </div>
               {aberta && (
                 <ol id={`t-${d.id}`} className="cp-topicos">
                   {d.achados.map((t, i) => (
-                    <li key={i} style={{ paddingLeft: `${(Math.min(t.nivel, 5) - 1) * 16}px` }} data-nivel={Math.min(t.nivel, 5)}>
-                      {t.codigo && <b>{t.codigo}</b>}<span>{t.titulo}</span>
+                    <li key={i} style={{ marginLeft: `${(Math.min(t.nivel, 5) - 1) * 14}px` }} data-nivel={Math.min(t.nivel, 5)} data-disp={temAula(t) ? "sim" : "nao"}>
+                      <span className="cp-ponto" aria-hidden />
+                      <div className="cp-item">
+                        <p className="cp-t">{t.codigo && <b>{t.codigo}</b>}<span>{t.titulo}</span></p>
+                        <div className="cp-aulas">
+                          <span className="cp-pill">{ROTULO[t.status]}</span>
+                          {t.aulas.map((a, k) => <span key={k} className="cp-aula" title={a.titulo}>{a.titulo}</span>)}
+                        </div>
+                      </div>
                     </li>
                   ))}
                   {d.achados.length === 0 && <li className="cp-vazio">Esta matéria não tem tópicos lidos.</li>}

@@ -667,6 +667,16 @@ export async function submitManualContent(userId: string, id: string, text: unkn
   return toSummary(await own(userId, id));
 }
 
+export type DisponibilidadeAula = "completa" | "parcial" | "conferencia" | "nao_encontrado" | "pendente";
+export interface TopicoConteudo {
+  codigo: string | null;
+  nivel: number;
+  titulo: string;
+  pagina: number | null;
+  /** Há aula do Aprovum para o tópico? (completa/parcial/a conferir = sim; nao_encontrado = ainda não.) */
+  status: DisponibilidadeAula;
+  aulas: Array<{ titulo: string; cobertura: "completa" | "parcial" | "conferencia" }>;
+}
 export interface ConteudoProgramatico {
   id: string;
   titulo: string;
@@ -683,25 +693,12 @@ export interface ConteudoProgramatico {
   naoClassificados: string[];
   avisos: string[];
   secao: [number, number] | null;
-  disciplinas: Array<{ id: string; nome: string; pagina: number | null; topicos: Array<{ codigo: string | null; nivel: number; titulo: string; pagina: number | null }> }>;
+  disciplinas: Array<{ id: string; nome: string; pagina: number | null; topicos: TopicoConteudo[] }>;
 }
 
-/** Conteúdo programático completo do edital, matéria por matéria e tópico por tópico (todas as linhas, sem o limite de ~1000 do banco). */
-export async function carregarConteudoProgramatico(userId: string, id: string): Promise<ConteudoProgramatico> {
+/** Dados do edital e da leitura (sem as matérias): o conteúdo completo, com as aulas disponíveis, é montado em edital-view. */
+export async function metaConteudoProgramatico(userId: string, id: string): Promise<Omit<ConteudoProgramatico, "disciplinas">> {
   const p = await own(userId, id);
-  const db = createAdminClient();
-  const [d, t] = await Promise.all([
-    db.from("edital_disciplines").select("id, name, position, source_page").eq("preparation_id", id).order("position").limit(200),
-    topicosDe(db, id, "discipline_id, code, depth, title, position, source_page"),
-  ]);
-  if (d.error) throw new Error(d.error.message);
-  if (t.error) throw new Error(t.error.message);
-  const por = new Map<string, ConteudoProgramatico["disciplinas"][number]["topicos"]>();
-  for (const x of t.data) {
-    const arr = por.get(x.discipline_id as string) ?? [];
-    arr.push({ codigo: (x.code as string | null) ?? null, nivel: (x.depth as number | null) ?? 1, titulo: x.title as string, pagina: (x.source_page as number | null) ?? null });
-    por.set(x.discipline_id as string, arr);
-  }
   const st = (p.stats as PrepStats) ?? {};
   const faixa = /\[(\d+),(\d+)\)/.exec(String(p.section_pages ?? ""));
   return {
@@ -719,7 +716,6 @@ export async function carregarConteudoProgramatico(userId: string, id: string): 
     naoClassificados: st.reader === "gemini" ? (st.leitura?.naoClassificados ?? []) : [],
     avisos: (st.warnings ?? []).slice(0, 6),
     secao: faixa ? [Number(faixa[1]), Number(faixa[2]) - 1] : null,
-    disciplinas: ((d.data ?? []) as Row[]).map((x) => ({ id: x.id as string, nome: x.name as string, pagina: (x.source_page as number | null) ?? null, topicos: por.get(x.id as string) ?? [] })),
   };
 }
 

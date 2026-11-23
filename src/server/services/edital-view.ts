@@ -4,9 +4,9 @@ import { disciplineLabel } from "@/ai/pedagogy";
 import { UserFacingError } from "./trails";
 import { orgImageFor } from "@/domain/edital/org-images";
 import { displayTitle } from "@/domain/edital/info";
-import { backfillInfo, refreshMatchesIfStale } from "./edital";
+import { backfillInfo, metaConteudoProgramatico, refreshMatchesIfStale } from "./edital";
 import { topicosDe } from "./edital-topicos";
-import type { PrepStats, PrepStatus, PrepSummary } from "./edital";
+import type { ConteudoProgramatico, PrepStats, PrepStatus, PrepSummary } from "./edital";
 
 type Row = Record<string, unknown>;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -166,6 +166,28 @@ export async function getPreparationTree(userId: string, id: string): Promise<Pr
     prep: summaryOf(prep.data as Row),
     disciplines,
     totals: { topics: all.length, done, pct: all.length ? Math.round((done / all.length) * 100) : 0, lessonsAvailable: lessonIds.size, lessonsDone, pending: all.filter((t) => t.status === "nao_encontrado").length, questionsAnswered },
+  };
+}
+
+/** Conteúdo programático completo (matéria › tópico) com a disponibilidade de aula de cada tópico, para a página que antecede o plano. */
+export async function carregarConteudoCompleto(userId: string, id: string): Promise<ConteudoProgramatico> {
+  const [meta, tree] = await Promise.all([metaConteudoProgramatico(userId, id), getPreparationTree(userId, id)]);
+  return {
+    ...meta,
+    status: tree.prep.status,
+    disciplinas: tree.disciplines.map((d) => ({
+      id: d.id,
+      nome: d.name,
+      pagina: d.page,
+      topicos: d.topics.map((t) => ({
+        codigo: t.code,
+        nivel: t.depth,
+        titulo: t.title,
+        pagina: t.page,
+        status: t.status,
+        aulas: t.lessons.map((l) => ({ titulo: l.title, cobertura: l.coverage })),
+      })),
+    })),
   };
 }
 
