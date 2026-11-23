@@ -12,7 +12,7 @@ const RULES: Array<[CalloutKind, RegExp]> = [
   ["atencao", /^(aten[çc][ãa]o|cuidado|alerta|n[ãa]o\s+confunda|n[ãa]o\s+esque[çc]a|perigo)/i],
   ["excecao", /^(exce[çc][ãa]o|exce[çc][õo]es|ressalva|salvo)/i],
   ["observacao", /^(observa[çc][ãa]o|obs\.?|nota|anota[çc][ãa]o|detalhe)/i],
-  ["dica", /^(dica|macete|truque|estrat[ée]gia)/i],
+  ["dica", /^(dica|macete|truque|estrat[ée]gia|traduzindo\s+para\s+o\s+aluno)/i],
   ["mnemonico", /^(mnem[ôo]nico|memoriza[çc][ãa]o|decore|sigla)/i],
   ["exemplo", /^(exemplo|ex\.|caso\s+pr[áa]tico|na\s+pr[áa]tica|situa[çc][ãa]o)/i],
   ["enunciado", /^(enunciado|quest[ãa]o|caso\s+de\s+prova)/i],
@@ -28,7 +28,7 @@ const RULES: Array<[CalloutKind, RegExp]> = [
   ["resumo", /^(resumo|em\s+resumo|s[ií]ntese|revis[ãa]o|para\s+fixar|fixa[çc][ãa]o)/i],
   ["comparacao", /^(diferen[çc]a|compara[çc][ãa]o|distin[çc][ãa]o|vers(us|\.)|x\s)/i],
   ["lembrar", /^(lembre|lembrar|n[ãa]o\s+esque[çc]a|guarde)/i],
-  ["duvida", /^(d[úu]vida|pergunta|e\s+se)/i],
+  ["duvida", /^(d[úu]vida|pergunta|e\s+se|pare\s+e\s+responda)/i],
 ];
 
 /** Palavra que abre o trecho (ignorando **, #, >, emojis e espaços). */

@@ -15,3 +15,10 @@ describe("tipo de explicação", () => {
     expect(leadingLabelKind("Dica: decore a sigla")).toBe("dica");
   });
 });
+
+describe("rótulos do método de ensino", () => {
+  it("reconhece 'Pare e responda' e 'Traduzindo para o aluno'", () => {
+    expect(calloutKindOf("Pare e responda: o que é furto?")).toBe("duvida");
+    expect(calloutKindOf("Traduzindo para o aluno: a lei diz que…")).toBe("dica");
+  });
+});
