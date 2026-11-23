@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { Settings } from "lucide-react";
 import type { Sugestao } from "@/domain/missao/sugestoes";
+import type { MateriasMissao } from "@/domain/missao/materias";
 import type { Bands, Conexao } from "@/components/mentor/skull-orb-fx";
 import { AnexarEdital } from "./anexar-edital";
 import { FalarComMentor } from "./falar-mentor";
@@ -19,13 +20,16 @@ export interface CentralMissaoProps {
   objetivo: string | null;
   /** Editais que o aluno já anexou (lidos e prontos para virar plano). */
   editais: Sugestao[];
+  /** Matérias do edital em uso; sem ele (null), a tela mostra o anexo. */
+  materias: MateriasMissao | null;
 }
 
-/** Home pós-login: o Mentor no centro da tela e o convite "Anexar edital": o plano segue o conteúdo programático dele. */
-export function CentralMissao({ primeiroNome, email, objetivo, editais }: CentralMissaoProps) {
+/** Home pós-login: o Mentor no centro da tela e as matérias do edital do aluno (sem edital ainda, o convite "Anexar edital"). */
+export function CentralMissao({ primeiroNome, email, objetivo, editais, materias }: CentralMissaoProps) {
   const router = useRouter();
   const [fase, setFase] = useState<Fase>("ocioso");
   const [falando, setFalando] = useState(false);
+  const [anexando, setAnexando] = useState(false);
   const [conn, setConn] = useState<Conexao>("live");
   const nivel = useRef<(() => Bands) | null>(null);
   const ocupado = fase === "ok";
@@ -70,19 +74,48 @@ export function CentralMissao({ primeiroNome, email, objetivo, editais }: Centra
       <section className="cm-corpo">
         <p className="cm-kicker cm-e1">MENTOR APROVUM</p>
         <h1 className="cm-titulo cm-e2">QUAL É O SEU PRÓXIMO OBJETIVO?</h1>
-        <p className="cm-sub cm-e3"><span>Anexe o edital do concurso.</span> <span>O Mentor lê o conteúdo programático e monta a sua preparação.</span></p>
+        {materias ? (
+          <p className="cm-sub cm-e3" title={materias.editalNome}>{materias.editalNome}</p>
+        ) : (
+          <p className="cm-sub cm-e3"><span>Anexe o edital do concurso.</span> <span>O Mentor lê o conteúdo programático e monta a sua preparação.</span></p>
+        )}
 
         <div className="cm-form cm-e4">
-          <AnexarEdital onLido={abrirConteudo} onIniciar={encerrarVoz} desabilitado={ocupado} />
-          {editais.length > 0 && (
-            <div className="ae-chips" role="group" aria-label="Editais que você já anexou">
-              <span className="ae-chips-rotulo">Já anexados:</span>
-              {editais.slice(0, 4).map((e) => (
-                <button key={e.id} type="button" className="ae-chip" disabled={ocupado} title={e.nome} onClick={() => abrirConteudo(e.editalId ?? e.id)}>
-                  {e.nome}
-                </button>
-              ))}
-            </div>
+          {materias && (
+            <ul className="cm-materias" aria-label={`Matérias de ${materias.editalNome}`}>
+              {materias.cards.map((m) => {
+                const sem = m.total - m.comAula;
+                const pct = Math.round((m.comAula / m.total) * 100);
+                return (
+                  <li key={m.id}>
+                    <Link href={`/conteudo-programatico/${materias.editalId}#m-${m.id}`} className="cm-materia" aria-label={`${m.nome}: ${m.total} tópicos, ${m.comAula} com aula, ${sem} sem aula`}>
+                      <span className="cm-materia-nome">{m.nome}</span>
+                      <span className="cm-materia-n">{m.total} {m.total === 1 ? "tópico" : "tópicos"}</span>
+                      <span className="cm-materia-barra" aria-hidden><span style={{ width: `${pct}%` }} /></span>
+                      <span className="cm-materia-disp"><b data-disp="sim">{m.comAula} com aula</b><b data-disp="nao">{sem} sem</b></span>
+                    </Link>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+          {materias && !anexando && (
+            <button type="button" className="cm-outro" onClick={() => setAnexando(true)} disabled={ocupado}>Anexar outro edital</button>
+          )}
+          {(!materias || anexando) && (
+            <>
+              <AnexarEdital onLido={abrirConteudo} onIniciar={encerrarVoz} desabilitado={ocupado} />
+              {editais.length > 0 && (
+                <div className="ae-chips" role="group" aria-label="Editais que você já anexou">
+                  <span className="ae-chips-rotulo">Já anexados:</span>
+                  {editais.slice(0, 4).map((e) => (
+                    <button key={e.id} type="button" className="ae-chip" disabled={ocupado} title={e.nome} onClick={() => abrirConteudo(e.editalId ?? e.id)}>
+                      {e.nome}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
           )}
         </div>
 

@@ -2122,12 +2122,12 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 .bn-moldura::after { right: 14px; background: linear-gradient(270deg, #FF2A2A, rgba(242,13,24,0)); box-shadow: 0 0 10px rgba(242,13,24,0.8); }
 .bn {
   --oct: polygon(var(--c) 0, calc(100% - var(--c)) 0, 100% var(--c), 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, var(--c) 100%, 0 calc(100% - var(--c)), 0 var(--c));
-  position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; padding: 5px;
+  position: relative; isolation: isolate; display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 3px; padding: 5px;
 }
 .bn-fundo { position: absolute; inset: 0; z-index: -1; clip-path: var(--oct); background: linear-gradient(180deg, rgba(255,255,255,0.16), rgba(255,255,255,0.05) 40%, rgba(242,13,24,0.45)); }
 .bn-fundo::before { content: ""; position: absolute; inset: 1px; clip-path: var(--oct); background: radial-gradient(60% 120% at 50% 0%, rgba(242,13,24,0.10), transparent 70%), linear-gradient(180deg, #121316, #08090B); }
-@media (min-width: 1024px) { .bn { gap: 6px; padding: 7px 9px; grid-template-columns: repeat(7, minmax(0, 1fr)); } }
-/* Celular: sem Revisões e Evolução, com Meu Plano; computador: as sete opções originais. */
+@media (min-width: 1024px) { .bn { gap: 6px; padding: 7px 9px; grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+/* Celular: sem Revisões e Evolução, com Meu Plano; computador: as seis opções. */
 @media (max-width: 1023.98px) { .bn-so-d { display: none; } }
 @media (min-width: 1024px) { .bn-so-m { display: none; } }
 .bn-cel { position: relative; min-width: 0; }
@@ -2170,11 +2170,6 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
   .bn-luz-baixo { bottom: -13px; left: 20%; right: 20%; }
 }
 /* Novo: ícone num octógono vermelho */
-.bn-novo-ico { display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; clip-path: polygon(30% 0, 70% 0, 100% 30%, 100% 70%, 70% 100%, 30% 100%, 0 70%, 0 30%); background: linear-gradient(180deg, #FF2A2A, #B8000A); }
-.bn-novo-ico .bn-ico { width: 17px; height: 17px; color: #fff; }
-@media (min-width: 1024px) { .bn-novo-ico { width: 30px; height: 30px; } .bn-novo-ico .bn-ico { width: 18px; height: 18px; } }
-.bn-cel-ativa .bn-novo-ico { background: #fff; }
-.bn-cel-ativa .bn-novo-ico .bn-ico { color: #E50914; }
 @media (prefers-reduced-motion: reduce) { .bn-item, .bn-item::before { transition: none; } }
 /* Recolher o menu inferior (só no computador, igual ao menu lateral) */
 .bn-recolher, .bn-abrir { display: none; }

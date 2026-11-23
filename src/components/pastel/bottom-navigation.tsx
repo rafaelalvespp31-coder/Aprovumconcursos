@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useRef, type KeyboardEvent } from "react";
-import { BookOpen, ChartNoAxesColumnIncreasing, ChevronDown, ChevronUp, Clock3, Crown, Gamepad2, House, LayoutGrid, Plus, Target, type LucideIcon } from "lucide-react";
+import { BookOpen, ChartNoAxesColumnIncreasing, ChevronDown, ChevronUp, Clock3, Crown, Gamepad2, House, LayoutGrid, Target, type LucideIcon } from "lucide-react";
 import { useStored } from "@/components/use-stored";
 
-export type BottomNavId = "painel" | "trilhas" | "quiz" | "questoes" | "revisoes" | "desempenho" | "plano" | "novo" | "area";
+export type BottomNavId = "painel" | "trilhas" | "quiz" | "questoes" | "revisoes" | "desempenho" | "plano" | "area";
 
 interface Item {
   id: BottomNavId;
@@ -20,7 +20,7 @@ interface Item {
   only?: "desktop" | "mobile";
 }
 
-/** As sete opções, nesta ordem, ligadas às rotas reais do app. */
+/** As seis opções, nesta ordem, ligadas às rotas reais do app. */
 export const BOTTOM_NAV_ITEMS: readonly Item[] = [
   { id: "painel", label: "Painel", sub: "Sua evolução em tempo real", icon: House, path: "/painel" },
   { id: "trilhas", label: "Estudos", sub: "Sua base para a aprovação", icon: BookOpen, path: "/trilhas" },
@@ -30,11 +30,10 @@ export const BOTTOM_NAV_ITEMS: readonly Item[] = [
   { id: "desempenho", label: "Evolução", sub: "Acompanhe seu progresso", aria: "Evolução (desempenho)", icon: ChartNoAxesColumnIncreasing, path: "/desempenho", only: "desktop" },
   { id: "area", label: "Área", sub: "Todos os menus", aria: "Área do Aluno", icon: LayoutGrid, path: "/area-do-aluno", only: "mobile" },
   { id: "plano", label: "Meu Plano", sub: "Escolha seu plano", icon: Crown, path: "/plano", only: "mobile" },
-  { id: "novo", label: "Novo", sub: "Crie novos estudos", aria: "Novo estudo", icon: Plus, path: "/nova-trilha" },
 ];
 
 /**
- * Menu inferior APROVUM: moldura chanfrada com sete blocos; o bloco da seção aberta fica
+ * Menu inferior APROVUM: moldura chanfrada com seis blocos; o bloco da seção aberta fica
  * vermelho, iluminado e com barras de luz. No celular fica fixo no rodapé (área segura);
  * no computador, centralizado no rodapé da área de conteúdo. O ativo vem da rota atual.
  */
@@ -83,7 +82,7 @@ export function BottomNavigation({ activeId, basePath = "", plan = "gratuito" }:
                   onKeyDown={(e) => onKeyDown(e, i)}
                   className={`bn-item ${on ? "bn-ativo" : ""}`}
                 >
-                  {it.id === "novo" ? <span className="bn-novo-ico">{icon}</span> : icon}
+                  {icon}
                   <span className="bn-txt">{it.label}</span>
                   <span className="bn-sub" aria-hidden>
                     {it.sub}

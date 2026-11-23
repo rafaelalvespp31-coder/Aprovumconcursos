@@ -179,7 +179,7 @@ export function PastelShell({
   const isPainel = active?.id === "painel";
   const isPerfilPage = active?.id === "perfil";
   const bottomActive: BottomNavId | null = path.startsWith(`${basePath}/nova-trilha`)
-    ? "novo"
+    ? null
     : active && ["painel", "trilhas", "quiz", "questoes", "plano"].includes(active.id)
       ? (active.id as BottomNavId)
       : active && ["area", "revisoes", "desempenho", "concursos", "aprovum-ai", "depoimentos", "perfil"].includes(active.id)

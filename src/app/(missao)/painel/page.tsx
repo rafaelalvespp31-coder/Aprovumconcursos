@@ -5,9 +5,9 @@ import { CentralMissao } from "@/components/missao/central-missao";
 export const metadata = { title: "Central de Missão" };
 export const dynamic = "force-dynamic";
 
-/** Home pós-login: Mentor, a pergunta e o botão Anexar edital. O restante do app segue nas rotas de sempre. */
+/** Home pós-login: Mentor, a pergunta e os cards das matérias do edital (ou o botão Anexar edital, se ainda não houver). O restante do app segue nas rotas de sempre. */
 export default async function MissaoPage() {
   const user = await requireUser("/painel");
-  const dados = await carregarMissao(user.id).catch(() => ({ primeiroNome: null, objetivo: null, editais: [] }));
+  const dados = await carregarMissao(user.id).catch(() => ({ primeiroNome: null, objetivo: null, editais: [], materias: null }));
   return <CentralMissao {...dados} email={user.email} />;
 }
