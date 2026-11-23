@@ -85,10 +85,15 @@ export function MateriasCatalogo({ materias, termo = "", grupos: mostrar = ["bas
         if (!lista.length) return null;
         const aulas = lista.reduce((s, x) => s + x.aulas, 0);
         return (
-          <section key={g} id={`mc-sec-${g}`} className="mc-grupo" aria-labelledby={`mc-h-${g}`}>
+          <section key={g} id={`mc-sec-${g}`} className="mc-grupo" data-grupo={g} aria-labelledby={`mc-h-${g}`}>
             <header className="mc-grupo-cab">
-              <h2 id={`mc-h-${g}`}>{ROTULO_GRUPO[g]}</h2>
-              <p>{plural(lista.length, "matéria", "matérias")} · {plural(aulas, "aula", "aulas")}</p>
+              <span className="mc-grupo-ico" aria-hidden>{g === "basicas" ? <BookOpen /> : <Gavel />}</span>
+              <div className="mc-grupo-txt">
+                <span className="mc-grupo-kicker">{g === "basicas" ? "Base de estudo" : "Conhecimentos específicos"}</span>
+                <h2 id={`mc-h-${g}`}>{ROTULO_GRUPO[g]}</h2>
+                <p>{plural(aulas, "aula catalogada", "aulas catalogadas")}</p>
+              </div>
+              <span className="mc-grupo-num" aria-label={plural(lista.length, "matéria", "matérias")}>{lista.length}</span>
             </header>
             <ul className="mc-grade">
               {lista.map((x, k) => {

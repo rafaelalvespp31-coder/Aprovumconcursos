@@ -21,10 +21,6 @@
   -webkit-mask-image: linear-gradient(180deg, transparent, #000 10px, #000 calc(100% - 22px), transparent); mask-image: linear-gradient(180deg, transparent, #000 10px, #000 calc(100% - 22px), transparent); }
 @media (max-height: 700px) { .mc-rolagem { max-height: 34dvh; } .mc-abas { display: none; } }
 .mc-grupo { padding-top: 4px; }
-.mc-grupo-cab { position: sticky; top: 0; z-index: 3; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 8px 2px 8px; background: linear-gradient(180deg, var(--mc-painel, #070708) 70%, transparent); }
-.mc-grupo-cab h2 { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: #f5f5f5; }
-.mc-grupo-cab h2::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; background: var(--cm-red, #d71920); box-shadow: 0 0 10px var(--cm-red, #d71920); }
-.mc-grupo-cab p { margin: 0; font-size: 11.5px; color: #8e8e93; font-variant-numeric: tabular-nums; }
 
 .mc-grade { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 0; padding: 2px 0 10px; list-style: none; }
 @media (min-width: 600px) { .mc-grade { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); } }
@@ -133,3 +129,25 @@ a.mc-quadrado { text-decoration: none; }
   .mc-abas { display: flex; }
   .mc-grade { gap: 10px; }
 }
+
+/* Separação entre concursos e matérias: cada seção é um banner colorido com ícone, rótulo, contagem e uma linha luminosa entre elas. */
+.mc-grupo { --g: #ff252d; position: relative; padding-top: 4px; }
+.mc-grupo[data-grupo="basicas"] { --g: #38bdf8; }
+.mc-grupo[data-grupo="especificas"] { --g: #a78bfa; }
+.mc-grupo + .mc-grupo { margin-top: 20px; padding-top: 22px; }
+.mc-grupo + .mc-grupo::before { content: ""; position: absolute; top: 0; left: -4px; right: -4px; height: 1px; background: linear-gradient(90deg, transparent, var(--g) 50%, transparent); box-shadow: 0 0 14px 1px var(--g); opacity: 0.8; }
+.mc-grupo-cab { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 12px; margin: 0 0 10px; padding: 10px 12px; overflow: hidden; isolation: isolate;
+  background: linear-gradient(100deg, color-mix(in srgb, var(--g) 26%, #0a0a0c), #0a0a0c 72%); border: 1px solid color-mix(in srgb, var(--g) 45%, transparent); border-radius: 18px; box-shadow: 0 0 30px -16px var(--g), inset 0 1px 0 rgb(255 255 255 / 0.07); }
+.mc-grupo-cab::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 4px; background: var(--g); box-shadow: 0 0 16px var(--g); }
+.mc-grupo-ico { display: grid; place-items: center; width: 42px; height: 42px; margin-left: 4px; color: var(--g); background: color-mix(in srgb, var(--g) 16%, #000); border: 1px solid color-mix(in srgb, var(--g) 50%, transparent); border-radius: 14px; box-shadow: 0 0 18px -6px var(--g); }
+.mc-grupo-ico svg { width: 22px; height: 22px; }
+.mc-grupo-txt { display: grid; gap: 1px; min-width: 0; }
+.mc-grupo-kicker { font-size: 10px; font-weight: 800; letter-spacing: 0.2em; text-transform: uppercase; color: var(--g); }
+.mc-grupo-cab h2 { margin: 0; font-size: 17px; font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; color: #fff; }
+.mc-grupo-cab p { margin: 1px 0 0; font-size: 12px; color: #a1a1a6; font-variant-numeric: tabular-nums; }
+.mc-grupo-num { display: grid; place-items: center; min-width: 38px; height: 38px; padding: 0 10px; font-size: 18px; font-weight: 900; color: #fff; background: var(--g); border-radius: 12px; box-shadow: 0 6px 18px -6px var(--g); font-variant-numeric: tabular-nums; }
+.mc-grupo[data-grupo="basicas"] .mc-grupo-num, .mc-grupo[data-grupo="especificas"] .mc-grupo-num { color: #06060a; }
+@media (hover: hover) { .mc-grupo-cab:hover .mc-grupo-ico { transform: rotate(-6deg) scale(1.06); } }
+.mc-grupo-ico { transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1); }
+@media (prefers-reduced-motion: reduce) { .mc-grupo-ico { transition: none; } }
+@media (max-width: 400px) { .mc-grupo-cab { gap: 10px; padding: 9px 10px; } .mc-grupo-ico { width: 38px; height: 38px; } .mc-grupo-cab h2 { font-size: 16px; } }

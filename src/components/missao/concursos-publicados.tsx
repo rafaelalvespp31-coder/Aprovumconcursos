@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, Hourglass, Landmark, Loader2 } from "lucide-react";
+import { ArrowUpRight, BarChart3, Hourglass, Landmark, Loader2, Trophy } from "lucide-react";
 import type { ConcursoCard } from "@/domain/missao/materias";
 import { abrirConcursoAction } from "@/app/(missao)/painel/actions";
 import { estilo, seguir, soltar } from "./materias-catalogo";
@@ -34,10 +34,15 @@ export function ConcursosPublicados({ concursos }: { concursos: ConcursoCard[] }
 
   const prontos = concursos.filter((c) => c.estado === "pronto").length;
   return (
-    <section id="mc-sec-concursos" className="mc-grupo" aria-labelledby="mc-h-concursos">
+    <section id="mc-sec-concursos" className="mc-grupo" data-grupo="concursos" aria-labelledby="mc-h-concursos">
       <header className="mc-grupo-cab">
-        <h2 id="mc-h-concursos">Concursos</h2>
-        <p>{concursos.length === 1 ? "1 concurso" : `${concursos.length} concursos`}{prontos ? ` · ${prontos} para estudar` : ""}</p>
+        <span className="mc-grupo-ico" aria-hidden><Trophy /></span>
+        <div className="mc-grupo-txt">
+          <span className="mc-grupo-kicker">Escolha o seu objetivo</span>
+          <h2 id="mc-h-concursos">Concursos</h2>
+          <p>{prontos ? `${prontos} ${prontos === 1 ? "pronto" : "prontos"} para estudar` : "Em breve para estudar"}</p>
+        </div>
+        <span className="mc-grupo-num" aria-label={concursos.length === 1 ? "1 concurso" : `${concursos.length} concursos`}>{concursos.length}</span>
       </header>
       <ul className="mc-grade">
         {concursos.map((c, i) => {
