@@ -44,64 +44,74 @@ void main(){
 }`;
 
 /**
- * Anel de fogo e fumaça: uma lâmina fina de fumaça incandescente em forma de anel, com filamentos que deslizam ao longo
- * dele, línguas de fogo que sobem para fora e o centro escuro. Cor de fogo real (vermelho profundo → laranja → núcleo
- * amarelado). A voz engrossa, acende e acelera o anel; a deformação do contorno vem de `deformaVoz`.
+ * Anel de fogo e fumaça fiel à referência: a forma e o movimento vêm dos quadros do GIF de referência (folha de textura
+ * com 45 quadros, em tons de cinza, em /home/orb-fogo.webp). O shader só mistura quadros vizinhos (movimento suave),
+ * suaviza e pinta a densidade com a paleta de fogo (vermelho profundo → laranja → núcleo quente). A voz acende o anel,
+ * acelera a fumaça e deforma o contorno. Centro preto.
  */
 const FRAG_PLASMA = /* glsl */ `
 precision highp float;
 ${RUIDO}
 ${OCLUSAO}
 ${DEFORMA_VOZ}
-uniform float uTime, uBrilho, uPulso, uEspiral, uAudio;
+uniform sampler2D uFogo;
+uniform float uTime, uBrilho, uPulso, uEspiral, uAudio, uQuadro, uPronto;
 varying vec2 vP;
-float cume(vec2 p){ return 1. - abs(2. * fbm(p) - 1.); }
-// calor (0 a 1,3) → cor de brasa/fogo
-vec3 fogo(float h){
-  vec3 c = mix(vec3(.04, .0, .0), vec3(.5, .012, .008), smoothstep(0., .22, h));
-  c = mix(c, vec3(.98, .13, .015), smoothstep(.18, .5, h));
-  c = mix(c, vec3(1., .42, .05), smoothstep(.45, .82, h));
-  c = mix(c, vec3(1., .78, .4), smoothstep(.8, 1.2, h));
+const float N = 45.;
+const float COLS = 7.;
+const float ROWS = 7.;
+const float META = 1.116; // meia largura do recorte, em raios da esfera
+float quadro(float k, vec2 uv){
+  k = mod(k, N);
+  vec2 cel = vec2(mod(k, COLS), floor(k / COLS));
+  return texture2D(uFogo, (cel + clamp(uv, .006, .994)) / vec2(COLS, ROWS)).r;
+}
+// mistura dois quadros vizinhos: o movimento fica contínuo mesmo com 15 quadros por segundo
+float lumi(vec2 uv){
+  float i = floor(uQuadro); float m = uQuadro - i;
+  return mix(quadro(i, uv), quadro(i + 1., uv), m);
+}
+// densidade de fumaça (0 a 1) → cor de fogo
+vec3 fogo(float x){
+  vec3 c = mix(vec3(0.), vec3(.30, .006, .004), smoothstep(0., .16, x));
+  c = mix(c, vec3(.78, .06, .01), smoothstep(.12, .42, x));
+  c = mix(c, vec3(1., .27, .03), smoothstep(.36, .7, x));
+  c = mix(c, vec3(1., .56, .14), smoothstep(.66, .92, x));
+  c = mix(c, vec3(1., .82, .48), smoothstep(.9, 1.15, x));
   return c;
 }
 void main(){
   vec2 p = vP; float len = length(p); vec2 cs = p / max(len, 1e-4); float t = uTime;
   float a = min(1., uAudio * 1.25);
-  float ts = t * (1. + a * .9); // a fala acelera o fogo
-  // raio irregular do anel (sem emenda no ângulo) + deformação da voz
-  float e1 = noise(cs * 1.6 + vec2(t * .22, t * .13));
-  float e2 = noise(cs * 4.0 + vec2(-t * .35, t * .2 + 4.));
-  float rr = .93 + (e1 - .5) * .07 + (e2 - .5) * .026 + uPulso * .008 * sin(t * 1.5) + deformaVoz(cs, t, uAudio);
-  float d = len - rr;
-  // espessura da lâmina varia ao longo do anel: trechos finos e trechos encorpados que giram devagar
-  float esp = .075 + .15 * noise(cs * 1.3 + vec2(-t * .15, 3.)) + .05 * a;
-  // fluxo da fumaça: o desenho desliza ao longo do anel; os filamentos ficam esticados na direção do anel (como véus)
-  vec2 cr = rot(t * .09 + uEspiral * t * .1) * cs;
-  vec2 w1 = vec2(fbm(cr * 1.8 + vec2(d * 3., ts * .2)), fbm(cr * 1.8 + vec2(-d * 3. + 7., -ts * .17)));
-  vec2 g = cr * 2.4 + (w1 - .5) * 1.1;
-  float f1 = fbm(g + vec2(d * 6. - ts * .3, ts * .1));                    // corpo do véu
-  float f2 = cume(g * 1.7 + vec2(d * 15. + w1.x * 2., ts * .15));         // filamentos
-  float f3 = cume(g * 3.3 + vec2(d * 28. - ts * .4, 3.));                 // fios finos
-  float dd = d + (f1 - .5) * .13 - .01;
-  float lamina = smoothstep(.28, .74, f1 + (w1.y - .5) * .35);            // trechos densos x rarefeitos
-  float corpo = exp(-pow(abs(dd) / esp, 1.9) * 1.7) * (.2 + .8 * lamina);
-  float fil = f2 * .7 + f3 * .4;
-  // línguas de fogo que sobem para fora do anel
-  float lingua = fbm(cr * 3.4 + vec2(max(d, 0.) * 5. - ts * .95, t * .15));
-  float chama = smoothstep(.3, .85, lingua) * exp(-max(d, 0.) * 6.5) * (.5 + a) * smoothstep(-.04, .02, d) * (.4 + .6 * lamina);
-  float quente = exp(-d * d / (esp * esp * .35));
-  float h = corpo * (.2 + 1.5 * pow(fil, 2.3)) + chama * .85 + quente * .1 * (.4 + f1);
-  h *= uBrilho * (1. + .6 * a);
-  vec3 cor = fogo(h) * smoothstep(0., .1, h);
-  // brilho difuso: aura vermelha para fora e um fio laranja no contorno
-  vec3 glow = vec3(.95, .09, .03) * exp(-max(d, 0.) * 5.2) * .4 + vec3(1., .3, .04) * exp(-abs(d) * 15.) * .34 * (.6 + f1);
-  glow *= uBrilho * (1. + .5 * a);
-  // centro escuro, com um resquício de calor colado na borda interna
-  float dentro = smoothstep(.014, -.02, d);
-  vec3 interior = vec3(.008, .0, .002) + vec3(.8, .06, .02) * exp(min(d, 0.) * 11.) * (.2 + .5 * f1) * .5;
-  float alfa = max(dentro * .975, clamp(h * .55, 0., .55));
-  vec3 rgb = interior * dentro + cor * (1. - dentro * .35) + glow * (1. - dentro);
-  rgb = rgb / (1. + rgb * .2);
+  // a voz estufa o anel onde a deformação é positiva (o desenho acompanha)
+  vec2 q = p / (1. + deformaVoz(cs, t, uAudio));
+  vec2 uv = vec2(.5 + q.x / (2. * META), .5 - q.y / (2. * META));
+  float px = 1.4 / 256.;
+  // leve suavização (hiper-real, sem serrilhado) e um halo mais aberto
+  float L0 = lumi(uv);
+  float Lb = L0 * .4 + (lumi(uv + vec2(px, 0.)) + lumi(uv - vec2(px, 0.)) + lumi(uv + vec2(0., px)) + lumi(uv - vec2(0., px))) * .15;
+  float L = mix(L0, Lb, .4);
+  float halo = 0.;
+  for (int i = 0; i < 8; i++){
+    float ang = float(i) * .785398;
+    halo += lumi(uv + vec2(cos(ang), sin(ang)) * .028);
+  }
+  halo /= 8.;
+  // os véus translúcidos ficam vermelhos e fundos; só os filamentos e as bordas mais densas esquentam até o laranja
+  float filete = clamp((L0 - Lb) * 3.2, 0., 1.);
+  float x = clamp((pow(L, 1.75) * 1.22 + filete * .3) * (1. + .45 * a) * uBrilho * uPronto, 0., 1.3);
+  vec3 cor = fogo(x);
+  // halo avermelhado e fio laranja difuso saindo da fumaça
+  vec3 brilho = vec3(.95, .1, .02) * pow(halo, 1.5) * .42 * (1. + .5 * a) * uBrilho * uPronto;
+  brilho += vec3(1., .3, .04) * pow(L, 2.4) * .12 * uBrilho * uPronto;
+  // centro escuro + contorno de calor colado por dentro do anel
+  float dentro = smoothstep(.9, .83, len);
+  vec3 interior = vec3(.006, .0, .002) + vec3(.7, .05, .015) * pow(halo, 1.6) * .35 * uPronto;
+  // antes de a textura carregar: só um anel fraco para não aparecer um buraco
+  float reserva = exp(-pow((len - .93) / .05, 2.)) * (1. - uPronto) * .4;
+  vec3 rgb = interior * dentro + (cor * (1. - dentro * .15) + brilho) * (1. - dentro * .0) + vec3(.9, .1, .03) * reserva;
+  float alfa = max(dentro * .975, clamp(x * .8, 0., .85));
+  rgb = rgb / (1. + rgb * .12);
   float oc = 1. - ocluidoMao(1.);
   gl_FragColor = vec4(rgb * oc, alfa * oc);
 }`;
@@ -161,6 +171,7 @@ function criarUniforms() {
     uCenter: { value: new THREE.Vector2(PALMA.x, PALMA.y) },
     uR: { value: PALMA.raio as number },
     uTime: { value: 0 }, uAnim: { value: 0 }, uBrilho: { value: 1 }, uPulso: { value: 0.35 }, uEspiral: { value: 0 }, uAudio: { value: 0 },
+    uQuadro: { value: 0 }, uPronto: { value: 0 }, uFogo: { value: null as unknown as THREE.Texture },
   };
 }
 
@@ -173,6 +184,8 @@ export class MentorOrb3D {
   private luzMat: THREE.ShaderMaterial;
   private rnd = aleatorio(20260);
   private anim = 0;
+  private quadro = 0;
+  private fogoPronto = false;
   private tempo = 0;
   private cx: number = PALMA.x;
   private cy: number = PALMA.y;
@@ -181,11 +194,19 @@ export class MentorOrb3D {
     const compartilhados = { uRes: comuns.uRes, uMatte: comuns.uMatte, uPx: comuns.uPx };
     this.uniforms = criarUniforms();
     const u = this.uniforms;
+    // folha de textura com os quadros do anel (referência): carrega sem bloquear; até lá só um anel fraco e o centro preto
+    const vazio = new THREE.DataTexture(new Uint8Array([0, 0, 0, 255]), 1, 1);
+    vazio.needsUpdate = true;
+    u.uFogo.value = vazio;
+    new THREE.TextureLoader().load("/home/orb-fogo.webp", (t) => {
+      t.minFilter = t.magFilter = THREE.LinearFilter; t.generateMipmaps = false; t.colorSpace = THREE.NoColorSpace; t.flipY = false;
+      u.uFogo.value = t; this.fogoPronto = true;
+    }, undefined, () => { /* sem a textura o anel fica só na reserva fraca */ });
     const base = { ...compartilhados, uCenter: u.uCenter, uR: u.uR, uTime: u.uTime, uAnim: u.uAnim, uBrilho: u.uBrilho, uPulso: u.uPulso, uEspiral: u.uEspiral };
 
     // anel de fogo: um quadrado maior que a esfera; o shader desenha o anel, a fumaça, as línguas de fogo e a aura
     const quad = new THREE.PlaneGeometry(2, 2);
-    this.plasma = materialAditivo({ vertexShader: VERT_QUAD, fragmentShader: FRAG_PLASMA, uniforms: { ...base, uQuad: { value: 2.9 }, uAudio: u.uAudio } });
+    this.plasma = materialAditivo({ vertexShader: VERT_QUAD, fragmentShader: FRAG_PLASMA, uniforms: { ...base, uQuad: { value: 2.9 }, uAudio: u.uAudio, uQuadro: u.uQuadro, uPronto: u.uPronto, uFogo: u.uFogo } });
     const malha = new THREE.Mesh(quad, this.plasma);
     malha.frustumCulled = false; malha.renderOrder = 10;
 
@@ -218,12 +239,15 @@ export class MentorOrb3D {
   atualizar(dt: number, e: AlvoCena, audio: number, escala = 1, deforma = 0) {
     this.tempo += dt;
     this.anim += dt * e.rapidez;
+    // a fumaça corre na velocidade do GIF (15 quadros por segundo na folha) e acelera um pouco com a fala
+    this.quadro += dt * 15 * Math.min(1.6, 0.85 + 0.15 * e.rapidez + deforma * 0.8);
     const t = this.tempo;
     this.cy = PALMA.y + Math.sin(t * 0.95) * 4 + Math.sin(t * 0.33 + 1.3) * 1.6;
     this.cx = PALMA.x + Math.sin(t * 0.6) * 1.2;
     const u = this.uniforms;
     u.uCenter.value.set(this.cx, this.cy);
-    u.uTime.value = t; u.uAnim.value = this.anim;
+    u.uTime.value = t; u.uAnim.value = this.anim; u.uQuadro.value = this.quadro;
+    u.uPronto.value = this.fogoPronto ? Math.min(1, u.uPronto.value + dt * 1.6) : 0;
     u.uBrilho.value = e.brilho * (0.95 + 0.05 * Math.sin(t * 1.3));
     u.uPulso.value = e.pulso; u.uEspiral.value = e.espiral; u.uAudio.value = deforma;
     // contração e expansão da esfera inteira (anel, núcleo, micropartículas e luz) no ritmo da voz
