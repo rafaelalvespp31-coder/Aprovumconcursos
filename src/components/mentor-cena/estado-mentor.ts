@@ -44,8 +44,18 @@ export function suavizar(atual: AlvoCena, alvo: AlvoCena, dt: number, taxa = 2.2
   return r;
 }
 
-/** Envelope do áudio para a esfera: sobe e desce devagar, sem picos (sobe em ~0,15 s e solta em ~0,4 s). */
+/** Envelope do áudio para a esfera: acompanha as sílabas sem tremer (sobe em ~0,1 s e solta em ~0,25 s). */
 export function suavizarAudio(atual: number, alvo: number, dt: number): number {
-  const taxa = alvo > atual ? 7 : 2.6;
+  const taxa = alvo > atual ? 13 : 5.5;
   return atual + (alvo - atual) * (1 - Math.exp(-Math.max(0, dt) * taxa));
+}
+
+/**
+ * Escala da esfera pela voz: enquanto o Mentor fala ela se contrai no silêncio entre as palavras (0,93)
+ * e expande com a energia da fala (até ~1,08). `fala` (0 a 1) liga e desliga isso suavemente nas trocas de fase.
+ */
+export function escalaDaVoz(fala: number, audio: number): number {
+  const f = Math.min(1, Math.max(0, fala));
+  const a = Math.min(1, Math.max(0, audio));
+  return 1 + f * (-0.07 + 0.15 * Math.min(1, a * 1.3));
 }

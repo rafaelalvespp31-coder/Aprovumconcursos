@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { alvoDaFase, REPOUSO, suavizar, suavizarAudio } from "./estado-mentor";
+import { alvoDaFase, escalaDaVoz, REPOUSO, suavizar, suavizarAudio } from "./estado-mentor";
 import { nivelAbaixo, nivelInicial, qualidadeDe } from "./qualidade";
 
 describe("alvoDaFase", () => {
@@ -51,15 +51,16 @@ describe("suavizar", () => {
 });
 
 describe("suavizarAudio", () => {
-  it("sobe e desce sem saltos: um pico curto não passa de metade", () => {
-    let a = 0;
-    a = suavizarAudio(a, 1, 1 / 60);
-    expect(a).toBeLessThan(0.15);
-    for (let i = 0; i < 6; i++) a = suavizarAudio(a, 1, 1 / 60);
+  it("acompanha a fala sem saltos: um quadro nunca vai direto ao alvo", () => {
+    let a = suavizarAudio(0, 1, 1 / 60);
+    expect(a).toBeGreaterThan(0.1);
+    expect(a).toBeLessThan(0.3);
+    for (let i = 0; i < 12; i++) a = suavizarAudio(a, 1, 1 / 60);
+    expect(a).toBeGreaterThan(0.9);
     const pico = a;
     for (let i = 0; i < 6; i++) a = suavizarAudio(a, 0, 1 / 60);
     expect(a).toBeLessThan(pico);
-    expect(a).toBeGreaterThan(pico * 0.4);
+    expect(a).toBeGreaterThan(pico * 0.3);
   });
   it("solta mais devagar do que sobe", () => {
     const sobe = suavizarAudio(0, 1, 0.1);
@@ -85,5 +86,17 @@ describe("qualidade", () => {
     expect(nivelAbaixo("alta")).toBe("media");
     expect(nivelAbaixo("media")).toBe("baixa");
     expect(nivelAbaixo("baixa")).toBeNull();
+  });
+});
+
+describe("escalaDaVoz", () => {
+  it("fora da fala a esfera mantém o tamanho", () => {
+    expect(escalaDaVoz(0, 0)).toBe(1);
+    expect(escalaDaVoz(0, 1)).toBe(1);
+  });
+  it("falando, contrai no silêncio e expande com a voz", () => {
+    expect(escalaDaVoz(1, 0)).toBeCloseTo(0.93, 5);
+    expect(escalaDaVoz(1, 1)).toBeCloseTo(1.08, 5);
+    expect(escalaDaVoz(1, 0.5)).toBeGreaterThan(escalaDaVoz(1, 0.1));
   });
 });

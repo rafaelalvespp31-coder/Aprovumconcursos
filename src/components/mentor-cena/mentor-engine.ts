@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { RefObject } from "react";
 import type { Bands } from "@/components/mentor/skull-orb-fx";
 import type { FaseMentor } from "@/components/missao/falar-mentor";
-import { alvoDaFase, REPOUSO, suavizar, suavizarAudio, type AlvoCena } from "./estado-mentor";
+import { alvoDaFase, escalaDaVoz, REPOUSO, suavizar, suavizarAudio, type AlvoCena } from "./estado-mentor";
 import { lerAparelho, nivelAbaixo, nivelInicial, qualidadeDe } from "./qualidade";
 import { MentorOrb3D, type UniformsComuns } from "./mentor-orb-3d";
 import { ARTE, EmberEnvironment } from "./ember-environment";
@@ -60,6 +60,7 @@ export function criarMotor(canvas: HTMLCanvasElement, op: OpcoesMotor): MotorCen
   let fase: FaseMentor = "repouso";
   let atual: AlvoCena = { ...REPOUSO };
   let audio = 0;
+  let fala = 0;
   let pausado = false;
   let visivel = true;
   let raf = 0;
@@ -88,13 +89,14 @@ export function criarMotor(canvas: HTMLCanvasElement, op: OpcoesMotor): MotorCen
     const b = op.fonte.current?.();
     const alvo = b ? Math.min(1, Math.max(b.vol ?? 0, b.me ?? 0)) : 0;
     audio = suavizarAudio(audio, alvo, dt);
+    fala += ((fase === "respondendo" ? 1 : 0) - fala) * (1 - Math.exp(-dt * 5));
   };
 
   const passo = (dt: number) => {
     tempo += dt;
     lerAudio(dt);
     atual = suavizar(atual, alvoDaFase(fase, audio), dt, 2.2);
-    orb.atualizar(dt, atual, audio);
+    orb.atualizar(dt, atual, audio, escalaDaVoz(fala, audio));
     brasas.atualizar(dt, atual, tempo);
   };
   const desenhar = () => renderer.render(scene, camera);

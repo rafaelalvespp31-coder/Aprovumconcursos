@@ -57,7 +57,7 @@ void main(){
   float e1 = noise(cs * 2.0 + vec2(t * .55, t * .3));
   float e2 = noise(cs * 5.0 + vec2(-t * .7, t * .4 + 4.));
   float e3 = noise(cs * 13.0 + vec2(t * 1.1, 9.));
-  float rr = 1.0 + (e1 - .5) * .06 + (e2 - .5) * .032 + (e3 - .5) * .01 + uPulso * .01 * sin(t * 1.5) + uAudio * .022;
+  float rr = 1.0 + (e1 - .5) * .06 + (e2 - .5) * .032 + (e3 - .5) * .01 + uPulso * .01 * sin(t * 1.5);
   float d = len - rr;
   float w = .02 + .012 * e2;
   float quente = exp(-d * d / (w * w));
@@ -284,7 +284,7 @@ export class MentorOrb3D {
   private comuns: UniformsComuns;
 
   /** OrbAnimationController: levitação lenta e respiração suave guiada pelo áudio (já suavizado). Nada é emitido da esfera. */
-  atualizar(dt: number, e: AlvoCena, audio: number) {
+  atualizar(dt: number, e: AlvoCena, audio: number, escala = 1) {
     this.tempo += dt;
     this.anim += dt * e.rapidez;
     const t = this.tempo;
@@ -295,6 +295,9 @@ export class MentorOrb3D {
     u.uTime.value = t; u.uAnim.value = this.anim;
     u.uBrilho.value = e.brilho * (0.95 + 0.05 * Math.sin(t * 1.3));
     u.uPulso.value = e.pulso; u.uEspiral.value = e.espiral; u.uAudio.value = audio;
+    // contração e expansão da esfera inteira (anel, núcleo, micropartículas e luz) no ritmo da voz
+    u.uR.value = PALMA.raio * escala;
+    this.comuns.uOrbR.value = PALMA.raio * escala;
     this.comuns.uOrb.value.set(this.cx, this.cy);
     this.comuns.uLuz.value = e.luz;
   }
