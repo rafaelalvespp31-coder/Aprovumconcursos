@@ -1,5 +1,6 @@
 "use client";
 
+import { seloDaSecao } from "@/domain/lesson/section-kind";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition, type ReactNode } from "react";
 import { Markdown } from "@/components/markdown";
@@ -483,10 +484,12 @@ export function LessonReader(props: ReaderProps) {
           </div>
         )}
         <div className="ap-secoes">
-          {m.sections.map((s) => (
+          {m.sections.map((s, si) => (
             <ApostilaSection
               key={s.id}
               section={s}
+              numero={si + 1}
+              total={m.sections.length}
               subject={`${props.meta?.subject ?? ""} ${lesson.title} ${lesson.trailTitle}`}
               lessonTitle={lesson.title}
               lessonId={lesson.id}
@@ -792,6 +795,8 @@ export function LessonReader(props: ReaderProps) {
 
 function ApostilaSection({
   section: s,
+  numero,
+  total,
   subject,
   lessonTitle,
   lessonId,
@@ -800,6 +805,8 @@ function ApostilaSection({
   onAnnotation,
 }: {
   section: ReaderSection;
+  numero: number;
+  total: number;
   subject?: string | null;
   lessonTitle?: string;
   lessonId: string;
@@ -813,8 +820,13 @@ function ApostilaSection({
   const flash = s.kind === "flashcards" && parseFlashcards(md).length > 0;
   const legal = s.kind === "texto_legal";
   const tree = s.kind === "esquema" || /mapa mental/i.test(s.title) ? splitTreeMap(md) : null;
+  const selo = seloDaSecao(s.kind);
   return (
-    <section id={sectionDomId(s.id)} className="ap-secao" aria-labelledby={`h-${s.id}`}>
+    <section id={sectionDomId(s.id)} className="ap-secao" aria-labelledby={`h-${s.id}`} style={selo ? ({ "--tom": selo.tom } as React.CSSProperties) : undefined}>
+      <p className="ap-selo" aria-hidden>
+        {selo && <span className="ap-selo-tipo">{selo.rotulo}</span>}
+        <span className="ap-selo-n">{numero} de {total}</span>
+      </p>
       <h3 id={`h-${s.id}`} className="ap-sub">
         {s.title}
       </h3>
