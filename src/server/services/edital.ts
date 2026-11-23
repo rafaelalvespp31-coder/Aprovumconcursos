@@ -11,7 +11,9 @@ import { extractOrgLogo } from "./edital-logo";
 import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match";
 import { crossSources } from "@/domain/edital/cross";
 import { filterPagesByRole } from "@/domain/edital/role-filter";
-import { lerComEspecialista, type Especialista } from "./edital-especialista";
+import { topicosDe } from "./edital-topicos";
+import { avancarEspecialista, type EstadoLeitura, type LeituraResumo } from "./edital-especialista";
+import type { Identificacao } from "@/domain/edital/especialista";
 import { computePriorities, extractScoring, type Priorities } from "@/domain/edital/scoring";
 
 /**
@@ -82,8 +84,8 @@ export interface PrepStats {
   /** Quem separou as matérias e os tópicos: o Gemini (conferido contra o texto do PDF) ou a leitura estrutural (regras). */
   reader?: "gemini" | "estrutural";
   readerModel?: string;
-  /** % dos tópicos do Gemini encontrados no texto do edital. */
-  anchoring?: number;
+  /** Auditoria da leitura do especialista: fração do texto do conteúdo programático classificada em tópicos, trechos lidos e o que ficou sem classificação. */
+  leitura?: { cobertura: number; trechos: number; descartados: number; naoClassificados: string[] };
   /** Como o conteúdo foi separado por cargo (PDF e texto colado). */
   roleFilter?: { role: string | null; pdf?: { applied: boolean; removed: number }; text?: { applied: boolean; removed: number } };
 }
@@ -148,7 +150,22 @@ async function event(prepId: string, userId: string, step: number, message: stri
   await createAdminClient().from("edital_events").insert({ preparation_id: prepId, user_id: userId, step, level, message });
 }
 
+/** O estado da leitura em andamento só vale enquanto a etapa "identificando" continua: qualquer outra mudança de etapa o descarta. */
+async function descartarLeitura(prepId: string) {
+  await createAdminClient().from("edital_leitura").delete().eq("preparation_id", prepId);
+}
+async function carregarLeitura(prepId: string): Promise<EstadoLeitura | null> {
+  const r = await createAdminClient().from("edital_leitura").select("estado").eq("preparation_id", prepId).maybeSingle();
+  const e = r.data?.estado as EstadoLeitura | undefined;
+  return e && e.v === 1 ? e : null;
+}
+async function gravarLeitura(prepId: string, userId: string, estado: EstadoLeitura) {
+  const r = await createAdminClient().from("edital_leitura").upsert({ preparation_id: prepId, user_id: userId, estado, updated_at: new Date().toISOString() }, { onConflict: "preparation_id" });
+  if (r.error) throw new Error(r.error.message);
+}
+
 async function setStatus(prepId: string, status: PrepStatus, patch: Record<string, unknown> = {}) {
+  if (status !== "organizando" && status !== "concluido") await descartarLeitura(prepId).catch(() => undefined);
   const { error } = await createAdminClient().from("edital_preparations").update({ status, step: STEP_OF[status] || 1, updated_at: new Date().toISOString(), ...patch }).eq("id", prepId);
   if (error) throw new Error(error.message);
 }
@@ -370,17 +387,31 @@ async function stageIdentify(p: Row) {
   const ex = await db.from("edital_extractions").select("pages").eq("file_hash", p.file_hash as string).maybeSingle();
   if (ex.error || !ex.data) throw new UserFacingError("A leitura do edital não foi encontrada. Retome o processamento.", "extraction_missing");
   const pages = ex.data.pages as string[];
-  await fillInfo(p, pages);
-  if (!p.extras_checked) await fillLogo(p);
+  // Leitura em andamento (o especialista trabalha em várias chamadas): não repete o que já foi feito nas anteriores.
+  const emAndamento = await carregarLeitura(id);
+  if (!emAndamento) {
+    await fillInfo(p, pages);
+    if (!p.extras_checked) await fillLogo(p);
+  }
 
-  // O Gemini, como especialista, lê o edital COMPLETO e separa matérias e tópicos (cada tópico é conferido no texto do PDF).
+  // O Gemini, como especialista, lê o edital COMPLETO e separa matérias e tópicos, conferidos no texto do PDF e auditados quanto à cobertura.
   // Se ele falhar ou não estiver configurado, segue a leitura estrutural abaixo, sem inventar nada.
-  await event(id, userId, 3, "Especialista Gemini lendo o edital completo e separando o conteúdo programático…", "info");
-  const esp: Especialista = await lerComEspecialista(pages, (p.role_name as string | null) ?? null).catch((): Especialista => ({ ok: false, motivo: "erro" }));
+  type Esp = { ok: true; modelo: string; info: Identificacao; parsed: ParsedEdital | null; leitura: LeituraResumo } | { ok: false; motivo: string };
+  let esp: Esp = { ok: false, motivo: "sem_chave" };
+  if (process.env.GEMINI_API_KEY?.trim()) {
+    if (!emAndamento) await event(id, userId, 3, "Especialista Gemini lendo o edital completo e separando o conteúdo programático…", "info");
+    const hint = !emAndamento || emAndamento.fase === "identificar" ? (parseEdital(pages).sectionPages ?? null) : null;
+    const passo = await avancarEspecialista(pages, (p.role_name as string | null) ?? null, emAndamento, hint, {
+      salvar: (e) => gravarLeitura(id, userId, e),
+      avisar: (m, n) => event(id, userId, 3, m, n ?? "info"),
+    }).catch((): { tipo: "falhou"; motivo: string } => ({ tipo: "falhou", motivo: "erro" }));
+    if (passo.tipo === "continua") return; // a etapa segue na próxima chamada, de onde parou
+    esp = passo.tipo === "pronto" ? (passo.precisaCargo ? { ok: true, modelo: passo.modelo, info: passo.info, parsed: null, leitura: passo.leitura } : { ok: true, modelo: passo.modelo, info: passo.info, parsed: passo.parsed, leitura: passo.leitura }) : { ok: false, motivo: passo.motivo };
+  }
   if (esp.ok && esp.info.concurso && !p.contest_name) { p.contest_name = esp.info.concurso; await db.from("edital_preparations").update({ contest_name: esp.info.concurso }).eq("id", id); }
   if (esp.ok && esp.info.banca && !p.board) { p.board = esp.info.banca; await db.from("edital_preparations").update({ board: esp.info.banca }).eq("id", id); }
   if (esp.ok && esp.info.ano && !p.contest_year) { p.contest_year = esp.info.ano; await db.from("edital_preparations").update({ contest_year: esp.info.ano }).eq("id", id); }
-  if (!esp.ok) await event(id, userId, 3, `Especialista indisponível (${esp.motivo === "sem_chave" ? "IA não configurada" : esp.motivo === "ancoragem_baixa" ? "a leitura não bateu com o texto do edital" : "sem resposta a tempo"}): usei a leitura estrutural do edital.`, "warn");
+  if (!esp.ok && esp.motivo !== "sem_chave") await event(id, userId, 3, `Especialista indisponível (${esp.motivo === "cobertura_baixa" ? "a leitura não cobriu o texto do edital" : esp.motivo === "secao_muito_grande" || esp.motivo === "edital_muito_grande" ? "o conteúdo é grande demais para a leitura por IA" : "sem resposta da IA"}): usei a leitura estrutural do edital.`, "warn");
 
   // Cargos do edital: guardados para o aluno escolher. Com vários cargos e nenhum escolhido, a análise espera.
   const roles = (esp.ok && esp.info.cargos.length ? esp.info.cargos : detectRoles(pages)).slice(0, 40);
@@ -413,7 +444,7 @@ async function stageIdentify(p: Row) {
     await event(id, userId, 3, sep ? `Conteúdo separado para o cargo ${fp.target}: ${(fp.removedLines + (roleFilter.text?.removed ?? 0)).toLocaleString("pt-BR")} linhas de outros cargos foram ignoradas.` : `Não encontrei títulos de cargo no conteúdo programático; usei o conteúdo inteiro. Confira se ele é do cargo ${fp.target}.`, sep ? "ok" : "warn");
   }
   const pdf = esp.ok && esp.parsed ? esp.parsed : parseEdital(pdfPages);
-  if (esp.ok && esp.parsed) await event(id, userId, 3, `Especialista (${esp.modelo}) separou ${esp.parsed.disciplines.length} matérias; ${Math.round(esp.ancoragem * 100)}% dos tópicos conferidos no texto do edital.`, "ok");
+  if (esp.ok && esp.parsed) await event(id, userId, 3, `Especialista (${esp.modelo}) separou ${esp.parsed.disciplines.length} matérias e ${esp.parsed.disciplines.reduce((n, d) => n + d.topics.length, 0).toLocaleString("pt-BR")} tópicos; ${Math.round(esp.leitura.cobertura * 100)}% do texto do conteúdo programático foi classificado.`, "ok");
   const typed = typedText ? parseProgrammaticText(typedText) : null;
   const cross = crossSources(pdf, typed);
   const parsed = cross.parsed;
@@ -435,7 +466,7 @@ async function stageIdentify(p: Row) {
   await event(id, userId, 3, scoring.basis === "nao_disponivel" ? "O edital não informa questões por disciplina: prioridade quantitativa indisponível." : `Questões e pesos lidos do edital (${scoring.rows.filter((r) => r.priority).length} disciplinas classificadas).`, scoring.basis === "nao_disponivel" ? "warn" : "ok");
   const fresh = await own(userId, id);
   const sources = { pdf: cross.used.pdf, text: cross.used.text, role: (fresh.role_name as string | null) ?? null, roleSource: fresh.role_name ? (p.role_name ? "aluno" : "aluno") : null };
-  const leitor = esp.ok && esp.parsed && cross.used.pdf ? { reader: "gemini" as const, readerModel: esp.modelo, anchoring: Math.round(esp.ancoragem * 100) } : { reader: "estrutural" as const };
+  const leitor = esp.ok && esp.parsed && cross.used.pdf ? { reader: "gemini" as const, readerModel: esp.modelo, leitura: { ...esp.leitura, cobertura: Math.round(esp.leitura.cobertura * 100) / 100 } } : { reader: "estrutural" as const };
   await db.from("edital_preparations").update({ sources, stats: { ...((fresh.stats as PrepStats) ?? {}), needRole: false, sources, roleFilter, scoring, divergences: cross.divergences.slice(0, 12), ...leitor } }).eq("id", id);
 }
 
@@ -466,9 +497,10 @@ async function applyMatches(p: Row) {
   const idx = buildIndex(catalog);
   const discs = await db.from("edital_disciplines").select("id, discipline_mode").eq("preparation_id", id);
   const modeOf = new Map(((discs.data ?? []) as Row[]).map((d) => [d.id as string, (d.discipline_mode as string | null) ?? null]));
-  const tops = await db.from("edital_topics").select("id, discipline_id, title, depth, position").eq("preparation_id", id).order("position").limit(5000);
+  const tops = await topicosDe(db, id, "id, discipline_id, title, depth, position");
   if (tops.error) throw new Error(tops.error.message);
-  await db.from("edital_topic_lessons").delete().in("topic_id", ((tops.data ?? []) as Row[]).map((t) => t.id as string).slice(0, 5000));
+  const idsTopicos = ((tops.data ?? []) as Row[]).map((t) => t.id as string);
+  for (let o = 0; o < idsTopicos.length; o += 300) await db.from("edital_topic_lessons").delete().in("topic_id", idsTopicos.slice(o, o + 300));
   const links: Array<{ topic_id: string; catalog_topic_id: string; coverage: string; score: number }> = [];
   const lessonIds = new Set<string>();
   const counts = { completa: 0, parcial: 0, conferencia: 0, nao_encontrado: 0 };
@@ -560,12 +592,15 @@ async function stageOrganize(p: Row) {
   const userId = p.user_id as string;
   const id = p.id as string;
   const db = createAdminClient();
-  const tops = await db.from("edital_topics").select("id, match_status").eq("preparation_id", id).limit(5000);
+  const tops = await topicosDe(db, id, "id, match_status");
   if (tops.error) throw new Error(tops.error.message);
   const total = (tops.data ?? []).length;
   const covered = ((tops.data ?? []) as Row[]).filter((t) => t.match_status === "completa" || t.match_status === "parcial").length;
   const full = ((tops.data ?? []) as Row[]).filter((t) => t.match_status === "completa").length;
-  const linked = await db.from("edital_topic_lessons").select("topic_id", { count: "exact", head: true }).in("topic_id", ((tops.data ?? []) as Row[]).map((t) => t.id as string).slice(0, 1000));
+  const idsT = ((tops.data ?? []) as Row[]).map((t) => t.id as string);
+  let nLinks = 0;
+  for (let o = 0; o < idsT.length; o += 300) nLinks += (await db.from("edital_topic_lessons").select("topic_id", { count: "exact", head: true }).in("topic_id", idsT.slice(o, o + 300))).count ?? 0;
+  const linked = { count: nLinks };
   await event(id, userId, 5, "Disciplinas ordenadas conforme o edital.", "ok");
   await event(id, userId, 5, `Vínculos com as aulas originais conferidos (${linked.count ?? 0}).`, "ok");
   const stats = { ...((p.stats as PrepStats) ?? {}), coveragePct: total ? Math.round(((full + (covered - full) * 0.5) / total) * 100) : 0 };
@@ -598,6 +633,15 @@ export async function advancePreparation(userId: string, id: string): Promise<Pr
   return toSummary(p);
 }
 
+/** Refaz a leitura do mesmo edital (texto já guardado, sem novo envio): o que já está montado só é trocado quando a nova leitura termina. */
+export async function refazerLeitura(userId: string, id: string): Promise<void> {
+  const p = await own(userId, id);
+  if (p.status !== "concluido" && p.status !== "conferencia" && p.status !== "erro") throw new UserFacingError("A leitura deste edital já está em andamento.", "invalid_input");
+  await enforceRateLimit(userId, "edital_releitura", 6, 3600);
+  await setStatus(id, "identificando", { error: null });
+  await event(id, userId, 3, "Refazendo a leitura do edital com o especialista.", "info");
+}
+
 /** Retoma uma preparação que falhou, a partir da etapa onde parou (sem reenviar o PDF). */
 export async function resumePreparation(userId: string, id: string): Promise<PrepSummary> {
   const p = await own(userId, id);
@@ -623,24 +667,60 @@ export async function submitManualContent(userId: string, id: string, text: unkn
   return toSummary(await own(userId, id));
 }
 
-/** Conteúdo programático já separado (matérias e tópicos por matéria), para o aluno conferir antes de montar o plano. */
-export async function listarConteudo(userId: string, id: string): Promise<{ leitor: "gemini" | "estrutural"; modelo: string | null; disciplinas: Array<{ id: string; nome: string; topicos: Array<{ codigo: string | null; nivel: number; titulo: string }> }> }> {
+export interface ConteudoProgramatico {
+  id: string;
+  titulo: string;
+  cargo: string | null;
+  banca: string | null;
+  ano: number | null;
+  arquivo: string;
+  paginas: number | null;
+  status: PrepStatus;
+  leitor: "gemini" | "estrutural";
+  modelo: string | null;
+  /** Fração do texto do conteúdo programático classificada em tópicos (só a leitura do especialista mede isso). */
+  cobertura: number | null;
+  naoClassificados: string[];
+  avisos: string[];
+  secao: [number, number] | null;
+  disciplinas: Array<{ id: string; nome: string; pagina: number | null; topicos: Array<{ codigo: string | null; nivel: number; titulo: string; pagina: number | null }> }>;
+}
+
+/** Conteúdo programático completo do edital, matéria por matéria e tópico por tópico (todas as linhas, sem o limite de ~1000 do banco). */
+export async function carregarConteudoProgramatico(userId: string, id: string): Promise<ConteudoProgramatico> {
   const p = await own(userId, id);
   const db = createAdminClient();
   const [d, t] = await Promise.all([
-    db.from("edital_disciplines").select("id, name, position").eq("preparation_id", id).order("position").limit(100),
-    db.from("edital_topics").select("discipline_id, code, depth, title, position").eq("preparation_id", id).order("position").limit(5000),
+    db.from("edital_disciplines").select("id, name, position, source_page").eq("preparation_id", id).order("position").limit(200),
+    topicosDe(db, id, "discipline_id, code, depth, title, position, source_page"),
   ]);
   if (d.error) throw new Error(d.error.message);
   if (t.error) throw new Error(t.error.message);
-  const por = new Map<string, Array<{ codigo: string | null; nivel: number; titulo: string }>>();
-  for (const x of (t.data ?? []) as Row[]) {
+  const por = new Map<string, ConteudoProgramatico["disciplinas"][number]["topicos"]>();
+  for (const x of t.data) {
     const arr = por.get(x.discipline_id as string) ?? [];
-    arr.push({ codigo: (x.code as string | null) ?? null, nivel: (x.depth as number | null) ?? 1, titulo: x.title as string });
+    arr.push({ codigo: (x.code as string | null) ?? null, nivel: (x.depth as number | null) ?? 1, titulo: x.title as string, pagina: (x.source_page as number | null) ?? null });
     por.set(x.discipline_id as string, arr);
   }
   const st = (p.stats as PrepStats) ?? {};
-  return { leitor: st.reader === "gemini" ? "gemini" : "estrutural", modelo: st.readerModel ?? null, disciplinas: ((d.data ?? []) as Row[]).map((x) => ({ id: x.id as string, nome: x.name as string, topicos: por.get(x.id as string) ?? [] })) };
+  const faixa = /\[(\d+),(\d+)\)/.exec(String(p.section_pages ?? ""));
+  return {
+    id,
+    titulo: displayTitle((p.contest_name as string | null) ?? null, p.file_name as string),
+    cargo: (p.role_name as string | null) ?? null,
+    banca: (p.board as string | null) ?? null,
+    ano: (p.contest_year as number | null) ?? null,
+    arquivo: p.file_name as string,
+    paginas: (p.page_count as number | null) ?? null,
+    status: p.status as PrepStatus,
+    leitor: st.reader === "gemini" ? "gemini" : "estrutural",
+    modelo: st.readerModel ?? null,
+    cobertura: st.reader === "gemini" && st.leitura ? st.leitura.cobertura : null,
+    naoClassificados: st.reader === "gemini" ? (st.leitura?.naoClassificados ?? []) : [],
+    avisos: (st.warnings ?? []).slice(0, 6),
+    secao: faixa ? [Number(faixa[1]), Number(faixa[2]) - 1] : null,
+    disciplinas: ((d.data ?? []) as Row[]).map((x) => ({ id: x.id as string, nome: x.name as string, pagina: (x.source_page as number | null) ?? null, topicos: por.get(x.id as string) ?? [] })),
+  };
 }
 
 export async function listPreparations(userId: string): Promise<PrepSummary[]> {

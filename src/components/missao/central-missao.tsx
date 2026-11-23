@@ -11,8 +11,7 @@ import { FalarComMentor } from "./falar-mentor";
 import { MentorOrbita } from "./mentor-orbita";
 import "./central-missao.css";
 
-type Fase = "ocioso" | "salvando" | "ok" | "erro";
-type Escolha = { ok: true; destino: string } | { ok: false; error: string };
+type Fase = "ocioso" | "ok";
 
 export interface CentralMissaoProps {
   primeiroNome: string | null;
@@ -20,55 +19,38 @@ export interface CentralMissaoProps {
   objetivo: string | null;
   /** Editais que o aluno já anexou (lidos e prontos para virar plano). */
   editais: Sugestao[];
-  escolher: (nome: string, editalId?: string) => Promise<Escolha>;
 }
 
 /** Home pós-login: o Mentor no centro da tela e o convite "Anexar edital": o plano segue o conteúdo programático dele. */
-export function CentralMissao({ primeiroNome, email, objetivo, editais, escolher }: CentralMissaoProps) {
+export function CentralMissao({ primeiroNome, email, objetivo, editais }: CentralMissaoProps) {
   const router = useRouter();
   const [fase, setFase] = useState<Fase>("ocioso");
-  const [erro, setErro] = useState<string | null>(null);
-  const [confirmado, setConfirmado] = useState<string | null>(null);
-  const [saindo, setSaindo] = useState(false);
   const [falando, setFalando] = useState(false);
   const [conn, setConn] = useState<Conexao>("live");
   const nivel = useRef<(() => Bands) | null>(null);
-  const ocupado = fase === "salvando" || fase === "ok";
+  const ocupado = fase === "ok";
 
   const encerrarVoz = useCallback(() => {
     setFalando(false);
     nivel.current = null;
   }, []);
 
-  /** Salva o edital como objetivo (o plano nasce dele) e segue para o plano. Devolve a mensagem de erro, se houver. */
-  const confirmar = useCallback(
-    async (nome: string, editalId: string): Promise<string | null> => {
-      if (ocupado) return null;
-      setErro(null);
-      setFase("salvando");
+  /** O edital foi lido: abre a página do conteúdo programático completo (o plano é montado a partir dela). */
+  const abrirConteudo = useCallback(
+    (editalId: string) => {
+      if (ocupado) return;
       encerrarVoz();
-      const r = await escolher(nome, editalId).catch((): Escolha => ({ ok: false, error: "Sem conexão. Tente de novo." }));
-      if (!r.ok) {
-        setFase("erro");
-        setErro(r.error);
-        return r.error;
-      }
       setFase("ok");
-      setConfirmado(nome);
-      router.prefetch(r.destino);
-      const reduzido = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-      setTimeout(() => setSaindo(true), reduzido ? 0 : 700);
-      setTimeout(() => router.push(r.destino), reduzido ? 150 : 1350);
-      return null;
+      router.push(`/conteudo-programatico/${editalId}`);
     },
-    [escolher, ocupado, router, encerrarVoz],
+    [ocupado, router, encerrarVoz],
   );
 
-  const energia = fase === "ok" || fase === "salvando" ? 1 : 0;
+  const energia = fase === "ok" ? 1 : 0;
   const nome = primeiroNome ?? (email ? email.split("@")[0]! : "Aluno");
 
   return (
-    <main className="cm" data-fase={fase} data-saindo={saindo || undefined}>
+    <main className="cm" data-fase={fase}>
       <div className="cm-fundo" aria-hidden />
       <header className="cm-topo">
         {/* eslint-disable-next-line @next/next/no-img-element -- logo oficial, versão para fundo escuro */}
@@ -91,12 +73,12 @@ export function CentralMissao({ primeiroNome, email, objetivo, editais, escolher
         <p className="cm-sub cm-e3"><span>Anexe o edital do concurso.</span> <span>O Mentor lê o conteúdo programático e monta a sua preparação.</span></p>
 
         <div className="cm-form cm-e4">
-          <AnexarEdital onConcluido={confirmar} onIniciar={encerrarVoz} desabilitado={ocupado} />
+          <AnexarEdital onLido={abrirConteudo} onIniciar={encerrarVoz} desabilitado={ocupado} />
           {editais.length > 0 && (
             <div className="ae-chips" role="group" aria-label="Editais que você já anexou">
               <span className="ae-chips-rotulo">Já anexados:</span>
               {editais.slice(0, 4).map((e) => (
-                <button key={e.id} type="button" className="ae-chip" disabled={ocupado} title={e.nome} onClick={() => void confirmar(e.nome, e.editalId ?? e.id)}>
+                <button key={e.id} type="button" className="ae-chip" disabled={ocupado} title={e.nome} onClick={() => abrirConteudo(e.editalId ?? e.id)}>
                   {e.nome}
                 </button>
               ))}
@@ -104,10 +86,8 @@ export function CentralMissao({ primeiroNome, email, objetivo, editais, escolher
           )}
         </div>
 
-        <p className="cm-estado" role="status" aria-live="polite" data-tipo={fase === "erro" ? "erro" : undefined}>
-          {fase === "erro" && erro}
-          {fase === "salvando" && "Preparando sua missão…"}
-          {fase === "ok" && confirmado && `Edital confirmado: ${confirmado}`}
+        <p className="cm-estado" role="status" aria-live="polite">
+          {fase === "ok" && "Abrindo o conteúdo programático…"}
           {fase === "ocioso" && objetivo && `Objetivo atual: ${objetivo}`}
         </p>
 

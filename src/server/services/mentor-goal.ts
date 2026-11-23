@@ -5,6 +5,7 @@ import { buildStudyPlan, type PlanSubject, type StudyPlan } from "@/domain/mento
 import type { MentorResult, MentorSnapshot } from "@/domain/mentor/engine";
 import { UserFacingError, enforceRateLimit } from "./trails";
 import { EDITAL_MIN_SCORE, cargoHits, concursoScore } from "@/domain/mentor/edital-match";
+import { topicosDe } from "./edital-topicos";
 
 /** Concurso que o aluno quer passar, dito por ele ao Mentor. Fica em profiles.preferences.mentor_goal. */
 export interface MentorGoal { contest: string; setAt: string; editalId?: string }
@@ -58,12 +59,9 @@ export async function listEditalOptions(userId: string): Promise<EditalOption[]>
   const preps = (data ?? []) as Array<{ id: string; contest_name: string | null; role_name: string | null; board: string | null }>;
   if (!preps.length) return [];
   const ids = preps.map((p) => p.id);
-  const [d, t] = await Promise.all([
-    admin.from("edital_disciplines").select("preparation_id").in("preparation_id", ids).limit(5000),
-    admin.from("edital_topics").select("preparation_id").in("preparation_id", ids).limit(20000),
-  ]);
-  const cnt = (rows: unknown) => { const m = new Map<string, number>(); for (const r of (rows ?? []) as Array<{ preparation_id: string }>) m.set(r.preparation_id, (m.get(r.preparation_id) ?? 0) + 1); return m; };
-  const dc = cnt(d.data), tc = cnt(t.data);
+  // Contagem por edital (consultas de contagem não esbarram no limite de ~1000 linhas por resposta).
+  const contar = async (tabela: string) => new Map(await Promise.all(ids.map(async (id) => [id, (await admin.from(tabela).select("id", { count: "exact", head: true }).eq("preparation_id", id)).count ?? 0] as const)));
+  const [dc, tc] = await Promise.all([contar("edital_disciplines"), contar("edital_topics")]);
   return preps.filter((p) => (dc.get(p.id) ?? 0) > 0).map((p) => ({ id: p.id, name: p.contest_name?.trim() || "Edital sem nome", role: p.role_name, board: p.board, disciplines: dc.get(p.id) ?? 0, topics: tc.get(p.id) ?? 0 }));
 }
 
@@ -74,12 +72,12 @@ async function carregarDisciplinas(prepId: string): Promise<Array<{ name: string
   const admin = createAdminClient();
   const [d, t] = await Promise.all([
     admin.from("edital_disciplines").select("id, name, position").eq("preparation_id", prepId).order("position").limit(100),
-    admin.from("edital_topics").select("discipline_id").eq("preparation_id", prepId).limit(5000),
+    topicosDe(admin, prepId, "discipline_id"),
   ]);
   const discs = (d.data ?? []) as Array<{ id: string; name: string }>;
   if (!discs.length) return null;
   const count = new Map<string, number>();
-  for (const x of (t.data ?? []) as Array<{ discipline_id: string }>) count.set(x.discipline_id, (count.get(x.discipline_id) ?? 0) + 1);
+  for (const x of t.data as unknown as Array<{ discipline_id: string }>) count.set(x.discipline_id, (count.get(x.discipline_id) ?? 0) + 1);
   return discs.map((x) => ({ name: x.name, topics: count.get(x.id) ?? 0 }));
 }
 

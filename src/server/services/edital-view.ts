@@ -5,6 +5,7 @@ import { UserFacingError } from "./trails";
 import { orgImageFor } from "@/domain/edital/org-images";
 import { displayTitle } from "@/domain/edital/info";
 import { backfillInfo, refreshMatchesIfStale } from "./edital";
+import { topicosDe } from "./edital-topicos";
 import type { PrepStats, PrepStatus, PrepSummary } from "./edital";
 
 type Row = Record<string, unknown>;
@@ -113,7 +114,7 @@ export async function getPreparationTree(userId: string, id: string): Promise<Pr
   await backfillInfo([prep.data as Row]);
   const [discs, tops] = await Promise.all([
     db.from("edital_disciplines").select("id, name, position, discipline_mode, source_page").eq("preparation_id", id).order("position"),
-    db.from("edital_topics").select("id, discipline_id, position, code, depth, title, source_page, match_status").eq("preparation_id", id).order("position").limit(5000),
+    topicosDe(db, id, "id, discipline_id, position, code, depth, title, source_page, match_status"),
   ]);
   if (discs.error) throw new Error(discs.error.message);
   if (tops.error) throw new Error(tops.error.message);

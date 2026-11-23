@@ -2,105 +2,208 @@ import "server-only";
 import { GoogleGenAI } from "@google/genai";
 import { logEvent } from "../observability";
 import {
-  ANCORAGEM_MINIMA, SCHEMA_IDENTIFICACAO, SCHEMA_TOPICOS, SISTEMA_ESPECIALISTA, montarParsed, pedidoIdentificacao, pedidoTopicos, textoComPaginas, validarIdentificacao, validarTopicos,
-  type Identificacao,
+  COBERTURA_MINIMA, MAX_SECAO_CHARS, SCHEMA_IDENTIFICACAO, SCHEMA_TRECHO, SISTEMA_ESPECIALISTA, dividirEmTrechos, montarResultado, montarSecao, partirTrecho, pedidoIdentificacao, pedidoTrecho,
+  textoComPaginas, validarIdentificacao, validarTrecho,
+  type Bloco, type Identificacao, type Secao,
 } from "@/domain/edital/especialista";
 import type { ParsedEdital } from "@/domain/edital/parser";
 
-/** Cada etapa do processamento roda numa chamada de até 60 s: o especialista trabalha dentro de um orçamento menor que isso. */
-const ORCAMENTO_MS = 38_000; // deixa folga para gravar as matérias e os tópicos dentro dos 60 s
-const ETAPA1_MS = 20_000;
-const MAX_CHARS = 1_000_000;
-const MAX_TRECHO = 160_000;
-const PARALELO = 6;
+/**
+ * O Gemini, como especialista, lê o edital inteiro em VÁRIAS chamadas (cada uma cabe nos 60 s da função):
+ *  1. identificação: cargos, faixa de páginas do conteúdo programático e lista de matérias;
+ *  2. leitura do conteúdo programático em trechos pequenos (resposta curta e rápida), em paralelo;
+ *  3. auditoria: mede quanto do texto virou tópico e relê o que ficou sem classificação;
+ *  4. fechamento: junta tudo, confere cada tópico no texto do PDF e entrega a estrutura.
+ * O estado fica salvo entre as chamadas. Qualquer falha definitiva devolve "falhou" e o processamento segue pela leitura estrutural.
+ */
+const ORCAMENTO_MS = 44_000;
+const CHAMADA_MS = 38_000;
+const MARGEM_MS = 9_000;
+const PARALELO = 5;
+const MAX_TENTATIVAS = 4;
+const MAX_LACUNAS = 30;
 
-export type Especialista =
-  | { ok: true; modelo: string; info: Identificacao; parsed: ParsedEdital | null; precisaCargo: boolean; ancoragem: number }
-  | { ok: false; motivo: string };
-
-const modelos = () => [...new Set([process.env.GEMINI_EDITAL_MODEL?.trim(), "gemini-3.8-flash", "gemini-3.5-flash", "gemini-2.5-flash"].filter((m): m is string => !!m))];
-
-async function gerar(ai: GoogleGenAI, modelo: string, pedido: string, schema: unknown, ms: number): Promise<unknown> {
-  const r = await ai.models.generateContent({
-    model: modelo,
-    contents: pedido,
-    config: { systemInstruction: SISTEMA_ESPECIALISTA, responseMimeType: "application/json", responseSchema: schema as never, temperature: 0, maxOutputTokens: 32768, abortSignal: AbortSignal.timeout(ms) },
-  });
-  return r.text ?? "";
+export interface TrechoEstado { ini: number; fim: number; tent: number; ok: boolean; lacuna?: boolean; blocos?: Bloco[] }
+export interface EstadoLeitura {
+  v: 1;
+  fase: "identificar" | "topicos" | "auditar";
+  cargo: string | null;
+  modelo: string | null;
+  tentIdent: number;
+  info?: Identificacao;
+  /** Páginas do PDF que formam o conteúdo programático lido (com 1 página de folga no fim). */
+  secao?: [number, number];
+  trechos: TrechoEstado[];
+  auditorias: number;
 }
 
-/**
- * O Gemini lê o edital COMPLETO e separa o conteúdo programático: matérias (etapa 1) e tópicos de cada matéria (etapa 2, em paralelo).
- * Cada tópico é conferido contra o texto do PDF; o que não existe no edital é descartado. Qualquer falha devolve ok:false
- * e o processamento segue pela leitura estrutural (nunca fica sem resposta nem usa dado inventado).
- */
-export async function lerComEspecialista(pages: readonly string[], cargo: string | null): Promise<Especialista> {
+export interface LeituraResumo {
+  cobertura: number;
+  trechos: number;
+  descartados: number;
+  naoClassificados: string[];
+}
+
+export type Passo =
+  | { tipo: "continua"; estado: EstadoLeitura }
+  | { tipo: "pronto"; estado: EstadoLeitura; modelo: string; info: Identificacao; parsed: ParsedEdital | null; precisaCargo: boolean; leitura: LeituraResumo }
+  | { tipo: "falhou"; motivo: string };
+
+export const estadoInicial = (cargo: string | null): EstadoLeitura => ({ v: 1, fase: "identificar", cargo, modelo: null, tentIdent: 0, trechos: [], auditorias: 0 });
+
+const MODELOS = () => [...new Set([process.env.GEMINI_EDITAL_MODEL?.trim(), "gemini-3.8-flash", "gemini-3.5-flash", "gemini-2.5-flash"].filter((m): m is string => !!m))];
+
+const ehTempo = (e: unknown) => /abort|timeout|timed out|deadline/i.test(`${(e as Error)?.name ?? ""} ${(e as Error)?.message ?? ""}`);
+const ehModeloInvalido = (e: unknown) => /\b(404|400)\b|not found|not supported|unsupported|invalid argument|no longer available|does not exist/i.test((e as Error)?.message ?? "");
+
+/** Uma chamada ao Gemini sem "pensar" (extração literal: pensar só atrasa). Troca de modelo se o escolhido não existe ou não aceita o pedido. */
+async function chamar(ai: GoogleGenAI, estado: EstadoLeitura, pedido: string, schema: unknown, ms: number): Promise<string> {
+  const ordem = [...new Set([estado.modelo, ...MODELOS()].filter((m): m is string => !!m))];
+  let ultimo: unknown = new Error("sem_modelo");
+  for (const modelo of ordem) {
+    for (const pensando of [false, true]) {
+      try {
+        const r = await ai.models.generateContent({
+          model: modelo,
+          contents: pedido,
+          config: {
+            systemInstruction: SISTEMA_ESPECIALISTA,
+            responseMimeType: "application/json",
+            responseSchema: schema as never,
+            temperature: 0,
+            maxOutputTokens: 24_000,
+            abortSignal: AbortSignal.timeout(ms),
+            ...(pensando ? {} : { thinkingConfig: { thinkingBudget: 0 } }),
+          },
+        });
+        estado.modelo = modelo;
+        return r.text ?? "";
+      } catch (e) {
+        ultimo = e;
+        if (ehTempo(e)) throw e;
+        if (!pensando && /thinking/i.test((e as Error)?.message ?? "")) continue; // este modelo não aceita desligar o raciocínio: tenta sem a opção
+        break;
+      }
+    }
+    if (!ehModeloInvalido(ultimo)) throw ultimo; // sobrecarga/limite: tenta de novo na próxima chamada, sem queimar os outros modelos
+  }
+  throw ultimo;
+}
+
+export interface Ganchos {
+  salvar: (e: EstadoLeitura) => Promise<void>;
+  avisar: (mensagem: string, nivel?: "info" | "ok" | "warn") => Promise<void>;
+}
+
+/** Dá o próximo passo da leitura dentro do orçamento de tempo desta chamada. */
+export async function avancarEspecialista(pages: readonly string[], cargo: string | null, anterior: EstadoLeitura | null, hintSecao: [number, number] | null, g: Ganchos): Promise<Passo> {
   const apiKey = process.env.GEMINI_API_KEY?.trim();
-  if (!apiKey) return { ok: false, motivo: "sem_chave" };
-  const texto = textoComPaginas(pages);
-  if (texto.length > MAX_CHARS) return { ok: false, motivo: "edital_muito_grande" };
+  if (!apiKey) return { tipo: "falhou", motivo: "sem_chave" };
   const t0 = Date.now();
   const restante = () => ORCAMENTO_MS - (Date.now() - t0);
   const ai = new GoogleGenAI({ apiKey });
+  const estado: EstadoLeitura = anterior ?? estadoInicial(cargo);
+  let secao: Secao | null = null;
+  const getSecao = (): Secao => (secao ??= montarSecao(pages, estado.secao![0], estado.secao![1]));
+  const lidos = () => estado.trechos.filter((t) => t.ok).map((t) => ({ ini: t.ini, fim: t.fim, blocos: t.blocos ?? [] }));
 
-  // Etapa 1: o edital inteiro → cargos, faixa de páginas e a lista de matérias do cargo.
-  let info: Identificacao | null = null;
-  let modelo = "";
-  let ultimo = "";
-  for (const m of modelos()) {
-    if (restante() < 8_000) break;
-    try {
-      info = validarIdentificacao(await gerar(ai, m, pedidoIdentificacao(texto, cargo), SCHEMA_IDENTIFICACAO, Math.min(ETAPA1_MS, restante())), pages.length);
-      if (info) { modelo = m; break; }
-      ultimo = "resposta_invalida";
-    } catch (e) {
-      ultimo = (e as Error).message.slice(0, 160);
+  for (;;) {
+    if (restante() < MARGEM_MS + 3_000) { await g.salvar(estado); return { tipo: "continua", estado }; }
+
+    if (estado.fase === "identificar") {
+      const texto = textoComPaginas(pages);
+      if (texto.length > 1_000_000) return { tipo: "falhou", motivo: "edital_muito_grande" };
+      let info: Identificacao | null = null;
+      try {
+        info = validarIdentificacao(await chamar(ai, estado, pedidoIdentificacao(texto, estado.cargo), SCHEMA_IDENTIFICACAO, Math.min(CHAMADA_MS, restante() - 2_000)), pages.length);
+      } catch (e) {
+        await logEvent("edital.especialista.falhou", { etapa: "identificar", erro: (e as Error).message.slice(0, 160), tent: estado.tentIdent + 1 });
+      }
+      if (!info) {
+        if (++estado.tentIdent >= 3) return { tipo: "falhou", motivo: "sem_resposta" };
+        await g.salvar(estado);
+        return { tipo: "continua", estado };
+      }
+      estado.info = info;
+      if (!info.disciplinas.length && !estado.cargo && info.cargos.length > 1) return { tipo: "pronto", estado, modelo: estado.modelo ?? "", info, parsed: null, precisaCargo: true, leitura: { cobertura: 1, trechos: 0, descartados: 0, naoClassificados: [] } };
+      const paginasDisc = info.disciplinas.map((d) => d.pagina).filter((n): n is number => n !== null);
+      const ini = Math.min(...[info.paginaInicio, ...paginasDisc, hintSecao?.[0] ?? null].filter((n): n is number => n !== null), Infinity);
+      const fim = Math.max(...[info.paginaFim, ...paginasDisc, hintSecao?.[1] ?? null].filter((n): n is number => n !== null), -Infinity);
+      if (!Number.isFinite(ini) || !Number.isFinite(fim)) return { tipo: "falhou", motivo: "sem_secao" };
+      estado.secao = [ini, Math.min(pages.length, fim + 1)];
+      const s = getSecao();
+      if (s.texto.length > MAX_SECAO_CHARS) return { tipo: "falhou", motivo: "secao_muito_grande" };
+      estado.trechos = dividirEmTrechos(s.texto).map((f) => ({ ...f, tent: 0, ok: false }));
+      estado.fase = "topicos";
+      await g.avisar(`Especialista (${estado.modelo}) localizou o conteúdo programático nas págs. ${estado.secao[0]}–${estado.secao[1]}${info.disciplinas.length ? ` e ${info.disciplinas.length} matérias` : ""}. Lendo item por item em ${estado.trechos.length} ${estado.trechos.length === 1 ? "trecho" : "trechos"}…`, "ok");
+      await g.salvar(estado);
+      continue;
     }
-  }
-  if (!info) {
-    await logEvent("edital.especialista.falhou", { etapa: 1, erro: ultimo });
-    return { ok: false, motivo: ultimo || "sem_resposta" };
-  }
-  if (!info.disciplinas.length) {
-    // Sem cargo informado e conteúdo diferente por cargo: o aluno precisa escolher (a lista de cargos vem do próprio edital).
-    if (!cargo && info.cargos.length > 1) return { ok: true, modelo, info, parsed: null, precisaCargo: true, ancoragem: 1 };
-    return { ok: false, motivo: "sem_disciplinas" };
-  }
 
-  // Etapa 2: tópicos de cada matéria, só com o trecho do conteúdo programático (ou o edital todo se a faixa não foi achada).
-  const trecho = info.paginaInicio !== null && info.paginaFim !== null ? textoComPaginas(pages, info.paginaInicio, info.paginaFim) : texto;
-  const base = trecho.length > MAX_TRECHO ? trecho.slice(0, MAX_TRECHO) : trecho;
-  const saidas: Array<{ nome: string; pagina: number | null; topicos: NonNullable<ReturnType<typeof validarTopicos>> }> = [];
-  const fila = [...info.disciplinas];
-  let falhou: string | null = null;
-  const operario = async () => {
-    for (let d = fila.shift(); d && !falhou; d = fila.shift()) {
-      let topicos: ReturnType<typeof validarTopicos> = null;
-      for (let tentativa = 0; tentativa < 2 && !topicos; tentativa++) {
-        if (restante() < 4_000) { falhou = "tempo"; return; }
+    if (estado.fase === "topicos") {
+      const s = getSecao();
+      const conhecidas = (estado.info?.disciplinas ?? []).map((d) => d.nome).slice(0, 60);
+      const alvo = estado.info?.cargoUsado ?? estado.cargo;
+      const pend = estado.trechos.filter((t) => !t.ok).slice(0, PARALELO);
+      if (!pend.length) { estado.fase = "auditar"; continue; }
+      const ms = Math.min(CHAMADA_MS, restante() - 2_000);
+      await Promise.all(pend.map(async (t) => {
         try {
-          topicos = validarTopicos(await gerar(ai, modelo, pedidoTopicos(d.nome, base, info.cargoUsado ?? cargo), SCHEMA_TOPICOS, Math.min(30_000, restante())));
+          const blocos = validarTrecho(await chamar(ai, estado, pedidoTrecho(s.texto.slice(t.ini, t.fim), conhecidas, alvo, !!t.lacuna), SCHEMA_TRECHO, ms));
+          if (!blocos) throw new Error("resposta_invalida");
+          t.blocos = blocos;
+          t.ok = true;
         } catch (e) {
-          falhou = tentativa === 1 ? (e as Error).message.slice(0, 160) : null;
+          t.tent++;
+          if (!ehTempo(e)) await logEvent("edital.especialista.falhou", { etapa: "trecho", erro: (e as Error).message.slice(0, 160), tent: t.tent });
+        }
+      }));
+      // Trecho que não saiu: divide em dois (resposta menor, mais rápida). Sem como dividir e sem tentativas, desiste.
+      for (const t of pend.filter((x) => !x.ok && x.tent >= 2)) {
+        const dois = partirTrecho(s.texto, t);
+        if (dois) {
+          const i = estado.trechos.indexOf(t);
+          estado.trechos.splice(i, 1, ...dois.map((f) => ({ ...f, tent: 0, ok: false, ...(t.lacuna ? { lacuna: true } : {}) })));
+        } else if (t.tent >= MAX_TENTATIVAS) {
+          return { tipo: "falhou", motivo: "trecho_sem_resposta" };
         }
       }
-      if (!topicos) { falhou = falhou ?? "resposta_invalida"; return; }
-      falhou = null;
-      saidas.push({ nome: d.nome, pagina: d.pagina, topicos });
+      const feitos = estado.trechos.filter((t) => t.ok).length;
+      await g.avisar(`Conteúdo programático lido: ${feitos} de ${estado.trechos.length} ${estado.trechos.length === 1 ? "trecho" : "trechos"}.`, "info");
+      await g.salvar(estado);
+      continue;
     }
-  };
-  await Promise.all(Array.from({ length: Math.min(PARALELO, fila.length) }, operario));
-  if (falhou || saidas.length !== info.disciplinas.length) {
-    await logEvent("edital.especialista.falhou", { etapa: 2, erro: falhou ?? "incompleto", modelo });
-    return { ok: false, motivo: falhou ?? "incompleto" };
+
+    // Auditoria: quanto do texto virou tópico? O que sobrou volta ao modelo uma vez.
+    const s = getSecao();
+    const m = montarResultado(s, lidos());
+    if (m.lacunas.length && estado.auditorias < 1 && m.cobertura < 0.995) {
+      estado.auditorias++;
+      const novos: TrechoEstado[] = [];
+      for (const l of m.lacunas.slice(0, MAX_LACUNAS)) {
+        const sub = dividirEmTrechos(s.texto.slice(l.ini, l.fim));
+        for (const f of sub) novos.push({ ini: l.ini + f.ini, fim: l.ini + f.fim, tent: 0, ok: false, lacuna: true });
+      }
+      estado.trechos.push(...novos);
+      estado.fase = "topicos";
+      await g.avisar(`Auditoria: ${Math.round(m.cobertura * 100)}% do texto foi classificado. Relendo ${m.lacunas.length} ${m.lacunas.length === 1 ? "trecho" : "trechos"} que ficaram de fora…`, "warn");
+      await g.salvar(estado);
+      continue;
+    }
+    const topicos = m.parsed.disciplines.reduce((n, d) => n + d.topics.length, 0);
+    if (!m.parsed.found || topicos < 3 || m.cobertura < COBERTURA_MINIMA) {
+      await logEvent("edital.especialista.cobertura_baixa", { cobertura: Math.round(m.cobertura * 100), topicos, descartados: m.descartados, modelo: estado.modelo });
+      return { tipo: "falhou", motivo: "cobertura_baixa" };
+    }
+    await g.salvar(estado);
+    return {
+      tipo: "pronto",
+      estado,
+      modelo: estado.modelo ?? "",
+      info: estado.info!,
+      parsed: m.parsed,
+      precisaCargo: false,
+      leitura: { cobertura: m.cobertura, trechos: estado.trechos.length, descartados: m.descartados, naoClassificados: m.lacunas.slice(0, 12).map((l) => `pág. ${l.pagina}: ${l.texto.slice(0, 160)}`) },
+    };
   }
-  // Mantém a ordem do edital (as chamadas terminam fora de ordem).
-  const ordem = new Map(info.disciplinas.map((d, i) => [d.nome, i]));
-  saidas.sort((a, b) => (ordem.get(a.nome) ?? 0) - (ordem.get(b.nome) ?? 0));
-  const m = montarParsed({ disciplinas: saidas, paginas: pages, inicio: info.paginaInicio, fim: info.paginaFim });
-  if (!m.parsed.found || m.ancoragem < ANCORAGEM_MINIMA) {
-    await logEvent("edital.especialista.ancoragem_baixa", { ancoragem: Math.round(m.ancoragem * 100), total: m.total, modelo });
-    return { ok: false, motivo: "ancoragem_baixa" };
-  }
-  return { ok: true, modelo, info, parsed: m.parsed, precisaCargo: false, ancoragem: m.ancoragem };
 }
