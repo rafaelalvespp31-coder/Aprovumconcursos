@@ -17,7 +17,7 @@
   animation: hm-deriva 22s ease-in-out infinite alternate; will-change: transform; }
 @keyframes hm-deriva { to { transform: translate3d(5%, -3%, 0) scale(1.08); } }
 
-.hm-topo, .hm-palco, .hm-voz, .hm-cards, .hm-rodape { position: relative; z-index: 2; }
+.hm-topo, .hm-palco, .hm-voz, .hm-cards { position: relative; z-index: 2; }
 
 /* cabeçalho discreto */
 .hm-topo { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 16px 0; animation: hm-aparece 0.9s ease both; }
@@ -31,7 +31,7 @@
 .hm-avatar:active, .hm-engrenagem:active { transform: scale(0.95); }
 .hm-engrenagem svg { transition: transform 0.5s var(--hm-ease); }
 .hm-engrenagem:hover svg { transform: rotate(60deg); }
-.hm-avatar:focus-visible, .hm-engrenagem:focus-visible, .hm-card:focus-visible, .hm-falar:focus-visible, .hm-rodape a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.hm-avatar:focus-visible, .hm-engrenagem:focus-visible, .hm-card:focus-visible, .hm-falar:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 
 /* palco: arte do Mentor (caveira + mão aberta) e a esfera viva por cima da esfera da arte */
 .hm-palco { --hm-voz-h: 72px; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
@@ -127,7 +127,7 @@
 @keyframes hm-giro { to { rotate: 360deg; } }
 
 /* dois cards octogonais: moldura de vidro fumê e metal, contorno vermelho que corre pelas bordas */
-.hm-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px 14px 0; }
+.hm-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; padding: 12px 14px max(22px, env(safe-area-inset-bottom)); }
 .hm-card { --c: 18px; position: relative; display: block; width: 100%; height: clamp(206px, 33dvh, 300px); padding: 0; font: inherit; color: var(--hm-gelo); text-align: left; cursor: pointer; background: none; border: 0; -webkit-tap-highlight-color: transparent;
   filter: drop-shadow(0 12px 18px rgb(0 0 0 / 0.75)) drop-shadow(0 0 10px rgb(215 25 32 / 0.25));
   transition: transform 0.4s var(--hm-ease), filter 0.4s; animation: hm-card-entra 0.9s var(--hm-ease) both; animation-delay: 0.35s; }
@@ -172,9 +172,6 @@
   mask-image: linear-gradient(180deg, transparent, #000 45%), linear-gradient(90deg, transparent, #000 14%, #000 86%, transparent); mask-composite: intersect; }
 .hm-plataforma img { width: 100%; height: auto; display: block; }
 
-.hm-rodape { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 14px; margin: 0; padding: 8px 16px 10px; font-size: 12px; color: #6e6461; }
-.hm-rodape a { color: #8d8380; text-decoration: none; padding: 6px 4px; transition: color 0.2s; }
-.hm-rodape a:hover { color: var(--hm-gelo); }
 
 /* folha de escolha (concursos ou matérias), em tela cheia */
 .hm-folha { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
@@ -182,7 +179,7 @@
 @keyframes hm-folha-entra { from { opacity: 0; transform: translateY(14px) scale(0.985); } }
 /* abertura: a Central fica carregando por baixo (a cena 3D já aquece) e só entra quando o clarão cobre a tela */
 .hm[data-intro="ativa"] > :not(.hm-intro) { visibility: hidden; }
-.hm[data-intro="ativa"] :is(.hm-topo, .hm-cena, .hm-corpo, .hm-card, .hm-voz, .hm-rodape) { animation-play-state: paused; }
+.hm[data-intro="ativa"] :is(.hm-topo, .hm-cena, .hm-corpo, .hm-card, .hm-voz) { animation-play-state: paused; }
 
 /* entrada cinematográfica */
 @keyframes hm-aparece { from { opacity: 0; } }
@@ -201,20 +198,19 @@
 @media (min-width: 600px) and (max-width: 899px) { .hm-card { height: clamp(200px, 26dvh, 260px); } }
 
 @media (min-width: 900px) {
-  .hm { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto auto;
-    grid-template-areas: "topo topo" "palco voz" "palco cards" "rodape rodape"; align-items: center; }
+  .hm { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas: "topo topo" "palco voz" "palco cards"; align-items: center; }
   .hm-topo { grid-area: topo; padding: 20px 40px 0; }
   .hm-logo { height: 32px; }
   .hm-palco { grid-area: palco; padding: 0 0 0 24px; height: 100%; justify-content: center; --hm-voz-h: 0px; }
   .hm-cena { width: min(100%, calc((100dvh - 150px) * 1.483)); }
   .hm-corpo { flex: none; width: min(100%, calc((100dvh - 150px) * 1.483)); height: clamp(70px, 15dvh, 150px); }
   .hm-voz { grid-area: voz; align-self: end; padding: 0 40px 0 16px; }
-  .hm-cards { grid-area: cards; align-self: start; padding: 20px 40px 0 16px; gap: 18px; }
+  .hm-cards { grid-area: cards; align-self: start; padding: 20px 40px 24px 16px; gap: 18px; }
   .hm-card { height: clamp(240px, 38dvh, 360px); --c: 24px; }
   .hm-card-face { --c: 22.8px; }
   .hm-card-titulo { font-size: clamp(19px, 1.7vw, 26px); }
   .hm-card-desc { font-size: 13px; }
-  .hm-rodape { grid-area: rodape; justify-content: flex-end; padding: 6px 40px 14px; }
   .hm-plataforma { left: 36%; }
   .hm-cena { left: 0; }
 }

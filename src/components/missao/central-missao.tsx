@@ -36,7 +36,7 @@ const FOLHAS: Record<Folha, { titulo: string; kicker: string; sub: string }> = {
 const FAISCAS = Array.from({ length: 12 }, (_, i) => ({ x: 4 + ((i * 37) % 26), d: ((i * 0.41) % 3.2).toFixed(2), t: (2.6 + ((i * 7) % 5) * 0.35).toFixed(2) }));
 
 /** Home pós-login: o Mentor segurando a esfera, o botão de voz e só dois caminhos, Concursos e Matérias. */
-export function CentralMissao({ primeiroNome, email, objetivo, materias, concursos, intro: introInicial = false }: CentralMissaoProps) {
+export function CentralMissao({ primeiroNome, email, materias, concursos, intro: introInicial = false }: CentralMissaoProps) {
   // abertura: "ativa" (cobre a Central), "revelando" (a Central entra por baixo do clarão), "fim"
   const [intro, setIntro] = useState<"ativa" | "revelando" | "fim">(introInicial ? "ativa" : "fim");
   const [falando, setFalando] = useState(false);
@@ -162,11 +162,6 @@ export function CentralMissao({ primeiroNome, email, objetivo, materias, concurs
         {/* eslint-disable-next-line @next/next/no-img-element -- plataforma decorativa, WebP em public/home */}
         <img src="/home/plataforma.webp" alt="" width={1086} height={168} loading="lazy" decoding="async" />
       </div>
-
-      <p className="hm-rodape">
-        {objetivo && <span>Objetivo atual: {objetivo}</span>}
-        <Link href="/trilhas">Ir para os estudos</Link>
-      </p>
 
       {folha && (
         <div className="hm-folha" role="dialog" aria-modal="true" aria-label={FOLHAS[folha].titulo}>
