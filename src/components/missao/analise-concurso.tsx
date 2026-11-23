@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { ArrowLeft, BookOpenCheck, ChevronDown, Clock, Compass, Flag, Info, Layers, ListChecks, Search, Target } from "lucide-react";
 import { tomPrioridade, type AnaliseDisciplina } from "@/domain/edital/analise";
-import { agruparTopicos, combinarComEdital, resumoDisponibilidade, type TopicoVisao } from "@/domain/missao/analise-conteudo";
+import { agruparTopicos, combinarComEdital, resumoDisponibilidade, type AulasCatalogadas, type TopicoVisao } from "@/domain/missao/analise-conteudo";
 import type { AnaliseParaAluno } from "@/server/services/concurso-analise";
 import "./analise-concurso.css";
 
@@ -23,6 +23,7 @@ interface Item {
   bloco: string;
   analise: AnaliseDisciplina | null;
   topicos: TopicoVisao[] | null;
+  extras: AulasCatalogadas[] | null;
 }
 
 /** O brilho segue o mouse dentro do cartão (variáveis CSS, sem re-renderizar). */
@@ -135,8 +136,8 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
   const { itens, extras } = useMemo(() => {
     const nomes = a?.disciplinas.map((d) => d.nome) ?? [];
     const comb = combinarComEdital(nomes, conteudo ?? []);
-    const base: Item[] = (a?.disciplinas ?? []).map((d, i) => ({ id: `d-${d.ordem}`, nome: d.nome, bloco: d.bloco, analise: d, topicos: comb.pares[i]?.topicos ?? null }));
-    const ex: Item[] = comb.extras.map((d, i) => ({ id: `x-${i}`, nome: d.nome, bloco: "", analise: null, topicos: d.topicos }));
+    const base: Item[] = (a?.disciplinas ?? []).map((d, i) => ({ id: `d-${d.ordem}`, nome: d.nome, bloco: d.bloco, analise: d, topicos: comb.pares[i]?.topicos ?? null, extras: comb.pares[i]?.extras ?? null }));
+    const ex: Item[] = comb.extras.map((d, i) => ({ id: `x-${i}`, nome: d.nome, bloco: "", analise: null, topicos: d.topicos, extras: d.extras ?? null }));
     return { itens: base, extras: ex };
   }, [a, conteudo]);
   const todas = useMemo(() => [...itens, ...extras], [itens, extras]);
@@ -472,6 +473,20 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
                     </div>
                   </div>
                   <Cartoes key={atual.id} topicos={atual.topicos!} termo={termoTop} aula={aula} />
+                  {atual.extras?.length ? (
+                    <div className="an-extras" data-testid="aulas-extras">
+                      <h4>Outras aulas catalogadas em {atual.nome}</h4>
+                      <p>Estão no catálogo do Aprovum e não casaram com nenhum item acima.</p>
+                      <div className="an-topicos">
+                        {atual.extras.map((e) => (
+                          <article key={e.titulo} className="an-top" data-estado="ok" style={{ "--pv": "100%" } as CSSProperties}>
+                            <header><h5>{e.titulo}</h5><b className="an-top-n">{plural(e.total, "aula", "aulas")}</b></header>
+                            {e.aulas.length > 0 && <div className="an-top-aulas an-aulas">{e.aulas.map((a) => <span key={a} className="an-pill an-ok" title={a}>{a}</span>)}</div>}
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               )}
             </>

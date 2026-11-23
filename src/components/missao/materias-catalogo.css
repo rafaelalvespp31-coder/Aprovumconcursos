@@ -125,3 +125,11 @@ a.mc-quadrado { text-decoration: none; }
 .mc-breve .mc-abrir { background: rgb(0 0 0 / 0.5); }
 
 .mc-painel .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* Celular: o painel estica até o fim da tela; abas e busca no alto, cards preenchendo todo o resto. */
+@media (max-width: 700px) {
+  .mc-painel { flex: 1; min-height: 0; padding: 10px 8px 0; }
+  .mc-rolagem { flex: 1; min-height: 0; max-height: none; padding-bottom: 24px; }
+  .mc-abas { display: flex; }
+  .mc-grade { gap: 10px; }
+}

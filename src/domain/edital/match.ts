@@ -47,6 +47,10 @@ export interface CatalogIndex {
 
 const GENERIC_MODES = new Set(["conhecimentos_especificos", "legislacao_especial", "outra"]);
 
+/** Matérias do catálogo que um mesmo assunto de edital pode cobrir: "Raciocínio Lógico-Matemático" usa aulas de lógica e de matemática; "Direitos Humanos" cai em legislação especial. */
+const IRMAS = [["raciocinio_logico", "matematica"], ["legislacao_especial", "direitos_humanos", "ctb_codigo_de_transito_brasileiro"]];
+const mesmaArea = (a: string, b: string) => a === b || IRMAS.some((g) => g.includes(a) && g.includes(b));
+
 export function buildIndex(catalog: readonly CatalogEntry[]): CatalogIndex {
   const items: Indexed[] = catalog.map((entry) => {
     const names = [entry.title, ...entry.aliases].map(tokensOf).filter((t) => t.all.length);
@@ -106,7 +110,7 @@ function scoreClause(idx: CatalogIndex, clauseText: string, mode: string | null,
   const scored: Array<MatchLink & { r: number; g: boolean }> = [];
   for (const it of idx.items) {
     const m = it.entry.mode;
-    const factor = mode ? (m === mode ? 1 : GENERIC_MODES.has(m) ? 0.85 : 0.6) : 0.92;
+    const factor = mode ? (mesmaArea(m, mode) ? 1 : GENERIC_MODES.has(m) ? 0.85 : 0.6) : 0.92;
     let rName = 0;
     for (const n of it.names) rName = Math.max(rName, recall(idx, clause, n.set));
     const rUnion = recall(idx, clause, it.union);

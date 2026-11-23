@@ -592,7 +592,7 @@ async function stageMap(p: Row) {
   if (counts.nao_encontrado) await event(id, userId, 4, `${counts.nao_encontrado} conteúdos sem aula no catálogo (pendentes).`, "warn");
 }
 
-const MATCH_VERSION = 7;
+const MATCH_VERSION = 8;
 const refreshing = new Set<string>();
 /**
  * Aulas catalogadas DEPOIS do envio do edital: se o catálogo publicado mudou desde o último vínculo,

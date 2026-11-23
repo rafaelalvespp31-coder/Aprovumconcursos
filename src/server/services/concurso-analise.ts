@@ -103,7 +103,7 @@ const conteudoPelosFocos = unstable_cache(
     const r = focosComoConteudo(analise.disciplinas, await loadCatalog());
     return r.length ? r : null;
   },
-  ["analise-concurso-focos-v1"],
+  ["analise-concurso-focos-v2"],
   { revalidate: 300 },
 );
 

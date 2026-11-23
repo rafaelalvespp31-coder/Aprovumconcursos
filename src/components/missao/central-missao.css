@@ -106,3 +106,15 @@
 /* Com duas fileiras de quadrados, telas baixas ganham espaço para o Mentor: título menor e sem os rótulos. */
 @media (max-height: 900px) { .cm-titulo { font-size: clamp(22px, 5.6vw, 32px); } }
 @media (max-height: 700px) { .cm-kicker { display: none; } }
+
+/* Celular: o painel de escolha ocupa toda a tela abaixo do Mentor (sem caixa de altura fixa) e os cards rolam por ele inteiro. */
+@media (max-width: 700px) {
+  .cm { grid-template-rows: auto auto minmax(0, 1fr); }
+  .cm-palco { height: clamp(160px, 22dvh, 210px); }
+  .cm-corpo { min-height: 0; padding: 0 12px 4px; }
+  .cm-kicker { display: none; }
+  .cm-titulo { margin: 0; font-size: clamp(16px, 4.7vw, 22px); white-space: nowrap; }
+  .cm-form { flex: 1; min-height: 0; display: flex; flex-direction: column; margin-top: 10px; }
+  .cm-estado { min-height: 0; margin: 0; }
+  .cm-painel { padding: 8px 14px 2px; }
+}

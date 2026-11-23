@@ -48,5 +48,16 @@ export function tokensOf(text: string): Tokens {
   return { all, set: new Set(all) };
 }
 
+/** Todas as palavras significativas (radical), marcando as genéricas ("direito", "teoria"): quem compara títulos precisa das duas coisas. */
+export function tokensCheios(text: string): Array<{ st: string; generico: boolean }> {
+  const out = new Map<string, boolean>();
+  for (const w of fold(text).split(" ")) {
+    if (!w || STOP.has(w) || !(w.length >= 3 || /^\d+$/.test(w))) continue;
+    const st = stem(w);
+    out.set(st, (out.get(st) ?? true) && GENERIC.has(w));
+  }
+  return [...out].map(([st, generico]) => ({ st, generico }));
+}
+
 /** Chave estável de um título de edital (agrupa o mesmo assunto em editais diferentes). */
 export const titleKey = (title: string) => fold(title).slice(0, 160);

@@ -1,5 +1,5 @@
-import { modeOfDiscipline } from "@/domain/edital/disciplines";
 import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match";
+import { fold, stem, tokensCheios } from "@/domain/edital/text";
 
 /** Conteúdo programático dentro da análise do concurso: pareia as disciplinas da análise com as do edital e agrupa os tópicos em cartões. Puro. */
 
@@ -12,9 +12,17 @@ export interface TopicoVisao {
   /** Títulos das aulas catalogadas que cobrem o tópico. */
   aulas: string[];
 }
+/** Aula(s) do catálogo, na matéria da disciplina, que não casaram com nenhum item: continuam catalogadas e aparecem à parte. */
+export interface AulasCatalogadas {
+  titulo: string;
+  total: number;
+  aulas: string[];
+}
 export interface DisciplinaVisao {
   nome: string;
   topicos: TopicoVisao[];
+  /** Só no conteúdo derivado dos focos da análise. Não entra na contagem de cobertura. */
+  extras?: AulasCatalogadas[];
 }
 export interface CartaoTopico {
   raiz: TopicoVisao;
@@ -90,25 +98,143 @@ export function combinarComEdital(nomesAnalise: readonly string[], conteudo: rea
   return { pares: idx.map((i) => (i == null ? null : conteudo[i]!)), extras: conteudo.filter((_, i) => !usados.has(i)) };
 }
 
+/** Matérias do catálogo (discipline_mode) que a disciplina da análise cobre. Vazio = o catálogo não tem aula dessa área: tudo fica vermelho, sem procurar em outras matérias. */
+export function modosDaDisciplina(nome: string, modosDoCatalogo: ReadonlySet<string> = new Set()): string[] {
+  const f = fold(nome);
+  if (/\b(legislacao (penal|especial|extravagante|de transito)|extravagante)\b/.test(f)) return ["legislacao_especial"];
+  if (/\b(lingua portuguesa|portugues|redacao oficial|interpretacao de texto)\b/.test(f)) return ["lingua_portuguesa"];
+  if (/\braciocinio logico\b|\blogica\b|\bmatematica\b|\bestatistica\b/.test(f)) return ["raciocinio_logico", "matematica"];
+  if (/\binformatica\b|\bseguranca da informacao\b/.test(f)) return ["informatica"];
+  if (/\bdireito constitucional\b/.test(f)) return ["direito_constitucional"];
+  if (/\bdireito administrativo\b|\badministrativo\b/.test(f)) return ["direito_administrativo"];
+  if (/\bprocessual penal\b|\bprocesso penal\b/.test(f)) return ["direito_processual_penal"];
+  if (/\bdireito penal\b|\bpenal militar\b/.test(f)) return ["direito_penal"];
+  if (/\bdireitos humanos\b/.test(f)) return ["direitos_humanos"];
+  if (/\betica\b|\bcidadania\b/.test(f)) return ["etica_e_cidadania"];
+  if (/\bgeopolitica\b|\bgeografia\b|\batualidades\b/.test(f)) return ["geopolitica"];
+  if (/\btransito\b/.test(f)) return ["ctb_codigo_de_transito_brasileiro"];
+  // Matéria que o catálogo passou a ter e que não está na lista acima: vale quando todas as palavras do nome do modo estão no nome da disciplina.
+  const palavras = new Set(f.split(" ").map(stem));
+  return [...modosDoCatalogo].filter((m) => m.split("_").every((w) => palavras.has(stem(w))));
+}
+
+/** Palavras que só repetem a matéria ("segurança da informação" dentro de Informática) e por isso não diferenciam o assunto. */
+const REDUNDANTES: Record<string, string[]> = { informatica: ["informatica", "informacao"], direito_processual_penal: ["processual"] };
+
+/** Tira do foco o que não é assunto: "..., conforme os tópicos previstos", "quando previstas", "e demais assuntos expressamente previstos". */
+function assuntoDoFoco(foco: string): string {
+  return foco
+    .replace(/[,;]?\s*\b(conforme|quando previst\w*|se previst\w*|especialmente|expressamente|previst[oa]s?)\b.*$/i, "")
+    .replace(/\s+e\s+demais\s+(assuntos|[aá]reas|itens)\b.*$/i, "")
+    .trim();
+}
+
+const AMPLAS = new Set(["medida", "crime", "consequencia", "procedimento", "regra", "alteracao", "competencia", "atribuicao", "organizacao", "estrutura"].map((w) => stem(w)));
+
+interface Alvo {
+  entry: CatalogEntry;
+  titulos: Array<Set<string>>;
+  grupo: Set<string> | null;
+  cabeca: Set<string> | null;
+  chave: string;
+}
+
+const conjunto = (texto: string, ignorar: ReadonlySet<string>) => new Set(tokensCheios(texto).map((t) => t.st).filter((t) => !ignorar.has(t)));
+const contem = (maior: ReadonlySet<string>, menor: ReadonlySet<string>) => menor.size > 0 && [...menor].every((t) => maior.has(t));
+
+function montarAlvos(entradas: readonly CatalogEntry[], ignorar: ReadonlySet<string>): Alvo[] {
+  return entradas.map((entry) => {
+    const g = entry.group;
+    const cabecaTxt = g && /[:—–]/.test(g) ? g.split(/[:—–]/)[0]! : null;
+    return {
+      entry,
+      titulos: [entry.title, ...entry.aliases].map((t) => conjunto(t, ignorar)),
+      grupo: g ? conjunto(g, ignorar) : null,
+      cabeca: cabecaTxt ? conjunto(cabecaTxt, ignorar) : null,
+      chave: g ?? entry.title,
+    };
+  });
+}
+
+interface AcertoGrupo {
+  chave: string;
+  titulo: string;
+  porGrupo: boolean;
+}
+
 /**
- * Conteúdo derivado da análise: cada "principal foco" da disciplina vira um item, conferido contra as aulas catalogadas
- * (mesma correspondência usada para o edital). Verde = há aula (completa, parcial ou a conferir); vermelho = ainda não.
+ * Procura aulas para um assunto amplo ("Teoria do crime", "Provas"): o nome do grupo da aula (ou o título dela) tem de conter todas as palavras do assunto.
+ * O grupo pode ter até 2 palavras a mais ("Teoria Geral do Crime"); o título, quantas tiver. Só olha as matérias da disciplina.
+ */
+function acharAulas(alvos: readonly Alvo[], texto: string, ignorar: ReadonlySet<string>): AcertoGrupo[] {
+  const clausulas = assuntoDoFoco(texto).split(/\s*[,;]\s*|\s+e\s+/).map((c) => c.trim()).filter(Boolean);
+  const acertos = new Map<string, AcertoGrupo>();
+  for (const c of clausulas) {
+    const palavras = tokensCheios(c).filter((t) => !ignorar.has(t.st));
+    if (!palavras.some((p) => !p.generico)) continue; // só palavras genéricas ("direitos", "conceitos") não identificam assunto
+    const C = new Set(palavras.map((p) => p.st));
+    const especie = /^crimes? em especie$/.test(fold(c));
+    for (const a of alvos) {
+      const porGrupo = !!a.grupo && ((contem(a.grupo, C) && a.grupo.size - C.size <= 2) || (!!a.cabeca && contem(a.cabeca, C) && a.cabeca.size - C.size <= 1));
+      // Palavra solta e ampla ("medidas", "crimes") em título de aula não prova assunto: só vale com duas palavras ou uma específica.
+      const porTitulo = (C.size >= 2 || ![...C].some((t) => AMPLAS.has(t))) && a.titulos.some((t) => contem(t, C));
+      const parteEspecial = especie && (/^crimes?\s+(contra|do|da|de)\b/.test(fold(a.entry.group ?? "")) || /\bcp, art\b/.test(fold(a.entry.title)));
+      if (!porGrupo && !porTitulo && !parteEspecial) continue;
+      const k = a.chave + (porGrupo || parteEspecial ? "|g" : `|${a.entry.id}`);
+      if (!acertos.has(k)) acertos.set(k, { chave: a.chave, titulo: porGrupo || parteEspecial ? (a.entry.group ?? a.entry.title) : a.entry.title, porGrupo: porGrupo || parteEspecial });
+    }
+  }
+  return [...acertos.values()];
+}
+
+/**
+ * Conteúdo derivado da análise: cada "principal foco" da disciplina vira um item, conferido contra as aulas catalogadas das matérias da disciplina.
+ * Verde = há aula; vermelho = ainda não. As aulas da matéria que não casaram com nenhum foco aparecem à parte (extras): estão catalogadas.
  */
 export function focosComoConteudo(disciplinas: ReadonlyArray<{ nome: string; focos: readonly string[] }>, catalogo: readonly CatalogEntry[]): DisciplinaVisao[] {
   const idx = buildIndex(catalogo);
   const titulos = new Map(catalogo.map((c) => [c.id, c.title]));
+  const porId = new Map(catalogo.map((c) => [c.id, c]));
+  const modosCatalogo = new Set(catalogo.map((c) => c.mode));
   return disciplinas
     .filter((d) => d.focos.length)
     .map((d) => {
-      const mode = modeOfDiscipline(d.nome);
-      return {
-        nome: d.nome,
-        topicos: d.focos.map((f, i): TopicoVisao => {
-          const r = matchTopic(idx, f, mode);
-          const achou = r.status !== "nao_encontrado";
-          const aulas = achou ? [...new Set(r.links.map((l) => titulos.get(l.catalogId)).filter((t): t is string => !!t))].slice(0, 4) : [];
-          return { codigo: String(i + 1), nivel: 1, titulo: f, disponivel: achou, aulas };
-        }),
-      };
+      const modos = modosDaDisciplina(d.nome, modosCatalogo);
+      const ignorar = new Set(modos.flatMap((m) => REDUNDANTES[m] ?? []).map((w) => stem(w)));
+      const doArea = catalogo.filter((c) => modos.includes(c.mode));
+      const alvos = montarAlvos(doArea, ignorar);
+      const tamanhoGrupo = new Map<string, number>();
+      for (const a of alvos) tamanhoGrupo.set(a.chave, (tamanhoGrupo.get(a.chave) ?? 0) + 1);
+      const usados = new Set<string>();
+      const topicos = d.focos.map((f, i): TopicoVisao => {
+        let aulas: string[] = [];
+        if (modos.length) {
+          const acertos = acharAulas(alvos, f, ignorar);
+          for (const a of acertos) usados.add(a.chave);
+          aulas = [...new Set(acertos.map((a) => (a.porGrupo ? `${a.titulo} · ${plural(tamanhoGrupo.get(a.chave) ?? 1)}` : a.titulo)))];
+          if (!aulas.length) {
+            // Casamento do edital (títulos e sinônimos), uma matéria por vez, para não perder o que a regra acima não vê.
+            const melhor = modos.map((m) => matchTopic(idx, f, m)).filter((r) => r.status !== "nao_encontrado").sort((x, y) => y.score - x.score)[0];
+            if (melhor) {
+              const ids = melhor.links.map((l) => l.catalogId).filter((id) => modos.includes(porId.get(id)?.mode ?? ""));
+              for (const id of ids) usados.add(porId.get(id)!.group ?? porId.get(id)!.title);
+              aulas = [...new Set(ids.map((id) => titulos.get(id)).filter((t): t is string => !!t))];
+            }
+          }
+        }
+        return { codigo: String(i + 1), nivel: 1, titulo: f, disponivel: aulas.length > 0, aulas: aulas.slice(0, 4) };
+      });
+      const extras = new Map<string, AulasCatalogadas>();
+      for (const a of alvos) {
+        if (usados.has(a.chave)) continue;
+        const e = extras.get(a.chave) ?? { titulo: a.chave, total: 0, aulas: [] };
+        e.total += 1;
+        if (e.aulas.length < 4 && a.entry.title !== e.titulo) e.aulas.push(a.entry.title);
+        extras.set(a.chave, e);
+      }
+      const lista = [...extras.values()].sort((x, y) => y.total - x.total || x.titulo.localeCompare(y.titulo, "pt-BR")).slice(0, 12);
+      return { nome: d.nome, topicos, ...(lista.length ? { extras: lista } : {}) };
     });
 }
+
+const plural = (n: number) => `${n} ${n === 1 ? "aula" : "aulas"}`;
