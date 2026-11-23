@@ -514,7 +514,7 @@ export async function getDashboard() {
   weekStart.setDate(now.getDate() - ((now.getDay() + 6) % 7)); // segunda-feira
   weekStart.setHours(0, 0, 0, 0);
 
-  const [profile, activity, weekLessons, lastProgress, qCount, attempted, marks] = await Promise.all([
+  const [profile, activity, weekLessons, lastProgress, qCounts, marks] = await Promise.all([
     db.from("profiles").select("display_name, daily_questions_goal, weekly_lessons_goal, onboarding_completed").eq("id", me).maybeSingle(),
     db.rpc("my_daily_activity", { p_days: 14 }),
     db.rpc("my_lessons_completed_since", { p_since: weekStart.toISOString() }),
@@ -524,8 +524,8 @@ export async function getDashboard() {
       .in("state", ["em_andamento", "aula_concluida", "em_revisao", "disponivel"])
       .order("updated_at", { ascending: false })
       .limit(5),
-    db.from("questions").select("id, difficulty").eq("active", true).limit(5000),
-    db.from("answer_attempts").select("question_id").limit(5000),
+    // Contagem feita no banco (antes: baixava até 5.000 questões + 5.000 respostas a cada abertura do painel).
+    db.rpc("my_question_counts"),
     db.from("question_marks").select("question_id", { count: "exact", head: true }),
   ]);
   const days = ((activity.data ?? []) as Array<{ day: string; correct: number; wrong: number }>).map((d) => ({
@@ -535,7 +535,6 @@ export async function getDashboard() {
   }));
   const today = days.at(-1) ?? { day: "", correct: 0, wrong: 0 };
   const continueRow = (lastProgress.data ?? []).find((r) => !(r.study_trails as unknown as { archived_at: string | null } | null)?.archived_at);
-  const answeredIds = new Set((attempted.data ?? []).map((a) => a.question_id as string));
   const totalAnswered = days.reduce((s, d) => s + d.correct + d.wrong, 0);
   const totalCorrect = days.reduce((s, d) => s + d.correct, 0);
 
@@ -559,18 +558,13 @@ export async function getDashboard() {
         }
       : null,
     questions: (() => {
-      const active = (qCount.data ?? []).map((q) => ({ id: q.id as string, difficulty: Number(q.difficulty) }));
-      const open = active.filter((q) => !answeredIds.has(q.id));
+      const c = (qCounts.data ?? {}) as { total?: number; unanswered?: number; facil?: number; medio?: number; dificil?: number };
       return {
-        total: active.length,
-        unanswered: open.length,
+        total: Number(c.total ?? 0),
+        unanswered: Number(c.unanswered ?? 0),
         marked: marks.count ?? 0,
         // Fácil = níveis 1–2, Médio = 3, Difícil = 4–5 (níveis gerados para cada tema).
-        unansweredByLevel: {
-          facil: open.filter((q) => q.difficulty <= 2).length,
-          medio: open.filter((q) => q.difficulty === 3).length,
-          dificil: open.filter((q) => q.difficulty >= 4).length,
-        },
+        unansweredByLevel: { facil: Number(c.facil ?? 0), medio: Number(c.medio ?? 0), dificil: Number(c.dificil ?? 0) },
       };
     })(),
   };
