@@ -21,7 +21,8 @@ const ETAPAS: Array<[string, string]> = [
 ];
 const REENVIAR = new Set(["upload_missing", "not_pdf", "hash_mismatch"]);
 
-type Etapa = "enviando" | "lendo" | "conferencia" | "erro" | "pronto";
+type Etapa = "enviando" | "lendo" | "conferencia" | "revisar" | "erro" | "pronto";
+interface Conteudo { leitor: "gemini" | "estrutural"; modelo: string | null; disciplinas: Array<{ id: string; nome: string; topicos: Array<{ codigo: string | null; nivel: number; titulo: string }> }> }
 
 const tamanho = (n: number) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 
@@ -32,6 +33,13 @@ async function sha256(file: File): Promise<string> {
 
 async function chamar<T>(url: string, corpo?: unknown): Promise<T> {
   const r = await fetch(url, { method: "POST", ...(corpo !== undefined ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(corpo) } : {}) });
+  const j = (await r.json().catch(() => ({}))) as T & { error?: string };
+  if (!r.ok) throw new Error(j.error ?? "Falha na comunicação. Tente de novo.");
+  return j;
+}
+
+async function obter<T>(url: string): Promise<T> {
+  const r = await fetch(url, { cache: "no-store" });
   const j = (await r.json().catch(() => ({}))) as T & { error?: string };
   if (!r.ok) throw new Error(j.error ?? "Falha na comunicação. Tente de novo.");
   return j;
@@ -60,6 +68,7 @@ export function AnexarEdital({ onConcluido, onIniciar, desabilitado = false }: A
   const [msg, setMsg] = useState("Verificando o arquivo…");
   const [prep, setPrep] = useState<PrepSummary | null>(null);
   const [prepId, setPrepId] = useState<string | null>(null);
+  const [conteudo, setConteudo] = useState<Conteudo | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const [cargo, setCargo] = useState("");
@@ -80,6 +89,22 @@ export function AnexarEdital({ onConcluido, onIniciar, desabilitado = false }: A
     [onConcluido],
   );
 
+  /** Mostra as matérias e os tópicos já separados; o plano só é montado depois que o aluno confirma. */
+  const revisar = useCallback(
+    async (p: PrepSummary, minha: number) => {
+      try {
+        const c = await obter<Conteudo>(`/api/edital/${p.id}/conteudo`);
+        if (rodada.current !== minha) return;
+        if (!c.disciplinas.length) return void (await concluir(p, minha));
+        setConteudo(c);
+        setEtapa("revisar");
+      } catch {
+        if (rodada.current === minha) await concluir(p, minha); // sem a conferência na tela, segue com o plano
+      }
+    },
+    [concluir],
+  );
+
   /** Executa as etapas reais, uma chamada por vez, até terminar ou pedir ação do aluno. */
   const ler = useCallback(
     async (id: string, minha: number) => {
@@ -91,7 +116,7 @@ export function AnexarEdital({ onConcluido, onIniciar, desabilitado = false }: A
           setPrep(r.prep);
           if (RODANDO.has(r.prep.status)) continue;
           if (r.prep.status === "concluido") {
-            if ((r.prep.stats.disciplines ?? 0) > 0) return void (await concluir(r.prep, minha));
+            if ((r.prep.stats.disciplines ?? 0) > 0) return void (await revisar(r.prep, minha));
             setAviso("Não encontrei disciplinas neste edital.");
             return setEtapa("conferencia");
           }
@@ -107,7 +132,7 @@ export function AnexarEdital({ onConcluido, onIniciar, desabilitado = false }: A
         setEtapa("erro");
       }
     },
-    [concluir],
+    [concluir, revisar],
   );
 
   const anexar = useCallback(
@@ -118,7 +143,7 @@ export function AnexarEdital({ onConcluido, onIniciar, desabilitado = false }: A
       setAberto(true);
       setEtapa("enviando");
       setNomeArquivo(file.name);
-      setPrep(null); setPrepId(null); setErro(null); setAviso(null); setCargo(""); setTexto("");
+      setPrep(null); setPrepId(null); setConteudo(null); setErro(null); setAviso(null); setCargo(""); setTexto("");
       try {
         setMsg("Verificando o arquivo…");
         const hash = await sha256(file);
@@ -157,7 +182,7 @@ export function AnexarEdital({ onConcluido, onIniciar, desabilitado = false }: A
     if (problema) {
       rodada.current++;
       setAlvo(entrada.current?.closest(".cm") ?? document.body);
-      setAberto(true); setNomeArquivo(f.name); setPrep(null); setPrepId(null); setAviso(null);
+      setAberto(true); setNomeArquivo(f.name); setPrep(null); setPrepId(null); setConteudo(null); setAviso(null);
       setErro(problema); setEtapa("erro");
       return;
     }
@@ -214,6 +239,7 @@ export function AnexarEdital({ onConcluido, onIniciar, desabilitado = false }: A
     lendo: "Lendo o conteúdo programático",
     conferencia: precisaCargo ? "Qual é o seu cargo?" : naoEdital ? "Este arquivo não parece ser um edital" : "Preciso da sua conferência",
     erro: "Não foi possível concluir",
+    revisar: "Conteúdo programático separado",
     pronto: "Edital lido",
   };
 
@@ -263,6 +289,34 @@ export function AnexarEdital({ onConcluido, onIniciar, desabilitado = false }: A
                     <div><dt>Tópicos</dt><dd>{(s.topics ?? 0).toLocaleString("pt-BR")}</dd></div>
                   </dl>
                 )}
+              </div>
+            )}
+
+            {etapa === "revisar" && conteudo && (
+              <div className="ae-bloco" data-testid="anexar-edital-revisar">
+                <p className="ae-leitor" data-leitor={conteudo.leitor}>
+                  {conteudo.leitor === "gemini" ? "Lido pelo especialista Gemini e conferido no texto do edital." : "Lido pela leitura estrutural do edital."}
+                </p>
+                <dl className="ae-dados">
+                  <div><dt>Matérias</dt><dd>{conteudo.disciplinas.length.toLocaleString("pt-BR")}</dd></div>
+                  <div><dt>Tópicos</dt><dd>{conteudo.disciplinas.reduce((n, d) => n + d.topicos.length, 0).toLocaleString("pt-BR")}</dd></div>
+                </dl>
+                <div className="ae-materias" role="list" aria-label="Matérias do edital">
+                  {conteudo.disciplinas.map((d, i) => (
+                    <details key={d.id} className="ae-materia" role="listitem">
+                      <summary><span className="ae-materia-n">{i + 1}</span><span className="ae-materia-nome">{d.nome}</span><span className="ae-materia-q">{d.topicos.length} {d.topicos.length === 1 ? "tópico" : "tópicos"}</span></summary>
+                      <ul className="ae-topicos">
+                        {d.topicos.map((t, k) => (
+                          <li key={k} style={{ paddingLeft: `${(Math.min(t.nivel, 4) - 1) * 14}px` }}>{t.codigo && <b>{t.codigo}</b>} {t.titulo}</li>
+                        ))}
+                      </ul>
+                    </details>
+                  ))}
+                </div>
+                <div className="ae-linha">
+                  <button type="button" className="ae-primario" onClick={() => prep && void concluir(prep, rodada.current)} data-testid="anexar-edital-montar">Montar meu plano</button>
+                  <button type="button" className="ae-sec" onClick={() => entrada.current?.click()}>Anexar outro edital</button>
+                </div>
               </div>
             )}
 
@@ -323,7 +377,7 @@ export function AnexarEdital({ onConcluido, onIniciar, desabilitado = false }: A
               </div>
             )}
 
-            {etapa !== "erro" && etapa !== "pronto" && etapa !== "conferencia" && (
+            {(etapa === "enviando" || etapa === "lendo") && (
               <button type="button" className="ae-sec ae-cancelar" onClick={fechar}>Cancelar</button>
             )}
           </div>

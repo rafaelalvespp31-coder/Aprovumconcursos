@@ -11,6 +11,7 @@ import { extractOrgLogo } from "./edital-logo";
 import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match";
 import { crossSources } from "@/domain/edital/cross";
 import { filterPagesByRole } from "@/domain/edital/role-filter";
+import { lerComEspecialista, type Especialista } from "./edital-especialista";
 import { computePriorities, extractScoring, type Priorities } from "@/domain/edital/scoring";
 
 /**
@@ -78,6 +79,11 @@ export interface PrepStats {
   divergences?: string[];
   /** Questões, pesos e prioridades de estudo lidos do PDF (só o que o edital informa). */
   scoring?: Priorities;
+  /** Quem separou as matérias e os tópicos: o Gemini (conferido contra o texto do PDF) ou a leitura estrutural (regras). */
+  reader?: "gemini" | "estrutural";
+  readerModel?: string;
+  /** % dos tópicos do Gemini encontrados no texto do edital. */
+  anchoring?: number;
   /** Como o conteúdo foi separado por cargo (PDF e texto colado). */
   roleFilter?: { role: string | null; pdf?: { applied: boolean; removed: number }; text?: { applied: boolean; removed: number } };
 }
@@ -160,14 +166,18 @@ export async function createPreparation(userId: string, raw: unknown): Promise<{
   await enforceRateLimit(userId, "edital_novo", 6, 3600);
   const db = createAdminClient();
   // Mesmo edital já enviado por este aluno: reaproveita (sem duplicar nem reprocessar).
-  const dup = await db.from("edital_preparations").select("id, status, programmatic_text, role_name").eq("user_id", userId).eq("file_hash", v.hash).maybeSingle();
+  const dup = await db.from("edital_preparations").select("id, status, programmatic_text, role_name, stats").eq("user_id", userId).eq("file_hash", v.hash).maybeSingle();
   if (dup.data) {
     // Mesmo edital reenviado: nada de vínculos nem disciplinas novos. Se o aluno trouxe texto/cargo diferentes, só atualiza e refaz a análise do mesmo registro.
     const content = v.content?.replace(/\u0000/g, "").trim() || null;
     const changed = (content && content !== dup.data.programmatic_text) || (v.roleName && v.roleName !== dup.data.role_name);
+    // Edital lido antes só pela leitura estrutural: com o especialista (Gemini) configurado, refaz a leitura do mesmo registro.
+    const semEspecialista = !!process.env.GEMINI_API_KEY && (dup.data.stats as PrepStats | null)?.reader !== "gemini";
     if (changed) {
       await db.from("edital_preparations").update({ ...(content ? { programmatic_text: content } : {}), ...(v.roleName ? { role_name: v.roleName } : {}), updated_at: new Date().toISOString() }).eq("id", dup.data.id as string);
       if (dup.data.status === "concluido" || dup.data.status === "conferencia") await setStatus(dup.data.id as string, "identificando", { error: null });
+    } else if (semEspecialista && dup.data.status === "concluido") {
+      await setStatus(dup.data.id as string, "identificando", { error: null });
     }
     return { id: dup.data.id as string, existing: true, upload: null };
   }
@@ -363,13 +373,24 @@ async function stageIdentify(p: Row) {
   await fillInfo(p, pages);
   if (!p.extras_checked) await fillLogo(p);
 
+  // O Gemini, como especialista, lê o edital COMPLETO e separa matérias e tópicos (cada tópico é conferido no texto do PDF).
+  // Se ele falhar ou não estiver configurado, segue a leitura estrutural abaixo, sem inventar nada.
+  await event(id, userId, 3, "Especialista Gemini lendo o edital completo e separando o conteúdo programático…", "info");
+  const esp: Especialista = await lerComEspecialista(pages, (p.role_name as string | null) ?? null).catch((): Especialista => ({ ok: false, motivo: "erro" }));
+  if (esp.ok && esp.info.concurso && !p.contest_name) { p.contest_name = esp.info.concurso; await db.from("edital_preparations").update({ contest_name: esp.info.concurso }).eq("id", id); }
+  if (esp.ok && esp.info.banca && !p.board) { p.board = esp.info.banca; await db.from("edital_preparations").update({ board: esp.info.banca }).eq("id", id); }
+  if (esp.ok && esp.info.ano && !p.contest_year) { p.contest_year = esp.info.ano; await db.from("edital_preparations").update({ contest_year: esp.info.ano }).eq("id", id); }
+  if (!esp.ok) await event(id, userId, 3, `Especialista indisponível (${esp.motivo === "sem_chave" ? "IA não configurada" : esp.motivo === "ancoragem_baixa" ? "a leitura não bateu com o texto do edital" : "sem resposta a tempo"}): usei a leitura estrutural do edital.`, "warn");
+
   // Cargos do edital: guardados para o aluno escolher. Com vários cargos e nenhum escolhido, a análise espera.
-  const roles = detectRoles(pages).slice(0, 40);
+  const roles = (esp.ok && esp.info.cargos.length ? esp.info.cargos : detectRoles(pages)).slice(0, 40);
   if (roles.length && JSON.stringify(roles) !== JSON.stringify(p.role_options ?? [])) {
     await db.from("edital_preparations").update({ role_options: roles }).eq("id", id);
     p.role_options = roles;
   }
-  if (!p.role_name && roles.length > 1) {
+  // Conteúdo comum a todos os cargos (o especialista já separou as matérias): não precisa escolher cargo.
+  const conteudoComum = esp.ok && !!esp.parsed && !p.role_name;
+  if (!p.role_name && roles.length > 1 && !conteudoComum) {
     await event(id, userId, 3, `O edital tem ${roles.length} cargos. Escolha o seu para continuar.`, "warn");
     await setStatus(id, "conferencia", { stats: { ...((p.stats as PrepStats) ?? {}), needRole: true, notEdital: false } });
     return;
@@ -391,7 +412,8 @@ async function stageIdentify(p: Row) {
     const sep = fp.applied || roleFilter.text?.applied;
     await event(id, userId, 3, sep ? `Conteúdo separado para o cargo ${fp.target}: ${(fp.removedLines + (roleFilter.text?.removed ?? 0)).toLocaleString("pt-BR")} linhas de outros cargos foram ignoradas.` : `Não encontrei títulos de cargo no conteúdo programático; usei o conteúdo inteiro. Confira se ele é do cargo ${fp.target}.`, sep ? "ok" : "warn");
   }
-  const pdf = parseEdital(pdfPages);
+  const pdf = esp.ok && esp.parsed ? esp.parsed : parseEdital(pdfPages);
+  if (esp.ok && esp.parsed) await event(id, userId, 3, `Especialista (${esp.modelo}) separou ${esp.parsed.disciplines.length} matérias; ${Math.round(esp.ancoragem * 100)}% dos tópicos conferidos no texto do edital.`, "ok");
   const typed = typedText ? parseProgrammaticText(typedText) : null;
   const cross = crossSources(pdf, typed);
   const parsed = cross.parsed;
@@ -413,7 +435,8 @@ async function stageIdentify(p: Row) {
   await event(id, userId, 3, scoring.basis === "nao_disponivel" ? "O edital não informa questões por disciplina: prioridade quantitativa indisponível." : `Questões e pesos lidos do edital (${scoring.rows.filter((r) => r.priority).length} disciplinas classificadas).`, scoring.basis === "nao_disponivel" ? "warn" : "ok");
   const fresh = await own(userId, id);
   const sources = { pdf: cross.used.pdf, text: cross.used.text, role: (fresh.role_name as string | null) ?? null, roleSource: fresh.role_name ? (p.role_name ? "aluno" : "aluno") : null };
-  await db.from("edital_preparations").update({ sources, stats: { ...((fresh.stats as PrepStats) ?? {}), needRole: false, sources, roleFilter, scoring, divergences: cross.divergences.slice(0, 12) } }).eq("id", id);
+  const leitor = esp.ok && esp.parsed && cross.used.pdf ? { reader: "gemini" as const, readerModel: esp.modelo, anchoring: Math.round(esp.ancoragem * 100) } : { reader: "estrutural" as const };
+  await db.from("edital_preparations").update({ sources, stats: { ...((fresh.stats as PrepStats) ?? {}), needRole: false, sources, roleFilter, scoring, divergences: cross.divergences.slice(0, 12), ...leitor } }).eq("id", id);
 }
 
 /**
@@ -598,6 +621,26 @@ export async function submitManualContent(userId: string, id: string, text: unkn
   await createAdminClient().from("edital_preparations").update({ programmatic_text: t }).eq("id", id);
   await persistParsed(p, parsed, true);
   return toSummary(await own(userId, id));
+}
+
+/** Conteúdo programático já separado (matérias e tópicos por matéria), para o aluno conferir antes de montar o plano. */
+export async function listarConteudo(userId: string, id: string): Promise<{ leitor: "gemini" | "estrutural"; modelo: string | null; disciplinas: Array<{ id: string; nome: string; topicos: Array<{ codigo: string | null; nivel: number; titulo: string }> }> }> {
+  const p = await own(userId, id);
+  const db = createAdminClient();
+  const [d, t] = await Promise.all([
+    db.from("edital_disciplines").select("id, name, position").eq("preparation_id", id).order("position").limit(100),
+    db.from("edital_topics").select("discipline_id, code, depth, title, position").eq("preparation_id", id).order("position").limit(5000),
+  ]);
+  if (d.error) throw new Error(d.error.message);
+  if (t.error) throw new Error(t.error.message);
+  const por = new Map<string, Array<{ codigo: string | null; nivel: number; titulo: string }>>();
+  for (const x of (t.data ?? []) as Row[]) {
+    const arr = por.get(x.discipline_id as string) ?? [];
+    arr.push({ codigo: (x.code as string | null) ?? null, nivel: (x.depth as number | null) ?? 1, titulo: x.title as string });
+    por.set(x.discipline_id as string, arr);
+  }
+  const st = (p.stats as PrepStats) ?? {};
+  return { leitor: st.reader === "gemini" ? "gemini" : "estrutural", modelo: st.readerModel ?? null, disciplinas: ((d.data ?? []) as Row[]).map((x) => ({ id: x.id as string, nome: x.name as string, topicos: por.get(x.id as string) ?? [] })) };
 }
 
 export async function listPreparations(userId: string): Promise<PrepSummary[]> {
