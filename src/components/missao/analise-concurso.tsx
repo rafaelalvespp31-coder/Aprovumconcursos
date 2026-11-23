@@ -92,7 +92,7 @@ function Cartoes({ topicos, termo, aula }: { topicos: TopicoVisao[]; termo: stri
     const q = sem(termo).split(/\s+/).filter(Boolean);
     const passa = (t: TopicoVisao) => (aula === "com" ? t.disponivel : aula === "sem" ? !t.disponivel : true) && q.every((w) => sem(`${t.codigo ?? ""} ${t.titulo} ${t.aulas.join(" ")}`).includes(w));
     return agruparTopicos(topicos)
-      .map((c) => ({ ...c, filhos: c.filhos.filter(passa), mostra: passa(c.raiz) }))
+      .map((c, n) => ({ ...c, n: n + 1, filhos: c.filhos.map((f, k) => ({ f, k })).filter(({ f }) => passa(f)), mostra: passa(c.raiz) }))
       .filter((c) => c.mostra || c.filhos.length);
   }, [topicos, termo, aula]);
   if (!cartoes.length) return <p className="an-vazio">Nenhum tópico com esse filtro.</p>;
@@ -104,15 +104,15 @@ function Cartoes({ topicos, termo, aula }: { topicos: TopicoVisao[]; termo: stri
           return (
             <article key={`${c.raiz.codigo ?? ""}-${i}`} className="an-top" data-estado={p === 100 ? "ok" : p === 0 ? "no" : "mix"} style={{ "--pv": `${p}%` } as CSSProperties}>
               <header>
-                <h5>{c.raiz.codigo && <span className="an-top-cod">{c.raiz.codigo}</span>}{c.raiz.titulo}</h5>
+                <h5><span className="an-top-cod">{c.raiz.codigo ?? c.n}</span>{c.raiz.titulo}</h5>
                 <b className="an-top-n" title="Itens com aula neste cartão">{c.disponiveis}/{c.total}</b>
               </header>
               {c.mostra && (c.raiz.disponivel || !c.filhos.length) && <div className="an-top-aulas"><Aulas t={c.raiz} /></div>}
               {c.filhos.length > 0 && (
                 <ul className="an-sub">
-                  {c.filhos.map((f, k) => (
+                  {c.filhos.map(({ f, k }) => (
                     <li key={`${f.codigo ?? ""}-${k}`} data-ok={f.disponivel || undefined} style={{ "--rec": Math.max(0, f.nivel - c.raiz.nivel - 1) } as CSSProperties}>
-                      <span className="an-sub-t">{f.codigo && <span className="an-top-cod">{f.codigo}</span>}{f.titulo}</span>
+                      <span className="an-sub-t"><span className="an-top-cod">{f.codigo ?? `${c.raiz.codigo ?? c.n}.${k + 1}`}</span>{f.titulo}</span>
                       <Aulas t={f} />
                     </li>
                   ))}
@@ -127,7 +127,7 @@ function Cartoes({ topicos, termo, aula }: { topicos: TopicoVisao[]; termo: stri
   );
 }
 
-const SECOES = ["visao", "materias", "conteudo", "dificuldades", "rotina", "conclusao"] as const;
+type Aba = "visao" | "conteudo" | "materias" | "dificuldades" | "rotina" | "conclusao";
 
 /** Análise do concurso: estrutura da prova, matérias, conteúdo completo com as aulas catalogadas, prioridades, dificuldades, rotina e conclusão. */
 export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; voltar: string }) {
@@ -154,15 +154,14 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
   const [sel, setSel] = useState<string>(comTopicos[0]?.id ?? "");
   const [aula, setAula] = useState<FiltroAula>("todos");
   const [termoTop, setTermoTop] = useState("");
-  const [ativa, setAtiva] = useState("visao");
+  const [aba, setAba] = useState<Aba>("visao");
   const raiz = useRef<HTMLElement>(null);
   const marcaRef = useRef<HTMLDivElement>(null);
   const progresso = useRef<HTMLDivElement>(null);
 
   const temAnalise = !!a && itens.length > 0;
-  const abas: Array<[(typeof SECOES)[number], string]> = [["visao", "Visão geral"]];
-  if (temAnalise) abas.push(["materias", "Matérias"]);
-  abas.push(["conteudo", "Conteúdo e aulas"]);
+  const abas: Array<[Aba, string]> = [["visao", "Visão geral"], ["conteudo", "Conteúdo programático"]];
+  if (temAnalise) abas.push(["materias", "Análise por matéria"]);
   if (a?.dificuldades.length) abas.push(["dificuldades", "Dificuldades"]);
   if (a && (a.organizacao.horas.length || a.organizacao.ciclo.length)) abas.push(["rotina", "Rotina"]);
   if (a && (a.conclusao.decisoes.length || a.conclusao.recomendacao.length || a.conclusao.notas.length)) abas.push(["conclusao", "Conclusão"]);
@@ -187,45 +186,38 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
     window.addEventListener("scroll", aoRolar, { passive: true });
 
     let io1: IntersectionObserver | null = null;
-    let io2: IntersectionObserver | null = null;
     if (typeof IntersectionObserver !== "undefined") {
       el.classList.add("an-js");
       io1 = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { (e.target as HTMLElement).dataset.in = "1"; io1?.unobserve(e.target); } }), { rootMargin: "0px 0px -8% 0px", threshold: 0.05 });
       el.querySelectorAll(".an-rev").forEach((n) => io1!.observe(n));
-      io2 = new IntersectionObserver(
-        (es) => {
-          const v = es.filter((e) => e.isIntersecting).sort((x, y) => x.boundingClientRect.top - y.boundingClientRect.top)[0];
-          if (v) setAtiva(v.target.id.replace("an-", ""));
-        },
-        { rootMargin: "-25% 0px -65% 0px" },
-      );
-      for (const id of SECOES) {
-        const s = document.getElementById(`an-${id}`);
-        if (s) io2.observe(s);
-      }
     }
     return () => {
       window.removeEventListener("scroll", aoRolar);
       if (raf) cancelAnimationFrame(raf);
       io1?.disconnect();
-      io2?.disconnect();
       el.classList.remove("an-js");
     };
   }, [dados]);
 
-  const rolarPara = (id: string) => document.getElementById(id)?.scrollIntoView({ behavior: reduzido() ? "auto" : "smooth", block: "start" });
+  const irAba = (id: Aba, depois?: () => void) => {
+    setAba(id);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      document.getElementById(`an-${id}`)?.scrollIntoView({ behavior: reduzido() ? "auto" : "smooth", block: "start" });
+      depois?.();
+    }));
+  };
   const verConteudo = (id: string) => {
     if (!todas.find((i) => i.id === id)?.topicos?.length) return;
     setSel(id);
     setAula("todos");
     setTermoTop("");
-    requestAnimationFrame(() => requestAnimationFrame(() => rolarPara("an-conteudo")));
+    irAba("conteudo");
   };
   const abrirMateria = (id: string) => {
     setBloco("");
     setTermo("");
     setAberta(id);
-    requestAnimationFrame(() => requestAnimationFrame(() => document.getElementById(id)?.scrollIntoView({ behavior: reduzido() ? "auto" : "smooth", block: "center" })));
+    irAba("materias", () => document.getElementById(id)?.scrollIntoView({ behavior: reduzido() ? "auto" : "smooth", block: "center" }));
   };
 
   const blocos = useMemo(() => [...new Set(itens.map((i) => i.bloco).filter(Boolean))], [itens]);
@@ -283,19 +275,19 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
                   <li><span className="an-dot an-ok" aria-hidden /> <b>{geral.comAula.toLocaleString("pt-BR")}</b> com aula no Aprovum</li>
                   <li><span className="an-dot an-no" aria-hidden /> <b>{geral.semAula.toLocaleString("pt-BR")}</b> ainda sem aula</li>
                 </ul>
-                <button type="button" className="an-cta" onClick={() => rolarPara("an-conteudo")}>Ver conteúdo e aulas <ChevronDown size={15} aria-hidden /></button>
+                <button type="button" className="an-cta" onClick={() => irAba("conteudo")}>Ver conteúdo programático <ChevronDown size={15} aria-hidden /></button>
               </div>
             </div>
           )}
         </section>
 
-        <nav className="an-nav" aria-label="Seções da análise">
+        <nav className="an-nav" role="tablist" aria-label="Seções da análise">
           {abas.map(([id, rotulo]) => (
-            <button key={id} type="button" aria-current={ativa === id ? "true" : undefined} onClick={() => rolarPara(`an-${id}`)}>{rotulo}</button>
+            <button key={id} type="button" role="tab" id={`an-tab-${id}`} aria-selected={aba === id} aria-controls={`an-${id}`} onClick={() => irAba(id)}>{rotulo}</button>
           ))}
         </nav>
 
-        <section id="an-visao" className="an-secao" aria-labelledby="an-h-visao">
+        <section id="an-visao" className="an-secao" role="tabpanel" hidden={aba !== "visao"} aria-labelledby="an-h-visao">
           <h2 id="an-h-visao" className="an-rev"><Compass size={15} aria-hidden /> Visão geral da prova</h2>
           {a && a.estrutura.blocos.length > 0 && (
             <ul className="an-blocos an-rev">
@@ -350,7 +342,7 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
         </section>
 
         {temAnalise && (
-          <section id="an-materias" className="an-secao" aria-labelledby="an-h-mat">
+          <section id="an-materias" className="an-secao" role="tabpanel" hidden={aba !== "materias"} aria-labelledby="an-h-mat">
             <h2 id="an-h-mat" className="an-rev"><Target size={15} aria-hidden /> Análise por matéria</h2>
             <div className="an-ferr an-rev">
               <label className="an-busca">
@@ -410,8 +402,8 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
           </section>
         )}
 
-        <section id="an-conteudo" className="an-secao" aria-labelledby="an-h-cont">
-          <h2 id="an-h-cont" className="an-rev"><ListChecks size={15} aria-hidden /> Conteúdo completo e aulas</h2>
+        <section id="an-conteudo" className="an-secao" role="tabpanel" hidden={aba !== "conteudo"} aria-labelledby="an-h-cont">
+          <h2 id="an-h-cont" className="an-rev"><ListChecks size={15} aria-hidden /> Conteúdo programático completo</h2>
           <ul className="an-legenda an-legenda-faixa an-rev" aria-label="Legenda">
             <li><span className="an-dot an-ok" aria-hidden /> Verde: aula catalogada no Aprovum</li>
             <li><span className="an-dot an-no" aria-hidden /> Vermelho: ainda não catalogada</li>
@@ -422,7 +414,7 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
               <Info size={20} aria-hidden />
               <div>
                 <b>O conteúdo programático deste concurso ainda não foi importado.</b>
-                <p>Assim que a equipe importar o edital, esta seção mostra todos os tópicos, cada um em verde (aula catalogada) ou vermelho (ainda sem aula).</p>
+                <p>Assim que a equipe importar o edital, esta aba mostra todos os tópicos de cada matéria, numerados na ordem do edital, cada um em verde (aula catalogada) ou vermelho (ainda sem aula).</p>
               </div>
             </div>
           )}
@@ -432,7 +424,7 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
               {conteudoOrigem === "focos" && (
                 <div className="an-aviso an-rev" role="note">
                   <Info size={16} aria-hidden />
-                  <span>Estes itens vêm dos <b>principais focos da análise</b>, conferidos com as aulas catalogadas. O conteúdo programático literal do edital aparece aqui quando for importado.</span>
+                  <span>O <b>conteúdo programático literal do edital</b> ainda não foi importado. Por enquanto, esta aba lista os <b>principais focos da análise</b>, numerados por matéria e conferidos com as aulas catalogadas. Quando o edital for importado, todos os tópicos aparecem aqui, na ordem dele.</span>
                 </div>
               )}
               <div className="an-seletor an-rev" role="tablist" aria-label="Matéria">
@@ -494,7 +486,7 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
         </section>
 
         {a && a.dificuldades.length > 0 && (
-          <section id="an-dificuldades" className="an-secao" aria-labelledby="an-h-dif">
+          <section id="an-dificuldades" className="an-secao" role="tabpanel" hidden={aba !== "dificuldades"} aria-labelledby="an-h-dif">
             <h2 id="an-h-dif" className="an-rev"><Flag size={15} aria-hidden /> Onde está a maior dificuldade</h2>
             <div className="an-cartoes an-rev">
               {a.dificuldades.map((g, i) => (
@@ -510,7 +502,7 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
         )}
 
         {a && (a.organizacao.horas.length > 0 || a.organizacao.ciclo.length > 0) && (
-          <section id="an-rotina" className="an-secao" aria-labelledby="an-h-rotina">
+          <section id="an-rotina" className="an-secao" role="tabpanel" hidden={aba !== "rotina"} aria-labelledby="an-h-rotina">
             <h2 id="an-h-rotina" className="an-rev"><Clock size={15} aria-hidden /> Como organizar o estudo</h2>
             {a.organizacao.notas.map((n) => <p key={n} className="an-texto an-rev">{n}</p>)}
             {a.organizacao.horas.length > 0 && (
@@ -536,7 +528,7 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
         )}
 
         {a && (a.conclusao.decisoes.length > 0 || a.conclusao.recomendacao.length > 0 || a.conclusao.notas.length > 0) && (
-          <section id="an-conclusao" className="an-secao" aria-labelledby="an-h-conc">
+          <section id="an-conclusao" className="an-secao" role="tabpanel" hidden={aba !== "conclusao"} aria-labelledby="an-h-conc">
             <h2 id="an-h-conc" className="an-rev"><Target size={15} aria-hidden /> Conclusão estratégica</h2>
             {a.conclusao.notas.map((n) => <p key={n} className="an-texto an-rev">{n}</p>)}
             {a.conclusao.decisoes.length > 0 && (
