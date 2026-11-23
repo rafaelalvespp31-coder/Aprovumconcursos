@@ -6,6 +6,7 @@ import { ArrowLeft, ChevronRight, Settings } from "lucide-react";
 import type { ConcursoCard, MateriaCatalogo } from "@/domain/missao/materias";
 import type { Bands, Conexao } from "@/components/mentor/skull-orb-fx";
 import { FalarComMentor, type FaseMentor } from "./falar-mentor";
+import { useNavegarPorVoz } from "./navegar-por-voz";
 import { PainelEscolha } from "./painel-escolha";
 import { MentorOrbita } from "./mentor-orbita";
 import { MentorScene } from "@/components/mentor-cena/mentor-scene";
@@ -67,6 +68,11 @@ export function CentralMissao({ primeiroNome, email, materias, concursos, intro:
   };
 
   useEffect(() => () => clearTimeout(temporizador.current), []);
+
+  // o Mentor abre menus e páginas pelo que o aluno pede falando
+  const abrirMenuPorVoz = useCallback((qual: Folha) => { clearTimeout(temporizador.current); setToque(null); setFolha(qual); }, []);
+  const fecharMenuPorVoz = useCallback(() => setFolha(null), []);
+  const navegar = useNavegarPorVoz({ concursos, abrirMenu: abrirMenuPorVoz, fecharMenu: fecharMenuPorVoz });
 
   const voltar = useCallback(() => {
     setFolha(null);
@@ -130,7 +136,7 @@ export function CentralMissao({ primeiroNome, email, materias, concursos, intro:
       </section>
 
       <div className="hm-voz">
-        <FalarComMentor ativo={falando} onAtivo={setFalando} onNivel={(fn) => { nivel.current = fn; }} onConn={setConn} onFase={aoFase} />
+        <FalarComMentor navegacao={navegar} ativo={falando} onAtivo={setFalando} onNivel={(fn) => { nivel.current = fn; }} onConn={setConn} onFase={aoFase} />
       </div>
 
       <nav className="hm-cards" aria-label="Escolha por onde começar">

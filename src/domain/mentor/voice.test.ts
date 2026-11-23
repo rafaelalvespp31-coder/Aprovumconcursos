@@ -96,3 +96,13 @@ describe("isFarewell", () => {
   it.each(["Obrigado!", "Muito obrigado, Chat.", "Valeu", "Vamos encerrar essa conversa", "Estou desligando agora", "Depois a gente estuda mais", "Tá bom, até mais!", "Por hoje é só", "Tchau"])("encerra: %s", (t) => expect(isFarewell(t)).toBe(true));
   it.each(["Obrigado, agora me explica o artigo quinto da Constituição", "O que é habeas corpus?", "Você acha que estou preparado para a PRF?", "", "Explica crase pra mim, depois eu faço questões"])("não encerra: %s", (t) => expect(isFarewell(t)).toBe(false));
 });
+
+describe("regras de navegação por voz", () => {
+  it("o Mentor confirma em uma frase, nunca diz que não consegue e segue os avisos do app", async () => {
+    const { VOICE_NAV_RULES } = await import("./voice");
+    expect(VOICE_NAV_RULES).toContain("UMA frase curta de confirmação");
+    expect(VOICE_NAV_RULES).toContain("NUNCA diga que não consegue abrir");
+    expect(VOICE_NAV_RULES).toContain("[AVISO DO APLICATIVO]");
+    expect(VOICE_NAV_RULES).toContain("Nunca invente o nome de uma aula");
+  });
+});

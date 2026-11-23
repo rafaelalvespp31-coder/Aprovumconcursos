@@ -7,6 +7,18 @@ describe("saudação do Mentor na tela inicial", () => {
   it("primeiro acesso: sem atividade e sem concurso", () => {
     expect(angulosAplicaveis({ ...base, objetivo: null, semAtividade: true })).toEqual(["primeiro_acesso"]);
   });
+  it("concurso escolhido mas nenhuma aula iniciada: pergunta por qual aula começar", () => {
+    expect(angulosAplicaveis({ ...base, semAtividade: true })).toEqual(["sem_aula"]);
+    const f = fatoDoAngulo("sem_aula", { ...base, semAtividade: true });
+    expect(f).toContain("Polícia Penal MG");
+    expect(f).toContain("abrindo a aula na hora");
+  });
+  it("primeiro acesso: pergunta concurso e aula e oferece abrir por voz", () => {
+    const f = fatoDoAngulo("primeiro_acesso", { ...base, objetivo: null, semAtividade: true });
+    expect(f).toContain("qual concurso");
+    expect(f).toContain("qual aula");
+    expect(f).toContain("abre a aula na hora");
+  });
   it("sem concurso mas já estudando: pede o concurso", () => {
     expect(angulosAplicaveis({ ...base, objetivo: null })[0]).toBe("sem_objetivo");
   });

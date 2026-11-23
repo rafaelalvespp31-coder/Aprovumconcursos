@@ -4,6 +4,7 @@ import { descreverQuadro } from "@/domain/mentor/catalogo-lousa";
 import { comandoDitado, fimDitado, frasesDe, linhaDitado, novoDitado, type EstadoDitado } from "@/domain/mentor/ditado";
 import { esquemasDe, fimTempo, novoCtx, type Ctx as EsquemaCtx } from "@/domain/mentor/esquemas";
 import { travaDeAssunto } from "@/domain/mentor/trava";
+import { interpretarComando, perguntaDoMentor, type Comando } from "@/domain/mentor/navegacao";
 import { ehConversa, linhaSchema, tituloDaFala, linhaDeFala, linhaTitulo, pedeLousa, pedeFechar, pedidoDeCalculo, linhaDeNumero, tituloDe, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { GoogleGenAI, Modality, type LiveServerMessage, type Session } from "@google/genai";
@@ -37,9 +38,12 @@ const fromB64 = (b64: string) => {
  * diário (3 min) e a instrução do Mentor.
  */
 /** O que um botão próprio precisa saber da conversa por voz. */
+/** Resposta da tela a um pedido de navegação por voz: `aviso` vai para o Mentor (ex.: não achei a aula); `depois` abre a página quando ele terminar de falar. */
+export type ResultadoComando = { aviso?: string; depois?: () => void } | null;
+
 export type EstadoVoz = { fase: Fase; msg: string | null; speaking: boolean; left: number; unlimited: boolean };
 
-export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = false, orbSize = 96, onClose, onSpeaking, onLevel, onLousa, onEstado, semTela = false, boasVindas = false }: { /** Abertura da tela inicial: o Mentor fala uma única mensagem personalizada e escuta (o servidor monta o conteúdo). */ boasVindas?: boolean; /** Avisa a fase, a mensagem e o saldo de voz a cada mudança (para um botão próprio). */ onEstado?: (e: EstadoVoz) => void; /** Só a lógica (áudio, saldo, conexão): não desenha nada. */ semTela?: boolean; /** Entrega a função que lê a energia do áudio (volume/graves/médios/agudos). */ onLevel?: (nivel: () => Bands) => void; /** Avisa quando o Mentor começa/para de falar (ex.: borda do card chiando). */ onSpeaking?: (falando: boolean) => void; base?: string; /** Contexto da aula lido no instante em que a conversa começa. */ getStudy?: () => (StudyContext & { lessonId?: string }) | null; /** Começa sozinho assim que o saldo de voz carrega (aberto por um clique do aluno). */ autoStart?: boolean; /** Só a orbe animada, sem cartão nem textos (toque nela para encerrar). */ orbOnly?: boolean; /** Diâmetro da orbe no modo orbOnly. */ orbSize?: number; onClose?: () => void; /** Recebe a lousa (passos e desenho) quando o aluno pede uma conta, exemplo ou esquema. */ onLousa?: (l: Lousa | "pendente" | "fechar" | null, sync?: () => { c: number; fim: boolean }, vivo?: { quandos: number[]; agora: () => number }) => void }) {
+export function MentorVoz({ navegacao, base = "", getStudy, autoStart = false, orbOnly = false, orbSize = 96, onClose, onSpeaking, onLevel, onLousa, onEstado, semTela = false, boasVindas = false }: { /** Abertura da tela inicial: o Mentor fala uma única mensagem personalizada e escuta (o servidor monta o conteúdo). */ boasVindas?: boolean; /** Tela inicial: o Mentor abre menus, páginas, concursos e aulas pelo que o aluno pede falando. Devolve o que fazer depois. */ navegacao?: (c: Comando) => Promise<ResultadoComando>; /** Avisa a fase, a mensagem e o saldo de voz a cada mudança (para um botão próprio). */ onEstado?: (e: EstadoVoz) => void; /** Só a lógica (áudio, saldo, conexão): não desenha nada. */ semTela?: boolean; /** Entrega a função que lê a energia do áudio (volume/graves/médios/agudos). */ onLevel?: (nivel: () => Bands) => void; /** Avisa quando o Mentor começa/para de falar (ex.: borda do card chiando). */ onSpeaking?: (falando: boolean) => void; base?: string; /** Contexto da aula lido no instante em que a conversa começa. */ getStudy?: () => (StudyContext & { lessonId?: string }) | null; /** Começa sozinho assim que o saldo de voz carrega (aberto por um clique do aluno). */ autoStart?: boolean; /** Só a orbe animada, sem cartão nem textos (toque nela para encerrar). */ orbOnly?: boolean; /** Diâmetro da orbe no modo orbOnly. */ orbSize?: number; onClose?: () => void; /** Recebe a lousa (passos e desenho) quando o aluno pede uma conta, exemplo ou esquema. */ onLousa?: (l: Lousa | "pendente" | "fechar" | null, sync?: () => { c: number; fim: boolean }, vivo?: { quandos: number[]; agora: () => number }) => void }) {
   const [fase, setFase] = useState<Fase>("carregando");
   const [left, setLeft] = useState(0);
   const [limit, setLimit] = useState(180);
@@ -55,6 +59,11 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
   const onLousaRef = useRef(onLousa);
   useEffect(() => { onLousaRef.current = onLousa; });
   const falaTurno = useRef("");
+  const navegacaoRef = useRef(navegacao);
+  useEffect(() => { navegacaoRef.current = navegacao; });
+  const cmdTurno = useRef(false); // já tratei o pedido de navegação deste turno do aluno
+  const perguntou = useRef({ concurso: false, aula: false }); // a última fala do Mentor perguntou qual concurso / qual aula
+  const saida = useRef<{ fn: () => void; timer: ReturnType<typeof setInterval> | null } | null>(null);
   const ofertaQuadro = useRef(false); // o Mentor terminou a explicação oferecendo exemplificar no quadro
   const pedidoAnterior = useRef(""); // a pergunta do aluno que ele acabou de explicar
   const debLousa = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -441,6 +450,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     window.addEventListener("pagehide", out);
     return () => {
       window.removeEventListener("pagehide", out);
+      if (saida.current?.timer) clearInterval(saida.current.timer);
       void encerrar("saida");
     };
   }, [encerrar]);
@@ -494,6 +504,29 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     else if (!q.timer) q.timer = setTimeout(flushFala, 45);
   };
 
+  /** Navegação por voz: a página só troca depois que o Mentor termina de confirmar em voz alta (ou em no máximo 14 s). */
+  const aposFala = (fn: () => void) => {
+    if (saida.current?.timer) clearInterval(saida.current.timer);
+    const t0 = Date.now();
+    const timer = setInterval(() => {
+      const rr = ref.current;
+      const falta = rr.ctx ? Math.max(0, rr.next - rr.ctx.currentTime) : 0;
+      if ((!modeloTurno.current && falta < 0.3 && Date.now() - t0 > 900) || Date.now() - t0 > 14000) {
+        clearInterval(timer);
+        saida.current = null;
+        fn();
+      }
+    }, 250);
+    saida.current = { fn, timer };
+  };
+  const tratarComando = async (cmd: Comando) => {
+    let res: ResultadoComando = null;
+    try { res = (await navegacaoRef.current?.(cmd)) ?? null; } catch { res = null; }
+    if (!res) return;
+    if (res.aviso) { try { ref.current.session?.sendRealtimeInput({ text: res.aviso }); } catch { /* sessão já encerrada */ } }
+    if (res.depois) aposFala(res.depois);
+  };
+
   const onMessage = (m: LiveServerMessage) => {
     const r = ref.current;
     if (m.serverContent?.interrupted) {
@@ -520,6 +553,11 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     // despedida, deixa o Mentor se despedir e encerra a conversa em seguida.
     const starts = !!replied || (m.serverContent?.modelTurn?.parts ?? []).some((p) => p.inlineData?.data);
     if (starts) modeloTurno.current = true;
+    // Pedido de navegação (menu, página, concurso ou aula): lido no que o aluno FALOU, uma vez por turno.
+    if (navegacaoRef.current && !cmdTurno.current && r.turn && (starts || m.serverContent?.turnComplete)) {
+      const cmd = interpretarComando(r.turn, { perguntouConcurso: perguntou.current.concurso, perguntouAula: perguntou.current.aula });
+      if (cmd) { cmdTurno.current = true; void tratarComando(cmd); }
+    }
     if (starts && !r.bye && isFarewell(r.turn)) {
       r.bye = true;
       r.byeTimer = setTimeout(() => void encerrar("usuario"), 15000); // rede de segurança
@@ -544,6 +582,8 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     if (m.serverContent?.turnComplete) {
       ouvirFala("", true);
       ofertaQuadro.current = /(quadro|lousa)[^?]*\?\W*$/i.test(falaTurno.current.trim());
+      perguntou.current = perguntaDoMentor(falaTurno.current);
+      cmdTurno.current = false;
       if (r.turn && !pedeLousa(r.turn)) pedidoAnterior.current = r.turn;
       falaTurno.current = "";
       modeloTurno.current = false;

@@ -2,7 +2,8 @@
 
 import { useEffect, useRef, useState, type PointerEvent as PE, type RefObject } from "react";
 import { Loader2, Mic, PhoneOff } from "lucide-react";
-import { MentorVoz, type EstadoVoz } from "@/components/mentor/mentor-voz";
+import { MentorVoz, type EstadoVoz, type ResultadoComando } from "@/components/mentor/mentor-voz";
+import type { Comando } from "@/domain/mentor/navegacao";
 import type { Bands, Conexao } from "@/components/mentor/skull-orb-fx";
 
 const AVISO: Partial<Record<EstadoVoz["fase"], string>> = {
@@ -17,7 +18,7 @@ export type FaseMentor = "repouso" | "processando" | "escutando" | "respondendo"
  * Botão "Falar com o Mentor". Ao tocar, abre a conversa por voz de sempre (sem tela própria): a energia real do áudio
  * vai para o fogo do Mentor por `onNivel`, e `onConn` diz em que fase a conversa está. Tocar de novo encerra.
  */
-export function FalarComMentor({ ativo, onAtivo, onNivel, onConn, onFase }: { ativo: boolean; onAtivo: (v: boolean) => void; onNivel: (fn: (() => Bands) | null) => void; onConn: (c: Conexao) => void; /** Estado real da conversa, para a cena reagir (repouso, escutando, processando, respondendo, erro). */ onFase?: (f: FaseMentor) => void }) {
+export function FalarComMentor({ navegacao, ativo, onAtivo, onNivel, onConn, onFase }: { /** O Mentor abre menus, páginas, concursos e aulas pelo que o aluno pede falando. */ navegacao?: (c: Comando) => Promise<ResultadoComando>; ativo: boolean; onAtivo: (v: boolean) => void; onNivel: (fn: (() => Bands) | null) => void; onConn: (c: Conexao) => void; /** Estado real da conversa, para a cena reagir (repouso, escutando, processando, respondendo, erro). */ onFase?: (f: FaseMentor) => void }) {
   const [e, setE] = useState<EstadoVoz | null>(null);
   // a mesma fonte de áudio real que alimenta a esfera também desenha as ondas ao lado do botão
   const fonteRef = useRef<(() => Bands) | null>(null);
@@ -46,6 +47,7 @@ export function FalarComMentor({ ativo, onAtivo, onNivel, onConn, onFase }: { at
           semTela
           autoStart
           boasVindas
+          navegacao={navegacao}
           onEstado={estado}
           onLevel={(fn) => { fonteRef.current = fn; onNivel(fn); }}
         />

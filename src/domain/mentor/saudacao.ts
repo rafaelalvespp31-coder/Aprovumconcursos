@@ -4,7 +4,7 @@
  * e o texto da instrução. Nenhum número entra se não estiver em `DadosSaudacao`, que o servidor monta com dados reais.
  */
 
-export type AnguloSaudacao = "primeiro_acesso" | "sem_objetivo" | "retomada" | "revisoes" | "aula_andamento" | "materia_fraca" | "desempenho" | "objetivo";
+export type AnguloSaudacao = "primeiro_acesso" | "sem_aula" | "sem_objetivo" | "retomada" | "revisoes" | "aula_andamento" | "materia_fraca" | "desempenho" | "objetivo";
 
 export interface DadosSaudacao {
   nome: string | null;
@@ -29,6 +29,7 @@ export interface DadosSaudacao {
 export function angulosAplicaveis(d: DadosSaudacao): AnguloSaudacao[] {
   if (d.semAtividade && !d.objetivo) return ["primeiro_acesso"];
   const out: AnguloSaudacao[] = [];
+  if (d.semAtividade && d.objetivo) return ["sem_aula"];
   if (!d.objetivo) out.push("sem_objetivo");
   if (d.diasSemEstudar !== null && d.diasSemEstudar >= 3) out.push("retomada");
   if (d.revisoesVencidas > 0) out.push("revisoes");
@@ -54,7 +55,9 @@ const dias = (n: number) => `${num(n)} ${n === 1 ? "dia" : "dias"}`;
 export function fatoDoAngulo(a: AnguloSaudacao, d: DadosSaudacao): string {
   switch (a) {
     case "primeiro_acesso":
-      return "É o PRIMEIRO acesso do aluno e ele ainda não escolheu o concurso. Dê boas-vindas e convide-o a digitar, no campo logo abaixo na tela, o concurso que quer passar; diga que a partir daí você monta a direção da preparação dele. Não cite desempenho nem pendências: ainda não existem.";
+      return "É o PRIMEIRO acesso do aluno: ele ainda não escolheu o concurso nem começou nenhuma aula. Dê boas-vindas e pergunte, em voz natural, para qual concurso ele quer estudar e por qual aula quer começar, por exemplo: \"Caveira, você quer estudar pra qual concurso? E quer começar pra qual aula? Se quiser, pode me pedir que dou início por aqui.\" Deixe claro que ele pode pedir e você abre a aula na hora. Não cite desempenho nem pendências: ainda não existem.";
+    case "sem_aula":
+      return `O aluno já escolheu o concurso (${d.objetivo}), mas ainda não começou nenhuma aula. Pergunte por qual aula ele quer começar e diga que, se quiser, é só pedir que você dá início por aqui, abrindo a aula na hora. Não cite desempenho nem pendências: ainda não existem.`;
     case "sem_objetivo":
       return "O aluno já estuda na plataforma, mas ainda não escolheu o concurso. Peça para ele digitar o concurso no campo abaixo para você direcionar a preparação. Se couber, cite UM dado real (abaixo) só como gancho, sem cobrar.";
     case "retomada":

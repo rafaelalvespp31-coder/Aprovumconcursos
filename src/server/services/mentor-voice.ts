@@ -14,7 +14,7 @@ import { loadGoalPlan, loadStudentFacts } from "./mentor-goal";
 import { planAsText } from "@/domain/mentor/plan";
 import { loadContests } from "./gamification";
 import { recommend } from "@/domain/mentor/engine";
-import { ADMIN_TIME_RULE, STUDENT_TIME_RULE, VOICE_DAILY_SECONDS, VOICE_PERSONAL_RULES, VOICE_GOAL_RULES, VOICE_SYSTEM_PROMPT, buildGoalContext, buildVoiceContext, buildContestContext, cleanTranscript, VOICE_TOKEN_GRACE_SECONDS, settleSeconds, voiceLeft } from "@/domain/mentor/voice";
+import { ADMIN_TIME_RULE, STUDENT_TIME_RULE, VOICE_DAILY_SECONDS, VOICE_PERSONAL_RULES, VOICE_GOAL_RULES, VOICE_NAV_RULES, VOICE_SYSTEM_PROMPT, buildGoalContext, buildVoiceContext, buildContestContext, cleanTranscript, VOICE_TOKEN_GRACE_SECONDS, settleSeconds, voiceLeft } from "@/domain/mentor/voice";
 
 /**
  * Mentor por voz (Gemini Live). A chave do Google fica só aqui no servidor: o navegador recebe um
@@ -162,7 +162,7 @@ async function personalPrompt(userId: string, modo?: "boas-vindas"): Promise<str
     const facts = await loadStudentFacts(userId, snapshot).catch(() => []);
     const goalCtx = buildGoalContext(gp.goal?.contest ?? null, gp.plan ? planAsText(gp.plan) : null, facts, !!gp.semEdital);
     const abertura = modo === "boas-vindas" ? ` ${await aberturaDaTelaInicial(userId, name, gp.goal?.contest ?? null, snapshot, r)}` : "";
-    return `${VOICE_SYSTEM_PROMPT} ${VOICE_PERSONAL_RULES} ${VOICE_GOAL_RULES} ${ctx} ${goalCtx} ${buildContestContext(contests)}${abertura}`;
+    return `${VOICE_SYSTEM_PROMPT} ${VOICE_PERSONAL_RULES} ${VOICE_GOAL_RULES}${modo === "boas-vindas" ? ` ${VOICE_NAV_RULES}` : ""} ${ctx} ${goalCtx} ${buildContestContext(contests)}${abertura}`;
   } catch (e) {
     await logEvent("mentor.voz.contexto_error", { error: (e as Error).message.slice(0, 200) });
     return VOICE_SYSTEM_PROMPT;
