@@ -2,12 +2,22 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { taticoDesafiosAction, taticoResponderDesafioAction } from "@/app/(app)/quiz/tatico/actions";
+import { taticoResponderDesafioAction } from "@/app/(app)/quiz/tatico/actions";
 import type { DesafiosEstado } from "@/server/services/tatico";
 import "./desafio.css";
 
 type Entrada = NonNullable<DesafiosEstado["entrada"]>;
 type Aviso = { n: number; texto: string; tom: "ok" | "erro" };
+
+/** Consulta leve (rota própria, sem passar pelo proxy nem por Server Action). */
+async function buscarDesafios(): Promise<DesafiosEstado | null> {
+  try {
+    const r = await fetch("/api/tatico/desafios", { method: "POST", cache: "no-store" });
+    return r.ok ? ((await r.json()) as DesafiosEstado | null) : null;
+  } catch {
+    return null;
+  }
+}
 
 /** Evento global: o Desafio Tático (quando aberto) reage a recusa/aceite sem depender da página. */
 export const EVENTO_DESAFIO = "tatico-desafio";
@@ -36,7 +46,7 @@ export function DesafioWatcher() {
     const sair = () => { try { navigator.sendBeacon("/api/presenca?sair=1"); } catch { /* sem efeito */ } };
     const vis = () => { if (document.hidden) sair(); else bater(); };
     bater();
-    const iv = setInterval(bater, 3000);
+    const iv = setInterval(bater, 5000);
     document.addEventListener("visibilitychange", vis); window.addEventListener("pagehide", sair);
     window.addEventListener("focus", bater); window.addEventListener("online", bater); window.addEventListener("pageshow", bater);
     return () => {
@@ -49,7 +59,7 @@ export function DesafioWatcher() {
     let vivo = true; let timer: ReturnType<typeof setTimeout>;
     const ciclo = async () => {
       if (!document.hidden) {
-        const r = await taticoDesafiosAction();
+        const r = await buscarDesafios();
         if (vivo && r) {
           setEnt(r.entrada ? { d: r.entrada, at: Date.now() } : null);
           pendente.current = !!r.entrada || r.saida?.status === "pendente";
@@ -65,7 +75,7 @@ export function DesafioWatcher() {
           }
         }
       }
-      if (vivo) timer = setTimeout(ciclo, pendente.current ? 1500 : 3000);
+      if (vivo) timer = setTimeout(ciclo, pendente.current ? 1500 : 5000);
     };
     timer = setTimeout(ciclo, 1200);
     return () => { vivo = false; clearTimeout(timer); };

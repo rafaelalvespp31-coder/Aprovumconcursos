@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser, isAdmin } from "@/server/auth";
+import { getSessionUserFast, isAdmin } from "@/server/auth";
 import { createAdminClient } from "@/server/supabase";
 
 export const runtime = "nodejs";
@@ -11,7 +11,7 @@ const JANELA_MS = 12_000;
 
 /** Alunos com a plataforma aberta agora (só admin). Contas de administrador não entram na conta. */
 export async function GET() {
-  const user = await getSessionUser();
+  const user = await getSessionUserFast();
   if (!user || !(await isAdmin())) return NextResponse.json({ error: "Acesso restrito." }, { status: 403, headers: noStore });
   const db = createAdminClient();
   const desde = new Date(Date.now() - JANELA_MS).toISOString();

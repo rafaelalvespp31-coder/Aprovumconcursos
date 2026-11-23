@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { getSessionUser } from "@/server/auth";
+import { getSessionUserFast } from "@/server/auth";
 import { createAdminClient } from "@/server/supabase";
 
 export const runtime = "nodejs";
@@ -12,7 +12,7 @@ const noStore = { "Cache-Control": "no-store" };
  * POST → "estou com a plataforma aberta". POST ?sair=1 → "saí" (some da lista na hora).
  */
 export async function POST(req: NextRequest) {
-  const user = await getSessionUser();
+  const user = await getSessionUserFast();
   if (!user) return new NextResponse(null, { status: 204, headers: noStore });
   const db = createAdminClient();
   const sair = req.nextUrl.searchParams.get("sair") === "1";

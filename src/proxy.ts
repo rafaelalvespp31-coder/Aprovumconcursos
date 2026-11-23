@@ -56,6 +56,8 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
+// As rotas leves de presença/desafio/painel do admin ficam fora do proxy: elas são chamadas a cada poucos segundos por aba aberta
+// e conferem a sessão sozinhas (getSessionUserFast); passar pelo proxy dobrava as idas ao servidor de autenticação.
 export const config = {
-  matcher: ["/((?!_next/static|_next/image|favicon.ico|icons/|sw.js|manifest.webmanifest|offline).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico|icons/|sw.js|manifest.webmanifest|offline|api/presenca|api/tatico/desafios|api/admin/online|api/admin/presenca).*)"],
 };

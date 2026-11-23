@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getSessionUser, isAdmin } from "@/server/auth";
+import { getSessionUserFast, isAdmin } from "@/server/auth";
 import { createAdminClient } from "@/server/supabase";
 
 export const runtime = "nodejs";
@@ -11,7 +11,7 @@ const JANELA_MS = 12_000;
 
 /** Presença de todos os alunos para o chat da Equipe (só admin): online agora e horário real da última atividade. */
 export async function GET() {
-  const user = await getSessionUser();
+  const user = await getSessionUserFast();
   if (!user || !(await isAdmin())) return NextResponse.json({ error: "Acesso restrito." }, { status: 403, headers: noStore });
   const { data, error } = await createAdminClient().from("tatico_presence").select("user_id, seen_at, last_seen_at").limit(5000);
   if (error) return NextResponse.json({ error: "Falha ao carregar." }, { status: 500, headers: noStore });

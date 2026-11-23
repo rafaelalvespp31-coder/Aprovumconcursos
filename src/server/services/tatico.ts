@@ -131,6 +131,10 @@ export async function taticoDesafios(): Promise<DesafiosEstado> {
   const u = await requireUser("/quiz");
   return rpc<DesafiosEstado>("tatico_desafios", { p_user: u.id });
 }
+/** Mesmo que taticoDesafios, para rotas leves que já identificaram o aluno. */
+export async function taticoDesafiosDe(userId: string): Promise<DesafiosEstado> {
+  return rpc<DesafiosEstado>("tatico_desafios", { p_user: userId });
+}
 export async function taticoResponderDesafio(id: string, aceitar: boolean): Promise<{ ok: boolean; estado?: string; match?: string; erro?: string }> {
   const u = await requireUser("/quiz");
   const r = await rpc<{ ok: boolean; estado?: string; match?: string; erro?: string }>("tatico_responder_desafio", { p_user: u.id, p_id: id, p_aceitar: aceitar });

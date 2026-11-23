@@ -2,9 +2,9 @@
 
 import { useCallback, useEffect, useState } from "react";
 
-const POLL_MS = 4000;
+const POLL_MS = 8000;
 
-/** Quantos alunos estão com a plataforma aberta neste instante (atualiza sozinho a cada 4 s). */
+/** Quantos alunos estão com a plataforma aberta neste instante (atualiza sozinho a cada 8 s). */
 export function OnlineAgora() {
   const [d, setD] = useState<{ total: number; alunos: string[] } | null>(null);
   const [lista, setLista] = useState(false);

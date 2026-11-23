@@ -21,7 +21,7 @@ export default async function StudentsPage() {
   const count = studentSummary(students);
   const requests = await listOpenPlanRequests().catch(() => []);
   const atividade = await listStudentActivity().catch(() => []);
-  const threads = await listThreads().catch(() => []);
+  const threads = await listThreads(new Set(students.map((s) => s.id))).catch(() => []);
   return (
     <div>
       <h1 className="t-h1">Alunos</h1>

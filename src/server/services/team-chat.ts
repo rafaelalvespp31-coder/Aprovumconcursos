@@ -84,7 +84,7 @@ export interface TeamThread {
 }
 
 /** Conversas para o painel da equipe: as com mensagem nova primeiro, depois as mais recentes. */
-export async function listThreads(): Promise<TeamThread[]> {
+export async function listThreads(known?: Set<string>): Promise<TeamThread[]> {
   const db = createAdminClient();
   // Abrir o painel = a equipe "recebeu" as mensagens dos alunos.
   await db.from("team_messages").update({ delivered_at: new Date().toISOString() }).eq("sender", "aluno").is("delivered_at", null);
@@ -100,10 +100,11 @@ export async function listThreads(): Promise<TeamThread[]> {
     by.set(r.user_id, t);
   }
   const threads = [...by.values()].slice(0, 100);
-  const ids = threads.map((t) => t.userId);
+  // Nomes e e-mails dos alunos já carregados pela página não são buscados de novo (antes: 1 chamada ao Auth por conversa a cada atualização).
+  const ids = threads.map((t) => t.userId).filter((id) => !known?.has(id));
   const profiles = ids.length ? await db.from("profiles").select("id, display_name").in("id", ids) : { data: [] };
   const names = new Map((profiles.data ?? []).map((p) => [p.id as string, (p.display_name as string | null) || null]));
-  await Promise.all(threads.map(async (t) => {
+  await Promise.all(threads.filter((t) => !known?.has(t.userId)).map(async (t) => {
     t.name = names.get(t.userId) ?? null;
     t.email = (await db.auth.admin.getUserById(t.userId).catch(() => null))?.data.user?.email ?? null;
   }));

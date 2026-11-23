@@ -18,6 +18,19 @@ export const getSessionUser = cache(async function getSessionUser(): Promise<Ses
   return { id: data.user.id, email: data.user.email ?? null, signedInAt: data.user.last_sign_in_at ?? null };
 });
 
+/**
+ * Identidade do aluno SEM ir ao servidor de autenticação: confere a assinatura e a validade do token localmente (getClaims).
+ * Só para rotas leves e repetitivas (batida de presença, consulta de desafios, painéis do admin), que são chamadas a cada poucos
+ * segundos por aba aberta. Páginas, ações e dados sensíveis continuam usando getSessionUser (valida a sessão no servidor).
+ */
+export const getSessionUserFast = cache(async function getSessionUserFast(): Promise<SessionUser | null> {
+  const supabase = await createUserClient();
+  const { data, error } = await supabase.auth.getClaims();
+  const c = data?.claims;
+  if (error || !c?.sub) return null;
+  return { id: c.sub, email: typeof c.email === "string" ? c.email : null, signedInAt: null };
+});
+
 export async function requireUser(next?: string): Promise<SessionUser> {
   const user = await getSessionUser();
   if (!user) redirect(next ? `/entrar?next=${encodeURIComponent(next)}` : "/entrar");

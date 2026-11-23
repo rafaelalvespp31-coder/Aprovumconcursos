@@ -195,10 +195,10 @@ export function MensagensEquipe({ threads, students, reply, markRead, seen }: { 
 
   // Mensagens novas e recibos aparecem sem recarregar a página.
   useEffect(() => {
-    const t = setInterval(() => { if (document.visibilityState === "visible") router.refresh(); }, 10000);
+    const t = setInterval(() => { if (document.visibilityState === "visible") router.refresh(); }, 20000);
     return () => clearInterval(t);
   }, [router]);
-  // Online/offline em tempo quase real (a cada 4 s), a partir da batida de presença do app do aluno.
+  // Online/offline em tempo quase real (a cada 8 s), a partir da batida de presença do app do aluno.
   useEffect(() => {
     let vivo = true;
     const buscar = async () => {
@@ -209,7 +209,7 @@ export function MensagensEquipe({ threads, students, reply, markRead, seen }: { 
     };
     const primeira = setTimeout(() => void buscar(), 0);
     const tick = () => { if (document.visibilityState === "visible") void buscar(); };
-    const id = setInterval(tick, 4000);
+    const id = setInterval(tick, 8000);
     document.addEventListener("visibilitychange", tick);
     return () => { vivo = false; clearTimeout(primeira); clearInterval(id); document.removeEventListener("visibilitychange", tick); };
   }, []);
