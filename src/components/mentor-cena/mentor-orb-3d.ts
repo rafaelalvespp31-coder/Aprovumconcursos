@@ -43,7 +43,11 @@ void main(){
   gl_Position = projectionMatrix * viewMatrix * vec4(uCenter + position.xy * uR * uQuad, 0., 1.);
 }`;
 
-/** PlasmaShader: núcleo negro, borda de plasma irregular e suave, anel incandescente e aura. Sem raios nem ondas: a voz só faz a esfera respirar. */
+/**
+ * Anel de fogo e fumaça: uma lâmina fina de fumaça incandescente em forma de anel, com filamentos que deslizam ao longo
+ * dele, línguas de fogo que sobem para fora e o centro escuro. Cor de fogo real (vermelho profundo → laranja → núcleo
+ * amarelado). A voz engrossa, acende e acelera o anel; a deformação do contorno vem de `deformaVoz`.
+ */
 const FRAG_PLASMA = /* glsl */ `
 precision highp float;
 ${RUIDO}
@@ -51,85 +55,55 @@ ${OCLUSAO}
 ${DEFORMA_VOZ}
 uniform float uTime, uBrilho, uPulso, uEspiral, uAudio;
 varying vec2 vP;
+float cume(vec2 p){ return 1. - abs(2. * fbm(p) - 1.); }
+// calor (0 a 1,3) → cor de brasa/fogo
+vec3 fogo(float h){
+  vec3 c = mix(vec3(.04, .0, .0), vec3(.5, .012, .008), smoothstep(0., .22, h));
+  c = mix(c, vec3(.98, .13, .015), smoothstep(.18, .5, h));
+  c = mix(c, vec3(1., .42, .05), smoothstep(.45, .82, h));
+  c = mix(c, vec3(1., .78, .4), smoothstep(.8, 1.2, h));
+  return c;
+}
 void main(){
   vec2 p = vP; float len = length(p); vec2 cs = p / max(len, 1e-4); float t = uTime;
-  // raio irregular do anel: três ruídos em escalas diferentes
-  // ruído sobre o círculo unitário (sem emenda no ângulo ±π)
-  float e1 = noise(cs * 2.0 + vec2(t * .55, t * .3));
-  float e2 = noise(cs * 5.0 + vec2(-t * .7, t * .4 + 4.));
-  float e3 = noise(cs * 13.0 + vec2(t * 1.1, 9.));
-  float rr = 1.0 + (e1 - .5) * .06 + (e2 - .5) * .032 + (e3 - .5) * .01 + uPulso * .01 * sin(t * 1.5) + deformaVoz(cs, t, uAudio);
+  float a = min(1., uAudio * 1.25);
+  float ts = t * (1. + a * .9); // a fala acelera o fogo
+  // raio irregular do anel (sem emenda no ângulo) + deformação da voz
+  float e1 = noise(cs * 1.6 + vec2(t * .22, t * .13));
+  float e2 = noise(cs * 4.0 + vec2(-t * .35, t * .2 + 4.));
+  float rr = .93 + (e1 - .5) * .07 + (e2 - .5) * .026 + uPulso * .008 * sin(t * 1.5) + deformaVoz(cs, t, uAudio);
   float d = len - rr;
-  float w = .02 + .012 * e2;
-  float quente = exp(-d * d / (w * w));
-  float dentro = smoothstep(.012, -.02, d);
-  float fora = 1. - dentro;
-  // brilho do anel: branco-rosado no centro do fio, vermelho nas bordas
-  vec3 cQuente = vec3(1., .78, .66), cMedio = vec3(1., .2, .1), cFundo = vec3(.62, .015, .03);
-  vec3 glow = cQuente * quente * 1.25;
-  glow += cMedio * exp(-abs(d) * 16.) * .75;
-  glow += cFundo * exp(-max(d, 0.) * 4.2) * fora * .85;
-  glow += cMedio * exp(max(-d, 0.) * -9.) * dentro * .22;
-  // interior: esfera negra com luz rasante vermelha nas bordas (profundidade 3D) e plasma sutil
-  float nz = sqrt(max(1. - len * len / (rr * rr), 0.));
-  float fres = pow(1. - nz, 3.2);
-  vec2 q = p / (1. + nz);
-  q = rot(t * .1 + uEspiral * t * .12) * q;
-  float pl = fbm(q * 2.6 + vec2(t * .12, -t * .09) + fbm(q * 3.2 - t * .2) * 1.3);
-  vec3 interior = vec3(.012, .0, .004) + vec3(.95, .08, .05) * fres * (.3 + 1.1 * pl) * .6 + vec3(.5, .02, .03) * pl * pl * .06 * nz;
-  float a = dentro * .975;
-  vec3 rgb = interior * a + glow * uBrilho;
-  rgb = rgb / (1. + rgb * .22);
+  // espessura da lâmina varia ao longo do anel: trechos finos e trechos encorpados que giram devagar
+  float esp = .075 + .15 * noise(cs * 1.3 + vec2(-t * .15, 3.)) + .05 * a;
+  // fluxo da fumaça: o desenho desliza ao longo do anel; os filamentos ficam esticados na direção do anel (como véus)
+  vec2 cr = rot(t * .09 + uEspiral * t * .1) * cs;
+  vec2 w1 = vec2(fbm(cr * 1.8 + vec2(d * 3., ts * .2)), fbm(cr * 1.8 + vec2(-d * 3. + 7., -ts * .17)));
+  vec2 g = cr * 2.4 + (w1 - .5) * 1.1;
+  float f1 = fbm(g + vec2(d * 6. - ts * .3, ts * .1));                    // corpo do véu
+  float f2 = cume(g * 1.7 + vec2(d * 15. + w1.x * 2., ts * .15));         // filamentos
+  float f3 = cume(g * 3.3 + vec2(d * 28. - ts * .4, 3.));                 // fios finos
+  float dd = d + (f1 - .5) * .13 - .01;
+  float lamina = smoothstep(.28, .74, f1 + (w1.y - .5) * .35);            // trechos densos x rarefeitos
+  float corpo = exp(-pow(abs(dd) / esp, 1.9) * 1.7) * (.2 + .8 * lamina);
+  float fil = f2 * .7 + f3 * .4;
+  // línguas de fogo que sobem para fora do anel
+  float lingua = fbm(cr * 3.4 + vec2(max(d, 0.) * 5. - ts * .95, t * .15));
+  float chama = smoothstep(.3, .85, lingua) * exp(-max(d, 0.) * 6.5) * (.5 + a) * smoothstep(-.04, .02, d) * (.4 + .6 * lamina);
+  float quente = exp(-d * d / (esp * esp * .35));
+  float h = corpo * (.2 + 1.5 * pow(fil, 2.3)) + chama * .85 + quente * .1 * (.4 + f1);
+  h *= uBrilho * (1. + .6 * a);
+  vec3 cor = fogo(h) * smoothstep(0., .1, h);
+  // brilho difuso: aura vermelha para fora e um fio laranja no contorno
+  vec3 glow = vec3(.95, .09, .03) * exp(-max(d, 0.) * 5.2) * .4 + vec3(1., .3, .04) * exp(-abs(d) * 15.) * .34 * (.6 + f1);
+  glow *= uBrilho * (1. + .5 * a);
+  // centro escuro, com um resquício de calor colado na borda interna
+  float dentro = smoothstep(.014, -.02, d);
+  vec3 interior = vec3(.008, .0, .002) + vec3(.8, .06, .02) * exp(min(d, 0.) * 11.) * (.2 + .5 * f1) * .5;
+  float alfa = max(dentro * .975, clamp(h * .55, 0., .55));
+  vec3 rgb = interior * dentro + cor * (1. - dentro * .35) + glow * (1. - dentro);
+  rgb = rgb / (1. + rgb * .2);
   float oc = 1. - ocluidoMao(1.);
-  gl_FragColor = vec4(rgb * oc, a * oc);
-}`;
-
-/** Micropartículas dentro da esfera: pairam à deriva (sem giro), com profundidade de campo, luz rasante nas bordas e cintilações raras. */
-const VERT_INTERNAS = /* glsl */ `
-${DEFORMA_VOZ}
-attribute vec3 aS; // x: frequência de cintilação, y: tamanho (0 a 1), z: fase
-attribute vec4 aD; // frequências de deriva em x, y e z e a amplitude
-uniform vec2 uCenter; uniform float uR, uAnim, uPx, uEspiral, uTime, uAudio;
-varying float vA; varying float vSoft; varying float vQ; varying float vGlint;
-void main(){
-  float t = uAnim;
-  vec3 p = position;
-  // deriva lenta e sem direção: soma de senos com frequências próprias de cada partícula
-  p += aD.w * vec3(sin(t * aD.x + aS.z * 6.2831), sin(t * aD.y + aS.z * 17.), sin(t * aD.z + aS.z * 29.));
-  // no estado "processando" as partículas se organizam num redemoinho lento
-  float rxy = length(p.xy);
-  float giro = uEspiral * (.9 / (rxy + .3)) * t * .12;
-  float c = cos(giro), s = sin(giro); p.xy = mat2(c, -s, s, c) * p.xy;
-  float ay = t * .03; float cy = cos(ay), sy = sin(ay);
-  p = vec3(cy * p.x + sy * p.z, p.y, -sy * p.x + cy * p.z);
-  p *= min(1., .93 / max(length(p), .0001));
-  // o interior acompanha a deformação do contorno (mais perto da borda, mais acompanha)
-  p.xy *= 1. + deformaVoz(normalize(p.xy + vec2(1e-5)), uTime, uAudio) * length(p.xy);
-  float prof = p.z * .5 + .5;
-  gl_Position = projectionMatrix * viewMatrix * vec4(uCenter + p.xy * uR, 0., 1.);
-  float tam = 1. + aS.y * aS.y * 3.4;
-  // plano de foco um pouco à frente do centro: o que está longe dele fica maior, mais suave e mais fraco
-  vSoft = clamp(abs(prof - .58) * 1.9 + step(.82, aS.y) * .22, 0., 1.);
-  gl_PointSize = max(1.5, tam * (.7 + prof * .7) * (1. + vSoft * .9) * uPx);
-  float rim = smoothstep(.12, .93, length(p));
-  float pisca = .62 + .38 * sin(t * aS.x + aS.z * 40.);
-  vA = (.2 + .8 * prof) * (.3 + .7 * rim) * pisca * (1. - vSoft * .35);
-  vGlint = pow(max(0., sin(t * (.22 + aS.x * .25) + aS.z * 91.)), 28.) * (.4 + .6 * aS.y);
-  vQ = aS.y;
-}`;
-
-const FRAG_INTERNAS = /* glsl */ `
-precision highp float;
-${OCLUSAO}
-uniform float uBrilho;
-varying float vA; varying float vSoft; varying float vQ; varying float vGlint;
-void main(){
-  vec2 c = gl_PointCoord - .5; float r2 = dot(c, c) * 4.;
-  float a = exp(-r2 * mix(11., 2.4, vSoft)) * mix(1., .5, vSoft) + (1. - vSoft) * .45 * exp(-r2 * 45.);
-  a *= smoothstep(1., .6, r2);
-  vec3 base = mix(vec3(1., .05, .03), vec3(1., .26, .1), vQ * vQ);
-  vec3 col = base * vA * 1.55 + vec3(1., .5, .36) * vGlint * .8;
-  gl_FragColor = vec4(col * a * uBrilho * (1. - ocluidoMao(1.)), 0.);
+  gl_FragColor = vec4(rgb * oc, alfa * oc);
 }`;
 
 const FRAG_PONTOS = /* glsl */ `
@@ -140,24 +114,8 @@ varying float vA; varying float vQ;
 void main(){
   vec2 c = gl_PointCoord - .5; float r2 = dot(c, c) * 4.;
   float a = exp(-r2 * 4.5) * vA * 1.7 * smoothstep(1., .6, r2);
-  vec3 col = mix(vec3(.95, .06, .05), vec3(1., .48, .26), vQ * vQ);
+  vec3 col = mix(vec3(1., .22, .03), vec3(1., .66, .2), vQ * vQ);
   gl_FragColor = vec4(col * a * uBrilho * (1. - ocluidoMao(1.)), 0.);
-}`;
-
-const VERT_ORBITAIS = /* glsl */ `
-attribute vec4 aO; // x: semi-eixo a, y: semi-eixo b, z: inclinação, w: fase
-attribute vec2 aS; // x: velocidade, y: tamanho
-uniform vec2 uCenter; uniform float uR, uAnim, uPx;
-varying float vA; varying float vQ;
-void main(){
-  float ang = aO.w + uAnim * aS.x;
-  vec2 e = vec2(cos(ang) * aO.x, sin(ang) * aO.y);
-  float c = cos(aO.z), s = sin(aO.z); e = mat2(c, -s, s, c) * e;
-  float prof = sin(ang) * .5 + .5;
-  gl_Position = projectionMatrix * viewMatrix * vec4(uCenter + e * uR, 0., 1.);
-  gl_PointSize = max(1.8, (1.4 + aS.y * 3.2) * (.6 + prof * .8) * uPx);
-  vA = (.3 + .7 * prof) * (.6 + .4 * sin(uAnim * 3. + aO.w * 9.));
-  vQ = aS.y;
 }`;
 
 const VERT_SUBIDA = /* glsl */ `
@@ -210,10 +168,6 @@ export class MentorOrb3D {
   readonly grupo = new THREE.Group();
   private uniforms: ReturnType<typeof criarUniforms>;
   private plasma: THREE.ShaderMaterial;
-  private internas: THREE.Points;
-  private internasMat: THREE.ShaderMaterial;
-  private orbitais: THREE.Points;
-  private orbitaisMat: THREE.ShaderMaterial;
   private subida: THREE.Points;
   private subidaMat: THREE.ShaderMaterial;
   private luzMat: THREE.ShaderMaterial;
@@ -229,7 +183,7 @@ export class MentorOrb3D {
     const u = this.uniforms;
     const base = { ...compartilhados, uCenter: u.uCenter, uR: u.uR, uTime: u.uTime, uAnim: u.uAnim, uBrilho: u.uBrilho, uPulso: u.uPulso, uEspiral: u.uEspiral };
 
-    // OrbGeometry + PlasmaShader: um quadrado maior que a esfera; o shader desenha o plasma, o anel e a aura
+    // anel de fogo: um quadrado maior que a esfera; o shader desenha o anel, a fumaça, as línguas de fogo e a aura
     const quad = new THREE.PlaneGeometry(2, 2);
     this.plasma = materialAditivo({ vertexShader: VERT_QUAD, fragmentShader: FRAG_PLASMA, uniforms: { ...base, uQuad: { value: 2.9 }, uAudio: u.uAudio } });
     const malha = new THREE.Mesh(quad, this.plasma);
@@ -240,34 +194,7 @@ export class MentorOrb3D {
     const luz = new THREE.Mesh(quad, this.luzMat);
     luz.frustumCulled = false; luz.renderOrder = 9;
 
-    // EnergyParticles: milhares de pontos dentro da esfera, em profundidades diferentes
     const rnd = this.rnd;
-    const nI = q.orbParticulas;
-    const pos = new Float32Array(nI * 3); const seed = new Float32Array(nI * 3); const deriva = new Float32Array(nI * 4);
-    for (let i = 0; i < nI; i++) {
-      const r = 0.9 * Math.cbrt(rnd()); const th = Math.acos(2 * rnd() - 1); const fi = rnd() * Math.PI * 2;
-      pos[i * 3] = r * Math.sin(th) * Math.cos(fi); pos[i * 3 + 1] = r * Math.sin(th) * Math.sin(fi); pos[i * 3 + 2] = r * Math.cos(th);
-      seed[i * 3] = rnd(); seed[i * 3 + 1] = Math.pow(rnd(), 1.7); seed[i * 3 + 2] = rnd();
-      deriva[i * 4] = 0.1 + rnd() * 0.32; deriva[i * 4 + 1] = 0.1 + rnd() * 0.32; deriva[i * 4 + 2] = 0.08 + rnd() * 0.26; deriva[i * 4 + 3] = 0.035 + rnd() * 0.11;
-    }
-    const gI = new THREE.BufferGeometry();
-    gI.setAttribute("position", new THREE.BufferAttribute(pos, 3)); gI.setAttribute("aS", new THREE.BufferAttribute(seed, 3)); gI.setAttribute("aD", new THREE.BufferAttribute(deriva, 4));
-    this.internasMat = materialAditivo({ vertexShader: VERT_INTERNAS, fragmentShader: FRAG_INTERNAS, uniforms: { ...base, uAudio: this.uniforms.uAudio } });
-    this.internas = new THREE.Points(gI, this.internasMat);
-    this.internas.frustumCulled = false; this.internas.renderOrder = 11;
-
-    // partículas em órbita ao redor do anel (rastros do movimento orbital)
-    const nO = q.orbitais;
-    const o = new Float32Array(nO * 4); const so = new Float32Array(nO * 2); const po = new Float32Array(nO * 3);
-    for (let i = 0; i < nO; i++) {
-      const semi = 1.12 + rnd() * 0.75; o[i * 4] = semi; o[i * 4 + 1] = (0.28 + rnd() * 0.5) * semi; o[i * 4 + 2] = (rnd() - 0.5) * 2.2; o[i * 4 + 3] = rnd() * Math.PI * 2;
-      so[i * 2] = (rnd() < 0.5 ? -1 : 1) * (0.18 + rnd() * 0.5); so[i * 2 + 1] = Math.pow(rnd(), 1.8);
-    }
-    const gO = new THREE.BufferGeometry();
-    gO.setAttribute("position", new THREE.BufferAttribute(po, 3)); gO.setAttribute("aO", new THREE.BufferAttribute(o, 4)); gO.setAttribute("aS", new THREE.BufferAttribute(so, 2));
-    this.orbitaisMat = materialAditivo({ vertexShader: VERT_ORBITAIS, fragmentShader: FRAG_PONTOS, uniforms: { ...base } });
-    this.orbitais = new THREE.Points(gO, this.orbitaisMat);
-    this.orbitais.frustumCulled = false; this.orbitais.renderOrder = 12;
 
     // partículas subindo da palma até a esfera
     const nS = q.subida;
@@ -279,7 +206,7 @@ export class MentorOrb3D {
     this.subida = new THREE.Points(gS, this.subidaMat);
     this.subida.frustumCulled = false; this.subida.renderOrder = 12;
 
-    this.grupo.add(luz, malha, this.internas, this.orbitais, this.subida);
+    this.grupo.add(luz, malha, this.subida);
     comuns.uOrb.value.set(PALMA.x, PALMA.y);
     comuns.uOrbR.value = PALMA.raio;
     this.comuns = comuns;
@@ -306,10 +233,9 @@ export class MentorOrb3D {
     this.comuns.uLuz.value = e.luz;
   }
 
-  /** Usado quando o governador reduz a qualidade: desenha só uma parte das partículas. */
+  /** Usado quando o governador reduz a qualidade: desenha só uma parte das brasas que sobem. */
   limitar(f: number) {
-    this.internas.geometry.setDrawRange(0, Math.floor((this.internas.geometry.getAttribute("position").count) * f));
-    this.orbitais.geometry.setDrawRange(0, Math.floor((this.orbitais.geometry.getAttribute("position").count) * f));
+    this.subida.geometry.setDrawRange(0, Math.floor(this.subida.geometry.getAttribute("position").count * f));
   }
 
   liberar() {
