@@ -206,9 +206,9 @@ export function AnaliseConcurso({ dados, voltar, montar }: { dados: AnaliseParaA
   const montarPlano = async () => {
     if (montando) return;
     setAviso(null);
-    // O plano nasce do edital publicado do concurso: sem ele, explica em vez de errar.
+    // O plano nasce do edital oficial publicado: sem ele, avisa em vez de errar.
     if (conteudoOrigem !== "edital") {
-      setAviso("O plano é montado a partir do edital, e o edital deste concurso ainda não foi importado. Assim que for, este botão monta o seu plano na hora.");
+      setAviso("O edital oficial deste concurso ainda não foi publicado. Assim que ele for publicado, este botão monta o seu plano de estudo na hora.");
       return;
     }
     setMontando(true);
