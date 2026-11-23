@@ -109,3 +109,19 @@
   .mc-abas button span { display: none; }
   .mc-grupo-cab p { font-size: 11px; }
 }
+
+/* Concursos catalogados: ação "Análise" ao lado do cartão pronto e cartão "em breve" */
+.mc-concurso-li { position: relative; }
+.mc-analise { position: absolute; right: 10px; top: 10px; z-index: 2; display: grid; place-items: center; width: 34px; height: 34px; color: #fff; text-decoration: none; background: rgb(0 0 0 / 0.55); border: 1px solid rgb(255 255 255 / 0.35); border-radius: 50%; backdrop-filter: blur(4px); transition: background 0.2s, transform 0.15s; }
+.mc-analise span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.mc-concurso-li .mc-topo { padding-right: 40px; }
+.mc-analise:hover { background: rgb(0 0 0 / 0.8); }
+.mc-analise:active { transform: scale(0.96); }
+.mc-analise:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+a.mc-quadrado { text-decoration: none; }
+.mc-breve { cursor: default; filter: grayscale(0.7) brightness(0.62); box-shadow: none; transform: none; }
+.mc-breve:hover { filter: grayscale(0.7) brightness(0.62); box-shadow: none; }
+.mc-breve .mc-marca { transform: rotate(-12deg); }
+.mc-breve .mc-abrir { background: rgb(0 0 0 / 0.5); }
+
+.mc-painel .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }

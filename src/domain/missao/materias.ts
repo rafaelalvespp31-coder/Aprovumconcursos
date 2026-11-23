@@ -34,8 +34,12 @@ export function agruparCatalogo(
   return fim.sort((a, b) => b.aulas - a.aulas || a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
-/** Concurso com edital publicado pela equipe, para os quadrados "Concursos" da Central. */
+/** pronto: edital publicado (o aluno estuda); analise: só a análise está publicada; breve: catalogado, ainda sem edital nem análise. */
+export type EstadoConcurso = "pronto" | "analise" | "breve";
+
+/** Concurso catalogado pela equipe, para os quadrados "Concursos" da Central. */
 export interface ConcursoCard {
+  estado: EstadoConcurso;
   id: string;
   nome: string;
   /** Órgão/instituição. */

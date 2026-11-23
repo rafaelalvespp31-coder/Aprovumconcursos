@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createAdminClient } from "../supabase";
 import { auditLog } from "../observability";
 import { podePublicar } from "@/domain/edital/publicado";
+import type { EstadoConcurso } from "@/domain/missao/materias";
 import { UserFacingError } from "./trails";
 import { toContest, type Contest, type ContestRow } from "./gamification";
 
@@ -70,4 +71,26 @@ export async function listarConcursosParaEstudo(): Promise<Contest[]> {
   const prontos = await db.from("edital_preparations").select("id").in("id", linhas.map((l) => l.edital_prep_id)).eq("status", "concluido");
   const ok = new Set(((prontos.data ?? []) as Array<{ id: string }>).map((p) => p.id));
   return linhas.filter((l) => ok.has(l.edital_prep_id)).map(toContest);
+}
+
+/** Todos os concursos ativos do catálogo, com o estado de cada um: prontos para estudar primeiro, depois só com análise, depois "em breve". */
+export async function listarConcursosCatalogados(): Promise<Array<Contest & { estado: EstadoConcurso }>> {
+  const db = createAdminClient();
+  const [lista, comAnalise] = await Promise.all([
+    db.from("contest_catalog").select("*").eq("active", true).order("featured", { ascending: false }).order("name").limit(200),
+    db.from("contest_catalog").select("id").not("analise_em", "is", null).limit(500),
+  ]);
+  if (lista.error) throw new Error(lista.error.message);
+  const linhas = (lista.data ?? []) as Array<ContestRow & { edital_prep_id: string | null }>;
+  const idsAnalise = new Set(((comAnalise.data ?? []) as Array<{ id: string }>).map((l) => l.id));
+  const comEdital = linhas.filter((l) => l.edital_prep_id).map((l) => l.edital_prep_id!);
+  const prontos = new Set<string>();
+  if (comEdital.length) {
+    const r = await db.from("edital_preparations").select("id").in("id", comEdital).eq("status", "concluido");
+    for (const p of (r.data ?? []) as Array<{ id: string }>) prontos.add(p.id);
+  }
+  const ordem: Record<EstadoConcurso, number> = { pronto: 0, analise: 1, breve: 2 };
+  return linhas
+    .map((l) => ({ ...toContest(l), estado: (l.edital_prep_id && prontos.has(l.edital_prep_id) ? "pronto" : idsAnalise.has(l.id) ? "analise" : "breve") as EstadoConcurso }))
+    .sort((a, b) => ordem[a.estado] - ordem[b.estado]);
 }

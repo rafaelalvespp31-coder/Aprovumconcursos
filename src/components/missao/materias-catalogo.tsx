@@ -40,7 +40,7 @@ export const estilo = (i: number): CSSProperties => ({ "--c1": CORES[i % CORES.l
 export const iconeDaMateria = (slug: string): LucideIcon => ICONES[slug] ?? BookMarked;
 
 /** O brilho segue o dedo/mouse dentro do quadrado (variáveis CSS, sem re-renderizar). */
-export function seguir(e: PointerEvent<HTMLButtonElement>) {
+export function seguir(e: PointerEvent<HTMLElement>) {
   const r = e.currentTarget.getBoundingClientRect();
   const x = (e.clientX - r.left) / r.width;
   const y = (e.clientY - r.top) / r.height;
@@ -49,7 +49,7 @@ export function seguir(e: PointerEvent<HTMLButtonElement>) {
   e.currentTarget.style.setProperty("--rx", `${((0.5 - y) * 10).toFixed(1)}deg`);
   e.currentTarget.style.setProperty("--ry", `${((x - 0.5) * 12).toFixed(1)}deg`);
 }
-export function soltar(e: PointerEvent<HTMLButtonElement>) {
+export function soltar(e: PointerEvent<HTMLElement>) {
   for (const v of ["--rx", "--ry"]) e.currentTarget.style.setProperty(v, "0deg");
 }
 

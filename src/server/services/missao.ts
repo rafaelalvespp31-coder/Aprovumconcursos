@@ -3,7 +3,7 @@ import { unstable_cache } from "next/cache";
 import { disciplineLabel } from "@/ai/pedagogy";
 import { createAdminClient } from "../supabase";
 import { agruparCatalogo, type ConcursoCard, type MateriaCatalogo } from "@/domain/missao/materias";
-import { listarConcursosParaEstudo } from "./concurso-edital";
+import { listarConcursosCatalogados } from "./concurso-edital";
 import { ensureDisciplines } from "./disciplines";
 import { getMentorGoal } from "./mentor-goal";
 
@@ -13,7 +13,7 @@ export interface DadosMissao {
   objetivo: string | null;
   /** Matérias catalogadas na plataforma (aulas publicadas), para os quadrados da Central. */
   materias: MateriaCatalogo[];
-  /** Concursos cujo edital a equipe publicou: o aluno escolhe e estuda sem anexar nada. */
+  /** Concursos catalogados pela equipe: os com edital publicado o aluno escolhe e estuda sem anexar nada; os demais aparecem como análise ou "em breve". */
   concursos: ConcursoCard[];
 }
 
@@ -39,13 +39,13 @@ export async function carregarMissao(userId: string): Promise<DadosMissao> {
     db.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
     getMentorGoal(userId).catch(() => null),
     carregarMateriasCatalogo().catch(() => []),
-    listarConcursosParaEstudo().catch(() => []),
+    listarConcursosCatalogados().catch(() => []),
   ]);
   const nome = ((perfil.data?.display_name as string | null) ?? "").trim();
   return {
     primeiroNome: nome ? nome.split(/\s+/)[0]! : null,
     objetivo: objetivo?.contest ?? null,
     materias,
-    concursos: concursos.map((c): ConcursoCard => ({ id: c.id, nome: c.name, orgao: c.orgao || c.institution, cargo: c.roleName, uf: c.uf ?? null, imagem: c.imageUrl })),
+    concursos: concursos.map((c): ConcursoCard => ({ estado: c.estado, id: c.id, nome: c.name, orgao: c.orgao || c.institution, cargo: c.roleName, uf: c.uf ?? null, imagem: c.imageUrl })),
   };
 }

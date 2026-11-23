@@ -1,9 +1,13 @@
 import "server-only";
 import { z } from "zod";
+import { unstable_cache } from "next/cache";
 import { createAdminClient } from "../supabase";
 import { auditLog } from "../observability";
 import { analiseDoBanco, lerAnalise, type AnaliseConcurso } from "@/domain/edital/analise";
+import type { DisciplinaVisao, TopicoVisao } from "@/domain/missao/analise-conteudo";
 import { UserFacingError } from "./trails";
+import { refreshMatchesIfStale } from "./edital";
+import { carregarConteudoCompleto } from "./edital-view";
 
 export interface ResumoAnaliseAdmin {
   em: string;
@@ -48,25 +52,48 @@ export async function removerAnaliseDoConcurso(adminId: string, contestId: unkno
 
 export interface AnaliseParaAluno {
   concurso: { id: string; nome: string; orgao: string | null; cargo: string | null; banca: string | null };
-  analise: AnaliseConcurso;
+  /** Análise estratégica importada (pode não existir ainda). */
+  analise: AnaliseConcurso | null;
+  /** Conteúdo programático do edital publicado, com a disponibilidade de aula de cada tópico (pode não existir ainda). */
+  conteudo: DisciplinaVisao[] | null;
   atualizadaEm: string | null;
 }
 
-/** Análise de um concurso ativo, para o aluno. Null se não houver. */
+/** Conteúdo do edital publicado no concurso: o mesmo que o aluno vê no conteúdo programático, sem depender de quem pergunta. Cache curto: é igual para todos. */
+const conteudoDoEdital = unstable_cache(
+  async (prepId: string): Promise<DisciplinaVisao[] | null> => {
+    const db = createAdminClient();
+    const { data } = await db.from("edital_preparations").select("id, user_id, status").eq("id", prepId).maybeSingle();
+    const p = data as { id: string; user_id: string; status: string } | null;
+    if (!p || p.status !== "concluido") return null;
+    // Aulas catalogadas depois da importação: refaz os vínculos antes de mostrar (rápido, sem IA).
+    await refreshMatchesIfStale(p.user_id, p.id).catch(() => false);
+    const c = await carregarConteudoCompleto(p.user_id, p.id);
+    if (!c.disciplinas.length) return null;
+    return c.disciplinas.map((d) => ({
+      nome: d.nome,
+      topicos: d.topicos.map((t): TopicoVisao => ({
+        codigo: t.codigo,
+        nivel: t.nivel,
+        titulo: t.titulo,
+        disponivel: t.status === "completa" || t.status === "parcial" || t.status === "conferencia",
+        aulas: t.aulas.map((a) => a.titulo),
+      })),
+    }));
+  },
+  ["analise-concurso-conteudo-v1"],
+  { revalidate: 120 },
+);
+
+/** Análise e conteúdo de um concurso ativo, para o aluno. Null se o concurso não tem nem uma coisa nem outra. */
 export async function carregarAnaliseDoConcurso(contestId: string): Promise<AnaliseParaAluno | null> {
   const id = z.uuid().safeParse(contestId);
   if (!id.success) return null;
-  const { data } = await createAdminClient().from("contest_catalog").select("id, name, institution, orgao, role_name, banca, analise, analise_em, active").eq("id", id.data).eq("active", true).maybeSingle();
+  const { data } = await createAdminClient().from("contest_catalog").select("id, name, institution, orgao, role_name, banca, analise, analise_em, active, edital_prep_id").eq("id", id.data).eq("active", true).maybeSingle();
   if (!data) return null;
-  const l = data as { id: string; name: string; institution: string | null; orgao: string | null; role_name: string | null; banca: string | null; analise: unknown; analise_em: string | null };
+  const l = data as { id: string; name: string; institution: string | null; orgao: string | null; role_name: string | null; banca: string | null; analise: unknown; analise_em: string | null; edital_prep_id: string | null };
   const analise = analiseDoBanco(l.analise);
-  if (!analise) return null;
-  return { concurso: { id: l.id, nome: l.name, orgao: l.orgao ?? l.institution, cargo: l.role_name, banca: l.banca }, analise, atualizadaEm: l.analise_em };
-}
-
-/** O concurso desta preparação tem análise? Devolve o id do concurso (ou null) para o link na tela do conteúdo programático. */
-export async function concursoComAnalise(contestId: string | null | undefined): Promise<string | null> {
-  if (!contestId || !z.uuid().safeParse(contestId).success) return null;
-  const { data } = await createAdminClient().from("contest_catalog").select("id").eq("id", contestId).eq("active", true).not("analise", "is", null).maybeSingle();
-  return (data as { id: string } | null)?.id ?? null;
+  const conteudo = l.edital_prep_id ? await conteudoDoEdital(l.edital_prep_id).catch(() => null) : null;
+  if (!analise && !conteudo) return null;
+  return { concurso: { id: l.id, nome: l.name, orgao: l.orgao ?? l.institution, cargo: l.role_name, banca: l.banca }, analise, conteudo, atualizadaEm: l.analise_em };
 }
