@@ -246,3 +246,28 @@ body:has(.an) { background: #000; }
 .an-extras > p { margin: 4px 0 12px; font-size: 12.5px; color: var(--cinza); }
 
 .an-secao[hidden] { display: none; }
+
+/* Botão "Montar meu plano de estudo" ao lado do título: vermelho vivo, brilho que passa, pulso e seta que avança */
+.an-titulo-linha { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; margin-top: 8px; }
+.an-titulo-linha .an-titulo { margin: 0; }
+.an-plano { position: relative; display: inline-flex; flex: 1 1 200px; align-items: center; justify-content: center; gap: 10px; min-height: 56px; max-width: 380px; padding: 0 22px; overflow: hidden; isolation: isolate; font-size: 15px; font-weight: 800; letter-spacing: 0.01em; line-height: 1.15; text-align: left; color: #fff; cursor: pointer;
+  background: linear-gradient(135deg, #ff2a33 0%, #d71920 45%, #a80f16 100%); border: 1px solid rgb(255 255 255 / 0.28); border-radius: 18px;
+  box-shadow: 0 0 0 0 rgb(255 37 45 / 0.55), 0 14px 34px -10px rgb(215 25 32 / 0.95), inset 0 1px 0 rgb(255 255 255 / 0.4);
+  animation: an-pulso 2.6s ease-out infinite; transition: transform 0.2s var(--ease), filter 0.2s, box-shadow 0.3s; }
+.an-plano-brilho { position: absolute; inset: 0; z-index: -1; background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.55) 50%, transparent 65%); transform: translateX(-130%); animation: an-passa 3.4s ease-in-out 0.8s infinite; }
+.an-plano-ico { flex: none; transition: transform 0.3s var(--ease); }
+.an-plano-seta { flex: none; transition: transform 0.25s var(--ease); }
+.an-plano:hover:not(:disabled) { transform: translateY(-3px) scale(1.02); filter: saturate(1.15) brightness(1.06); }
+.an-plano:hover:not(:disabled) .an-plano-seta { transform: translateX(5px); }
+.an-plano:hover:not(:disabled) .an-plano-ico { transform: rotate(-8deg) scale(1.12); }
+.an-plano:active:not(:disabled) { transform: scale(0.97); transition-duration: 0.08s; }
+.an-plano:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.an-plano:disabled { cursor: progress; animation: none; filter: saturate(0.8); }
+.an-gira { animation: an-giro 0.8s linear infinite; }
+.an-plano-aviso { display: none; margin: 10px 0 0; padding: 10px 14px; max-width: 560px; font-size: 13px; line-height: 1.5; color: #fde68a; background: rgb(245 158 11 / 0.1); border: 1px solid rgb(245 158 11 / 0.35); border-radius: 12px; animation: an-entra 0.3s var(--ease) both; }
+.an-plano-aviso[data-visivel] { display: block; }
+@keyframes an-pulso { 0% { box-shadow: 0 0 0 0 rgb(255 37 45 / 0.55), 0 14px 34px -10px rgb(215 25 32 / 0.95), inset 0 1px 0 rgb(255 255 255 / 0.4); } 70%, 100% { box-shadow: 0 0 0 16px rgb(255 37 45 / 0), 0 14px 34px -10px rgb(215 25 32 / 0.95), inset 0 1px 0 rgb(255 255 255 / 0.4); } }
+@keyframes an-passa { 0%, 55% { transform: translateX(-130%); } 100% { transform: translateX(130%); } }
+@keyframes an-giro { to { transform: rotate(360deg); } }
+@media (min-width: 900px) { .an-plano { flex: 0 0 auto; min-height: 60px; padding: 0 26px; font-size: 16px; } }
+@media (prefers-reduced-motion: reduce) { .an-plano, .an-plano-brilho, .an-gira { animation: none; } .an-plano:hover:not(:disabled) { transform: none; } }

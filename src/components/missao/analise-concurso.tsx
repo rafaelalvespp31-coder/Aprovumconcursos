@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
-import { ArrowLeft, BookOpenCheck, ChevronDown, Clock, Compass, Flag, Info, Layers, ListChecks, Search, Target } from "lucide-react";
+import { ArrowLeft, ArrowRight, BookOpenCheck, CalendarCheck, ChevronDown, Clock, Compass, Flag, Info, Layers, ListChecks, Loader2, Search, Target } from "lucide-react";
 import { tomPrioridade, type AnaliseDisciplina } from "@/domain/edital/analise";
 import { agruparTopicos, combinarComEdital, resumoDisponibilidade, type AulasCatalogadas, type TopicoVisao } from "@/domain/missao/analise-conteudo";
 import type { AnaliseParaAluno } from "@/server/services/concurso-analise";
@@ -130,7 +131,8 @@ function Cartoes({ topicos, termo, aula }: { topicos: TopicoVisao[]; termo: stri
 type Aba = "visao" | "conteudo" | "materias" | "dificuldades" | "rotina" | "conclusao";
 
 /** Análise do concurso: estrutura da prova, matérias, conteúdo completo com as aulas catalogadas, prioridades, dificuldades, rotina e conclusão. */
-export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; voltar: string }) {
+export function AnaliseConcurso({ dados, voltar, montar }: { dados: AnaliseParaAluno; voltar: string; montar: (contestId: string, nome: string) => Promise<{ ok: true; destino: string } | { ok: false; error: string }> }) {
+  const router = useRouter();
   const { concurso: c, analise: a, conteudo, conteudoOrigem, marca } = dados;
 
   const { itens, extras } = useMemo(() => {
@@ -155,6 +157,8 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
   const [aula, setAula] = useState<FiltroAula>("todos");
   const [termoTop, setTermoTop] = useState("");
   const [aba, setAba] = useState<Aba>("visao");
+  const [montando, setMontando] = useState(false);
+  const [aviso, setAviso] = useState<string | null>(null);
   const raiz = useRef<HTMLElement>(null);
   const marcaRef = useRef<HTMLDivElement>(null);
   const progresso = useRef<HTMLDivElement>(null);
@@ -199,6 +203,19 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
     };
   }, [dados]);
 
+  const montarPlano = async () => {
+    if (montando) return;
+    setAviso(null);
+    // O plano nasce do edital publicado do concurso: sem ele, explica em vez de errar.
+    if (conteudoOrigem !== "edital") {
+      setAviso("O plano é montado a partir do edital, e o edital deste concurso ainda não foi importado. Assim que for, este botão monta o seu plano na hora.");
+      return;
+    }
+    setMontando(true);
+    const r = await montar(c.id, c.nome).catch((): { ok: false; error: string } => ({ ok: false, error: "Sem conexão. Tente de novo." }));
+    if (!r.ok) { setMontando(false); setAviso(r.error); return; }
+    router.push(r.destino);
+  };
   const irAba = (id: Aba, depois?: () => void) => {
     setAba(id);
     requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -257,7 +274,16 @@ export function AnaliseConcurso({ dados, voltar }: { dados: AnaliseParaAluno; vo
         <section className="an-hero">
           <div className="an-hero-txt">
             <p className="an-kicker">ANÁLISE DO CONCURSO</p>
-            <h1 className="an-titulo">{c.nome}</h1>
+            <div className="an-titulo-linha">
+              <h1 className="an-titulo">{c.nome}</h1>
+              <button type="button" className="an-plano" onClick={() => void montarPlano()} disabled={montando} aria-busy={montando} data-testid="montar-plano">
+                <span className="an-plano-brilho" aria-hidden />
+                {montando ? <Loader2 size={18} className="an-gira" aria-hidden /> : <CalendarCheck size={18} className="an-plano-ico" aria-hidden />}
+                <span className="an-plano-txt">{montando ? "Montando seu plano…" : "Montar meu plano de estudo"}</span>
+                {!montando && <ArrowRight size={17} className="an-plano-seta" aria-hidden />}
+              </button>
+            </div>
+            <p className="an-plano-aviso" role="status" aria-live="polite" data-visivel={aviso ? "" : undefined}>{aviso ?? ""}</p>
             <ul className="an-meta">{[c.cargo, c.orgao, c.banca].filter(Boolean).map((m) => <li key={m}>{m}</li>)}</ul>
             <dl className="an-numeros">
               {total > 0 && <div><dt><Flag size={13} aria-hidden /> Questões</dt><dd><Contador valor={total} /></dd></div>}

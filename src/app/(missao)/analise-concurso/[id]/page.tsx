@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/server/auth";
 import { carregarAnaliseDoConcurso } from "@/server/services/concurso-analise";
 import { AnaliseConcurso } from "@/components/missao/analise-concurso";
+import { montarPlanoDoConcursoAction } from "./actions";
 
 export const metadata = { title: "Análise do concurso" };
 export const dynamic = "force-dynamic";
@@ -14,5 +15,5 @@ export default async function AnaliseConcursoPage({ params, searchParams }: { pa
   if (!dados) notFound();
   // Só caminhos do próprio app (evita redirecionar para fora).
   const destino = voltar && /^\/[A-Za-z0-9\-_/]*$/.test(voltar) ? voltar : "/painel";
-  return <AnaliseConcurso dados={dados} voltar={destino} />;
+  return <AnaliseConcurso dados={dados} voltar={destino} montar={montarPlanoDoConcursoAction} />;
 }
