@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type CSSProperties } from "react";
 import { Loader2, Mic, PhoneOff } from "lucide-react";
 import { MentorVoz, type EstadoVoz } from "@/components/mentor/mentor-voz";
 import type { Bands, Conexao } from "@/components/mentor/skull-orb-fx";
@@ -11,11 +11,13 @@ const AVISO: Partial<Record<EstadoVoz["fase"], string>> = {
   indisponivel: "Voz indisponível agora",
 };
 
+export type FaseMentor = "repouso" | "processando" | "escutando" | "respondendo" | "erro";
+
 /**
  * Botão "Falar com o Mentor". Ao tocar, abre a conversa por voz de sempre (sem tela própria): a energia real do áudio
  * vai para o fogo do Mentor por `onNivel`, e `onConn` diz em que fase a conversa está. Tocar de novo encerra.
  */
-export function FalarComMentor({ ativo, onAtivo, onNivel, onConn }: { ativo: boolean; onAtivo: (v: boolean) => void; onNivel: (fn: (() => Bands) | null) => void; onConn: (c: Conexao) => void }) {
+export function FalarComMentor({ ativo, onAtivo, onNivel, onConn, onFase }: { ativo: boolean; onAtivo: (v: boolean) => void; onNivel: (fn: (() => Bands) | null) => void; onConn: (c: Conexao) => void; /** Estado real da conversa, para a cena reagir (repouso, escutando, processando, respondendo, erro). */ onFase?: (f: FaseMentor) => void }) {
   const [e, setE] = useState<EstadoVoz | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const fase = ativo ? e?.fase ?? "carregando" : "pronto";
@@ -24,6 +26,7 @@ export function FalarComMentor({ ativo, onAtivo, onNivel, onConn }: { ativo: boo
 
   const estado = (x: EstadoVoz) => {
     setE(x);
+    onFase?.(x.fase === "ao-vivo" ? (x.speaking ? "respondendo" : "escutando") : x.fase === "erro" || x.fase === "indisponivel" ? "erro" : x.fase === "carregando" || x.fase === "conectando" ? "processando" : "repouso");
     onConn(x.fase === "ao-vivo" ? "live" : x.fase === "conectando" ? "connecting" : x.fase === "erro" ? "error" : "live");
     // plano gratuito, saldo esgotado ou falha: a sessão não abre, então o botão volta a ficar livre
     if (x.fase === "plano" || x.fase === "esgotado" || x.fase === "indisponivel" || x.fase === "erro" || x.fase === "encerrada") {
@@ -34,7 +37,7 @@ export function FalarComMentor({ ativo, onAtivo, onNivel, onConn }: { ativo: boo
   };
 
   return (
-    <div className="cm-falar-caixa">
+    <div className="hm-falar-caixa">
       {ativo && (
         <MentorVoz
           semTela
@@ -44,9 +47,11 @@ export function FalarComMentor({ ativo, onAtivo, onNivel, onConn }: { ativo: boo
           onLevel={onNivel}
         />
       )}
+      <div className="hm-falar-linha">
+      <Ondas />
       <button
         type="button"
-        className="cm-falar"
+        className="hm-falar"
         data-estado={aoVivo ? "ao-vivo" : conectando ? "conectando" : "parado"}
         aria-pressed={aoVivo}
         disabled={conectando}
@@ -54,6 +59,7 @@ export function FalarComMentor({ ativo, onAtivo, onNivel, onConn }: { ativo: boo
           if (ativo) {
             onNivel(null);
             onConn("live");
+            onFase?.("repouso");
             onAtivo(false);
           } else {
             setE(null);
@@ -62,12 +68,23 @@ export function FalarComMentor({ ativo, onAtivo, onNivel, onConn }: { ativo: boo
           }
         }}
       >
-        {conectando ? <Loader2 size={17} className="cm-gira" aria-hidden /> : aoVivo ? <PhoneOff size={17} aria-hidden /> : <Mic size={17} aria-hidden />}
+        {conectando ? <Loader2 size={17} className="hm-gira" aria-hidden /> : aoVivo ? <PhoneOff size={17} aria-hidden /> : <Mic size={17} aria-hidden />}
         <span>{conectando ? "Conectando…" : aoVivo ? "Encerrar conversa" : "Falar com o Mentor"}</span>
       </button>
-      <p className="cm-falar-info" role="status" aria-live="polite">
+      <Ondas />
+      </div>
+      <p className="hm-falar-info" role="status" aria-live="polite">
         {aoVivo ? (e?.speaking ? "Mentor falando" : "Mentor ouvindo") : ativo ? null : aviso}
       </p>
     </div>
+  );
+}
+
+/** Barras de som ao lado do botão: só se mexem com a conversa ao vivo (o CSS lê o data-estado do botão vizinho). */
+function Ondas() {
+  return (
+    <span className="hm-ondas" aria-hidden>
+      {[0, 1, 2, 3, 4, 5, 6].map((i) => <i key={i} style={{ "--i": i } as CSSProperties} />)}
+    </span>
   );
 }
