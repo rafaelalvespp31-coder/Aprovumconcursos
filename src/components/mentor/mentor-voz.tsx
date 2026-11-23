@@ -36,16 +36,22 @@ const fromB64 = (b64: string) => {
  * com o Google usando um token de uso único criado pelo servidor; o servidor controla o limite
  * diário (3 min) e a instrução do Mentor.
  */
-export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = false, orbSize = 96, onClose, onSpeaking, onLevel, onLousa }: { /** Entrega a função que lê a energia do áudio (volume/graves/médios/agudos). */ onLevel?: (nivel: () => Bands) => void; /** Avisa quando o Mentor começa/para de falar (ex.: borda do card chiando). */ onSpeaking?: (falando: boolean) => void; base?: string; /** Contexto da aula lido no instante em que a conversa começa. */ getStudy?: () => (StudyContext & { lessonId?: string }) | null; /** Começa sozinho assim que o saldo de voz carrega (aberto por um clique do aluno). */ autoStart?: boolean; /** Só a orbe animada, sem cartão nem textos (toque nela para encerrar). */ orbOnly?: boolean; /** Diâmetro da orbe no modo orbOnly. */ orbSize?: number; onClose?: () => void; /** Recebe a lousa (passos e desenho) quando o aluno pede uma conta, exemplo ou esquema. */ onLousa?: (l: Lousa | "pendente" | "fechar" | null, sync?: () => { c: number; fim: boolean }, vivo?: { quandos: number[]; agora: () => number }) => void }) {
+/** O que um botão próprio precisa saber da conversa por voz. */
+export type EstadoVoz = { fase: Fase; msg: string | null; speaking: boolean; left: number; unlimited: boolean };
+
+export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = false, orbSize = 96, onClose, onSpeaking, onLevel, onLousa, onEstado, semTela = false, boasVindas = false }: { /** Abertura da tela inicial: o Mentor fala uma única mensagem personalizada e escuta (o servidor monta o conteúdo). */ boasVindas?: boolean; /** Avisa a fase, a mensagem e o saldo de voz a cada mudança (para um botão próprio). */ onEstado?: (e: EstadoVoz) => void; /** Só a lógica (áudio, saldo, conexão): não desenha nada. */ semTela?: boolean; /** Entrega a função que lê a energia do áudio (volume/graves/médios/agudos). */ onLevel?: (nivel: () => Bands) => void; /** Avisa quando o Mentor começa/para de falar (ex.: borda do card chiando). */ onSpeaking?: (falando: boolean) => void; base?: string; /** Contexto da aula lido no instante em que a conversa começa. */ getStudy?: () => (StudyContext & { lessonId?: string }) | null; /** Começa sozinho assim que o saldo de voz carrega (aberto por um clique do aluno). */ autoStart?: boolean; /** Só a orbe animada, sem cartão nem textos (toque nela para encerrar). */ orbOnly?: boolean; /** Diâmetro da orbe no modo orbOnly. */ orbSize?: number; onClose?: () => void; /** Recebe a lousa (passos e desenho) quando o aluno pede uma conta, exemplo ou esquema. */ onLousa?: (l: Lousa | "pendente" | "fechar" | null, sync?: () => { c: number; fim: boolean }, vivo?: { quandos: number[]; agora: () => number }) => void }) {
   const [fase, setFase] = useState<Fase>("carregando");
   const [left, setLeft] = useState(0);
   const [limit, setLimit] = useState(180);
   const [unlimited, setUnlimited] = useState(false);
   const [speaking, setSpeaking] = useState(false);
   useEffect(() => { onSpeaking?.(speaking); }, [speaking, onSpeaking]);
+  const onEstadoRef = useRef(onEstado);
+  useEffect(() => { onEstadoRef.current = onEstado; });
   const onLevelRef = useRef(onLevel);
   useEffect(() => { onLevelRef.current = onLevel; });
   const [msg, setMsg] = useState<string | null>(null);
+  useEffect(() => { onEstadoRef.current?.({ fase, msg, speaking, left, unlimited }); }, [fase, msg, speaking, left, unlimited]);
   const onLousaRef = useRef(onLousa);
   useEffect(() => { onLousaRef.current = onLousa; });
   const falaTurno = useRef("");
@@ -571,7 +577,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       // Microfone e liberação da conversa andam juntos (responde mais rápido). Se o microfone falhar,
       // a reserva de tempo é devolvida na hora (seconds: 0).
       carregarCtxAula();
-      const startReq = fetch("/api/mentor/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "start", study: getStudy?.() ?? undefined }) });
+      const startReq = fetch("/api/mentor/voz", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "start", study: getStudy?.() ?? undefined, ...(boasVindas ? { modo: "boas-vindas" } : {}) }) });
       const [micR, resR] = await Promise.allSettled([
         navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true } }),
         startReq,
@@ -652,7 +658,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
       mic.connect(node);
       mic.connect(aIn);
       try {
-        session.sendRealtimeInput({ text: "Cumprimente o aluno logo de início com uma saudação curta e marcante, escolhendo uma destas: \"Fala, Caveira!\" ou \"Olá, futuro policial!\". Depois pergunte, em uma frase, qual é a dúvida de estudo dele." });
+        session.sendRealtimeInput({ text: boasVindas ? "Comece agora com a ABERTURA DESTA CONVERSA descrita nas suas instruções: uma única mensagem de 20 a 40 palavras e depois silêncio, escutando o aluno." : "Cumprimente o aluno logo de início com uma saudação curta e marcante, escolhendo uma destas: \"Fala, Caveira!\" ou \"Olá, futuro policial!\". Depois pergunte, em uma frase, qual é a dúvida de estudo dele." });
       } catch {
         /* sem saudação: o aluno fala primeiro */
       }
@@ -689,6 +695,7 @@ export function MentorVoz({ base = "", getStudy, autoStart = false, orbOnly = fa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStart]);
 
+  if (semTela) return null;
   if (orbOnly) return <VozOrbSolo size={orbSize} fase={fase} speaking={speaking} msg={msg} level={nivel} onStart={() => void iniciar()} onClose={() => onClose?.()} />;
   return <VozView fase={fase} left={left} limit={limit} unlimited={unlimited} speaking={speaking} msg={msg} level={nivel} base={base} onStart={() => void iniciar()} onStop={() => void encerrar("usuario")} />;
 }

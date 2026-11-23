@@ -7,6 +7,7 @@ import { getMyPlan } from "./plans";
 import { isAdmin } from "../auth";
 import { UserFacingError, enforceRateLimit } from "./trails";
 import { brDay } from "@/domain/plans/limits";
+import { diasEntre, escolherAngulo, regraSaudacao, sequenciaDe, type DadosSaudacao } from "@/domain/mentor/saudacao";
 import { loadMentorSnapshot } from "./mentor";
 import { loadGoalPlan, loadStudentFacts } from "./mentor-goal";
 import { planAsText } from "@/domain/mentor/plan";
@@ -85,8 +86,51 @@ export async function getVoiceStatus(userId: string): Promise<VoiceStatus> {
   return { available: true, limit: VOICE_DAILY_SECONDS, left: voiceLeft(await usedToday(userId)) };
 }
 
+/**
+ * Abertura da tela inicial: monta os dados reais do aluno, escolhe o ângulo da mensagem (sem repetir o do acesso anterior,
+ * guardado em profiles.preferences.mentor_saudacao) e devolve a instrução. Nunca derruba a conversa.
+ */
+async function aberturaDaTelaInicial(userId: string, name: string | null, goal: string | null, snapshot: Awaited<ReturnType<typeof loadMentorSnapshot>>["snapshot"], r: ReturnType<typeof recommend>): Promise<string> {
+  try {
+    const db = createAdminClient();
+    const [dias, prof] = await Promise.all([
+      db.from("gamification_activity_days").select("day").eq("user_id", userId).order("day", { ascending: false }).limit(60),
+      db.from("profiles").select("preferences").eq("id", userId).maybeSingle(),
+    ]);
+    const hoje = brDay().day;
+    const lista = ((dias.data ?? []) as Array<{ day: string }>).map((x) => x.day);
+    let certas = 0, erradas = 0;
+    for (const p of snapshot.performance) for (const a of p.attempts) { if (a.questionValid === false) continue; if (a.correct === true) certas++; else if (a.correct === false) erradas++; }
+    const fraca = r.topics.filter((t) => t.pct !== null && t.valid >= 3 && t.band === "reforco").sort((a, b) => (a.pct ?? 0) - (b.pct ?? 0))[0];
+    const andamento = snapshot.lessons
+      .filter((l) => (l.readingDone || l.levelsPassed > 0) && !(l.readingDone && l.levelsPassed >= 3))
+      .map((l) => ({ titulo: l.title, pct: Math.round((((l.readingDone ? 1 : 0) + l.levelsPassed) / 4) * 100) }))[0];
+    const d: DadosSaudacao = {
+      nome: name,
+      objetivo: goal,
+      semAtividade: snapshot.lessons.length === 0 && certas + erradas === 0,
+      diasSemEstudar: lista.length ? Math.max(0, diasEntre(lista[0]!, hoje)) : null,
+      sequencia: sequenciaDe(lista, hoje),
+      revisoesVencidas: snapshot.reviews.filter((x) => x.dueAt && new Date(x.dueAt) <= new Date(snapshot.now)).length,
+      materiaFraca: fraca ? { nome: fraca.subject && fraca.subject !== fraca.label ? `${fraca.subject} — ${fraca.label}` : fraca.label, pct: fraca.pct ?? 0, questoes: fraca.valid } : null,
+      aulaAndamento: andamento ?? null,
+      respondidas: certas + erradas,
+      acertoPct: certas + erradas >= 1 ? Math.round((certas / (certas + erradas)) * 100) : null,
+    };
+    const prefs = { ...((prof.data?.preferences ?? {}) as Record<string, unknown>) };
+    const ultimo = (prefs.mentor_saudacao as { angulo?: unknown } | undefined)?.angulo;
+    const angulo = escolherAngulo(d, typeof ultimo === "string" ? ultimo : null);
+    prefs.mentor_saudacao = { angulo, em: new Date().toISOString() };
+    await db.from("profiles").update({ preferences: prefs }).eq("id", userId);
+    return regraSaudacao(angulo, d);
+  } catch (e) {
+    await logEvent("mentor.voz.abertura_error", { error: (e as Error).message.slice(0, 200) });
+    return "";
+  }
+}
+
 /** Instrução do Mentor para este aluno: regras fixas + nome e desempenho reais (nunca falha a conversa). */
-async function personalPrompt(userId: string): Promise<string> {
+async function personalPrompt(userId: string, modo?: "boas-vindas"): Promise<string> {
   try {
     const { snapshot, name } = await loadMentorSnapshot(userId);
     const r = recommend(snapshot);
@@ -108,7 +152,8 @@ async function personalPrompt(userId: string): Promise<string> {
     const gp = await loadGoalPlan(userId, snapshot, r).catch(() => ({ goal: null, plan: null }));
     const facts = await loadStudentFacts(userId, snapshot).catch(() => []);
     const goalCtx = buildGoalContext(gp.goal?.contest ?? null, gp.plan ? planAsText(gp.plan) : null, facts);
-    return `${VOICE_SYSTEM_PROMPT} ${VOICE_PERSONAL_RULES} ${VOICE_GOAL_RULES} ${ctx} ${goalCtx} ${buildContestContext(contests)}`;
+    const abertura = modo === "boas-vindas" ? ` ${await aberturaDaTelaInicial(userId, name, gp.goal?.contest ?? null, snapshot, r)}` : "";
+    return `${VOICE_SYSTEM_PROMPT} ${VOICE_PERSONAL_RULES} ${VOICE_GOAL_RULES} ${ctx} ${goalCtx} ${buildContestContext(contests)}${abertura}`;
   } catch (e) {
     await logEvent("mentor.voz.contexto_error", { error: (e as Error).message.slice(0, 200) });
     return VOICE_SYSTEM_PROMPT;
@@ -225,7 +270,7 @@ async function lessonErrors(userId: string, lessonId: string): Promise<string> {
   return ["", "QUESTÕES DESTA AULA QUE O ALUNO ERROU (dados de referência):", ...out.map((x, i) => `[${i + 1}] ${x}`)].join("\n");
 }
 
-export async function startVoice(userId: string, study?: StudyContext | null, lessonId?: string | null): Promise<VoiceSession> {
+export async function startVoice(userId: string, study?: StudyContext | null, lessonId?: string | null, modo?: "boas-vindas"): Promise<VoiceSession> {
   const admin = await isAdminUser(userId);
   const plan = await getMyPlan(userId);
   if (!admin && !plan.unlimited) throw new UserFacingError("O Mentor por voz é exclusivo dos planos pagos.", "plan_limit");
@@ -233,7 +278,7 @@ export async function startVoice(userId: string, study?: StudyContext | null, le
   if (!apiKey) throw new UserFacingError("O Mentor por voz está indisponível no momento. Tente mais tarde.", "voice_unavailable");
   await enforceRateLimit(userId, "mentor_voz", 6, 60);
 
-  const base = await personalPrompt(userId);
+  const base = await personalPrompt(userId, modo);
   const instruction = (admin ? base.replace(STUDENT_TIME_RULE, ADMIN_TIME_RULE) : base) + PROFESSOR_RULE + LOUSA_RULE + studyContextInstruction(study ?? null) + (lessonId ? await lessonBrief(userId, lessonId).catch(() => "") : ""); // antes de reservar o tempo: a leitura dos dados não gasta os 3 minutos
   const now = new Date();
   let left = ADMIN_VOICE_SECONDS;

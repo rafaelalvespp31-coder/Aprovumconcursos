@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 import { ArrowRight, Loader2, Search, Settings } from "lucide-react";
 import { mesclar, rankear, sanitizarConsulta, type Sugestao } from "@/domain/missao/sugestoes";
+import type { Bands, Conexao } from "@/components/mentor/skull-orb-fx";
+import { FalarComMentor } from "./falar-mentor";
 import { MentorOrbita } from "./mentor-orbita";
 import "./central-missao.css";
 
@@ -38,6 +40,9 @@ export function CentralMissao({ primeiroNome, email, objetivo, iniciais, editais
   const [erro, setErro] = useState<string | null>(null);
   const [confirmado, setConfirmado] = useState<string | null>(null);
   const [saindo, setSaindo] = useState(false);
+  const [falando, setFalando] = useState(false);
+  const [conn, setConn] = useState<Conexao>("live");
+  const nivel = useRef<(() => Bands) | null>(null);
 
   const consulta = sanitizarConsulta(texto);
   const locais = useMemo(() => mesclar(iniciais, editais), [iniciais, editais]);
@@ -70,6 +75,8 @@ export function CentralMissao({ primeiroNome, email, objetivo, iniciais, editais
       setAberta(false);
       setErro(null);
       setFase("salvando");
+      setFalando(false); // encerra a conversa por voz antes de sair
+      nivel.current = null;
       campo.current?.blur();
       const r = await escolher(limpo, editalId).catch((): Escolha => ({ ok: false, error: "Sem conexão. Tente de novo." }));
       if (!r.ok) {
@@ -126,8 +133,9 @@ export function CentralMissao({ primeiroNome, email, objetivo, iniciais, editais
         </Link>
       </header>
 
-      <section className="cm-palco" aria-hidden>
-        <MentorOrbita energia={energia} voz={voz} />
+      <section className="cm-palco">
+        <MentorOrbita energia={energia} voz={voz} conn={conn} fonte={nivel} />
+        <FalarComMentor ativo={falando} onAtivo={setFalando} onNivel={(fn) => { nivel.current = fn; }} onConn={setConn} />
       </section>
 
       <section className="cm-corpo">

@@ -247,7 +247,7 @@ export function VozEsfera({ level, dim = false, size = 280, conn = "live", resol
       el.dataset.estado = estado;
       const live = c === "live";
       const voz = live ? clamp(me * 1.3 + mic * 0.4) : 0;
-      sm.vol = follow(sm.vol, voz, dt, 18, 3.6);
+      sm.vol = follow(sm.vol, voz, dt, 30, 4.5);
       sm.low = follow(sm.low, live ? clamp(b.low) : 0, dt, 18, 4);
       sm.mid = follow(sm.mid, live ? clamp(b.mid) : 0, dt, 16, 4);
       sm.high = follow(sm.high, live ? clamp(b.high) : 0, dt, 20, 5);
