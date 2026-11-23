@@ -33,7 +33,7 @@ void main(){
   gl_PointSize = max(1.6, aS.w * uTam * uPx * (.55 + .45 * env + perto * .4));
   vA = lumin;
   float calor = clamp(aH * (1. - life * .6) + perto * .35, 0., 1.);
-  vCor = mix(vec3(.95, .08, .04), vec3(1., .58, .16), calor);
+  vCor = mix(vec3(.95, .07, .04), vec3(1., .42, .1), calor);
 }`;
 
 const FRAG_BRASAS = /* glsl */ `
@@ -43,7 +43,7 @@ uniform float uMole, uOcc;
 varying float vA; varying vec3 vCor;
 void main(){
   vec2 c = gl_PointCoord - .5; float r2 = dot(c, c) * 4.;
-  float a = exp(-r2 * uMole) + .3 * exp(-r2 * 1.6);
+  float a = (exp(-r2 * uMole) + .3 * exp(-r2 * 1.6)) * smoothstep(1., .55, r2);
   gl_FragColor = vec4(vCor * a * vA * (1. - ocluido(uOcc)), 0.);
 }`;
 
@@ -116,7 +116,8 @@ function texturaRuido(tam = 128): THREE.DataTexture {
   const amostra = (x: number, y: number, per: number) => {
     const fx = x * per, fy = y * per; const x0 = Math.floor(fx), y0 = Math.floor(fy);
     const tx = fx - x0, ty = fy - y0; const sx = tx * tx * (3 - 2 * tx), sy = ty * ty * (3 - 2 * ty);
-    const h = (ix: number, iy: number) => grade[((iy % g) + g) % g * g + ((ix % g) + g) % g]!;
+    // a malha repete a cada `per` células, então a textura inteira emenda sem costura
+    const h = (ix: number, iy: number) => grade[((iy % per) + per) % per * g + ((ix % per) + per) % per]!;
     const a = h(x0, y0) + (h(x0 + 1, y0) - h(x0, y0)) * sx; const b = h(x0, y0 + 1) + (h(x0 + 1, y0 + 1) - h(x0, y0 + 1)) * sx;
     return a + (b - a) * sy;
   };

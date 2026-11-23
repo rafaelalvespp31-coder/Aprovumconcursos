@@ -1,28 +1,27 @@
 import { describe, expect, it } from "vitest";
-import { alvoDaFase, REPOUSO, suavizar } from "./estado-mentor";
+import { alvoDaFase, REPOUSO, suavizar, suavizarAudio } from "./estado-mentor";
 import { nivelAbaixo, nivelInicial, qualidadeDe } from "./qualidade";
 
 describe("alvoDaFase", () => {
   it("repouso é o estado de referência", () => {
     expect(alvoDaFase("repouso")).toEqual(REPOUSO);
   });
-  it("escutando acende mais a esfera, acelera as partículas e abre ondas", () => {
+  it("escutando acende um pouco a esfera e acelera as partículas", () => {
     const a = alvoDaFase("escutando");
     expect(a.brilho).toBeGreaterThan(REPOUSO.brilho);
     expect(a.rapidez).toBeGreaterThan(REPOUSO.rapidez);
-    expect(a.ondas).toBeGreaterThan(0);
+    expect(a.brilho).toBeLessThan(1.3);
   });
-  it("processando põe as partículas em espiral e multiplica as faíscas", () => {
+  it("processando põe as partículas em espiral", () => {
     const a = alvoDaFase("processando");
-    expect(a.espiral).toBe(1);
-    expect(a.faiscas).toBeGreaterThan(2);
+    expect(a.espiral).toBeGreaterThan(0.5);
   });
-  it("respondendo reage à intensidade real do áudio", () => {
+  it("respondendo acompanha a intensidade real do áudio, de forma moderada e sem emitir faíscas", () => {
     const quieto = alvoDaFase("respondendo", 0);
     const alto = alvoDaFase("respondendo", 1);
     expect(alto.brilho).toBeGreaterThan(quieto.brilho);
-    expect(alto.pulso).toBeGreaterThan(quieto.pulso);
-    expect(alto.faiscas).toBeGreaterThan(quieto.faiscas);
+    expect(alto.brilho - quieto.brilho).toBeLessThan(0.4);
+    expect(alto.faiscas).toBe(quieto.faiscas);
   });
   it("erro apaga a esfera e desacelera, mas a atmosfera segue", () => {
     const a = alvoDaFase("erro");
@@ -48,6 +47,24 @@ describe("suavizar", () => {
   it("sem tempo decorrido nada muda", () => {
     const a = alvoDaFase("escutando");
     expect(suavizar(a, REPOUSO, 0)).toEqual(a);
+  });
+});
+
+describe("suavizarAudio", () => {
+  it("sobe e desce sem saltos: um pico curto não passa de metade", () => {
+    let a = 0;
+    a = suavizarAudio(a, 1, 1 / 60);
+    expect(a).toBeLessThan(0.15);
+    for (let i = 0; i < 6; i++) a = suavizarAudio(a, 1, 1 / 60);
+    const pico = a;
+    for (let i = 0; i < 6; i++) a = suavizarAudio(a, 0, 1 / 60);
+    expect(a).toBeLessThan(pico);
+    expect(a).toBeGreaterThan(pico * 0.4);
+  });
+  it("solta mais devagar do que sobe", () => {
+    const sobe = suavizarAudio(0, 1, 0.1);
+    const desce = 1 - suavizarAudio(1, 0, 0.1);
+    expect(desce).toBeLessThan(sobe);
   });
 });
 

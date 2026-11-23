@@ -41,15 +41,15 @@
   -webkit-mask-composite: source-in; mask-image: linear-gradient(180deg, transparent, #000 12%, #000 72%, transparent 100%), linear-gradient(90deg, transparent, #000 6%, #000 88%, transparent); mask-composite: intersect; }
 
 /* a esfera real: o anel tem raio 0,34 do lado (voz-esfera); o anel da arte mede 336 de 1086 */
-.hm-orb { position: absolute; left: 29.3%; top: 55.7%; width: 39.5%; aspect-ratio: 1; transform: translate(-50%, -50%); display: flex; z-index: 3; pointer-events: none; }
+.hm-orb { position: absolute; left: 29.3%; top: 50.3%; width: 31.1%; aspect-ratio: 1; transform: translate(-50%, -50%); display: flex; z-index: 3; pointer-events: none; }
 .mo-caixa { position: relative; width: 100%; flex: 1; min-height: 0; }
 .mo-esfera { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-.hm-aura { position: absolute; left: 29.3%; top: 55.7%; width: 62%; aspect-ratio: 1; transform: translate(-50%, -50%) scale(0.9); z-index: 1; pointer-events: none; border-radius: 50%;
+.hm-aura { position: absolute; left: 29.3%; top: 50.3%; width: 52%; aspect-ratio: 1; transform: translate(-50%, -50%) scale(0.9); z-index: 1; pointer-events: none; border-radius: 50%;
   background: radial-gradient(closest-side, rgb(255 40 48 / 0.5), rgb(215 25 32 / 0.2) 55%, transparent 100%); opacity: 0.45; transition: opacity 1.6s ease, transform 1.6s var(--hm-ease); animation: hm-respira 4.2s ease-in-out infinite; }
 @keyframes hm-respira { 50% { opacity: 0.6; } }
 
 /* a luz da esfera refletida na mão */
-.hm-reflexo { position: absolute; left: 28%; top: 84%; width: 36%; aspect-ratio: 2 / 1; transform: translate(-50%, -50%); z-index: 2; pointer-events: none; mix-blend-mode: screen;
+.hm-reflexo { position: absolute; left: 28%; top: 76%; width: 36%; aspect-ratio: 2 / 1; transform: translate(-50%, -50%); z-index: 2; pointer-events: none; mix-blend-mode: screen;
   background: radial-gradient(closest-side, rgb(255 70 60 / 0.5), rgb(215 25 32 / 0.18) 60%, transparent); opacity: 0.35; transition: opacity 1.6s ease; animation: hm-respira 4.2s ease-in-out infinite; }
 
 /* olhos acesos: ficam mais intensos enquanto o Mentor escuta */

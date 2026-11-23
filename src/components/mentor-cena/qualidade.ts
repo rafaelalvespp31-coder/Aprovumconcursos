@@ -14,9 +14,9 @@ export interface Qualidade {
 }
 
 const NIVEIS: Record<Qualidade["nivel"], Qualidade> = {
-  baixa: { nivel: "baixa", dpr: 1, orbParticulas: 800, orbitais: 90, subida: 20, brasasFundo: 70, brasasMeio: 40, brasasGrandes: 4, faiscas: 12, fumaca: true },
-  media: { nivel: "media", dpr: 1.5, orbParticulas: 1600, orbitais: 160, subida: 36, brasasFundo: 150, brasasMeio: 80, brasasGrandes: 6, faiscas: 24, fumaca: true },
-  alta: { nivel: "alta", dpr: 2, orbParticulas: 2600, orbitais: 240, subida: 56, brasasFundo: 260, brasasMeio: 140, brasasGrandes: 7, faiscas: 36, fumaca: true },
+  baixa: { nivel: "baixa", dpr: 1.5, orbParticulas: 1300, orbitais: 90, subida: 20, brasasFundo: 70, brasasMeio: 40, brasasGrandes: 4, faiscas: 12, fumaca: true },
+  media: { nivel: "media", dpr: 2, orbParticulas: 2400, orbitais: 160, subida: 36, brasasFundo: 150, brasasMeio: 80, brasasGrandes: 6, faiscas: 24, fumaca: true },
+  alta: { nivel: "alta", dpr: 2, orbParticulas: 3600, orbitais: 240, subida: 56, brasasFundo: 260, brasasMeio: 140, brasasGrandes: 7, faiscas: 36, fumaca: true },
 };
 
 export interface Aparelho { memoria?: number; nucleos?: number; toqueGrosso: boolean; larguraTela: number }

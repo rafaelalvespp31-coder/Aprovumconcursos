@@ -2,7 +2,7 @@ import * as THREE from "three";
 import type { RefObject } from "react";
 import type { Bands } from "@/components/mentor/skull-orb-fx";
 import type { FaseMentor } from "@/components/missao/falar-mentor";
-import { alvoDaFase, REPOUSO, suavizar, type AlvoCena } from "./estado-mentor";
+import { alvoDaFase, REPOUSO, suavizar, suavizarAudio, type AlvoCena } from "./estado-mentor";
 import { lerAparelho, nivelAbaixo, nivelInicial, qualidadeDe } from "./qualidade";
 import { MentorOrb3D, type UniformsComuns } from "./mentor-orb-3d";
 import { ARTE, EmberEnvironment } from "./ember-environment";
@@ -87,7 +87,7 @@ export function criarMotor(canvas: HTMLCanvasElement, op: OpcoesMotor): MotorCen
   const lerAudio = (dt: number) => {
     const b = op.fonte.current?.();
     const alvo = b ? Math.min(1, Math.max(b.vol ?? 0, b.me ?? 0)) : 0;
-    audio += (alvo - audio) * (1 - Math.exp(-dt * 16));
+    audio = suavizarAudio(audio, alvo, dt);
   };
 
   const passo = (dt: number) => {
