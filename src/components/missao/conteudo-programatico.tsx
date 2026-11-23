@@ -135,17 +135,19 @@ export function ConteudoProgramatico({ conteudo: c, lendo, especialista, montar,
           <li data-disp="sim"><span aria-hidden /> Aula disponível no Aprovum</li>
           <li data-disp="nao"><span aria-hidden /> Aula ainda não disponível</li>
         </ul>
-        <p className="cp-leitor" data-nivel={c.publicado || confere ? (c.publicado || pct! >= 90 ? "ok" : "atencao") : "atencao"} role="status">
-          {c.publicado || confere ? <ShieldCheck size={16} aria-hidden /> : <TriangleAlert size={16} aria-hidden />}
+        <p className="cp-leitor" data-nivel={c.publicado || c.importado || confere ? (c.publicado || c.importado || pct! >= 90 ? "ok" : "atencao") : "atencao"} role="status">
+          {c.publicado || c.importado || confere ? <ShieldCheck size={16} aria-hidden /> : <TriangleAlert size={16} aria-hidden />}
           <span>
             {c.publicado
               ? "Conteúdo programático do edital deste concurso, lido e conferido pela equipe Aprovum."
+              : c.importado
+                ? "Análise completa do concurso importada pela equipe (feita com o edital em mãos). É esta estrutura que os alunos veem."
               : confere
               ? `Lido pelo especialista Gemini; cada tópico foi conferido no texto do edital e ${pct}% do conteúdo programático virou tópico.`
               : "Leitura estrutural (por regras): pode ter deixado matérias ou tópicos de fora. Confira abaixo com o edital."}
           </span>
         </p>
-        {!c.publicado && c.leitor !== "gemini" && especialista && !releitura && (
+        {!c.publicado && !c.importado && c.leitor !== "gemini" && especialista && !releitura && (
           <button type="button" className="cp-sec" onClick={() => void refazerLeitura()}><RefreshCw size={15} aria-hidden /> Reler com o especialista</button>
         )}
         {releitura && (

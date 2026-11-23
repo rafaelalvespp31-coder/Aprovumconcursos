@@ -12,7 +12,8 @@ import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match
 import { crossSources } from "@/domain/edital/cross";
 import { filterPagesByRole } from "@/domain/edital/role-filter";
 import { topicosDe } from "./edital-topicos";
-import { caminhoCopia, chaveCopia, ehCopiaPublicada, statsDaCopia, type InfoPublicado } from "@/domain/edital/publicado";
+import { caminhoCopia, chaveCopia, ehCopiaPublicada, ehImportada, statsDaCopia, type InfoPublicado } from "@/domain/edital/publicado";
+import type { InfoImportada } from "@/domain/edital/importacao";
 import { COBERTURA_PARA_COMPARTILHAR, LEITURA_V, chaveCargo, podeCompartilhar, validarCompartilhada, type LeituraCompartilhada } from "@/domain/edital/leitura-compartilhada";
 import { avancarEspecialista, type EstadoLeitura, type LeituraResumo } from "./edital-especialista";
 import type { Identificacao } from "@/domain/edital/especialista";
@@ -90,6 +91,8 @@ export interface PrepStats {
   leitura?: { cobertura: number; trechos: number; descartados: number; naoClassificados: string[] };
   /** Cópia de um edital publicado pelo admin num concurso: a leitura é mantida pela equipe (o aluno não relê nem reanexa). */
   publicado?: InfoPublicado;
+  /** Estrutura importada pelo admin a partir da análise do concurso feita no ChatGPT (sem PDF para reler). */
+  importado?: { em: string; contestId: string; avisos: string[] };
   /** Como o conteúdo foi separado por cargo (PDF e texto colado). */
   roleFilter?: { role: string | null; pdf?: { applied: boolean; removed: number }; text?: { applied: boolean; removed: number } };
 }
@@ -662,7 +665,7 @@ export async function advancePreparation(userId: string, id: string): Promise<Pr
 /** Refaz a leitura do mesmo edital (texto já guardado, sem novo envio): o que já está montado só é trocado quando a nova leitura termina. */
 export async function refazerLeitura(userId: string, id: string): Promise<void> {
   const p = await own(userId, id);
-  if (ehCopiaPublicada(p.stats)) throw new UserFacingError("Este edital é mantido pela equipe Aprovum.", "invalid_input");
+  if (ehCopiaPublicada(p.stats) || ehImportada(p.stats)) throw new UserFacingError("Este edital é mantido pela equipe Aprovum.", "invalid_input");
   if (p.status !== "concluido" && p.status !== "conferencia" && p.status !== "erro") throw new UserFacingError("A leitura deste edital já está em andamento.", "invalid_input");
   await enforceRateLimit(userId, "edital_releitura", 6, 3600);
   // A extração gravada para este PDF e cargo é descartada: a nova leitura a substitui para todos os alunos (se tiver boa cobertura).
@@ -718,6 +721,8 @@ export interface ConteudoProgramatico {
   leitor: "gemini" | "estrutural";
   /** Cópia do edital publicado pela equipe num concurso (sem releitura pelo aluno). */
   publicado: boolean;
+  /** Estrutura importada pela equipe (análise feita fora do app, sem leitura de PDF). */
+  importado: boolean;
   modelo: string | null;
   /** Fração do texto do conteúdo programático classificada em tópicos (só a leitura do especialista mede isso). */
   cobertura: number | null;
@@ -743,6 +748,7 @@ export async function metaConteudoProgramatico(userId: string, id: string): Prom
     status: p.status as PrepStatus,
     leitor: st.reader === "gemini" ? "gemini" : "estrutural",
     publicado: !!st.publicado,
+    importado: !!st.importado,
     modelo: st.readerModel ?? null,
     cobertura: st.reader === "gemini" && st.leitura ? st.leitura.cobertura : null,
     naoClassificados: st.reader === "gemini" ? (st.leitura?.naoClassificados ?? []) : [],
@@ -795,6 +801,62 @@ export async function deletePreparation(userId: string, id: string) {
   const sameHash = await db.from("edital_preparations").select("id", { count: "exact", head: true }).eq("file_hash", p.file_hash as string);
   if (!sameHash.count) await db.from("edital_extractions").delete().eq("file_hash", p.file_hash as string);
   await auditLog(db, { actorId: userId, userId, action: "edital.excluido", entity: "edital_preparations", entityId: id }).catch(() => {});
+}
+
+/**
+ * Admin: importa a análise completa de um concurso (JSON do ChatGPT, já validado) como estrutura de estudo e a vincula ao concurso.
+ * Cria uma preparação do próprio admin (matérias › tópicos), calcula os vínculos com as aulas e publica no concurso.
+ * A importação anterior do mesmo concurso (se for também importada) é apagada depois que a nova estiver pronta.
+ */
+export async function importarAnaliseDoConcurso(adminId: string, contestId: unknown, parsed: ParsedEdital, info: InfoImportada, avisos: string[]): Promise<{ id: string }> {
+  if (typeof contestId !== "string" || !UUID.test(contestId)) throw new UserFacingError("Concurso inválido.", "invalid_input");
+  if (!parsed.found || !parsed.disciplines.length) throw new UserFacingError("A análise não tem matérias.", "invalid_input");
+  await enforceRateLimit(adminId, "concurso_importar", 30, 3600);
+  const db = createAdminClient();
+  const c = await db.from("contest_catalog").select("id, name, role_name, banca, edital_prep_id").eq("id", contestId).maybeSingle();
+  const contest = c.data as { id: string; name: string; role_name: string | null; banca: string | null; edital_prep_id: string | null } | null;
+  if (!contest) throw new UserFacingError("Concurso não encontrado.", "not_found");
+
+  const id = crypto.randomUUID();
+  const agora = new Date().toISOString();
+  const ins = await db.from("edital_preparations").insert({
+    id,
+    user_id: adminId,
+    contest_name: info.nome ?? contest.name,
+    role_name: info.cargo ?? contest.role_name,
+    board: info.banca ?? contest.banca,
+    contest_year: info.ano,
+    file_name: "Análise do concurso (importada)",
+    file_size: 0,
+    file_hash: `importacao:${contestId}:${id}`,
+    file_path: `importacao/${id}`,
+    status: "organizando",
+    step: STEP_OF.organizando,
+    extras_checked: true,
+    stats: { importado: { em: agora, contestId, avisos: avisos.slice(0, 20) } satisfies NonNullable<PrepStats["importado"]> },
+  });
+  if (ins.error) throw new Error(ins.error.message);
+  try {
+    const nova = await own(adminId, id);
+    await persistParsed(nova, parsed, true);
+    const pronta = await own(adminId, id);
+    const { stats } = await applyMatches(pronta);
+    await setStatus(id, "concluido", { stats });
+    const lig = await db.from("contest_catalog").update({ edital_prep_id: id }).eq("id", contestId);
+    if (lig.error) throw new Error(lig.error.message);
+  } catch (e) {
+    await db.from("edital_preparations").delete().eq("id", id).then(() => undefined, () => undefined);
+    await logEvent("edital.importacao.erro", { contestId, error: (e as Error).message.slice(0, 200) });
+    throw new UserFacingError("Não foi possível importar a análise agora. Tente de novo.", "internal");
+  }
+  // A importação anterior deste concurso deixa de ser usada: some (as cópias dos alunos são independentes).
+  const antiga = contest.edital_prep_id;
+  if (antiga && antiga !== id) {
+    const a = await db.from("edital_preparations").select("id, user_id, stats").eq("id", antiga).maybeSingle();
+    if (a.data && a.data.user_id === adminId && ehImportada(a.data.stats)) await db.from("edital_preparations").delete().eq("id", antiga).then(() => undefined, () => undefined);
+  }
+  await auditLog(db, { actorId: adminId, userId: adminId, action: "concurso.analise_importada", entity: "contest_catalog", entityId: contestId, meta: { preparacao: id, materias: parsed.disciplines.length } }).catch(() => {});
+  return { id };
 }
 
 /**
@@ -889,7 +951,7 @@ export async function escolherConcursoPublicado(userId: string, contestId: unkno
 export async function reanalyzeIfStale(userId: string, id: string): Promise<boolean> {
   const p = await own(userId, id);
   const st = (p.stats as PrepStats) ?? {};
-  if (st.publicado || p.status !== "concluido" || (st.parserV ?? 1) >= PARSER_V) return false;
+  if (st.publicado || st.importado || p.status !== "concluido" || (st.parserV ?? 1) >= PARSER_V) return false;
   const db = createAdminClient();
   if ((st.parserV ?? 1) < 4) {
     // Leituras antigas guardaram só parte do texto: descarta o cache e relê o PDF guardado (sem novo upload).

@@ -4,6 +4,8 @@ import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/server/services/catalog";
 import { saveContest } from "@/server/services/gamification";
 import { vincularEdital } from "@/server/services/concurso-edital";
+import { importarAnaliseDoConcurso } from "@/server/services/edital";
+import { validarImportacao } from "@/domain/edital/importacao";
 import { UserFacingError } from "@/server/services/trails";
 
 export async function saveContestAction(id: string | null, form: FormData): Promise<{ ok: boolean; error?: string }> {
@@ -46,5 +48,20 @@ export async function vincularEditalAction(contestId: string, prepId: string | n
     return { ok: true };
   } catch (e) {
     return { ok: false, error: e instanceof UserFacingError ? e.message : "Não foi possível vincular o edital." };
+  }
+}
+
+/** Importa a análise completa do concurso (JSON do ChatGPT): valida de novo no servidor, grava a estrutura e publica no concurso. */
+export async function importarAnaliseAction(contestId: string, texto: string): Promise<{ ok: true; id: string; materias: number; topicos: number } | { ok: false; error: string }> {
+  const admin = await requireAdmin();
+  const v = validarImportacao(typeof texto === "string" ? texto : "");
+  if (!v.ok) return { ok: false, error: v.erros[0] ?? "Análise inválida." };
+  try {
+    const { id } = await importarAnaliseDoConcurso(admin.id, contestId, v.parsed, v.info, v.avisos);
+    revalidatePath("/admin/concursos");
+    revalidatePath("/painel");
+    return { ok: true, id, materias: v.resumo.materias, topicos: v.resumo.topicos };
+  } catch (e) {
+    return { ok: false, error: e instanceof UserFacingError ? e.message : "Não foi possível importar a análise." };
   }
 }

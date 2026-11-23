@@ -66,7 +66,3 @@
 @keyframes ae-sobe { from { opacity: 0; transform: translateY(10px) scale(0.98); } }
 @media (prefers-reduced-motion: reduce) { .ae-fundo, .ae-card, .ae-gira { animation: none; } .ae-barra i, .ae-botao, .ae-primario, .ae-sec { transition: none; } }
 .ae-detalhe { margin: 0; font-size: 12.5px; line-height: 1.4; color: #9a9ba0; }
-
-/* Fora da Central (ex.: painel do admin): o painel é montado no <body>, então fica fixo na tela e leva as cores da Central. */
-body > .ae-fundo { position: fixed; --cm-bg: #030303; --cm-bg2: #090909; --cm-red: #d71920; --cm-red2: #ff252d; --cm-gelo: #f5f5f5; --cm-cinza: #777; color: var(--cm-gelo); }
-.ae-botao { --cm-red: #d71920; --cm-red2: #ff252d; }

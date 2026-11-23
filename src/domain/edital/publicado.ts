@@ -27,3 +27,6 @@ export function podePublicar(prep: { status: string; user_id: string }, adminId:
   if (disciplinas < 1) return { ok: false, motivo: "O edital lido não tem matérias." };
   return { ok: true };
 }
+
+/** Estrutura importada pelo admin (análise feita no ChatGPT): a leitura não vem de PDF, então não há o que reler. */
+export const ehImportada = (stats: unknown): boolean => !!stats && typeof stats === "object" && !!(stats as { importado?: unknown }).importado;
