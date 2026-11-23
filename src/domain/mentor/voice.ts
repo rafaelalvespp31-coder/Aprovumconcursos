@@ -50,12 +50,13 @@ export const VOICE_GOAL_RULES = [
   "Se o aluno estiver há dias sem estudar, cobre com firmeza e respeito e proponha uma retomada realista. Se a prova tiver data, fale em dias restantes. Nunca invente edital, conteúdo programático, data ou número: se não souber, diga e peça para conferir no edital.",
 ].join(" ");
 
-export function buildGoalContext(contest: string | null, planText: string | null, facts: readonly string[]): string {
+export function buildGoalContext(contest: string | null, planText: string | null, facts: readonly string[], semEdital = false): string {
   const parts: string[] = [];
   if (contest) parts.push(`CONCURSO QUE O ALUNO QUER PASSAR: ${clean(contest, 120)}.`);
   else parts.push("O aluno ainda NÃO disse qual concurso quer passar: ao cumprimentá-lo no início, depois do nome, pergunte numa frase: \"já sabe qual concurso você quer ser aprovado?\". Se ele pedir plano ou orientação de estudo, pergunte primeiro qual concurso e cargo, e use o que ele responder.");
   if (facts.length) parts.push(`MAIS DADOS REAIS DO ALUNO: ${facts.map((f) => clean(f, 400)).join(" ")}`);
   if (planText) parts.push(clean(planText, 3500));
+  else if (contest && semEdital) parts.push("A plataforma AINDA NÃO TEM o edital (conteúdo programático) deste concurso, então não há plano semanal: NÃO monte plano, NÃO liste matérias nem cite conteúdo de outro concurso como se fosse deste. Se o aluno pedir plano ou o que estudar, diga isso com franqueza e oriente enviar o PDF do edital em Meu concurso, que aí o plano segue as matérias do edital dele.");
   return parts.join(" ");
 }
 

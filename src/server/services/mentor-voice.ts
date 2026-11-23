@@ -6,7 +6,8 @@ import { logEvent } from "../observability";
 import { getMyPlan } from "./plans";
 import { isAdmin } from "../auth";
 import { UserFacingError, enforceRateLimit } from "./trails";
-import { brDay } from "@/domain/plans/limits";
+import { brDay, effectivePlan } from "@/domain/plans/limits";
+import { voiceUnlimitedPlan } from "@/domain/plans/offers";
 import { diasEntre, escolherAngulo, regraSaudacao, sequenciaDe, type DadosSaudacao } from "@/domain/mentor/saudacao";
 import { loadMentorSnapshot } from "./mentor";
 import { loadGoalPlan, loadStudentFacts } from "./mentor-goal";
@@ -74,8 +75,16 @@ async function isAdminUser(userId: string): Promise<boolean> {
   return isAdmin().catch(() => false);
 }
 
+/** Anual e vitalício: voz sem limite diário (mesmo tratamento do admin, que já usa a janela longa do token). */
+async function hasUnlimitedVoicePlan(userId: string): Promise<boolean> {
+  const { data } = await createAdminClient().from("subscriptions").select("plan_id, status, current_period_end, billing_period").eq("user_id", userId).maybeSingle();
+  if (!data) return false;
+  const eff = effectivePlan({ planId: data.plan_id as string, status: data.status as string, currentPeriodEnd: data.current_period_end as string | null });
+  return voiceUnlimitedPlan(eff.paid, (data.billing_period as string | null) ?? null, !!data.current_period_end);
+}
+
 export async function getVoiceStatus(userId: string): Promise<VoiceStatus> {
-  if (await isAdminUser(userId)) {
+  if ((await isAdminUser(userId)) || (await hasUnlimitedVoicePlan(userId))) {
     if (!hasKey()) return { available: false, reason: "indisponivel", limit: VOICE_DAILY_SECONDS, left: 0 };
     return { available: true, limit: ADMIN_VOICE_SECONDS, left: ADMIN_VOICE_SECONDS, unlimited: true };
   }
@@ -149,9 +158,9 @@ async function personalPrompt(userId: string, modo?: "boas-vindas"): Promise<str
       notebooks: snapshot.notebooks.length,
     });
     const contests = await loadContests(brDay().day, 12).catch(() => []);
-    const gp = await loadGoalPlan(userId, snapshot, r).catch(() => ({ goal: null, plan: null }));
+    const gp = await loadGoalPlan(userId, snapshot, r).catch(() => ({ goal: null, plan: null, semEdital: false }));
     const facts = await loadStudentFacts(userId, snapshot).catch(() => []);
-    const goalCtx = buildGoalContext(gp.goal?.contest ?? null, gp.plan ? planAsText(gp.plan) : null, facts);
+    const goalCtx = buildGoalContext(gp.goal?.contest ?? null, gp.plan ? planAsText(gp.plan) : null, facts, !!gp.semEdital);
     const abertura = modo === "boas-vindas" ? ` ${await aberturaDaTelaInicial(userId, name, gp.goal?.contest ?? null, snapshot, r)}` : "";
     return `${VOICE_SYSTEM_PROMPT} ${VOICE_PERSONAL_RULES} ${VOICE_GOAL_RULES} ${ctx} ${goalCtx} ${buildContestContext(contests)}${abertura}`;
   } catch (e) {
@@ -271,9 +280,10 @@ async function lessonErrors(userId: string, lessonId: string): Promise<string> {
 }
 
 export async function startVoice(userId: string, study?: StudyContext | null, lessonId?: string | null, modo?: "boas-vindas"): Promise<VoiceSession> {
-  const admin = await isAdminUser(userId);
+  const isAdm = await isAdminUser(userId);
   const plan = await getMyPlan(userId);
-  if (!admin && !plan.unlimited) throw new UserFacingError("O Mentor por voz é exclusivo dos planos pagos.", "plan_limit");
+  if (!isAdm && !plan.unlimited) throw new UserFacingError("O Mentor por voz é exclusivo dos planos pagos.", "plan_limit");
+  const admin = isAdm || (await hasUnlimitedVoicePlan(userId)); // "admin" aqui = sem limite diário de voz
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new UserFacingError("O Mentor por voz está indisponível no momento. Tente mais tarde.", "voice_unavailable");
   await enforceRateLimit(userId, "mentor_voz", 6, 60);
@@ -318,7 +328,7 @@ export async function startVoice(userId: string, study?: StudyContext | null, le
 
 /** Fim da conversa: cobra o tempo falado (limitado ao relógio do servidor) e devolve o saldo. */
 export async function endVoice(userId: string, reportedSeconds: unknown, transcript?: { student?: unknown; mentor?: unknown }): Promise<{ left: number; unlimited?: boolean }> {
-  const admin = await isAdminUser(userId);
+  const admin = (await isAdminUser(userId)) || (await hasUnlimitedVoicePlan(userId));
   const reported = typeof reportedSeconds === "number" && Number.isFinite(reportedSeconds) ? reportedSeconds : null;
   if (!admin) await settle(userId, reported);
   // Memória do Mentor: guarda o que foi dito (texto), limpo e limitado, para a próxima conversa.

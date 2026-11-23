@@ -172,6 +172,8 @@ export interface MentorView {
   lessons: MentorLesson[];
   goal: MentorGoal | null;
   plan: StudyPlan | null;
+  /** Concurso escolhido sem edital na plataforma (não há plano). */
+  semEdital: boolean;
 }
 
 /**
@@ -241,7 +243,7 @@ export async function computeMentor(userId: string): Promise<MentorView> {
   const dispensadasKeys = new Set(todas.filter((r) => r.status === "dispensada").map((r) => r.dedupe_key));
   const resultFiltrado = { ...result, all: result.all.filter((r) => !dispensadasKeys.has(r.key)) };
   const gp = await loadGoalPlan(userId, snapshot, result);
-  return { name, result: resultFiltrado, visible: rec.visible, lessons: snapshot.lessons, goal: gp.goal, plan: gp.plan };
+  return { name, result: resultFiltrado, visible: rec.visible, lessons: snapshot.lessons, goal: gp.goal, plan: gp.plan, semEdital: !!gp.semEdital };
 }
 
 const idSchema = z.uuid();

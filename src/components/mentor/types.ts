@@ -12,7 +12,7 @@ export interface MentorData {
   /** Raio-X publicados ainda não abertos pelo aluno. */
   notices?: MentorNotice[];
   /** Concurso que o aluno quer passar (resposta dele ao Mentor) e o plano semanal feito para ele. */
-  goal?: { contest: string } | null;
+  goal?: { contest: string; semEdital?: boolean } | null;
   plan?: StudyPlan | null;
   /** Concursos abertos e previstos agora (faixa diária no Mentor). */
   concursos?: ResumoConcursos | null;

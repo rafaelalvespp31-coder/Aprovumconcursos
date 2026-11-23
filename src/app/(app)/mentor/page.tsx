@@ -10,5 +10,5 @@ export default async function MentorPage() {
   const user = await requireUser("/mentor");
   const m = await computeMentor(user.id);
   const notices = await getRaioXNotices(user.id).catch(() => []);
-  return <MentorView name={m.name} result={m.result} visible={m.visible} lessons={m.lessons} goal={m.goal ? { contest: m.goal.contest } : null} plan={m.plan} notices={notices.map((n) => ({ prepId: n.prepId, title: n.title, href: n.href }))} />;
+  return <MentorView name={m.name} result={m.result} visible={m.visible} lessons={m.lessons} goal={m.goal ? { contest: m.goal.contest, semEdital: m.semEdital } : null} plan={m.plan} notices={notices.map((n) => ({ prepId: n.prepId, title: n.title, href: n.href }))} />;
 }

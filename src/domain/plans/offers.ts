@@ -28,6 +28,12 @@ export function currentOffer(paid: boolean, period: string | null, hasEnd: boole
   return hasEnd ? "mensal" : "vitalicio";
 }
 
+/** Mentor por voz sem limite diário: planos anual (Elite Tática) e vitalício (Comando Supremo). Mensal e semestral seguem com 3 min/dia. */
+export function voiceUnlimitedPlan(paid: boolean, period: string | null, hasEnd: boolean): boolean {
+  const o = currentOffer(paid, period, hasEnd);
+  return o === "anual" || o === "vitalicio";
+}
+
 /** Cor do "Meu Plano" nos menus: gratuito = prata, pago (mensal/semestral/anual) = vermelho neon, vitalício = dourado neon. */
 export type PlanTier = "gratuito" | "pago" | "vitalicio";
 export function planTier(paid: boolean, period: string | null, hasEnd: boolean): PlanTier {

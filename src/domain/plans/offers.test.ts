@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { planTier } from "./offers";
+import { planTier, voiceUnlimitedPlan } from "./offers";
 
 describe("planTier (cor do Meu Plano)", () => {
   it("gratuito é prata; planos com vencimento são vermelho neon; vitalício é dourado", () => {
@@ -29,5 +29,15 @@ describe("parcelamento em 12x", () => {
     expect(nbsp(installmentOf("anual")!.value)).toBe("R$ 28,92");
     expect(nbsp(installmentOf("vitalicio")!.value)).toBe("R$ 58,08");
     expect(installmentOf("mensal")).toBeNull();
+  });
+});
+
+describe("Mentor por voz sem limite", () => {
+  it("só anual e vitalício; mensal, semestral e gratuito seguem com 3 min/dia", () => {
+    expect(voiceUnlimitedPlan(true, "anual", true)).toBe(true);
+    expect(voiceUnlimitedPlan(true, null, false)).toBe(true);
+    expect(voiceUnlimitedPlan(true, "mensal", true)).toBe(false);
+    expect(voiceUnlimitedPlan(true, "semestral", true)).toBe(false);
+    expect(voiceUnlimitedPlan(false, "anual", true)).toBe(false);
   });
 });

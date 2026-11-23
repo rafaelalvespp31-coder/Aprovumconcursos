@@ -20,7 +20,7 @@ export async function mentorPanelAction(): Promise<MentorPanelState> {
     const m = await computeMentor(user.id);
     const notices = await getRaioXNotices(user.id).catch(() => []);
     const concursos = await resumoConcursos().catch(() => null);
-    return { state: "ok", name: m.name, result: m.result, visible: m.visible, lessons: m.lessons, goal: m.goal ? { contest: m.goal.contest } : null, plan: m.plan, concursos, notices: notices.map((n) => ({ prepId: n.prepId, title: n.title, href: n.href })) };
+    return { state: "ok", name: m.name, result: m.result, visible: m.visible, lessons: m.lessons, goal: m.goal ? { contest: m.goal.contest, semEdital: m.semEdital } : null, plan: m.plan, concursos, notices: notices.map((n) => ({ prepId: n.prepId, title: n.title, href: n.href })) };
   } catch (e) {
     await logEvent("mentor.panel_failed", { error: (e as Error).message });
     return { state: "erro" };
@@ -44,13 +44,13 @@ export async function mentorStatusAction(id: string, status: "visualizada" | "di
 }
 
 /** O aluno responde "qual concurso você quer passar?": guarda e devolve o plano novo. Vazio remove o foco. */
-export async function setMentorGoalAction(contest: string, editalId?: string): Promise<{ ok: true; goal: { contest: string } | null; plan: StudyPlan | null } | { ok: false; error: string }> {
+export async function setMentorGoalAction(contest: string, editalId?: string): Promise<{ ok: true; goal: { contest: string; semEdital?: boolean } | null; plan: StudyPlan | null } | { ok: false; error: string }> {
   const user = await getSessionUser();
   if (!user) return { ok: false, error: "Sua sessão expirou. Entre novamente." };
   try {
     await setMentorGoal(user.id, contest, editalId ?? null);
     const m = await computeMentor(user.id);
-    return { ok: true, goal: m.goal ? { contest: m.goal.contest } : null, plan: m.plan };
+    return { ok: true, goal: m.goal ? { contest: m.goal.contest, ...(m.semEdital ? { semEdital: true } : {}) } : null, plan: m.plan };
   } catch (e) {
     if (e instanceof UserFacingError) return { ok: false, error: e.message };
     await logEvent("mentor.goal_failed", { error: (e as Error).message });

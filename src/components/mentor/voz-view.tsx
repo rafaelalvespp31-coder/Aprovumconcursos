@@ -67,12 +67,12 @@ export function VozView({
       : live
         ? "Pergunte sobre qualquer matéria do seu concurso. Se quiser, interrompa o Mentor falando."
         : fase === "plano"
-          ? "Tire dúvidas falando, em tempo real, com o Mentor. Disponível nos planos pagos: 3 minutos por dia."
+          ? "Tire dúvidas falando, em tempo real, com o Mentor. Disponível nos planos pagos: 3 minutos por dia, sem limite nos planos anual e vitalício."
           : fase === "indisponivel"
             ? "Este recurso ainda não está ativo. Tente mais tarde."
             : fase === "esgotado"
               ? (msg ?? "Eles voltam amanhã. Enquanto isso, use a aba Conversar para tirar dúvidas por texto.")
-              : "Só dúvidas de estudo. Sua conversa é por voz e dura até 3 minutos por dia.";
+              : unlimited ? "Só dúvidas de estudo. Sua conversa é por voz e não tem limite de tempo." : "Só dúvidas de estudo. Sua conversa é por voz e dura até 3 minutos por dia.";
 
   return (
     <div className="voz" data-testid="mentor-voz" data-fase={fase}>

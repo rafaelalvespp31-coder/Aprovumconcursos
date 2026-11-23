@@ -28,12 +28,12 @@ export function MentorView({
   visible: VisibleRecommendation[];
   lessons: MentorLesson[];
   notices?: MentorNotice[];
-  goal?: { contest: string } | null;
+  goal?: { contest: string; semEdital?: boolean } | null;
   plan?: StudyPlan | null;
   base?: string;
   demo?: boolean;
 }) {
-  const [gp, setGp] = useState<{ goal: { contest: string } | null; plan: StudyPlan | null }>({ goal: goal0, plan: plan0 });
+  const [gp, setGp] = useState<{ goal: { contest: string; semEdital?: boolean } | null; plan: StudyPlan | null }>({ goal: goal0, plan: plan0 });
   return (
     <div className="flex flex-col gap-5" data-testid="mentor-pagina">
       <header className="pc p-5">

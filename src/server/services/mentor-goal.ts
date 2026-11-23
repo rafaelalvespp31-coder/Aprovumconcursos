@@ -4,7 +4,7 @@ import { brDay } from "@/domain/plans/limits";
 import { buildStudyPlan, type PlanSubject, type StudyPlan } from "@/domain/mentor/plan";
 import type { MentorResult, MentorSnapshot } from "@/domain/mentor/engine";
 import { UserFacingError, enforceRateLimit } from "./trails";
-import { EDITAL_MIN_SCORE, nameScore } from "@/domain/mentor/edital-match";
+import { EDITAL_MIN_SCORE, cargoHits, concursoScore } from "@/domain/mentor/edital-match";
 
 /** Concurso que o aluno quer passar, dito por ele ao Mentor. Fica em profiles.preferences.mentor_goal. */
 export interface MentorGoal { contest: string; setAt: string; editalId?: string }
@@ -67,27 +67,58 @@ export async function listEditalOptions(userId: string): Promise<EditalOption[]>
   return preps.filter((p) => (dc.get(p.id) ?? 0) > 0).map((p) => ({ id: p.id, name: p.contest_name?.trim() || "Edital sem nome", role: p.role_name, board: p.board, disciplines: dc.get(p.id) ?? 0, topics: tc.get(p.id) ?? 0 }));
 }
 
-/** Edital que o próprio aluno enviou e que corresponde ao concurso escolhido: disciplinas e quantidade de tópicos. */
-async function findEditalSubjects(userId: string, query: string, editalId?: string): Promise<{ label: string; subjects: Array<{ name: string; topics: number }> } | null> {
+export interface EditalDoConcurso { label: string; origem: "seu" | "plataforma"; subjects: Array<{ name: string; topics: number }> }
+
+/** Disciplinas e nº de tópicos de uma preparação de edital (null se ela não tiver disciplinas). */
+async function carregarDisciplinas(prepId: string): Promise<Array<{ name: string; topics: number }> | null> {
   const admin = createAdminClient();
-  const { data: preps } = await admin.from("edital_preparations").select("id, contest_name, role_name, status, created_at").eq("user_id", userId).in("status", ["concluido", "conferencia"]).order("created_at", { ascending: false }).limit(50);
-  const ranked = ((preps ?? []) as Array<{ id: string; contest_name: string | null; role_name: string | null }>)
-    .map((p) => ({ p, score: nameScore(query, `${p.contest_name ?? ""} ${p.role_name ?? ""}`) }))
-    .filter((x) => (editalId ? x.p.id === editalId : x.score >= EDITAL_MIN_SCORE))
-    .sort((a, b) => b.score - a.score);
-  for (const { p } of ranked) {
-    const [d, t] = await Promise.all([
-      admin.from("edital_disciplines").select("id, name, position").eq("preparation_id", p.id).order("position").limit(100),
-      admin.from("edital_topics").select("discipline_id").eq("preparation_id", p.id).limit(5000),
-    ]);
-    const discs = (d.data ?? []) as Array<{ id: string; name: string }>;
-    if (!discs.length) continue;
-    const count = new Map<string, number>();
-    for (const x of (t.data ?? []) as Array<{ discipline_id: string }>) count.set(x.discipline_id, (count.get(x.discipline_id) ?? 0) + 1);
-    const label = [p.contest_name, p.role_name].filter(Boolean).join(" — ");
-    return { label, subjects: discs.map((x) => ({ name: x.name, topics: count.get(x.id) ?? 0 })) };
+  const [d, t] = await Promise.all([
+    admin.from("edital_disciplines").select("id, name, position").eq("preparation_id", prepId).order("position").limit(100),
+    admin.from("edital_topics").select("discipline_id").eq("preparation_id", prepId).limit(5000),
+  ]);
+  const discs = (d.data ?? []) as Array<{ id: string; name: string }>;
+  if (!discs.length) return null;
+  const count = new Map<string, number>();
+  for (const x of (t.data ?? []) as Array<{ discipline_id: string }>) count.set(x.discipline_id, (count.get(x.discipline_id) ?? 0) + 1);
+  return discs.map((x) => ({ name: x.name, topics: count.get(x.id) ?? 0 }));
+}
+
+type Prep = { id: string; contest_name: string | null; role_name: string | null };
+const rotulo = (p: Prep) => [p.contest_name, p.role_name].filter(Boolean).join(" — ");
+
+/**
+ * Edital do concurso escolhido, na ordem: (1) o que o próprio aluno enviou; (2) o de outro aluno já analisado na plataforma
+ * (só nomes de disciplinas e tópicos do edital público, nunca dados da pessoa). Sem edital, devolve null: o plano NÃO cai em matérias genéricas.
+ */
+async function findEditalSubjects(userId: string, query: string, editalId?: string): Promise<EditalDoConcurso | null> {
+  const admin = createAdminClient();
+  const rank = (preps: Prep[]) => preps
+    .map((p) => ({ p, score: concursoScore(query, `${p.contest_name ?? ""} ${p.role_name ?? ""}`), cargo: cargoHits(query, p.role_name) }))
+    .filter((x) => x.score >= EDITAL_MIN_SCORE)
+    .sort((a, b) => b.score - a.score || b.cargo - a.cargo);
+
+  const { data: mine } = await admin.from("edital_preparations").select("id, contest_name, role_name, status, created_at").eq("user_id", userId).in("status", ["concluido", "conferencia"]).order("created_at", { ascending: false }).limit(50);
+  const own = (mine ?? []) as Prep[];
+  const ownRanked = editalId ? own.filter((p) => p.id === editalId).map((p) => ({ p })) : rank(own);
+  for (const { p } of ownRanked) {
+    const subjects = await carregarDisciplinas(p.id);
+    if (subjects) return { label: rotulo(p), origem: "seu", subjects };
   }
-  return null;
+  if (editalId) return null;
+
+  // Edital já analisado de outro aluno (só os confirmados): vale para todos que escolherem o mesmo concurso.
+  const { data: pool } = await admin.from("edital_preparations").select("id, contest_name, role_name, created_at").neq("user_id", userId).eq("status", "concluido").order("created_at", { ascending: false }).limit(400);
+  const ranked = rank((pool ?? []) as Prep[]);
+  if (!ranked.length) return null;
+  const topo = ranked.filter((x) => x.score === ranked[0]!.score && x.cargo === ranked[0]!.cargo).slice(0, 6);
+  let melhor: { p: Prep; subjects: Array<{ name: string; topics: number }>; total: number } | null = null;
+  for (const { p } of topo) {
+    const subjects = await carregarDisciplinas(p.id);
+    if (!subjects) continue;
+    const total = subjects.reduce((a, x) => a + x.topics, 0);
+    if (!melhor || total > melhor.total) melhor = { p, subjects, total };
+  }
+  return melhor ? { label: rotulo(melhor.p), origem: "plataforma", subjects: melhor.subjects } : null;
 }
 
 const words = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
@@ -95,10 +126,12 @@ const words = (s: string) => s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g
 /** Procura o concurso no catálogo da plataforma para pegar data da prova e banca (melhor correspondência). */
 async function findCatalogContest(contest: string): Promise<{ examDate: string | null; banca: string | null; query: string } | null> {
   const ws = words(contest);
-  if (!ws.length) return null;
   const { data } = await createAdminClient().from("contest_catalog").select("name, institution, role_name, banca, exam_date, active").eq("active", true).limit(400);
   let best: { score: number; examDate: string | null; banca: string | null } | null = null;
+  const chave = (x: string) => x.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
   for (const r of (data ?? []) as Array<{ name: string; institution: string; role_name: string | null; banca: string | null; exam_date: string | null }>) {
+    if (chave(r.name) === chave(contest)) { best = { score: 2, examDate: r.exam_date, banca: r.banca }; continue; } // mesmo nome (ex.: "PC MG")
+    if (!ws.length || (best && best.score >= 2)) continue;
     const hay = new Set(words(`${r.name} ${r.institution} ${r.role_name ?? ""}`));
     const score = ws.filter((w) => hay.has(w)).length / ws.length;
     if (score >= 0.6 && (!best || score > best.score)) best = { score, examDate: r.exam_date, banca: r.banca };
@@ -106,13 +139,16 @@ async function findCatalogContest(contest: string): Promise<{ examDate: string |
   return best ? { examDate: best.examDate, banca: best.banca, query: contest } : null;
 }
 
-export interface GoalPlan { goal: MentorGoal | null; plan: StudyPlan | null }
+export interface GoalPlan { goal: MentorGoal | null; plan: StudyPlan | null; /** Concurso escolhido, mas a plataforma não tem o edital (conteúdo programático) dele: não há plano. */ semEdital?: boolean }
 
 /** Concurso-alvo + plano semanal montado com os dados reais do aluno (nunca falha o Mentor). */
 export async function loadGoalPlan(userId: string, snapshot: MentorSnapshot, result: MentorResult): Promise<GoalPlan> {
   const goal = await getMentorGoal(userId).catch(() => null);
   if (!goal) return { goal: null, plan: null };
   try {
+    // Plano pelo edital do concurso escolhido. Sem edital NÃO se monta plano com matérias genéricas da plataforma.
+    const edital = await findEditalSubjects(userId, goal.contest, goal.editalId);
+    if (!edital) return { goal, plan: null, semEdital: true };
     const [prof, cat] = await Promise.all([
       createAdminClient().from("profiles").select("daily_goal_minutes, daily_questions_goal").eq("id", userId).maybeSingle(),
       findCatalogContest(goal.contest).catch(() => null),
@@ -132,15 +168,11 @@ export async function loadGoalPlan(userId: string, snapshot: MentorSnapshot, res
       s.valid += t.valid;
     }
     const platform: PlanSubject[] = [...subj].map(([name, s]) => ({ name, pct: s.valid >= 5 ? Math.round((s.correct / s.valid) * 100) : null, pendingLessons: s.pending }));
-    // Plano pelo edital: se o aluno tem o edital deste concurso na plataforma, as matérias são as dele.
-    const edital = await findEditalSubjects(userId, goal.contest, goal.editalId).catch(() => null);
     const norm = (x: string) => x.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
-    const subjects: PlanSubject[] = edital
-      ? edital.subjects.map((e) => {
-          const hit = platform.find((p) => { const a = norm(p.name), b = norm(e.name); return !!a && !!b && (a.includes(b) || b.includes(a)); });
-          return { name: e.name, pct: hit?.pct ?? null, pendingLessons: Math.ceil(e.topics / 5), editalTopics: e.topics };
-        })
-      : platform;
+    const subjects: PlanSubject[] = edital.subjects.map((e) => {
+      const hit = platform.find((p) => { const a = norm(p.name), b = norm(e.name); return !!a && !!b && (a.includes(b) || b.includes(a)); });
+      return { name: e.name, pct: hit?.pct ?? null, pendingLessons: Math.ceil(e.topics / 5), editalTopics: e.topics };
+    });
     const row = (prof.data ?? {}) as { daily_goal_minutes?: number | null; daily_questions_goal?: number | null };
     const plan = buildStudyPlan({
       contest: goal.contest,
@@ -152,9 +184,9 @@ export async function loadGoalPlan(userId: string, snapshot: MentorSnapshot, res
       reviewsDue: snapshot.reviews.filter((r) => r.dueAt && new Date(r.dueAt) <= new Date(snapshot.now)).length,
       today: brDay().day,
     });
-    plan.notes.unshift(edital
+    plan.notes.unshift(edital.origem === "seu"
       ? `Plano montado com o seu edital: ${edital.label || "edital enviado"} (${edital.subjects.length} disciplinas).`
-      : "Este plano não está ligado a um edital seu: cadastre o edital no Aprovum AI e escolha-o em Trocar de concurso para um plano específico.");
+      : `Plano montado com o conteúdo programático do edital ${edital.label || "do concurso"} (${edital.subjects.length} disciplinas). Se o seu cargo tiver matérias diferentes, envie o seu edital em Meu concurso.`);
     return { goal, plan };
   } catch {
     return { goal, plan: null };

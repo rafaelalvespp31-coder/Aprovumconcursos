@@ -16,7 +16,7 @@ const DIM = { color: "rgba(255,255,255,.7)", WebkitTextFillColor: "rgba(255,255,
  * Mensagem principal do Mentor: "Já sabe qual concurso você quer ser aprovado?". O aluno escolhe, entre os
  * concursos cadastrados na plataforma, o dele e aperta Ok; o Mentor monta o plano (pelo edital, quando houver).
  */
-export function MentorGoalPlan({ goal, plan, name, onChange, base = "", onNavigate }: { base?: string; onNavigate?: () => void; goal: { contest: string } | null; plan: StudyPlan | null; name?: string | null; onChange: (goal: { contest: string } | null, plan: StudyPlan | null) => void }) {
+export function MentorGoalPlan({ goal, plan, name, onChange, base = "", onNavigate }: { base?: string; onNavigate?: () => void; goal: { contest: string; semEdital?: boolean } | null; plan: StudyPlan | null; name?: string | null; onChange: (goal: { contest: string; semEdital?: boolean } | null, plan: StudyPlan | null) => void }) {
   const [editing, setEditing] = useState(false);
   const [options, setOptions] = useState<EditalOption[] | null>(null);
   const [sel, setSel] = useState<string | null>(null);
@@ -94,7 +94,14 @@ export function MentorGoalPlan({ goal, plan, name, onChange, base = "", onNaviga
       {error && <p role="alert" className="text-[12.5px] font-semibold text-[#ff8a84]">{error}</p>}
 
       {!ask && plan && <MentorPlanoMini plan={plan} base={base} onNavigate={onNavigate} />}
-      {!ask && !plan && <p className="text-[12.5px]" style={DIM}>Não consegui montar o plano agora. Tente de novo em instantes.</p>}
+      {!ask && !plan && goal?.semEdital && (
+        <div className="rounded-xl border border-white/15 bg-white/5 p-3" data-testid="mentor-sem-edital">
+          <p className="text-[13px] font-bold" style={BRANCO}>Ainda não tenho o conteúdo programático de {goal.contest}.</p>
+          <p className="mt-0.5 text-[12px]" style={DIM}>Envie o edital (PDF) em Meu concurso e eu monto o plano com as matérias dele, sem usar as de outro concurso.</p>
+          <Link href={`${base}/meu-concurso`} onClick={onNavigate} className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-[#E10600] px-3.5 text-[13px] font-extrabold" style={BRANCO}>Enviar o edital</Link>
+        </div>
+      )}
+      {!ask && !plan && !goal?.semEdital && <p className="text-[12.5px]" style={DIM}>Não consegui montar o plano agora. Tente de novo em instantes.</p>}
       {!ask && (
         <div className="flex flex-wrap items-center gap-x-5 gap-y-1">
           <button type="button" onClick={() => { setEditing(true); setSel(null); }} className="inline-flex min-h-9 w-fit items-center gap-1.5 text-[12px] font-semibold underline-offset-2 hover:underline" style={DIM}>

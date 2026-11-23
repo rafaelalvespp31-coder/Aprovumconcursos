@@ -103,7 +103,7 @@ export function MentorFloat({ base = "", demos, loginId }: { base?: string; /** 
   const [loadId, setLoadId] = useState(0);
   // Prioridades dispensadas agora: saem do número, do selo e do balão sem esperar nova carga.
   const [chaves, setChaves] = useState<string[] | null>(null);
-  const [goalOv, setGoalOv] = useState<{ goal: { contest: string } | null; plan: StudyPlan | null } | null>(null);
+  const [goalOv, setGoalOv] = useState<{ goal: { contest: string; semEdital?: boolean } | null; plan: StudyPlan | null } | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   // Lembrados no navegador (lidos só no cliente; no servidor nada é desenhado).
   const [open, setOpen] = useState(() => (typeof window === "undefined" ? false : read<boolean>(KEY_OPEN, false)));
