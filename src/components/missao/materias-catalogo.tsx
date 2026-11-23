@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { createPortal } from "react-dom";
 import { BookMarked, BookOpen, Brain, Calculator, Car, Gavel, Globe, HeartHandshake, Landmark, Laptop, Scale, Shield, X, type LucideIcon } from "lucide-react";
-import type { MateriaCatalogo } from "@/domain/missao/materias";
+import { ROTULO_GRUPO, dividirPorGrupo, fatiasDeAssuntos, filtrarMaterias, grupoDaMateria, type GrupoMateria, type MateriaCatalogo } from "@/domain/missao/materias";
 import "./materias-catalogo.css";
 
 const ICONES: Record<string, LucideIcon> = {
@@ -37,6 +37,7 @@ const CORES: Array<[string, string]> = [
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 export const estilo = (i: number): CSSProperties => ({ "--c1": CORES[i % CORES.length]![0], "--c2": CORES[i % CORES.length]![1], "--i": i }) as CSSProperties;
+export const iconeDaMateria = (slug: string): LucideIcon => ICONES[slug] ?? BookMarked;
 
 /** O brilho segue o dedo/mouse dentro do quadrado (variáveis CSS, sem re-renderizar). */
 export function seguir(e: PointerEvent<HTMLButtonElement>) {
@@ -52,9 +53,9 @@ export function soltar(e: PointerEvent<HTMLButtonElement>) {
   for (const v of ["--rx", "--ry"]) e.currentTarget.style.setProperty(v, "0deg");
 }
 
-/** Quadrados das matérias catalogadas no Aprovum: tocar abre os assuntos e leva ao estudo da matéria. */
-export function MateriasCatalogo({ materias, desabilitado }: { materias: MateriaCatalogo[]; desabilitado?: boolean }) {
-  const [aberta, setAberta] = useState<number | null>(null);
+/** Matérias do catálogo da plataforma, em dois grupos (básicas e específicas). Tocar num quadrado abre os assuntos e leva ao estudo. */
+export function MateriasCatalogo({ materias, termo = "" }: { materias: MateriaCatalogo[]; termo?: string }) {
+  const [aberta, setAberta] = useState<string | null>(null);
   const origem = useRef<HTMLElement | null>(null);
   const fechar = useRef<HTMLButtonElement>(null);
 
@@ -72,45 +73,67 @@ export function MateriasCatalogo({ materias, desabilitado }: { materias: Materia
   }, [aberta]);
 
   if (!materias.length) return null;
-  const m = aberta != null ? materias[aberta] : null;
-  const Ico = (slug: string) => ICONES[slug] ?? BookMarked;
+  // A cor de cada matéria vem da posição no catálogo inteiro: não muda ao buscar.
+  const posicao = new Map(materias.map((m, i) => [m.slug, i]));
+  const grupos = dividirPorGrupo(filtrarMaterias(materias, termo));
+  const m = aberta != null ? materias.find((x) => x.slug === aberta) : null;
 
   return (
     <>
-      <ul className="mc-grade" aria-label="Matérias disponíveis na plataforma">
-        {materias.map((x, i) => {
-          const I = Ico(x.slug);
-          return (
-            <li key={x.slug} style={estilo(i)}>
-              <button
-                type="button"
-                className="mc-quadrado"
-                disabled={desabilitado}
-                aria-haspopup="dialog"
-                aria-label={`${x.nome}: ${plural(x.aulas, "aula", "aulas")} em ${plural(x.assuntos.length, "assunto", "assuntos")}. Abrir`}
-                onPointerMove={seguir}
-                onPointerLeave={soltar}
-                onClick={(e) => {
-                  origem.current = e.currentTarget;
-                  setAberta(i);
-                }}
-              >
-                <I className="mc-marca" aria-hidden strokeWidth={1.4} />
-                <span className="mc-icone"><I aria-hidden strokeWidth={2.2} /></span>
-                <span className="mc-nome">{x.nome}</span>
-                <span className="mc-aulas"><b>{x.aulas}</b> {x.aulas === 1 ? "aula" : "aulas"}</span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
+      {(["basicas", "especificas"] as GrupoMateria[]).map((g) => {
+        const lista = grupos[g];
+        if (!lista.length) return null;
+        const aulas = lista.reduce((s, x) => s + x.aulas, 0);
+        return (
+          <section key={g} id={`mc-sec-${g}`} className="mc-grupo" aria-labelledby={`mc-h-${g}`}>
+            <header className="mc-grupo-cab">
+              <h2 id={`mc-h-${g}`}>{ROTULO_GRUPO[g]}</h2>
+              <p>{plural(lista.length, "matéria", "matérias")} · {plural(aulas, "aula", "aulas")}</p>
+            </header>
+            <ul className="mc-grade">
+              {lista.map((x, k) => {
+                const I = iconeDaMateria(x.slug);
+                const fatias = fatiasDeAssuntos(x.assuntos);
+                return (
+                  <li key={x.slug} style={{ ...estilo(posicao.get(x.slug) ?? 0), "--k": k } as CSSProperties}>
+                    <button
+                      type="button"
+                      className="mc-quadrado"
+                      aria-haspopup="dialog"
+                      aria-label={`${x.nome}: ${plural(x.aulas, "aula", "aulas")} em ${plural(x.assuntos.length, "assunto", "assuntos")}. Abrir`}
+                      onPointerMove={seguir}
+                      onPointerLeave={soltar}
+                      onClick={(e) => {
+                        origem.current = e.currentTarget;
+                        setAberta(x.slug);
+                      }}
+                    >
+                      <I className="mc-marca" aria-hidden strokeWidth={1.3} />
+                      <span className="mc-topo">
+                        <span className="mc-icone"><I aria-hidden strokeWidth={2.2} /></span>
+                        <span className="mc-chip">{plural(x.assuntos.length, "assunto", "assuntos")}</span>
+                      </span>
+                      <span className="mc-nome">{x.nome}</span>
+                      <span className="mc-num"><b>{x.aulas}</b> {x.aulas === 1 ? "aula" : "aulas"}</span>
+                      <span className="mc-fatias" aria-hidden>
+                        {fatias.map((f, n) => <i key={n} style={{ flexGrow: f, animationDelay: `${n * 40}ms` }} />)}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        );
+      })}
 
-      {m && aberta != null && createPortal(
+      {m && createPortal(
         <div className="mc-fundo" onClick={() => setAberta(null)} data-testid="materia-fundo">
-          <section className="mc-folha" role="dialog" aria-modal="true" aria-labelledby="mc-titulo" style={estilo(aberta)} onClick={(e) => e.stopPropagation()}>
+          <section className="mc-folha" role="dialog" aria-modal="true" aria-labelledby="mc-titulo" style={estilo(posicao.get(m.slug) ?? 0)} onClick={(e) => e.stopPropagation()}>
             <header className="mc-cabeca">
-              <span className="mc-icone mc-icone-g">{(() => { const I = Ico(m.slug); return <I aria-hidden strokeWidth={2.2} />; })()}</span>
+              <span className="mc-icone mc-icone-g">{(() => { const I = iconeDaMateria(m.slug); return <I aria-hidden strokeWidth={2.2} />; })()}</span>
               <div>
+                <p className="mc-cabeca-grupo">{ROTULO_GRUPO[grupoDaMateria(m.slug)]}</p>
                 <h2 id="mc-titulo">{m.nome}</h2>
                 <p>{plural(m.aulas, "aula pronta", "aulas prontas")} · {plural(m.assuntos.length, "assunto", "assuntos")}</p>
               </div>
@@ -120,7 +143,7 @@ export function MateriasCatalogo({ materias, desabilitado }: { materias: Materia
             </header>
             <ul className="mc-assuntos">
               {m.assuntos.map((a) => (
-                <li key={a.titulo}>
+                <li key={a.titulo} style={{ "--p": `${Math.max(6, Math.round((a.aulas / m.assuntos[0]!.aulas) * 100))}%` } as CSSProperties}>
                   <span>{a.titulo}</span>
                   <b>{plural(a.aulas, "aula", "aulas")}</b>
                 </li>

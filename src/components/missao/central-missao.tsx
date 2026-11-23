@@ -5,9 +5,8 @@ import { useRef, useState } from "react";
 import { Settings } from "lucide-react";
 import type { ConcursoCard, MateriaCatalogo } from "@/domain/missao/materias";
 import type { Bands, Conexao } from "@/components/mentor/skull-orb-fx";
-import { ConcursosPublicados } from "./concursos-publicados";
 import { FalarComMentor } from "./falar-mentor";
-import { MateriasCatalogo } from "./materias-catalogo";
+import { PainelEscolha } from "./painel-escolha";
 import { MentorOrbita } from "./mentor-orbita";
 import "./central-missao.css";
 
@@ -53,10 +52,7 @@ export function CentralMissao({ primeiroNome, email, objetivo, materias, concurs
         <p className="cm-sub cm-e3"><span>Escolha o seu concurso ou uma matéria para começar a estudar.</span></p>
 
         <div className="cm-form cm-e4">
-          {concursos.length > 0 && <p className="mc-rotulo">Concursos</p>}
-          <ConcursosPublicados concursos={concursos} />
-          {materias.length > 0 && <p className="mc-rotulo">Matérias</p>}
-          <MateriasCatalogo materias={materias} />
+          <PainelEscolha concursos={concursos} materias={materias} />
         </div>
 
         <p className="cm-estado" role="status" aria-live="polite">
