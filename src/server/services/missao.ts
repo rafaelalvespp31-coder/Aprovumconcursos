@@ -2,17 +2,14 @@ import "server-only";
 import { unstable_cache } from "next/cache";
 import { disciplineLabel } from "@/ai/pedagogy";
 import { createAdminClient } from "../supabase";
-import type { Sugestao } from "@/domain/missao/sugestoes";
 import { agruparCatalogo, type MateriaCatalogo } from "@/domain/missao/materias";
 import { ensureDisciplines } from "./disciplines";
-import { getMentorGoal, listEditalOptions } from "./mentor-goal";
+import { getMentorGoal } from "./mentor-goal";
 
 export interface DadosMissao {
   primeiroNome: string | null;
   /** Objetivo atual do aluno (profiles.preferences.mentor_goal), se já definido. */
   objetivo: string | null;
-  /** Editais do próprio aluno (Aprovum AI), prontos para virar plano. */
-  editais: Sugestao[];
   /** Matérias catalogadas na plataforma (aulas publicadas), para os quadrados da Central. */
   materias: MateriaCatalogo[];
 }
@@ -35,10 +32,9 @@ export async function carregarMateriasCatalogo(): Promise<MateriaCatalogo[]> {
 
 export async function carregarMissao(userId: string): Promise<DadosMissao> {
   const db = createAdminClient();
-  const [perfil, objetivo, editais, materias] = await Promise.all([
+  const [perfil, objetivo, materias] = await Promise.all([
     db.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
     getMentorGoal(userId).catch(() => null),
-    listEditalOptions(userId).catch(() => []),
     carregarMateriasCatalogo().catch(() => []),
   ]);
   const nome = ((perfil.data?.display_name as string | null) ?? "").trim();
@@ -46,12 +42,5 @@ export async function carregarMissao(userId: string): Promise<DadosMissao> {
     primeiroNome: nome ? nome.split(/\s+/)[0]! : null,
     objetivo: objetivo?.contest ?? null,
     materias,
-    editais: editais.map((e): Sugestao => ({
-      id: e.id,
-      tipo: "edital",
-      nome: e.name,
-      detalhe: ["Seu edital", e.role, e.board].filter(Boolean).join(" · "),
-      editalId: e.id,
-    })),
   };
 }

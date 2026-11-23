@@ -70,9 +70,6 @@
 .cm-continuar { align-self: flex-start; min-height: 40px; padding: 0 14px; font: inherit; font-size: 14px; font-weight: 600; color: #fff; cursor: pointer; background: transparent; border: 1px solid var(--cm-red); border-radius: 11px; transition: background 0.2s; }
 .cm-continuar:hover { background: rgb(215 25 32 / 0.18); }
 
-.cm-outro { margin-top: 2px; padding: 8px 14px; font: inherit; font-size: 12.5px; color: #a1a1a6; cursor: pointer; background: none; border: 1px solid rgb(255 255 255 / 0.12); border-radius: 999px; transition: color 0.2s, border-color 0.2s; }
-.cm-outro:hover:not(:disabled) { color: var(--cm-gelo); border-color: rgb(255 255 255 / 0.3); }
-.cm-outro:focus-visible { outline: 2px solid var(--cm-red2); outline-offset: 2px; }
 .cm-estado { min-height: 20px; margin: 10px 0 0; font-size: 13.5px; color: #a1a1a6; }
 .cm-estado[data-tipo="erro"] { color: #ff6b70; }
 .cm[data-fase="ok"] .cm-estado { color: var(--cm-gelo); }
