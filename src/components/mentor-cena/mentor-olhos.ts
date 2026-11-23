@@ -44,20 +44,20 @@ void main(){
   float r = length(q);
   float nucleo = exp(-r * r * 2.1);
   float anel = exp(-pow((r - .8) * 2.3, 2.));
-  // chama suave: duas camadas de ruído deformado, subindo devagar e balançando de leve; afina e some com a altura
+  // chama que se dissipa no ar: nasce da íris, sobe espalhando, vai se rasgando em fiapos e some aos poucos (nada de contorno)
   float h = max(0., -vP.y);
-  float topo = clamp(h / 44., 0., 1.);
-  float bal = sin(t * .9 + uSeed + h * .09) * 3. * topo * v;
+  float topo = clamp(h / 58., 0., 1.);
+  float bal = sin(t * .7 + uSeed + h * .07) * 4. * topo * v;
   float px = vP.x - bal;
-  float larg = mix(16., 5.5, pow(topo, .8));
+  float larg = mix(9., 21., topo);
   float lat = exp(-pow(px / larg, 2.));
-  float alt = smoothstep(-6., 6., -vP.y) * (1. - smoothstep(14., 44., -vP.y));
-  float w = fbm(vec2(px * .09, vP.y * .04 + t * .45 * v));
-  float n = fbm(vec2(px * .12 + (w - .5) * 1.8 + uSeed, vP.y * .045 + t * .85 * v));
-  float n2 = fbm(vec2(px * .2 - uSeed, vP.y * .08 + t * 1.5 * v));
-  float forma = smoothstep(.12, .9, n * 1.05 + n2 * .35 + (1. - topo) * .3);
-  float chama = lat * alt * forma * v;
-  float chamaFina = lat * lat * alt * smoothstep(.35, .95, n * .9 + n2 * .5 + (1. - topo) * .25) * v;
+  float nasce = smoothstep(-4., 8., -vP.y);
+  float some = exp(-h / 19.) * (1. - smoothstep(34., 60., h));
+  float w = fbm(vec2(px * .07, vP.y * .035 + t * .35 * v));
+  float n = fbm(vec2(px * .1 + (w - .5) * 2.2 + uSeed, vP.y * .04 + t * .7 * v));
+  float limite = mix(.2, .6, topo);
+  float rasgo = smoothstep(limite, limite + .38, n * 1.1 + (1. - topo) * .1);
+  float chama = lat * nasce * some * rasgo * v;
   // brilho na órbita (suave, contido)
   vec2 o = vP / vec2(26., 16.);
   float halo = exp(-dot(o, o) * 1.15);
@@ -66,8 +66,8 @@ void main(){
   float brasa = .72 + .55 * fbm(vP * .3 + vec2(uSeed, t * .3 * v));
   float e = at * (nucleo * 1.1 * brasa + anel * .5) * respira;
   // a chama usa só a parte vermelho-laranja da rampa (nunca amarela), bem transparente: lambe a órbita em vez de ser um desenho
-  float ef = pow(at, 1.5) * (chama * .85 + chamaFina * .5);
-  vec3 col = fogo(e) * e + fogo(min(ef * 1.5, .62)) * ef + vec3(.85, .1, .03) * halo * at * .11 * respira;
+  float ef = pow(at, 1.5) * chama * .7;
+  vec3 col = fogo(e) * e + fogo(min(ef * 1.8, .5)) * ef + vec3(.85, .1, .03) * halo * at * .11 * respira;
   // faíscas minúsculas, só quando o olho já está bem aceso
   float acende = smoothstep(.5, .95, at) * v;
   for (int i = 0; i < 4; i++){
