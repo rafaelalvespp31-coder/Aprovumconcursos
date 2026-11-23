@@ -6,13 +6,15 @@ import { UFS } from "@/domain/concursos";
 import type { Contest } from "@/server/services/gamification";
 import type { VinculoEdital } from "@/server/services/concurso-edital";
 import { EditalDoConcurso } from "./edital-do-concurso";
+import { AnaliseEstrategica, type ImportarEstrategica, type RemoverEstrategica } from "./analise-estrategica";
+import type { ResumoAnaliseAdmin } from "@/server/services/concurso-analise";
 
 type Action = (id: string | null, form: FormData) => Promise<{ ok: boolean; error?: string }>;
 
 const input = "mt-1 w-full rounded border border-linha bg-superficie px-2 py-1.5 text-sm";
 
 /** Formulário de um concurso (novo ou edição). Só dados com fonte; nada é preenchido automaticamente. */
-export function ContestForm({ contest, action, vinculo = null, vincular, importar }: { contest: (Contest & { active: boolean }) | null; action: Action; vinculo?: VinculoEdital | null; vincular?: (contestId: string, prepId: string | null) => Promise<{ ok: boolean; error?: string }>; importar?: (contestId: string, texto: string) => Promise<{ ok: true; id: string; materias: number; topicos: number } | { ok: false; error: string }> }) {
+export function ContestForm({ contest, action, vinculo = null, vincular, importar, analise = null, importarEstrategica, removerEstrategica }: { contest: (Contest & { active: boolean }) | null; action: Action; vinculo?: VinculoEdital | null; vincular?: (contestId: string, prepId: string | null) => Promise<{ ok: boolean; error?: string }>; importar?: (contestId: string, texto: string) => Promise<{ ok: true; id: string; materias: number; topicos: number } | { ok: false; error: string }>; analise?: ResumoAnaliseAdmin | null; importarEstrategica?: ImportarEstrategica; removerEstrategica?: RemoverEstrategica }) {
   const [msg, setMsg] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const c = contest;
@@ -107,6 +109,7 @@ export function ContestForm({ contest, action, vinculo = null, vincular, importa
       </div>
     </form>
     {c && vincular && importar && <EditalDoConcurso contestId={c.id} cargoSugerido={c.roleName ?? ""} vinculo={vinculo} vincular={vincular} importar={importar} />}
+    {c && importarEstrategica && removerEstrategica && <AnaliseEstrategica contestId={c.id} cargoSugerido={c.roleName ?? ""} atual={analise} importar={importarEstrategica} remover={removerEstrategica} />}
     </div>
   );
 }

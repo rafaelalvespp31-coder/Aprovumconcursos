@@ -108,3 +108,4 @@ li[data-disp="nao"] .cp-pill { color: var(--cp-nao-t); background: rgb(239 68 68
 @keyframes cp-gira { to { transform: rotate(360deg); } }
 @media (max-width: 420px) { .cp-barra .cp-sec { display: none; } }
 @media (prefers-reduced-motion: reduce) { .cp-gira { animation: none; } .cp-seta, .cp-primario, .cp-sec, .cp-filtro button { transition: none; } }
+.cp-analise { margin-top: 14px; width: 100%; }

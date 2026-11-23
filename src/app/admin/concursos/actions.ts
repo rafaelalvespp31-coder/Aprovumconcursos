@@ -6,6 +6,7 @@ import { saveContest } from "@/server/services/gamification";
 import { vincularEdital } from "@/server/services/concurso-edital";
 import { importarAnaliseDoConcurso } from "@/server/services/edital";
 import { validarImportacao } from "@/domain/edital/importacao";
+import { removerAnaliseDoConcurso, salvarAnaliseDoConcurso } from "@/server/services/concurso-analise";
 import { UserFacingError } from "@/server/services/trails";
 
 export async function saveContestAction(id: string | null, form: FormData): Promise<{ ok: boolean; error?: string }> {
@@ -63,5 +64,28 @@ export async function importarAnaliseAction(contestId: string, texto: string): P
     return { ok: true, id, materias: v.resumo.materias, topicos: v.resumo.topicos };
   } catch (e) {
     return { ok: false, error: e instanceof UserFacingError ? e.message : "Não foi possível importar a análise." };
+  }
+}
+
+/** Importa a análise estratégica do concurso (modelo "Análise completa do edital") colada pelo admin. */
+export async function importarAnaliseEstrategicaAction(contestId: string, texto: string): Promise<{ ok: true; disciplinas: number; avisos: string[] } | { ok: false; error: string }> {
+  const admin = await requireAdmin();
+  try {
+    const r = await salvarAnaliseDoConcurso(admin.id, contestId, texto);
+    revalidatePath("/admin/concursos");
+    return { ok: true, ...r };
+  } catch (e) {
+    return { ok: false, error: e instanceof UserFacingError ? e.message : "Não foi possível importar a análise." };
+  }
+}
+
+export async function removerAnaliseEstrategicaAction(contestId: string): Promise<{ ok: boolean; error?: string }> {
+  const admin = await requireAdmin();
+  try {
+    await removerAnaliseDoConcurso(admin.id, contestId);
+    revalidatePath("/admin/concursos");
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: e instanceof UserFacingError ? e.message : "Não foi possível remover a análise." };
   }
 }

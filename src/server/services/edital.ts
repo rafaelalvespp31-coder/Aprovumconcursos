@@ -730,6 +730,8 @@ export interface ConteudoProgramatico {
   avisos: string[];
   secao: [number, number] | null;
   disciplinas: Array<{ id: string; nome: string; pagina: number | null; topicos: TopicoConteudo[] }>;
+  /** Concurso do catálogo que tem análise estratégica publicada (para o link da tela). */
+  analiseConcursoId?: string | null;
 }
 
 /** Dados do edital e da leitura (sem as matérias): o conteúdo completo, com as aulas disponíveis, é montado em edital-view. */
@@ -754,6 +756,7 @@ export async function metaConteudoProgramatico(userId: string, id: string): Prom
     naoClassificados: st.reader === "gemini" ? (st.leitura?.naoClassificados ?? []) : [],
     avisos: (st.warnings ?? []).slice(0, 6),
     secao: faixa ? [Number(faixa[1]), Number(faixa[2]) - 1] : null,
+    analiseConcursoId: st.publicado?.contestId ?? st.importado?.contestId ?? null,
   };
 }
 

@@ -6,6 +6,7 @@ import { orgImageFor } from "@/domain/edital/org-images";
 import { displayTitle } from "@/domain/edital/info";
 import { backfillInfo, metaConteudoProgramatico, refreshMatchesIfStale } from "./edital";
 import { topicosDe } from "./edital-topicos";
+import { concursoComAnalise } from "./concurso-analise";
 import type { ConteudoProgramatico, PrepStats, PrepStatus, PrepSummary } from "./edital";
 
 type Row = Record<string, unknown>;
@@ -172,8 +173,10 @@ export async function getPreparationTree(userId: string, id: string): Promise<Pr
 /** Conteúdo programático completo (matéria › tópico) com a disponibilidade de aula de cada tópico, para a página que antecede o plano. */
 export async function carregarConteudoCompleto(userId: string, id: string): Promise<ConteudoProgramatico> {
   const [meta, tree] = await Promise.all([metaConteudoProgramatico(userId, id), getPreparationTree(userId, id)]);
+  const analiseConcursoId = await concursoComAnalise(meta.analiseConcursoId).catch(() => null);
   return {
     ...meta,
+    analiseConcursoId,
     status: tree.prep.status,
     disciplinas: tree.disciplines.map((d) => ({
       id: d.id,

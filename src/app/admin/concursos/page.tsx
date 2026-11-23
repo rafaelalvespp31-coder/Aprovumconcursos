@@ -1,7 +1,8 @@
 import { requireAdmin } from "@/server/services/catalog";
 import { listContestsAdmin } from "@/server/services/gamification";
 import { vinculosDosConcursos } from "@/server/services/concurso-edital";
-import { importarAnaliseAction, saveContestAction, vincularEditalAction } from "./actions";
+import { analisesDosConcursos } from "@/server/services/concurso-analise";
+import { importarAnaliseAction, importarAnaliseEstrategicaAction, removerAnaliseEstrategicaAction, saveContestAction, vincularEditalAction } from "./actions";
 import { ContestForm } from "./contest-form";
 
 export const metadata = { title: "Próximos concursos" };
@@ -10,7 +11,7 @@ export const dynamic = "force-dynamic";
 /** Catálogo de concursos mostrado na Home dos alunos ("Próximos concursos"). */
 export default async function ContestsAdminPage() {
   await requireAdmin();
-  const [rows, vinculos] = await Promise.all([listContestsAdmin(), vinculosDosConcursos().catch(() => new Map())]);
+  const [rows, vinculos, analises] = await Promise.all([listContestsAdmin(), vinculosDosConcursos().catch(() => new Map()), analisesDosConcursos().catch(() => new Map())]);
   return (
     <div className="space-y-6">
       <div>
@@ -26,7 +27,7 @@ export default async function ContestsAdminPage() {
       <section className="space-y-3">
         <h2 className="t-h2">Cadastrados ({rows.length})</h2>
         {rows.length === 0 && <p className="t-small text-tinta-suave">Nenhum concurso cadastrado. A Home mostra “nenhum concurso cadastrado” até aqui ter algum.</p>}
-        {rows.map((c) => <ContestForm key={c.id} contest={c} action={saveContestAction} vinculo={vinculos.get(c.id) ?? null} vincular={vincularEditalAction} importar={importarAnaliseAction} />)}
+        {rows.map((c) => <ContestForm key={c.id} contest={c} action={saveContestAction} vinculo={vinculos.get(c.id) ?? null} vincular={vincularEditalAction} importar={importarAnaliseAction} analise={analises.get(c.id) ?? null} importarEstrategica={importarAnaliseEstrategicaAction} removerEstrategica={removerAnaliseEstrategicaAction} />)}
       </section>
     </div>
   );

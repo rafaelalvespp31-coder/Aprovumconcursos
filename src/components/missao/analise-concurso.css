@@ -1,0 +1,79 @@
+/* Análise estratégica do concurso: mesma linguagem da Central (preto profundo, vermelho como cor viva). Mobile primeiro. */
+.an, .an *, .an *::before, .an *::after { box-sizing: border-box; }
+.an { --bg: #030303; --card: #0d0d0f; --linha: #1f1f22; --red: #d71920; --red2: #ff252d; --gelo: #f5f5f5; --cinza: #9a9ba0;
+  --t1: #ff4d4d; --t2: #f59e0b; --t3: #38bdf8; --t4: #a78bfa;
+  min-height: 100svh; max-width: 820px; margin: 0 auto; padding: calc(env(safe-area-inset-top) + 8px) 16px calc(64px + env(safe-area-inset-bottom)); color: var(--gelo); background: var(--bg); scroll-behavior: smooth; }
+.an [data-tom="1"] { --tom: var(--t1); } .an [data-tom="2"] { --tom: var(--t2); } .an [data-tom="3"] { --tom: var(--t3); } .an [data-tom="4"] { --tom: var(--t4); }
+.an-topo { display: flex; align-items: center; justify-content: space-between; min-height: 52px; }
+.an-logo { height: 24px; width: auto; }
+.an-voltar { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding-right: 8px; font-size: 14px; color: var(--cinza); text-decoration: none; }
+.an-voltar:hover { color: var(--gelo); }
+.an-cab { padding: 10px 0 6px; }
+.an-kicker { margin: 0; font-size: 11px; letter-spacing: 0.3em; font-weight: 600; color: var(--red2); }
+.an-titulo { margin: 8px 0 0; font-size: clamp(24px, 6.5vw, 36px); line-height: 1.12; font-weight: 800; text-wrap: balance; }
+.an-meta { margin: 6px 0 0; font-size: 14px; color: var(--cinza); }
+.an-numeros { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin: 16px 0 0; }
+.an-numeros div { padding: 10px 14px; background: var(--card); border: 1px solid var(--linha); border-radius: 12px; }
+.an-numeros dt { font-size: 12px; color: var(--cinza); }
+.an-numeros dd { margin: 2px 0 0; font-size: 26px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.an-ancoras { position: sticky; top: 0; z-index: 5; display: flex; gap: 6px; margin: 14px -16px 0; padding: 8px 16px; overflow-x: auto; scrollbar-width: none; background: linear-gradient(180deg, var(--bg) 75%, transparent); }
+.an-ancoras a { flex: none; display: inline-flex; align-items: center; min-height: 36px; padding: 0 14px; font-size: 13px; font-weight: 700; color: #d4d4d8; text-decoration: none; background: rgb(255 255 255 / 0.06); border: 1px solid rgb(255 255 255 / 0.12); border-radius: 999px; }
+.an-ancoras a:hover { background: rgb(255 255 255 / 0.12); }
+.an-ancoras a:focus-visible, .an summary:focus-visible { outline: 2px solid var(--red2); outline-offset: 2px; }
+.an-secao { padding-top: 26px; scroll-margin-top: 56px; }
+.an-secao > h2 { margin: 0 0 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; }
+.an-secao > h2::before { content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 2px; background: var(--red); box-shadow: 0 0 10px var(--red); }
+.an-texto { margin: 10px 0 0; font-size: 14.5px; line-height: 1.6; color: #cfcfd3; text-wrap: pretty; }
+
+.an-blocos { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.an-blocos li { display: grid; gap: 6px; padding: 12px 14px; background: var(--card); border: 1px solid var(--linha); border-radius: 12px; }
+.an-blocos-nome { font-weight: 800; font-size: 15px; }
+.an-blocos-barra { height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--red) var(--w), #1c1c20 var(--w)); }
+.an-blocos-info { font-size: 12.5px; color: var(--cinza); font-variant-numeric: tabular-nums; }
+
+.an-grupo h3 { margin: 18px 0 8px; font-size: 11.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--cinza); }
+.an-disc { margin-bottom: 8px; background: var(--card); border: 1px solid var(--linha); border-left: 3px solid var(--tom, var(--red)); border-radius: 12px; }
+.an-disc[open] { border-color: #2c2c31; border-left-color: var(--tom, var(--red)); }
+.an-disc summary { display: grid; grid-template-columns: 1fr auto; gap: 6px 10px; align-items: center; padding: 12px 14px; list-style: none; cursor: pointer; min-height: 52px; }
+.an-disc summary::-webkit-details-marker { display: none; }
+.an-disc-nome { font-size: 14.5px; font-weight: 800; line-height: 1.25; }
+.an-disc-chips { grid-column: 1; display: flex; flex-wrap: wrap; gap: 6px; }
+.an-seta { grid-column: 2; grid-row: 1 / span 2; color: var(--cinza); transition: transform 0.2s ease-out; }
+.an-disc[open] .an-seta { transform: rotate(180deg); }
+.an-chip { padding: 3px 9px; font-size: 11.5px; font-weight: 700; border-radius: 999px; background: rgb(255 255 255 / 0.08); font-variant-numeric: tabular-nums; }
+.an-prio { color: var(--tom, #fff); background: color-mix(in srgb, var(--tom, #fff) 14%, transparent); }
+.an-disc-corpo { padding: 0 14px 14px; }
+.an-disc-corpo h4, .an-estrategia h4, .an-classe h4 { margin: 14px 0 6px; font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--cinza); }
+.an-focos { margin: 0; padding-left: 18px; font-size: 14px; line-height: 1.55; color: #e4e4e7; }
+.an-focos li::marker { color: var(--tom, var(--red2)); }
+.an-estrategia { margin-top: 12px; padding: 10px 14px 12px; background: #101012; border: 1px solid var(--linha); border-radius: 10px; }
+.an-estrategia h4 { margin-top: 0; color: var(--red2); }
+.an-estrategia p { margin: 6px 0 0; font-size: 14px; line-height: 1.55; color: #e4e4e7; }
+
+.an-barras { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.an-barras li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; }
+.an-barras-nome { font-size: 13px; line-height: 1.25; }
+.an-barras-num { font-size: 12.5px; font-weight: 700; color: #d4d4d8; font-variant-numeric: tabular-nums; }
+.an-barras-barra { grid-column: 1 / -1; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--tom, var(--red)) var(--w), #1c1c20 var(--w)); transform-origin: left; animation: an-cresce 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.an-horas li { --tom: var(--red); }
+@keyframes an-cresce { from { transform: scaleX(0); } }
+.an-classe { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; margin-top: 18px; }
+.an-classe div { padding: 4px 14px 12px; background: var(--card); border: 1px solid var(--linha); border-top: 3px solid var(--tom, var(--red)); border-radius: 12px; }
+.an-classe h4 { color: var(--tom, var(--cinza)); }
+.an-classe ul { margin: 0; padding-left: 16px; font-size: 13.5px; line-height: 1.5; color: #e4e4e7; }
+
+.an-cartoes { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
+.an-cartao { padding: 14px; background: var(--card); border: 1px solid var(--linha); border-radius: 14px; }
+.an-cartao-n { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: 0.14em; text-transform: uppercase; color: var(--red2); }
+.an-cartao h3 { margin: 4px 0 0; font-size: 15.5px; line-height: 1.25; }
+.an-tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 0; padding: 0; list-style: none; }
+.an-tags li { padding: 3px 9px; font-size: 12px; background: rgb(255 255 255 / 0.07); border-radius: 999px; }
+
+.an-ciclo, .an-decisoes { display: grid; gap: 8px; margin: 16px 0 0; padding: 0; list-style: none; counter-reset: passo; }
+.an-ciclo li, .an-decisoes li { position: relative; display: grid; gap: 2px; padding: 12px 14px 12px 52px; font-size: 14px; line-height: 1.5; color: #cfcfd3; background: var(--card); border: 1px solid var(--linha); border-radius: 12px; counter-increment: passo; }
+.an-ciclo li::before, .an-decisoes li::before { content: counter(passo); position: absolute; left: 12px; top: 12px; display: grid; place-items: center; width: 28px; height: 28px; font-size: 13px; font-weight: 800; color: #fff; background: var(--red); border-radius: 50%; }
+.an-ciclo b, .an-decisoes b { font-size: 13px; letter-spacing: 0.04em; color: var(--gelo); }
+.an-obs { margin: 18px 0 0; padding: 12px 14px; font-size: 13px; line-height: 1.5; color: var(--cinza); border-left: 3px solid #6b6c72; background: #101012; border-radius: 0 10px 10px 0; }
+
+@media (min-width: 900px) { .an { max-width: 960px; padding-inline: 32px; } .an-ancoras { margin-inline: -32px; padding-inline: 32px; } }
+@media (prefers-reduced-motion: reduce) { .an { scroll-behavior: auto; } .an-barras-barra, .an-seta { animation: none; transition: none; } }

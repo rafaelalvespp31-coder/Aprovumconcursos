@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ArrowLeft, ChevronDown, FileText, Loader2, RefreshCw, Search, ShieldCheck, TriangleAlert } from "lucide-react";
+import { ArrowLeft, BarChart3, ChevronDown, FileText, Loader2, RefreshCw, Search, ShieldCheck, TriangleAlert } from "lucide-react";
 import type { ConteudoProgramatico as Conteudo, TopicoConteudo } from "@/server/services/edital";
 import "./conteudo-programatico.css";
 
@@ -131,6 +131,11 @@ export function ConteudoProgramatico({ conteudo: c, lendo, especialista, montar,
           <div data-disp="sim"><dt>Com aula</dt><dd>{n(totais.com)}</dd></div>
           <div data-disp="nao"><dt>Sem aula ainda</dt><dd>{n(totais.sem)}</dd></div>
         </dl>
+        {c.analiseConcursoId && (
+          <Link href={`/analise-concurso/${c.analiseConcursoId}?voltar=${encodeURIComponent(`/conteudo-programatico/${c.id}`)}`} className="cp-sec cp-analise" data-testid="ver-analise">
+            <BarChart3 size={16} aria-hidden /> Ver a análise do concurso (peso das matérias e estratégia)
+          </Link>
+        )}
         <ul className="cp-legenda" aria-label="Legenda">
           <li data-disp="sim"><span aria-hidden /> Aula disponível no Aprovum</li>
           <li data-disp="nao"><span aria-hidden /> Aula ainda não disponível</li>
