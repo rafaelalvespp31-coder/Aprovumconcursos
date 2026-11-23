@@ -17,3 +17,15 @@ uniform vec2 uRes;
 float ocluido(float forca){ return texture2D(uMatte, gl_FragCoord.xy / uRes).r * forca; }
 float ocluidoMao(float forca){ return texture2D(uMatte, gl_FragCoord.xy / uRes).g * forca; }
 `;
+
+/**
+ * Deformação do contorno pela voz (estilo orb de voz): harmônicas angulares inteiras (sem emenda) que giram em velocidades
+ * diferentes; `a` (0 a 1) é a energia da fala já suavizada. Devolve a variação do raio relativa ao raio da esfera.
+ */
+export const DEFORMA_VOZ = /* glsl */ `
+float deformaVoz(vec2 dir, float t, float a){
+  float g = atan(dir.y, dir.x);
+  float d = .5 * sin(g * 2. + t * 1.9) + .36 * sin(g * 3. - t * 2.6 + 1.3) + .22 * sin(g * 4. + t * 3.4 + 2.1) + .12 * sin(g * 6. - t * 4.3);
+  return d * min(1., a * 1.25) * .115;
+}
+`;

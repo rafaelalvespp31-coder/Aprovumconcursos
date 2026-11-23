@@ -118,6 +118,8 @@ export function CentralMissao({ primeiroNome, email, objetivo, materias, concurs
             </>
           )}
         </div>
+        {/* continuação do corpo: segue a arte sem emenda e termina em sombra exatamente onde começam os cards */}
+        <div className="hm-corpo" aria-hidden />
       </section>
 
       <div className="hm-voz">

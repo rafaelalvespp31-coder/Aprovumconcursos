@@ -96,7 +96,7 @@ export function criarMotor(canvas: HTMLCanvasElement, op: OpcoesMotor): MotorCen
     tempo += dt;
     lerAudio(dt);
     atual = suavizar(atual, alvoDaFase(fase, audio), dt, 2.2);
-    orb.atualizar(dt, atual, audio, escalaDaVoz(fala, audio));
+    orb.atualizar(dt, atual, audio, escalaDaVoz(fala, audio), audio * fala);
     brasas.atualizar(dt, atual, tempo);
   };
   const desenhar = () => renderer.render(scene, camera);

@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { OCLUSAO, RUIDO } from "./glsl";
+import { DEFORMA_VOZ, OCLUSAO, RUIDO } from "./glsl";
 import type { AlvoCena } from "./estado-mentor";
 import type { Qualidade } from "./qualidade";
 
@@ -48,6 +48,7 @@ const FRAG_PLASMA = /* glsl */ `
 precision highp float;
 ${RUIDO}
 ${OCLUSAO}
+${DEFORMA_VOZ}
 uniform float uTime, uBrilho, uPulso, uEspiral, uAudio;
 varying vec2 vP;
 void main(){
@@ -57,7 +58,7 @@ void main(){
   float e1 = noise(cs * 2.0 + vec2(t * .55, t * .3));
   float e2 = noise(cs * 5.0 + vec2(-t * .7, t * .4 + 4.));
   float e3 = noise(cs * 13.0 + vec2(t * 1.1, 9.));
-  float rr = 1.0 + (e1 - .5) * .06 + (e2 - .5) * .032 + (e3 - .5) * .01 + uPulso * .01 * sin(t * 1.5);
+  float rr = 1.0 + (e1 - .5) * .06 + (e2 - .5) * .032 + (e3 - .5) * .01 + uPulso * .01 * sin(t * 1.5) + deformaVoz(cs, t, uAudio);
   float d = len - rr;
   float w = .02 + .012 * e2;
   float quente = exp(-d * d / (w * w));
@@ -85,9 +86,10 @@ void main(){
 
 /** Micropartículas dentro da esfera: pairam à deriva (sem giro), com profundidade de campo, luz rasante nas bordas e cintilações raras. */
 const VERT_INTERNAS = /* glsl */ `
+${DEFORMA_VOZ}
 attribute vec3 aS; // x: frequência de cintilação, y: tamanho (0 a 1), z: fase
 attribute vec4 aD; // frequências de deriva em x, y e z e a amplitude
-uniform vec2 uCenter; uniform float uR, uAnim, uPx, uEspiral;
+uniform vec2 uCenter; uniform float uR, uAnim, uPx, uEspiral, uTime, uAudio;
 varying float vA; varying float vSoft; varying float vQ; varying float vGlint;
 void main(){
   float t = uAnim;
@@ -101,6 +103,8 @@ void main(){
   float ay = t * .03; float cy = cos(ay), sy = sin(ay);
   p = vec3(cy * p.x + sy * p.z, p.y, -sy * p.x + cy * p.z);
   p *= min(1., .93 / max(length(p), .0001));
+  // o interior acompanha a deformação do contorno (mais perto da borda, mais acompanha)
+  p.xy *= 1. + deformaVoz(normalize(p.xy + vec2(1e-5)), uTime, uAudio) * length(p.xy);
   float prof = p.z * .5 + .5;
   gl_Position = projectionMatrix * viewMatrix * vec4(uCenter + p.xy * uR, 0., 1.);
   float tam = 1. + aS.y * aS.y * 3.4;
@@ -248,7 +252,7 @@ export class MentorOrb3D {
     }
     const gI = new THREE.BufferGeometry();
     gI.setAttribute("position", new THREE.BufferAttribute(pos, 3)); gI.setAttribute("aS", new THREE.BufferAttribute(seed, 3)); gI.setAttribute("aD", new THREE.BufferAttribute(deriva, 4));
-    this.internasMat = materialAditivo({ vertexShader: VERT_INTERNAS, fragmentShader: FRAG_INTERNAS, uniforms: { ...base } });
+    this.internasMat = materialAditivo({ vertexShader: VERT_INTERNAS, fragmentShader: FRAG_INTERNAS, uniforms: { ...base, uAudio: this.uniforms.uAudio } });
     this.internas = new THREE.Points(gI, this.internasMat);
     this.internas.frustumCulled = false; this.internas.renderOrder = 11;
 
@@ -284,7 +288,7 @@ export class MentorOrb3D {
   private comuns: UniformsComuns;
 
   /** OrbAnimationController: levitação lenta e respiração suave guiada pelo áudio (já suavizado). Nada é emitido da esfera. */
-  atualizar(dt: number, e: AlvoCena, audio: number, escala = 1) {
+  atualizar(dt: number, e: AlvoCena, audio: number, escala = 1, deforma = 0) {
     this.tempo += dt;
     this.anim += dt * e.rapidez;
     const t = this.tempo;
@@ -294,7 +298,7 @@ export class MentorOrb3D {
     u.uCenter.value.set(this.cx, this.cy);
     u.uTime.value = t; u.uAnim.value = this.anim;
     u.uBrilho.value = e.brilho * (0.95 + 0.05 * Math.sin(t * 1.3));
-    u.uPulso.value = e.pulso; u.uEspiral.value = e.espiral; u.uAudio.value = audio;
+    u.uPulso.value = e.pulso; u.uEspiral.value = e.espiral; u.uAudio.value = deforma;
     // contração e expansão da esfera inteira (anel, núcleo, micropartículas e luz) no ritmo da voz
     u.uR.value = PALMA.raio * escala;
     this.comuns.uOrbR.value = PALMA.raio * escala;
