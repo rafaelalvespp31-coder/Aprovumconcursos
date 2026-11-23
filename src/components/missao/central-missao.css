@@ -41,21 +41,28 @@
   -webkit-mask-composite: source-in; mask-image: linear-gradient(180deg, transparent, #000 12%, #000 72%, transparent 100%), linear-gradient(90deg, transparent, #000 6%, #000 88%, transparent); mask-composite: intersect; }
 
 /* a esfera real: o anel tem raio 0,34 do lado (voz-esfera); o anel da arte mede 336 de 1086 */
-.hm-orb { position: absolute; left: 29.1%; top: 51%; width: 37.3%; aspect-ratio: 1; transform: translate(-50%, -50%); display: flex; z-index: 3; pointer-events: none; }
+.hm-orb { position: absolute; left: 29.3%; top: 55.7%; width: 39.5%; aspect-ratio: 1; transform: translate(-50%, -50%); display: flex; z-index: 3; pointer-events: none; }
 .mo-caixa { position: relative; width: 100%; flex: 1; min-height: 0; }
 .mo-esfera { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-.hm-aura { position: absolute; left: 29.1%; top: 51%; width: 62%; aspect-ratio: 1; transform: translate(-50%, -50%) scale(0.9); z-index: 1; pointer-events: none; border-radius: 50%;
+.hm-aura { position: absolute; left: 29.3%; top: 55.7%; width: 62%; aspect-ratio: 1; transform: translate(-50%, -50%) scale(0.9); z-index: 1; pointer-events: none; border-radius: 50%;
   background: radial-gradient(closest-side, rgb(255 40 48 / 0.5), rgb(215 25 32 / 0.2) 55%, transparent 100%); opacity: 0.45; transition: opacity 1.6s ease, transform 1.6s var(--hm-ease); animation: hm-respira 4.2s ease-in-out infinite; }
 @keyframes hm-respira { 50% { opacity: 0.6; } }
 
 /* a luz da esfera refletida na mão */
-.hm-reflexo { position: absolute; left: 26%; top: 79%; width: 36%; aspect-ratio: 2 / 1; transform: translate(-50%, -50%); z-index: 2; pointer-events: none; mix-blend-mode: screen;
+.hm-reflexo { position: absolute; left: 28%; top: 84%; width: 36%; aspect-ratio: 2 / 1; transform: translate(-50%, -50%); z-index: 2; pointer-events: none; mix-blend-mode: screen;
   background: radial-gradient(closest-side, rgb(255 70 60 / 0.5), rgb(215 25 32 / 0.18) 60%, transparent); opacity: 0.35; transition: opacity 1.6s ease; animation: hm-respira 4.2s ease-in-out infinite; }
 
 /* olhos acesos: ficam mais intensos enquanto o Mentor escuta */
 .hm-olho { position: absolute; top: 34.2%; width: 7%; aspect-ratio: 1.6; transform: translate(-50%, -50%); z-index: 2; pointer-events: none; mix-blend-mode: screen; border-radius: 50%;
   background: radial-gradient(closest-side, rgb(255 90 60 / 0.9), rgb(255 30 30 / 0.35) 55%, transparent); opacity: 0; transition: opacity 0.9s ease, transform 0.9s var(--hm-ease); }
 .hm-olho-e { left: 60.4%; } .hm-olho-d { left: 71.1%; }
+
+/* cena 3D (WebGL): um canvas transparente sobre a arte; a mão fica na frente da esfera pelo recorte */
+.hm-3d { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: 3; pointer-events: none; }
+/* fallback 2D: recorte da mão por cima da esfera */
+.hm-mao { position: absolute; left: 0; top: 51.9%; width: 57.1%; height: auto; z-index: 4; pointer-events: none; user-select: none;
+  -webkit-mask-image: linear-gradient(180deg, #000 42%, transparent 100%), linear-gradient(90deg, transparent, #000 10%, #000 84%, transparent); -webkit-mask-composite: source-in;
+  mask-image: linear-gradient(180deg, #000 42%, transparent 100%), linear-gradient(90deg, transparent, #000 10%, #000 84%, transparent); mask-composite: intersect; }
 
 /* partículas entre a mão e a esfera */
 .hm-faiscas { position: absolute; left: 0; top: 0; width: 100%; height: 100%; z-index: 3; pointer-events: none; overflow: hidden; opacity: 0.55; transition: opacity 1.2s ease; }

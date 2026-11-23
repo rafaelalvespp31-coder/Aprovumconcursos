@@ -8,6 +8,7 @@ import type { Bands, Conexao } from "@/components/mentor/skull-orb-fx";
 import { FalarComMentor, type FaseMentor } from "./falar-mentor";
 import { PainelEscolha } from "./painel-escolha";
 import { MentorOrbita } from "./mentor-orbita";
+import { MentorScene } from "@/components/mentor-cena/mentor-scene";
 import "./central-missao.css";
 
 export interface CentralMissaoProps {
@@ -37,6 +38,10 @@ export function CentralMissao({ primeiroNome, email, objetivo, materias, concurs
   const [fase, setFase] = useState<FaseMentor>("repouso");
   const [folha, setFolha] = useState<Folha | null>(null);
   const [toque, setToque] = useState<Folha | null>(null);
+  // cena 3D (WebGL): se não abrir ou o contexto for perdido, volta para a esfera 2D de sempre
+  const [motor, setMotor] = useState<"carregando" | "ok" | "falhou">("carregando");
+  const aoFalha = useCallback(() => setMotor("falhou"), []);
+  const aoPronto = useCallback(() => setMotor("ok"), []);
   const nivel = useRef<(() => Bands) | null>(null);
   const gatilho = useRef<HTMLButtonElement | null>(null);
   const fechar = useRef<HTMLButtonElement>(null);
@@ -72,7 +77,7 @@ export function CentralMissao({ primeiroNome, email, objetivo, materias, concurs
   }, [folha, voltar]);
 
   return (
-    <main className="hm" data-fase={fase} data-folha={folha ?? undefined}>
+    <main className="hm" data-fase={fase} data-folha={folha ?? undefined} data-motor={motor}>
       <div className="hm-fundo" aria-hidden />
       <div className="hm-fumaca" aria-hidden />
 
@@ -95,14 +100,23 @@ export function CentralMissao({ primeiroNome, email, objetivo, materias, concurs
           <img className="hm-arte" src="/home/mentor-caveira.webp" alt="" width={1086} height={732} fetchPriority="high" decoding="async" />
           <span className="hm-olho hm-olho-e" aria-hidden />
           <span className="hm-olho hm-olho-d" aria-hidden />
-          <span className="hm-reflexo" aria-hidden />
-          <div className="hm-aura" aria-hidden />
-          <div className="hm-orb">
-            <MentorOrbita energia={0} voz={0} conn={conn} fonte={nivel} />
-          </div>
-          <div className="hm-faiscas" aria-hidden>
-            {FAISCAS.map((f, i) => <i key={i} style={{ "--x": `${f.x}%`, "--d": `${f.d}s`, "--t": `${f.t}s` } as CSSProperties} />)}
-          </div>
+          {motor !== "falhou" ? (
+            <MentorScene fase={fase} fonte={nivel} pausado={!!folha} aoFalha={aoFalha} aoPronto={aoPronto} />
+          ) : (
+            <>
+              <span className="hm-reflexo" aria-hidden />
+              <div className="hm-aura" aria-hidden />
+              <div className="hm-orb">
+                <MentorOrbita energia={0} voz={0} conn={conn} fonte={nivel} />
+              </div>
+              {/* a mão na frente da esfera: os dedos cobrem a parte de baixo, como se ela estivesse dentro da palma */}
+              {/* eslint-disable-next-line @next/next/no-img-element -- recorte da mão (WebP com transparência) */}
+              <img className="hm-mao" src="/home/mentor-mao.webp" alt="" width={620} height={352} decoding="async" />
+              <div className="hm-faiscas" aria-hidden>
+                {FAISCAS.map((f, i) => <i key={i} style={{ "--x": `${f.x}%`, "--d": `${f.d}s`, "--t": `${f.t}s` } as CSSProperties} />)}
+              </div>
+            </>
+          )}
         </div>
       </section>
 
