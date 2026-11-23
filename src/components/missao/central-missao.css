@@ -22,13 +22,7 @@
 
 .cm-palco { min-height: 0; }
 .mo-caixa { position: relative; width: 100%; height: 100%; }
-.mo-cena { position: absolute; inset: 0; width: 100%; height: 100%; display: block; mix-blend-mode: screen; }
 .mo-esfera { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; }
-.mo-aneis { position: absolute; inset: 0; display: grid; place-items: center; }
-.mo-aneis i { position: absolute; width: min(70vw, 56svh); aspect-ratio: 1; border-radius: 50%; border: 1px solid rgb(215 25 32 / 0.32); animation: mo-gira 22s linear infinite; }
-.mo-aneis i:nth-child(2) { width: min(86vw, 68svh); transform: rotateX(68deg); animation-duration: 30s; }
-.mo-aneis i:nth-child(3) { width: min(98vw, 78svh); transform: rotateX(68deg) rotateZ(40deg); animation-duration: 40s; animation-direction: reverse; }
-@keyframes mo-gira { to { rotate: 360deg; } }
 
 .cm-corpo { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 0 20px 14px; width: 100%; max-width: 680px; margin: 0 auto; }
 .cm-kicker { margin: 0; font-size: 11px; letter-spacing: 0.32em; color: var(--cm-red2); font-weight: 600; }
@@ -75,7 +69,7 @@
 /* entrada progressiva */
 .cm-e1, .cm-e2, .cm-e3, .cm-e4 { animation: cm-entra 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
 .cm-e2 { animation-delay: 0.12s; } .cm-e3 { animation-delay: 0.24s; } .cm-e4 { animation-delay: 0.36s; }
-.cm-topo, .mo-cena, .mo-esfera, .mo-aneis { animation: cm-aparece 1.2s ease both; }
+.cm-topo, .mo-esfera { animation: cm-aparece 1.2s ease both; }
 @keyframes cm-entra { from { opacity: 0; transform: translateY(14px); filter: blur(4px); } }
 @keyframes cm-aparece { from { opacity: 0; } }
 
@@ -93,6 +87,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .cm, .cm-campo, .cm-ir, .cm-ir svg, .cm-engrenagem { transition: none; }
-  .cm-e1, .cm-e2, .cm-e3, .cm-e4, .cm-topo, .mo-cena, .mo-esfera, .cm-lista, .mo-aneis i, .cm-gira { animation: none; }
+  .cm-e1, .cm-e2, .cm-e3, .cm-e4, .cm-topo, .mo-esfera, .cm-lista, .cm-gira { animation: none; }
   .cm[data-saindo] { transform: none; filter: none; }
 }
