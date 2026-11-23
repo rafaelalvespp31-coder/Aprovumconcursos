@@ -5,15 +5,15 @@ import { VozEsfera } from "@/components/mentor/voz-esfera";
 import type { Bands } from "@/components/mentor/skull-orb-fx";
 import type { Cena } from "./mentor-cena";
 
-/** Raio da esfera do Mentor em unidades da cena (o anel mais interno tem 1,62). */
-const RAIO_MUNDO = 1.4;
-/** A esfera desenha o vidro em 40% do `size` que recebe. */
-const FRACAO = 0.4;
+/** Raio do anel do Mentor em unidades da cena (as chamas vão até ~1,4x isso; o anel mais interno da órbita tem 1,62). */
+const RAIO_MUNDO = 1.15;
+/** O anel do Mentor tem raio de 34% do `size` que ele recebe. */
+const FRACAO = 0.34;
 
 /**
- * O Mentor (esfera de vidro líquido com núcleo de plasma) no meio da órbita de energia.
+ * O Mentor (disco preto com anel de fogo vermelho) no meio da órbita de energia.
  * A órbita (anéis, nós e partículas) é uma cena three.js carregada só no navegador, depois da primeira pintura;
- * a esfera é o mesmo Mentor das conversas por voz. `energia` (0 a 1) acende a órbita e faz a esfera "falar"
+ * o disco de fogo é o mesmo Mentor das conversas por voz. `energia` (0 a 1) acende a órbita e faz a esfera "falar"
  * quando o aluno confirma o concurso; `voz` (0 a 1) é uma agitação leve enquanto ele digita.
  */
 export function MentorOrbita({ energia = 0, voz = 0, className }: { energia?: number; voz?: number; className?: string }) {

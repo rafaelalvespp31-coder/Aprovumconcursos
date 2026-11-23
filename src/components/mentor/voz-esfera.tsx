@@ -13,10 +13,11 @@ void main(){
 }`;
 
 /**
- * Esfera de vidro líquido com núcleo de plasma, toda em um shader (sem malha, sem textura).
- * Casca: normal perturbada por ruído (dobras de água) + ondas que partem do centro com o volume da voz; reflexo
- * de estúdio e fresnel dão o aro azulado. Interior: o raio refratado atinge o núcleo e lê um plasma de ruído
- * deformado (filamentos laranja sobre vermelho-escuro), e a parte que passa ao largo vira o redemoinho vermelho.
+ * Mentor: disco preto cercado por um anel de fogo/energia vermelho, tudo em um shader (sem malha, sem textura).
+ * Anel: linha branco-quente com chama vermelha por cima e filamentos que escorrem para fora; o ruído é arrastado
+ * radialmente, então as chamas "sobem" do anel o tempo todo. Interior: poeira de pontos que cintilam, mais densa
+ * perto da borda, e uma névoa carmim. A voz do Mentor ondula o anel como água (a sílaba nasce no topo e corre
+ * pelos dois lados até embaixo), alonga as chamas e acende o anel.
  */
 const FS = `#version 300 es
 precision highp float;
@@ -58,7 +59,7 @@ float fbm(vec3 p, int oct){
   }
   return s;
 }
-/** Filamentos: cristas finas e vivas da mesma deformação. */
+/** Filamentos elétricos: cristas finas do mesmo ruído. */
 float ridged(vec3 p, int oct){
   float s = 0.0, a = 0.55;
   for (int i = 0; i < 5; i++){
@@ -70,141 +71,82 @@ float ridged(vec3 p, int oct){
   }
   return s;
 }
-
-float amp(float r){
-  float x = clamp(r, 0.0, 1.0)*${(NA - 1).toFixed(1)};
+float amp(float x01){
+  float x = clamp(x01, 0.0, 1.0)*${(NA - 1).toFixed(1)};
   int i0 = int(floor(x)); int i1 = min(i0+1, ${NA - 1});
   return mix(uA[i0], uA[i1], x-float(i0));
-}
-float ripple(float r){ return amp(r) * sin(r*uK*5.2 - uPh) * (0.35 + 0.65*smoothstep(0.0, 0.25, r)); }
-
-vec3 env(vec3 d){
-  float a = smoothstep(0.55, 0.97, dot(d, normalize(vec3(-0.55, 0.62, 0.55))));
-  float b = smoothstep(0.66, 0.985, dot(d, normalize(vec3(-0.82, -0.38, 0.42))));
-  float c = smoothstep(0.8, 0.99, dot(d, normalize(vec3(0.72, 0.5, 0.4))));
-  float t = pow(max(d.y, 0.0), 5.0);
-  return vec3(0.78, 0.85, 1.0) * (a*0.62 + b*0.95 + c*0.28 + t*0.16);
-}
-
-vec3 plasma(vec3 q, float pw, int oct){
-  float t = uFlow;
-  vec3 w = vec3(fbm(q*1.5 + vec3(0.0, t*0.32, 0.0), 3), fbm(q*1.5 + vec3(5.2, 1.3, t*0.27), 3), fbm(q*1.5 + vec3(2.7, 8.1, -t*0.3), 3));
-  vec3 s = q*2.2 + w*(1.5 + 0.8*uVol + 0.7*uBurst);
-  float rid = ridged(s + vec3(0.0, t*0.18, t*0.1), oct);
-  float cloud = fbm(s*0.8 - t*0.07, 3)*0.5 + 0.5;
-  float f = clamp(rid*1.02 - 0.06, 0.0, 1.6);
-  vec3 dark = vec3(0.16, 0.012, 0.006);
-  vec3 mid = vec3(0.95, 0.15, 0.025);
-  vec3 hot = vec3(1.0, 0.62, 0.22);
-  vec3 c = dark*(0.35 + cloud) + mid*pow(f, 2.3)*1.7 + hot*pow(f, 5.0)*2.1;
-  return c * pw;
 }
 
 void main(){
   vec2 p = (gl_FragCoord.xy - uCen) / uR;
   float r0 = length(p);
   float ang = atan(p.y, p.x);
-  float wob = (0.008 + 0.028*uVol + 0.02*uLow)*(0.5*sin(ang*2.0 + uT*1.9) + 0.35*sin(ang*3.0 - uT*2.4 + 1.3) + 0.15*sin(ang*5.0 + uT*3.3))
-            + 0.022*uBurst*sin(ang*4.0 + uT*7.0);
-  float Re = 1.0 + wob + 0.025*uLow;
-  float r = r0 / Re;
-  float px = 1.0 / uR;
-
-  if (r >= 1.0){
-    float g = exp(-(r - 1.0)*8.0) * (0.012 + 0.07*uPow*uPow + 0.12*uVol) * uAm;
-    vec3 gc = vec3(1.0, 0.16, 0.05) * g;
-    o = vec4(gc, g*0.6);
-    return;
-  }
-  float cov = clamp((1.0 - r)*uR/ max(Re, 1.0) + 0.5, 0.0, 1.0);
-
-  vec2 pn = p / Re;
-  float z = sqrt(max(0.0, 1.0 - r*r));
-  vec3 n0 = vec3(pn, z);
-
-  // superfície de água: dobras lentas + ondas que saem do centro com a voz
-  vec3 s = vec3(pn*1.25, uFlow*0.17);
-  float e = 0.07;
-  float b0 = gn(s);
-  vec2 g1 = vec2(gn(s + vec3(e,0,0)) - b0, gn(s + vec3(0,e,0)) - b0) / e;
-  vec3 s2 = vec3(pn*3.1 + 4.0, uFlow*0.3);
-  float c0 = gn(s2);
-  vec2 g2 = vec2(gn(s2 + vec3(e,0,0)) - c0, gn(s2 + vec3(0,e,0)) - c0) / e;
-  vec2 slope = g1*0.16 + g2*(0.05 + 0.05*uHigh);
-  float rr = max(r, 1e-3);
-  float dr = 0.02;
-  float dh = (ripple(min(r + dr, 1.0)) - ripple(max(r - dr, 0.0))) / (2.0*dr);
-  slope += (pn / rr) * dh * 0.032 * (0.5 + uVol);
-  slope *= 1.0 + 0.7*uVol + 0.5*uBurst;
-  vec3 n = normalize(n0 + vec3(slope, 0.0));
-
-  vec3 V = vec3(0.0, 0.0, -1.0);
-  vec3 Rf = reflect(V, n);
-  float cosv = max(dot(n, vec3(0.0, 0.0, 1.0)), 0.0);
-  float F = 0.035 + 0.965*pow(1.0 - cosv, 4.0);
-
-  // refração até o núcleo (flutua, balançando com o grave)
-  vec3 d = refract(V, n, 0.76);
-  vec3 P = n0 - vec3(0.045*sin(uT*0.7) + 0.05*uLow*sin(uT*5.0), 0.04*cos(uT*0.9) + 0.04*uLow*cos(uT*4.0), 0.0);
-  float bq = dot(P, d);
-  float rc = 0.405 + 0.03*uVol + 0.02*uBurst;
-  float cq = dot(P, P) - rc*rc;
-  float disc = bq*bq - cq;
-  float pw = (0.78 + 0.5*uVol + 0.35*uBurst + 0.18*uMid) * uPow;
+  vec2 dir = p / max(r0, 1e-3);
   int oct = uDetail > 0.5 ? 4 : 3;
 
+  // ondas da voz: nascem no topo do anel e correm pelos dois lados até embaixo
+  float at = abs(ang - 1.5708);
+  at = (at > 3.14159 ? 6.28318 - at : at) / 3.14159;
+  float wave = amp(at) * sin(at*uK*4.5 - uPh);
+  float Rr = 1.0 + 0.05*uLow + 0.07*wave + 0.012*sin(ang*3.0 + uT*1.3) + 0.02*uBurst*sin(ang*5.0 + uT*6.0);
+  float d = r0 - Rr;
+
+  // chamas: o ruído é arrastado para fora, então elas escorrem do anel
+  float fl = uFlow;
+  vec3 q = vec3(p*3.1 - dir*fl*1.05, fl*0.32);
+  float w1 = fbm(q*1.3 + vec3(4.0, 1.0, 0.0), 3);
+  float w2 = fbm(q*1.3 + vec3(9.0, 3.0, 2.0), 3);
+  vec3 q2 = q + vec3(w1*2.6, w2*2.6, 0.0);
+  float disp = fbm(q2*0.55, 3) * (0.05 + 0.05*uVol);
+  float dd = d - disp;
+  float fil = ridged(q2*1.15 + vec3(2.0, 5.0, 1.0), oct);
+
+  float pw = uPow * (0.85 + 0.45*uVol + 0.3*uBurst);
+  float reach = 11.0 / (1.0 + 0.7*uVol + 0.5*uBurst);
+  float fora = exp(-max(dd, 0.0)*reach);
+  float dentro = exp(min(dd, 0.0)*15.0) * (1.0 - smoothstep(0.0, 0.06, dd));
+
+  float nucleo = exp(-pow(dd/(0.03 + 0.01*uVol), 2.0));
+  float chama = exp(-pow((dd - 0.012)/(0.065 + 0.03*uVol + 0.02*uMid), 2.0));
+  float tend = pow(clamp(fil, 0.0, 1.5), 3.6) * 1.5 * fora * smoothstep(-0.12, 0.01, dd) * (1.0 + 0.5*uHigh);
+  float fumo = smoothstep(0.34, 0.0, dd) * smoothstep(-0.2, 0.0, dd) * (0.15 + 0.85*(fbm(q*0.7 + 7.0, 2)*0.5 + 0.5));
+
   vec3 col = vec3(0.0);
-  // redemoinho vermelho em volta (ponto de maior aproximação do raio ao centro)
-  vec3 cp = P - d*bq;
-  float dmin = length(cp);
-  float wisp = ridged(cp*2.0 + vec3(0.0, uFlow*0.2, 0.0) + fbm(cp*1.4 + uFlow*0.12, 2)*1.4, 3);
-  float halo = smoothstep(0.74, 0.22, dmin) * (0.04 + wisp*wisp*0.9);
-  col += vec3(0.7, 0.07, 0.02) * halo * 0.8 * pw;
-  if (disc > 0.0){
-    float sq = -bq - sqrt(disc);
-    vec3 hit = P + d*sq;
-    vec3 qn = hit / rc;
-    float cs = cos(uFlow*0.11), sn = sin(uFlow*0.11);
-    vec3 q = vec3(cs*qn.x + sn*qn.z, qn.y, -sn*qn.x + cs*qn.z);
-    vec3 pl = plasma(q, pw, oct);
-    float limb = pow(1.0 - abs(dot(qn, -d)), 1.6);
-    pl *= 0.82 + 0.9*limb;
-    pl += vec3(1.0, 0.5, 0.18) * pow(limb, 3.0) * 0.28 * pw;
-    float core = smoothstep(0.52, 0.0, length(P.xy - d.xy*0.0));
-    col = mix(col, pl, smoothstep(0.0, 0.08, disc));
-    col += vec3(1.0, 0.45, 0.14) * core * 0.12 * pw;
+  col += vec3(1.0, 0.86, 0.8) * nucleo * 2.3;
+  col += vec3(1.0, 0.2, 0.17) * chama * 1.7;
+  col += mix(vec3(0.5, 0.02, 0.035), vec3(1.0, 0.2, 0.16), clamp(fil, 0.0, 1.0)) * tend * 1.7;
+  col += vec3(0.4, 0.012, 0.03) * fumo * 0.4;
+  col += vec3(0.55, 0.04, 0.06) * dentro * 0.55;
+  col += vec3(0.7, 0.05, 0.06) * exp(-max(d, 0.0)*7.0) * 0.07;
+  col *= pw;
+
+  // interior: disco preto com poeira que cintila (mais densa junto à borda) e névoa carmim
+  float dentroMask = 1.0 - smoothstep(-0.02, 0.03, d);
+  if (dentroMask > 0.0){
+    vec2 cell = floor(gl_FragCoord.xy / 1.5);
+    vec3 h = hash3(vec3(cell, 11.0));
+    vec3 h2 = hash3(vec3(cell, 29.0));
+    float borda = smoothstep(0.1, 1.0, r0/Rr);
+    float lim = mix(0.992, 0.86, borda*borda);
+    float tw = 0.5 + 0.5*sin(uT*(3.0 + 5.0*(h2.x*0.5 + 0.5)) + h.z*20.0);
+    float poeira = step(lim, h.x*0.5 + 0.5) * (0.35 + 0.65*tw) * (0.45 + 0.9*uHigh);
+    vec3 pc = mix(vec3(1.0, 0.22, 0.2), vec3(1.0, 0.55, 0.4), h2.y*0.5 + 0.5);
+    pc = mix(pc, vec3(0.95, 0.15, 0.45), step(0.82, h2.z*0.5 + 0.5));
+    float neblina = (fbm(vec3(p*1.8, fl*0.12), 3)*0.5 + 0.5) * borda;
+    float raio = smoothstep(0.45, 0.0, abs(dot(p, vec2(0.72, -0.69)) ) ) * smoothstep(0.1, 0.9, dot(p, vec2(0.69, 0.72)));
+    vec3 inner = vec3(0.004, 0.0, 0.002) + pc*poeira*0.9 + vec3(0.32, 0.02, 0.05)*neblina*0.22 + vec3(0.6, 0.06, 0.2)*raio*0.05;
+    col += inner * dentroMask * uPow;
   }
-  col *= 1.0 - 0.18*F;
 
-  // vidro escuro: tinta de fundo, reflexo do estúdio, aro (fresnel) e gotículas
-  vec3 glass = vec3(0.010, 0.012, 0.020) * (0.6 + 1.0*(b0*0.5 + 0.5));
-  float rough = 0.16 + 0.8*F;
-  vec3 refl = env(Rf) * rough;
-  float rimEdge = smoothstep(0.93, 1.0, r) * (0.08 + 0.92*pow(max(0.0, dot(normalize(p + 1e-4), normalize(vec2(-0.62, -0.42)))), 1.5));
-  refl += vec3(0.6, 0.66, 1.0) * rimEdge * 0.75;
-  refl += vec3(0.4, 0.5, 0.9) * smoothstep(0.985, 1.0, r) * 0.18;
-
-  vec2 gp = pn*11.0 + vec2(uFlow*0.05, -uFlow*0.03);
-  vec2 gi = floor(gp), gf = fract(gp);
-  vec3 hh = hash3(vec3(gi, 7.0));
-  vec2 dc = gf - (0.5 + 0.3*hh.xy);
-  float gd = length(dc);
-  float drop = step(0.9, hh.z*0.5 + 0.5) * smoothstep(0.035 + 0.07*(hh.x*0.5+0.5), 0.0, gd);
-  float sp = pow(max(dot(Rf, normalize(vec3(-0.45, 0.6, 0.65))), 0.0), 18.0);
-  refl += vec3(0.8, 0.88, 1.0) * drop * (0.25 + 0.9*sp + 0.5*uHigh) * (0.35 + 0.65*z);
-
-  vec3 c = col + glass + refl;
-
-  // estados: erro pisca em falha; sem conexão, brasas
-  c *= uAm;
+  col *= uAm;
   if (uGlitch > 0.0){
-    float fl = 0.55 + 0.45*step(0.5, fract(sin(floor(uT*14.0))*43758.5));
-    c *= mix(1.0, fl, uGlitch);
-    c.r += uGlitch*0.03;
+    float fp = 0.5 + 0.5*step(0.5, fract(sin(floor(uT*14.0))*43758.5));
+    col *= mix(1.0, fp, uGlitch);
   }
-  c = vec3(1.0) - exp(-c*1.2);
-  c = pow(c, vec3(0.95));
-  o = vec4(c*cov, cov);
+  col = vec3(1.0) - exp(-col*1.45);
+  float a = clamp(max(col.r, max(col.g, col.b)), 0.0, 1.0);
+  a = max(a, dentroMask*0.93);
+  o = vec4(col, a);
 }`;
 
 function compile(gl: WebGL2RenderingContext, type: number, src: string) {
@@ -216,10 +158,10 @@ function compile(gl: WebGL2RenderingContext, type: number, src: string) {
 }
 
 /**
- * Mentor: esfera de vidro líquido com um núcleo de plasma. Parada, o plasma gira devagar dentro do vidro.
- * Quando o Mentor fala, tudo vem do áudio real: o volume faz ondas saírem do centro e correrem até a borda
- * como numa gota d'água, o grave faz a esfera inteira respirar e o núcleo balançar no líquido, os médios
- * giram o plasma, os agudos enrugam a superfície e o tom da voz muda o espaçamento das ondas.
+ * Mentor: disco preto com anel de fogo vermelho. Parado, o anel queima e escorre devagar. Quando o Mentor fala,
+ * tudo vem do áudio real: o volume faz ondas nascerem no topo do anel e correrem até embaixo como na água,
+ * o grave faz o anel respirar, os médios aceleram as chamas, os agudos fazem a poeira cintilar e o tom da voz
+ * muda o espaçamento das ondas.
  */
 export function VozEsfera({ level, dim = false, size = 280, conn = "live", resolucao }: { level: () => Bands; dim?: boolean; size?: number; conn?: Conexao; /** Teto de pixels por pixel CSS do desenho (padrão: 2 no computador, 1,5 no celular). Telas grandes usam menos. */ resolucao?: number }) {
   const canvas = useRef<HTMLCanvasElement>(null);
@@ -321,12 +263,12 @@ export function VozEsfera({ level, dim = false, size = 280, conn = "live", resol
       sm.k = follow(sm.k, 2.0 + f0n * 2.0 + sm.mid * 0.9, dt, 4, 1.5);
       sm.ph += dt * (2.2 + sm.vol * 6 + sm.high * 3 + f0n * 2) * calm;
       // o plasma corre mais rápido quanto mais ele fala
-      flow += dt * (0.55 + sm.vol * 2.4 + sm.mid * 1.2 + (c === "connecting" ? 1 : 0)) * calm;
+      flow += dt * (1.1 + sm.vol * 2.4 + sm.mid * 1.2 + (c === "connecting" ? 1 : 0)) * calm;
       const alvoPow = c === "off" ? 0.32 : c === "error" ? 0.28 : c === "connecting" ? 0.9 + 0.25 * Math.sin(t * 4.5) : 0.92;
       sm.pow = follow(sm.pow, alvoPow, dt, 4, 2.5);
       sm.glitch = follow(sm.glitch, c === "error" ? 1 : 0, dt, 8, 4);
 
-      const R = size * 0.4 * (dim ? 0.97 : 1);
+      const R = size * 0.34 * (dim ? 0.97 : 1);
       const cy = size * 0.5 + 4;
       gl.clearColor(0, 0, 0, 0);
       gl.clear(gl.COLOR_BUFFER_BIT);
@@ -373,18 +315,18 @@ export function VozEsfera({ level, dim = false, size = 280, conn = "live", resol
   }, [size, dim, resolucao]);
 
   if (fallback) {
-    const d = size * 0.8;
+    const d = size * 0.6;
     return (
       <div className="voz-fundo" aria-hidden data-testid="voz-orbe" data-estado="fallback" style={{ display: "flex", justifyContent: "center" }}>
         <div
           style={{
-            marginTop: size * 0.1,
+            marginTop: size * 0.2,
             width: d,
             height: d,
             borderRadius: "50%",
             opacity: dim ? 0.5 : 1,
-            background: "radial-gradient(circle at 50% 52%, #ffb25a 0%, #ff4a12 16%, #8a1608 30%, #1a0a0c 48%, #05070d 72%)",
-            boxShadow: "inset 0 0 0 1px rgb(150 170 255 / 0.35), inset 6px 8px 22px rgb(120 150 255 / 0.18), 0 0 26px rgb(255 40 20 / 0.25)",
+            background: "radial-gradient(circle, #050102 0%, #050102 70%, #3a0508 82%, #000 100%)",
+            boxShadow: "0 0 0 3px rgb(255 235 230 / 0.9), 0 0 14px 4px rgb(255 40 30 / 0.9), 0 0 46px 12px rgb(215 25 32 / 0.5)",
           }}
         />
       </div>
