@@ -4,13 +4,24 @@
  * e o passo a passo em português.
  */
 export type Operation = "soma" | "subtracao" | "multiplicacao" | "divisao" | "mmc" | "mdc";
-export interface Cell { t: string; top?: string; pre?: string; strike?: boolean; tone?: "res" | "dim" | "alert" }
+/** Estado de uma célula que muda ao longo dos passos (ex.: o "vai um" que é apagado na linha seguinte). */
+export interface CellState { t: string; p: number; pe?: number }
+/**
+ * `p`: passo em que o algarismo aparece (sem `p` = sempre visível); `pe`: passo em que some.
+ * `pa`: passo em que entram as marcas (riscado, número acima); `pp`: passo do "1" de empréstimo (padrão = `pa`).
+ * `alt`: vários estados no mesmo lugar (vale o último ativo).
+ */
+export interface Cell { t: string; top?: string; pre?: string; strike?: boolean; tone?: "res" | "dim" | "alert" | "vai"; p?: number; pe?: number; pa?: number; pp?: number; alt?: CellState[] }
 export interface Row { cells: Cell[]; rule?: boolean; /** Coluna (0-based) a partir da qual a linha começa; o resto é vazio. */ gap?: number }
 export interface Worked {
   title: string;
   rows: Row[];
   /** Para divisão: divisor e quociente ao lado da grade. */
   side?: { divisor: string; quotient: string };
+  /** Algarismos do quociente com o passo em que cada um aparece (divisão armada). */
+  quotientCells?: { t: string; p: number }[];
+  /** Por passo: células [linha, coluna] que estão sendo usadas na conta, para destacar na tela. */
+  focos?: [number, number][][];
   /** Para fatoração: coluna dos primos (uma por linha da grade). */
   primes?: string[];
   steps: string[];

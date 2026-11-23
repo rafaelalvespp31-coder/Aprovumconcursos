@@ -7,14 +7,22 @@
  *   mmc 12 18           3/4                direta 6 24 9      2 5           20 150 R$
  *   divisao 432 12      1/2 + 1/3          inversa 4 6 8
  */
-import { worked, type Worked } from "./hand-math";
+import { contaCaderno } from "./caderno-conta";
+import { equacao1, equacao2, expressao, raiz } from "./calc-algebra";
+import { financeira, geometria, proporcao, reduzir, regra3Composta, unidade } from "./calc-medidas";
+import type { CadernoLinhas, Figura, LinhaCaderno } from "./calc-tipos";
+import type { Operation, Worked } from "./hand-math";
 
-export const LINGUAGENS_CALCULO = ["conta", "fracao", "regra3", "potencia", "porcentagem"] as const;
+export const LINGUAGENS_CALCULO = [
+  "conta", "fracao", "regra3", "potencia", "porcentagem", "expressao", "equacao", "equacao2", "raiz", "razao", "simplificar",
+  "proporcao", "regra3c", "unidade", "geometria", "financeira",
+] as const;
 export type LinguagemCalculo = (typeof LINGUAGENS_CALCULO)[number];
 
 export type TermoFracao = { n: number; d: number; rotulo: string };
 export type VisualCalculo =
   | { k: "armada"; w: Worked }
+  | { k: "linhas"; linhas: LinhaCaderno[]; fig?: Figura }
   | { k: "fracao"; termos: TermoFracao[]; resultado: { n: number; d: number } | null }
   | { k: "regra3"; direta: boolean; a: string; b: string; c: string; x: string; rotuloA: string; rotuloB: string }
   | { k: "potencia"; base: number; exp: number; produtos: number[] }
@@ -28,28 +36,72 @@ const mmc2 = (a: number, b: number) => (a / gcd(a, b)) * b;
 const inteiro = (s: string | undefined) => (s !== undefined && /^\d{1,9}$/.test(s) ? Number(s) : NaN);
 const sup = (n: number) => String(n).replace(/\d/g, (d) => "⁰¹²³⁴⁵⁶⁷⁸⁹"[Number(d)]!);
 
+const doLinhas = (tipo: LinguagemCalculo, c: CadernoLinhas | null): Calculo | null =>
+  c ? { tipo, titulo: c.titulo, passos: c.passos, resultado: c.resultado, visual: { k: "linhas", linhas: c.linhas, fig: c.fig } } : null;
+const semAcento = (t: string) => t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+const numPt = (t: string | undefined) => (t !== undefined && /^\d+(?:[.,]\d+)?$/.test(t) ? Number(t.replace(",", ".")) : NaN);
+
 export function parseCalculo(linguagem: string, corpo: string): Calculo | null {
   const linhas = corpo.split("\n").map((l) => l.trim()).filter(Boolean);
   if (!linhas.length) return null;
   try {
+    const t = linhas[0]!.split(/\s+/);
     switch (linguagem) {
       case "conta": return conta(linhas[0]!);
       case "fracao": return fracao(linhas[0]!);
       case "regra3": return regra3(linhas);
       case "potencia": return potencia(linhas[0]!);
       case "porcentagem": return porcentagem(linhas[0]!);
+      case "expressao": return doLinhas("expressao", expressao(linhas.join(" ")));
+      case "equacao": return doLinhas("equacao", equacao1(linhas[0]!));
+      case "equacao2": { const n = t.map((x) => Number(x.replace("−", "-").replace(",", "."))); return n.length === 3 ? doLinhas("equacao2", equacao2(n[0]!, n[1]!, n[2]!)) : null; }
+      case "raiz": { const n = t.map(Number); return n.length === 1 ? doLinhas("raiz", raiz(2, n[0]!)) : n.length === 2 ? doLinhas("raiz", raiz(n[0]!, n[1]!)) : null; }
+      case "razao": case "simplificar": {
+        const n = linhas[0]!.split(/[\s:/]+/).map(Number);
+        return n.length === 2 ? doLinhas(linguagem, reduzir(n[0]!, n[1]!, linguagem === "razao" ? "razao" : "fracao")) : null;
+      }
+      case "proporcao": { const n = t.map(numPt); return n.length === 3 ? doLinhas("proporcao", proporcao(n[0]!, n[1]!, n[2]!)) : null; }
+      case "regra3c": return regra3c(linhas);
+      case "unidade": { const v = numPt(t[0]); return t.length === 3 ? doLinhas("unidade", unidade(v, t[1]!, t[2]!)) : null; }
+      case "geometria": {
+        const forma = semAcento(t[0] ?? "");
+        const n: number[] = [];
+        let un = "";
+        for (const x of t.slice(1)) { const v = numPt(x); if (Number.isNaN(v)) un = x; else n.push(v); }
+        return doLinhas("geometria", geometria(forma, n, un));
+      }
+      case "financeira": {
+        const modo = semAcento(t[0] ?? "");
+        const n = t.slice(1).map(numPt);
+        return (modo === "simples" || modo === "composto") && n.length === 3 ? doLinhas("financeira", financeira(modo, n[0]!, n[1]!, n[2]!)) : null;
+      }
       default: return null;
     }
   } catch { return null; }
 }
 
+/** Regra de três composta: nomes | valores da situação 1 | valores da situação 2 (com x) | relações. */
+function regra3c(linhas: string[]): Calculo | null {
+  if (linhas.length < 4) return null;
+  const nomes = linhas[0]!.split("|").map((x) => x.trim()).filter(Boolean);
+  const v1 = linhas[1]!.split(/\s+/).map(numPt);
+  const v2txt = linhas[2]!.split(/\s+/);
+  if (v2txt[v2txt.length - 1]?.toLowerCase() !== "x") return null;
+  const v2 = v2txt.slice(0, -1).map(numPt);
+  const rel = linhas[3]!.split("|").map((x) => semAcento(x.trim())).map((x) => (x === "direta" ? "direta" : x === "inversa" ? "inversa" : null));
+  if (rel.some((r) => !r) || [...v1, ...v2].some(Number.isNaN)) return null;
+  return doLinhas("regra3c", regra3Composta(nomes, v1, v2, rel as ("direta" | "inversa")[]));
+}
+
+/** Aceita inteiros e decimais (vírgula ou ponto). Com decimais, só soma e subtração (vírgula alinhada). */
 function conta(linha: string): Calculo | null {
   const [op, ...resto] = linha.toLowerCase().split(/\s+/);
   const nomes = ["soma", "subtracao", "multiplicacao", "divisao", "mmc", "mdc"] as const;
   if (!op || !(nomes as readonly string[]).includes(op)) return null;
-  const nums = resto.map(inteiro);
-  if (nums.some(Number.isNaN)) return null;
-  const w = worked(op as (typeof nomes)[number], nums);
+  if (!resto.every((x) => /^\d{1,9}(?:[.,]\d{1,3})?$/.test(x))) return null;
+  const casas = Math.max(0, ...resto.map((x) => (x.split(/[.,]/)[1] ?? "").length));
+  const nums = resto.map((x) => { const [i, d = ""] = x.split(/[.,]/); return Number(i + d.padEnd(casas, "0")); });
+  const w = contaCaderno(op as Operation, nums, casas);
   return w ? { tipo: "conta", titulo: w.title, passos: w.steps, resultado: w.result, visual: { k: "armada", w } } : null;
 }
 
@@ -146,18 +198,34 @@ function potencia(linha: string): Calculo | null {
 }
 
 function porcentagem(linha: string): Calculo | null {
-  const m = linha.match(/^(\d+(?:[.,]\d+)?)\s+(\d+(?:[.,]\d+)?)(?:\s+(R\$))?$/);
+  const m = linha.toLowerCase().match(/^(?:(desconto|aumento|quanto|de)\s+)?(\d+(?:[.,]\d+)?)\s+(\d+(?:[.,]\d+)?)(?:\s+(r\$))?$/);
   if (!m) return null;
-  const pct = Number(m[1]!.replace(",", ".")), total = Number(m[2]!.replace(",", "."));
-  const dinheiro = m[3] === "R$";
+  const modo = m[1] ?? "de";
+  const A = Number(m[2]!.replace(",", ".")), B = Number(m[3]!.replace(",", "."));
+  const dinheiro = m[4] === "r$";
   const fm = (n: number) => (dinheiro ? `R$ ${n.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : nf(n, 2));
+  if (modo === "quanto") {
+    if (!B) return null;
+    const razao = A / B;
+    return { tipo: "porcentagem", titulo: `${fm(A)} é quantos % de ${fm(B)}?`,
+      passos: [`Porcentagem é uma fração de denominador 100. Para saber quantos % ${fm(A)} é de ${fm(B)}, dividimos a parte pelo todo.`, `Dividimos: ${fm(A)} ÷ ${fm(B)} = ${nf(razao, 4)}.`, `Para transformar em porcentagem, multiplicamos por 100: ${nf(razao, 4)} × 100 = ${nf(razao * 100, 2)}.`, `Então ${fm(A)} é ${nf(razao * 100, 2)}% de ${fm(B)}.`],
+      resultado: `${fm(A)} é ${nf(razao * 100, 2)}% de ${fm(B)}`, visual: { k: "percentual", pct: Math.min(100, razao * 100), total: fm(B), parte: fm(A) } };
+  }
+  const pct = A, total = B;
   const parte = (pct * total) / 100;
   const passos = [
     `${nf(pct)}% quer dizer "${nf(pct)} em cada 100". Como fração: ${nf(pct)}/100.`,
     `Transforme em decimal dividindo por 100: ${nf(pct)} ÷ 100 = ${nf(pct / 100, 4)}.`,
-    `Multiplique pelo total: ${nf(pct / 100, 4)} × ${fm(total)}.`,
-    `Resultado: ${fm(parte)}.`,
+    `Multiplique pelo total: ${nf(pct / 100, 4)} × ${fm(total)} = ${fm(parte)}.`,
   ];
-  if (pct % 10 === 0 && pct > 0 && pct < 100) passos.splice(3, 0, `Atalho: 10% de ${fm(total)} é ${fm(total / 10)}; então ${nf(pct)}% são ${pct / 10} × ${fm(total / 10)}.`);
-  return { tipo: "porcentagem", titulo: `${nf(pct)}% de ${fm(total)}`, passos, resultado: `${nf(pct)}% de ${fm(total)} = ${fm(parte)}`, visual: { k: "percentual", pct: Math.min(100, pct), total: fm(total), parte: fm(parte) } };
+  if (pct % 10 === 0 && pct > 0 && pct < 100) passos.splice(2, 0, `Atalho: 10% de ${fm(total)} é ${fm(total / 10)}; então ${nf(pct)}% são ${pct / 10} × ${fm(total / 10)}.`);
+  let titulo = `${nf(pct)}% de ${fm(total)}`;
+  let resultado = `${titulo} = ${fm(parte)}`;
+  if (modo === "desconto" || modo === "aumento") {
+    const final = modo === "desconto" ? total - parte : total + parte;
+    passos.push(`${modo === "desconto" ? "Desconto" : "Aumento"} é ${fm(parte)}. ${modo === "desconto" ? `O preço final é o preço menos o desconto: ${fm(total)} − ${fm(parte)}` : `O valor final é o valor mais o aumento: ${fm(total)} + ${fm(parte)}`} = ${fm(final)}.`);
+    titulo = `${modo === "desconto" ? "Desconto" : "Aumento"} de ${nf(pct)}% sobre ${fm(total)}`;
+    resultado = `${titulo}: ${fm(parte)}; valor final ${fm(final)}`;
+  } else passos.push(`Resultado: ${fm(parte)}.`);
+  return { tipo: "porcentagem", titulo, passos, resultado, visual: { k: "percentual", pct: Math.min(100, pct), total: fm(total), parte: fm(parte) } };
 }

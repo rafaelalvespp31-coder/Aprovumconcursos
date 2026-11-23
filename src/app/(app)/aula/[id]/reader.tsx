@@ -23,6 +23,7 @@ import { FeedbackModal } from "@/components/aula/feedback-modal";
 import { dispensarFeedbackAction, enviarFeedbackAction } from "./feedback-actions";
 import { LessonTreePortal, type BoardOutlineItem } from "@/components/aula/lesson-board";
 import { ApostilaMarkdown } from "@/components/aula/apostila-markdown";
+import { secaoCaderno } from "@/domain/content/exemplos-caderno";
 import { ApostilaQuestion } from "@/components/aula/apostila-question";
 import { PracticeCtx, practiceDone, type PracticeProgress, type PracticeState } from "@/components/aula/practice-progress";
 import { apostilaPages, groupIntoModules, pageKey, type ApostilaPage } from "@/domain/content/apostila";
@@ -490,6 +491,7 @@ export function LessonReader(props: ReaderProps) {
               section={s}
               numero={si + 1}
               total={m.sections.length}
+              caderno={i === 0 && si === 0 ? secaoCaderno(props.meta?.subject, lesson.title) : ""}
               subject={`${props.meta?.subject ?? ""} ${lesson.title} ${lesson.trailTitle}`}
               lessonTitle={lesson.title}
               lessonId={lesson.id}
@@ -797,6 +799,7 @@ function ApostilaSection({
   section: s,
   numero,
   total,
+  caderno = "",
   subject,
   lessonTitle,
   lessonId,
@@ -807,6 +810,8 @@ function ApostilaSection({
   section: ReaderSection;
   numero: number;
   total: number;
+  /** Markdown "Vamos fazer no caderno" (exemplos de conta fáceis → difíceis), só na 1ª seção de aula de Matemática. */
+  caderno?: string;
   subject?: string | null;
   lessonTitle?: string;
   lessonId: string;
@@ -837,6 +842,7 @@ function ApostilaSection({
           {tree.after && <ApostilaMarkdown legal={legal}>{tree.after}</ApostilaMarkdown>}
         </>
       ) : md.trim() ? <ApostilaMarkdown legal={legal}>{md}</ApostilaMarkdown> : null}
+      {caderno && !flash && !/```(conta|fracao|regra3|regra3c|potencia|porcentagem|expressao|equacao|equacao2|raiz|razao|simplificar|proporcao|unidade|geometria|financeira)\b/.test(s.body_markdown) && <ApostilaMarkdown>{caderno}</ApostilaMarkdown>}
       {legal && <p className="ap-nota">Confira sempre a redação vigente no Portal da Legislação do Planalto.</p>}
       {cases.length > 0 && (
         <div className="ap-pratica">

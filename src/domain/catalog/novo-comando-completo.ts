@@ -21,7 +21,14 @@ Para desenhar a conta, escreva APENAS os números num bloco de código com a lin
 \`\`\`fracao  →  3/4 (representar) ou 1/2 + 1/3 (também - x :). Ex.: 2/3 x 3/4
 \`\`\`regra3  →  direta|inversa A B C; linha seguinte opcional "Grandeza 1 | Grandeza 2". Ex.: direta 6 24 9
 \`\`\`potencia  →  base expoente. Ex.: 2 5
-\`\`\`porcentagem  →  percentual total [R$]. Ex.: 20 150 R$
+\`\`\`porcentagem  →  percentual total [R$] ou desconto|aumento|quanto. Ex.: 20 150 R$ · desconto 20 150 R$ · quanto 30 150
+\`\`\`expressao  →  a expressão com + − x : e parênteses. Ex.: 2 + 3 x (10 - 4) : 2
+\`\`\`equacao  →  1º grau, ex.: 2x + 3 = 11  ·  \`\`\`equacao2 → a b c do 2º grau, ex.: 1 -5 6
+\`\`\`raiz  →  144 (quadrada) ou 3 27 (índice e radicando)  ·  \`\`\`razao 12 18  ·  \`\`\`simplificar 18 24  ·  \`\`\`proporcao 3 12 5
+\`\`\`regra3c  →  regra de três composta em 4 linhas: nomes | valores da 1ª situação | valores da 2ª (x) | direta ou inversa de cada grandeza
+\`\`\`unidade  →  valor de para. Ex.: 3,5 km m  ·  \`\`\`geometria  →  retangulo 8 5 cm, circulo 3 cm, pitagoras 3 4…  ·  \`\`\`financeira  →  simples|composto capital taxa% tempo
+Decimais: soma e subtracao aceitam vírgula (soma 12,5 3,25). Dentro dos blocos escreva só os números, nunca o resultado.
+Ordem dos exemplos: do mais fácil ao mais difícil (ex.: soma 25 13 → subtracao 45 12 → multiplicacao 12 3 → divisao 12 3 → contas com "vai um" e empréstimo → multiplicacao 248 36). Cada exemplo é calculado e conferido pelo app, passo a passo, como no caderno.
 Use pelo menos um bloco desenhado por conceito de cálculo e, depois dele, 1 exercício parecido com a correção comentada e o erro mais comum explicado. Equações, geometria e demais assuntos: monte cada operação em uma linha e explique a troca em palavras simples.
 O EXEMPLO RESOLVIDO NÃO se repete em ":::exemplo": o exemplo fica no bloco desenhado.
 `;

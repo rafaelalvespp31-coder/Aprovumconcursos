@@ -37,6 +37,9 @@ describe("cálculos visuais da aula", () => {
     expect(parseCalculo("porcentagem", "20 150 R$")?.resultado).toBe("20% de R$ 150,00 = R$ 30,00");
     expect(parseCalculo("porcentagem", "15 200")?.resultado).toBe("15% de 200 = 30");
     expect(parseCalculo("porcentagem", "abc")).toBeNull();
+    expect(parseCalculo("porcentagem", "desconto 20 150 R$")?.resultado).toContain("valor final R$ 120,00");
+    expect(parseCalculo("porcentagem", "aumento 10 200")?.resultado).toContain("valor final 220");
+    expect(parseCalculo("porcentagem", "quanto 30 150")?.resultado).toBe("30 é 20% de 150");
   });
   it("linguagem desconhecida ou vazia não vira cálculo", () => {
     expect(parseCalculo("outra", "1 2")).toBeNull();

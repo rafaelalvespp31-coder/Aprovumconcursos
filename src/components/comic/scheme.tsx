@@ -178,7 +178,7 @@ function Compare({ scheme }: { scheme: Extract<Scheme, { tipo: "comparacao" }> }
   );
 }
 
-const CELL_TONE: Record<NonNullable<Cell["tone"]>, string> = { res: "text-[#B3261E] font-black", dim: "text-[#1D3A8A]/45", alert: "text-[#C77700]" };
+const CELL_TONE: Record<NonNullable<Cell["tone"]>, string> = { res: "text-[#B3261E] font-black", dim: "text-[#1D3A8A]/45", alert: "text-[#C77700]", vai: "text-[#B3261E]" };
 
 function Cells({ cells, cols }: { cells: Cell[]; cols: number }) {
   return (
