@@ -22,4 +22,11 @@ describe("Novo Comando Completo", () => {
   it("sem subtópicos devolve vazio", () => {
     expect(buildNovoComandoCompleto({ disciplineMode: "direito_penal", group, subs: [] })).toBe("");
   });
+  it("matemática ensina com a conta desenhada; as demais matérias não recebem o bloco", () => {
+    const m = buildNovoComandoCompleto({ disciplineMode: "matematica", group, subs: [sub] });
+    expect(m).toContain("ENSINE COM A CONTA DESENHADA");
+    expect(m).toContain("```regra3");
+    expect(m).not.toMatch(/\{\{[A-Z]+\}\}/);
+    expect(buildNovoComandoCompleto({ disciplineMode: "direito_penal", group, subs: [sub] })).not.toContain("CONTA DESENHADA");
+  });
 });

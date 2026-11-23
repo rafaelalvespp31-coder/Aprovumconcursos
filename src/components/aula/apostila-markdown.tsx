@@ -1,3 +1,5 @@
+import { CalculoVisual } from "@/components/aula/calculo-visual";
+import { LINGUAGENS_CALCULO } from "@/domain/content/calc-visual";
 import ReactMarkdown from "react-markdown";
 import { limparMatematica } from "@/domain/lesson/math-text";
 import remarkGfm from "remark-gfm";
@@ -84,7 +86,13 @@ function MdInner({ children, legal = false, subject = null, titulo = "" }: { chi
             if (!legal && isHeadingItem(t)) { mode = /exemplo|caso/i.test(t) ? "ex" : null; return <li className="ap-li-titulo">{c}</li>; }
             return <li>{c}</li>;
           },
-          pre: ({ children: c }) => <pre>{c}</pre>,
+          pre: ({ node, children: c }) => {
+            // bloco de cálculo (```conta, ```fracao…): vira o passo a passo visual; qualquer outro bloco continua como código
+            const cod = (node as unknown as { children?: Array<{ properties?: { className?: string[] } }> } | undefined)?.children?.[0];
+            const lang = cod?.properties?.className?.find((x) => x.startsWith("language-"))?.slice(9);
+            if (lang && (LINGUAGENS_CALCULO as readonly string[]).includes(lang)) return <CalculoVisual linguagem={lang} corpo={textOf(cod as unknown as ElementContent).replace(/\n$/, "")} />;
+            return <pre>{c}</pre>;
+          },
           p: ({ node, children: c }) => {
             if (!legal) {
               const t = textOf(node as unknown as ElementContent).trim();

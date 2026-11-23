@@ -839,9 +839,6 @@ function ApostilaSection({
       ) : md.trim() ? <ApostilaMarkdown legal={legal}>{md}</ApostilaMarkdown> : null}
       {legal && <p className="ap-nota">Confira sempre a redação vigente no Portal da Legislação do Planalto.</p>}
       {cases.length > 0 && (
-        <ApostilaMarkdown legal={legal}>{cases.map((c, i) => [`#### Exemplo ${cases.length > 1 ? i + 1 : ""}`.trim(), `**Situação:** ${c.situation}`, c.question ? `**Pergunta:** ${c.question}` : "", `**Resposta:** ${c.answer}`].filter(Boolean).join("\n\n")).join("\n\n")}</ApostilaMarkdown>
-      )}
-      {cases.length > 0 && (
         <div className="ap-pratica">
           <PracticeCard progressKey={s.id} cases={cases} onReread={() => document.getElementById(sectionDomId(s.id))?.scrollIntoView({ behavior: "smooth", block: "start" })} />
         </div>
