@@ -40,17 +40,14 @@ const menu = (rota: string, naArea = false): Alvo[] => [
   ...(naArea ? [{ sel: `${MENU_INFERIOR} a[href="/area-do-aluno"]`, nota: "No celular, esta opção fica dentro de “Área”, no menu de baixo." } as Alvo] : []),
 ];
 
-const PAINEL = '[data-testid="painel"]';
 
 export const TUTORIAIS: Tutorial[] = [
   {
     id: TOUR_ID,
     titulo: "Conheça o APROVUM",
     resumo: "O tour completo pelas principais ferramentas.",
-    rota: "/painel",
+    rota: "/trilhas",
     passos: [
-      { id: "painel", titulo: "PAINEL INICIAL", rota: "/painel", alvos: [`${PAINEL} > div.grid > :nth-child(1)`, PAINEL], lado: "bottom", texto: "Este é o seu painel principal. Aqui você acompanha sua preparação, visualiza seu progresso e encontra os principais recursos para continuar estudando." },
-      { id: "continuar", titulo: "CONTINUAR ESTUDANDO", rota: "/painel", alvos: [`${PAINEL} > div.grid > :nth-child(2)`, PAINEL], lado: "bottom", texto: "Aqui aparece a sua próxima aula. Um clique e você retoma de onde parou; logo abaixo, a faixa de continuação mostra as últimas aulas que você abriu." },
       { id: "estudos", titulo: "ESTUDOS: MATÉRIAS E AULAS", alvos: menu("/trilhas"), lado: "right", texto: "Em Estudos ficam suas matérias e assuntos. Entre numa matéria, escolha o assunto e abra a aula para ler o conteúdo e responder as questões dela." },
       { id: "novo", titulo: "NOVO ESTUDO", alvos: menu("/nova-trilha"), lado: "right", texto: "Quer começar outra matéria ou aula? Em Novo Estudo você escolhe a matéria e a aula no mapa do conhecimento." },
       { id: "mentor", titulo: "MENTOR APROVUM", alvos: ['[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "Este é o Mentor. Toque nele para ver seu plano e suas prioridades, tirar dúvidas e conversar por voz na aba Voz. Você pode arrastá-lo para o lugar que preferir." },
@@ -63,7 +60,7 @@ export const TUTORIAIS: Tutorial[] = [
       { id: "desempenho", titulo: "DESEMPENHO", alvos: menu("/desempenho", true), lado: "right", texto: "Acompanhe suas respostas, seus acertos e sua evolução, e descubra em que assuntos você mais erra." },
       { id: "redacao", titulo: "REDAÇÃO ELITE", alvos: menu("/redacao", true), lado: "right", texto: "Escreva sua redação e receba correção. Aqui você também treina com propostas de tema e exercícios." },
       { id: "perfil", titulo: "PERFIL, NÍVEL E CONQUISTAS", rota: "/perfil", alvos: ['[data-testid="perfil-carteirinha"]', '[data-testid="nivel"]', '[data-testid="perfil-topo"]'], lado: "bottom", texto: "No Perfil ficam seus dados, suas metas, seu nível e suas conquistas. Cada medalha mostra o quanto falta para você ganhá-la." },
-      { id: "app-avisos", titulo: "ÍCONE NO CELULAR E AVISOS", rota: "/painel", alvos: ['[data-testid="mentor-avisos"]', '[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "Instale o APROVUM como ícone na tela do celular: no Android, Chrome → ⋮ → Instalar app; no iPhone, Safari → Compartilhar → Adicionar à Tela de Início. Depois toque no sininho do Mentor para ativar os avisos: revisões e concursos chegam mesmo com o app fechado." },
+      { id: "app-avisos", titulo: "ÍCONE NO CELULAR E AVISOS", rota: "/trilhas", alvos: ['[data-testid="mentor-avisos"]', '[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "Instale o APROVUM como ícone na tela do celular: no Android, Chrome → ⋮ → Instalar app; no iPhone, Safari → Compartilhar → Adicionar à Tela de Início. Depois toque no sininho do Mentor para ativar os avisos: revisões e concursos chegam mesmo com o app fechado." },
       { id: "plano", titulo: "MEU PLANO", alvos: menu("/plano"), lado: "right", texto: "Em Meu Plano você vê o seu plano atual e pode escolher outro para estudar sem os limites diários." },
     ],
   },
@@ -91,22 +88,22 @@ export const TUTORIAIS: Tutorial[] = [
     id: "mentor",
     titulo: "Como usar o Mentor e a lousa",
     resumo: "Dúvidas, voz e explicações no quadro.",
-    rota: "/painel",
+    rota: "/trilhas",
     passos: [
-      { id: "bolha", titulo: "ABRA O MENTOR", rota: "/painel", alvos: ['[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "Toque no Mentor para abrir. Ele mostra seu plano e suas prioridades de estudo." },
-      { id: "voz", titulo: "CONVERSE POR VOZ", rota: "/painel", alvos: ['[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "Na aba Voz você conversa com o Mentor falando. Pergunte o que quiser sobre a matéria que está estudando." },
-      { id: "lousa", titulo: "PEÇA O QUADRO", rota: "/painel", alvos: ['[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "Peça “mostra no quadro” e ele escreve e desenha enquanto explica. Diga “fecha a lousa” para fechar. Se não entender, peça para explicar de outro jeito." },
+      { id: "bolha", titulo: "ABRA O MENTOR", rota: "/trilhas", alvos: ['[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "Toque no Mentor para abrir. Ele mostra seu plano e suas prioridades de estudo." },
+      { id: "voz", titulo: "CONVERSE POR VOZ", rota: "/trilhas", alvos: ['[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "Na aba Voz você conversa com o Mentor falando. Pergunte o que quiser sobre a matéria que está estudando." },
+      { id: "lousa", titulo: "PEÇA O QUADRO", rota: "/trilhas", alvos: ['[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "Peça “mostra no quadro” e ele escreve e desenha enquanto explica. Diga “fecha a lousa” para fechar. Se não entender, peça para explicar de outro jeito." },
     ],
   },
   {
     id: "app-avisos",
     titulo: "Instale o app e ative os avisos",
     resumo: "Ícone na tela do celular (Android e iPhone) e notificações.",
-    rota: "/painel",
+    rota: "/trilhas",
     passos: [
-      { id: "android", titulo: "ANDROID: INSTALE O APP", rota: "/painel", alvos: ['[data-testid="mentor-avisos"]', '[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "No Android, abra o APROVUM no Chrome, toque nos três pontinhos (⋮) e em “Instalar app” (ou “Adicionar à tela inicial”). O ícone da APROVUM aparece na tela do celular." },
-      { id: "ios", titulo: "IPHONE: ADICIONE À TELA DE INÍCIO", rota: "/painel", alvos: ['[data-testid="mentor-avisos"]', '[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "No iPhone, abra o APROVUM no Safari, toque em Compartilhar (o quadrado com a seta) e em “Adicionar à Tela de Início”. Depois abra o app pelo ícone novo. Exige iOS 16.4 ou mais novo." },
-      { id: "sino", titulo: "ATIVE O SININHO DO MENTOR", rota: "/painel", alvos: ['[data-testid="mentor-avisos"]', '[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "Abra o Mentor e toque no sininho do topo. Permita os avisos quando o celular perguntar. Pronto: lembretes de revisão e concursos abertos chegam mesmo com o app fechado." },
+      { id: "android", titulo: "ANDROID: INSTALE O APP", rota: "/trilhas", alvos: ['[data-testid="mentor-avisos"]', '[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "No Android, abra o APROVUM no Chrome, toque nos três pontinhos (⋮) e em “Instalar app” (ou “Adicionar à tela inicial”). O ícone da APROVUM aparece na tela do celular." },
+      { id: "ios", titulo: "IPHONE: ADICIONE À TELA DE INÍCIO", rota: "/trilhas", alvos: ['[data-testid="mentor-avisos"]', '[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "No iPhone, abra o APROVUM no Safari, toque em Compartilhar (o quadrado com a seta) e em “Adicionar à Tela de Início”. Depois abra o app pelo ícone novo. Exige iOS 16.4 ou mais novo." },
+      { id: "sino", titulo: "ATIVE O SININHO DO MENTOR", rota: "/trilhas", alvos: ['[data-testid="mentor-avisos"]', '[data-testid="mentor-bolha"]', '[data-testid="mentor-flutuante"]'], lado: "left", texto: "Abra o Mentor e toque no sininho do topo. Permita os avisos quando o celular perguntar. Pronto: lembretes de revisão e concursos abertos chegam mesmo com o app fechado." },
     ],
   },
   {

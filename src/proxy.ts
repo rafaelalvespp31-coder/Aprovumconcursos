@@ -7,7 +7,7 @@ import { canonicalRedirect } from "@/domain/auth/identity";
  * Renova a sessão do Supabase a cada requisição e protege as rotas privadas.
  * A autorização definitiva acontece no servidor (requireUser) e no banco (RLS).
  */
-const PRIVATE_PREFIXES = ["/questoes", "/painel", "/missao", "/trilhas", "/nova-trilha", "/aula", "/desempenho", "/perfil", "/admin", "/revisoes", "/banco", "/quiz", "/mentor", "/meu-plano-de-estudo", "/business", "/plano", "/depoimentos", "/concursos", "/area-do-aluno"];
+const PRIVATE_PREFIXES = ["/questoes", "/painel", "/trilhas", "/nova-trilha", "/aula", "/desempenho", "/perfil", "/admin", "/revisoes", "/banco", "/quiz", "/mentor", "/meu-plano-de-estudo", "/business", "/plano", "/depoimentos", "/concursos", "/area-do-aluno"];
 
 export async function proxy(request: NextRequest) {
   // Produção: sempre no endereço oficial (aprovumconcursos.com.br), com o mesmo caminho.

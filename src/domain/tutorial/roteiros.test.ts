@@ -25,8 +25,8 @@ describe("roteiros do tour", () => {
   it("segmentos agrupam passos seguidos da mesma rota", () => {
     const t = tutorialPorId(TOUR_ID)!;
     const seg = segmentos(t.passos, t.rota);
-    expect(seg[0]).toMatchObject({ rota: "/painel", de: 0 });
+    expect(seg[0]).toMatchObject({ rota: "/trilhas", de: 0 });
     expect(seg[seg.length - 1]!.ate).toBe(t.passos.length - 1);
-    expect(seg.length).toBeGreaterThanOrEqual(2); // painel e perfil
+    expect(seg.length).toBeGreaterThanOrEqual(2); // estudos e perfil
   });
 });

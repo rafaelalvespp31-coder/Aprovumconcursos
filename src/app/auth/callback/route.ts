@@ -5,8 +5,8 @@ import { createUserClient } from "@/server/supabase";
 /** Confirmação de e-mail e link de redefinição de senha (PKCE ou token_hash). */
 export async function GET(request: NextRequest) {
   const url = request.nextUrl;
-  const nextParam = url.searchParams.get("next") ?? "/missao";
-  const next = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/missao";
+  const nextParam = url.searchParams.get("next") ?? "/painel";
+  const next = nextParam.startsWith("/") && !nextParam.startsWith("//") ? nextParam : "/painel";
   const supabase = await createUserClient();
 
   const code = url.searchParams.get("code");

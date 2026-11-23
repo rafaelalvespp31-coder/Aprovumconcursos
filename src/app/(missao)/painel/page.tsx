@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 /** Home pós-login: Mentor 3D, a pergunta e o campo de concurso. O restante do app segue nas rotas de sempre. */
 export default async function MissaoPage() {
-  const user = await requireUser("/missao");
+  const user = await requireUser("/painel");
   const dados = await carregarMissao(user.id).catch(() => ({ primeiroNome: null, objetivo: null, iniciais: [], editais: [] }));
   return <CentralMissao {...dados} email={user.email} sugerir={sugerirConcursosAction} escolher={escolherConcursoAction} />;
 }

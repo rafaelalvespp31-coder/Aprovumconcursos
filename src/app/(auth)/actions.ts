@@ -91,7 +91,7 @@ export async function signIn(_: AuthState, form: FormData): Promise<AuthState> {
   await endOtherSessions(supabase);
   // Sócio administrativo cai no APROVUM BUSINESS (conferido no servidor), mas continua aluno:
   // se pediu uma página específica, vai para ela; dos dois lados há atalho para o outro.
-  const fallback = signed.user && (await getPartnerStatus(signed.user.id)).isPartner ? "/business" : "/missao";
+  const fallback = signed.user && (await getPartnerStatus(signed.user.id)).isPartner ? "/business" : "/painel";
   redirect(safeNext(form.get("next"), fallback));
 }
 
@@ -129,7 +129,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     password: parsed.data.password,
     options: {
       data: { display_name: parsed.data.name, avatar_gender: parsed.data.gender, whatsapp: parsed.data.whatsapp ? normalizeWhatsapp(parsed.data.whatsapp) : null },
-      emailRedirectTo: `${authBaseUrl()}/auth/callback?next=/missao`,
+      emailRedirectTo: `${authBaseUrl()}/auth/callback?next=/painel`,
     },
   });
   if (error) {
@@ -144,7 +144,7 @@ export async function signUp(_: AuthState, form: FormData): Promise<AuthState> {
     await ensureReferralCode(data.user.id).catch((e) => console.error("referral.code", (e as Error).message));
   }
   // Sem confirmação de e-mail habilitada, a sessão já vem criada.
-  if (data.session) redirect("/missao");
+  if (data.session) redirect("/painel");
   return { message: "Enviamos um link de confirmação para o seu e-mail. Abra-o para ativar a conta." };
 }
 

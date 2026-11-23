@@ -220,7 +220,7 @@ export function CentralMissao({ primeiroNome, email, objetivo, iniciais, editais
           {fase === "ocioso" && objetivo && `Objetivo atual: ${objetivo}`}
         </p>
 
-        <Link href="/painel" className="cm-painel">Ir para o painel</Link>
+        <Link href="/trilhas" className="cm-painel">Ir para os estudos</Link>
       </section>
     </main>
   );
