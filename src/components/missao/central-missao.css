@@ -31,7 +31,7 @@
 .hm-avatar:active, .hm-engrenagem:active { transform: scale(0.95); }
 .hm-engrenagem svg { transition: transform 0.5s var(--hm-ease); }
 .hm-engrenagem:hover svg { transform: rotate(60deg); }
-.hm-avatar:focus-visible, .hm-engrenagem:focus-visible, .hm-voltar:focus-visible, .hm-card:focus-visible, .hm-falar:focus-visible, .hm-rodape a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+.hm-avatar:focus-visible, .hm-engrenagem:focus-visible, .hm-card:focus-visible, .hm-falar:focus-visible, .hm-rodape a:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
 
 /* palco: arte do Mentor (caveira + mão aberta) e a esfera viva por cima da esfera da arte */
 .hm-palco { --hm-voz-h: 72px; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; }
@@ -177,16 +177,6 @@
 .hm-folha { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; padding: env(safe-area-inset-top) 0 env(safe-area-inset-bottom);
   background: radial-gradient(70% 30% at 50% 0%, rgb(215 25 32 / 0.22), transparent 70%), #050303; animation: hm-folha-entra 0.28s var(--hm-ease) both; }
 @keyframes hm-folha-entra { from { opacity: 0; transform: translateY(14px) scale(0.985); } }
-.hm-folha-topo { display: flex; align-items: center; gap: 12px; padding: 12px 14px 8px; }
-.hm-voltar { display: grid; place-items: center; flex: none; width: 44px; height: 44px; color: var(--hm-gelo); cursor: pointer; background: rgb(0 0 0 / 0.55); border: 1px solid rgb(255 37 45 / 0.6); border-radius: 50%; box-shadow: 0 0 16px -4px rgb(215 25 32 / 0.7); transition: transform 0.2s var(--hm-ease), box-shadow 0.25s; }
-.hm-voltar:hover { box-shadow: 0 0 22px -2px rgb(255 37 45 / 0.85); }
-.hm-voltar:active { transform: scale(0.94); }
-.hm-folha-kicker { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.26em; text-transform: uppercase; color: var(--cm-red2); }
-.hm-folha-titulo { margin: 2px 0 0; font-size: clamp(22px, 6vw, 30px); font-weight: 800; letter-spacing: 0.04em; }
-.hm-folha-corpo { flex: 1; min-height: 0; display: flex; flex-direction: column; width: 100%; max-width: 1040px; margin: 0 auto; padding: 4px 12px 12px; }
-.hm-folha .mc-painel { flex: 1; min-height: 0; }
-.hm-folha .mc-rolagem { flex: 1; min-height: 0; max-height: none; }
-
 /* abertura: a Central fica carregando por baixo (a cena 3D já aquece) e só entra quando o clarão cobre a tela */
 .hm[data-intro="ativa"] > :not(.hm-intro) { visibility: hidden; }
 .hm[data-intro="ativa"] :is(.hm-topo, .hm-cena, .hm-corpo, .hm-card, .hm-voz, .hm-rodape) { animation-play-state: paused; }

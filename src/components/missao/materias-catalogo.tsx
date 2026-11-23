@@ -3,12 +3,13 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { createPortal } from "react-dom";
-import { BookMarked, BookOpen, Brain, Calculator, Car, Gavel, Globe, HeartHandshake, Landmark, Laptop, Scale, Shield, X, type LucideIcon } from "lucide-react";
-import { ROTULO_GRUPO, dividirPorGrupo, fatiasDeAssuntos, filtrarMaterias, grupoDaMateria, type GrupoMateria, type MateriaCatalogo } from "@/domain/missao/materias";
+import { BookMarked, Brain, Calculator, Car, ChevronRight, Gavel, Globe, HeartHandshake, Landmark, Laptop, MessageSquareMore, Play, Scale, Shield, X, type LucideIcon } from "lucide-react";
+import { ROTULO_GRUPO, dividirPorGrupo, filtrarMaterias, formatarDuracao, grupoDaMateria, type GrupoMateria, type MateriaCatalogo } from "@/domain/missao/materias";
 import "./materias-catalogo.css";
+import "./catalogo-pagina.css";
 
 const ICONES: Record<string, LucideIcon> = {
-  lingua_portuguesa: BookOpen,
+  lingua_portuguesa: MessageSquareMore,
   matematica: Calculator,
   raciocinio_logico: Brain,
   informatica: Laptop,
@@ -37,6 +38,22 @@ const CORES: Array<[string, string]> = [
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 export const estilo = (i: number): CSSProperties => ({ "--c1": CORES[i % CORES.length]![0], "--c2": CORES[i % CORES.length]![1], "--i": i }) as CSSProperties;
+/** Recortes de arte do layout aprovado (public/home/catalogo): a matéria correspondente usa a sua; as de Direito usam a balança. */
+const ARTES: Record<string, string> = {
+  lingua_portuguesa: "lingua_portuguesa",
+  matematica: "matematica",
+  informatica: "informatica",
+  etica_e_cidadania: "etica_e_cidadania",
+  geopolitica: "geopolitica",
+  raciocinio_logico: "raciocinio_logico",
+  direito_constitucional: "etica_e_cidadania",
+  direito_administrativo: "etica_e_cidadania",
+  direito_penal: "etica_e_cidadania",
+  direito_processual_penal: "etica_e_cidadania",
+  direitos_humanos: "etica_e_cidadania",
+};
+export const arteDaMateria = (slug: string): string | null => (ARTES[slug] ? `/home/catalogo/${ARTES[slug]}.webp` : null);
+
 export const iconeDaMateria = (slug: string): LucideIcon => ICONES[slug] ?? BookMarked;
 
 /** O brilho segue o dedo/mouse dentro do quadrado (variáveis CSS, sem re-renderizar). */
@@ -78,59 +95,57 @@ export function MateriasCatalogo({ materias, termo = "", grupos: mostrar = ["bas
   const grupos = dividirPorGrupo(filtrarMaterias(materias, termo));
   const m = aberta != null ? materias.find((x) => x.slug === aberta) : null;
 
+  const lista = mostrar.flatMap((g) => grupos[g]);
   return (
     <>
-      {mostrar.map((g) => {
-        const lista = grupos[g];
-        if (!lista.length) return null;
-        const aulas = lista.reduce((s, x) => s + x.aulas, 0);
-        return (
-          <section key={g} id={`mc-sec-${g}`} className="mc-grupo" data-grupo={g} aria-labelledby={`mc-h-${g}`}>
-            <header className="mc-grupo-cab">
-              <span className="mc-grupo-ico" aria-hidden>{g === "basicas" ? <BookOpen /> : <Gavel />}</span>
-              <div className="mc-grupo-txt">
-                <span className="mc-grupo-kicker">{g === "basicas" ? "Base de estudo" : "Conhecimentos específicos"}</span>
-                <h2 id={`mc-h-${g}`}>{ROTULO_GRUPO[g]}</h2>
-                <p>{plural(aulas, "aula catalogada", "aulas catalogadas")}</p>
-              </div>
-              <span className="mc-grupo-num" aria-label={plural(lista.length, "matéria", "matérias")}>{lista.length}</span>
-            </header>
-            <ul className="mc-grade">
-              {lista.map((x, k) => {
-                const I = iconeDaMateria(x.slug);
-                const fatias = fatiasDeAssuntos(x.assuntos);
-                return (
-                  <li key={x.slug} style={{ ...estilo(posicao.get(x.slug) ?? 0), "--k": k } as CSSProperties}>
-                    <button
-                      type="button"
-                      className="mc-quadrado"
-                      aria-haspopup="dialog"
-                      aria-label={`${x.nome}: ${plural(x.aulas, "aula", "aulas")} em ${plural(x.assuntos.length, "assunto", "assuntos")}. Abrir`}
-                      onPointerMove={seguir}
-                      onPointerLeave={soltar}
-                      onClick={(e) => {
-                        origem.current = e.currentTarget;
-                        setAberta(x.slug);
-                      }}
-                    >
-                      <I className="mc-marca" aria-hidden strokeWidth={1.3} />
-                      <span className="mc-topo">
-                        <span className="mc-icone"><I aria-hidden strokeWidth={2.2} /></span>
-                        <span className="mc-chip">{plural(x.assuntos.length, "assunto", "assuntos")}</span>
-                      </span>
-                      <span className="mc-nome">{x.nome}</span>
-                      <span className="mc-num"><b>{x.aulas}</b> {x.aulas === 1 ? "aula" : "aulas"}</span>
-                      <span className="mc-fatias" aria-hidden>
-                        {fatias.map((f, n) => <i key={n} style={{ flexGrow: f, animationDelay: `${n * 40}ms` }} />)}
-                      </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </section>
-        );
-      })}
+      <section className="cat-lista" aria-label="Matérias">
+        <ul className="cat-grade">
+          {lista.map((x, k) => {
+            const I = iconeDaMateria(x.slug);
+            const arte = arteDaMateria(x.slug);
+            const p = x.progresso;
+            // quem ainda não começou (ou ainda não apuramos) vê o cartão "forte" (convite); de 1% a 49% fica sóbrio, a partir de 50% volta ao vermelho
+            const forte = p === null || p === 0 || p >= 50;
+            const C = 2 * Math.PI * 44;
+            return (
+              <li key={x.slug} style={{ ...estilo(posicao.get(x.slug) ?? 0), "--k": k } as CSSProperties}>
+                <div className="cm" data-forte={forte ? "" : undefined}>
+                  <button
+                    type="button"
+                    className="cm-corpo"
+                    aria-haspopup="dialog"
+                    aria-label={`${x.nome}: ${plural(x.aulas, "aula", "aulas")} em ${plural(x.assuntos.length, "assunto", "assuntos")}${p != null ? `, ${p}% concluído` : ""}. Abrir`}
+                    onPointerMove={seguir}
+                    onPointerLeave={soltar}
+                    onClick={(e) => {
+                      origem.current = e.currentTarget;
+                      setAberta(x.slug);
+                    }}
+                  >
+                    <span className="cm-luz" aria-hidden />
+                    {/* eslint-disable-next-line @next/next/no-img-element -- recorte da arte do layout (WebP em public/home/catalogo) */}
+                    {arte ? <img className="cm-arte" src={arte} alt="" loading="lazy" decoding="async" /> : <I className="cm-marca" aria-hidden strokeWidth={1.1} />}
+                    <span className="cm-brilho" aria-hidden />
+                    <span className="cm-icone" aria-hidden><I /></span>
+                    <span className="cm-anel" aria-hidden>
+                      <svg viewBox="0 0 100 100"><circle className="t" cx="50" cy="50" r="44" />{p ? <circle className="p" cx="50" cy="50" r="44" strokeDasharray={C} strokeDashoffset={C * (1 - Math.min(100, p) / 100)} /> : null}</svg>
+                      <b>{p === null ? "–" : `${p}%`}</b>
+                    </span>
+                    <span className="cm-nome">{x.nome}</span>
+                    <span className="cm-meta"><Play aria-hidden strokeWidth={2} />{plural(x.aulas, "aula", "aulas")}{x.minutos > 0 ? ` • ${formatarDuracao(x.minutos)}` : ""}</span>
+                    <span className="cm-barra" aria-hidden><i style={{ "--p": `${p ?? 0}%` } as CSSProperties} /></span>
+                    <span className="cm-cta">
+                      <span className="pl" aria-hidden><Play strokeWidth={2.2} /></span>
+                      <span>{p === 100 ? "Revisar matéria" : p ? "Continuar estudando" : "Começar a estudar"}</span>
+                      <ChevronRight className="ch" aria-hidden />
+                    </span>
+                  </button>
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      </section>
 
       {m && createPortal(
         <div className="mc-fundo" onClick={() => setAberta(null)} data-testid="materia-fundo">

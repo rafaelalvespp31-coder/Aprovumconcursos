@@ -11,6 +11,7 @@ import { MentorOrbita } from "./mentor-orbita";
 import { MentorScene } from "@/components/mentor-cena/mentor-scene";
 import { IntroMentor } from "./intro-mentor";
 import "./central-missao.css";
+import "./catalogo-pagina.css";
 
 export interface CentralMissaoProps {
   primeiroNome: string | null;
@@ -26,9 +27,9 @@ export interface CentralMissaoProps {
 
 type Folha = "concursos" | "materias";
 
-const FOLHAS: Record<Folha, { titulo: string; kicker: string }> = {
-  concursos: { titulo: "Concursos", kicker: "Escolha o seu concurso" },
-  materias: { titulo: "Matérias", kicker: "Escolha a matéria" },
+const FOLHAS: Record<Folha, { titulo: string; kicker: string; sub: string }> = {
+  concursos: { titulo: "Concursos", kicker: "Escolha o seu concurso", sub: "Conquiste seu cargo público com a preparação certa." },
+  materias: { titulo: "Matérias", kicker: "Escolha a matéria", sub: "Organize seus estudos e domine cada conteúdo da sua preparação." },
 };
 
 /** Pontos que sobem da mão até a esfera (posição, atraso e duração fixos: nada de aleatório no render). */
@@ -166,17 +167,24 @@ export function CentralMissao({ primeiroNome, email, objetivo, materias, concurs
 
       {folha && (
         <div className="hm-folha" role="dialog" aria-modal="true" aria-label={FOLHAS[folha].titulo}>
-          <div className="hm-folha-topo">
-            <button ref={fechar} type="button" className="hm-voltar" onClick={voltar} aria-label="Voltar para a tela inicial">
-              <ArrowLeft size={18} aria-hidden />
-            </button>
-            <div>
-              <p className="hm-folha-kicker">{FOLHAS[folha].kicker}</p>
-              <h1 className="hm-folha-titulo">{FOLHAS[folha].titulo}</h1>
+          <div className="hm-folha-rolagem">
+            <div className="hm-folha-conteudo">
+              <header className="cat-cab" data-pagina={folha}>
+                <button ref={fechar} type="button" className="cat-voltar" onClick={voltar} aria-label="Voltar para a tela inicial">
+                  <ArrowLeft aria-hidden />
+                </button>
+                <div className="cat-titulos">
+                  <p className="cat-kicker">{FOLHAS[folha].kicker}</p>
+                  <h1 className="cat-titulo">{FOLHAS[folha].titulo}</h1>
+                </div>
+                <p className="cat-sub">{FOLHAS[folha].sub}</p>
+                {folha === "concursos" && (
+                  // eslint-disable-next-line @next/next/no-img-element -- arte do troféu (WebP em public/home/catalogo)
+                  <img className="cat-cab-trofeu" src="/home/catalogo/trofeu.webp" alt="" width={404} height={336} decoding="async" />
+                )}
+              </header>
+              <PainelEscolha concursos={concursos} materias={materias} somente={folha} />
             </div>
-          </div>
-          <div className="hm-folha-corpo">
-            <PainelEscolha concursos={concursos} materias={materias} somente={folha} />
           </div>
         </div>
       )}

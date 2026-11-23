@@ -3,14 +3,15 @@
 import { useRouter } from "next/navigation";
 import { useState, useTransition, type CSSProperties } from "react";
 import Link from "next/link";
-import { ArrowUpRight, BarChart3, Hourglass, Landmark, Loader2, Trophy } from "lucide-react";
+import { Bookmark, CalendarDays, ChevronRight, Clock, FileText, Landmark, Loader2, Play, Star } from "lucide-react";
 import type { ConcursoCard } from "@/domain/missao/materias";
+import { chipDoConcurso, formatarVagas, quandoDoConcurso } from "@/domain/missao/concurso-card";
 import { abrirConcursoAction } from "@/app/(missao)/painel/actions";
-import { estilo, seguir, soltar } from "./materias-catalogo";
-import "./materias-catalogo.css";
+import { seguir, soltar } from "./materias-catalogo";
+import "./catalogo-pagina.css";
 
 /** Concursos catalogados: com edital publicado, um toque abre o conteúdo programático (sem anexar nada); os demais mostram a análise ou "em breve". */
-export function ConcursosPublicados({ concursos }: { concursos: ConcursoCard[] }) {
+export function ConcursosPublicados({ concursos, salvos, alternarSalvo }: { concursos: ConcursoCard[]; salvos: ReadonlySet<string>; alternarSalvo: (id: string) => void }) {
   const router = useRouter();
   const [abrindo, setAbrindo] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -32,76 +33,73 @@ export function ConcursosPublicados({ concursos }: { concursos: ConcursoCard[] }
     });
   };
 
-  const prontos = concursos.filter((c) => c.estado === "pronto").length;
   return (
-    <section id="mc-sec-concursos" className="mc-grupo" data-grupo="concursos" aria-labelledby="mc-h-concursos">
-      <header className="mc-grupo-cab">
-        <span className="mc-grupo-ico" aria-hidden><Trophy /></span>
-        <div className="mc-grupo-txt">
-          <span className="mc-grupo-kicker">Escolha o seu objetivo</span>
-          <h2 id="mc-h-concursos">Concursos</h2>
-          <p>{prontos ? `${prontos} ${prontos === 1 ? "pronto" : "prontos"} para estudar` : "Em breve para estudar"}</p>
-        </div>
-        <span className="mc-grupo-num" aria-label={concursos.length === 1 ? "1 concurso" : `${concursos.length} concursos`}>{concursos.length}</span>
-      </header>
-      <ul className="mc-grade">
+    <section id="mc-sec-concursos" className="cat-lista" data-grupo="concursos" aria-label="Concursos">
+      <ul className="cat-grade">
         {concursos.map((c, i) => {
-          const estiloLi = { ...estilo(i + 2), "--k": i } as CSSProperties;
+          const chip = chipDoConcurso(c);
           const arte = c.imagem ? ({ "--img": `url("${c.imagem.replace(/"/g, "%22")}")` } as CSSProperties) : undefined;
-          const miolo = (carregando: boolean, rotuloAcao: React.ReactNode) => (
+          const salvo = salvos.has(c.id);
+          const rotulo = `${c.nome}${c.cargo ? `, ${c.cargo}` : ""}`;
+          const interior = (carregando: boolean, cta: React.ReactNode, forte: boolean) => (
             <>
-              <Landmark className="mc-marca" aria-hidden strokeWidth={1.3} />
-              <span className="mc-topo">
-                <span className="mc-icone">{carregando ? <Loader2 className="mc-gira" aria-hidden /> : <Landmark aria-hidden strokeWidth={2.2} />}</span>
-                {c.uf && <span className="mc-chip">{c.uf}</span>}
+              <span className="cc-arte" style={arte} aria-hidden />
+              {!c.imagem && <Landmark className="cc-marca" aria-hidden strokeWidth={1.1} />}
+              <span className="cc-veu" aria-hidden />
+              <span className="cc-brilho" aria-hidden />
+              <span className="cc-topo">
+                <span className="cc-chip" data-t={chip.tipo === "destaque" ? "destaque" : undefined}>
+                  {chip.tipo === "destaque" ? <Star aria-hidden fill="currentColor" /> : chip.tipo === "relogio" ? <Clock aria-hidden /> : <i className="cc-ponto" data-c={chip.tipo === "amarelo" ? "amarelo" : undefined} aria-hidden />}
+                  <span>{chip.texto}</span>
+                </span>
               </span>
-              <span className="mc-nome">{c.nome}</span>
-              <span className="mc-sub">{c.cargo ?? c.orgao}</span>
-              <span className="mc-abrir">{rotuloAcao}</span>
+              <span className="cc-texto">
+                <span className="cc-nome">{c.nome}</span>
+                <span className="cc-orgao">{c.cargo ?? c.orgao}</span>
+                <span className="cc-meta">
+                  {c.vagas != null && <span><FileText aria-hidden />{formatarVagas(c.vagas)}</span>}
+                  {c.vagas != null && <i aria-hidden />}
+                  <span><CalendarDays aria-hidden />{quandoDoConcurso(c)}</span>
+                </span>
+              </span>
+              <span className="cc-cta" data-v={forte ? "forte" : "vidro"}>
+                <span>{carregando ? <Loader2 className="cc-gira" aria-hidden /> : null}{cta}</span>
+                <ChevronRight aria-hidden />
+              </span>
             </>
           );
-          if (c.estado === "pronto") {
-            return (
-              <li key={c.id} style={estiloLi} className="mc-concurso-li">
-                <button
-                  type="button"
-                  className="mc-quadrado mc-concurso"
-                  style={arte}
-                  data-imagem={c.imagem ? "1" : undefined}
-                  disabled={!!abrindo}
-                  aria-busy={abrindo === c.id}
-                  aria-label={`${c.nome}${c.cargo ? `, ${c.cargo}` : ""}. Estudar este concurso`}
-                  onPointerMove={seguir}
-                  onPointerLeave={soltar}
-                  onClick={() => abrir(c)}
-                >
-                  {miolo(abrindo === c.id, abrindo === c.id ? "Abrindo…" : <>Estudar <ArrowUpRight size={14} aria-hidden /></>)}
-                </button>
-                <Link href={`/analise-concurso/${c.id}?voltar=%2Fpainel`} className="mc-analise" title="Ver a análise do concurso" aria-label={`Ver a análise de ${c.nome}`}>
-                  <BarChart3 size={15} aria-hidden /><span>Análise</span>
-                </Link>
-              </li>
-            );
-          }
-          if (c.estado === "analise") {
-            return (
-              <li key={c.id} style={estiloLi}>
-                <Link href={`/analise-concurso/${c.id}?voltar=%2Fpainel`} className="mc-quadrado mc-concurso" style={arte} data-imagem={c.imagem ? "1" : undefined} aria-label={`${c.nome}${c.cargo ? `, ${c.cargo}` : ""}. Ver a análise do concurso`} onPointerMove={seguir} onPointerLeave={soltar}>
-                  {miolo(false, <>Ver análise <ArrowUpRight size={14} aria-hidden /></>)}
-                </Link>
-              </li>
-            );
-          }
+          const botaoSalvar = (
+            <button type="button" className="cc-acao" aria-pressed={salvo} aria-label={salvo ? `Remover ${c.nome} dos salvos` : `Salvar ${c.nome}`} title={salvo ? "Remover dos salvos" : "Salvar"} onClick={() => alternarSalvo(c.id)}>
+              <Bookmark aria-hidden />
+            </button>
+          );
           return (
-            <li key={c.id} style={estiloLi}>
-              <div className="mc-quadrado mc-concurso mc-breve" style={arte} data-imagem={c.imagem ? "1" : undefined} role="group" aria-label={`${c.nome}${c.cargo ? `, ${c.cargo}` : ""}. Em breve: o edital ainda está sendo preparado`}>
-                {miolo(false, <><Hourglass size={13} aria-hidden /> Em breve</>)}
+            <li key={c.id} style={{ "--k": i } as CSSProperties}>
+              <div className="cc" data-estado={c.estado}>
+                {c.estado === "pronto" && (
+                  <button type="button" className="cc-corpo" disabled={!!abrindo} aria-busy={abrindo === c.id} aria-label={`${rotulo}. Estudar este concurso`} onPointerMove={seguir} onPointerLeave={soltar} onClick={() => abrir(c)}>
+                    {interior(abrindo === c.id, abrindo === c.id ? "Abrindo…" : <><Play aria-hidden />Estudar agora</>, true)}
+                  </button>
+                )}
+                {c.estado === "analise" && (
+                  <Link href={`/analise-concurso/${c.id}?voltar=%2Fpainel`} className="cc-corpo" aria-label={`${rotulo}. Ver os detalhes e a análise do concurso`} onPointerMove={seguir} onPointerLeave={soltar}>
+                    {interior(false, <><Play aria-hidden />Ver detalhes</>, true)}
+                  </Link>
+                )}
+                {c.estado === "breve" && (
+                  <div className="cc-corpo" role="group" aria-label={`${rotulo}. Em breve: o edital ainda está sendo preparado`}>
+                    {interior(false, <><Clock aria-hidden />Edital em breve</>, false)}
+                  </div>
+                )}
+                <span className="cc-acoes">
+                  {botaoSalvar}
+                </span>
               </div>
             </li>
           );
         })}
       </ul>
-      <p className="mc-erro" role="status" aria-live="polite">{erro}</p>
+      <p className="cat-erro" role="status" aria-live="polite">{erro}</p>
     </section>
   );
 }
