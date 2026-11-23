@@ -101,8 +101,9 @@ export function FalarComMentor({ ativo, onAtivo, onNivel, onConn, onFase }: { at
 }
 
 /**
- * Onda de voz ao lado do botão: linhas senoidais em camadas (estilo assistente de voz) desenhadas num canvas.
- * A amplitude segue o áudio real (voz do Mentor e microfone do aluno); em repouso é só uma respiração discreta.
+ * Frequência de voz ao lado do botão: barras arredondadas espelhadas (equalizador) que saem do botão e afinam para fora,
+ * com um fio de luz no centro. A altura segue o áudio real (voz do Mentor e microfone do aluno); em repouso é só uma
+ * respiração discreta que viaja pelas barras.
  */
 function OndaVoz({ lado, fonte, ativo }: { lado: "e" | "d"; fonte: RefObject<(() => Bands) | null>; ativo: boolean }) {
   const ref = useRef<HTMLCanvasElement | null>(null);
@@ -113,6 +114,8 @@ function OndaVoz({ lado, fonte, ativo }: { lado: "e" | "d"; fonte: RefObject<(()
     const ctx = cv.getContext("2d"); if (!ctx) return;
     const reduzir = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     let w = 0, h = 0, dpr = 1, raf = 0, ultimo = 0, nivel = 0, fase = 0, visivel = true;
+    const N = 13;                                   // barras por lado (no máximo)
+    const alturas = new Float32Array(N);            // 0..1, suavizadas por barra
     const medir = () => {
       dpr = Math.min(2, window.devicePixelRatio || 1);
       w = cv.clientWidth; h = cv.clientHeight;
@@ -122,33 +125,44 @@ function OndaVoz({ lado, fonte, ativo }: { lado: "e" | "d"; fonte: RefObject<(()
     medir();
     const ro = new ResizeObserver(medir); ro.observe(cv);
     const io = new IntersectionObserver(([en]) => { visivel = !!en?.isIntersecting; }); io.observe(cv);
-    // camadas: [frequência, velocidade, amplitude relativa, espessura, alfa, branco]
-    const camadas: [number, number, number, number, number, boolean][] = [
-      [1.7, 2.3, 0.6, 3.4, 0.18, false], [2.3, -3.1, 0.8, 2.2, 0.35, false], [3.1, 4.2, 1, 1.5, 0.95, true],
-    ];
     const desenhar = (t: number) => {
       const dt = Math.min(0.05, (t - ultimo) / 1000 || 0.016); ultimo = t;
       const b = ativoRef.current ? fonte.current?.() : null;
       const alvo = b ? Math.min(1, Math.max(b.me ?? b.vol ?? 0, (b.mic ?? 0) * 1.1)) : 0;
-      nivel += (alvo - nivel) * (1 - Math.exp(-dt * (alvo > nivel ? 14 : 6)));
-      fase += dt * (0.8 + nivel * 2.4);
+      nivel += (alvo - nivel) * (1 - Math.exp(-dt * (alvo > nivel ? 16 : 6)));
+      fase += dt * (1.2 + nivel * 5);
       ctx.clearRect(0, 0, w, h);
-      const meio = h / 2;
-      const base = ativoRef.current ? 0.09 : 0.14 + 0.05 * Math.sin(t / 900);
-      const amp = (base + nivel * 0.95) * (h * 0.46);
-      for (const [f, v, k, esp, alfa, branco] of camadas) {
-        ctx.beginPath();
-        for (let x = 0; x <= w; x += 1.5) {
-          const u = x / w;                                   // 0 = lado do botão, 1 = ponta externa
-          const lado_u = lado === "e" ? 1 - u : u;           // 0 junto ao botão, 1 na ponta
-          const env = Math.pow(Math.sin(Math.PI * Math.min(1, (1 - lado_u) * 0.92 + 0.04)), 1.1) * (1 - lado_u * 0.35);
-          const y = meio + Math.sin(lado_u * Math.PI * 2 * f - fase * v) * amp * k * env + Math.sin(lado_u * 9 + fase * 1.7 * k) * amp * 0.12 * env * nivel;
-          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-        }
-        ctx.lineWidth = esp; ctx.lineJoin = "round"; ctx.lineCap = "round";
-        ctx.strokeStyle = branco ? `rgba(255,236,232,${alfa})` : `rgba(255,48,56,${alfa})`;
-        ctx.stroke();
+      const n = Math.max(5, Math.min(N, Math.floor(w / 6.5)));   // menos barras (mais grossas) quando sobra pouca largura
+      const meio = h / 2, passo = w / n, larg = Math.max(2.2, passo * 0.6);
+      const maxMeia = h * 0.5 - larg / 2;
+      // fio de luz central que some nas pontas
+      const fio = ctx.createLinearGradient(0, 0, w, 0);
+      const forte = "rgba(255,70,78,0.55)", fraco = "rgba(255,70,78,0)";
+      if (lado === "e") { fio.addColorStop(0, fraco); fio.addColorStop(1, forte); } else { fio.addColorStop(0, forte); fio.addColorStop(1, fraco); }
+      ctx.fillStyle = fio; ctx.fillRect(0, meio - 0.5, w, 1);
+      for (let i = 0; i < n; i++) {
+        const d = i / (n - 1);                        // 0 = junto ao botão, 1 = ponta externa
+        const x = lado === "e" ? w - passo * (i + 0.5) : passo * (i + 0.5);
+        const env = Math.pow(1 - d, 0.75) * 0.82 + 0.18;
+        // "espectro": várias senoides defasadas por barra, dando alturas diferentes e vivas
+        const viva = 0.5 + 0.5 * Math.sin(i * 1.7 - fase * 2.1) * Math.sin(i * 0.63 + fase * 1.3 + 1.1);
+        const respira = 0.5 + 0.5 * Math.sin(t / 650 - d * 3.2);
+        const alvoBarra = ativoRef.current
+          ? Math.min(1, 0.07 + nivel * (0.3 + 0.7 * Math.abs(viva)) * env * 1.25)
+          : 0.08 + 0.2 * respira * env;
+        const atual = alturas[i] ?? 0;
+        const nova = atual + (alvoBarra - atual) * (1 - Math.exp(-dt * (alvoBarra > atual ? 26 : 10)));
+        alturas[i] = nova;
+        const meia = Math.max(larg / 2, nova * maxMeia);
+        const q = 1 - d;                              // cor: branco quente junto ao botão → vermelho na ponta
+        const g = ctx.createLinearGradient(0, meio - meia, 0, meio + meia);
+        const topo = `rgba(255,${Math.round(70 + 170 * q * q)},${Math.round(76 + 160 * q * q)},${0.55 + 0.4 * env})`;
+        g.addColorStop(0, topo); g.addColorStop(0.5, `rgba(255,${Math.round(90 + 150 * q)},${Math.round(96 + 140 * q)},${0.95})`); g.addColorStop(1, topo);
+        ctx.strokeStyle = g; ctx.lineWidth = larg; ctx.lineCap = "round";
+        ctx.shadowColor = "rgba(255,37,45,0.85)"; ctx.shadowBlur = 4 + 10 * nivel;
+        ctx.beginPath(); ctx.moveTo(x, meio - meia + larg / 2); ctx.lineTo(x, meio + meia - larg / 2); ctx.stroke();
       }
+      ctx.shadowBlur = 0;
     };
     const laco = (t: number) => { raf = requestAnimationFrame(laco); if (visivel && !document.hidden) desenhar(t); };
     if (reduzir) desenhar(0); else raf = requestAnimationFrame(laco);

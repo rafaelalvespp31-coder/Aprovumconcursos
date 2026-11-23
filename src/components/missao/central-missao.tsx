@@ -140,6 +140,7 @@ export function CentralMissao({ primeiroNome, email, objetivo, materias, concurs
           arte="/home/card-concursos.webp"
           w={350}
           h={206}
+          contagem={concursos.length ? `${concursos.length} ${concursos.length === 1 ? "concurso" : "concursos"}` : null}
           tocado={toque === "concursos"}
           onAbrir={(el) => abrir("concursos", el)}
         />
@@ -150,6 +151,7 @@ export function CentralMissao({ primeiroNome, email, objetivo, materias, concurs
           arte="/home/card-materias.webp"
           w={252}
           h={196}
+          contagem={materias.length ? `${materias.length} ${materias.length === 1 ? "matéria" : "matérias"}` : null}
           tocado={toque === "materias"}
           onAbrir={(el) => abrir("materias", el)}
         />
@@ -193,7 +195,7 @@ export function CentralMissao({ primeiroNome, email, objetivo, materias, concurs
   );
 }
 
-function CardOcto({ id, titulo, texto, arte, w, h, tocado, onAbrir }: { id: Folha; titulo: string; texto: string; arte: string; w: number; h: number; tocado: boolean; onAbrir: (el: HTMLButtonElement) => void }) {
+function CardOcto({ id, titulo, texto, arte, w, h, contagem, tocado, onAbrir }: { id: Folha; titulo: string; texto: string; arte: string; w: number; h: number; contagem: string | null; tocado: boolean; onAbrir: (el: HTMLButtonElement) => void }) {
   return (
     <button type="button" className="hm-card" data-card={id} data-toca={tocado ? "" : undefined} onClick={(e) => onAbrir(e.currentTarget)}>
       <span className="hm-card-borda" aria-hidden />
@@ -201,6 +203,7 @@ function CardOcto({ id, titulo, texto, arte, w, h, tocado, onAbrir }: { id: Folh
         {/* eslint-disable-next-line @next/next/no-img-element -- arte do card, WebP em public/home */}
         <img className="hm-card-arte" src={arte} alt="" width={w} height={h} loading="eager" decoding="async" />
         <span className="hm-card-vidro" aria-hidden />
+        {contagem && <span className="hm-card-chip"><i aria-hidden />{contagem}</span>}
         <span className="hm-card-texto">
           <span className="hm-card-linha">
             <span className="hm-card-titulo">{titulo}</span>

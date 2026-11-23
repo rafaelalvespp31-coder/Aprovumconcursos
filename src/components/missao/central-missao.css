@@ -93,7 +93,7 @@
 .hm-falar-linha { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; }
 @font-face { font-family: "HM Cine"; font-weight: 600; font-style: normal; font-display: swap; src: url("/fonts/BarlowCondensed-SemiBold.woff2") format("woff2"); }
 /* botão: placa chanfrada (mesma linguagem dos cards), borda de luz que corre, vidro fumê, brilho que segue o dedo e onda de toque */
-.hm-falar { --c: 15px; position: relative; isolate: isolate; display: inline-flex; align-items: center; justify-content: center; flex: 0 1 262px; min-height: 58px; padding: 0 18px; font: 600 18px/1 "HM Cine", "Barlow Condensed", "Arial Narrow", Inter, sans-serif; letter-spacing: 0.15em; text-transform: uppercase; color: #fff; cursor: pointer; background: none; border: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+.hm-falar { --c: 15px; position: relative; isolate: isolate; display: inline-flex; align-items: center; justify-content: center; flex: 0 1 240px; min-height: 58px; padding: 0 18px; font: 600 18px/1 "HM Cine", "Barlow Condensed", "Arial Narrow", Inter, sans-serif; letter-spacing: 0.15em; text-transform: uppercase; color: #fff; cursor: pointer; background: none; border: 0; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
   filter: drop-shadow(0 0 14px rgb(255 37 45 / 0.45)) drop-shadow(0 8px 14px rgb(0 0 0 / 0.7)); transition: transform 0.25s var(--hm-ease), filter 0.3s; }
 .hm-falar-borda, .hm-falar-face { position: absolute; clip-path: polygon(var(--c) 0, calc(100% - var(--c)) 0, 100% var(--c), 100% calc(100% - var(--c)), calc(100% - var(--c)) 100%, var(--c) 100%, 0 calc(100% - var(--c)), 0 var(--c)); }
 .hm-falar-borda { inset: 0; overflow: hidden; container-type: size; background: linear-gradient(160deg, rgb(255 70 76 / 0.85), rgb(120 12 18 / 0.6) 50%, rgb(255 60 66 / 0.8)); z-index: -2; }
@@ -122,7 +122,7 @@
 .hm-falar-info { min-height: 18px; margin: 0; font-size: 12.5px; color: var(--hm-cinza); text-align: center; }
 
 /* onda de voz ao lado do botão (canvas desenhado com o áudio real) */
-.hm-onda-voz { flex: 1 1 0; min-width: 0; max-width: 78px; height: 38px; display: block; pointer-events: none; }
+.hm-onda-voz { flex: 1 1 0; min-width: 0; max-width: 92px; height: 42px; display: block; pointer-events: none; }
 .hm-gira { animation: hm-giro 0.8s linear infinite; }
 @keyframes hm-giro { to { rotate: 360deg; } }
 
@@ -137,18 +137,21 @@
 .hm-card-borda::before { content: ""; position: absolute; left: 50%; top: 50%; width: 230cqmax; aspect-ratio: 1; translate: -50% -50%; opacity: 0; transition: opacity 0.3s;
   background: conic-gradient(from 0deg, transparent 0 50%, rgb(255 32 44 / 0.9) 82%, #fff 97%, transparent 100%); animation: hm-giro 2.1s linear infinite; animation-play-state: paused; will-change: transform; }
 .hm-card-face { position: absolute; inset: 2px; overflow: hidden; --c: 16.8px; display: block; background: linear-gradient(165deg, #1b1413, #080505 55%, #120a0a); }
+.hm-card-face::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: linear-gradient(180deg, rgb(255 255 255 / 0.09), transparent 22%), radial-gradient(90% 40% at 50% 100%, rgb(215 25 32 / 0.34), transparent 70%); }
 .hm-card-arte { position: absolute; left: 0; top: 0; width: 100%; height: 66%; object-fit: cover; object-position: 50% 30%; display: block; transition: transform 0.9s var(--hm-ease); }
 .hm-card-vidro { position: absolute; inset: 0; pointer-events: none;
   background: linear-gradient(180deg, rgb(0 0 0 / 0.1), rgb(8 5 5 / 0.15) 30%, rgb(8 5 5 / 0.9) 58%, #080505 72%);
   box-shadow: inset 0 0 26px rgb(215 25 32 / 0.18); }
 .hm-card-face::after { content: ""; position: absolute; inset: -20% auto -20% -70%; width: 45%; transform: skewX(-18deg) translateX(0); pointer-events: none; opacity: 0; transition: transform 0.9s var(--hm-ease), opacity 0.4s;
   background: linear-gradient(90deg, transparent, rgb(255 255 255 / 0.16), transparent); }
-.hm-card-texto { position: absolute; left: 0; right: 0; top: 53%; bottom: 0; display: flex; flex-direction: column; justify-content: flex-start; gap: 6px; padding: 0 12px 12px 14px; }
+.hm-card-texto { z-index: 2; position: absolute; left: 0; right: 0; top: 53%; bottom: 0; display: flex; flex-direction: column; justify-content: flex-start; gap: 6px; padding: 0 12px 12px 14px; }
 .hm-card-linha { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.hm-card-titulo { font-size: clamp(15px, 4.3vw, 21px); font-weight: 800; letter-spacing: 0.07em; line-height: 1.1; }
-.hm-card-traco { width: 34px; height: 2px; border-radius: 2px; background: var(--cm-red2); box-shadow: 0 0 10px rgb(255 37 45 / 0.9); transition: width 0.4s var(--hm-ease); }
-.hm-card-desc { font-size: 11.5px; line-height: 1.4; color: var(--hm-cinza); }
-.hm-card-seta { flex: none; display: grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; color: #fff; background: rgb(0 0 0 / 0.55); border: 1px solid rgb(255 37 45 / 0.75); box-shadow: 0 0 12px rgb(215 25 32 / 0.5); transition: transform 0.3s var(--hm-ease), background 0.3s; }
+.hm-card-titulo { min-width: 0; font-size: clamp(14px, 3.9vw, 22px); font-weight: 900; letter-spacing: 0.035em; line-height: 1.05; color: #fff; text-shadow: 0 2px 14px rgb(0 0 0 / 0.8), 0 0 22px rgb(255 37 45 / 0.28); }
+.hm-card-traco { width: 38px; height: 3px; border-radius: 3px; background: linear-gradient(90deg, #ff2a33, rgb(255 42 51 / 0)); box-shadow: 0 0 12px rgb(255 37 45 / 0.85); transition: width 0.4s var(--hm-ease); }
+.hm-card-desc { font-size: 11.5px; font-weight: 600; line-height: 1.4; color: #d3c9c7; }
+.hm-card-chip { position: absolute; left: 10px; top: 10px; z-index: 1; display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px 5px 8px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #fff; background: rgb(8 5 5 / 0.55); border: 1px solid rgb(255 255 255 / 0.16); border-radius: 999px; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 6px 14px -6px #000, inset 0 1px 0 rgb(255 255 255 / 0.14); }
+.hm-card-chip i { width: 6px; height: 6px; border-radius: 50%; background: #ff2a33; box-shadow: 0 0 8px 1px rgb(255 42 51 / 0.95); }
+.hm-card-seta { flex: none; display: grid; place-items: center; width: 31px; height: 31px; border-radius: 50%; color: #fff; background: linear-gradient(180deg, #ff2f38, #a3000c); border: 1px solid rgb(255 120 126 / 0.75); box-shadow: 0 0 16px rgb(255 37 45 / 0.55), inset 0 1px 0 rgb(255 255 255 / 0.4); transition: transform 0.3s var(--hm-ease), background 0.3s; }
 .hm-card:active { transform: scale(0.97); }
 .hm-card[data-toca] { transform: scale(1.03); filter: drop-shadow(0 14px 22px rgb(0 0 0 / 0.8)) drop-shadow(0 0 22px rgb(255 37 45 / 0.6)); }
 .hm-card[data-toca] .hm-card-borda::before, .hm-card:focus-visible .hm-card-borda::before { opacity: 1; animation-play-state: running; }
@@ -209,7 +212,7 @@
   .hm-cards { grid-area: cards; align-self: start; padding: 20px 40px 0 16px; gap: 18px; }
   .hm-card { height: clamp(240px, 38dvh, 360px); --c: 24px; }
   .hm-card-face { --c: 22.8px; }
-  .hm-card-titulo { font-size: clamp(18px, 1.6vw, 24px); }
+  .hm-card-titulo { font-size: clamp(19px, 1.7vw, 26px); }
   .hm-card-desc { font-size: 13px; }
   .hm-rodape { grid-area: rodape; justify-content: flex-end; padding: 6px 40px 14px; }
   .hm-plataforma { left: 36%; }
