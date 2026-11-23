@@ -1,0 +1,51 @@
+/* Quadrados das matérias do catálogo (Central de Missão). Faixa rolável: a tela é de altura fixa. */
+.mc-grade { display: flex; gap: 12px; margin: 0; padding: 10px 20px 14px; list-style: none; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; width: 100vw; max-width: 100vw; position: relative; left: 50%; transform: translateX(-50%);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 16px), transparent); mask-image: linear-gradient(90deg, transparent, #000 16px, #000 calc(100% - 16px), transparent); }
+.mc-grade::-webkit-scrollbar { display: none; }
+.mc-grade li { flex: 0 0 auto; scroll-snap-align: center; animation: mc-entra 0.55s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i) * 45ms + 350ms); }
+@keyframes mc-entra { from { opacity: 0; transform: translateY(18px) scale(0.92); } }
+@media (min-width: 900px) { .mc-grade { justify-content: safe center; padding-inline: 40px; } }
+
+.mc-quadrado { --rx: 0deg; --ry: 0deg; --mx: 50%; --my: 30%; position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: 4px; width: 140px; aspect-ratio: 1; padding: 12px; overflow: hidden; font: inherit; text-align: left; color: #fff; cursor: pointer; isolation: isolate;
+  background: radial-gradient(120% 90% at var(--mx) var(--my), rgb(255 255 255 / 0.22), transparent 55%), linear-gradient(150deg, var(--c1), var(--c2));
+  border: 1px solid rgb(255 255 255 / 0.28); border-radius: 22px; box-shadow: 0 10px 28px -10px var(--c1), inset 0 1px 0 rgb(255 255 255 / 0.35);
+  transform: perspective(600px) rotateX(var(--rx)) rotateY(var(--ry)); transition: transform 0.18s ease-out, box-shadow 0.25s, filter 0.25s; }
+@media (min-width: 900px) { .mc-quadrado { width: 156px; padding: 14px; } }
+.mc-quadrado:hover:not(:disabled) { box-shadow: 0 16px 38px -8px var(--c1), 0 0 0 1px rgb(255 255 255 / 0.5), inset 0 1px 0 rgb(255 255 255 / 0.45); filter: saturate(1.15); }
+.mc-quadrado:active:not(:disabled) { transform: scale(0.96); transition-duration: 0.08s; }
+.mc-quadrado:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.mc-quadrado:disabled { opacity: 0.6; cursor: default; }
+.mc-marca { position: absolute; right: -16px; top: -14px; width: 92px; height: 92px; color: rgb(255 255 255 / 0.2); transform: rotate(-12deg); transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1); z-index: -1; }
+.mc-quadrado:hover .mc-marca { transform: rotate(0deg) scale(1.12); }
+.mc-icone { position: absolute; left: 12px; top: 12px; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; background: rgb(0 0 0 / 0.28); backdrop-filter: blur(4px); }
+.mc-icone svg { width: 19px; height: 19px; }
+.mc-nome { font-size: 13px; font-weight: 800; line-height: 1.12; letter-spacing: -0.01em; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; text-shadow: 0 1px 8px rgb(0 0 0 / 0.35); }
+.mc-aulas { font-size: 11.5px; padding: 3px 9px; border-radius: 999px; background: rgb(0 0 0 / 0.32); font-variant-numeric: tabular-nums; }
+.mc-aulas b { font-weight: 800; }
+
+/* Folha com os assuntos */
+.mc-fundo { position: fixed; inset: 0; z-index: 60; display: flex; align-items: flex-end; justify-content: center; background: rgb(0 0 0 / 0.62); backdrop-filter: blur(3px); animation: mc-fundo 0.2s ease both; }
+@keyframes mc-fundo { from { opacity: 0; } }
+.mc-folha { display: flex; flex-direction: column; gap: 12px; width: 100%; max-width: 520px; max-height: 82dvh; padding: 16px 16px calc(16px + env(safe-area-inset-bottom)); color: #f4f4f5; text-align: left; background: #0e0e10; border: 1px solid rgb(255 255 255 / 0.12); border-bottom: 0; border-radius: 26px 26px 0 0; box-shadow: 0 -20px 60px -20px var(--c1); animation: mc-sobe 0.32s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes mc-sobe { from { transform: translateY(40px); opacity: 0; } }
+@media (min-width: 700px) { .mc-fundo { align-items: center; } .mc-folha { border-radius: 26px; border-bottom: 1px solid rgb(255 255 255 / 0.12); } }
+.mc-cabeca { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 18px; background: linear-gradient(150deg, var(--c1), var(--c2)); }
+.mc-cabeca h2 { margin: 0; font-size: 19px; line-height: 1.15; font-weight: 800; }
+.mc-cabeca p { margin: 2px 0 0; font-size: 12.5px; opacity: 0.9; }
+.mc-cabeca > div { flex: 1; min-width: 0; }
+.mc-icone-g { position: static; flex: 0 0 auto; width: 46px; height: 46px; }
+.mc-icone-g svg { width: 25px; height: 25px; }
+.mc-fechar { display: grid; place-items: center; flex: 0 0 auto; width: 44px; height: 44px; margin: -6px -6px -6px 0; color: #fff; cursor: pointer; background: rgb(0 0 0 / 0.25); border: 0; border-radius: 999px; }
+.mc-fechar:hover { background: rgb(0 0 0 / 0.45); }
+.mc-fechar:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.mc-assuntos { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; overflow-y: auto; min-height: 0; }
+.mc-assuntos li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 12px; font-size: 13px; line-height: 1.3; background: rgb(255 255 255 / 0.05); border-left: 3px solid var(--c1); border-radius: 10px; }
+.mc-assuntos b { flex: 0 0 auto; font-size: 11.5px; font-weight: 700; color: #d4d4d8; font-variant-numeric: tabular-nums; }
+.mc-estudar { display: flex; align-items: center; justify-content: center; min-height: 52px; padding: 0 18px; font-size: 16px; font-weight: 800; color: #fff; text-align: center; text-decoration: none; background: linear-gradient(150deg, var(--c1), var(--c2)); border-radius: 16px; box-shadow: 0 10px 26px -10px var(--c1); transition: transform 0.15s; }
+.mc-estudar:active { transform: scale(0.98); }
+.mc-estudar:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .mc-grade li, .mc-fundo, .mc-folha { animation: none; }
+  .mc-quadrado, .mc-marca { transition: none; transform: none; }
+}

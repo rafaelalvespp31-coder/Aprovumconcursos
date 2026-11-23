@@ -1,8 +1,10 @@
 import "server-only";
+import { unstable_cache } from "next/cache";
+import { disciplineLabel } from "@/ai/pedagogy";
 import { createAdminClient } from "../supabase";
 import type { Sugestao } from "@/domain/missao/sugestoes";
-import { resumirMaterias, type MateriasMissao } from "@/domain/missao/materias";
-import { topicosDe } from "./edital-topicos";
+import { agruparCatalogo, type MateriaCatalogo } from "@/domain/missao/materias";
+import { ensureDisciplines } from "./disciplines";
 import { getMentorGoal, listEditalOptions } from "./mentor-goal";
 
 export interface DadosMissao {
@@ -11,31 +13,35 @@ export interface DadosMissao {
   objetivo: string | null;
   /** Editais do próprio aluno (Aprovum AI), prontos para virar plano. */
   editais: Sugestao[];
-  /** Matérias do edital em uso (o do objetivo, ou o mais recente), com a disponibilidade de aula. */
-  materias: MateriasMissao | null;
+  /** Matérias catalogadas na plataforma (aulas publicadas), para os quadrados da Central. */
+  materias: MateriaCatalogo[];
 }
 
-async function carregarMaterias(editalId: string, editalNome: string): Promise<MateriasMissao | null> {
-  const db = createAdminClient();
-  const [d, t] = await Promise.all([
-    db.from("edital_disciplines").select("id, name").eq("preparation_id", editalId).order("position").limit(200),
-    topicosDe(db, editalId, "discipline_id, match_status"),
-  ]);
-  if (d.error || t.error) return null;
-  const cards = resumirMaterias((d.data ?? []) as Array<{ id: string; name: string }>, t.data as unknown as Array<{ discipline_id: string; match_status: string | null }>);
-  return cards.length ? { editalId, editalNome, cards } : null;
+/** O catálogo publicado é igual para todos os alunos: cache de 5 minutos. */
+const linhasDoCatalogo = unstable_cache(
+  async () => {
+    const { data, error } = await createAdminClient().from("catalog_topics").select("discipline_mode, topic_group").eq("status", "publicado").limit(5000);
+    if (error) throw new Error(error.message);
+    return (data ?? []) as Array<{ discipline_mode: string; topic_group: string | null }>;
+  },
+  ["central-materias-catalogo-v1"],
+  { revalidate: 300 },
+);
+
+export async function carregarMateriasCatalogo(): Promise<MateriaCatalogo[]> {
+  const [linhas] = await Promise.all([linhasDoCatalogo(), ensureDisciplines()]);
+  return agruparCatalogo(linhas, disciplineLabel);
 }
 
 export async function carregarMissao(userId: string): Promise<DadosMissao> {
   const db = createAdminClient();
-  const [perfil, objetivo, editais] = await Promise.all([
+  const [perfil, objetivo, editais, materias] = await Promise.all([
     db.from("profiles").select("display_name").eq("id", userId).maybeSingle(),
     getMentorGoal(userId).catch(() => null),
     listEditalOptions(userId).catch(() => []),
+    carregarMateriasCatalogo().catch(() => []),
   ]);
   const nome = ((perfil.data?.display_name as string | null) ?? "").trim();
-  const emUso = editais.find((e) => e.id === objetivo?.editalId) ?? editais[0];
-  const materias = emUso ? await carregarMaterias(emUso.id, emUso.name).catch(() => null) : null;
   return {
     primeiroNome: nome ? nome.split(/\s+/)[0]! : null,
     objetivo: objetivo?.contest ?? null,

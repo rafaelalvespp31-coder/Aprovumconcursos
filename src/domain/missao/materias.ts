@@ -1,33 +1,35 @@
-/** Cards das matérias do edital na Central de Missão: só números reais do edital do aluno (nada inventado). */
-export interface CardMateria {
-  id: string;
+/** Matérias catalogadas na plataforma Aprovum (aulas publicadas), para os quadrados da Central de Missão. Só números reais do catálogo. */
+export interface AssuntoCatalogo {
+  titulo: string;
+  aulas: number;
+}
+
+export interface MateriaCatalogo {
+  /** Matéria do catálogo (discipline_mode). */
+  slug: string;
   nome: string;
-  /** Tópicos do edital nessa matéria. */
-  total: number;
-  /** Tópicos com aula catalogada (completa, parcial ou a conferir). */
-  comAula: number;
+  aulas: number;
+  assuntos: AssuntoCatalogo[];
 }
 
-export interface MateriasMissao {
-  editalId: string;
-  editalNome: string;
-  cards: CardMateria[];
-}
+const AVULSAS = "Aulas avulsas";
 
-const COM_AULA = new Set(["completa", "parcial", "conferencia"]);
-
-/** Junta matérias (na ordem do edital) e tópicos; matéria sem nenhum tópico não vira card. */
-export function resumirMaterias(
-  disciplinas: ReadonlyArray<{ id: string; name: string }>,
-  topicos: ReadonlyArray<{ discipline_id: string; match_status: string | null }>,
-): CardMateria[] {
-  const total = new Map<string, number>();
-  const com = new Map<string, number>();
-  for (const t of topicos) {
-    total.set(t.discipline_id, (total.get(t.discipline_id) ?? 0) + 1);
-    if (t.match_status && COM_AULA.has(t.match_status)) com.set(t.discipline_id, (com.get(t.discipline_id) ?? 0) + 1);
+/** Agrupa as aulas publicadas por matéria e assunto (grupo). Matérias e assuntos do maior para o menor. */
+export function agruparCatalogo(
+  linhas: ReadonlyArray<{ discipline_mode: string; topic_group: string | null }>,
+  rotulo: (slug: string) => string | undefined,
+): MateriaCatalogo[] {
+  const por = new Map<string, Map<string, number>>();
+  for (const l of linhas) {
+    const g = (l.topic_group ?? "").trim() || AVULSAS;
+    const m = por.get(l.discipline_mode) ?? new Map<string, number>();
+    m.set(g, (m.get(g) ?? 0) + 1);
+    por.set(l.discipline_mode, m);
   }
-  return disciplinas
-    .filter((d) => (total.get(d.id) ?? 0) > 0)
-    .map((d) => ({ id: d.id, nome: d.name, total: total.get(d.id) ?? 0, comAula: com.get(d.id) ?? 0 }));
+  const fim: MateriaCatalogo[] = [];
+  for (const [slug, grupos] of por) {
+    const assuntos = [...grupos].map(([titulo, aulas]) => ({ titulo, aulas })).sort((a, b) => b.aulas - a.aulas || a.titulo.localeCompare(b.titulo, "pt-BR"));
+    fim.push({ slug, nome: rotulo(slug) ?? "Outras matérias", aulas: assuntos.reduce((s, a) => s + a.aulas, 0), assuntos });
+  }
+  return fim.sort((a, b) => b.aulas - a.aulas || a.nome.localeCompare(b.nome, "pt-BR"));
 }

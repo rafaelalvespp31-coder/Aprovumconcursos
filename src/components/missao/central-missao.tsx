@@ -5,10 +5,11 @@ import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
 import { Settings } from "lucide-react";
 import type { Sugestao } from "@/domain/missao/sugestoes";
-import type { MateriasMissao } from "@/domain/missao/materias";
+import type { MateriaCatalogo } from "@/domain/missao/materias";
 import type { Bands, Conexao } from "@/components/mentor/skull-orb-fx";
 import { AnexarEdital } from "./anexar-edital";
 import { FalarComMentor } from "./falar-mentor";
+import { MateriasCatalogo } from "./materias-catalogo";
 import { MentorOrbita } from "./mentor-orbita";
 import "./central-missao.css";
 
@@ -20,11 +21,11 @@ export interface CentralMissaoProps {
   objetivo: string | null;
   /** Editais que o aluno já anexou (lidos e prontos para virar plano). */
   editais: Sugestao[];
-  /** Matérias do edital em uso; sem ele (null), a tela mostra o anexo. */
-  materias: MateriasMissao | null;
+  /** Matérias catalogadas na plataforma (aulas publicadas). */
+  materias: MateriaCatalogo[];
 }
 
-/** Home pós-login: o Mentor no centro da tela e as matérias do edital do aluno (sem edital ainda, o convite "Anexar edital"). */
+/** Home pós-login: o Mentor no centro da tela e as matérias catalogadas na plataforma e, abaixo, o convite "Anexar edital". */
 export function CentralMissao({ primeiroNome, email, objetivo, editais, materias }: CentralMissaoProps) {
   const router = useRouter();
   const [fase, setFase] = useState<Fase>("ocioso");
@@ -74,35 +75,14 @@ export function CentralMissao({ primeiroNome, email, objetivo, editais, materias
       <section className="cm-corpo">
         <p className="cm-kicker cm-e1">MENTOR APROVUM</p>
         <h1 className="cm-titulo cm-e2">QUAL É O SEU PRÓXIMO OBJETIVO?</h1>
-        {materias ? (
-          <p className="cm-sub cm-e3" title={materias.editalNome}>{materias.editalNome}</p>
-        ) : (
-          <p className="cm-sub cm-e3"><span>Anexe o edital do concurso.</span> <span>O Mentor lê o conteúdo programático e monta a sua preparação.</span></p>
-        )}
+        <p className="cm-sub cm-e3"><span>Escolha uma matéria para estudar</span> <span>ou anexe o edital e o Mentor monta a sua preparação.</span></p>
 
         <div className="cm-form cm-e4">
-          {materias && (
-            <ul className="cm-materias" aria-label={`Matérias de ${materias.editalNome}`}>
-              {materias.cards.map((m) => {
-                const sem = m.total - m.comAula;
-                const pct = Math.round((m.comAula / m.total) * 100);
-                return (
-                  <li key={m.id}>
-                    <Link href={`/conteudo-programatico/${materias.editalId}#m-${m.id}`} className="cm-materia" aria-label={`${m.nome}: ${m.total} tópicos, ${m.comAula} com aula, ${sem} sem aula`}>
-                      <span className="cm-materia-nome">{m.nome}</span>
-                      <span className="cm-materia-n">{m.total} {m.total === 1 ? "tópico" : "tópicos"}</span>
-                      <span className="cm-materia-barra" aria-hidden><span style={{ width: `${pct}%` }} /></span>
-                      <span className="cm-materia-disp"><b data-disp="sim">{m.comAula} com aula</b><b data-disp="nao">{sem} sem</b></span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+          <MateriasCatalogo materias={materias} desabilitado={ocupado} />
+          {!anexando && (
+            <button type="button" className="cm-outro" onClick={() => setAnexando(true)} disabled={ocupado}>Anexar edital</button>
           )}
-          {materias && !anexando && (
-            <button type="button" className="cm-outro" onClick={() => setAnexando(true)} disabled={ocupado}>Anexar outro edital</button>
-          )}
-          {(!materias || anexando) && (
+          {anexando && (
             <>
               <AnexarEdital onLido={abrirConteudo} onIniciar={encerrarVoz} desabilitado={ocupado} />
               {editais.length > 0 && (
