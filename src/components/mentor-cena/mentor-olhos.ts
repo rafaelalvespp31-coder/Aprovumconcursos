@@ -44,23 +44,30 @@ void main(){
   float r = length(q);
   float nucleo = exp(-r * r * 2.1);
   float anel = exp(-pow((r - .8) * 2.3, 2.));
-  // língua de chama: sobe da íris, afina e some com a altura
+  // chama suave: duas camadas de ruído deformado, subindo devagar e balançando de leve; afina e some com a altura
   float h = max(0., -vP.y);
-  float topo = clamp(h / 34., 0., 1.);
-  float larg = mix(13., 4.5, topo);
-  float lat = exp(-pow(vP.x / (larg * 1.15), 2.));
-  float alt = smoothstep(-5., 5., -vP.y) * (1. - smoothstep(10., 36., -vP.y));
-  float n = fbm(vec2(vP.x * .15 + uSeed, vP.y * .06 + t * 1.2 * v));
-  float n2 = fbm(vec2(vP.x * .27 - uSeed, vP.y * .12 + t * 2. * v));
-  float chama = lat * alt * smoothstep(.32, .62, n * .72 + n2 * .42 + (1. - topo) * .36) * v;
+  float topo = clamp(h / 44., 0., 1.);
+  float bal = sin(t * .9 + uSeed + h * .09) * 3. * topo * v;
+  float px = vP.x - bal;
+  float larg = mix(16., 5.5, pow(topo, .8));
+  float lat = exp(-pow(px / larg, 2.));
+  float alt = smoothstep(-6., 6., -vP.y) * (1. - smoothstep(14., 44., -vP.y));
+  float w = fbm(vec2(px * .09, vP.y * .04 + t * .45 * v));
+  float n = fbm(vec2(px * .12 + (w - .5) * 1.8 + uSeed, vP.y * .045 + t * .85 * v));
+  float n2 = fbm(vec2(px * .2 - uSeed, vP.y * .08 + t * 1.5 * v));
+  float forma = smoothstep(.12, .9, n * 1.05 + n2 * .35 + (1. - topo) * .3);
+  float chama = lat * alt * forma * v;
+  float chamaFina = lat * lat * alt * smoothstep(.35, .95, n * .9 + n2 * .5 + (1. - topo) * .25) * v;
   // brilho na órbita (suave, contido)
   vec2 o = vP / vec2(26., 16.);
   float halo = exp(-dot(o, o) * 1.15);
   float at = uAt;
   // brasa: o calor varia pela superfície (manchas que esquentam e esfriam devagar), como carvão aceso
   float brasa = .72 + .55 * fbm(vP * .3 + vec2(uSeed, t * .3 * v));
-  float e = at * (nucleo * 1.15 * brasa + anel * .5) * respira + pow(at, 1.4) * chama * 1.6;
-  vec3 col = fogo(e) * e + vec3(.85, .1, .03) * halo * at * .11 * respira;
+  float e = at * (nucleo * 1.1 * brasa + anel * .5) * respira;
+  // a chama usa só a parte vermelho-laranja da rampa (nunca amarela), bem transparente: lambe a órbita em vez de ser um desenho
+  float ef = pow(at, 1.5) * (chama * .85 + chamaFina * .5);
+  vec3 col = fogo(e) * e + fogo(min(ef * 1.5, .62)) * ef + vec3(.85, .1, .03) * halo * at * .11 * respira;
   // faíscas minúsculas, só quando o olho já está bem aceso
   float acende = smoothstep(.5, .95, at) * v;
   for (int i = 0; i < 4; i++){
