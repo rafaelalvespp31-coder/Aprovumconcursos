@@ -12,6 +12,7 @@ import { buildIndex, matchTopic, type CatalogEntry } from "@/domain/edital/match
 import { crossSources } from "@/domain/edital/cross";
 import { filterPagesByRole } from "@/domain/edital/role-filter";
 import { topicosDe } from "./edital-topicos";
+import { COBERTURA_PARA_COMPARTILHAR, LEITURA_V, chaveCargo, podeCompartilhar, validarCompartilhada, type LeituraCompartilhada } from "@/domain/edital/leitura-compartilhada";
 import { avancarEspecialista, type EstadoLeitura, type LeituraResumo } from "./edital-especialista";
 import type { Identificacao } from "@/domain/edital/especialista";
 import { computePriorities, extractScoring, type Priorities } from "@/domain/edital/scoring";
@@ -162,6 +163,16 @@ async function carregarLeitura(prepId: string): Promise<EstadoLeitura | null> {
 async function gravarLeitura(prepId: string, userId: string, estado: EstadoLeitura) {
   const r = await createAdminClient().from("edital_leitura").upsert({ preparation_id: prepId, user_id: userId, estado, updated_at: new Date().toISOString() }, { onConflict: "preparation_id" });
   if (r.error) throw new Error(r.error.message);
+}
+
+/** Leitura já feita (por qualquer aluno) deste mesmo PDF para este cargo: todos recebem exatamente a mesma extração. */
+async function lerCompartilhada(hash: string, cargo: string | null): Promise<LeituraCompartilhada | null> {
+  const r = await createAdminClient().from("edital_leituras").select("modelo, info, parsed, leitura").eq("file_hash", hash).eq("cargo_key", chaveCargo(cargo)).eq("leitura_v", LEITURA_V).maybeSingle();
+  return r.error ? null : validarCompartilhada(r.data);
+}
+async function gravarCompartilhada(hash: string, cargo: string | null, l: LeituraCompartilhada): Promise<void> {
+  const r = await createAdminClient().from("edital_leituras").upsert({ file_hash: hash, cargo_key: chaveCargo(cargo), leitura_v: LEITURA_V, modelo: l.modelo, info: l.info, parsed: l.parsed, leitura: l.leitura }, { onConflict: "file_hash,cargo_key" });
+  if (r.error) await logEvent("edital.leitura_compartilhada.erro", { erro: r.error.message.slice(0, 160) });
 }
 
 async function setStatus(prepId: string, status: PrepStatus, patch: Record<string, unknown> = {}) {
@@ -398,7 +409,13 @@ async function stageIdentify(p: Row) {
   // Se ele falhar ou não estiver configurado, segue a leitura estrutural abaixo, sem inventar nada.
   type Esp = { ok: true; modelo: string; info: Identificacao; parsed: ParsedEdital | null; leitura: LeituraResumo } | { ok: false; motivo: string };
   let esp: Esp = { ok: false, motivo: "sem_chave" };
-  if (process.env.GEMINI_API_KEY?.trim()) {
+  const hash = p.file_hash as string;
+  const cargoLeitura = (p.role_name as string | null) ?? null;
+  const compartilhada = emAndamento ? null : await lerCompartilhada(hash, cargoLeitura).catch(() => null);
+  if (compartilhada) {
+    esp = { ok: true, modelo: compartilhada.modelo, info: compartilhada.info, parsed: compartilhada.parsed, leitura: compartilhada.leitura };
+    await event(id, userId, 3, "Este edital já foi lido pelo especialista: usei a mesma extração gravada (sem nova leitura).", "ok");
+  } else if (process.env.GEMINI_API_KEY?.trim()) {
     if (!emAndamento) await event(id, userId, 3, "Especialista Gemini lendo o edital completo e separando o conteúdo programático…", "info");
     const hint = !emAndamento || emAndamento.fase === "identificar" ? (parseEdital(pages).sectionPages ?? null) : null;
     const passo = await avancarEspecialista(pages, (p.role_name as string | null) ?? null, emAndamento, hint, {
@@ -407,6 +424,12 @@ async function stageIdentify(p: Row) {
     }).catch((): { tipo: "falhou"; motivo: string } => ({ tipo: "falhou", motivo: "erro" }));
     if (passo.tipo === "continua") return; // a etapa segue na próxima chamada, de onde parou
     esp = passo.tipo === "pronto" ? (passo.precisaCargo ? { ok: true, modelo: passo.modelo, info: passo.info, parsed: null, leitura: passo.leitura } : { ok: true, modelo: passo.modelo, info: passo.info, parsed: passo.parsed, leitura: passo.leitura }) : { ok: false, motivo: passo.motivo };
+    // Leitura boa: fica gravada para todo aluno que anexar o mesmo edital (mesmo PDF e cargo) receber exatamente a mesma extração.
+    if (esp.ok && podeCompartilhar(esp.parsed, esp.leitura.cobertura)) {
+      await gravarCompartilhada(hash, cargoLeitura, { modelo: esp.modelo, info: esp.info, parsed: esp.parsed, leitura: esp.leitura });
+    } else if (esp.ok && esp.parsed) {
+      await event(id, userId, 3, `A leitura cobriu ${Math.round(esp.leitura.cobertura * 100)}% do texto (abaixo de ${Math.round(COBERTURA_PARA_COMPARTILHAR * 100)}%): vale para esta preparação, mas não será reaproveitada por outros alunos.`, "warn");
+    }
   }
   if (esp.ok && esp.info.concurso && !p.contest_name) { p.contest_name = esp.info.concurso; await db.from("edital_preparations").update({ contest_name: esp.info.concurso }).eq("id", id); }
   if (esp.ok && esp.info.banca && !p.board) { p.board = esp.info.banca; await db.from("edital_preparations").update({ board: esp.info.banca }).eq("id", id); }
@@ -638,6 +661,8 @@ export async function refazerLeitura(userId: string, id: string): Promise<void> 
   const p = await own(userId, id);
   if (p.status !== "concluido" && p.status !== "conferencia" && p.status !== "erro") throw new UserFacingError("A leitura deste edital já está em andamento.", "invalid_input");
   await enforceRateLimit(userId, "edital_releitura", 6, 3600);
+  // A extração gravada para este PDF e cargo é descartada: a nova leitura a substitui para todos os alunos (se tiver boa cobertura).
+  await createAdminClient().from("edital_leituras").delete().eq("file_hash", p.file_hash as string).eq("cargo_key", chaveCargo((p.role_name as string | null) ?? null));
   await setStatus(id, "identificando", { error: null });
   await event(id, userId, 3, "Refazendo a leitura do edital com o especialista.", "info");
 }
