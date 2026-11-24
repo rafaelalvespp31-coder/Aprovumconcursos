@@ -1,7 +1,7 @@
 import "server-only";
 import { createHash } from "node:crypto";
 import { z } from "zod";
-import { KNOWN_BOARDS, parseSmart, type SmartDraft, type SmartParse } from "@/domain/bank/smart-import";
+import { KNOWN_BOARDS, parseSmart, resumirAssunto, type SmartDraft, type SmartParse } from "@/domain/bank/smart-import";
 import { splitCommentByOption } from "@/domain/bank/option-notes";
 import { matchByName, parseBankUpload, summarizeBankUpload, type BankUploadPreview, type ParsedBankQuestion } from "@/domain/bank/upload";
 import { slugify } from "@/domain/bank/schema";
@@ -78,7 +78,8 @@ export async function previewBankUpload(text: string): Promise<BankUploadPreview
 async function ensureTopic(subjectId: string, path: string[], cache: Map<string, string>): Promise<string | null> {
   const db = createAdminClient();
   let parent: string | null = null;
-  for (const name of path) {
+  for (const nome of path) {
+    const name = resumirAssunto(nome);
     const slug = slugify(name);
     const key: string = `${subjectId}/${parent ?? ""}/${slug}`;
     let id: string | null = cache.get(key) ?? null;
@@ -89,7 +90,7 @@ async function ensureTopic(subjectId: string, path: string[], cache: Map<string,
       const hit = (rows ?? []).find((r) => fold(r.name as string) === fold(name)) ?? null;
       id = (hit?.id as string) ?? null;
       if (!id) {
-        const ins = await db.from("subject_topics").insert({ subject_id: subjectId, parent_id: parent, slug, name: name.slice(0, 200) }).select("id").single();
+        const ins = await db.from("subject_topics").insert({ subject_id: subjectId, parent_id: parent, slug, name }).select("id").single();
         if (ins.error) {
           // corrida/slug igual com nome diferente: reaproveita o existente
           let again = db.from("subject_topics").select("id").eq("subject_id", subjectId).eq("slug", slug);

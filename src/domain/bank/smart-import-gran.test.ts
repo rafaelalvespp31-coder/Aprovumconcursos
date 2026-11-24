@@ -288,3 +288,17 @@ E
     expect(splitDisciplineTopic([{ name: "Língua Portuguesa" }], d.discipline, d.topic)).toEqual({ discipline: "Língua Portuguesa", topic: "Análise sintática" });
   });
 });
+
+describe("resumirAssunto", () => {
+  it("resume o assunto longo para o título principal", async () => {
+    const { resumirAssunto } = await import("./smart-import");
+    expect(
+      resumirAssunto("Fundamentos da República Federativa do Brasil - formas de Estado, formas de governo, sistemas de governo, regimes de governo. Poder: titularidade x exercício (artigo 1º da CF)"),
+    ).toBe("Fundamentos da República Federativa do Brasil");
+    expect(resumirAssunto("Análise sintática")).toBe("Análise sintática");
+    expect(resumirAssunto("Classificação dos verbos quanto à predicação (transitividade)")).toBe("Classificação dos verbos quanto à predicação (transitividade)");
+    const longo = resumirAssunto("Princípios constitucionais explícitos e implícitos aplicáveis à Administração Pública direta e indireta de todos os entes federativos brasileiros");
+    expect(longo.length).toBeLessThanOrEqual(70);
+    expect(longo.length).toBeGreaterThan(20);
+  });
+});

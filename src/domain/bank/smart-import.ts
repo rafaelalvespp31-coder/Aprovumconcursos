@@ -617,3 +617,20 @@ export function splitDisciplineTopic(subjects: Array<{ name: string }>, discipli
   if (rest.length < 3) return { discipline, topic };
   return { discipline: words.slice(0, best.n).join(" "), topic: rest };
 }
+
+/**
+ * Assunto longo vira um nome curto: "Fundamentos da República Federativa do Brasil - formas de Estado, … (art. 1º)"
+ * fica "Fundamentos da República Federativa do Brasil". Nomes até 70 caracteres não mudam. O banco aceita até 160
+ * caracteres (e 80 no slug), então nunca passa de 100.
+ */
+export function resumirAssunto(name: string): string {
+  const t = name.replace(/\s+/g, " ").trim();
+  if (t.length <= 70) return t;
+  const first = t.split(/\s[-–—]\s|:\s|;\s|\s\/\s|\.\s|\s\(/)[0]!.trim();
+  if (first.length >= 8 && first.length <= 100) return first;
+  const base = first.length > 100 ? first.slice(0, 100) : first;
+  const cut = base.slice(0, 70);
+  const at = cut.lastIndexOf(" ");
+  const short = (at > 30 ? cut.slice(0, at) : cut).replace(/\s+(?:d[aeo]s?|e|em|n[ao]s?|par[ae]|com|por|a|o|as|os)$/i, "").replace(/[\s,;:.\-–—]+$/, "");
+  return short.length >= 8 ? short : cut.trim();
+}
