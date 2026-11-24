@@ -40,6 +40,8 @@ import { Countdown, QUESTION_SECONDS } from "./countdown";
 import { GameBanner } from "./game-banner";
 import { JogoHero } from "./jogo-hero";
 import { LevelUpDialog } from "./level-up";
+import { EscolherAlvo } from "./escolher-alvo";
+import { rotuloDoTipo, type TipoPergunta } from "@/domain/quiz/tipos";
 
 const MASCOT = "/icons/instrutor-caveira.png";
 
@@ -86,6 +88,7 @@ export function QuizView({
   previewLevelUp,
   previewRanking,
   extra,
+  initialTipo = "todas",
 }: {
   home: QuizHome;
   initialRound: QuizRound;
@@ -96,6 +99,8 @@ export function QuizView({
   previewRanking?: RankingRow[];
   /** Bloco logo abaixo da abertura (ex.: entrada do Desafio rápido). */
   extra?: React.ReactNode;
+  /** Tipo de pergunta que o aluno escolheu (vem do link). */
+  initialTipo?: TipoPergunta;
 }) {
   const [round, setRound] = useState(initialRound);
   const [level, setLevel] = useState<QuizLevel>(initialRound.level);
@@ -121,7 +126,8 @@ export function QuizView({
     () => new Map(home.topics.map((t) => [t.id, t.mastered])),
   );
   const [tab, setTab] = useState<Tab>("explicacao");
-  const [filter, setFilter] = useState("Todos");
+  const [tipo, setTipo] = useState<TipoPergunta>(initialTipo);
+  const [escolhendo, setEscolhendo] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Tema de onde a rodada saiu por não ter mais perguntas inéditas (as perguntas não se repetem).
   const [moved, setMoved] = useState<string | null>(initialRound.movedFrom);
@@ -133,7 +139,6 @@ export function QuizView({
   const [jogoAberto, setJogoAberto] = useState(false);
   const [hint, setHint] = useState(false);
   const [pageVisible, setPageVisible] = useState(true);
-  const [showAllTopics, setShowAllTopics] = useState(false);
   const cardRef = useRef<HTMLDivElement>(null);
   // Quando a questão apareceu (tempo de resposta registrado no servidor).
   const shownAt = useRef(0);
@@ -166,10 +171,6 @@ export function QuizView({
         { mastered: 0, total: 0 },
       ),
     [home.topics, mastered],
-  );
-  const disciplines = useMemo(
-    () => ["Todos", ...new Set(home.topics.map((t) => t.discipline))],
-    [home.topics],
   );
 
   // O cronômetro só corre com a questão na tela e a aba ativa (não pune quem ainda está lendo o banner).
@@ -317,11 +318,19 @@ export function QuizView({
     cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const newRound = (topicId = topic.id) => {
+  const newRound = (topicId = topic.id, tipoRodada: TipoPergunta = tipo, abrir = false) => {
     setError(null);
     start(async () => {
-      const r = await startRoundAction(topicId);
-      if (!r.ok) return setError(r.error);
+      const r = await startRoundAction(topicId, tipoRodada);
+      if (!r.ok) {
+        setError(r.error);
+        if (abrir) setEscolhendo(false);
+        return;
+      }
+      setTipo(tipoRodada);
+      try {
+        window.history.replaceState(null, "", `/quiz?tema=${r.round.topic.id}${tipoRodada === "todas" ? "" : `&tipo=${tipoRodada}`}`);
+      } catch { /* sem histórico: só não atualiza o link */ }
       setMoved(r.round.movedFrom);
       setRound(r.round);
       setLevel(r.round.level);
@@ -338,7 +347,8 @@ export function QuizView({
       setMastered((m) =>
         new Map(m).set(r.round.topic.id, r.round.topic.mastered),
       );
-      cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (abrir) { setEscolhendo(false); setJogoAberto(true); }
+      else cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
     });
   };
 
@@ -374,7 +384,7 @@ export function QuizView({
         </Link>
         {extra}
         <GameBanner
-          topicTitle={topic.title}
+          topicTitle={tipo === "todas" ? topic.title : `${topic.title} · ${rotuloDoTipo(tipo)}`}
           discipline={topic.discipline}
           idx={idx}
           total={total}
@@ -389,8 +399,19 @@ export function QuizView({
             if (finished) newRound();
             setJogoAberto(true);
           }}
+          onPickTarget={() => setEscolhendo(true)}
           onRanking={() => setDialog("ranking")}
           mood={check ? (check.correct ? "ok" : "erro") : null}
+        />
+        <EscolherAlvo
+          open={escolhendo}
+          onClose={() => setEscolhendo(false)}
+          topics={home.topics}
+          mastered={mastered}
+          currentId={topic.id}
+          tipo={tipo}
+          ocupado={pending}
+          onEscolher={(id, t) => newRound(id, t, true)}
         />
         <LevelUpDialog
           open={dialog !== null}
@@ -416,7 +437,14 @@ export function QuizView({
           data-testid="jogo-popup"
         >
           {jogoAberto && (
-            <div className="mx-auto flex max-w-[1180px] justify-end">
+            <div className="mx-auto flex max-w-[1180px] justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setEscolhendo(true)}
+                className="font-hud flex min-h-10 items-center gap-1.5 rounded-[10px] px-3 text-[12px] font-bold uppercase tracking-[0.14em] text-white/80 ring-1 ring-white/20 hover:bg-white/10"
+              >
+                <Target className="h-4 w-4" aria-hidden /> Trocar alvo
+              </button>
               <button
                 type="button"
                 onClick={() => setJogoAberto(false)}
@@ -528,6 +556,7 @@ export function QuizView({
               level={level}
               lockedUntil={lockedUntil}
               onAgain={() => newRound()}
+              onPickTarget={() => setEscolhendo(true)}
               onRanking={() => setDialog("ranking")}
             />
           ) : item ? (
@@ -1055,6 +1084,7 @@ function RoundEnd({
   level,
   lockedUntil,
   onAgain,
+  onPickTarget,
   onRanking,
 }: {
   lockedUntil: string | null;
@@ -1066,6 +1096,7 @@ function RoundEnd({
   pending: boolean;
   level: QuizLevel;
   onAgain: () => void;
+  onPickTarget: () => void;
   onRanking: () => void;
 }) {
   const lost = hearts <= 0;
@@ -1116,6 +1147,15 @@ function RoundEnd({
         <RotateCcw className="h-5 w-5" aria-hidden />{" "}
         {pending ? "Preparando…" : "Nova rodada"}
       </button>
+      )}
+      {!lockedUntil && (
+        <button
+          type="button"
+          onClick={onPickTarget}
+          className="mx-auto mt-3 flex min-h-12 items-center justify-center gap-2 rounded-full bg-black/35 px-5 text-[14px] font-black"
+        >
+          <Target className="h-4 w-4" aria-hidden /> Trocar matéria ou tipo
+        </button>
       )}
       <p className="mt-4 text-[13px] text-white/80">
         Nível {level.level} • {level.patente} • faltam {level.toNext}{" "}

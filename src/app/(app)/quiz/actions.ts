@@ -1,16 +1,17 @@
 "use server";
 
 import { checkAnswer, getRanking, startRound, type QuizCheck, type QuizRound, type PeriodoRanking, type RankingRow } from "@/server/services/quiz";
+import { tipoValido } from "@/domain/quiz/tipos";
 import { UserFacingError } from "@/server/services/trails";
 import { requireUser } from "@/server/auth";
 import { createUserClient } from "@/server/supabase";
 
 const UUID = /^[0-9a-f-]{36}$/i;
 
-export async function startRoundAction(topicId: string): Promise<{ ok: true; round: QuizRound } | { ok: false; error: string }> {
+export async function startRoundAction(topicId: string, tipo?: string): Promise<{ ok: true; round: QuizRound } | { ok: false; error: string }> {
   if (!UUID.test(topicId)) return { ok: false, error: "Conteúdo inválido." };
   try {
-    return { ok: true, round: await startRound(topicId) };
+    return { ok: true, round: await startRound(topicId, tipoValido(tipo)) };
   } catch (e) {
     return { ok: false, error: e instanceof UserFacingError ? e.message : "Não foi possível começar a rodada. Tente de novo." };
   }

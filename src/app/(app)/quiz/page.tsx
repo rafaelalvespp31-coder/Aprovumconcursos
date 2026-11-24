@@ -1,5 +1,6 @@
 import { getQuizHome, startRound, DAILY_GOAL } from "@/server/services/quiz";
 import { getLives, mensagemTravado } from "@/server/services/game-lives";
+import { tipoValido } from "@/domain/quiz/tipos";
 import { QuizView } from "./quiz-view";
 import { requireUser } from "@/server/auth";
 import { getPlanUsage } from "@/server/services/plans";
@@ -8,8 +9,9 @@ import { ButtonLink, Notice } from "@/components/ui";
 
 export const metadata = { title: "Modo Jogo" };
 
-export default async function QuizPage({ searchParams }: { searchParams: Promise<{ tema?: string }> }) {
+export default async function QuizPage({ searchParams }: { searchParams: Promise<{ tema?: string; tipo?: string }> }) {
   const sp = await searchParams;
+  const tipo = tipoValido(sp.tipo);
   const home = await getQuizHome();
   if (!home.topics.length) {
     return (
@@ -28,8 +30,14 @@ export default async function QuizPage({ searchParams }: { searchParams: Promise
   let round: Awaited<ReturnType<typeof startRound>> | null = null;
   let limit: string | null = null;
   let exhausted = false;
+  let tipoUsado = tipo;
   try {
-    round = await startRound(chosen.id);
+    try {
+      round = await startRound(chosen.id, tipo);
+    } catch (e) {
+      // Link com um tipo que já não tem perguntas inéditas: abre o jogo misturado em vez de travar.
+      if (e instanceof UserFacingError && e.code === "quiz_sem_tipo") { tipoUsado = "todas"; round = await startRound(chosen.id, "todas"); } else throw e;
+    }
   } catch (e) {
     // Plano gratuito: as questões do dia acabaram; ou o aluno já respondeu todas as perguntas do jogo.
     if (!(e instanceof UserFacingError)) throw e;
@@ -90,7 +98,7 @@ export default async function QuizPage({ searchParams }: { searchParams: Promise
           Plano gratuito: {usage.gameLeft === 1 ? "resta 1 questão" : `restam ${usage.gameLeft} questões`} no Modo Jogo hoje.
         </p>
       )}
-      <QuizView key={round.topic.id} home={home} initialRound={round} lives={round.lives.max} dailyGoal={DAILY_GOAL} />
+      <QuizView key={`${round.topic.id}:${tipoUsado}`} home={home} initialTipo={tipoUsado} initialRound={round} lives={round.lives.max} dailyGoal={DAILY_GOAL} />
     </>
   );
 }

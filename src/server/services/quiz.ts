@@ -6,6 +6,7 @@ import { ensureDisciplines } from "./disciplines";
 import { extractPractice } from "@/domain/content/practice";
 import { computeStreak, streakMessage } from "@/domain/progress/gamification";
 import { buildAll, checkCloze, shuffle, seeded, type ClozeItem, type LawNode } from "@/domain/quiz/cloze";
+import type { TipoPergunta } from "@/domain/quiz/tipos";
 import { levelFor, patente, tierByNumber, tierFor, toNextLevel, type Tier } from "@/domain/quiz/levels";
 import { requireUser } from "../auth";
 import { getStudyStats } from "../queries";
@@ -218,8 +219,10 @@ function gameToCloze(g: GameRow, rnd?: () => number): ClozeItem {
 }
 
 /** Perguntas curtas ainda não respondidas deste tema. */
-async function freshGame(topicId: string, seen: Set<string>, rnd: () => number): Promise<ClozeItem[]> {
-  const { data, error } = await createAdminClient().from("game_items").select(GAME_COLS).eq("topic_id", topicId).eq("active", true).limit(1000);
+async function freshGame(topicId: string, seen: Set<string>, rnd: () => number, kind?: "vf" | "escolha"): Promise<ClozeItem[]> {
+  let q = createAdminClient().from("game_items").select(GAME_COLS).eq("topic_id", topicId).eq("active", true);
+  if (kind) q = q.eq("kind", kind);
+  const { data, error } = await q.limit(1000);
   if (error) throw new Error(error.message);
   return ((data ?? []) as unknown as GameRow[]).filter((g) => !seen.has(g.key)).map((g) => gameToCloze(g, rnd));
 }
@@ -228,9 +231,10 @@ async function freshGame(topicId: string, seen: Set<string>, rnd: () => number):
  * Rodada no nível atual do aluno: vai até completar o nível (10 questões, ou o que falta).
  * Pergunta já respondida (certa ou errada) NUNCA volta para o mesmo aluno. Quando o tema pedido
  * acaba, a rodada segue em outro tema com perguntas inéditas (primeiro da mesma matéria); quando
- * não sobra nenhuma no jogo inteiro, o aluno é avisado.
+ * não sobra nenhuma no jogo inteiro, o aluno é avisado. `tipo` restringe o que o aluno quer responder:
+ * frases da lei (lacunas), verdadeiro ou falso, múltipla escolha, ou tudo misturado.
  */
-export async function startRound(topicId: string): Promise<QuizRound> {
+export async function startRound(topicId: string, tipo: TipoPergunta = "todas"): Promise<QuizRound> {
   const user = await requireUser("/quiz");
   const lives = await assertHasLives(user.id);
   await assertQuota(user.id, "jogo");
@@ -245,17 +249,24 @@ export async function startRound(topicId: string): Promise<QuizRound> {
   let topic: QuizTopic | null = null;
   let fresh: ClozeItem[] = [];
   for (const t of order) {
-    const pool = itemsFor(t, lv.tier);
+    const soCurtas = tipo === "vf" || tipo === "escolha";
+    const pool = soCurtas ? [] : itemsFor(t, lv.tier);
+    const querCurtas = tipo !== "lacunas" && t.gameCount > 0;
+    if (!pool.length && !querCurtas) continue;
     const known = approx.get(t.id);
-    if (known && !t.gameCount && pool.every((i) => known.has(i.nodeKey))) continue;
+    if (known && !querCurtas && pool.every((i) => known.has(i.nodeKey))) continue;
     const seen = await seenKeys(t.id);
     const f = pool.filter((i) => !seen.has(i.nodeKey));
-    if (t.gameCount) f.push(...(await freshGame(t.id, seen, seeded(`${t.id}:${Date.now()}:${Math.random()}`))));
+    if (querCurtas) f.push(...(await freshGame(t.id, seen, seeded(`${t.id}:${Date.now()}:${Math.random()}`), soCurtas ? tipo : undefined)));
     if (f.length) {
       topic = t;
       fresh = f;
       break;
     }
+  }
+  if (!topic && tipo !== "todas") {
+    const nome = { lacunas: "frases da lei", vf: "verdadeiro ou falso", escolha: "múltipla escolha" }[tipo];
+    throw new UserFacingError(`Não há perguntas inéditas de ${nome} agora. Escolha outro tipo ou outra matéria.`, "quiz_sem_tipo");
   }
   if (!topic) throw new UserFacingError("Você já respondeu todas as perguntas do Modo Jogo. Novas perguntas aparecem quando novos conteúdos forem publicados.", "quiz_exhausted");
   const s = summarize(attempts, [topic]);
