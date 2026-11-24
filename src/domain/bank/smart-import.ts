@@ -75,7 +75,8 @@ const ANSWER = /^\s*(?:gabarito|resposta(?:\s+correta)?|alternativa\s+correta)\s
 const COMMENT = /^\s*(?:coment[áa]rios?(?:\s+d[oa]\s+\w+)?|justificativa|explica[çc][ãa]o|resolu[çc][ãa]o)\s*[:\-–]\s*(.*)$/i;
 const FIELD_DISC = /^\s*(?:disciplina|mat[ée]ria)\s*:\s*(.+?)\s*$/i;
 const FIELD_TOPIC = /^\s*(?:assuntos?|tema|t[óo]pico)\s*:\s*(.+?)\s*$/i;
-const NOISE = /^\s*(?:ver\s+coment[áa]rios?|resolver|anular|reportar|salvar|adicionar|imprimir|compartilhar|\d+\s*coment[áa]rios?|anotar|erro\s+no\s+enunciado|favoritar)\s*[.!]?\s*$/i;
+const STATUS = String.raw`resolvida|n[ãa]o\s+resolvida|respondida|n[ãa]o\s+respondida|acertei|errei|anulada|desatualizada`;
+const NOISE = /^\s*(?:resolvida|n[ãa]o\s+resolvida|respondida|n[ãa]o\s+respondida|acertei|errei|anulada|desatualizada|ver\s+coment[áa]rios?|resolver|anular|reportar|salvar|adicionar|imprimir|compartilhar|\d+\s*coment[áa]rios?|anotar|erro\s+no\s+enunciado|favoritar)\s*[.!]?\s*$/i;
 
 function normalizeAnswer(v: string): string | null {
   const t = v.trim().replace(/[.\s]+$/g, "");
@@ -212,7 +213,14 @@ function parseBlock(blockLines: string[], idx: number, carry: { baseCode: string
     baseCode = carry.baseCode;
     baseText = carry.baseText;
   }
-  const statement = statementLines.join("\n").replace(/^\n+|\n+$/g, "").trim();
+  let statement = statementLines.join("\n").replace(/^\n+|\n+$/g, "").trim();
+  // Rede de segurança: se separar o texto-base deixou o enunciado minúsculo, a separação errou. Fica tudo como enunciado.
+  if (baseAt >= 0 && statement.length < 15) {
+    statement = textLines.slice(baseAt + 1).join("\n").replace(/^\n+|\n+$/g, "").trim();
+    baseText = null;
+  }
+  // Sem texto associado de verdade, o rótulo "Texto associado" não vira texto-base.
+  if (!baseText && baseAt >= 0) baseCode = null;
 
   // Tipo.
   const onlyCE = options.length === 2 && options.every((o) => /^(certo|errado)$/i.test(o.text.trim().replace(/[.]$/, "")));
@@ -436,12 +444,17 @@ function preprocessTec(text: string): string {
       const between: number[] = [];
       let k = i + 1;
       for (; k < lines.length && between.length <= 3; k++) {
-        if (!lines[k]!.trim()) continue;
+        if (!lines[k]!.trim() || NOISE.test(lines[k]!)) continue;
         if (GRAN_LABEL.test(lines[k]!)) break;
         between.push(k);
       }
       if (k >= lines.length || !GRAN_LABEL.test(lines[k]!) || between.length < 1 || between.length > 2) continue;
       if (between.some((x) => FIELD_DISC.test(lines[x]!) || FIELD_TOPIC.test(lines[x]!))) continue;
+      // O selo de status do Gran ("Resolvida") às vezes cola no fim da linha do assunto.
+      const semStatus = (l: string) => l.trim().replace(new RegExp(String.raw`\s+(?:${STATUS})\s*$`, "i"), "");
+      for (let x = i + 1; x < k; x++) if (NOISE.test(lines[x]!)) lines[x] = "";
+      lines[between[0]!] = semStatus(lines[between[0]!]!);
+      if (between[1] !== undefined) lines[between[1]] = semStatus(lines[between[1]]!);
       lines[between[0]!] = `Matéria: ${lines[between[0]!]!.trim()}`;
       if (between[1] !== undefined) lines[between[1]] = `Assunto: ${lines[between[1]]!.trim()}`;
     }
@@ -483,6 +496,20 @@ export function parseSmart(input: string): SmartParse {
     if (d.baseTextCode && d.baseText) { carry.baseCode = d.baseTextCode; carry.baseText = d.baseText; }
     drafts.push(d);
   });
+  // Rede de segurança: sobra sem cabeçalho nem alternativas logo antes de uma questão com cabeçalho (ex.: linhas de
+  // matéria/assunto soltas) não é questão. Vira matéria/assunto da seguinte, se ela ainda não tiver.
+  for (let i = drafts.length - 2; i >= 0; i--) {
+    const d = drafts[i]!;
+    const next = drafts[i + 1]!;
+    if (d.board || d.year || d.examLine || d.options.length || d.type !== "discursiva" || d.statement.length > 200 || !next.board) continue;
+    const soltas = d.statement.split("\n").map((l) => l.trim().replace(new RegExp(String.raw`\s+(?:${STATUS})\s*$`, "i"), "")).filter((l) => l && !NOISE.test(l));
+    if (!next.discipline && soltas[0]) {
+      next.discipline = soltas[0];
+      if (!next.topic && soltas[1]) next.topic = soltas[1];
+      next.issues = next.issues.filter((x) => x !== "disciplina_pendente");
+    }
+    drafts.splice(i, 1);
+  }
   drafts.forEach((d, i) => (d.key = `q${i + 1}`));
   const map = new Map<string, { code: string; body: string; questions: number }>();
   for (const d of drafts) {

@@ -175,3 +175,60 @@ De ação.
     expect(d.statement).toMatch(/^De acordo com/);
   });
 });
+
+describe("Gran Cursos: selo 'Resolvida' e enunciado com palavra destacada", () => {
+  const prova = `Ano: 2026
+Banca: Instituto Brasileiro de Apoio e Desenvolvimento Executivo - IBADE
+Prova: IBADE - PC ES - Investigador de Polícia - 2026
+`;
+  const alts = `A
+Intransitivo.
+B
+Transitivo direto.
+C
+Transitivo indireto.
+D
+De ligação.
+E
+De ação.
+`;
+  const enun = "De acordo com o contexto sintático, na oração “[...] cuja superfície pareceria intocada não estivesse ele a navegar”, como se classifica, quanto ao sentido, o verbo destacado?";
+
+  it("'Resolvida' colada no fim do assunto não vira questão nem entra na matéria/assunto", () => {
+    const txt = `Q4313594\nLíngua Portuguesa Classificação dos verbos quanto à predicação (transitividade) Resolvida\n${prova}Texto associado\n${enun}\n${alts}`;
+    const { drafts } = parseSmart(txt);
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0]!.statement).toBe(enun);
+    expect(drafts[0]!.board).toBe("IBADE");
+  });
+
+  it("'Resolvida' em linha própria, matéria e assunto em linhas separadas", () => {
+    const txt = `Q4313594\nLíngua Portuguesa\nClassificação dos verbos quanto à predicação (transitividade)\nResolvida\n${prova}Texto associado\n${enun}\n${alts}`;
+    expect(estimateQuestions(txt)).toBe(1);
+    const { drafts } = parseSmart(txt);
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0]!.discipline).toBe("Língua Portuguesa");
+    expect(drafts[0]!.topic).toBe("Classificação dos verbos quanto à predicação (transitividade)");
+  });
+
+  it("palavra destacada em parágrafo curto não vira o enunciado", () => {
+    const txt = `${prova}Texto associado\n${enun}\n\nnavegar\n${alts}`;
+    const { drafts } = parseSmart(txt);
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0]!.statement).toContain("como se classifica");
+    expect(drafts[0]!.statement.length).toBeGreaterThan(40);
+    expect(drafts[0]!.issues).not.toContain("enunciado_curto");
+    expect(drafts[0]!.baseText).toBeNull();
+    expect(drafts[0]!.baseTextCode).toBeNull();
+    expect(drafts[0]!.options).toHaveLength(5);
+  });
+});
+
+describe("Gran Cursos: sobra sem cabeçalho antes da questão", () => {
+  it("linhas soltas de matéria/assunto antes do bloco Ano/Banca/Prova não viram questão", () => {
+    const txt = `Q1\nLíngua Portuguesa\nClassificação dos verbos\nResolvida\nAno: 2026\nBanca: FGV\nProva: FGV - TJ SC - Analista - 2026\nQuanto ao tema, assinale a alternativa correta.\nA\num\nB\ndois\n`;
+    const { drafts } = parseSmart(txt);
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0]!.board).toBe("FGV");
+  });
+});
