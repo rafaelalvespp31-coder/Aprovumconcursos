@@ -18,6 +18,7 @@ import {
   ArrowDown,
   EllipsisVertical,
   BarChart3,
+  ListChecks,
   Flag,
   FolderOpen,
   Grid3x3,
@@ -532,57 +533,62 @@ function QuestionPanel({
             {q.subjectName && <li className="qz-chip qz-chip-mat">{q.subjectName}</li>}
           </ul>
         </header>
-        <div className="overflow-hidden rounded-[14px] border-2 border-[#1F2937] bg-white" data-testid="bloco-enunciado">
-          <p className="flex items-center gap-2 bg-[#1F2937] px-3 py-1.5 text-[12.5px] font-black uppercase tracking-[0.16em] text-white">
-            <Type className="h-4 w-4" aria-hidden /> Enunciado
-            {q.caseContext && <span className="ml-auto text-[11px] font-bold normal-case tracking-normal text-white/80">texto base + pergunta</span>}
-          </p>
-          <div ref={textRef} className="p-3">
+        <div className="qz-enun" data-testid="bloco-enunciado">
+          <div className="qz-enun-topo">
+            <span className="qz-enun-rot">
+              <Type className="h-3.5 w-3.5" aria-hidden /> Enunciado
+            </span>
+            <span className="qz-enun-num" aria-hidden>
+              {pad(number)}<i>/{pad(total)}</i>
+            </span>
+            {q.caseContext && <span className="qz-enun-tag">texto base + pergunta</span>}
+          </div>
+          <div ref={textRef} className="qz-enun-corpo">
             {q.caseContext && (
               <>
-                <div className="overflow-hidden rounded-[10px] border border-[#2563EB]/60 bg-[#EFF5FF]" data-testid="texto-base">
-                  <p className="flex items-center gap-2 bg-[#2563EB] px-3 py-1 text-[11.5px] font-black uppercase tracking-[0.14em] text-white">
+                <div className="qz-base" data-testid="texto-base">
+                  <p className="qz-base-rot">
                     <BookOpen className="h-3.5 w-3.5" aria-hidden /> Texto base
                   </p>
-                  <p data-resumo className={`whitespace-pre-line p-3 text-[14.5px] leading-relaxed text-[#1E2A44] ${clamp ? "line-clamp-3" : ""}`}>
+                  <p data-resumo className={`qz-base-txt ${clamp ? "line-clamp-3" : ""}`}>
                     {q.caseContext}
                   </p>
                 </div>
-                <div className="my-3 flex items-center gap-2" role="note" aria-label="A pergunta vem abaixo do texto base">
-                  <span className="h-px flex-1 border-t-2 border-dashed border-[#9CA3AF]" aria-hidden />
-                  <span className="inline-flex items-center gap-1 text-[11.5px] font-extrabold uppercase tracking-[0.12em] text-[#4B5563]"><ArrowDown className="h-3.5 w-3.5" aria-hidden /> Pergunta</span>
-                  <span className="h-px flex-1 border-t-2 border-dashed border-[#9CA3AF]" aria-hidden />
+                <div className="qz-pergunta" role="note" aria-label="A pergunta vem abaixo do texto base">
+                  <span aria-hidden />
+                  <b><ArrowDown className="h-3.5 w-3.5" aria-hidden /> Pergunta</b>
+                  <span aria-hidden />
                 </div>
               </>
             )}
-            <p data-resumo data-testid="enunciado" className={`whitespace-pre-line text-[17px] font-bold leading-snug text-[#08090B] sm:text-[19px] ${clamp ? "line-clamp-3" : ""}`}>
+            <p data-resumo data-testid="enunciado" className={`qz-enun-txt ${clamp ? "line-clamp-3" : ""}`}>
               {q.statement}
             </p>
             {clamp && cut && (
-              <button type="button" onClick={() => setExpanded(true)} className="mt-1 text-[13px] font-bold text-[#C8000C] underline underline-offset-2">
-                Ver enunciado completo
+              <button type="button" onClick={() => setExpanded(true)} className="qz-ver-mais">
+                Ver enunciado completo <ChevronRight className="h-3.5 w-3.5" aria-hidden />
               </button>
             )}
           </div>
         </div>
 
-        <div className="mt-5 flex items-center gap-2" role="note" aria-label="Alternativas" data-testid="separador-alternativas">
-          <span className="h-1 flex-1 rounded-full bg-[#E50914]" aria-hidden />
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#E50914] px-3.5 py-1 text-[12.5px] font-black uppercase tracking-[0.14em] text-white">
-            <ArrowDown className="h-4 w-4" aria-hidden /> Alternativas
+        <div className="qz-sep" role="note" aria-label="Alternativas" data-testid="separador-alternativas">
+          <span className="qz-sep-linha" aria-hidden />
+          <span className="qz-sep-rot">
+            <ListChecks className="h-4 w-4" aria-hidden /> Alternativas <small>{options.length}</small>
           </span>
-          <span className="h-1 flex-1 rounded-full bg-[#E50914]" aria-hidden />
+          <span className="qz-sep-linha" aria-hidden />
         </div>
 
         <div className={`mt-3 ${ce ? "grid grid-cols-2 gap-2.5" : "flex flex-col gap-2.5"}`} role="radiogroup" aria-label="Alternativas" aria-describedby={`dica-${q.id}`} aria-busy={pending} data-corrigindo={pending ? "1" : "0"} data-testid="alternativas">
-          {options.map((o) => {
+          {options.map((o, oi) => {
             const isCorrect = !!fb && correctId === o.id;
             const isWrong = !!fb && choice === o.id && !isCorrect;
             const struck = !fb && cs.struck.has(o.id);
             const selected = choice === o.id;
             const tone = fb ? (isCorrect ? "qz-alt-certa" : isWrong ? "qz-alt-errada" : "") : selected ? "qz-alt-escolhida" : "";
             return (
-              <div key={o.id} className="relative">
+              <div key={o.id} className="qz-opt relative" style={{ "--i": oi } as React.CSSProperties}>
                 <button
                   type="button"
                   role="radio"
@@ -610,8 +616,8 @@ function QuestionPanel({
                   )}
                   {fb && isCorrect && <span className="qz-sua qz-sua-certa"><Check className="h-3.5 w-3.5" aria-hidden /> Gabarito</span>}
                   {fb && isWrong && <span className="qz-sua">Sua resposta</span>}
-                  <span className={`qz-radio ${selected ? "qz-radio-on" : ""}`} aria-hidden>
-                    {selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                  <span className={`qz-radio ${selected || isCorrect ? "qz-radio-on" : ""}`} aria-hidden>
+                    {fb ? (isCorrect ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : isWrong ? <X className="h-3.5 w-3.5" strokeWidth={3} /> : null) : selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
                   </span>
                 </button>
                 {!fb && (
