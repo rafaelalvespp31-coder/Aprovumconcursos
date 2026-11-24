@@ -79,3 +79,59 @@ três
     expect(d.options).toHaveLength(3);
   });
 });
+
+describe("Gran Cursos: matéria, assunto e número da questão", () => {
+  const linhas = (extra: string) => `[Q4313594](https://questoes.grancursosonline.com.br/questoes-de-concursos/lingua-portuguesa-403587/4313594)
+${extra}
+Ano: [2026](https://questoes.grancursosonline.com.br/concursos/2026)
+Banca: [Instituto Brasileiro de Apoio e Desenvolvimento Executivo - IBADE](https://questoes.grancursosonline.com.br/concursos/ibade)
+Prova: [IBADE - PC ES - Investigador de Polícia - 2026](https://questoes.grancursosonline.com.br/prova/pc-es-es-2026-ibade-investigador-de-policia)
+Texto associado
+De acordo com o contexto sintático, na oração “[...] cuja superfície pareceria intocada não estivesse ele a navegar”, como se classifica, quanto ao sentido, o verbo destacado?
+A
+Intransitivo.
+B
+Transitivo direto.
+C
+Transitivo indireto.
+D
+De ligação.
+E
+De ação.
+`;
+  const comLinks = linhas("[Língua Portuguesa ](https://questoes.grancursosonline.com.br/lingua-portuguesa-403587)[Classificação dos verbos quanto à predicação (transitividade)](https://questoes.grancursosonline.com.br/lingua-portuguesa-classificacao-dos-verbos-quanto-a-predicacao-transitividade-409358)");
+
+  it("separa matéria e assunto das duas links coladas na mesma linha", () => {
+    const { drafts } = parseSmart(comLinks);
+    expect(drafts).toHaveLength(1);
+    const d = drafts[0]!;
+    expect(d.discipline).toBe("Língua Portuguesa");
+    expect(d.topic).toBe("Classificação dos verbos quanto à predicação (transitividade)");
+    expect(d.board).toBe("IBADE");
+    expect(d.year).toBe(2026);
+    expect(d.role).toBe("Investigador de Polícia");
+    expect(d.organ).toBe("PC ES");
+    expect(d.statement).toMatch(/^De acordo com o contexto sintático/);
+    expect(d.options.map((o) => o.text)).toEqual(["Intransitivo.", "Transitivo direto.", "Transitivo indireto.", "De ligação.", "De ação."]);
+    expect(d.issues).not.toContain("disciplina_pendente");
+    expect(d.raw).toBeTruthy();
+  });
+
+  it("não deixa o número da questão virar uma questão vazia nem entrar no enunciado", () => {
+    const txt = `${comLinks}\n${comLinks.replace("4313594", "4313595").replace("Intransitivo.", "Intransitivo direto.")}`;
+    expect(estimateQuestions(txt)).toBe(2);
+    const { drafts } = parseSmart(txt);
+    expect(drafts).toHaveLength(2);
+    expect(drafts.every((d) => d.discipline === "Língua Portuguesa")).toBe(true);
+    expect(drafts.every((d) => !/Q43135/.test(d.statement))).toBe(true);
+  });
+
+  it("matéria sem assunto (um link só) e texto puro sem links", () => {
+    const um = parseSmart(linhas("[Raciocínio Lógico](https://questoes.grancursosonline.com.br/raciocinio-logico-1234)")).drafts[0]!;
+    expect(um.discipline).toBe("Raciocínio Lógico");
+    expect(um.topic).toBeNull();
+    const puro = parseSmart(linhas("Língua Portuguesa Classificação dos verbos").replace(/\[([^\]]*)\]\([^)]*\)/g, "$1")).drafts[0]!;
+    expect(puro.discipline).toBe("Língua Portuguesa Classificação dos verbos");
+    expect(puro.board).toBe("IBADE");
+  });
+});

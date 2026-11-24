@@ -327,6 +327,21 @@ function detectLooseOptions(body: string[]): { options: SmartOption[]; firstOpti
   return { options: pick.map((text) => ({ label: "", text })), firstOptionIndex: ask + 1 + (tail.findIndex((x) => x.trim()) < 0 ? 0 : tail.findIndex((x) => x.trim())) };
 }
 
+/** Número da questão no Gran Cursos ("Q4313594"). */
+const GRAN_ID = /^\s*Q\d{3,9}\s*$/i;
+/**
+ * No Gran, a linha "[Matéria](link)[Assunto](link)" vem só com links (sem rótulo): vira "Matéria: …" e "Assunto: …".
+ * Precisa rodar antes de os links serem removidos, senão matéria e assunto se misturam numa frase só.
+ */
+function granMateriaAssunto(text: string): string {
+  const link = String.raw`\[([^\]]+)\]\((https?:\/\/[^)\s]*grancursosonline[^)\s]*)\)`;
+  const re = new RegExp(String.raw`^[ \t]*${link}[ \t]*(?:${link})?[ \t]*$`, "gm");
+  return text.replace(re, (m, a: string, ua: string, b?: string) => {
+    if (/\/(?:concursos|prova|questoes-de-concursos|bancas?)(?:\/|$)/.test(ua) || /^\s*(?:Q?\d+|#\d+)\s*$/i.test(a)) return m;
+    return b ? `Matéria: ${a.trim()}\nAssunto: ${b.trim()}` : `Matéria: ${a.trim()}`;
+  });
+}
+
 const GRAN_LABEL = /^\s*(ano|banca|prova)\s*:\s*(.*?)\s*$/i;
 
 /** Sigla da banca a partir de "Nome por extenso - SIGLA" (Gran) ou, na falta, da primeira parte da prova. */
@@ -392,10 +407,10 @@ function pushHeader(out: string[], header: string, extra: string[]): void {
   while (out.length) {
     const prev = out[out.length - 1]!;
     if (!prev.trim()) { out.pop(); continue; }
-    if (FIELD_DISC.test(prev) || FIELD_TOPIC.test(prev) || /^\s*\d{1,5}\s*$/.test(prev)) { moved.unshift(out.pop()!); continue; }
+    if (FIELD_DISC.test(prev) || FIELD_TOPIC.test(prev) || /^\s*\d{1,5}\s*$/.test(prev) || GRAN_ID.test(prev)) { moved.unshift(out.pop()!); continue; }
     break;
   }
-  out.push(header, ...extra, ...moved.filter((x) => !/^\s*\d{1,5}\s*$/.test(x)));
+  out.push(header, ...extra, ...moved.filter((x) => !/^\s*\d{1,5}\s*$/.test(x) && !GRAN_ID.test(x)));
 }
 
 /**
@@ -405,13 +420,22 @@ function pushHeader(out: string[], header: string, extra: string[]): void {
  * sem alterar o conteúdo da questão.
  */
 function preprocessTec(text: string): string {
-  const t0 = text.replace(/\[([^\]]*)\]\((?:https?:\/\/|\/)[^)\s]*\)/g, "$1");
+  const t0 = granMateriaAssunto(text).replace(/\[([^\]]*)\]\((?:https?:\/\/|\/)[^)\s]*\)/g, "$1");
   const gran = /^\s*banca\s*:/im.test(t0) || /^\s*prova\s*:/im.test(t0);
   if (!gran && !/^\s*#\d{3,}\b/m.test(t0) && !/^\s*[*•-]\s*\(?[A-Ea-e]\)?\s*$/m.test(t0)) return t0;
   // "Assunto:" sozinho na linha, com o valor na linha de baixo.
   const t = t0.replace(/^([ \t]*(?:assuntos?|mat[ée]ria|disciplina|tema|t[óo]pico)[ \t]*:)[ \t]*\n[ \t]*(\S[^\n]*)$/gim, "$1 $2");
   let lines = t.split("\n");
-  if (gran) lines = convertGran(lines);
+  if (gran) {
+    // Sem links (texto puro): a linha entre o número "Q…" e o bloco Ano/Banca/Prova é a matéria (não dá para separar o assunto).
+    for (let i = 0; i < lines.length; i++) {
+      if (!GRAN_ID.test(lines[i]!)) continue;
+      const nz = (from: number) => { let k = from; while (k < lines.length && !lines[k]!.trim()) k++; return k; };
+      const a = nz(i + 1), b = nz(a + 1);
+      if (a < lines.length && b < lines.length && !GRAN_LABEL.test(lines[a]!) && !FIELD_DISC.test(lines[a]!) && !FIELD_TOPIC.test(lines[a]!) && GRAN_LABEL.test(lines[b]!)) lines[a] = `Matéria: ${lines[a]!.trim()}`;
+    }
+    lines = convertGran(lines);
+  }
   // Cabeçalho do TEC -> "BANCA — ano — resto"; leva Matéria/Assunto/número que vinham antes para depois dele.
   const out: string[] = [];
   for (const l of lines) {
