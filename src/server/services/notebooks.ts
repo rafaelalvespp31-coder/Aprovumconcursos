@@ -1,4 +1,5 @@
 import "server-only";
+import { after } from "next/server";
 import { z } from "zod";
 import { assertQuota } from "./plans";
 import { createAdminClient, createUserClient } from "../supabase";
@@ -499,9 +500,10 @@ const answerSchema = z.object({
 export async function answerNotebookQuestion(userId: string, raw: unknown): Promise<AnswerFeedback & { duplicate?: boolean }> {
   const a = answerSchema.parse(raw);
   if (!a.optionId && a.answerTrue === undefined) throw new UserFacingError("Escolha uma alternativa para confirmar.", "invalid_input");
-  await enforceRateLimit(userId, "answer", 120);
-  await assertQuota(userId, "questoes");
-  const r = await createAdminClient().rpc("bank_answer_question", {
+  // Limite de uso e cota diária não dependem um do outro: juntos custam uma ida ao banco, não duas.
+  await Promise.all([enforceRateLimit(userId, "answer", 120), assertQuota(userId, "questoes")]);
+  const admin = createAdminClient();
+  const r = await admin.rpc("bank_answer_question", {
     p_user: userId,
     p_question: a.questionId,
     p_notebook: a.notebookId,
@@ -516,8 +518,18 @@ export async function answerNotebookQuestion(userId: string, raw: unknown): Prom
     throw new Error(r.error.message);
   }
   const d = r.data as { correct: boolean; justification: string | null; correctAnswerTrue: boolean | null; options: AnswerFeedback["options"]; duplicate: boolean };
-  // A resposta já está gravada (bank_attempts); a posição do caderno acompanha a última respondida.
-  await (await createUserClient()).from("question_notebooks").update({ last_question_id: a.questionId }).eq("id", a.notebookId).eq("user_id", userId);
+  // A resposta já está gravada (bank_attempts). A posição do caderno (última respondida) é só conveniência:
+  // grava depois de devolver o gabarito, para o aluno não esperar por ela.
+  const savePosition = async () => {
+    const { error } = await admin.from("question_notebooks").update({ last_question_id: a.questionId }).eq("id", a.notebookId).eq("user_id", userId);
+    if (error) console.error("[notebook_position]", error.message);
+  };
+  try {
+    after(savePosition);
+  } catch {
+    // fora de uma requisição (testes, scripts): grava na hora
+    await savePosition();
+  }
   return {
     correct: d.correct,
     justification: d.justification ?? "Esta questão ainda não tem comentário validado.",

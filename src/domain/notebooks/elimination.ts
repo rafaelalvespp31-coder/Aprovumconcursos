@@ -30,16 +30,26 @@ export function toggleStrike(s: ChoiceState, id: string): ChoiceState {
 /** Só confirma com uma alternativa escolhida e não riscada. */
 export const canConfirm = (s: ChoiceState): boolean => s.selected !== null && !s.struck.has(s.selected);
 
-/** Janela para distinguir clique simples de clique/toque duplo (ms). */
-export const DOUBLE_TAP_MS = 280;
+/** Janela em que um segundo clique/toque na mesma alternativa conta como "duplo" (ms). */
+export const DOUBLE_TAP_MS = 320;
 
 /**
- * Decide o que um clique significa, sem disparar a seleção no primeiro clique de um duplo:
- * o primeiro clique espera a janela; se vier o segundo na mesma alternativa dentro dela,
- * vira "riscar". Clique de teclado (detail 0) seleciona na hora.
+ * Decide o que um clique significa. O primeiro clique escolhe NA HORA (sem esperar para ver se vem um segundo);
+ * se o segundo chegar na mesma alternativa dentro da janela, vira "riscar" (a escolha do primeiro clique é desfeita
+ * por toggleStrike). Clique de teclado (detail 0) nunca risca: só escolhe.
  */
-export function classifyTap(prev: { id: string; at: number } | null, id: string, at: number, keyboard: boolean): "select-now" | "wait" | "strike" {
+export function classifyTap(prev: { id: string; at: number } | null, id: string, at: number, keyboard: boolean): "select-now" | "strike" {
   if (keyboard) return "select-now";
   if (prev && prev.id === id && at - prev.at <= DOUBLE_TAP_MS) return "strike";
-  return "wait";
+  return "select-now";
+}
+
+/**
+ * Riscar por duplo toque sem perder a escolha anterior: o 1º toque escolheu a alternativa (e trocou a escolha);
+ * o 2º risca e devolve a escolha que o aluno tinha antes do duplo (`antes`), se ainda valer.
+ */
+export function strikeKeeping(s: ChoiceState, id: string, antes: string | null): ChoiceState {
+  const t = toggleStrike(s, id);
+  if (s.selected === id && antes && antes !== id && !t.struck.has(antes)) return { ...t, selected: antes };
+  return t;
 }

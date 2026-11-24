@@ -21,6 +21,7 @@ export function AnswerExplanation({
   certoErrado,
   chosen,
   questionLabel,
+  embutido = false,
 }: {
   fb: AnswerFeedback;
   /** Alternativas como apareceram para o aluno (texto incluído). Em certo/errado, ignorado. */
@@ -29,16 +30,19 @@ export function AnswerExplanation({
   /** Id da alternativa marcada ("true"/"false" em certo/errado). */
   chosen: string | null;
   questionLabel?: string;
+  /** Dentro do painel do gabarito (que já mostra o título e os selos): sem moldura nem cabeçalho próprios. */
+  embutido?: boolean;
 }) {
   const titleId = `coment-${questionLabel ?? "q"}`.replace(/\s+/g, "-");
+  const moldura = embutido ? "" : "entrar mt-3 rounded-lg border border-linha bg-superficie p-4 sm:p-5";
 
   if (certoErrado) {
     const gab = fb.correctAnswerTrue ? "CERTO" : "ERRADO";
     const other = fb.correctAnswerTrue ? "ERRADO" : "CERTO";
     const picked = chosen === null ? null : chosen === "true" ? "CERTO" : "ERRADO";
     return (
-      <section aria-labelledby={titleId} className="entrar mt-3 rounded-lg border border-linha bg-superficie p-4 sm:p-5" data-testid="gabarito-comentado">
-        <Header id={titleId} gabarito={gab} picked={picked} correct={fb.correct} />
+      <section aria-labelledby={embutido ? undefined : titleId} aria-label={embutido ? "Gabarito comentado" : undefined} className={moldura} data-testid="gabarito-comentado">
+        {!embutido && <Header id={titleId} gabarito={gab} picked={picked} correct={fb.correct} />}
         <Block tone="ok" title={`Por que o item está ${gab}`}>
           <Comentario text={fb.justification} />
         </Block>
@@ -74,8 +78,8 @@ export function AnswerExplanation({
   const rightWhy = why && !squash(geral).includes(squash(why)) ? why : "";
 
   return (
-    <section aria-labelledby={titleId} className="entrar mt-3 rounded-lg border border-linha bg-superficie p-4 sm:p-5" data-testid="gabarito-comentado">
-      <Header id={titleId} gabarito={right?.label ?? "—"} picked={pickedOpt?.label ?? null} correct={fb.correct} />
+    <section aria-labelledby={embutido ? undefined : titleId} aria-label={embutido ? "Gabarito comentado" : undefined} className={moldura} data-testid="gabarito-comentado">
+      {!embutido && <Header id={titleId} gabarito={right?.label ?? "—"} picked={pickedOpt?.label ?? null} correct={fb.correct} />}
 
       {right && (
         <Block tone="ok" title={`Por que a alternativa ${right.label} está correta`}>

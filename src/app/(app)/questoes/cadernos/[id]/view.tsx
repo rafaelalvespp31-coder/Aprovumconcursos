@@ -35,10 +35,11 @@ import {
 import type { Notebook, NotebookQuestion } from "@/server/services/notebooks";
 import type { AnswerFeedback } from "@/server/services/study";
 import { AnswerExplanation } from "@/components/answer-explanation";
+import { GabaritoPainel } from "@/components/gabarito-painel";
 import { QuestionComments } from "@/components/question-comments";
 import { callAction } from "@/components/safe-action";
 import { useStored } from "@/components/use-stored";
-import { canConfirm, classifyTap, DOUBLE_TAP_MS, initialChoice, selectOption, toggleStrike, type ChoiceState } from "@/domain/notebooks/elimination";
+import { canConfirm, classifyTap, initialChoice, selectOption, strikeKeeping, toggleStrike, type ChoiceState } from "@/domain/notebooks/elimination";
 import { answerNotebookAction, favoriteQuestionAction, fullStatementAction, notebookPositionAction, openErrorNotebookAction, reportQuestionAction, saveErrorNotebookAction, saveNoteAction, type Result } from "../../actions";
 import { ErrorNotebookModal } from "@/components/notebooks/error-notebook-modal";
 import type { ErrorNotebookData, ErrorNotebookEdit } from "@/domain/notebooks/error-notebook";
@@ -387,27 +388,18 @@ function QuestionPanel({
   const choice = cs.selected;
   const setChoice = (id: string) => setCs((x) => selectOption(x, id));
   const strike = (id: string) => setCs((x) => toggleStrike(x, id));
-  const lastTap = useRef<{ id: string; at: number } | null>(null);
-  const tapTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => () => void (tapTimer.current && clearTimeout(tapTimer.current)), []);
-  // Clique simples escolhe (depois da janela do duplo); clique/toque duplo risca ou restaura.
+  // Toque simples escolhe NA HORA (sem esperar para ver se vem um segundo); toque/clique duplo risca ou restaura
+  // e devolve a escolha que o aluno tinha antes do duplo.
+  const lastTap = useRef<{ id: string; at: number; antes: string | null } | null>(null);
   const onTap = (id: string, keyboard: boolean, now: number) => {
-    const kind = classifyTap(lastTap.current, id, now, keyboard);
-    if (tapTimer.current) clearTimeout(tapTimer.current);
-    tapTimer.current = null;
-    if (kind === "select-now") {
+    const prev = lastTap.current;
+    const kind = classifyTap(prev, id, now, keyboard);
+    if (kind === "strike" && prev) {
       lastTap.current = null;
-      return setChoice(id);
+      return setCs((x) => strikeKeeping(x, id, prev.antes));
     }
-    if (kind === "strike") {
-      lastTap.current = null;
-      return strike(id);
-    }
-    lastTap.current = { id, at: now };
-    tapTimer.current = setTimeout(() => {
-      tapTimer.current = null;
-      setChoice(id);
-    }, DOUBLE_TAP_MS);
+    lastTap.current = { id, at: now, antes: cs.selected === id ? (prev?.antes ?? null) : cs.selected };
+    setChoice(id);
   };
 
   const [fb, setFb] = useState<AnswerFeedback | null>(saved?.fb ?? null);
@@ -465,10 +457,11 @@ function QuestionPanel({
     const onKey = (e: KeyboardEvent) => {
       const t = e.target as HTMLElement;
       if (t.closest("input, textarea, select, [contenteditable=true]")) return;
+      if (document.querySelector('[role="dialog"][aria-modal="true"]')) return; // folha de leitura aberta
       const k = e.key.toLowerCase();
       if (e.key === "ArrowRight" && onNext) return onNext();
       if (e.key === "ArrowLeft" && onPrev) return onPrev();
-      if (fb) return;
+      if (fb || pending) return;
       if (k === "enter" && choice && !t.closest("button")) {
         e.preventDefault();
         return submit();
@@ -484,6 +477,14 @@ function QuestionPanel({
 
   const [panel, setPanel] = useState<null | "nota" | "erro">(null);
   const correctId = fb ? (ce ? String(fb.correctAnswerTrue) : fb.options.find((o) => o.isCorrect)?.id) : null;
+  // O aluno pode fechar o gabarito para ver só a questão; a escolha fica lembrada nas próximas.
+  const [gabAberto, setGabAberto] = useStored<boolean>("aprovum:gabarito-aberto", true);
+  const gabLabel = ce ? (fb?.correctAnswerTrue ? "CERTO" : "ERRADO") : (options.find((o) => o.id === correctId)?.label ?? "—");
+  const marcouLabel = choice === null ? null : ce ? (choice === "true" ? "CERTO" : "ERRADO") : (options.find((o) => o.id === choice)?.label ?? null);
+  const verExplicacao = () => {
+    setGabAberto(true);
+    requestAnimationFrame(() => explRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+  };
 
   return (
     <div className="flex min-w-0 flex-col gap-3">
@@ -558,7 +559,7 @@ function QuestionPanel({
           <span className="h-1 flex-1 rounded-full bg-[#E50914]" aria-hidden />
         </div>
 
-        <div className={`mt-3 ${ce ? "grid grid-cols-2 gap-2.5" : "flex flex-col gap-2.5"}`} role="radiogroup" aria-label="Alternativas" aria-describedby={`dica-${q.id}`} data-testid="alternativas">
+        <div className={`mt-3 ${ce ? "grid grid-cols-2 gap-2.5" : "flex flex-col gap-2.5"}`} role="radiogroup" aria-label="Alternativas" aria-describedby={`dica-${q.id}`} aria-busy={pending} data-corrigindo={pending ? "1" : "0"} data-testid="alternativas">
           {options.map((o) => {
             const isCorrect = !!fb && correctId === o.id;
             const isWrong = !!fb && choice === o.id && !isCorrect;
@@ -578,10 +579,18 @@ function QuestionPanel({
                   className={`nq-alt qz-alt ${tone} ${struck ? "nq-alt-riscada" : ""}`}
                 >
                   <span className="qz-letra">{o.label}</span>
-                  <span className="nq-alt-texto min-w-0 flex-1 pt-1">{o.text}</span>
-                  {selected && !fb && (
+                  <span className="qz-alt-corpo">
+                    <span className="nq-alt-texto">{o.text}</span>
+                    {struck && <span className="qz-riscada-dica">Riscada · toque 2× para restaurar</span>}
+                  </span>
+                  {selected && !fb && !pending && (
                     <span className="qz-sua">
                       <Check className="h-3.5 w-3.5" aria-hidden /> Sua resposta
+                    </span>
+                  )}
+                  {selected && pending && (
+                    <span className="qz-sua qz-sua-corrigindo">
+                      <span className="qz-giro" aria-hidden /> Corrigindo…
                     </span>
                   )}
                   {fb && isCorrect && <span className="qz-sua qz-sua-certa"><Check className="h-3.5 w-3.5" aria-hidden /> Gabarito</span>}
@@ -613,13 +622,13 @@ function QuestionPanel({
             {error}
           </p>
         )}
+        {pending && !fb && <GabaritoEsqueleto />}
         {fb && (
           <div ref={explRef} className="scroll-mt-24">
-            <p className={`mt-4 text-[15px] font-extrabold ${fb.correct ? "text-[#137A43]" : "text-[#B9000B]"}`} role="status">
-              {fb.correct ? "Resposta correta" : "Resposta incorreta"}
-            </p>
-            <AnswerExplanation fb={fb} options={options} certoErrado={ce} chosen={choice} questionLabel={`caderno-${number}`} />
-            <QuestionComments questionId={q.id} />
+            <GabaritoPainel correct={fb.correct} gabarito={gabLabel} marcou={marcouLabel} aberto={gabAberto} onToggle={setGabAberto} onNext={onNext} idBase={q.id}>
+              <AnswerExplanation embutido fb={fb} options={options} certoErrado={ce} chosen={choice} questionLabel={`caderno-${number}`} />
+            </GabaritoPainel>
+            {gabAberto && <QuestionComments questionId={q.id} />}
           </div>
         )}
 
@@ -633,7 +642,7 @@ function QuestionPanel({
           </button>
           <button
             type="button"
-            onClick={() => explRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })}
+            onClick={verExplicacao}
             disabled={!fb}
             title={fb ? "Ver a explicação" : "A explicação aparece depois que você confirmar a resposta"}
             className="qz-acao sm:border-l sm:border-[#ECEDF0] sm:pl-5"
@@ -675,6 +684,17 @@ function QuestionPanel({
           Próxima <ChevronRight className="h-4 w-4" aria-hidden />
         </button>
       </div>
+    </div>
+  );
+}
+
+/** Enquanto o servidor corrige: o espaço do gabarito já aparece reservado (a página não pula quando a resposta chega). */
+function GabaritoEsqueleto() {
+  return (
+    <div className="qz-esqueleto" role="status" aria-live="polite" aria-label="Corrigindo a resposta">
+      <span className="qz-esq-linha qz-esq-titulo" />
+      <span className="qz-esq-linha" />
+      <span className="qz-esq-linha qz-esq-curta" />
     </div>
   );
 }
