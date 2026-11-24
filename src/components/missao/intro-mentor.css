@@ -1,4 +1,4 @@
-/* abertura antes da Central: retrato do Mentor + transição cinematográfica para a caveira */
+/* abertura antes da Central: retrato do Mentor + transição cinematográfica ao tocar */
 .hm-intro { position: absolute; inset: 0; z-index: 60; overflow: hidden; background: #000; }
 .hm-intro[data-etapa="revela"] { animation: hmi-some 0.9s ease forwards; pointer-events: none; }
 @keyframes hmi-some { from { opacity: 1; } to { opacity: 0; } }
@@ -10,21 +10,69 @@
   mask-image: linear-gradient(180deg, transparent, #000 5%, #000 95%, transparent), linear-gradient(90deg, transparent, #000 5%, #000 95%, transparent); mask-composite: intersect; }
 .hm-intro-zoom { position: absolute; inset: 0; transform-origin: 50% 27%; animation: hmi-entra 1.3s cubic-bezier(0.22, 1, 0.36, 1) both; will-change: transform, filter; }
 @keyframes hmi-entra { from { opacity: 0; transform: scale(1.06); filter: blur(8px); } }
-.hm-intro-arte { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; pointer-events: none; animation: hmi-respira 12s ease-in-out infinite alternate; }
+.hm-intro-retrato { position: absolute; inset: 0; }
+.hm-intro-arte { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; -webkit-user-drag: none; pointer-events: none; }
 @keyframes hmi-respira { to { transform: scale(1.03); } }
 
+/* o homem responde ao mouse/dedo: inclina em 3D, a luz vermelha o acompanha e o toque solta uma onda (--tx/--ty/--luz vêm do JS) */
+.hm-intro-cena { touch-action: none; --tx: 0; --ty: 0; --luz: 0; --lx: 50%; --ly: 35%; }
+.hm-intro-retrato { transform: perspective(1100px) rotateY(calc(var(--tx) * 5deg)) rotateX(calc(var(--ty) * -3.5deg)) translate(calc(var(--tx) * -1.1%), calc(var(--ty) * -0.7%)) scale(calc(1 + var(--luz) * 0.025)); animation: none; will-change: transform; }
+.hm-intro-arte { animation: hmi-respira 12s ease-in-out infinite alternate; }
+.hm-intro-luzhomem { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; opacity: var(--luz);
+  background: radial-gradient(circle 42vmin at var(--lx) var(--ly), rgb(255 150 120 / 0.26), rgb(255 37 45 / 0.12) 40%, transparent 100%); }
+.hm-intro-toque { position: absolute; width: 22vmin; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; pointer-events: none; border: 2px solid rgb(255 110 100 / 0.9);
+  box-shadow: 0 0 26px 3px rgb(255 37 45 / 0.7), inset 0 0 24px rgb(255 37 45 / 0.5); animation: hmi-toque 0.85s cubic-bezier(0.1, 0.7, 0.3, 1) forwards; }
+@keyframes hmi-toque { from { opacity: 1; transform: scale(0.1); } to { opacity: 0; transform: scale(2.6); } }
 
-.hm-intro-botao { position: absolute; left: 2.3%; top: 77.6%; width: 95.4%; height: 14.6%; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; border-radius: 4% / 22%; transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
+/* o botão é uma área sobre o botão desenhado na arte; segue o dedo/mouse com luz e leve inclinação */
+.hm-intro-botao { position: absolute; left: 2.3%; top: 77.6%; width: 95.4%; height: 14.6%; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; border-radius: 4% / 22%;
+  --mx: 50%; --my: 50%; --rx: 0deg; --ry: 0deg; --bx: 0px; --by: 0px; translate: var(--bx) var(--by); transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry)); transition: transform 0.22s cubic-bezier(0.22, 1, 0.36, 1); }
 .hm-intro-botao:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
-.hm-intro-botao:active:not(:disabled) { transform: scale(0.97); }
+.hm-intro-botao:active:not(:disabled) { transform: perspective(900px) rotateX(var(--rx)) rotateY(var(--ry)) scale(0.975); }
 .hm-intro-botao:disabled { cursor: default; }
-/* respira como convite e varre uma luz quando o dedo ou o mouse chegam */
-.hm-intro-brilho { position: absolute; inset: 0; border-radius: inherit; overflow: hidden; pointer-events: none; box-shadow: 0 0 26px 2px rgb(255 37 45 / 0.0); animation: hmi-convite 2.6s ease-in-out infinite; }
+.hm-intro-brilho, .hm-intro-luz { position: absolute; inset: 0; pointer-events: none; overflow: hidden; clip-path: polygon(3.5% 0, 96.5% 0, 100% 18%, 100% 82%, 96.5% 100%, 3.5% 100%, 0 82%, 0 18%); }
 .hm-intro-brilho::after { content: ""; position: absolute; top: 0; bottom: 0; left: -35%; width: 28%; background: linear-gradient(100deg, transparent, rgb(255 255 255 / 0.28), transparent); transform: skewX(-18deg); opacity: 0; }
-@keyframes hmi-convite { 50% { box-shadow: 0 0 34px 4px rgb(255 37 45 / 0.38); } }
-@media (hover: hover) { .hm-intro-botao:hover:not(:disabled) .hm-intro-brilho::after { opacity: 1; animation: hmi-varre 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; } }
-.hm-intro-botao:active:not(:disabled) .hm-intro-brilho { box-shadow: 0 0 40px 8px rgb(255 60 64 / 0.6); }
+.hm-intro-luz { background: radial-gradient(circle at var(--mx) var(--my), rgb(255 150 130 / 0.3), rgb(255 37 45 / 0.12) 28%, transparent 55%); mix-blend-mode: screen; opacity: 0; transition: opacity 0.25s ease; }
+@media (hover: hover) {
+  .hm-intro-botao:hover:not(:disabled) .hm-intro-luz { opacity: 1; }
+  .hm-intro-botao:hover:not(:disabled) .hm-intro-brilho::after { opacity: 1; animation: hmi-varre 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+}
+.hm-intro-botao:active:not(:disabled) .hm-intro-luz { opacity: 1; background: radial-gradient(circle at var(--mx) var(--my), rgb(255 190 170 / 0.5), rgb(255 60 64 / 0.22) 34%, transparent 62%); }
 @keyframes hmi-varre { to { transform: skewX(-18deg) translateX(520%); } }
+
+/* neon do ícone de play: o anel desenhado na arte tem raio 100 e o centro é (0,0) */
+.hm-intro-icone { position: absolute; left: 17.86%; top: 51.58%; width: 17.77%; aspect-ratio: 1; translate: -50% -50%; pointer-events: none; transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s ease; filter: drop-shadow(0 0 4px rgb(255 37 45 / 0.35)); }
+.hm-neon { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; mix-blend-mode: screen; }
+.hm-neon circle, .hm-neon polygon { fill: none; vector-effect: non-scaling-stroke; }
+.hm-neon-bloom { fill: url(#hmn-bloom) !important; animation: hmn-respira 2.8s ease-in-out infinite; }
+@keyframes hmn-respira { 50% { opacity: 0.45; } }
+.hm-neon-radar { animation: hmn-gira 4.8s linear infinite; mix-blend-mode: screen; }
+.hm-neon-radar { fill: url(#hmn-radar) !important; }
+.hm-neon-segmentos { stroke: rgb(255 90 80 / 0.6); stroke-width: 1.4; stroke-dasharray: 9 3.4 2 3.4 14 3.4 2 3.4; animation: hmn-gira 15s linear infinite reverse; }
+.hm-neon-faisca circle { fill: #ffb4a8 !important; filter: drop-shadow(0 0 3px #ff4a40); }
+.hm-neon-f1 { animation: hmn-gira 5.2s linear infinite; } .hm-neon-f2 { animation: hmn-gira 3.4s linear infinite reverse; }
+.hm-neon-f3 { animation: hmn-gira 7.8s linear infinite; } .hm-neon-f4 { animation: hmn-gira 4.4s linear infinite reverse; }
+.hm-neon-play { animation: hmn-bate 2.8s ease-in-out infinite; }
+@keyframes hmn-bate { 50% { transform: scale(1.045); } }
+.hm-neon-pulso { stroke: rgb(255 80 72 / 0.8); stroke-width: 1.6; opacity: 0; animation: hmn-pulso 2.9s cubic-bezier(0.2, 0.6, 0.3, 1) infinite; }
+.hm-neon-pulso-2 { animation-delay: 1.45s; }
+@keyframes hmn-pulso { 0% { opacity: 0.85; transform: scale(0.55); } 100% { opacity: 0; transform: scale(1.32); } }
+.hm-neon-marcas { stroke: rgb(255 120 105 / 0.55); stroke-width: 1.6; stroke-dasharray: 0.35 1; animation: hmn-gira 46s linear infinite; }
+.hm-neon-arcos { stroke: rgb(255 90 80 / 0.45); stroke-width: 1; stroke-dasharray: 22 6 3 6 12 6 3 6; animation: hmn-gira 26s linear infinite reverse; }
+@keyframes hmn-gira { to { transform: rotate(360deg); } }
+.hm-neon-varre { animation: hmn-gira 3.6s linear infinite; }
+.hm-neon-arco { stroke: #ff8272; stroke-width: 3.2; stroke-linecap: round; stroke-dasharray: 15 85; }
+.hm-neon-cauda { stroke: rgb(255 60 60 / 0.5); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 34 66; stroke-dashoffset: 8; }
+.hm-neon-ponto { fill: #fff !important; }
+.hm-neon-play { transform-box: view-box; transform-origin: 0 0; }
+.hm-neon-miolo { fill: url(#hmn-fill) !important; stroke: none; animation: hmn-miolo 2.8s ease-in-out infinite; }
+@keyframes hmn-miolo { 50% { opacity: 0.4; } }
+.hm-neon-tubo { stroke: #ffd2ca; stroke-width: 2.6; stroke-linejoin: round; animation: hmn-tubo 6.5s linear infinite; }
+@keyframes hmn-tubo { 0%, 17%, 21%, 58%, 60%, 100% { opacity: 1; } 18%, 59% { opacity: 0.45; } 19.5% { opacity: 0.85; } }
+.hm-neon-corre { stroke: #fff; stroke-width: 3.6; stroke-linejoin: round; stroke-linecap: round; stroke-dasharray: 11 89; animation: hmn-corre 2.3s linear infinite; }
+@keyframes hmn-corre { from { stroke-dashoffset: 0; } to { stroke-dashoffset: -100; } }
+.hm-intro-botao:hover:not(:disabled) .hm-intro-icone { transform: scale(1.08); filter: drop-shadow(0 0 10px rgb(255 37 45 / 0.75)) brightness(1.2); }
+.hm-intro-botao:active:not(:disabled) .hm-intro-icone { transform: scale(0.92); filter: drop-shadow(0 0 16px rgb(255 90 80 / 0.95)) brightness(1.55); }
 
 /* camadas da transição (invisíveis até o toque) */
 .hm-intro-linhas, .hm-intro-onda, .hm-intro-clarao, .hm-intro-barra, .hm-intro-preto { position: absolute; pointer-events: none; opacity: 0; }
@@ -39,7 +87,7 @@
 
 .hm-intro[data-etapa="indo"] .hm-intro-zoom { animation: hmi-dolly 1.25s cubic-bezier(0.6, 0, 0.9, 0.4) forwards; }
 @keyframes hmi-dolly { from { transform: scale(1); filter: blur(0) brightness(1); } 60% { filter: blur(2px) brightness(1.25); } to { transform: scale(3.1); filter: blur(9px) brightness(1.9); } }
-.hm-intro[data-etapa="indo"] .hm-intro-arte { animation: none; }
+.hm-intro[data-etapa="indo"] .hm-intro-retrato { animation: none; }
 .hm-intro[data-etapa="indo"] .hm-intro-linhas { animation: hmi-linhas 1.15s cubic-bezier(0.3, 0, 0.7, 1) 0.15s forwards; }
 @keyframes hmi-linhas { 0% { opacity: 0; transform: scale(0.7) rotate(0); } 30% { opacity: 0.9; } 100% { opacity: 0; transform: scale(1.7) rotate(8deg); } }
 .hm-intro[data-etapa="indo"] .hm-intro-onda { animation: hmi-onda 0.8s cubic-bezier(0.1, 0.7, 0.3, 1) forwards; }
