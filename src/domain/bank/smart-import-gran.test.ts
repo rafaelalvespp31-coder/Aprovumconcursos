@@ -232,3 +232,59 @@ describe("Gran Cursos: sobra sem cabeçalho antes da questão", () => {
     expect(drafts[0]!.board).toBe("FGV");
   });
 });
+
+import { splitDisciplineTopic } from "./smart-import";
+
+describe("Gran Cursos: assunto a partir da linha de matéria + assunto", () => {
+  const amostra = `[Q4411175](https://questoes.grancursosonline.com.br/questoes-de-concursos/lingua-portuguesa-403587/4411175)
+[Língua Portuguesa ](https://questoes.grancursosonline.com.br/lingua-portuguesa-403587)[Análise sintática](https://questoes.grancursosonline.com.br/lingua-portuguesa-analise-sintatica-403652)
+Ano: [2026](https://questoes.grancursosonline.com.br/concursos/2026)
+Banca: [Instituto de Desenvolvimento Educacional, Cultural e Assistencial Nacional - IDECAN](https://questoes.grancursosonline.com.br/concursos/idecan)
+Prova: [IDECAN - PC SC - Agente de Polícia - 2026](https://questoes.grancursosonline.com.br/prova/pc-sc-sc-2026-idecan-agente-de-policia-8487)
+Texto associado
+Desempenha a mesma função sintática do trecho realçado a seguir o vocábulo ressaltado em:
+
+“Toda experiência de amor traz, encolhida no seu ventre, à espera, a possibilidade de sofrer.”
+A
+“[...] é porque algo está errado com a gente.”
+B
+“[...] tudo aquilo que o homem pedisse para si [...]”
+C
+“[...] como que por encanto, a face do sortudo muda de expressão.”
+D
+“[...] e, ao abri-la, surpreende-se com a saída de um gênio.”
+E
+“[...] dirige-se ao gênio para fazer seu único pedido.”
+`;
+
+  it("lê matéria e assunto e mantém o enunciado inteiro (pergunta + trecho citado)", () => {
+    const d = parseSmart(amostra).drafts[0]!;
+    expect(d.discipline).toBe("Língua Portuguesa");
+    expect(d.topic).toBe("Análise sintática");
+    expect(d.baseText).toBeNull();
+    expect(d.baseTextCode).toBeNull();
+    expect(d.statement).toMatch(/^Desempenha a mesma função sintática[^]*ressaltado em:\n\n“Toda experiência de amor[^]*sofrer\.”$/);
+    expect(d.options).toHaveLength(5);
+    expect(d.options[0]!.text).toBe("“[...] é porque algo está errado com a gente.”");
+    expect(d.issues).toEqual(["gabarito_ausente"]);
+  });
+
+  it("texto puro (matéria e assunto numa linha só): separa pelo nome da matéria", () => {
+    const subjects = [{ name: "Língua Portuguesa" }, { name: "Matemática" }];
+    expect(splitDisciplineTopic(subjects, "Língua Portuguesa Análise sintática", null)).toEqual({ discipline: "Língua Portuguesa", topic: "Análise sintática" });
+    expect(splitDisciplineTopic(subjects, "Língua Portuguesa Classificação dos verbos quanto à predicação (transitividade)", null)).toEqual({ discipline: "Língua Portuguesa", topic: "Classificação dos verbos quanto à predicação (transitividade)" });
+    // matéria que ainda não existe no banco, mas é comum
+    expect(splitDisciplineTopic(subjects, "Raciocínio Lógico Proposições", null)).toEqual({ discipline: "Raciocínio Lógico", topic: "Proposições" });
+    // sem assunto: nada a separar; assunto já lido: não mexe
+    expect(splitDisciplineTopic(subjects, "Língua Portuguesa", null)).toEqual({ discipline: "Língua Portuguesa", topic: null });
+    expect(splitDisciplineTopic(subjects, "Língua Portuguesa Crase", "Outro")).toEqual({ discipline: "Língua Portuguesa Crase", topic: "Outro" });
+    expect(splitDisciplineTopic(subjects, "Assunto desconhecido qualquer", null)).toEqual({ discipline: "Assunto desconhecido qualquer", topic: null });
+  });
+
+  it("texto puro com 'Resolvida' no fim: matéria e assunto saem limpos", () => {
+    const txt = amostra.replace(/\[([^\]]*)\]\([^)]*\)/g, "$1").replace("Análise sintática", "Análise sintática Resolvida");
+    const d = parseSmart(txt).drafts[0]!;
+    expect(d.discipline).toBe("Língua Portuguesa Análise sintática");
+    expect(splitDisciplineTopic([{ name: "Língua Portuguesa" }], d.discipline, d.topic)).toEqual({ discipline: "Língua Portuguesa", topic: "Análise sintática" });
+  });
+});

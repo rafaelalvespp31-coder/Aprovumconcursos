@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { splitCommentByOption } from "@/domain/bank/option-notes";
 import { useMemo, useState, useTransition } from "react";
-import { estimateQuestions, matchDestino, type SmartIssue } from "@/domain/bank/smart-import";
+import { estimateQuestions, matchDestino, splitDisciplineTopic, type SmartIssue } from "@/domain/bank/smart-import";
 import type { DestinoTree, SmartAnalysis, SmartHistoryRow, SmartImportResult } from "@/server/services/bank-upload";
 import type { BankResult } from "../actions";
 import { DBadge, DCard, DNotice, dButton, dInput, dLabel, dTextarea, fmtDate } from "../ui";
@@ -93,8 +93,10 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
       if (!r.ok || !r.data) return setError(r.error ?? "Não foi possível analisar.");
       const { analysis, destinos: d } = r.data;
       setDestinos(d);
-      const matched = analysis.drafts.map((x) => matchDestino(d.subjects, x.discipline, x.topic));
-      setRows(analysis.drafts.map((x, i) => ({ ...x, selected: x.duplicate === "inedita", open: false, subjectId: matched[i]!.subjectId, topicId: matched[i]!.topicId, criarAssunto: true, confirmBoard: false, allowDuplicate: false, removed: false })));
+      // Matéria e assunto lidos do texto (se vieram numa linha só, separa pelo nome da matéria).
+      const lidos = analysis.drafts.map((x) => ({ ...x, ...splitDisciplineTopic(d.subjects, x.discipline, x.topic) }));
+      const matched = lidos.map((x) => matchDestino(d.subjects, x.discipline, x.topic));
+      setRows(lidos.map((x, i) => ({ ...x, selected: x.duplicate === "inedita", open: false, subjectId: matched[i]!.subjectId, topicId: matched[i]!.topicId, criarAssunto: true, confirmBoard: false, allowDuplicate: false, removed: false })));
       const sug = matched.find((m) => m.subjectId)?.subjectId ?? analysis.drafts.find((x) => x.suggestedSubjectId)?.suggestedSubjectId;
       if (sug) {
         setSubjectId(sug);

@@ -209,7 +209,8 @@ function parseBlock(blockLines: string[], idx: number, carry: { baseCode: string
       // Sem enunciado separado: o último parágrafo vira enunciado.
       const paras = after.join("\n").split(/\n\s*\n/);
       // Parágrafo anterior sem pontuação final (ex.: termina em vírgula): é o mesmo enunciado quebrado, não um texto-base.
-      const quebrado = paras.length > 1 && !/[.!?:…"”»)\]]\s*$/.test(paras[paras.length - 2]!.trim());
+      // Termina em ":" (introduz um trecho citado logo abaixo): também é o mesmo enunciado.
+      const quebrado = paras.length > 1 && (!/[.!?:…"”»)\]]\s*$/.test(paras[paras.length - 2]!.trim()) || /:\s*$/.test(paras[paras.length - 2]!.trim()));
       if (paras.length > 1 && !quebrado) {
         statementLines = paras[paras.length - 1]!.split("\n");
         baseText = paras.slice(0, -1).join("\n\n").trim();
@@ -581,4 +582,38 @@ export function matchDestino(subjects: DestinoSubject[], discipline: string | nu
   if (!s) return { subjectId: null, topicId: null };
   const t = topic ? best(s.topics, topic) : null;
   return { subjectId: s.id, topicId: t?.id ?? null };
+}
+
+
+const COMMON_DISCIPLINES = [
+  "Língua Portuguesa", "Português", "Raciocínio Lógico", "Raciocínio Lógico-Matemático", "Matemática", "Informática", "Noções de Informática",
+  "Direito Constitucional", "Direito Administrativo", "Direito Penal", "Direito Processual Penal", "Direito Civil", "Direito Processual Civil",
+  "Direito do Trabalho", "Direito Tributário", "Direito Previdenciário", "Direito Penal Militar", "Direitos Humanos", "Legislação Especial",
+  "Legislação Penal Especial", "Legislação Institucional", "Criminologia", "Medicina Legal", "Atualidades", "Ética no Serviço Público", "Contabilidade",
+  "Administração Pública", "Língua Inglesa", "Geografia", "História", "Conhecimentos Gerais", "Noções de Direito",
+];
+
+/**
+ * O Gran copiado como texto puro junta matéria e assunto numa linha só ("Língua Portuguesa Análise sintática").
+ * Se o começo da linha é o nome de uma matéria (das já cadastradas ou das comuns), o resto é o assunto.
+ * Só age quando o assunto ainda não foi lido por outro caminho.
+ */
+export function splitDisciplineTopic(subjects: Array<{ name: string }>, discipline: string | null, topic: string | null): { discipline: string | null; topic: string | null } {
+  if (!discipline || topic) return { discipline, topic };
+  const words = discipline.trim().split(/\s+/);
+  const names = [...subjects.map((x) => x.name), ...COMMON_DISCIPLINES];
+  let best: { n: number } | null = null;
+  for (const name of names) {
+    const want = key(name);
+    if (!want) continue;
+    for (let n = 1; n < words.length; n++) {
+      const got = key(words.slice(0, n).join(" "));
+      if (got === want) { if (!best || n > best.n) best = { n }; break; }
+      if (got.length > want.length) break;
+    }
+  }
+  if (!best) return { discipline, topic };
+  const rest = words.slice(best.n).join(" ").trim();
+  if (rest.length < 3) return { discipline, topic };
+  return { discipline: words.slice(0, best.n).join(" "), topic: rest };
 }
