@@ -174,7 +174,7 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
     <div className="flex flex-col gap-4">
       <DCard>
         <h2 className="font-[Space_Grotesk] text-[20px] font-bold uppercase tracking-wide">Importador inteligente de questões</h2>
-        <p className="mt-1 max-w-3xl text-[14px] text-white/65">Copie questões de uma fonte autorizada, cole o conteúdo e deixe o APROVUM organizar tudo. Nada é salvo antes da sua revisão.</p>
+        <p className="mt-1 max-w-3xl text-[14px] text-white/65">Copie questões de uma fonte autorizada (TEC Concursos, Gran Cursos ou texto simples), cole o conteúdo e deixe o APROVUM organizar tudo. Nada é salvo antes da sua revisão.</p>
         <label htmlFor="smart-text" className="sr-only">Questões copiadas</label>
         <textarea id="smart-text" value={text} onChange={(e) => setText(e.target.value)} rows={12} spellCheck={false} className={`${dTextarea} mt-3 font-mono text-[13px]`} placeholder="Cole aqui as questões copiadas, incluindo banca, concurso, enunciado, texto-base, alternativas e informações disponíveis..." />
         <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-white/60">

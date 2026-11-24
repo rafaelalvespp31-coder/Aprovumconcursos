@@ -1,5 +1,5 @@
 /**
- * Importador inteligente: lê questões coladas de uma fonte (ex.: TEC Concursos) e separa banca, ano,
+ * Importador inteligente: lê questões coladas de uma fonte (ex.: TEC Concursos, Gran Cursos) e separa banca, ano,
  * cargo/concurso, texto-base, enunciado, alternativas, gabarito e comentário.
  *
  * Regras: leitura pura e determinística. NUNCA reescreve, resume nem completa o conteúdo; só separa.
@@ -74,7 +74,7 @@ const STATEMENT_START = /^\s*(julgue|assinale|marque|indique|identifique|conside
 const ANSWER = /^\s*(?:gabarito|resposta(?:\s+correta)?|alternativa\s+correta)\s*(?:oficial)?\s*[:\-–]\s*(.+?)\s*$/i;
 const COMMENT = /^\s*(?:coment[áa]rios?(?:\s+d[oa]\s+\w+)?|justificativa|explica[çc][ãa]o|resolu[çc][ãa]o)\s*[:\-–]\s*(.*)$/i;
 const FIELD_DISC = /^\s*(?:disciplina|mat[ée]ria)\s*:\s*(.+?)\s*$/i;
-const FIELD_TOPIC = /^\s*(?:assunto|tema|t[óo]pico)\s*:\s*(.+?)\s*$/i;
+const FIELD_TOPIC = /^\s*(?:assuntos?|tema|t[óo]pico)\s*:\s*(.+?)\s*$/i;
 const NOISE = /^\s*(?:ver\s+coment[áa]rios?|resolver|anular|reportar|salvar|adicionar|imprimir|compartilhar|\d+\s*coment[áa]rios?|anotar|erro\s+no\s+enunciado|favoritar)\s*[.!]?\s*$/i;
 
 function normalizeAnswer(v: string): string | null {
@@ -327,31 +327,98 @@ function detectLooseOptions(body: string[]): { options: SmartOption[]; firstOpti
   return { options: pick.map((text) => ({ label: "", text })), firstOptionIndex: ask + 1 + (tail.findIndex((x) => x.trim()) < 0 ? 0 : tail.findIndex((x) => x.trim())) };
 }
 
+const GRAN_LABEL = /^\s*(ano|banca|prova)\s*:\s*(.*?)\s*$/i;
+
+/** Sigla da banca a partir de "Nome por extenso - SIGLA" (Gran) ou, na falta, da primeira parte da prova. */
+function granBoard(banca: string | undefined, prova: string | undefined): string | null {
+  const parts = (banca ?? "").split(/\s+-\s+/).map((x) => x.trim()).filter(Boolean);
+  const tail = parts.length > 1 ? parts[parts.length - 1]! : null;
+  if (tail && tail.length <= 30 && tail.split(/\s+/).length <= 3) return tail;
+  const first = (prova ?? "").split(/\s+-\s+/)[0]?.trim();
+  if (first && first.length <= 30 && first.split(/\s+/).length <= 3 && /^[^a-zà-ú]*[A-ZÀ-Ú]/.test(first) && first === first.toUpperCase()) return first;
+  const whole = (banca ?? "").trim();
+  return whole && whole.length <= 60 && whole.split(/\s+/).length <= 6 ? whole : whole ? whole.split(/\s+/).slice(0, 6).join(" ") : null;
+}
+
+/** "IDECAN - PC SC - Agente de Polícia - 2026" -> "Agente de Polícia (PC SC)" (cargo + órgão, como o resto do importador espera). */
+function granExam(prova: string, board: string): string {
+  const parts = prova.split(/\s+-\s+/).map((x) => x.trim()).filter(Boolean);
+  if (parts.length && fold(parts[0]!) === fold(board.replace(/\s*\(.*\)\s*$/, ""))) parts.shift();
+  if (parts.length && /^(?:19|20)\d{2}$/.test(parts[parts.length - 1]!)) parts.pop();
+  if (parts.length >= 2) return `${parts.slice(1).join(" - ")} (${parts[0]})`;
+  return parts[0] ?? prova;
+}
+
 /**
- * Formato copiado do TEC Concursos: links em markdown, "#id BANCA - ano - concurso",
- * Matéria/Assunto antes do cabeçalho, número da questão solto e alternativas "* A" com o texto na linha seguinte.
- * Converte para o formato que o analisador já entende, sem alterar o conteúdo da questão.
+ * Formato copiado do Gran Cursos: três linhas "Ano:", "Banca:" e "Prova:" (com links) antes do enunciado,
+ * e alternativas com a letra sozinha na linha. Vira o cabeçalho "SIGLA — ano — cargo (órgão)".
+ */
+function convertGran(lines: string[]): string[] {
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!GRAN_LABEL.test(lines[i]!)) { out.push(lines[i]!); continue; }
+    const f: { ano?: string; banca?: string; prova?: string } = {};
+    let j = i, last = i;
+    while (j < lines.length) {
+      const l = lines[j]!;
+      if (!l.trim()) { j++; continue; }
+      const m = l.match(GRAN_LABEL);
+      if (!m) break;
+      const k = m[1]!.toLowerCase() as keyof typeof f;
+      if (f[k] !== undefined) break;
+      let v = m[2]!;
+      if (!v) {
+        let n = j + 1;
+        while (n < lines.length && !lines[n]!.trim()) n++;
+        if (n < lines.length && !GRAN_LABEL.test(lines[n]!)) { v = lines[n]!.trim(); j = n; }
+      }
+      f[k] = v;
+      last = j;
+      j++;
+    }
+    const year = (f.ano ?? "").match(/\b((?:19|20)\d{2})\b/)?.[1] ?? (f.prova ?? "").match(/\b((?:19|20)\d{2})\s*$/)?.[1];
+    const board = granBoard(f.banca, f.prova);
+    if ((!f.banca && !f.prova) || !year || !board) { out.push(lines[i]!); continue; }
+    const rest = f.prova ? granExam(f.prova, board) : "Concurso não informado";
+    pushHeader(out, `${board} — ${year} — ${rest}`, []);
+    i = last;
+  }
+  return out;
+}
+
+/** Coloca o cabeçalho e leva para depois dele a matéria/assunto/número que vinham antes (ficam no mesmo bloco da questão). */
+function pushHeader(out: string[], header: string, extra: string[]): void {
+  const moved: string[] = [];
+  while (out.length) {
+    const prev = out[out.length - 1]!;
+    if (!prev.trim()) { out.pop(); continue; }
+    if (FIELD_DISC.test(prev) || FIELD_TOPIC.test(prev) || /^\s*\d{1,5}\s*$/.test(prev)) { moved.unshift(out.pop()!); continue; }
+    break;
+  }
+  out.push(header, ...extra, ...moved.filter((x) => !/^\s*\d{1,5}\s*$/.test(x)));
+}
+
+/**
+ * Formatos copiados de outras fontes: TEC Concursos (links em markdown, "#id BANCA - ano - concurso",
+ * Matéria/Assunto antes do cabeçalho, número da questão solto, alternativas "* A" com o texto na linha seguinte)
+ * e Gran Cursos ("Ano:", "Banca:", "Prova:"). Converte para o formato que o analisador já entende,
+ * sem alterar o conteúdo da questão.
  */
 function preprocessTec(text: string): string {
   const t0 = text.replace(/\[([^\]]*)\]\((?:https?:\/\/|\/)[^)\s]*\)/g, "$1");
-  if (!/^\s*#\d{3,}\b/m.test(t0) && !/^\s*[*•-]\s*\(?[A-Ea-e]\)?\s*$/m.test(t0)) return t0;
+  const gran = /^\s*banca\s*:/im.test(t0) || /^\s*prova\s*:/im.test(t0);
+  if (!gran && !/^\s*#\d{3,}\b/m.test(t0) && !/^\s*[*•-]\s*\(?[A-Ea-e]\)?\s*$/m.test(t0)) return t0;
   // "Assunto:" sozinho na linha, com o valor na linha de baixo.
-  const t = t0.replace(/^([ \t]*(?:assunto|mat[ée]ria|disciplina|tema|t[óo]pico)[ \t]*:)[ \t]*\n[ \t]*(\S[^\n]*)$/gim, "$1 $2");
+  const t = t0.replace(/^([ \t]*(?:assuntos?|mat[ée]ria|disciplina|tema|t[óo]pico)[ \t]*:)[ \t]*\n[ \t]*(\S[^\n]*)$/gim, "$1 $2");
   let lines = t.split("\n");
+  if (gran) lines = convertGran(lines);
   // Cabeçalho do TEC -> "BANCA — ano — resto"; leva Matéria/Assunto/número que vinham antes para depois dele.
   const out: string[] = [];
   for (const l of lines) {
     const h = l.match(/^\s*#\d{3,}\s+(.+?)\s+-\s+((?:19|20)\d{2})\s+-\s+(.+?)\s*$/);
     if (!h) { out.push(l); continue; }
-    const moved: string[] = [];
-    while (out.length) {
-      const prev = out[out.length - 1]!;
-      if (!prev.trim()) { out.pop(); continue; }
-      if (FIELD_DISC.test(prev) || FIELD_TOPIC.test(prev) || /^\s*\d{1,5}\s*$/.test(prev)) { moved.unshift(out.pop()!); continue; }
-      break;
-    }
     const rest = h[3]!.replace(/\s*\(e mais \d+ concursos?\)\s*$/i, "");
-    out.push(`${h[1]} — ${h[2]} — ${rest}`, ...moved.filter((x) => !/^\s*\d{1,5}\s*$/.test(x)));
+    pushHeader(out, `${h[1]} — ${h[2]} — ${rest}`, []);
   }
   lines = out;
   // "* A" + texto na linha de baixo -> "A) texto".
