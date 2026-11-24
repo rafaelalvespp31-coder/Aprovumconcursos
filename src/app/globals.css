@@ -2397,6 +2397,84 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 @media (max-width: 639px) { .qz-rodape > .ml-auto { width: 100%; margin-left: 0; } .qz-rodape > .ml-auto > .qz-confirmar { flex: 1 1 100%; } .qz-rodape > .ml-auto > .qz-refazer { flex: 1 1 auto; justify-content: center; } }
 @media (prefers-reduced-motion: reduce) { .qz-opt { animation: none !important; } .qz-alt::before { transition: none !important; } }
 
+/* ===== Questões — camada moderna: fundo ambiente, vidro, luz que segue o ponteiro, microanimações ===== */
+.qz-pagina { position: relative; isolation: isolate; }
+.qz-pagina::before { content: ""; position: absolute; z-index: -1; inset: -28px -28px auto -28px; height: 560px; pointer-events: none; background: radial-gradient(620px 300px at 12% 0%, rgba(229,9,20,0.20), transparent 70%), radial-gradient(520px 280px at 92% 6%, rgba(255,90,97,0.10), transparent 70%), linear-gradient(rgba(255,255,255,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.025) 1px, transparent 1px); background-size: auto, auto, 40px 40px, 40px 40px; -webkit-mask-image: radial-gradient(ellipse 72% 100% at 50% 0%, #000 35%, transparent 100%); mask-image: radial-gradient(ellipse 72% 100% at 50% 0%, #000 35%, transparent 100%); }
+
+/* cabeçalho do caderno */
+.qz-topo { border-color: transparent; background: radial-gradient(700px 240px at 78% -10%, rgba(229,9,20,0.26), transparent 70%), radial-gradient(420px 200px at 0% 100%, rgba(255,255,255,0.05), transparent 70%), linear-gradient(180deg, #15161A, #0A0A0C) padding-box, linear-gradient(150deg, rgba(255,255,255,0.22), rgba(255,255,255,0.04) 40%, rgba(229,9,20,0.45)) border-box; border: 1px solid transparent; box-shadow: 0 30px 60px -34px rgba(0,0,0,0.95), 0 0 0 1px rgba(0,0,0,0.4); }
+.qz-topo::after { content: ""; position: absolute; inset: 0 0 auto 0; height: 1px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent); pointer-events: none; }
+.qz-topo-ico { position: relative; box-shadow: 0 14px 30px -12px rgba(229,9,20,0.95), inset 0 1px 0 rgba(255,255,255,0.35); }
+.qz-topo-ico::after { content: ""; position: absolute; inset: -6px; border-radius: 20px; border: 1px solid rgba(229,9,20,0.35); animation: qz-ping 3.2s var(--qz-ease) infinite; }
+@keyframes qz-ping { 0% { opacity: 0.8; transform: scale(0.96); } 70%, 100% { opacity: 0; transform: scale(1.18); } }
+.qz-modo { background: rgba(255,255,255,0.04); backdrop-filter: blur(6px); border-color: rgba(255,255,255,0.12); }
+
+/* faixa de dados: vidro + ícone em placa + luz do ponteiro */
+.qz-faixa { background: rgba(0,0,0,0.28); border-top: 1px solid rgba(255,255,255,0.06); }
+.qz-faixa-item { position: relative; overflow: hidden; border-radius: 12px; border: 1px solid rgba(255,255,255,0.08); background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.015)); transition: border-color 200ms, transform 200ms var(--qz-ease), box-shadow 200ms; }
+.qz-faixa-item::before, .qz-lado::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 250ms; background: radial-gradient(240px circle at var(--mx, 50%) var(--my, 0%), rgba(229,9,20,0.20), transparent 62%); }
+@media (hover: hover) {
+  .qz-faixa-item:hover { border-color: rgba(229,9,20,0.5); transform: translateY(-2px); box-shadow: 0 14px 26px -18px rgba(229,9,20,0.8); }
+  .qz-faixa-item:hover::before, .qz-lado:hover::before { opacity: 1; }
+}
+.qz-faixa-ico { width: 40px; height: 40px; border-radius: 11px; border: 1px solid rgba(229,9,20,0.28); background: linear-gradient(180deg, rgba(229,9,20,0.20), rgba(229,9,20,0.06)); }
+.qz-faixa-ico > svg { width: 22px; height: 22px; }
+.qz-faixa-item > * { position: relative; }
+
+/* barra da questão */
+.qz-barra-q { background: linear-gradient(180deg, #131417, #0C0C0E); border-color: rgba(255,255,255,0.1); box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 16px 30px -24px #000; }
+.qz-barra { height: 10px; background: rgba(255,255,255,0.12); box-shadow: inset 0 1px 2px rgba(0,0,0,0.5); }
+.qz-barra > span { background: linear-gradient(90deg, #FF2A2A, #E50914 60%, #FF6A70); box-shadow: 0 0 14px rgba(255,42,42,0.75); transition: width 700ms var(--qz-ease); }
+.qz-fav { transition: transform 150ms var(--qz-ease), box-shadow 200ms; }
+.qz-fav:active { transform: scale(0.95); }
+.qz-fav[aria-pressed="true"] { box-shadow: 0 0 0 1px rgba(229,9,20,0.5), 0 10px 22px -12px rgba(229,9,20,0.9); }
+.qz-fav[aria-pressed="true"] svg { animation: qz-estrela 450ms var(--qz-ease); }
+@keyframes qz-estrela { 0% { transform: scale(0.6) rotate(-25deg); } 60% { transform: scale(1.35) rotate(8deg); } 100% { transform: none; } }
+
+/* cartões laterais: vidro com borda em degradê e luz do ponteiro */
+.qz-lado { position: relative; overflow: hidden; border: 1px solid transparent; background: radial-gradient(420px 160px at 100% 0%, rgba(229,9,20,0.12), transparent 70%) padding-box, linear-gradient(180deg, #17181C, #0B0B0D) padding-box, linear-gradient(160deg, rgba(255,255,255,0.2), rgba(255,255,255,0.04) 40%, rgba(229,9,20,0.32)) border-box; box-shadow: 0 24px 44px -30px #000, inset 0 1px 0 rgba(255,255,255,0.05); }
+.qz-lado > * { position: relative; }
+.qz-lateral > * { animation: qz-item 480ms var(--qz-ease) both; }
+.qz-lateral > *:nth-child(2) { animation-delay: 70ms; } .qz-lateral > *:nth-child(3) { animation-delay: 140ms; }
+/* relógio: o anel mostra o progresso real do caderno */
+.qz-relogio { position: relative; border: 0; background: conic-gradient(#FF2A2A calc(var(--p, 0) * 1%), rgba(255,255,255,0.12) 0); transition: background 700ms; box-shadow: 0 0 26px -6px rgba(229,9,20,0.85); }
+.qz-relogio::before { content: ""; position: absolute; inset: 6px; border-radius: 999px; background: radial-gradient(circle at 50% 30%, #1B1C20, #0A0A0C); }
+.qz-relogio > svg { position: relative; }
+.qz-nav-num:hover { transform: translateY(-2px); }
+.qz-nav-atual { animation: qz-pulso 2.4s ease-in-out infinite; }
+@keyframes qz-pulso { 0%, 100% { box-shadow: 0 0 12px -2px rgba(229,9,20,0.8); } 50% { box-shadow: 0 0 22px 0 rgba(229,9,20,0.95); } }
+
+/* cartão da questão: fundo com luz suave e pontilhado */
+.qz-cartao { background: radial-gradient(720px 260px at 100% 0%, rgba(229,9,20,0.07), transparent 70%), radial-gradient(520px 240px at 0% 100%, rgba(20,21,26,0.05), transparent 70%), linear-gradient(180deg, #fff, #FBFBFC); }
+.qz-enun { background: radial-gradient(rgba(20,21,26,0.07) 1px, transparent 1.2px) 100% 0 / 16px 16px, linear-gradient(180deg, #FBFBFC, #F5F6F8); -webkit-mask-composite: source-over; }
+.qz-enun-corpo, .qz-enun-topo { position: relative; }
+
+/* alternativas: luz do ponteiro e onda ao pressionar */
+.qz-alt > * { position: relative; z-index: 1; }
+.qz-alt::after { content: ""; position: absolute; inset: 0; z-index: 0; border-radius: inherit; pointer-events: none; opacity: 0; transition: opacity 220ms; background: radial-gradient(260px circle at var(--mx, 50%) var(--my, 50%), rgba(229,9,20,0.10), transparent 65%); }
+@media (hover: hover) { .qz-alt:not(:disabled):not(.qz-alt-escolhida):hover::after { opacity: 1; } }
+.qz-alt:not(:disabled):active::after { opacity: 1; background: radial-gradient(200px circle at var(--mx, 50%) var(--my, 50%), rgba(229,9,20,0.22), transparent 70%); }
+.qz-alt-escolhida::after { opacity: 1; background: radial-gradient(300px circle at var(--mx, 85%) var(--my, 50%), rgba(255,255,255,0.10), transparent 65%); }
+.qz-alt-certa::after, .qz-alt-errada::after { display: none; }
+
+/* confirmar: brilho que cruza o botão */
+.qz-confirmar { position: relative; overflow: hidden; }
+.qz-confirmar::after { content: ""; position: absolute; inset: 0 auto 0 -60%; width: 40%; transform: skewX(-20deg); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent); transition: left 600ms var(--qz-ease); pointer-events: none; }
+@media (hover: hover) { .qz-confirmar:not(:disabled):hover::after { left: 130%; } }
+.qz-confirmar:not(:disabled) { animation: qz-chama 2.6s ease-in-out 1; }
+@keyframes qz-chama { 0% { box-shadow: 0 0 0 0 rgba(229,9,20,0.6); } 100% { box-shadow: 0 0 0 16px rgba(229,9,20,0); } }
+
+/* resposta: pulso verde no acerto, tremida curta e aro vermelho no erro */
+.qz-cartao[data-resultado="certa"] { animation: qz-acerto 900ms var(--qz-ease); }
+.qz-cartao[data-resultado="errada"] { animation: qz-erro 520ms var(--qz-ease); }
+@keyframes qz-acerto { 0% { box-shadow: 0 0 0 0 rgba(30,158,90,0.55), 0 28px 50px -30px rgba(0,0,0,0.8); } 100% { box-shadow: 0 0 0 22px rgba(30,158,90,0), 0 28px 50px -30px rgba(0,0,0,0.8); } }
+@keyframes qz-erro { 0%, 100% { transform: none; } 18% { transform: translateX(-6px); } 36% { transform: translateX(5px); } 54% { transform: translateX(-3px); } 72% { transform: translateX(2px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .qz-topo-ico::after, .qz-nav-atual, .qz-confirmar:not(:disabled), .qz-cartao[data-resultado], .qz-lateral > *, .qz-fav[aria-pressed="true"] svg { animation: none !important; }
+  .qz-faixa-item, .qz-confirmar::after { transition: none !important; }
+}
+
 /* Menu inferior APROVUM (BottomNavigation): moldura e blocos chanfrados, item ativo vermelho iluminado */
 .bn-wrap { --c: 9px; pointer-events: none; position: fixed; inset: auto 0 0 0; z-index: 30; padding: 14px 6px calc(12px + env(safe-area-inset-bottom)); }
 @media (min-width: 1024px) { .bn-wrap { --c: 10px; position: sticky; inset: auto; bottom: 0; padding: 14px 32px 14px; } }

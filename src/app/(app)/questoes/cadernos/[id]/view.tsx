@@ -39,6 +39,7 @@ import type { AnswerFeedback } from "@/server/services/study";
 import { AnswerExplanation } from "@/components/answer-explanation";
 import { GabaritoPainel } from "@/components/gabarito-painel";
 import { QuestionStatsPanel } from "@/components/question-stats";
+import { spotlight, spotlightToque } from "@/components/spotlight";
 import type { QuestionStats } from "@/domain/notebooks/question-stats";
 import { QuestionComments } from "@/components/question-comments";
 import { callAction } from "@/components/safe-action";
@@ -221,7 +222,7 @@ export function NotebookView({
 
   const q = questions[i]!;
   return (
-    <div className="@container mx-auto w-full max-w-[1560px]" data-testid="caderno-view">
+    <div className="@container qz-pagina mx-auto w-full max-w-[1560px]" data-testid="caderno-view">
     <div className="grid items-start gap-5 @[980px]:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] @[980px]:gap-6">
       <div className="flex min-w-0 flex-col gap-4">
         <Top n={n} total={total} q={q} onOpenErrors={erred > 0 ? () => setErrorsOpen(true) : undefined} wrong={erred} />
@@ -334,7 +335,7 @@ function Top({ n, total, q, onOpenErrors, wrong = 0 }: { n: Notebook; total: num
       {q && (
         <dl className="qz-faixa" data-testid="faixa-questao">
           {tiles.filter((t) => t.value !== "—").map((t) => (
-            <div key={t.label} className="qz-faixa-item">
+            <div key={t.label} className="qz-faixa-item" onPointerMove={spotlight}>
               <span className="qz-faixa-ico">{t.icon}</span>
               <span className="min-w-0">
                 <dt className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-white/60">{t.label}</dt>
@@ -520,7 +521,7 @@ function QuestionPanel({
         />
       </div>
 
-      <article className="qz-cartao" aria-label={`Questão ${number} de ${total}`} data-respondida={fb ? "1" : "0"}>
+      <article className="qz-cartao" aria-label={`Questão ${number} de ${total}`} data-respondida={fb ? "1" : "0"} data-resultado={fb ? (fb.correct ? "certa" : "errada") : undefined}>
         <header className="qz-meta">
           <p className="qz-meta-origem">
             {q.code && <span className="qz-meta-cod">{q.code}</span>}
@@ -588,7 +589,7 @@ function QuestionPanel({
             const selected = choice === o.id;
             const tone = fb ? (isCorrect ? "qz-alt-certa" : isWrong ? "qz-alt-errada" : "") : selected ? "qz-alt-escolhida" : "";
             return (
-              <div key={o.id} className="qz-opt relative" style={{ "--i": oi } as React.CSSProperties}>
+              <div key={o.id} className="qz-opt relative" style={{ "--i": oi } as React.CSSProperties} onPointerMove={spotlight} onPointerDown={spotlightToque}>
                 <button
                   type="button"
                   role="radio"
@@ -895,9 +896,9 @@ function TimerCard({ notebookId, pct, right, wrong, blank }: { notebookId: strin
     return () => clearInterval(t);
   }, [running, setSecs]);
   return (
-    <section className="qz-lado" aria-label="Tempo e progresso" data-testid="tempo-card">
+    <section className="qz-lado" aria-label="Tempo e progresso" data-testid="tempo-card" onPointerMove={spotlight}>
       <div className="flex items-center gap-4">
-        <span className="qz-relogio" aria-hidden>
+        <span className="qz-relogio" aria-hidden style={{ "--p": pct } as React.CSSProperties}>
           <Timer className="h-8 w-8" />
         </span>
         <div className="min-w-0 flex-1">
@@ -945,7 +946,7 @@ function NavCard({ questions, states, current, onPick }: { questions: NotebookQu
   const start = all ? 0 : page * PAGE;
   const end = all ? questions.length : Math.min(questions.length, start + PAGE);
   return (
-    <section className="qz-lado" aria-labelledby="nav-questoes">
+    <section className="qz-lado" aria-labelledby="nav-questoes" onPointerMove={spotlight}>
       <h2 id="nav-questoes" className="text-[16px] font-bold text-white">
         Navegação de questões
       </h2>
