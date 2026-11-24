@@ -106,3 +106,32 @@
   .hm-intro[data-etapa="indo"] .hm-intro-preto { opacity: 1; }
   .hm-intro[data-etapa="revela"] { animation: hmi-some 0.25s ease forwards; }
 }
+
+/* tela larga (computador): o fundo vira uma atmosfera vermelha com a própria arte desfocada, e o lema/recursos preenchem as laterais */
+.hm-intro-lado { display: none; }
+@media (min-width: 900px) and (min-aspect-ratio: 5 / 4) {
+  .hm-intro-fundo { overflow: hidden; background:
+    radial-gradient(38% 62% at 12% 58%, rgb(215 25 32 / 0.32), transparent 72%),
+    radial-gradient(38% 62% at 88% 42%, rgb(215 25 32 / 0.32), transparent 72%),
+    radial-gradient(46% 46% at 50% 64%, rgb(215 25 32 / 0.34), transparent 72%), #000; }
+  .hm-intro-fundo::before { content: ""; position: absolute; inset: -12%; background: url(/home/intro-mentor.webp) center 32% / cover no-repeat; filter: blur(48px) saturate(1.5) brightness(0.5); opacity: 0.8; }
+  .hm-intro-fundo::after { content: ""; position: absolute; inset: 0; background: radial-gradient(70% 70% at 50% 50%, transparent 40%, #000 100%); }
+  /* o preto do retrato some contra a atmosfera: sem moldura retangular em volta do Mentor */
+  .hm-intro-cena { mix-blend-mode: screen; }
+}
+@media (min-width: 1180px) and (min-aspect-ratio: 5 / 4) {
+  .hm-intro-lado { position: absolute; top: 50%; translate: 0 -50%; z-index: 1; display: flex; flex-direction: column; gap: 18px; margin: 0; padding: 0; list-style: none;
+    width: calc((100vw - 100dvh * 941 / 1672) / 2 - clamp(56px, 6vw, 120px)); animation: hmi-lado 1.4s 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; transition: opacity 0.5s ease; }
+  .hm-intro-lado-e { left: clamp(32px, 4vw, 88px); }
+  .hm-intro-lado-d { right: clamp(32px, 4vw, 88px); gap: 0; }
+  .hm-intro[data-etapa]:not([data-etapa="espera"]) .hm-intro-lado { opacity: 0; }
+  .hm-intro-lema { margin: 0; display: flex; flex-direction: column; font-family: "Chakra Petch", system-ui, sans-serif; font-weight: 800; font-style: italic; text-transform: uppercase; letter-spacing: 0.01em; line-height: 1.04; font-size: clamp(30px, 3.3vw, 68px); color: #f5f1ef; }
+  .hm-intro-lema span:last-child { color: #ff2a33; text-shadow: 0 0 26px rgb(255 37 45 / 0.6); }
+  .hm-intro-sub { margin: 0; max-width: 30ch; font-size: clamp(14px, 1.05vw, 19px); line-height: 1.5; color: rgb(245 241 239 / 0.72); padding-left: 14px; border-left: 2px solid #d71920; }
+  .hm-intro-lado-d li { display: grid; grid-template-columns: auto 1fr; column-gap: 14px; padding: clamp(14px, 2.4dvh, 26px) 0; border-top: 1px solid rgb(255 37 45 / 0.3); }
+  .hm-intro-lado-d li:last-child { border-bottom: 1px solid rgb(255 37 45 / 0.3); }
+  .hm-intro-lado-d b { grid-row: span 2; font-family: "Chakra Petch", system-ui, sans-serif; font-size: clamp(22px, 2vw, 40px); font-weight: 700; color: #ff2a33; line-height: 1; text-shadow: 0 0 18px rgb(255 37 45 / 0.5); }
+  .hm-intro-lado-d span { font-family: "Chakra Petch", system-ui, sans-serif; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; font-size: clamp(14px, 1.15vw, 22px); color: #f5f1ef; }
+  .hm-intro-lado-d small { font-size: clamp(12px, 0.9vw, 16px); line-height: 1.45; color: rgb(245 241 239 / 0.62); }
+}
+@keyframes hmi-lado { from { opacity: 0; transform: translateY(14px); } }

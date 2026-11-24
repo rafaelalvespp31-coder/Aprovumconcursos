@@ -195,6 +195,16 @@ export function IntroMentor({ aoRevelar, aoFim }: { aoRevelar: () => void; aoFim
   return (
     <div className="hm-intro" data-etapa={etapa} role="region" aria-label="Abertura">
       <div className="hm-intro-fundo" aria-hidden />
+      {/* só em tela larga: o lema à esquerda e o que o app faz à direita, para a abertura ocupar a tela toda */}
+      <div className="hm-intro-lado hm-intro-lado-e" aria-hidden>
+        <p className="hm-intro-lema"><span>Sua preparação.</span><span>Seu próximo cargo.</span></p>
+        <p className="hm-intro-sub">Estude com um Mentor que responde por voz, aulas passo a passo e questões no estilo da banca.</p>
+      </div>
+      <ul className="hm-intro-lado hm-intro-lado-d" aria-hidden>
+        <li><b>01</b><span>Mentor por voz</span><small>Peça uma aula ou uma página e ele abre na hora.</small></li>
+        <li><b>02</b><span>Aulas passo a passo</span><small>Contas no caderno, do jeito que se faz à mão.</small></li>
+        <li><b>03</b><span>Modo Jogo</span><small>Treine por matéria, com patentes e ranking.</small></li>
+      </ul>
       <div
         className="hm-intro-cena"
         ref={cenaRef}

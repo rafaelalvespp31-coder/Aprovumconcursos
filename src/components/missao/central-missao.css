@@ -198,22 +198,35 @@
 @media (min-width: 600px) and (max-width: 899px) { .hm-card { height: clamp(200px, 26dvh, 260px); } }
 
 @media (min-width: 900px) {
-  .hm { grid-template-columns: minmax(0, 1.45fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto;
-    grid-template-areas: "topo topo" "palco voz" "palco cards"; align-items: center; }
-  .hm-topo { grid-area: topo; padding: 20px 40px 0; }
-  .hm-logo { height: 32px; }
-  .hm-palco { grid-area: palco; padding: 0 0 0 24px; height: 100%; justify-content: center; --hm-voz-h: 0px; }
-  .hm-cena { width: min(100%, calc((100dvh - 150px) * 1.483)); }
-  .hm-corpo { flex: none; width: min(100%, calc((100dvh - 150px) * 1.483)); height: clamp(70px, 15dvh, 150px); }
-  .hm-voz { grid-area: voz; align-self: end; padding: 0 40px 0 16px; }
-  .hm-cards { grid-area: cards; align-self: start; padding: 20px 40px 24px 16px; gap: 18px; }
-  .hm-card { height: clamp(240px, 38dvh, 360px); --c: 24px; }
+  /* o Mentor ocupa a altura toda à esquerda; voz + cards formam um bloco centrado na altura, à direita */
+  .hm { --hm-topo-h: 76px; --hm-corpo-h: clamp(40px, 9dvh, 110px); grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr) auto auto minmax(0, 1fr);
+    grid-template-areas: "topo topo" "palco ." "palco voz" "palco cards" "palco ."; align-items: center; }
+  .hm-topo { grid-area: topo; padding: 20px clamp(24px, 3vw, 64px) 0; }
+  .hm-logo { height: clamp(30px, 2.3vw, 44px); }
+  .hm-palco { grid-area: palco; padding: 0 0 0 clamp(8px, 1.5vw, 32px); height: 100%; justify-content: center; --hm-voz-h: 0px; }
+  .hm-cena { width: min(100%, calc((100dvh - var(--hm-topo-h) - var(--hm-corpo-h)) * 1.483)); left: 0; }
+  .hm-corpo { flex: none; width: min(100%, calc((100dvh - var(--hm-topo-h) - var(--hm-corpo-h)) * 1.483)); height: var(--hm-corpo-h); }
+  .hm-voz { grid-area: voz; align-self: end; padding: 0 clamp(24px, 3vw, 64px) 0 clamp(8px, 1vw, 24px); }
+  .hm-cards { grid-area: cards; align-self: start; padding: clamp(18px, 2.4dvh, 32px) clamp(24px, 3vw, 64px) 0 clamp(8px, 1vw, 24px); gap: clamp(14px, 1.5vw, 30px); }
+  .hm-card { height: clamp(250px, 46dvh, 560px); --c: 24px; }
   .hm-card-face { --c: 22.8px; }
-  .hm-card-titulo { font-size: clamp(19px, 1.7vw, 26px); }
-  .hm-card-desc { font-size: 13px; }
+  .hm-card-titulo { font-size: clamp(19px, 1.7vw, 34px); }
+  .hm-card-desc { font-size: clamp(13px, 1vw, 17px); }
   .hm-plataforma { left: 36%; }
-  .hm-cena { left: 0; }
+  /* mais luz de fundo para a tela larga não ficar vazia */
+  .hm-fundo { background:
+    radial-gradient(46% 46% at 80% 26%, rgb(215 25 32 / 0.26), transparent 72%),
+    radial-gradient(60% 40% at 30% 38%, rgb(215 25 32 / 0.2), transparent 72%),
+    radial-gradient(80% 26% at 55% 100%, rgb(215 25 32 / 0.26), transparent 70%),
+    #000; }
 }
+/* tablet largo / notebook pequeno: os dois cards em coluna, para os títulos caberem */
+@media (min-width: 900px) and (max-width: 1180px) {
+  .hm-cards { grid-template-columns: minmax(0, 1fr); }
+  .hm-card { height: clamp(150px, 25dvh, 240px); }
+}
+/* telas baixas no desktop */
+@media (min-width: 900px) and (max-height: 700px) { .hm-card { height: clamp(150px, 36dvh, 240px); } }
 
 @media (prefers-reduced-motion: reduce) {
   .hm *, .hm *::before, .hm *::after { animation: none !important; transition: none !important; }
