@@ -6,6 +6,8 @@
  * O que não for encontrado fica ausente (null) e vira pendência para o administrador.
  */
 
+import { splitCommentByOption } from "./option-notes";
+
 export const KNOWN_BOARDS = [
   "CEBRASPE", "CESPE", "FCC", "FGV", "VUNESP", "IBFC", "IDECAN", "AOCP", "CONSULPLAN", "INSTITUTO CONSULPLAN", "IGEDUC", "AVANÇASP", "AVANCASP",
   "INSTITUTO ACCESS", "ACCESS", "QUADRIX", "IBADE", "FUNDATEC", "CESGRANRIO", "FUNCAB", "IADES", "OBJETIVA", "FEPESE", "UFPR", "NUCEPE", "COMPERVE",
@@ -73,6 +75,8 @@ const BASE_INTRO = /^\s*(leia o texto (?:a seguir|abaixo)|considere o texto (?:a
 const STATEMENT_START = /^\s*(julgue|assinale|marque|indique|identifique|considerando|com\s+rela[çc][ãa]o|em\s+rela[çc][ãa]o|de\s+acordo|segundo|quanto|analise|avalie|qual|quais|sobre|acerca|a\s+respeito|no\s+que\s+se\s+refere|assinalar|complete|preencha|observe)\b/i;
 const ANSWER = /^\s*(?:gabarito|resposta(?:\s+correta)?|alternativa\s+correta)\s*(?:oficial)?\s*[:\-–]\s*(.+?)\s*$/i;
 const COMMENT = /^\s*(?:coment[áa]rios?(?:\s+d[oa]\s+\w+)?|justificativa|explica[çc][ãa]o|resolu[çc][ãa]o)\s*[:\-–]\s*(.*)$/i;
+// Comentário por alternativa: "Alternativa (a). Essa não é a nossa alternativa correta. …"
+const ALT_NOTE = /^\s*alternativa\s*\(?[A-Ea-e]\)?\s*[).:\-–—]\s*\S/i;
 const FIELD_DISC = /^\s*(?:disciplina|mat[ée]ria)\s*:\s*(.+?)\s*$/i;
 const FIELD_TOPIC = /^\s*(?:assuntos?|tema|t[óo]pico)\s*:\s*(.+?)\s*$/i;
 const STATUS = String.raw`resolvida|n[ãa]o\s+resolvida|respondida|n[ãa]o\s+respondida|acertei|errei|anulada|desatualizada`;
@@ -81,6 +85,9 @@ const NOISE = /^\s*(?:resolvida|n[ãa]o\s+resolvida|respondida|n[ãa]o\s+respond
 function normalizeAnswer(v: string): string | null {
   const t = v.trim().replace(/[.\s]+$/g, "");
   const f = fold(t);
+  // "letra D" / "alternativa (d)" / "opção C": é sempre letra (C e E aqui não são Certo/Errado).
+  const withWord = f.match(/^(?:LETRA|ALTERNATIVA|OPCAO)\s+\(?([A-E])\)?$/);
+  if (withWord) return withWord[1]!;
   if (/^(CERTO|C|CERTA)$/.test(f)) return "certo";
   if (/^(ERRADO|E|ERRADA)$/.test(f)) return "errado";
   const m = f.match(/^\(?([A-E])\)?$/);
@@ -159,7 +166,15 @@ function parseBlock(blockLines: string[], idx: number, carry: { baseCode: string
     const t = l.match(FIELD_TOPIC);
     if (t && !inComment) { topic = t[1]!; continue; }
     const a = l.match(ANSWER);
-    if (a && !inComment) { answer = normalizeAnswer(a[1]!) ?? answer; continue; }
+    if (a) {
+      const n = normalizeAnswer(a[1]!);
+      if (n) { answer = n; continue; }
+      // "Gabarito: A) texto…" abre o comentário da alternativa certa.
+      const lead = a[1]!.match(/^\(?([A-Ea-e])\)\s*\S/);
+      if (lead && !inComment) { answer = lead[1]!.toUpperCase(); inComment = true; commentLines.push(l.trim()); continue; }
+      if (!inComment) continue;
+    }
+    if (!inComment && body.length && ALT_NOTE.test(l)) { inComment = true; commentLines.push(l); continue; }
     const c = l.match(COMMENT);
     if (c) { inComment = true; if (c[1]) commentLines.push(c[1]); continue; }
     if (inComment) commentLines.push(l);
@@ -232,6 +247,14 @@ function parseBlock(blockLines: string[], idx: number, carry: { baseCode: string
 
   // Rotula alternativas sem letra e valida sequência.
   options = options.map((o, i) => ({ label: o.label || "ABCDE"[i] || String(i + 1), text: o.text }));
+  // Gabarito "C"/"E" numa questão de alternativas é a letra, não Certo/Errado.
+  if (type === "multipla_escolha" && answer === "certo" && options.some((o) => o.label === "C")) answer = "C";
+  if (type === "multipla_escolha" && answer === "errado" && options.some((o) => o.label === "E")) answer = "E";
+  // Sem "Gabarito:" explícito, o comentário por alternativa pode dizer qual é a certa.
+  if (!answer && comment && type === "multipla_escolha") {
+    const n = splitCommentByOption(comment);
+    if (n?.answer && options.some((o) => o.label === n.answer)) answer = n.answer;
+  }
 
   const issues: SmartIssue[] = [];
   const { role, organ } = examLine ? splitExamLine(examLine) : { role: null, organ: null };
