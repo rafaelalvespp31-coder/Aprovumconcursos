@@ -8,6 +8,13 @@ import { expect, test, type Page } from "@playwright/test";
  */
 const G = "/dev/galeria";
 
+// O aviso de cookies é fixo no rodapé e cobriria o menu inferior: nos testes ele já vem aceito.
+test.beforeEach(async ({ page }) => {
+  await page.addInitScript(() => {
+    try { localStorage.setItem("na:aviso-cookies:v1", "1"); } catch { /* ok */ }
+  });
+});
+
 async function noHorizontalScroll(page: Page) {
   const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
   expect(overflow).toBeLessThanOrEqual(0);
@@ -403,15 +410,15 @@ test.describe("casco pastel", () => {
     await expect(page).toHaveURL(/\/questoes\/cadernos\/11111111-/);
   });
 
-  test("menu inferior (celular): sete opções com Meu Plano e Área do Aluno, rota ativa e navegação real", async ({ page }) => {
+  test("menu inferior (celular): seis opções com Meu Plano e Minha área, rota ativa e navegação real", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 800 });
     await page.goto(`${G}/painel`);
     const bar = page.getByTestId("menu-inferior");
     const links = bar.getByRole("link");
-    await expect(links).toHaveCount(7);
-    const names = ["Painel", "Estudos", "Modo Jogo", "Questões", "Área do Aluno", "Meu Plano", "Novo estudo"];
+    await expect(links).toHaveCount(6);
+    const names = ["Painel", "Estudos", "Modo Jogo", "Questões", /Minha área/, "Meu Plano"];
     for (const [k, n] of names.entries()) await expect(links.nth(k)).toHaveAccessibleName(n);
-    await expect(bar.locator(".bn-cel:visible .bn-txt")).toHaveText(["Painel", "Estudos", "Jogo", "Questões", "Área", "Meu Plano", "Novo"]);
+    await expect(bar.locator(".bn-cel:visible .bn-txt")).toHaveText(["Painel", "Estudos", "Jogo", "Questões", "Minha área", "Meu Plano"]);
     await expect(bar.getByRole("link", { name: "Painel" })).toHaveAttribute("aria-current", "page");
     await expect(bar.getByRole("link", { name: "Revisões" })).toHaveCount(0);
     await expect(bar.getByRole("link", { name: /Evolução/ })).toHaveCount(0);
@@ -424,11 +431,14 @@ test.describe("casco pastel", () => {
     // subpáginas mantêm a seção ativa
     await page.goto(`${G}/questoes/cadernos/novo`);
     await expect(bar.getByRole("link", { name: "Questões" })).toHaveAttribute("aria-current", "page");
-    await expect(bar.getByRole("link", { name: "Novo estudo" })).toHaveAttribute("href", `${G}/nova-trilha`);
     // fixo no rodapé, sem rolagem lateral e acima da área segura
     const box = await bar.boundingBox();
     expect(box!.y + box!.height).toBeLessThanOrEqual(800);
     expect(box!.y + box!.height).toBeGreaterThan(740);
+    // a lente vermelha acompanha a opção ativa
+    const lente = await bar.locator(".bn-lente").boundingBox();
+    const ativa = await bar.locator(".bn-cel-ativa").boundingBox();
+    expect(Math.abs(lente!.x - ativa!.x)).toBeLessThan(2);
     await noHorizontalScroll(page);
   });
 

@@ -11,24 +11,3 @@
   .bnv + .clw, .clw { margin-top: 0 !important; }
 }
 
-/* ------------------------------------------------------------------ menu inferior (celular): barra encostada, vidro fumê */
-@media (max-width: 1023.98px) {
-  .bn-wrap { padding: 0 !important; }
-  .bn-moldura { max-width: none !important; margin: 0 !important; filter: none !important; }
-  .bn-moldura::before, .bn-moldura::after, .bn-fundo, .bn-luz-cima, .bn-luz-baixo { display: none !important; }
-  .bn { --c: 0px; gap: 1px !important; padding: 7px 3px calc(7px + env(safe-area-inset-bottom)) !important; grid-template-columns: repeat(6, minmax(0, 1fr)) !important;
-    background: linear-gradient(180deg, rgba(20, 14, 14, 0.78), rgba(8, 6, 6, 0.92)); -webkit-backdrop-filter: blur(22px) saturate(1.5); backdrop-filter: blur(22px) saturate(1.5);
-    border-top: 1px solid rgba(255, 70, 55, 0.55); box-shadow: 0 -14px 34px rgba(0, 0, 0, 0.5), 0 -1px 18px rgba(255, 30, 30, 0.28); }
-  .bn::before { content: ""; position: absolute; left: 0; right: 0; top: -1px; height: 2px; background: linear-gradient(90deg, transparent, #ff2a2a 30%, #ff6a5c 50%, #ff2a2a 70%, transparent); background-size: 200% 100%; animation: bnFio 4s linear infinite; }
-  .bn-cel { filter: none !important; }
-  .bn-item { clip-path: none !important; min-height: 54px !important; gap: 3px !important; padding: 6px 0 !important; border-radius: 14px; background: transparent !important; transition: transform 0.25s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s, color 0.2s; }
-  .bn-item::before, .bn-item::after { display: none !important; }
-  .bn-ico { width: 22px; height: 22px; }
-  .bn-txt { font-size: 9.5px !important; letter-spacing: -0.02em !important; font-weight: 600; }
-  .bn-item:active { transform: scale(0.9); }
-  .bn-cel-ativa .bn-item { margin: 0 !important; height: 100% !important; background: linear-gradient(180deg, #ff4b3f, #d10b12) !important; box-shadow: 0 0 18px rgba(255, 30, 30, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3); animation: bnPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
-  .bn-cel-ativa .bn-ico, .bn-cel-ativa .bn-txt { color: #fff; }
-}
-@keyframes bnFio { to { background-position: -200% 0; } }
-@keyframes bnPop { from { transform: scale(0.85); } to { transform: none; } }
-@media (max-width: 359px) { .bn-txt { font-size: 9px !important; } }
