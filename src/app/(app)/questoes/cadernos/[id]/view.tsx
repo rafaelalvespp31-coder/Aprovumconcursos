@@ -17,6 +17,7 @@ import {
   Crosshair,
   ArrowDown,
   EllipsisVertical,
+  BarChart3,
   Flag,
   FolderOpen,
   Grid3x3,
@@ -36,11 +37,13 @@ import type { Notebook, NotebookQuestion } from "@/server/services/notebooks";
 import type { AnswerFeedback } from "@/server/services/study";
 import { AnswerExplanation } from "@/components/answer-explanation";
 import { GabaritoPainel } from "@/components/gabarito-painel";
+import { QuestionStatsPanel } from "@/components/question-stats";
+import type { QuestionStats } from "@/domain/notebooks/question-stats";
 import { QuestionComments } from "@/components/question-comments";
 import { callAction } from "@/components/safe-action";
 import { useStored } from "@/components/use-stored";
 import { canConfirm, classifyTap, initialChoice, selectOption, strikeKeeping, toggleStrike, type ChoiceState } from "@/domain/notebooks/elimination";
-import { answerNotebookAction, favoriteQuestionAction, fullStatementAction, notebookPositionAction, openErrorNotebookAction, reportQuestionAction, saveErrorNotebookAction, saveNoteAction, type Result } from "../../actions";
+import { answerNotebookAction, favoriteQuestionAction, fullStatementAction, notebookPositionAction, openErrorNotebookAction, questionStatsAction, reportQuestionAction, saveErrorNotebookAction, saveNoteAction, type Result } from "../../actions";
 import { ErrorNotebookModal } from "@/components/notebooks/error-notebook-modal";
 import type { ErrorNotebookData, ErrorNotebookEdit } from "@/domain/notebooks/error-notebook";
 
@@ -54,6 +57,8 @@ export interface NotebookViewActions {
   saveFull: (id: string, on: boolean) => Promise<Result<null>>;
   saveNote: (questionId: string, body: string) => Promise<Result<null>>;
   report: (questionId: string, details: string) => Promise<Result<null>>;
+  /** Estatísticas da questão (só depois de responder). */
+  stats: (questionId: string) => Promise<Result<QuestionStats>>;
   /** Guarda a questão em que o aluno está (para continuar dela ao voltar). */
   position: (notebookId: string, questionId: string) => Promise<Result<null>>;
   /** Caderno de erros (janela editável). */
@@ -67,6 +72,7 @@ const serverActions: NotebookViewActions = {
   saveFull: fullStatementAction,
   saveNote: saveNoteAction,
   report: reportQuestionAction,
+  stats: questionStatsAction,
   position: notebookPositionAction,
   errorsOpen: openErrorNotebookAction,
   errorsSave: saveErrorNotebookAction,
@@ -477,7 +483,7 @@ function QuestionPanel({
     return () => window.removeEventListener("keydown", onKey);
   });
 
-  const [panel, setPanel] = useState<null | "nota" | "erro">(null);
+  const [panel, setPanel] = useState<null | "nota" | "erro" | "stats">(null);
   const correctId = fb ? (ce ? String(fb.correctAnswerTrue) : fb.options.find((o) => o.isCorrect)?.id) : null;
   // O aluno pode fechar o gabarito para ver só a questão; a escolha fica lembrada nas próximas.
   const [gabAberto, setGabAberto] = useStored<boolean>("aprovum:gabarito-aberto", true);
@@ -642,22 +648,38 @@ function QuestionPanel({
         )}
 
         {panel === "nota" && <NotePanel questionId={q.id} note={note} save={actions.saveNote} onSaved={onNoteSaved} onClose={() => setPanel(null)} />}
+        {panel === "stats" && fb && <QuestionStatsPanel questionId={q.id} load={actions.stats} marcou={marcouLabel} onClose={() => setPanel(null)} />}
         {panel === "erro" && <ReportPanel questionId={q.id} report={actions.report} onClose={() => setPanel(null)} />}
 
         <div className="qz-rodape">
-          <button type="button" onClick={() => setPanel(panel === "nota" ? null : "nota")} aria-expanded={panel === "nota"} className="qz-acao">
-            <span className="qz-acao-ico"><NotebookPen className="h-[18px] w-[18px]" aria-hidden /></span>
-            Anotação{note ? " •" : ""}
-          </button>
-          <button
-            type="button"
-            onClick={verExplicacao}
-            disabled={!fb}
-            title={fb ? "Ver a explicação" : "A explicação aparece depois que você confirmar a resposta"}
-            className="qz-acao sm:border-l sm:border-[#ECEDF0] sm:pl-5"
-          >
-            <Lightbulb className="h-[18px] w-[18px]" aria-hidden /> Explicação
-          </button>
+          <div className="qz-acoes" role="group" aria-label="Ferramentas da questão">
+            <button type="button" onClick={() => setPanel(panel === "nota" ? null : "nota")} aria-expanded={panel === "nota"} className="qz-acao">
+              <NotebookPen className="h-[18px] w-[18px]" aria-hidden /> <span>Anotação{note ? " •" : ""}</span>
+            </button>
+            <button
+              type="button"
+              onClick={verExplicacao}
+              disabled={!fb}
+              title={fb ? "Ver a explicação" : "A explicação aparece depois que você confirmar a resposta"}
+              className="qz-acao"
+            >
+              <Lightbulb className="h-[18px] w-[18px]" aria-hidden /> <span>Explicação</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setPanel(panel === "stats" ? null : "stats")}
+              aria-expanded={panel === "stats"}
+              disabled={!fb}
+              title={fb ? "Ver os gráficos de acertos, erros e respostas" : "As estatísticas aparecem depois que você confirmar a resposta"}
+              className="qz-acao"
+              data-testid="abrir-estatisticas"
+            >
+              <BarChart3 className="h-[18px] w-[18px]" aria-hidden /> <span>Estatísticas</span>
+            </button>
+            <button type="button" onClick={() => setPanel(panel === "erro" ? null : "erro")} aria-expanded={panel === "erro"} className="qz-acao qz-acao-erro" data-testid="abrir-reportar-erro">
+              <Flag className="h-[18px] w-[18px]" aria-hidden /> <span>Reportar erro</span>
+            </button>
+          </div>
           <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
             {fb && (
               <button type="button" onClick={redo} className="qz-refazer" data-testid="refazer-questao">

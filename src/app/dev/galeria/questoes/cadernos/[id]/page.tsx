@@ -3,7 +3,7 @@
 import { Suspense } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { NotebookView } from "@/app/(app)/questoes/cadernos/[id]/view";
-import { demoErrorApi, demoFeedback, demoNotebooks, demoQuestions } from "../../../questoes-fixtures";
+import { demoErrorApi, demoFeedback, demoNotebooks, demoQuestions, demoStats } from "../../../questoes-fixtures";
 
 export default function Page() {
   return (
@@ -36,6 +36,7 @@ function Demo() {
         saveNote: async () => ({ ok: true, data: null }),
         report: async () => ({ ok: true, data: null }),
         position: async () => ({ ok: true, data: null }),
+        stats: demoStats,
         errorsOpen: demoErrorApi.open,
         errorsSave: demoErrorApi.save,
         answer: async (input) => {

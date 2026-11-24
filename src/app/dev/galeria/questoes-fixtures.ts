@@ -211,3 +211,24 @@ export const demoErrorApi = {
     return { ok: true as const, data: { savedAt: at } };
   },
 };
+
+/** Estatísticas de exemplo na galeria (nada vem do banco). */
+export const demoStats = async (questionId: string) => {
+  await new Promise((r) => setTimeout(r, 200));
+  const q = demoQuestions.find((x) => x.id === questionId)!;
+  const fb = demoFeedback(questionId, {});
+  if (q.type === "certo_errado") {
+    const certo = fb.correctAnswerTrue === true;
+    const options = [
+      { label: "CERTO", isCorrect: certo, count: certo ? 27 : 9 },
+      { label: "ERRADO", isCorrect: !certo, count: certo ? 9 : 27 },
+    ];
+    return { ok: true as const, data: { type: "certo_errado" as const, total: 36, correct: 27, wrong: 9, students: 30, options, mine: { attempts: 1, correct: 1 } } };
+  }
+  const contagem: Record<string, number> = { A: 6, B: 31, C: 9, D: 3, E: 1 };
+  const certo = fb.options.find((o) => o.isCorrect)?.label ?? "B";
+  const options = fb.options.map((o) => ({ label: o.label, isCorrect: o.label === certo, count: contagem[o.label] ?? 0 }));
+  const total = options.reduce((s, o) => s + o.count, 0);
+  const correct = options.find((o) => o.isCorrect)?.count ?? 0;
+  return { ok: true as const, data: { type: "multipla_escolha" as const, total, correct, wrong: total - correct, students: 41, options, mine: { attempts: 1, correct: 1 } } };
+};

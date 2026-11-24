@@ -6,8 +6,9 @@ import type { ErrorNotebookData, ErrorNotebookEdit } from "@/domain/notebooks/er
 import { requireUser } from "@/server/auth";
 import { UserFacingError } from "@/server/services/trails";
 import { logEvent } from "@/server/observability";
-import { answerNotebookQuestion, saveNotebookPosition, createNotebook, deleteNotebook, reportQuestion, saveQuestionNote, setFavorite, updateNotebook, type NotebookInput } from "@/server/services/notebooks";
+import { answerNotebookQuestion, saveNotebookPosition, createNotebook, deleteNotebook, questionStats, reportQuestion, saveQuestionNote, setFavorite, updateNotebook, type NotebookInput } from "@/server/services/notebooks";
 import type { AnswerFeedback } from "@/server/services/study";
+import type { QuestionStats } from "@/domain/notebooks/question-stats";
 import { ZodError } from "zod";
 
 export type Result<T> = { ok: true; data: T } | { ok: false; error: string };
@@ -113,4 +114,9 @@ export async function openErrorNotebookAction(notebookId: string): Promise<Resul
 export async function saveErrorNotebookAction(notebookId: string, edits: ErrorNotebookEdit[]): Promise<Result<{ savedAt: string }>> {
   const user = await requireUser();
   return guard("error_notebook_save", () => saveErrorNotebookEntries(user.id, notebookId, edits));
+}
+
+export async function questionStatsAction(questionId: string): Promise<Result<QuestionStats>> {
+  const user = await requireUser();
+  return guard("question_stats", () => questionStats(user.id, questionId));
 }

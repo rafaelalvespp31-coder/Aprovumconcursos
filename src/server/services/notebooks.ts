@@ -1,5 +1,6 @@
 import "server-only";
 import { after } from "next/server";
+import { questionStatsSchema, type QuestionStats } from "@/domain/notebooks/question-stats";
 import { z } from "zod";
 import { assertQuota } from "./plans";
 import { createAdminClient, createUserClient } from "../supabase";
@@ -607,4 +608,16 @@ export async function yearActivity(year: number): Promise<Array<[string, number]
   const { data, error } = await db.rpc("my_year_activity", { p_year: year });
   if (error) throw new Error(error.message);
   return ((data ?? []) as Array<{ day: string; answers: number }>).map((r) => [r.day, r.answers]);
+}
+
+/** Estatísticas da questão (acertos x erros e respostas por alternativa). Só para quem já respondeu. */
+export async function questionStats(userId: string, questionId: string): Promise<QuestionStats> {
+  const qid = z.uuid().parse(questionId);
+  await enforceRateLimit(userId, "question_stats", 60, 60);
+  const { data, error } = await createAdminClient().rpc("bank_question_distribution", { p_user: userId, p_question: qid });
+  if (error) {
+    if (error.code === "42501" || error.code === "P0002") throw new UserFacingError(error.message, "not_found");
+    throw new Error(error.message);
+  }
+  return questionStatsSchema.parse(data);
 }
