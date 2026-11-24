@@ -206,7 +206,7 @@ test.describe("menu Questões: cadernos", () => {
 
   test("resolver caderno: escolhe, confirma, mostra gabarito comentado e navega", async ({ page }) => {
     await page.goto(`${G}/questoes/cadernos/11111111-1111-4111-8111-111111111111`);
-    const confirmar = page.getByRole("button", { name: "Confirmar resposta", exact: true });
+    const confirmar = page.getByRole("button", { name: "Confirmar Resposta", exact: true });
     await expect(confirmar).toBeDisabled();
     // antes de confirmar: sem gabarito, sem cores de acerto/erro
     await expect(page.getByTestId("gabarito-comentado")).toHaveCount(0);
@@ -248,7 +248,7 @@ test.describe("menu Questões: cadernos", () => {
     await expect(page.getByTestId("gabarito-comentado")).toHaveCount(0);
     await expect(lista.getByRole("button", { name: /^Questão 1, em andamento, não respondida/ })).toBeVisible();
     await page.getByRole("radio", { name: /anular a licença, por ilegalidade/ }).click();
-    await page.getByRole("button", { name: "Confirmar resposta", exact: true }).click();
+    await page.getByRole("button", { name: "Confirmar Resposta", exact: true }).click();
     await expect(page.getByText("Resposta correta")).toBeVisible();
     // Corrigiu, mas já tinha errado: continua no caderno de erros (para revisar).
     await expect(page.getByTestId("abrir-caderno-erros")).toContainText("1 questão que você errou");
@@ -257,7 +257,7 @@ test.describe("menu Questões: cadernos", () => {
   test("riscar alternativas: clique duplo risca e restaura; riscada não confirma", async ({ page, isMobile }) => {
     await page.goto(`${G}/questoes/cadernos/11111111-1111-4111-8111-111111111111`);
     const alt = page.getByRole("radio", { name: /revogar a licença/ });
-    const confirmar = page.getByRole("button", { name: "Confirmar resposta", exact: true });
+    const confirmar = page.getByRole("button", { name: "Confirmar Resposta", exact: true });
     // escolhe e depois risca a própria escolhida: a escolha é limpa e não dá para confirmar
     await alt.click();
     await expect(alt).toHaveAttribute("aria-checked", "true");
@@ -277,13 +277,14 @@ test.describe("menu Questões: cadernos", () => {
     // o duplo clique não seleciona por engano
     await expect(page.getByTestId("alternativas").getByRole("radio", { checked: true })).toHaveCount(0);
     // restaura com o botão (alternativa acessível ao toque duplo)
-    await page.getByRole("button", { name: "Restaurar a alternativa A" }).click();
+    // no toque o botão é só para leitor de tela/teclado (fica sem área clicável)
+    await page.getByRole("button", { name: "Restaurar a alternativa A" }).dispatchEvent("click");
     await expect(alt).toHaveAttribute("data-riscada", "0");
     await alt.click();
     await expect(alt).toHaveAttribute("aria-checked", "true");
     await expect(confirmar).toBeEnabled();
     // riscar outra alternativa mantém a escolha
-    await page.getByRole("button", { name: "Riscar a alternativa C" }).click();
+    await page.getByRole("button", { name: "Riscar a alternativa C" }).dispatchEvent("click");
     await expect(page.getByRole("radio", { name: /convalidar/ })).toHaveAttribute("data-riscada", "1");
     await expect(alt).toHaveAttribute("aria-checked", "true");
     // o risco é só visual e não revela gabarito
@@ -293,18 +294,16 @@ test.describe("menu Questões: cadernos", () => {
   test("caderno: faixa da questão, favoritar, enunciado, anotação, relatar erro e tempo", async ({ page }) => {
     await page.goto(`${G}/questoes/cadernos/66666666-6666-4666-8666-666666666666`);
     const faixa = page.getByTestId("faixa-questao");
-    await expect(faixa).toContainText("Matéria");
     await expect(faixa).toContainText("Direito Administrativo");
+    // o aviso de cookies fica fixo embaixo e cobre a linha de ferramentas
+    await page.getByRole("button", { name: "Entendi" }).click({ timeout: 3000 }).catch(() => {});
     await expect(faixa).toContainText("Anulação e revogação");
-    const fav = page.getByRole("button", { name: /Favorit/ });
+    const fav = page.getByRole("button", { name: /Marcar questão|Questão marcada/ });
     await expect(fav).toHaveAttribute("aria-pressed", "true");
     await fav.click();
     await expect(fav).toHaveAttribute("aria-pressed", "false");
-    // enunciado resumido → completo pelo menu da questão
-    await expect(page.getByTestId("enunciado")).toHaveClass(/line-clamp-3/);
-    await page.getByRole("button", { name: "Mais opções da questão" }).click();
-    await page.getByRole("menuitemcheckbox", { name: "Mostrar enunciado completo" }).click();
-    await expect(page.getByTestId("enunciado")).not.toHaveClass(/line-clamp-3/);
+    // enunciado completo, sem corte
+    await expect(page.getByTestId("enunciado")).not.toHaveClass(/line-clamp/);
     // explicação só depois de confirmar
     await expect(page.getByRole("button", { name: "Explicação" })).toBeDisabled();
     // anotação
@@ -313,8 +312,7 @@ test.describe("menu Questões: cadernos", () => {
     await page.getByRole("button", { name: "Salvar" }).click();
     await expect(page.getByText("Anotação salva.")).toBeVisible();
     // relatar erro
-    await page.getByRole("button", { name: "Mais opções da questão" }).click();
-    await page.getByRole("menuitem", { name: "Relatar erro na questão" }).click();
+    await page.getByRole("button", { name: "Reportar erro" }).click();
     const enviar = page.getByRole("button", { name: "Enviar" });
     await expect(enviar).toBeDisabled();
     await page.getByLabel("O que está errado nesta questão?").fill("O gabarito parece diferente do oficial.");

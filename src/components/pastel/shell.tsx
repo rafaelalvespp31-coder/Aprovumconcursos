@@ -153,10 +153,10 @@ export function PastelShell({
 
   const shortcutsOn = !!active && SHORTCUT_ROUTES.includes(active.id) && !path.startsWith(`${basePath}/aula`);
   // Modo Jogo: cabeçalho escuro, contínuo com o palco preto da página.
-  // Resolver um caderno (/questoes/cadernos/<id>, exceto "novo"): mesmo cabeçalho escuro.
+  // Resolver um caderno (/questoes/cadernos/<id>, exceto "novo"): tela clara com faixas vermelhas e cabeçalho próprio no celular.
   const isNotebookRun = new RegExp(`^${basePath}/questoes/cadernos/(?!novo$)[^/]+$`).test(path);
   // Painel (avatar): fundo branco como as demais telas; só o Modo Jogo e a resolução de caderno são escuros.
-  const dark = active?.id === "quiz" || active?.id === "plano" || isNotebookRun;
+  const dark = active?.id === "quiz" || active?.id === "plano";
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
@@ -211,7 +211,7 @@ export function PastelShell({
       {isStudy && <StudyClock />}
       <div className="mv-progresso" aria-hidden />
       <div className="pastel relative min-h-screen w-full overflow-x-clip font-[Inter,system-ui,sans-serif] text-[#0A0A0A] antialiased selection:bg-[#E10600]/25">
-        <div className={`pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden ${dark ? "bg-[#070707]" : "bg-white"}`} />
+        <div className={`pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden ${dark ? "bg-[#070707]" : isNotebookRun ? "qz-fundo-shell" : "bg-white"}`} />
 
         <div className="relative flex min-h-screen w-full max-w-[100vw]">
           {/* Barra lateral (desktop) */}
@@ -247,7 +247,7 @@ export function PastelShell({
 
           <div className="min-w-0 flex-1">
             <header
-              className={`mv-cabecalho sticky top-0 z-20 border-b backdrop-blur-[18px] ${dark ? "border-transparent bg-[#070707] text-white" : "border-black/[0.06] bg-white/75"} ${isPainel || isPerfilPage ? "max-lg:hidden" : ""}`}
+              className={`mv-cabecalho sticky top-0 z-20 border-b backdrop-blur-[18px] ${dark ? "border-transparent bg-[#070707] text-white" : "border-black/[0.06] bg-white/75"} ${isNotebookRun ? "max-lg:border-transparent max-lg:bg-transparent max-lg:backdrop-blur-none" : ""} ${isPainel || isPerfilPage ? "max-lg:hidden" : ""}`}
               style={{ top: "env(safe-area-inset-top, 0px)" }}
             >
               {isEstudos ? (
@@ -255,7 +255,8 @@ export function PastelShell({
               ) : (
                 <>
                 {isAula && <EstudosHeader summary={summary} basePath={basePath} items={items} searchRef={searchRef} menuRef={menuRef} mobileOnly />}
-                <div className={isAula ? "hidden lg:block" : undefined}>
+                {isNotebookRun && <RunHeader summary={summary} basePath={basePath} menuRef={menuRef} />}
+                <div className={isAula || isNotebookRun ? "hidden lg:block" : undefined}>
               <div className="flex h-[88px] items-center justify-between gap-4 px-5 lg:px-10">
                 <div className="flex min-w-0 flex-1 items-center gap-4">
                   {dark && (
@@ -332,7 +333,7 @@ export function PastelShell({
             <ConnectivityBanner />
             <main
               id="conteudo"
-              className={isPainel ? "pb-28 lg:px-0 lg:py-0 lg:pb-0" : "px-4 py-7 pb-28 sm:px-5 lg:px-10 lg:pb-12"}
+              className={isPainel ? "pb-28 lg:px-0 lg:py-0 lg:pb-0" : isNotebookRun ? "px-3.5 pb-32 pt-2 sm:px-5 lg:px-10 lg:py-7 lg:pb-12" : "px-4 py-7 pb-28 sm:px-5 lg:px-10 lg:pb-12"}
               data-compacto={isStudy || isNovoEstudo ? undefined : ""}
               data-mv={isStudy || isNovoEstudo ? undefined : ""}
             >
@@ -344,7 +345,7 @@ export function PastelShell({
             </main>
 
             {/* Menu inferior: só no celular. No computador, o menu é o da barra lateral. */}
-            <div className="lg:hidden">
+            <div className={isNotebookRun ? "hidden" : "lg:hidden"}>
               <BottomNavigation activeId={bottomActive} basePath={basePath} plan={summary.plan} />
             </div>
           </div>
@@ -527,6 +528,27 @@ function MenuButton({ menuRef, dark = false }: { menuRef: React.RefObject<HTMLDi
     <button type="button" onClick={() => menuRef.current?.showModal()} aria-label="Abrir menu" aria-haspopup="dialog" data-testid="abrir-menu" className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-[12px] lg:hidden ${dark ? "text-white hover:bg-white/10" : "text-[#0A0A0A] hover:bg-black/[0.05]"}`}>
       <Menu className="h-6 w-6" aria-hidden />
     </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Cabeçalho do celular ao resolver questões: menu, logo ao centro e sino
+// ---------------------------------------------------------------------------
+function RunHeader({ summary, basePath, menuRef }: { summary: ShellSummary; basePath: string; menuRef: React.RefObject<HTMLDialogElement | null> }) {
+  return (
+    <div className="qz-cab flex items-center justify-between gap-3 px-3.5 lg:hidden">
+      <button type="button" onClick={() => menuRef.current?.showModal()} aria-label="Abrir menu" aria-haspopup="dialog" data-testid="abrir-menu" className="qz-cab-btn">
+        <Menu className="h-6 w-6" aria-hidden />
+      </button>
+      <Link href={`${basePath}/painel`} aria-label="APROVUM — ir para o painel" className="qz-cab-logo">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/images/aprovum-wordmark-escuro.png" alt="APROVUM" width={490} height={68} />
+      </Link>
+      <Link href={`${basePath}/revisoes`} aria-label={`Revisões pendentes: ${summary.counts.dueReviews}`} className="qz-cab-btn">
+        <Bell className="h-6 w-6" aria-hidden />
+        {summary.counts.dueReviews > 0 && <span className="qz-cab-ponto" aria-hidden />}
+      </Link>
+    </div>
   );
 }
 

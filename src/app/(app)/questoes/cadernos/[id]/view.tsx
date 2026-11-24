@@ -3,35 +3,30 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, useTransition, type ReactNode } from "react";
 import {
-  BookOpen,
-  BrainCircuit,
   BriefcaseBusiness,
   CalendarDays,
+  Bookmark,
   Check,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CircleCheck,
   CirclePlus,
   CircleX,
-  ClipboardList,
   Crosshair,
-  ArrowDown,
-  EllipsisVertical,
   BarChart3,
-  ListChecks,
   Flag,
   FolderOpen,
   Grid3x3,
+  Landmark,
   Lightbulb,
   NotebookPen,
   Pause,
   Play,
   RotateCcw,
-  Shield,
-  Star,
+  Scale,
   Strikethrough,
   Timer,
-  Type,
   X,
 } from "lucide-react";
 import type { Notebook, NotebookQuestion } from "@/server/services/notebooks";
@@ -44,6 +39,7 @@ import type { QuestionStats } from "@/domain/notebooks/question-stats";
 import { QuestionComments } from "@/components/question-comments";
 import { callAction } from "@/components/safe-action";
 import { useStored } from "@/components/use-stored";
+import { splitEnunciado } from "@/domain/notebooks/enunciado";
 import { canConfirm, classifyTap, initialChoice, selectOption, strikeKeeping, toggleStrike, type ChoiceState } from "@/domain/notebooks/elimination";
 import { answerNotebookAction, favoriteQuestionAction, fullStatementAction, notebookPositionAction, openErrorNotebookAction, questionStatsAction, reportQuestionAction, saveErrorNotebookAction, saveNoteAction, type Result } from "../../actions";
 import { ErrorNotebookModal } from "@/components/notebooks/error-notebook-modal";
@@ -105,7 +101,6 @@ export function NotebookView({
   actions?: Partial<NotebookViewActions>;
 }) {
   const actions = { ...serverActions, ...given };
-  const [full, setFull] = useState(n.showFullStatement);
   const [favs, setFavs] = useState(() => new Set(questions.filter((q) => q.favorite).map((q) => q.id)));
   const [notes, setNotes] = useState<Record<string, string>>(() => Object.fromEntries(questions.map((q) => [q.id, q.note])));
   const [notice, setNotice] = useState<string | null>(null);
@@ -164,14 +159,6 @@ export function NotebookView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentId, n.id]);
 
-  const toggleFull = async (on: boolean) => {
-    setFull(on);
-    const r = await callAction(() => actions.saveFull(n.id, on), setNotice);
-    if (r && !r.ok) {
-      setFull(!on);
-      setNotice(r.error);
-    }
-  };
   const setFav = (qid: string, on: boolean) =>
     setFavs((x) => {
       const y = new Set(x);
@@ -205,7 +192,7 @@ export function NotebookView({
   if (total === 0) {
     return (
       <div className="flex flex-col gap-5" data-testid="caderno-view">
-        <Top n={n} total={0} />
+        <InfoCard n={n} />
         <section className="rounded-[16px] border border-white/10 bg-[#111214] px-5 py-10 text-center text-white">
           <FolderOpen className="mx-auto h-9 w-9 text-[#FF2A2A]" aria-hidden />
           <h2 className="mt-3 text-[16px] font-extrabold">Ainda não há questões publicadas para este caderno</h2>
@@ -221,131 +208,155 @@ export function NotebookView({
   }
 
   const q = questions[i]!;
+  // O percentual do cabeçalho é a posição na lista (questão 1 de 35 = 3%).
+  const posicao = Math.round(((i + 1) / total) * 100);
   return (
-    <div className="@container qz-pagina mx-auto w-full max-w-[1560px]" data-testid="caderno-view">
-    <div className="grid items-start gap-5 @[980px]:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] @[980px]:gap-6">
-      <div className="flex min-w-0 flex-col gap-4">
-        <Top n={n} total={total} q={q} onOpenErrors={erred > 0 ? () => setErrorsOpen(true) : undefined} wrong={erred} />
-        {errorsOpen && <ErrorNotebookModal notebookId={n.id} title={n.title} api={errorsApi} onClose={() => setErrorsOpen(false)} />}
-        {notice && (
-          <p role="alert" className="rounded-[10px] border border-[#E50914]/50 bg-[#2A0A0C] px-3 py-2 text-[13px] font-medium text-[#FFB3B8]">
-            {notice}
-          </p>
-        )}
-        <QuestionPanel
-          key={q.id}
-          q={q}
-          number={i + 1}
-          total={total}
-          pct={pct}
-          saved={done[q.id]}
-          full={full}
-          onToggleFull={(on) => void toggleFull(on)}
-          favorite={favs.has(q.id)}
-          onFavorite={(on) => void toggleFav(q.id, on)}
-          note={notes[q.id] ?? ""}
-          onNoteSaved={(body) => setNotes((x) => ({ ...x, [q.id]: body }))}
-          actions={actions}
-          onAnswer={(questionId, input) => actions.answer({ notebookId: n.id, questionId, ...input })}
-          onDone={(choice, fb) => {
-            setDone((d) => ({ ...d, [q.id]: { choice, fb } }));
-            if (!fb.correct) setErredNow((x) => new Set(x).add(q.id));
-          }}
-          onRedo={() =>
-            setDone((d) => {
-              const x = { ...d };
-              delete x[q.id];
-              return x;
-            })
-          }
-          onPrev={i > 0 ? () => setI(i - 1) : null}
-          onNext={i < total - 1 ? () => setI(i + 1) : null}
-        />
-      </div>
-
-      <aside className="qz-lateral grid min-w-0 gap-4 @[680px]:grid-cols-2 @[980px]:sticky @[980px]:top-24 @[980px]:grid-cols-1" aria-label="Painel do caderno">
-        <TimerCard notebookId={n.id} pct={pct} right={right} wrong={wrong} blank={total - answered} />
-        <NavCard questions={questions} states={states} current={i} onPick={setI} />
-        <div className="qz-foco @[680px]:col-span-2 @[980px]:col-span-1" aria-hidden>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/images/jogo-hero-arte-sm.webp" alt="" className="qz-foco-arte" />
-          <div className="relative z-[1] p-5">
-            <Crosshair className="h-9 w-9 text-[#FF2A2A]" />
-            <p className="mt-2 text-[15px] font-extrabold uppercase tracking-[0.02em] text-white">Foco na aprovação</p>
-            <p className="mt-1 max-w-[22ch] text-[13px] leading-snug text-white/75">Cada questão resolvida te aproxima do seu objetivo.</p>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/images/aprovum-login-logo.png" alt="" className="mt-4 h-auto w-[160px]" />
-          </div>
+    <div className="@container qd-pagina mx-auto w-full max-w-[1560px]" data-testid="caderno-view">
+      <h1 className="sr-only">{n.title}</h1>
+      <div className="grid items-start gap-4 @[980px]:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] @[980px]:gap-6">
+        <div className="flex min-w-0 flex-col gap-3.5">
+          <InfoCard n={n} q={q} />
+          <ProgressoCard number={i + 1} total={total} pct={posicao} />
+          {errorsOpen && <ErrorNotebookModal notebookId={n.id} title={n.title} api={errorsApi} onClose={() => setErrorsOpen(false)} />}
+          {notice && (
+            <p role="alert" className="rounded-[12px] border border-[#F2C4C7] bg-[#FDECED] px-3 py-2 text-[13px] font-medium text-[#B9000B]">
+              {notice}
+            </p>
+          )}
+          <QuestionPanel
+            key={q.id}
+            q={q}
+            number={i + 1}
+            total={total}
+            saved={done[q.id]}
+            favorite={favs.has(q.id)}
+            onFavorite={(on) => void toggleFav(q.id, on)}
+            note={notes[q.id] ?? ""}
+            onNoteSaved={(body) => setNotes((x) => ({ ...x, [q.id]: body }))}
+            actions={actions}
+            onAnswer={(questionId, input) => actions.answer({ notebookId: n.id, questionId, ...input })}
+            onDone={(choice, fb) => {
+              setDone((d) => ({ ...d, [q.id]: { choice, fb } }));
+              if (!fb.correct) setErredNow((x) => new Set(x).add(q.id));
+            }}
+            onRedo={() =>
+              setDone((d) => {
+                const x = { ...d };
+                delete x[q.id];
+                return x;
+              })
+            }
+            onPrev={i > 0 ? () => setI(i - 1) : null}
+            onNext={i < total - 1 ? () => setI(i + 1) : null}
+            onOpenErrors={erred > 0 ? () => setErrorsOpen(true) : undefined}
+            erredCount={erred}
+          />
         </div>
-      </aside>
-    </div>
+
+        <aside className="qz-lateral grid min-w-0 gap-4 @[680px]:grid-cols-2 @[980px]:sticky @[980px]:top-24 @[980px]:grid-cols-1" aria-label="Painel do caderno">
+          <TimerCard notebookId={n.id} pct={pct} right={right} wrong={wrong} blank={total - answered} />
+          <NavCard questions={questions} states={states} current={i} onPick={setI} />
+          <div className="qz-foco max-[679px]:hidden @[680px]:col-span-2 @[980px]:col-span-1" aria-hidden>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/images/jogo-hero-arte-sm.webp" alt="" className="qz-foco-arte" />
+            <div className="relative z-[1] p-5">
+              <Crosshair className="h-9 w-9 text-[#FF2A2A]" />
+              <p className="mt-2 text-[15px] font-extrabold uppercase tracking-[0.02em] text-white">Foco na aprovação</p>
+              <p className="mt-1 max-w-[22ch] text-[13px] leading-snug text-white/75">Cada questão resolvida te aproxima do seu objetivo.</p>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/images/aprovum-login-logo.png" alt="" className="mt-4 h-auto w-[160px]" />
+            </div>
+          </div>
+        </aside>
+      </div>
+      <Desempenho right={right} wrong={wrong} blank={total - answered} />
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Topo: caderno, modo e faixa com os dados da questão atual
+// Topo: card escuro com os dados da questão, progresso e barra de desempenho
 // ---------------------------------------------------------------------------
 
-function Top({ n, total, q, onOpenErrors, wrong = 0 }: { n: Notebook; total: number; q?: NotebookQuestion; onOpenErrors?: () => void; wrong?: number }) {
-  const tiles: Array<{ icon: ReactNode; label: string; value: string }> = q
-    ? [
-        { icon: <span className="qz-hexa"><Shield className="h-4 w-4" aria-hidden /></span>, label: "Banca", value: q.board ?? "—" },
-        { icon: <BookOpen className="h-7 w-7 fill-[#E50914] text-[#E50914]" aria-hidden />, label: "Matéria", value: q.subjectName ?? "—" },
-        { icon: <Crosshair className="h-7 w-7 text-[#E50914]" aria-hidden />, label: "Assunto", value: q.topicName ?? "—" },
-        { icon: <CalendarDays className="h-7 w-7 text-[#E50914]" aria-hidden />, label: "Ano", value: q.year ? String(q.year) : "—" },
-        { icon: <BriefcaseBusiness className="h-7 w-7 fill-[#E50914] text-[#E50914]" aria-hidden />, label: "Cargo", value: q.cargo ?? "—" },
-      ]
-    : [];
+function InfoCard({ n, q }: { n: Notebook; q?: NotebookQuestion }) {
+  const concurso = q?.examName ?? q?.board ?? null;
+  const terceira = q?.cargo ? { icone: <BriefcaseBusiness aria-hidden />, rotulo: "Cargo", valor: q.cargo } : q?.topicName ? { icone: <Crosshair aria-hidden />, rotulo: "Assunto", valor: q.topicName } : null;
+  const lateral: Array<{ icone: ReactNode; rotulo: string; valor: string }> = [
+    q?.year ? { icone: <CalendarDays aria-hidden />, rotulo: "Ano", valor: String(q.year) } : null,
+    q?.board ? { icone: <Landmark aria-hidden />, rotulo: "Banca", valor: q.board } : null,
+  ].flatMap((x) => (x ? [x] : []));
   return (
-    <section className="qz-topo" aria-label="Caderno">
-      <div className="flex flex-wrap items-center justify-between gap-4 p-4 sm:p-6">
-        <div className="flex min-w-0 items-center gap-4">
-          <span className="qz-topo-ico" aria-hidden>
-            <ClipboardList className="h-8 w-8" />
-          </span>
-          <div className="min-w-0">
-            <h1 className="truncate font-[Space_Grotesk] text-[26px] font-[800] leading-tight tracking-[-0.02em] text-white sm:text-[34px]">{n.title}</h1>
-            <p className="mt-0.5 truncate text-[13.5px] text-white/75 sm:text-[15px]">
-              {total ? `${total} ${total === 1 ? "questão" : "questões"} · ${n.scope}` : n.scope}
+    <section className="qd-info" aria-label="Dados da questão" data-testid="faixa-questao" onPointerMove={spotlight}>
+      <span className="qd-info-listra" aria-hidden />
+      <div className="qd-info-topo">
+        <span className="qd-info-ico" aria-hidden>
+          <Scale strokeWidth={2.2} />
+        </span>
+        <div className="min-w-0">
+          <p className="qd-info-titulo" title={q?.subjectName ?? n.scope}>{q?.subjectName ?? n.scope}</p>
+          {concurso && (
+            <p className="qd-info-linha">
+              Concurso: <b>{concurso}</b>
             </p>
-          </div>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          {onOpenErrors && (
-            <button type="button" onClick={onOpenErrors} className="qz-pdf-erros" data-testid="abrir-caderno-erros" aria-haspopup="dialog" title="Abre os seus erros deste caderno, organizados e editáveis">
-              <NotebookPen className="h-5 w-5 shrink-0" aria-hidden />
-              <span className="text-left">
-                <span className="block text-[13.5px] font-bold">Abrir caderno de erros</span>
-                <span className="block text-[11.5px] opacity-80">
-                  {wrong} {wrong === 1 ? "questão que você errou" : "questões que você errou"}, organizadas e editáveis
-                </span>
-              </span>
-            </button>
           )}
-          <div className="qz-modo">
-            <BrainCircuit className="h-7 w-7 shrink-0 text-white" aria-hidden />
-            <span>
-              <span className="block text-[13.5px] font-bold text-white">Modo Estudo</span>
-              <span className="block text-[11.5px] text-white/70">Gabarito logo após cada resposta</span>
-            </span>
-          </div>
         </div>
       </div>
-      {q && (
-        <dl className="qz-faixa" data-testid="faixa-questao">
-          {tiles.filter((t) => t.value !== "—").map((t) => (
-            <div key={t.label} className="qz-faixa-item" onPointerMove={spotlight}>
-              <span className="qz-faixa-ico">{t.icon}</span>
+      {terceira && (
+        <p className="qd-info-cargo" title={terceira.valor}>
+          {terceira.icone}
+          <span className="min-w-0 truncate">
+            {terceira.rotulo}: {terceira.valor}
+          </span>
+        </p>
+      )}
+      {lateral.length > 0 && (
+        <dl className="qd-info-dir">
+          {lateral.map((t) => (
+            <div key={t.rotulo} className="qd-info-item">
+              <span className="qd-info-itemico">{t.icone}</span>
               <span className="min-w-0">
-                <dt className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-white/60">{t.label}</dt>
-                <dd className="qz-faixa-valor" title={t.value}>{t.value}</dd>
+                <dt>{t.rotulo}</dt>
+                <dd title={t.valor}>{t.valor}</dd>
               </span>
             </div>
           ))}
         </dl>
       )}
     </section>
+  );
+}
+
+function ProgressoCard({ number, total, pct }: { number: number; total: number; pct: number }) {
+  return (
+    <section className="qd-prog" aria-label="Progresso">
+      <div className="min-w-0 flex-1">
+        <span className="qd-prog-trilho" role="img" aria-label={`Questão ${number} de ${total}`}>
+          <span style={{ width: `${pct}%` }} />
+        </span>
+        <p className="qd-prog-txt">Questão {number} de {total}</p>
+      </div>
+      <span className="qd-prog-pct">{pct}%</span>
+    </section>
+  );
+}
+
+/** Barra fixa do celular: acertos, erros e questões em branco do caderno. */
+function Desempenho({ right, wrong, blank }: { right: number; wrong: number; blank: number }) {
+  return (
+    <div className="qd-desemp" role="status" aria-label="Seu desempenho" data-testid="desempenho">
+      <div className="qd-desemp-aba">
+        <p className="qd-desemp-titulo">
+          <BarChart3 className="h-[18px] w-[18px]" aria-hidden /> Seu desempenho
+        </p>
+      </div>
+      <p className="qd-desemp-nums">
+        <span>Acertos: <b>{right}</b></span>
+        <i aria-hidden />
+        <span>Erros: <b>{wrong}</b></span>
+        <i aria-hidden />
+        <span>Em branco: <b>{blank}</b></span>
+      </p>
+    </div>
   );
 }
 
@@ -357,10 +368,7 @@ function QuestionPanel({
   q,
   number,
   total,
-  pct,
   saved,
-  full,
-  onToggleFull,
   favorite,
   onFavorite,
   note,
@@ -371,14 +379,13 @@ function QuestionPanel({
   onRedo,
   onPrev,
   onNext,
+  onOpenErrors,
+  erredCount,
 }: {
   q: NotebookQuestion;
   number: number;
   total: number;
-  pct: number;
   saved?: { choice: string; fb: AnswerFeedback };
-  full: boolean;
-  onToggleFull: (on: boolean) => void;
   favorite: boolean;
   onFavorite: (on: boolean) => void;
   note: string;
@@ -389,6 +396,8 @@ function QuestionPanel({
   onRedo: () => void;
   onPrev: (() => void) | null;
   onNext: (() => void) | null;
+  onOpenErrors?: () => void;
+  erredCount: number;
 }) {
   const ce = q.type === "certo_errado";
   const options = ce ? [{ id: "true", label: "C", text: "Certo" }, { id: "false", label: "E", text: "Errado" }] : q.options;
@@ -413,20 +422,6 @@ function QuestionPanel({
   };
 
   const [fb, setFb] = useState<AnswerFeedback | null>(saved?.fb ?? null);
-  const [expanded, setExpanded] = useState(false);
-  const clamp = !full && !expanded;
-  const textRef = useRef<HTMLDivElement>(null);
-  const [cut, setCut] = useState(false);
-  useEffect(() => {
-    const el = textRef.current;
-    if (!el || !clamp) return setCut(false);
-    const check = () => setCut([...el.querySelectorAll<HTMLElement>("[data-resumo]")].some((p) => p.scrollHeight > p.clientHeight + 1));
-    check();
-    const ro = new ResizeObserver(check);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, [clamp, q.id]);
-
   const [error, setError] = useState<string | null>(null);
   const [pending, start] = useTransition();
   const startedAt = useRef(0);
@@ -485,6 +480,8 @@ function QuestionPanel({
     return () => window.removeEventListener("keydown", onKey);
   });
 
+  const partes = splitEnunciado({ statement: q.statement, caseContext: q.caseContext, certoErrado: ce });
+  const [dicaMais, setDicaMais] = useState(false);
   const [panel, setPanel] = useState<null | "nota" | "erro" | "stats">(null);
   const correctId = fb ? (ce ? String(fb.correctAnswerTrue) : fb.options.find((o) => o.isCorrect)?.id) : null;
   // O aluno pode fechar o gabarito para ver só a questão; a escolha fica lembrada nas próximas.
@@ -497,99 +494,49 @@ function QuestionPanel({
   };
 
   return (
-    <div className="flex min-w-0 flex-col gap-3">
-      {/* Linha da questão: número, progresso, favoritar e opções */}
-      <div className="qz-barra-q">
-        <span className="qz-num">
-          <ClipboardList className="h-4 w-4" aria-hidden /> Questão {number} de {total}
-        </span>
-        <div className="qz-barra-prog">
-          <span className="qz-barra" role="img" aria-label={`${pct}% do caderno respondido`}>
-            <span style={{ width: `${pct}%` }} />
+    <div className="flex min-w-0 flex-col gap-3.5">
+      <article className="qd-cartao" aria-label={`Questão ${number} de ${total}`} data-codigo={q.code ?? undefined} data-respondida={fb ? "1" : "0"} data-resultado={fb ? (fb.correct ? "certa" : "errada") : undefined}>
+        <header className="qd-cab">
+          <span className="qd-aba">
+            <AlvoSeta /> Questão {number}
           </span>
-          <span className="text-[13px] font-semibold tabular-nums text-white/85">{pct}%</span>
-        </div>
-        <button type="button" onClick={() => onFavorite(!favorite)} aria-pressed={favorite} className="qz-fav">
-          <Star className={`h-[18px] w-[18px] ${favorite ? "fill-[#E50914] text-[#E50914]" : ""}`} aria-hidden /> {favorite ? "Favorita" : "Favoritar"}
-        </button>
-        <QuestionMenu
-          full={full}
-          onToggleFull={onToggleFull}
-          canRestore={!fb && cs.struck.size > 0}
-          onRestore={() => setCs((x) => ({ ...x, struck: new Set() }))}
-          onReport={() => setPanel("erro")}
-        />
-      </div>
-
-      <article className="qz-cartao" aria-label={`Questão ${number} de ${total}`} data-respondida={fb ? "1" : "0"} data-resultado={fb ? (fb.correct ? "certa" : "errada") : undefined}>
-        <header className="qz-meta">
-          <p className="qz-meta-origem">
-            {q.code && <span className="qz-meta-cod">{q.code}</span>}
-            <span>{q.origin === "prova_anterior" ? "Questão de prova" : "Questão autoral (APROVUM)"}</span>
-            {q.examName && <span className="qz-meta-prova">· {q.examName}</span>}
-          </p>
-          <ul className="qz-meta-chips" aria-label="Dados da questão">
-            {q.board && <li className="qz-chip">{q.board}</li>}
-            {q.year && <li className="qz-chip">{q.year}</li>}
-            {q.subjectName && <li className="qz-chip qz-chip-mat">{q.subjectName}</li>}
-          </ul>
+          <button type="button" onClick={() => onFavorite(!favorite)} aria-pressed={favorite} className="qd-marcar">
+            <Bookmark className={`h-[17px] w-[17px] ${favorite ? "fill-[#E50914] text-[#E50914]" : ""}`} aria-hidden /> {favorite ? "Questão marcada" : "Marcar questão"}
+          </button>
         </header>
-        <div className="qz-enun" data-testid="bloco-enunciado">
-          <div className="qz-enun-topo">
-            <span className="qz-enun-rot">
-              <Type className="h-3.5 w-3.5" aria-hidden /> Enunciado
-            </span>
-            <span className="qz-enun-num" aria-hidden>
-              {pad(number)}<i>/{pad(total)}</i>
-            </span>
-            {q.caseContext && <span className="qz-enun-tag">texto base + pergunta</span>}
-          </div>
-          <div ref={textRef} className="qz-enun-corpo">
-            {q.caseContext && (
-              <>
-                <div className="qz-base" data-testid="texto-base">
-                  <p className="qz-base-rot">
-                    <BookOpen className="h-3.5 w-3.5" aria-hidden /> Texto base
-                  </p>
-                  <p data-resumo className={`qz-base-txt ${clamp ? "line-clamp-3" : ""}`}>
-                    {q.caseContext}
-                  </p>
-                </div>
-                <div className="qz-pergunta" role="note" aria-label="A pergunta vem abaixo do texto base">
-                  <span aria-hidden />
-                  <b><ArrowDown className="h-3.5 w-3.5" aria-hidden /> Pergunta</b>
-                  <span aria-hidden />
-                </div>
-              </>
-            )}
-            <p data-resumo data-testid="enunciado" className={`qz-enun-txt ${clamp ? "line-clamp-3" : ""}`}>
-              {q.statement}
-            </p>
-            {clamp && cut && (
-              <button type="button" onClick={() => setExpanded(true)} className="qz-ver-mais">
-                Ver enunciado completo <ChevronRight className="h-3.5 w-3.5" aria-hidden />
-              </button>
-            )}
-          </div>
+
+        <div className="qd-enun" data-testid="bloco-enunciado">
+          {partes.titulo && (
+            <>
+              <span className="qd-traco" aria-hidden />
+              <p data-testid="enunciado" className={`qd-titulo ${partes.titulo.length > 130 ? "qd-titulo-longo" : ""}`}>{partes.titulo}</p>
+            </>
+          )}
+          {partes.base && (
+            <div className="qd-base" data-testid="texto-base">
+              {partes.base.split("\n").map((par, k) => (
+                <p key={k}>{par}</p>
+              ))}
+            </div>
+          )}
         </div>
 
-        <div className="qz-sep" role="note" aria-label="Alternativas" data-testid="separador-alternativas">
-          <span className="qz-sep-linha" aria-hidden />
-          <span className="qz-sep-rot">
-            <ListChecks className="h-4 w-4" aria-hidden /> Alternativas <small>{options.length}</small>
+        <div className="qd-pergunta" role="note" data-testid="separador-alternativas">
+          <span className="qd-lampada" aria-hidden>
+            <Lightbulb className="h-[15px] w-[15px]" strokeWidth={2.4} />
           </span>
-          <span className="qz-sep-linha" aria-hidden />
+          <p>{partes.pergunta}</p>
         </div>
 
-        <div className={`mt-3 ${ce ? "grid grid-cols-2 gap-2.5" : "flex flex-col gap-2.5"}`} role="radiogroup" aria-label="Alternativas" aria-describedby={`dica-${q.id}`} aria-busy={pending} data-corrigindo={pending ? "1" : "0"} data-testid="alternativas">
+        <div className={`qd-alts ${ce ? "qd-alts-ce" : ""}`} role="radiogroup" aria-label="Alternativas" aria-describedby={`dica-${q.id}`} aria-busy={pending} data-corrigindo={pending ? "1" : "0"} data-testid="alternativas">
           {options.map((o, oi) => {
             const isCorrect = !!fb && correctId === o.id;
             const isWrong = !!fb && choice === o.id && !isCorrect;
             const struck = !fb && cs.struck.has(o.id);
             const selected = choice === o.id;
-            const tone = fb ? (isCorrect ? "qz-alt-certa" : isWrong ? "qz-alt-errada" : "") : selected ? "qz-alt-escolhida" : "";
+            const tone = fb ? (isCorrect ? "qd-alt-certa" : isWrong ? "qd-alt-errada" : "") : selected ? "qd-alt-escolhida" : "";
             return (
-              <div key={o.id} className="qz-opt relative" style={{ "--i": oi } as React.CSSProperties} onPointerMove={spotlight} onPointerDown={spotlightToque}>
+              <div key={o.id} className="qd-opt" style={{ "--i": oi } as React.CSSProperties} onPointerMove={spotlight} onPointerDown={spotlightToque}>
                 <button
                   type="button"
                   role="radio"
@@ -598,27 +545,22 @@ function QuestionPanel({
                   disabled={!!fb || pending}
                   onClick={(e) => onTap(o.id, e.detail === 0, e.timeStamp)}
                   data-riscada={struck ? "1" : "0"}
-                  className={`nq-alt qz-alt ${tone} ${struck ? "nq-alt-riscada" : ""}`}
+                  className={`qd-alt ${tone} ${struck ? "nq-alt-riscada qd-alt-riscada" : ""}`}
                 >
-                  <span className="qz-letra">{o.label}</span>
-                  <span className="qz-alt-corpo">
-                    <span className="nq-alt-texto">{o.text}</span>
-                    {struck && <span className="qz-riscada-dica">Riscada · toque 2× para restaurar</span>}
+                  <span className="qd-letra">{o.label}</span>
+                  <span className="qd-alt-corpo">
+                    <span className="qd-alt-texto">{o.text}</span>
+                    {struck && <span className="qd-riscada-dica">Riscada · toque 2× para restaurar</span>}
                   </span>
-                  {selected && !fb && !pending && (
-                    <span className="qz-sua">
-                      <Check className="h-3.5 w-3.5" aria-hidden /> Sua resposta
-                    </span>
-                  )}
                   {selected && pending && (
-                    <span className="qz-sua qz-sua-corrigindo">
-                      <span className="qz-giro" aria-hidden /> Corrigindo…
+                    <span className="qd-sua qd-sua-corrigindo">
+                      <span className="qz-giro" aria-hidden />
                     </span>
                   )}
-                  {fb && isCorrect && <span className="qz-sua qz-sua-certa"><Check className="h-3.5 w-3.5" aria-hidden /> Gabarito</span>}
-                  {fb && isWrong && <span className="qz-sua">Sua resposta</span>}
-                  <span className={`qz-radio ${selected || isCorrect ? "qz-radio-on" : ""}`} aria-hidden>
-                    {fb ? (isCorrect ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : isWrong ? <X className="h-3.5 w-3.5" strokeWidth={3} /> : null) : selected && <Check className="h-3.5 w-3.5" strokeWidth={3} />}
+                  {fb && isCorrect && <span className="qd-sua qd-sua-certa">Gabarito</span>}
+                  {fb && isWrong && <span className="qd-sua">Sua resposta</span>}
+                  <span className={`qd-radio ${selected || isCorrect ? "qd-radio-on" : ""}`} aria-hidden>
+                    {fb ? (isCorrect ? <Check className="h-3.5 w-3.5" strokeWidth={3.4} /> : isWrong ? <X className="h-3.5 w-3.5" strokeWidth={3.4} /> : null) : selected && <Check className="h-3.5 w-3.5" strokeWidth={3.4} />}
                   </span>
                 </button>
                 {!fb && (
@@ -629,7 +571,7 @@ function QuestionPanel({
                     aria-pressed={struck}
                     aria-label={struck ? `Restaurar a alternativa ${o.label}` : `Riscar a alternativa ${o.label}`}
                     title={struck ? "Restaurar" : "Riscar (ou toque duas vezes na alternativa)"}
-                    className="qz-riscar"
+                    className="qd-riscar"
                   >
                     {struck ? <RotateCcw className="h-3.5 w-3.5" aria-hidden /> : <Strikethrough className="h-3.5 w-3.5" aria-hidden />}
                   </button>
@@ -640,7 +582,7 @@ function QuestionPanel({
         </div>
 
         {error && (
-          <p role="alert" className="mt-3 rounded-[10px] border border-[#F2C4C7] bg-[#FDECED] px-3 py-2 text-[13px] font-medium text-[#B9000B]">
+          <p role="alert" className="mt-3 rounded-[12px] border border-[#F2C4C7] bg-[#FDECED] px-3 py-2 text-[13px] font-medium text-[#B9000B]">
             {error}
           </p>
         )}
@@ -653,80 +595,120 @@ function QuestionPanel({
             {gabAberto && <QuestionComments questionId={q.id} />}
           </div>
         )}
-
-        {panel === "nota" && <NotePanel questionId={q.id} note={note} save={actions.saveNote} onSaved={onNoteSaved} onClose={() => setPanel(null)} />}
-        {panel === "stats" && fb && <QuestionStatsPanel questionId={q.id} load={actions.stats} marcou={marcouLabel} onClose={() => setPanel(null)} />}
-        {panel === "erro" && <ReportPanel questionId={q.id} report={actions.report} onClose={() => setPanel(null)} />}
-
-        <div className="qz-rodape">
-          <div className="qz-acoes" role="group" aria-label="Ferramentas da questão">
-            <button type="button" onClick={() => setPanel(panel === "nota" ? null : "nota")} aria-expanded={panel === "nota"} className="qz-acao">
-              <NotebookPen className="h-[18px] w-[18px]" aria-hidden /> <span>Anotação{note ? " •" : ""}</span>
-            </button>
-            <button
-              type="button"
-              onClick={verExplicacao}
-              disabled={!fb}
-              title={fb ? "Ver a explicação" : "A explicação aparece depois que você confirmar a resposta"}
-              className="qz-acao"
-            >
-              <Lightbulb className="h-[18px] w-[18px]" aria-hidden /> <span>Explicação</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setPanel(panel === "stats" ? null : "stats")}
-              aria-expanded={panel === "stats"}
-              disabled={!fb}
-              title={fb ? "Ver os gráficos de acertos, erros e respostas" : "As estatísticas aparecem depois que você confirmar a resposta"}
-              className="qz-acao"
-              data-testid="abrir-estatisticas"
-            >
-              <BarChart3 className="h-[18px] w-[18px]" aria-hidden /> <span>Estatísticas</span>
-            </button>
-            <button type="button" onClick={() => setPanel(panel === "erro" ? null : "erro")} aria-expanded={panel === "erro"} className="qz-acao qz-acao-erro" data-testid="abrir-reportar-erro">
-              <Flag className="h-[18px] w-[18px]" aria-hidden /> <span>Reportar erro</span>
-            </button>
-          </div>
-          <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-            {fb && (
-              <button type="button" onClick={redo} className="qz-refazer" data-testid="refazer-questao">
-                <RotateCcw className="h-4 w-4" aria-hidden /> Refazer questão
-              </button>
-            )}
-            {!fb ? (
-              <button type="button" onClick={submit} disabled={!canConfirm(cs) || pending} aria-busy={pending} className="qz-confirmar">
-                {pending ? "Corrigindo…" : "Confirmar resposta"} <ChevronRight className="h-4 w-4" aria-hidden />
-              </button>
-            ) : onNext ? (
-              <button type="button" onClick={onNext} className="qz-confirmar">
-                Próxima questão <ChevronRight className="h-4 w-4" aria-hidden />
-              </button>
-            ) : (
-              <span className="text-[13px] font-semibold text-[#3A3C42]">Última questão do caderno</span>
-            )}
-          </div>
-        </div>
-        {!fb && (
-          <div id={`dica-${q.id}`} className="qz-dicas">
-            <p className="qz-dicas-txt">{canConfirm(cs) ? "Toque duas vezes numa alternativa para riscá-la." : "Escolha uma alternativa para confirmar. Toque duas vezes para riscar."}</p>
-            <ul className="qz-teclas" aria-label="Atalhos de teclado">
-              <li><kbd>{ce ? "C" : "A"}</kbd>–<kbd>{ce ? "E" : "E"}</kbd> escolher</li>
-              <li><kbd>Enter</kbd> confirmar</li>
-              <li><kbd>←</kbd> <kbd>→</kbd> navegar</li>
-            </ul>
-          </div>
-        )}
       </article>
 
-      <div className="flex items-center justify-between gap-3">
-        <button type="button" onClick={onPrev ?? undefined} disabled={!onPrev} className="qz-nav-btn">
-          <ChevronLeft className="h-4 w-4" aria-hidden /> Anterior
+      {!fb && (
+        <div id={`dica-${q.id}`} className="qd-dica" data-aberta={dicaMais ? "1" : "0"}>
+          <span className="qd-dica-ico" aria-hidden>
+            <LampadaRaios />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="qd-dica-titulo">Dica da Aprovum</p>
+            <p className="qd-dica-txt">{canConfirm(cs) ? "Toque duas vezes numa alternativa para riscá-la antes de confirmar." : "Escolha uma alternativa para confirmar. Toque duas vezes numa alternativa para riscá-la."}</p>
+            {dicaMais && (
+              <ul className="qd-teclas" aria-label="Atalhos de teclado">
+                <li><kbd>{ce ? "C" : "A"}</kbd>–<kbd>E</kbd> escolher</li>
+                <li><kbd>Enter</kbd> confirmar</li>
+                <li><kbd>←</kbd> <kbd>→</kbd> navegar</li>
+              </ul>
+            )}
+          </div>
+          <button type="button" className="qd-dica-mais" aria-expanded={dicaMais} onClick={() => setDicaMais((v) => !v)}>
+            {dicaMais ? "Ver menos" : "Ver mais"} <ChevronDown className="h-4 w-4" aria-hidden />
+          </button>
+        </div>
+      )}
+
+      <div className="qd-botoes">
+        <button type="button" onClick={onPrev ?? undefined} disabled={!onPrev} className="qd-nav">
+          <ChevronLeft className="h-5 w-5" aria-hidden /> Anterior
         </button>
-        <button type="button" onClick={onNext ?? undefined} disabled={!onNext} className="qz-nav-btn">
-          Próxima <ChevronRight className="h-4 w-4" aria-hidden />
+        {!fb ? (
+          <button type="button" onClick={submit} disabled={!canConfirm(cs) || pending} aria-busy={pending} className="qd-confirmar">
+            <Check className="h-5 w-5" strokeWidth={3} aria-hidden /> {pending ? "Corrigindo…" : "Confirmar Resposta"}
+          </button>
+        ) : (
+          <button type="button" onClick={redo} className="qd-confirmar qd-refazer" data-testid="refazer-questao">
+            <RotateCcw className="h-[18px] w-[18px]" aria-hidden /> Refazer questão
+          </button>
+        )}
+        <button type="button" onClick={onNext ?? undefined} disabled={!onNext} aria-label="Próxima questão" className={`qd-nav ${fb && onNext ? "qd-nav-destaque" : ""}`}>
+          Próxima <ChevronRight className="h-5 w-5" aria-hidden />
         </button>
       </div>
+
+      <div className="qd-ferr" role="group" aria-label="Ferramentas da questão">
+        <button type="button" onClick={() => setPanel(panel === "nota" ? null : "nota")} aria-expanded={panel === "nota"} className="qd-ferr-btn">
+          <NotebookPen className="h-4 w-4" aria-hidden /> <span>Anotação{note ? " •" : ""}</span>
+        </button>
+        <button
+          type="button"
+          onClick={verExplicacao}
+          disabled={!fb}
+          title={fb ? "Ver a explicação" : "A explicação aparece depois que você confirmar a resposta"}
+          className="qd-ferr-btn"
+        >
+          <Lightbulb className="h-4 w-4" aria-hidden /> <span>Explicação</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setPanel(panel === "stats" ? null : "stats")}
+          aria-expanded={panel === "stats"}
+          disabled={!fb}
+          title={fb ? "Ver os gráficos de acertos, erros e respostas" : "As estatísticas aparecem depois que você confirmar a resposta"}
+          className="qd-ferr-btn"
+          data-testid="abrir-estatisticas"
+        >
+          <BarChart3 className="h-4 w-4" aria-hidden /> <span>Estatísticas</span>
+        </button>
+        <button type="button" onClick={() => setPanel(panel === "erro" ? null : "erro")} aria-expanded={panel === "erro"} className="qd-ferr-btn qd-ferr-erro" data-testid="abrir-reportar-erro">
+          <Flag className="h-4 w-4" aria-hidden /> <span>Reportar erro</span>
+        </button>
+        {!fb && cs.struck.size > 0 && (
+          <button type="button" onClick={() => setCs((x) => ({ ...x, struck: new Set() }))} className="qd-ferr-btn">
+            <RotateCcw className="h-4 w-4" aria-hidden /> <span>Restaurar riscadas</span>
+          </button>
+        )}
+        {onOpenErrors && (
+          <button type="button" onClick={onOpenErrors} className="qd-ferr-btn" data-testid="abrir-caderno-erros" aria-haspopup="dialog" title="Abre os seus erros deste caderno, organizados e editáveis">
+            <NotebookPen className="h-4 w-4" aria-hidden />
+            <span className="text-left leading-tight">
+              <span className="block font-bold">Abrir caderno de erros</span>
+              <span className="block text-[10.5px] font-medium opacity-75">
+                {erredCount} {erredCount === 1 ? "questão que você errou" : "questões que você errou"}
+              </span>
+            </span>
+          </button>
+        )}
+      </div>
+
+      {panel === "nota" && <NotePanel questionId={q.id} note={note} save={actions.saveNote} onSaved={onNoteSaved} onClose={() => setPanel(null)} />}
+      {panel === "stats" && fb && <QuestionStatsPanel questionId={q.id} load={actions.stats} marcou={marcouLabel} onClose={() => setPanel(null)} />}
+      {panel === "erro" && <ReportPanel questionId={q.id} report={actions.report} onClose={() => setPanel(null)} />}
     </div>
+  );
+}
+
+/** Alvo com seta (aba "Questão N"). */
+function AlvoSeta() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M21 12a9 9 0 1 1-6.2-8.55" />
+      <path d="M17 12a5 5 0 1 1-3.4-4.74" />
+      <path d="M12.2 11.8 20 4M16.5 3.6V7.5h3.9" />
+    </svg>
+  );
+}
+
+/** Lâmpada com raios (card "Dica da Aprovum"). */
+function LampadaRaios() {
+  return (
+    <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M24 5v4M8.5 11.5l3 3M39.5 11.5l-3 3M3.5 26h4M40.5 26h4" />
+      <path d="M17 30.2c-2.4-2-4-4.9-4-8.2a11 11 0 0 1 22 0c0 3.3-1.6 6.2-4 8.2-1 .9-1.6 2-1.6 3.3V35H18.6v-1.5c0-1.3-.6-2.4-1.6-3.3Z" fill="currentColor" fillOpacity=".14" />
+      <path d="M19.5 40h9M21 44h6" />
+      <path d="M21.5 27.5 24 22l2.5 5.5" />
+    </svg>
   );
 }
 
@@ -737,46 +719,6 @@ function GabaritoEsqueleto() {
       <span className="qz-esq-linha qz-esq-titulo" />
       <span className="qz-esq-linha" />
       <span className="qz-esq-linha qz-esq-curta" />
-    </div>
-  );
-}
-
-function QuestionMenu({ full, onToggleFull, canRestore, onRestore, onReport }: { full: boolean; onToggleFull: (on: boolean) => void; canRestore: boolean; onRestore: () => void; onReport: () => void }) {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
-    if (!open) return;
-    const onDoc = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && setOpen(false);
-    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onDoc);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDoc);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
-  const pick = (fn: () => void) => () => {
-    setOpen(false);
-    fn();
-  };
-  return (
-    <div className="relative" ref={ref}>
-      <button type="button" onClick={() => setOpen((o) => !o)} aria-haspopup="menu" aria-expanded={open} aria-label="Mais opções da questão" className="qz-kebab">
-        <EllipsisVertical className="h-5 w-5" aria-hidden />
-      </button>
-      {open && (
-        <div role="menu" className="cq-menu min-w-[230px]">
-          <button role="menuitemcheckbox" aria-checked={full} type="button" className="cq-menu-item" onClick={pick(() => onToggleFull(!full))}>
-            <Type className="h-4 w-4" aria-hidden /> {full ? "Mostrar enunciado resumido" : "Mostrar enunciado completo"}
-          </button>
-          <button role="menuitem" type="button" className="cq-menu-item disabled:opacity-40" disabled={!canRestore} onClick={pick(onRestore)}>
-            <RotateCcw className="h-4 w-4" aria-hidden /> Restaurar alternativas riscadas
-          </button>
-          <button role="menuitem" type="button" className="cq-menu-item text-[#B9000B]" onClick={pick(onReport)}>
-            <Flag className="h-4 w-4" aria-hidden /> Relatar erro na questão
-          </button>
-        </div>
-      )}
     </div>
   );
 }
