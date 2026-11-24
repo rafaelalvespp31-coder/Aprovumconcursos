@@ -11,6 +11,7 @@ import { PainelEscolha } from "./painel-escolha";
 import { MentorOrbita } from "./mentor-orbita";
 import { MentorScene } from "@/components/mentor-cena/mentor-scene";
 import { IntroMentor } from "./intro-mentor";
+import { BottomNavigation } from "@/components/pastel/bottom-navigation";
 import "./central-missao.css";
 import "./catalogo-pagina.css";
 
@@ -24,6 +25,8 @@ export interface CentralMissaoProps {
   concursos: ConcursoCard[];
   /** Mostra a abertura (retrato + "Começar a estudar") antes da Central. O servidor liga na primeira visita da sessão. */
   intro?: boolean;
+  /** Plano do aluno: define a cor do menu inferior do celular. */
+  plano?: "gratuito" | "pago" | "vitalicio";
 }
 
 type Folha = "concursos" | "materias";
@@ -37,7 +40,7 @@ const FOLHAS: Record<Folha, { titulo: string; kicker: string; sub: string }> = {
 const FAISCAS = Array.from({ length: 12 }, (_, i) => ({ x: 4 + ((i * 37) % 26), d: ((i * 0.41) % 3.2).toFixed(2), t: (2.6 + ((i * 7) % 5) * 0.35).toFixed(2) }));
 
 /** Home pós-login: o Mentor segurando a esfera, o botão de voz e só dois caminhos, Concursos e Matérias. */
-export function CentralMissao({ primeiroNome, email, materias, concursos, intro: introInicial = false }: CentralMissaoProps) {
+export function CentralMissao({ primeiroNome, email, materias, concursos, intro: introInicial = false, plano = "gratuito" }: CentralMissaoProps) {
   // abertura: "ativa" (cobre a Central), "revelando" (a Central entra por baixo do clarão), "fim"
   const [intro, setIntro] = useState<"ativa" | "revelando" | "fim">(introInicial ? "ativa" : "fim");
   const [falando, setFalando] = useState(false);
@@ -90,7 +93,7 @@ export function CentralMissao({ primeiroNome, email, materias, concursos, intro:
   }, [folha, voltar]);
 
   return (
-    <main className="hm" data-fase={fase} data-folha={folha ?? undefined} data-motor={motor} data-intro={intro}>
+    <main className="hm" data-fase={fase} data-folha={folha ?? undefined} data-motor={motor} data-intro={intro} data-menu={intro === "fim" ? "1" : undefined}>
       <div className="hm-fundo" aria-hidden />
       <div className="hm-fumaca" aria-hidden />
 
@@ -197,6 +200,12 @@ export function CentralMissao({ primeiroNome, email, materias, concursos, intro:
         <div className="hm-abrindo" role="status" aria-live="polite"><Loader2 size={18} className="hm-gira" aria-hidden />{abrindo}</div>
       )}
       {intro !== "fim" && <IntroMentor aoRevelar={() => setIntro("revelando")} aoFim={() => setIntro("fim")} />}
+      {/* Menu inferior (só no celular; no computador a home segue limpa). Aparece depois da abertura. */}
+      {intro === "fim" && (
+        <div className="hm-menu">
+          <BottomNavigation activeId="painel" plan={plano} />
+        </div>
+      )}
     </main>
   );
 }

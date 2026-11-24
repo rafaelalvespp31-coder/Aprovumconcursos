@@ -237,3 +237,14 @@
 /* "Abrindo…" na hora em que o Mentor atende um pedido por voz */
 .hm-abrindo { position: fixed; left: 50%; bottom: max(28px, env(safe-area-inset-bottom)); z-index: 60; display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); padding: 12px 20px; transform: translateX(-50%); font-size: 15px; font-weight: 700; color: #fff; background: rgb(12 6 6 / 0.92); border: 1px solid rgb(255 48 56 / 0.7); border-radius: 999px; box-shadow: 0 0 24px rgb(255 37 45 / 0.35); animation: hm-abrindo-entra 0.2s ease-out both; }
 @keyframes hm-abrindo-entra { from { opacity: 0; transform: translate(-50%, 8px); } }
+
+/* Menu inferior do celular na home: fica por cima do rodapé; os cards ganham espaço para não ficarem escondidos. */
+.hm-menu { display: contents; }
+@media (min-width: 1024px) { .hm-menu { display: none; } }
+@media (max-width: 1023px) {
+  .hm[data-menu="1"] { --hm-menu-h: 84px; }
+  .hm[data-menu="1"] .hm-cards { padding-bottom: calc(var(--hm-menu-h) + 6px); }
+  .hm[data-menu="1"] .hm-abrindo { bottom: calc(var(--hm-menu-h) + 12px); }
+  /* as folhas (lista de concursos e matérias) cobrem a tela toda, inclusive o menu */
+  .hm-folha { z-index: 40; }
+}
