@@ -1,5 +1,6 @@
 import { CalculoVisual } from "@/components/aula/calculo-visual";
 import { LINGUAGENS_CALCULO } from "@/domain/content/calc-visual";
+import { converterCalculosEmTexto } from "@/domain/content/calculos-em-texto";
 import ReactMarkdown from "react-markdown";
 import { limparMatematica } from "@/domain/lesson/math-text";
 import remarkGfm from "remark-gfm";
@@ -35,7 +36,8 @@ function legalGroups(md: string): Array<{ head: string | null; body: string }> {
 }
 
 export function ApostilaMarkdown({ children, legal = false, subject = null, titulo = "" }: { children: string; legal?: boolean; subject?: string | null; titulo?: string }) {
-  if (!legal) return <div className="ap-md"><MdInner legal={false} subject={subject} titulo={titulo}>{children}</MdInner></div>;
+  // aulas antigas trazem as contas em texto: cada conta sozinha na linha vira o caderno passo a passo
+  if (!legal) return <div className="ap-md"><MdInner legal={false} subject={subject} titulo={titulo}>{converterCalculosEmTexto(children)}</MdInner></div>;
   const groups = legalGroups(children);
   return (
     <div className="ap-md ap-lei">

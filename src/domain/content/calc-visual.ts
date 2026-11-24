@@ -96,7 +96,7 @@ function regra3c(linhas: string[]): Calculo | null {
 /** Aceita inteiros e decimais (vírgula ou ponto). Com decimais, só soma e subtração (vírgula alinhada). */
 function conta(linha: string): Calculo | null {
   const [op, ...resto] = linha.toLowerCase().split(/\s+/);
-  const nomes = ["soma", "subtracao", "multiplicacao", "divisao", "mmc", "mdc"] as const;
+  const nomes = ["soma", "subtracao", "multiplicacao", "divisao", "mmc", "mdc", "fatoracao"] as const;
   if (!op || !(nomes as readonly string[]).includes(op)) return null;
   if (!resto.every((x) => /^\d{1,9}(?:[.,]\d{1,3})?$/.test(x))) return null;
   const casas = Math.max(0, ...resto.map((x) => (x.split(/[.,]/)[1] ?? "").length));

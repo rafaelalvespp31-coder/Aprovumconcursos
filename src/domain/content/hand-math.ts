@@ -3,7 +3,7 @@
  * então o resultado nunca sai errado. Cada operação devolve uma grade de células (como no caderno)
  * e o passo a passo em português.
  */
-export type Operation = "soma" | "subtracao" | "multiplicacao" | "divisao" | "mmc" | "mdc";
+export type Operation = "soma" | "subtracao" | "multiplicacao" | "divisao" | "mmc" | "mdc" | "fatoracao";
 /** Estado de uma célula que muda ao longo dos passos (ex.: o "vai um" que é apagado na linha seguinte). */
 export interface CellState { t: string; p: number; pe?: number }
 /**
@@ -43,6 +43,7 @@ export function worked(op: Operation, nums: number[]): Worked | null {
     case "multiplicacao": return nums.length === 2 && nums[1]! <= 9999 ? multiplicacao(nums[0]!, nums[1]!) : null;
     case "divisao": return nums.length === 2 && nums[1]! > 0 ? divisao(nums[0]!, nums[1]!) : null;
     case "mmc": case "mdc": return nums.length >= 2 && nums.every((n) => n >= 1) ? fatoracao(op, nums) : null;
+    case "fatoracao": return nums.length === 1 && nums[0]! >= 2 ? fatoracaoUnica(nums[0]!) : null;
   }
 }
 
@@ -188,6 +189,42 @@ function divisao(a: number, b: number): Worked {
     side: { divisor: String(b), quotient: q.join("").replace(/^0+(?=\d)/, "") || "0" },
     steps,
     result: `${fmt(a)} ÷ ${fmt(b)} = ${fmt(Math.floor(a / b))}${resto ? ` (resto ${fmt(resto)})` : " (resto 0: divisão exata)"}`,
+  };
+}
+
+const SUP = "⁰¹²³⁴⁵⁶⁷⁸⁹";
+const sobrescrito = (n: number) => String(n).replace(/\d/g, (d) => SUP[Number(d)]!);
+
+/** Fatoração em primos de UM número: divide pelo menor primo até chegar a 1 e junta os repetidos com expoente. */
+function fatoracaoUnica(n: number): Worked {
+  const rows: Row[] = [{ cells: [cell(String(n))] }];
+  const primes: string[] = [];
+  const usados: number[] = [];
+  const steps: string[] = [];
+  let cur = n;
+  let guard = 0;
+  while (cur > 1 && guard++ < 60) {
+    const p = smallestPrime([cur])!;
+    steps.push(`Divida ${fmt(cur)} por ${p}: dá ${fmt(cur / p)}. (${p} é o menor primo que divide ${fmt(cur)}.)`);
+    cur /= p;
+    usados.push(p);
+    primes.push(String(p));
+    rows.push({ cells: [cell(String(cur), cur === 1 ? { tone: "dim" as const } : {})] });
+  }
+  primes.push("");
+  const grupos: string[] = [];
+  for (const p of [...new Set(usados)]) {
+    const e = usados.filter((x) => x === p).length;
+    grupos.push(e > 1 ? `${p}${sobrescrito(e)}` : String(p));
+  }
+  const longo = usados.join(" × ");
+  steps.push(usados.length === 1 ? `${fmt(n)} só se divide por ele mesmo e por 1: é um número primo.` : `Chegamos a 1. Os primos da direita são os fatores: ${longo}. Os repetidos viram expoente: ${grupos.join(" × ")}.`);
+  return {
+    title: `Fatoração de ${fmt(n)}`,
+    rows,
+    primes,
+    steps,
+    result: `${fmt(n)} = ${grupos.join(" × ")}${usados.length > grupos.length ? ` (${longo})` : ""}`,
   };
 }
 

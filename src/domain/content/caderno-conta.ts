@@ -26,7 +26,7 @@ export function contaCaderno(op: Operation, nums: number[], casas = 0): Worked |
     case "subtracao": return nums.length === 2 && nums[0]! >= nums[1]! ? comVirgula(subtracao(nums[0]!, nums[1]!, casas), casas) : null;
     case "multiplicacao": return nums.length === 2 && nums[1]! <= 9999 ? multiplicacao(nums[0]!, nums[1]!) : null;
     case "divisao": return nums.length === 2 && nums[1]! > 0 ? divisao(nums[0]!, nums[1]!) : null;
-    case "mmc": case "mdc": return fatorar(op, nums);
+    case "mmc": case "mdc": case "fatoracao": return fatorar(op, nums);
   }
 }
 
@@ -269,10 +269,11 @@ function divisao(a: number, b: number): Worked {
 }
 
 /** MMC/MDC: usa a fatoração simultânea de hand-math e marca em que passo cada linha e cada primo aparecem. */
-function fatorar(op: "mmc" | "mdc", nums: number[]): Worked | null {
+function fatorar(op: "mmc" | "mdc" | "fatoracao", nums: number[]): Worked | null {
   const w = worked(op, nums);
   if (!w) return null;
   w.rows.forEach((r, ri) => r.cells.forEach((cell) => { cell.p = ri; }));
   const lista = nums.join(" e ");
-  return { ...w, steps: [`Escreva os números lado a lado (${lista}) e trace uma barra à direita: é ali que vão aparecer os números primos.`, ...w.steps] };
+  const abre = nums.length === 1 ? `Escreva o número ${lista} e trace uma barra à direita: é ali que vão aparecer os números primos.` : `Escreva os números lado a lado (${lista}) e trace uma barra à direita: é ali que vão aparecer os números primos.`;
+  return { ...w, steps: [abre, ...w.steps] };
 }
