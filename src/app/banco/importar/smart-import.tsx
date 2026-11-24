@@ -22,6 +22,8 @@ interface Row extends Draft {
   open: boolean;
   subjectId: string | null;
   topicId: string | null;
+  /** Assunto lido do texto que ainda não existe na matéria: criado ao importar (padrão: sim). */
+  criarAssunto: boolean;
   confirmBoard: boolean;
   allowDuplicate: boolean;
   removed: boolean;
@@ -39,6 +41,8 @@ const ISSUE_LABEL: Record<SmartIssue, string> = {
   sem_alternativas: "Sem alternativas",
 };
 
+/** Valor do seletor que representa "criar o assunto lido do texto". */
+const NOVO = "__novo__";
 const TYPE_LABEL = { multipla_escolha: "Múltipla escolha", certo_errado: "Certo ou Errado", discursiva: "Sem alternativas" } as const;
 
 /** Por que esta questão ainda não pode ser importada (vazio = pronta). */
@@ -90,7 +94,7 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
       const { analysis, destinos: d } = r.data;
       setDestinos(d);
       const matched = analysis.drafts.map((x) => matchDestino(d.subjects, x.discipline, x.topic));
-      setRows(analysis.drafts.map((x, i) => ({ ...x, selected: x.duplicate === "inedita", open: false, subjectId: matched[i]!.subjectId, topicId: matched[i]!.topicId, confirmBoard: false, allowDuplicate: false, removed: false })));
+      setRows(analysis.drafts.map((x, i) => ({ ...x, selected: x.duplicate === "inedita", open: false, subjectId: matched[i]!.subjectId, topicId: matched[i]!.topicId, criarAssunto: true, confirmBoard: false, allowDuplicate: false, removed: false })));
       const sug = matched.find((m) => m.subjectId)?.subjectId ?? analysis.drafts.find((x) => x.suggestedSubjectId)?.suggestedSubjectId;
       if (sug) {
         setSubjectId(sug);
@@ -118,7 +122,10 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
   const dupes = visible.filter((r) => r.duplicate !== "inedita").length;
 
   const importNow = () => {
-    if (!subjectId) return setError("Escolha a matéria de destino.");
+    const semMateria = ready.filter((r) => !r.subjectId).length;
+    if (!subjectId && semMateria) return setError(`${semMateria} questão(ões) sem matéria: escolha a matéria na questão ou a pasta padrão no fim da página.`);
+    const padrao = subjectId || ready.find((r) => r.subjectId)?.subjectId || "";
+    if (!padrao) return setError("Escolha a matéria de destino.");
     setError(null);
     const items = ready.map((r) => ({
       key: r.key,
@@ -138,13 +145,13 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
       raw: r.raw,
       subjectId: r.subjectId,
       topicId: r.subjectId ? r.topicId : null,
-      newTopicName: r.topic && !r.topicId && (r.subjectId || subjectId) ? r.topic.slice(0, 200) : null,
+      newTopicName: r.topic && !r.topicId && r.criarAssunto && (r.subjectId || subjectId) ? r.topic.slice(0, 200) : null,
       confirmBoard: r.confirmBoard,
       allowDuplicate: r.allowDuplicate,
       duplicate: r.duplicate,
     }));
     start(async () => {
-      const res = await actions.save(items, { subjectId, topicId: topicId || null }, origem);
+      const res = await actions.save(items, { subjectId: padrao, topicId: subjectId ? topicId || null : null }, origem);
       if (!res.ok || !res.data) return setError(res.error ?? "Não foi possível importar.");
       setResult(res.data);
       const done = new Set(res.data.results.filter((x) => x.status === "importada" || x.status === "publicada").map((x) => x.key));
@@ -267,7 +274,7 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
             <QuestionCard key={r.key} r={r} destinos={destinos} patch={(p) => patch(r.key, p)} confirmBoard={confirmBoard} />
           ))}
 
-          <DCard title="Pasta de destino">
+          <DCard title="Pasta padrão (questões sem matéria)">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
                 <label htmlFor="dest-subject" className={dLabel}>Matéria</label>
@@ -284,7 +291,7 @@ export function SmartImporter({ actions }: { actions: SmartActions }) {
                 </select>
               </div>
             </div>
-            <p className="mt-2 text-[13px] text-white/60">Matéria: só pastas já existentes. O assunto lido do texto é criado automaticamente se ainda não existir.</p>
+            <p className="mt-2 text-[13px] text-white/60">Pasta padrão, usada só nas questões sem matéria própria. Cada questão já vem com a matéria e o assunto lidos do texto; assunto novo é criado automaticamente.</p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <button type="button" onClick={importNow} disabled={pending || ready.length === 0} className={dButton("primario")}>{pending ? "Importando…" : `IMPORTAR ${ready.length} QUESTÃO(ÕES)`}</button>
               {chosen.length > ready.length && <span className="text-[13px] text-amber-200">{chosen.length - ready.length} selecionada(s) ainda com pendência e não serão importadas.</span>}
@@ -333,6 +340,31 @@ function QuestionCard({ r, destinos, patch, confirmBoard }: { r: Row; destinos: 
         <Field label="Comentário da questão (o que veio no material, ou o seu)"><textarea className={`${dTextarea} min-h-20`} value={r.comment ?? ""} onChange={(e) => { const v = e.target.value; const n = r.type === "multipla_escolha" ? splitCommentByOption(v) : null; patch(!r.answer && n?.answer && r.options.some((o) => o.label === n.answer) ? { comment: v || null, answer: n.answer, answerSource: "administrador" } : { comment: v || null }); }} placeholder="Cole o comentário: Gabarito: A) … e depois B) …, C) … para as erradas" /></Field>
       </div>
 
+      <div className="mt-3 grid gap-3 sm:grid-cols-2">
+        <Field label="Matéria desta questão">
+          <select className={dInput} value={r.subjectId ?? ""} onChange={(e) => patch({ subjectId: e.target.value || null, topicId: null })}>
+            <option value="">Usar a pasta de destino do lote</option>
+            {destinos?.subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
+          </select>
+          {r.discipline && r.subjectId && <p className="mt-2 text-[13px] text-[#6ee7b7]">Lida do texto: “{r.discipline}”.</p>}
+          {r.discipline && !r.subjectId && <p className="mt-2 text-[13px] text-amber-200">A matéria “{r.discipline}” ainda não existe no banco: escolha uma existente.</p>}
+        </Field>
+        <Field label="Assunto desta questão">
+          <select
+            className={dInput}
+            disabled={!own}
+            value={r.topicId ?? (r.topic && r.criarAssunto ? NOVO : "")}
+            onChange={(e) => patch(e.target.value === NOVO ? { topicId: null, criarAssunto: true } : { topicId: e.target.value || null, criarAssunto: false })}
+          >
+            {r.topic && <option value={NOVO}>＋ Novo assunto: {r.topic}</option>}
+            <option value="">Sem assunto específico</option>
+            {own?.topics.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+          </select>
+          {r.topic && !r.topicId && r.criarAssunto && own && <p className="mt-2 text-[13px] text-[#6ee7b7]">Assunto “{r.topic}” é novo: será criado automaticamente em {own.name} ao importar.</p>}
+          {r.topic && r.topicId && <p className="mt-2 text-[13px] text-[#6ee7b7]">Assunto já existente: a questão entra nele.</p>}
+        </Field>
+      </div>
+
       {r.open && (
         <div className="mt-3 flex flex-col gap-3">
           <div className="grid gap-3 sm:grid-cols-3">
@@ -355,23 +387,6 @@ function QuestionCard({ r, destinos, patch, confirmBoard }: { r: Row; destinos: 
           {r.duplicate !== "inedita" && (
             <label className="flex items-center gap-2 text-[14px]"><input type="checkbox" className="h-4 w-4 accent-[#e10600]" checked={r.allowDuplicate} onChange={(e) => patch({ allowDuplicate: e.target.checked })} /> Importar mesmo assim (não é duplicada)</label>
           )}
-          <div className="grid gap-3 sm:grid-cols-2">
-            <Field label="Matéria desta questão (opcional)">
-              <select className={dInput} value={r.subjectId ?? ""} onChange={(e) => patch({ subjectId: e.target.value || null, topicId: null })}>
-                <option value="">Usar a pasta de destino do lote</option>
-                {destinos?.subjects.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
-              </select>
-            </Field>
-            <Field label="Assunto desta questão">
-              <select className={dInput} disabled={!own} value={r.topicId ?? ""} onChange={(e) => patch({ topicId: e.target.value || null })}>
-                <option value="">Sem assunto específico</option>
-                {own?.topics.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
-              </select>
-              {r.topic && !r.topicId && (
-                <p className="mt-2 text-[13px] text-[#6ee7b7]">Assunto “{r.topic}” será criado automaticamente na matéria ao importar.</p>
-              )}
-            </Field>
-          </div>
           {(r.baseTextCode || r.baseText) && (
             <div className="grid gap-2">
               <Field label="Identificação do texto-base"><input className={dInput} value={r.baseTextCode ?? ""} maxLength={60} onChange={(e) => patch({ baseTextCode: e.target.value || null })} /></Field>
