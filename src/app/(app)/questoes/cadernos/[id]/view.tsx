@@ -214,7 +214,8 @@ export function NotebookView({
 
   const q = questions[i]!;
   return (
-    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]" data-testid="caderno-view">
+    <div className="@container mx-auto w-full max-w-[1560px]" data-testid="caderno-view">
+    <div className="grid items-start gap-5 @[980px]:grid-cols-[minmax(0,1fr)_minmax(300px,340px)] @[980px]:gap-6">
       <div className="flex min-w-0 flex-col gap-4">
         <Top n={n} total={total} q={q} onOpenErrors={erred > 0 ? () => setErrorsOpen(true) : undefined} wrong={erred} />
         {errorsOpen && <ErrorNotebookModal notebookId={n.id} title={n.title} api={errorsApi} onClose={() => setErrorsOpen(false)} />}
@@ -254,10 +255,10 @@ export function NotebookView({
         />
       </div>
 
-      <aside className="flex min-w-0 flex-col gap-4">
+      <aside className="qz-lateral grid min-w-0 gap-4 @[680px]:grid-cols-2 @[980px]:sticky @[980px]:top-24 @[980px]:grid-cols-1" aria-label="Painel do caderno">
         <TimerCard notebookId={n.id} pct={pct} right={right} wrong={wrong} blank={total - answered} />
         <NavCard questions={questions} states={states} current={i} onPick={setI} />
-        <div className="qz-foco" aria-hidden>
+        <div className="qz-foco @[680px]:col-span-2 @[980px]:col-span-1" aria-hidden>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/images/jogo-hero-arte-sm.webp" alt="" className="qz-foco-arte" />
           <div className="relative z-[1] p-5">
@@ -269,6 +270,7 @@ export function NotebookView({
           </div>
         </div>
       </aside>
+    </div>
     </div>
   );
 }
@@ -324,12 +326,12 @@ function Top({ n, total, q, onOpenErrors, wrong = 0 }: { n: Notebook; total: num
       </div>
       {q && (
         <dl className="qz-faixa" data-testid="faixa-questao">
-          {tiles.map((t) => (
+          {tiles.filter((t) => t.value !== "—").map((t) => (
             <div key={t.label} className="qz-faixa-item">
-              <span className="shrink-0">{t.icon}</span>
+              <span className="qz-faixa-ico">{t.icon}</span>
               <span className="min-w-0">
-                <dt className="text-[12px] text-white/65">{t.label}</dt>
-                <dd className="text-[14px] font-medium leading-snug text-white">{t.value}</dd>
+                <dt className="text-[11.5px] font-semibold uppercase tracking-[0.08em] text-white/60">{t.label}</dt>
+                <dd className="qz-faixa-valor" title={t.value}>{t.value}</dd>
               </span>
             </div>
           ))}
@@ -489,11 +491,11 @@ function QuestionPanel({
   return (
     <div className="flex min-w-0 flex-col gap-3">
       {/* Linha da questão: número, progresso, favoritar e opções */}
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="qz-barra-q">
         <span className="qz-num">
           <ClipboardList className="h-4 w-4" aria-hidden /> Questão {number} de {total}
         </span>
-        <div className="flex min-w-[140px] flex-1 items-center gap-3">
+        <div className="qz-barra-prog">
           <span className="qz-barra" role="img" aria-label={`${pct}% do caderno respondido`}>
             <span style={{ width: `${pct}%` }} />
           </span>
@@ -512,11 +514,18 @@ function QuestionPanel({
       </div>
 
       <article className="qz-cartao" aria-label={`Questão ${number} de ${total}`} data-respondida={fb ? "1" : "0"}>
-        <p className="mb-2 text-[11.5px] text-[#8A8C93]">
-          {q.code ? `${q.code} · ` : ""}
-          {q.origin === "prova_anterior" ? "Questão de prova" : "Questão autoral (APROVUM)"}
-          {q.examName ? ` · ${q.examName}` : ""}
-        </p>
+        <header className="qz-meta">
+          <p className="qz-meta-origem">
+            {q.code && <span className="qz-meta-cod">{q.code}</span>}
+            <span>{q.origin === "prova_anterior" ? "Questão de prova" : "Questão autoral (APROVUM)"}</span>
+            {q.examName && <span className="qz-meta-prova">· {q.examName}</span>}
+          </p>
+          <ul className="qz-meta-chips" aria-label="Dados da questão">
+            {q.board && <li className="qz-chip">{q.board}</li>}
+            {q.year && <li className="qz-chip">{q.year}</li>}
+            {q.subjectName && <li className="qz-chip qz-chip-mat">{q.subjectName}</li>}
+          </ul>
+        </header>
         <div className="overflow-hidden rounded-[14px] border-2 border-[#1F2937] bg-white" data-testid="bloco-enunciado">
           <p className="flex items-center gap-2 bg-[#1F2937] px-3 py-1.5 text-[12.5px] font-black uppercase tracking-[0.16em] text-white">
             <Type className="h-4 w-4" aria-hidden /> Enunciado
@@ -669,10 +678,14 @@ function QuestionPanel({
           </div>
         </div>
         {!fb && (
-          <p id={`dica-${q.id}`} className="mt-2 text-right text-[11.5px] text-[#8A8C93]">
-            {canConfirm(cs) ? "Toque duas vezes numa alternativa para riscá-la." : "Escolha uma alternativa para confirmar. Toque duas vezes para riscar."}
-            <span className="hidden sm:inline"> Atalhos: {ce ? "C/E" : "A–E"} e Enter.</span>
-          </p>
+          <div id={`dica-${q.id}`} className="qz-dicas">
+            <p className="qz-dicas-txt">{canConfirm(cs) ? "Toque duas vezes numa alternativa para riscá-la." : "Escolha uma alternativa para confirmar. Toque duas vezes para riscar."}</p>
+            <ul className="qz-teclas" aria-label="Atalhos de teclado">
+              <li><kbd>{ce ? "C" : "A"}</kbd>–<kbd>{ce ? "E" : "E"}</kbd> escolher</li>
+              <li><kbd>Enter</kbd> confirmar</li>
+              <li><kbd>←</kbd> <kbd>→</kbd> navegar</li>
+            </ul>
+          </div>
         )}
       </article>
 
