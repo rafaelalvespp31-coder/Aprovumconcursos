@@ -192,7 +192,9 @@ function parseBlock(blockLines: string[], idx: number, carry: { baseCode: string
     } else {
       // Sem enunciado separado: o último parágrafo vira enunciado.
       const paras = after.join("\n").split(/\n\s*\n/);
-      if (paras.length > 1) {
+      // Parágrafo anterior sem pontuação final (ex.: termina em vírgula): é o mesmo enunciado quebrado, não um texto-base.
+      const quebrado = paras.length > 1 && !/[.!?:…"”»)\]]\s*$/.test(paras[paras.length - 2]!.trim());
+      if (paras.length > 1 && !quebrado) {
         statementLines = paras[paras.length - 1]!.split("\n");
         baseText = paras.slice(0, -1).join("\n\n").trim();
       } else {
@@ -427,12 +429,21 @@ function preprocessTec(text: string): string {
   const t = t0.replace(/^([ \t]*(?:assuntos?|mat[ée]ria|disciplina|tema|t[óo]pico)[ \t]*:)[ \t]*\n[ \t]*(\S[^\n]*)$/gim, "$1 $2");
   let lines = t.split("\n");
   if (gran) {
-    // Sem links (texto puro): a linha entre o número "Q…" e o bloco Ano/Banca/Prova é a matéria (não dá para separar o assunto).
+    // Sem links (texto puro): as 1 ou 2 linhas entre o número "Q…" e o bloco Ano/Banca/Prova são matéria e assunto.
+    // Sem isto, essas linhas viravam uma "questão" à parte (sem alternativas) antes da questão de verdade.
     for (let i = 0; i < lines.length; i++) {
       if (!GRAN_ID.test(lines[i]!)) continue;
-      const nz = (from: number) => { let k = from; while (k < lines.length && !lines[k]!.trim()) k++; return k; };
-      const a = nz(i + 1), b = nz(a + 1);
-      if (a < lines.length && b < lines.length && !GRAN_LABEL.test(lines[a]!) && !FIELD_DISC.test(lines[a]!) && !FIELD_TOPIC.test(lines[a]!) && GRAN_LABEL.test(lines[b]!)) lines[a] = `Matéria: ${lines[a]!.trim()}`;
+      const between: number[] = [];
+      let k = i + 1;
+      for (; k < lines.length && between.length <= 3; k++) {
+        if (!lines[k]!.trim()) continue;
+        if (GRAN_LABEL.test(lines[k]!)) break;
+        between.push(k);
+      }
+      if (k >= lines.length || !GRAN_LABEL.test(lines[k]!) || between.length < 1 || between.length > 2) continue;
+      if (between.some((x) => FIELD_DISC.test(lines[x]!) || FIELD_TOPIC.test(lines[x]!))) continue;
+      lines[between[0]!] = `Matéria: ${lines[between[0]!]!.trim()}`;
+      if (between[1] !== undefined) lines[between[1]] = `Assunto: ${lines[between[1]]!.trim()}`;
     }
     lines = convertGran(lines);
   }

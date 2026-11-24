@@ -135,3 +135,43 @@ De ação.
     expect(puro.board).toBe("IBADE");
   });
 });
+
+describe("Gran Cursos: não parte uma questão em duas", () => {
+  const corpo = `Ano: 2026
+Banca: Instituto Brasileiro de Apoio e Desenvolvimento Executivo - IBADE
+Prova: IBADE - PC ES - Investigador de Polícia - 2026
+Texto associado
+De acordo com o contexto sintático, como se classifica, quanto ao sentido, o verbo destacado?
+A
+Intransitivo.
+B
+Transitivo direto.
+C
+Transitivo indireto.
+D
+De ligação.
+E
+De ação.
+`;
+  it("matéria e assunto em linhas separadas, sem links, não viram uma questão extra", () => {
+    const txt = `Q4313594\nLíngua Portuguesa\nClassificação dos verbos quanto à predicação (transitividade)\n${corpo}`;
+    expect(estimateQuestions(txt)).toBe(1);
+    const { drafts } = parseSmart(txt);
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0]!.discipline).toBe("Língua Portuguesa");
+    expect(drafts[0]!.topic).toBe("Classificação dos verbos quanto à predicação (transitividade)");
+    expect(drafts[0]!.type).toBe("multipla_escolha");
+  });
+  it("enunciado com quebra de parágrafo continua inteiro", () => {
+    const { drafts } = parseSmart(corpo.replace("sintático, como", "sintático,\n\ncomo"));
+    expect(drafts).toHaveLength(1);
+    expect(drafts[0]!.baseText).toBeNull();
+    expect(drafts[0]!.statement).toMatch(/^De acordo com o contexto sintático,\s+como se classifica/);
+  });
+  it("texto associado de verdade continua separado do enunciado", () => {
+    const txt = corpo.replace("Texto associado\n", "Texto associado\nO Instituto Butantan nasceu em 1901, durante um surto de peste.\n\n");
+    const d = parseSmart(txt).drafts[0]!;
+    expect(d.baseText).toMatch(/Butantan/);
+    expect(d.statement).toMatch(/^De acordo com/);
+  });
+});
