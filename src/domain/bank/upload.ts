@@ -236,7 +236,7 @@ function parseOne(
   };
   if (!q.subject) fail("informe a “Matéria:” (no PADRÃO ou na questão).");
   if (statement.length < 10) fail("enunciado vazio ou curto demais.");
-  if (statement.length > 6000) fail("enunciado com mais de 6.000 caracteres.");
+  if (statement.length > 20000) fail("enunciado com mais de 20.000 caracteres.");
   if (fields.ano && !q.year) fail(`ano “${fields.ano}” inválido.`);
   if (fields.dificuldade && !difficultyOf(fields.dificuldade)) fail(`dificuldade “${fields.dificuldade}” não reconhecida (difícil, muito difícil ou extrema).`);
   if (type === "multipla_escolha") {

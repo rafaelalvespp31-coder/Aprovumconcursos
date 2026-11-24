@@ -200,11 +200,11 @@ export function QuestionForm({ id, initial, lookups }: { id: string | null; init
         <div className="flex flex-col gap-3">
           <div>
             <label className={dLabel} htmlFor="f-case">Contexto do caso (opcional)</label>
-            <textarea id="f-case" value={s.caseContext} onChange={(e) => set("caseContext", e.target.value)} maxLength={6000} className={dTextarea} placeholder="Texto-base, situação hipotética…" />
+            <textarea id="f-case" value={s.caseContext} onChange={(e) => set("caseContext", e.target.value)} maxLength={20000} className={dTextarea} placeholder="Texto-base, situação hipotética…" />
           </div>
           <div>
             <label className={dLabel} htmlFor="f-statement">Enunciado *</label>
-            <textarea id="f-statement" required minLength={10} maxLength={6000} value={s.statement} onChange={(e) => set("statement", e.target.value)} className={`${dTextarea} min-h-36`} />
+            <textarea id="f-statement" required minLength={10} maxLength={20000} value={s.statement} onChange={(e) => set("statement", e.target.value)} className={`${dTextarea} min-h-36`} />
             <div className="mt-2 flex flex-wrap items-center gap-2">
               <button type="button" onClick={checkSimilar} disabled={pending || s.statement.trim().length < 20} className={dButton("secundario")}>
                 Verificar duplicidade
@@ -234,8 +234,8 @@ export function QuestionForm({ id, initial, lookups }: { id: string | null; init
                       <span className={`flex size-8 items-center justify-center rounded-full font-bold ${o.isCorrect ? "bg-emerald-500 text-black" : "bg-white/10"}`}>{OPTION_LABELS[i]}</span>
                     </label>
                     <div className="flex flex-1 flex-col gap-2">
-                      <textarea value={o.text} onChange={(e) => setOption(i, { text: e.target.value })} maxLength={3000} rows={2} className={`${dInput} py-2`} placeholder={i < 2 ? "Obrigatória" : "Opcional"} aria-label={`Texto da alternativa ${OPTION_LABELS[i]}`} />
-                      <input value={o.explanation} onChange={(e) => setOption(i, { explanation: e.target.value })} maxLength={3000} className={dInput} placeholder={o.isCorrect ? "Por que está correta" : "Por que está errada"} aria-label={`Justificativa da alternativa ${OPTION_LABELS[i]}`} />
+                      <textarea value={o.text} onChange={(e) => setOption(i, { text: e.target.value })} maxLength={10000} rows={2} className={`${dInput} py-2`} placeholder={i < 2 ? "Obrigatória" : "Opcional"} aria-label={`Texto da alternativa ${OPTION_LABELS[i]}`} />
+                      <input value={o.explanation} onChange={(e) => setOption(i, { explanation: e.target.value })} maxLength={10000} className={dInput} placeholder={o.isCorrect ? "Por que está correta" : "Por que está errada"} aria-label={`Justificativa da alternativa ${OPTION_LABELS[i]}`} />
                     </div>
                   </div>
                 </div>
@@ -257,7 +257,7 @@ export function QuestionForm({ id, initial, lookups }: { id: string | null; init
 
           <div>
             <label className={dLabel} htmlFor="f-just">Justificativa do gabarito (obrigatória para aprovar)</label>
-            <textarea id="f-just" value={s.justification} onChange={(e) => set("justification", e.target.value)} maxLength={6000} className={dTextarea} />
+            <textarea id="f-just" value={s.justification} onChange={(e) => set("justification", e.target.value)} maxLength={20000} className={dTextarea} />
           </div>
         </div>
       </DCard>

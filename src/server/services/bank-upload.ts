@@ -311,7 +311,7 @@ export async function smartAnalyze(staff: BankStaff, text: string): Promise<Smar
   return { drafts, baseTexts: parsed.baseTexts };
 }
 
-const optionZ = z.object({ label: z.string().regex(/^[A-E]$/), text: z.string().min(1).max(3000) });
+const optionZ = z.object({ label: z.string().regex(/^[A-E]$/), text: z.string().min(1).max(10000) });
 export const smartItemSchema = z.object({
   key: z.string().max(20),
   type: z.enum(["multipla_escolha", "certo_errado", "discursiva"]),
@@ -322,11 +322,11 @@ export const smartItemSchema = z.object({
   role: z.string().trim().max(200).nullable(),
   baseTextCode: z.string().trim().max(60).nullable(),
   baseText: z.string().max(60000).nullable(),
-  statement: z.string().trim().min(10).max(6000),
+  statement: z.string().trim().min(10).max(20000),
   options: z.array(optionZ).max(5),
   answer: z.string().max(10).nullable(),
   answerSource: z.enum(["oficial", "administrador"]).nullable(),
-  comment: z.string().max(6000).nullable(),
+  comment: z.string().max(20000).nullable(),
   raw: z.string().max(80000),
   subjectId: z.string().uuid().nullable(),
   topicId: z.string().uuid().nullable(),
@@ -423,7 +423,7 @@ export async function smartImport(staff: BankStaff, items: SmartItemInput[], des
       const ex = await ensureExamAndSource(staff, l, fake, examCache);
       if (quick && !verified.has(ex.source)) { await authorizeSource(staff, ex.source); verified.add(ex.source); }
       const baseId = it.baseTextCode && it.baseText ? await ensureBaseText(db, staff.id, it.baseTextCode, it.baseText) : null;
-      const caseContext = it.baseText && it.baseText.length <= 6000 ? it.baseText : "";
+      const caseContext = it.baseText && it.baseText.length <= 20000 ? it.baseText : "";
       // Comentário com uma explicação por alternativa: cada trecho vai para a alternativa certa; o resto é o comentário geral.
       const notes = notes0;
       const generalComment = notes ? (notes.rest.length >= 10 ? notes.rest : (it.comment ?? "")) : (it.comment ?? "");

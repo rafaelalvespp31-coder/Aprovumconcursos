@@ -41,9 +41,9 @@ export const legalRefSchema = z
 export type LegalRefInput = z.infer<typeof legalRefSchema>;
 
 export const optionSchema = z.object({
-  text: z.string().trim().min(1, "Alternativa vazia.").max(3000),
+  text: z.string().trim().min(1, "Alternativa vazia.").max(10000),
   isCorrect: z.boolean(),
-  explanation: optText(3000),
+  explanation: optText(10000),
 });
 
 export const questionInputSchema = z
@@ -52,8 +52,8 @@ export const questionInputSchema = z
     topicId: optUuid,
     origin: z.enum(ORIGINS),
     questionType: z.enum(QUESTION_TYPES),
-    statement: z.string().trim().min(10, "Enunciado muito curto.").max(6000),
-    caseContext: optText(6000),
+    statement: z.string().trim().min(10, "Enunciado muito curto.").max(20000),
+    caseContext: optText(20000),
     initialDifficulty: z.enum(DIFFICULTIES),
     boardStyle: optText(32),
     sourceId: optUuid,
@@ -63,7 +63,7 @@ export const questionInputSchema = z
     originalNumber: optText(20),
     correctAnswerTrue: z.boolean().optional(),
     options: z.array(optionSchema).max(5, "No máximo 5 alternativas.").default([]),
-    justification: optText(6000),
+    justification: optText(20000),
     legalBasis: optText(2000),
     usageRights: z.enum(USAGE_RIGHTS),
     verifiedAt: optDate,
