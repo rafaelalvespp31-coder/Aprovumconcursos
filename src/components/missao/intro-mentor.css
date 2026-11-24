@@ -13,9 +13,6 @@
 .hm-intro-arte { position: absolute; inset: 0; width: 100%; height: 100%; display: block; user-select: none; pointer-events: none; animation: hmi-respira 12s ease-in-out infinite alternate; }
 @keyframes hmi-respira { to { transform: scale(1.03); } }
 
-.hm-intro-brasas { position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen; }
-.hm-intro-brasas i { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); border-radius: 50%; background: #ff9a52; box-shadow: 0 0 8px 2px rgb(255 80 40 / 0.85); opacity: 0; animation: hmi-brasa var(--d) ease-in infinite var(--a); }
-@keyframes hmi-brasa { 0% { opacity: 0; transform: translate(0, 0) scale(1); } 15% { opacity: 0.95; } 100% { opacity: 0; transform: translate(calc(var(--s) * 9), -26dvh) scale(0.35); } }
 
 .hm-intro-botao { position: absolute; left: 2.3%; top: 77.6%; width: 95.4%; height: 14.6%; padding: 0; border: 0; background: none; cursor: pointer; -webkit-tap-highlight-color: transparent; touch-action: manipulation; border-radius: 4% / 22%; transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1); }
 .hm-intro-botao:focus-visible { outline: 2px solid #fff; outline-offset: 4px; }
@@ -58,7 +55,6 @@
 
 @media (prefers-reduced-motion: reduce) {
   .hm-intro *, .hm-intro *::before, .hm-intro *::after { animation: none !important; transition: none !important; }
-  .hm-intro-brasas { display: none; }
   .hm-intro[data-etapa="indo"] .hm-intro-preto { opacity: 1; }
   .hm-intro[data-etapa="revela"] { animation: hmi-some 0.25s ease forwards; }
 }

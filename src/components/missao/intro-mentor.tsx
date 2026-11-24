@@ -1,11 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useRef, useState } from "react";
 import { COOKIE_INTRO } from "./intro-constantes";
 import "./intro-mentor.css";
-
-/** Brasas que sobem atrás do homem (posição, atraso e duração fixos: nada de aleatório no render). */
-const BRASAS = Array.from({ length: 18 }, (_, i) => ({ x: 5 + ((i * 53) % 90), y: 52 + ((i * 29) % 38), d: (3.2 + ((i * 7) % 6) * 0.55).toFixed(2), a: ((i * 0.37) % 4).toFixed(2), s: 2 + (i % 3) }));
 
 /**
  * Abertura antes da Central: o retrato e o "Começar a estudar". Ao tocar, a câmera avança contra o rosto, a onda de
@@ -38,9 +35,6 @@ export function IntroMentor({ aoRevelar, aoFim }: { aoRevelar: () => void; aoFim
         <div className="hm-intro-zoom">
           {/* eslint-disable-next-line @next/next/no-img-element -- arte fixa da abertura; WebP já otimizado em public/home */}
           <img className="hm-intro-arte" src="/home/intro-mentor.webp" alt="Mentor Aprovum, de braços cruzados, pronto para começar" width={941} height={1672} fetchPriority="high" decoding="async" />
-          <div className="hm-intro-brasas" aria-hidden>
-            {BRASAS.map((b, i) => <i key={i} style={{ "--x": `${b.x}%`, "--y": `${b.y}%`, "--d": `${b.d}s`, "--a": `${b.a}s`, "--s": `${b.s}px` } as CSSProperties} />)}
-          </div>
           <button type="button" className="hm-intro-botao" onClick={comecar} disabled={etapa !== "espera"} aria-label="Começar a estudar">
             <span className="hm-intro-brilho" aria-hidden />
           </button>
