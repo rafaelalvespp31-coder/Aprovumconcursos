@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useSyncExternalStore, useTransition } from "react";
 import { Button, inputClass, Tag } from "@/components/ui";
 import { PERIOD_LABELS, type BillingPeriod, type PlanId, type PlanState } from "@/domain/plans/limits";
 import { ADMIN_OFFERS, OFFERS, OFFER_KEYS, offerName, offerStorage, storedOffer, type AdminOffer, type OfferKey } from "@/domain/plans/offers";
@@ -43,6 +43,15 @@ const studentOffer = (s: StudentItem): AdminOffer => storedOffer(s.planId, s.bil
 const paymentOffer = (p: { period: string; planId: string }): AdminOffer => (p.period === "vitalicio" ? "vitalicio" : p.planId === "free" ? "gratuito" : (p.period as OfferKey));
 const offerOption = (o: AdminOffer) => (o === "gratuito" ? `${offerName(o)} (1 aula e 5 questões por dia)` : `${offerName(o)} · ${OFFERS[o].price} ${OFFERS[o].per}`);
 
+/** md (768px) para cima mostra a tabela; abaixo disso, um cartão por aluno (a tabela de 920px não cabe no celular). */
+function useDesktop() {
+  return useSyncExternalStore(
+    (cb) => { const m = window.matchMedia("(min-width: 768px)"); m.addEventListener("change", cb); return () => m.removeEventListener("change", cb); },
+    () => window.matchMedia("(min-width: 768px)").matches,
+    () => true,
+  );
+}
+
 function StatusTag({ s }: { s: StudentItem }) {
   if (s.state === "ativo") {
     const d = daysLeft(s.periodEnd);
@@ -61,6 +70,7 @@ export function StudentsTable({ students, actions }: { students: StudentItem[]; 
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState<"todos" | "gratuito" | "pago" | "expirado" | "vencendo">("todos");
   const [open, setOpen] = useState<string | null>(null);
+  const desktop = useDesktop();
   const list = useMemo(() => {
     const t = q.trim().toLowerCase();
     const dig = t.replace(/\D/g, "");
@@ -85,8 +95,8 @@ export function StudentsTable({ students, actions }: { students: StudentItem[]; 
   return (
     <div className="mt-5">
       <div className="flex flex-wrap gap-2" role="search">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome, e-mail ou telefone" aria-label="Buscar por nome, e-mail ou telefone" className="min-h-10 min-w-[240px] flex-1 rounded-md border border-linha-forte px-3 t-small" />
-        <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} aria-label="Filtrar por plano" className="min-h-10 rounded-md border border-linha-forte px-3 t-small">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome, e-mail ou telefone" aria-label="Buscar por nome, e-mail ou telefone" className="min-h-11 w-full min-w-0 rounded-md border border-linha-forte px-3 t-small sm:min-h-10 sm:min-w-[240px] sm:flex-1 sm:w-auto" />
+        <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} aria-label="Filtrar por plano" className="min-h-11 w-full rounded-md border border-linha-forte px-3 t-small sm:min-h-10 sm:w-auto">
           <option value="todos">Todos</option>
           <option value="gratuito">Gratuitos</option>
           <option value="pago">Pagos ativos</option>
@@ -97,35 +107,44 @@ export function StudentsTable({ students, actions }: { students: StudentItem[]; 
       <p className="mt-2 t-small text-tinta-suave" data-testid="alunos-contagem">
         {list.length} de {students.length} aluno{students.length === 1 ? "" : "s"}
       </p>
-      <div className="mt-2 overflow-x-auto rounded-lg border border-linha">
-        <table className="w-full min-w-[920px] t-small">
-          <thead className="bg-nevoa text-left">
-            <tr>
-              <th className="px-3 py-2">Aluno</th>
-              <th className="px-3 py-2">Cadastro</th>
-              <th className="px-3 py-2">Plano adquirido</th>
-              <th className="px-3 py-2">Situação</th>
-              <th className="px-3 py-2">Vence em</th>
-              <th className="px-3 py-2">Último pagamento</th>
-              <th className="px-3 py-2">
-                <span className="sr-only">Ações</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-linha">
-            {list.map((s) => (
-              <StudentRowView key={s.id} s={s} open={open === s.id} onToggle={() => setOpen((o) => (o === s.id ? null : s.id))} actions={actions} />
-            ))}
-            {!list.length && (
+      {desktop ? (
+        <div className="mt-2 overflow-x-auto rounded-lg border border-linha">
+          <table className="w-full min-w-[920px] t-small">
+            <thead className="bg-nevoa text-left">
               <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-tinta-suave">
-                  Nenhum aluno encontrado.
-                </td>
+                <th className="px-3 py-2">Aluno</th>
+                <th className="px-3 py-2">Cadastro</th>
+                <th className="px-3 py-2">Plano adquirido</th>
+                <th className="px-3 py-2">Situação</th>
+                <th className="px-3 py-2">Vence em</th>
+                <th className="px-3 py-2">Último pagamento</th>
+                <th className="px-3 py-2">
+                  <span className="sr-only">Ações</span>
+                </th>
               </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody className="divide-y divide-linha">
+              {list.map((s) => (
+                <StudentRowView key={s.id} s={s} open={open === s.id} onToggle={() => setOpen((o) => (o === s.id ? null : s.id))} actions={actions} />
+              ))}
+              {!list.length && (
+                <tr>
+                  <td colSpan={7} className="px-3 py-6 text-center text-tinta-suave">
+                    Nenhum aluno encontrado.
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      ) : (
+        <ul className="mt-2 grid grid-cols-1 gap-3" data-testid="alunos-cards">
+          {list.map((s) => (
+            <StudentCard key={s.id} s={s} open={open === s.id} onToggle={() => setOpen((o) => (o === s.id ? null : s.id))} actions={actions} />
+          ))}
+          {!list.length && <li className="rounded-lg border border-linha px-3 py-6 text-center t-small text-tinta-suave">Nenhum aluno encontrado.</li>}
+        </ul>
+      )}
     </div>
   );
 }
@@ -182,6 +201,63 @@ function StudentRowView({ s, open, onToggle, actions }: { s: StudentItem; open: 
         </tr>
       )}
     </>
+  );
+}
+
+function Campo({ rotulo, children }: { rotulo: string; children: React.ReactNode }) {
+  return (
+    <div className="min-w-0">
+      <dt className="t-tiny font-semibold uppercase tracking-wide text-tinta-fraca">{rotulo}</dt>
+      <dd className="mt-0.5 break-words t-small">{children}</dd>
+    </div>
+  );
+}
+
+/** Um aluno no celular: tudo empilhado, sem rolagem lateral, botão grande para gerenciar. */
+function StudentCard({ s, open, onToggle, actions }: { s: StudentItem; open: boolean; onToggle: () => void; actions: StudentActions }) {
+  return (
+    <li className="min-w-0 rounded-lg border border-linha bg-superficie p-3" data-testid="aluno-card" data-aluno={s.email ?? s.id}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="break-words font-semibold">
+            {s.name || "(sem nome)"} {s.isAdmin && <Tag tone="azul">Admin</Tag>} {s.isGhost && <Tag tone="neutro">Fantasma</Tag>}
+          </p>
+          <p className="break-all t-tiny text-tinta-fraca">
+            {s.email ?? "—"}
+            {!s.confirmed && " · e-mail não confirmado"}
+          </p>
+        </div>
+        <div className="shrink-0"><StatusTag s={s} /></div>
+      </div>
+      <p className="mt-1 t-tiny text-tinta-fraca">
+        WhatsApp: {s.whatsapp ? <a href={`https://wa.me/${s.whatsapp}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-azul underline">{formatWhatsapp(s.whatsapp)}</a> : "não informado"}
+      </p>
+      <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2.5">
+        <Campo rotulo="Plano">
+          <span className="font-semibold">{offerName(studentOffer(s))}</span>
+          {s.billingPeriod && s.planId !== "free" && <span className="text-tinta-fraca"> · {PERIOD_LABELS[s.billingPeriod]}</span>}
+        </Campo>
+        <Campo rotulo="Vence em"><span className="tabular-nums">{s.planId === "free" ? "—" : s.periodEnd ? date(s.periodEnd) : "sem vencimento"}</span></Campo>
+        <Campo rotulo="Cadastro"><span className="tabular-nums">{date(s.createdAt)}</span></Campo>
+        <Campo rotulo="Último pagamento">
+          {s.lastPayment ? (
+            <>
+              <span className="tabular-nums">{date(s.lastPayment.paidAt)}</span>
+              <span className="block t-tiny text-tinta-fraca">{offerName(paymentOffer(s.lastPayment))} {money(s.lastPayment.amountCents)}</span>
+            </>
+          ) : "—"}
+        </Campo>
+        <div className="col-span-2"><Campo rotulo="Último acesso">{dateTime(s.lastSignInAt)}</Campo></div>
+      </dl>
+      <button type="button" onClick={onToggle} aria-expanded={open} className="mt-3 min-h-11 w-full rounded-md border border-linha-forte t-small font-semibold text-destaque" data-testid="gerenciar-aluno-card">
+        {open ? "Fechar" : "Gerenciar"}
+      </button>
+      {open && (
+        <div className="mt-3 rounded-md bg-nevoa p-3">
+          <ManagePanel s={s} actions={actions} />
+        </div>
+      )}
+    </li>
   );
 }
 
@@ -323,7 +399,7 @@ function ManagePanel({ s, actions }: { s: StudentItem; actions: StudentActions }
               {res.message}
               {res.password && (
                 <span className="ml-2 inline-flex items-center gap-2">
-                  <code className="rounded bg-tinta px-2 py-1 font-mono text-white" data-testid="senha-nova">
+                  <code className="break-all rounded bg-tinta px-2 py-1 font-mono text-white" data-testid="senha-nova">
                     {res.password}
                   </code>
                   <button type="button" className="t-tiny font-semibold text-destaque underline" onClick={() => void navigator.clipboard?.writeText(res.password!).catch(() => undefined)}>

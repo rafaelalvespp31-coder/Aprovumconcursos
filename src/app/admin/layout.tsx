@@ -4,11 +4,14 @@ import { requireAdmin } from "@/server/services/catalog";
 import { DisciplinesSync } from "@/components/disciplines-sync";
 import { ensureDisciplines } from "@/server/services/disciplines";
 import { Suspense } from "react";
+import type { Viewport } from "next";
 import { getAdminPendencias } from "@/server/services/admin-pendencias";
 import { PendenciasSino } from "@/components/admin/pendencias-sino";
 import { AssinaturaAviso } from "@/components/admin/assinatura-aviso";
 
 export const metadata = { title: "Administração" };
+// minimumScale 1: no iPhone, se alguma coisa passar da largura, a página não encolhe para caber (ficava "solta", com faixa branca).
+export const viewport: Viewport = { themeColor: "#000000", width: "device-width", initialScale: 1, minimumScale: 1, viewportFit: "cover" };
 
 const PEND_VAZIA = { total: 0, items: [] as Awaited<ReturnType<typeof getAdminPendencias>>["items"] };
 const nPend = (p: typeof PEND_VAZIA, key: string) => p.items.find((i) => i.key === key)?.count ?? 0;
@@ -35,17 +38,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const disciplines = await ensureDisciplines();
   return (
     <DisciplinesSync list={disciplines}>
-      <div className="min-h-dvh lg:flex">
+      <div className="min-h-dvh overflow-x-clip lg:flex">
         <Suspense fallback={<AdminNav badges={EMPTY_BADGES} />}>
           <MenuComAvisos />
         </Suspense>
-        <div className="adm min-w-0 flex-1">
-          <div className="flex items-center justify-end gap-3 border-b border-linha bg-white/80 px-5 py-2.5 backdrop-blur">
+        <div className="adm min-w-0 flex-1 overflow-x-clip">
+          <div className="flex items-center justify-end gap-3 border-b border-linha bg-white/80 px-4 py-2.5 backdrop-blur sm:px-5">
             <Suspense fallback={null}>
               <BarraSuperior />
             </Suspense>
           </div>
-          <main className="mx-auto max-w-6xl px-5 py-8">{children}</main>
+          <main className="mx-auto max-w-6xl px-4 py-6 sm:px-5 sm:py-8">{children}</main>
         </div>
       </div>
     </DisciplinesSync>

@@ -236,7 +236,7 @@ export function MensagensEquipe({ threads, students, reply, markRead, seen }: { 
   return (
     <section id="mensagens" className="mt-4 scroll-mt-20" data-testid="mensagens-equipe">
       <h2 className="t-small font-bold">Chat com os alunos <span className="font-normal text-tinta-fraca">· {onlineN} online agora{naoLidas > 0 ? ` · ${naoLidas} com mensagem nova` : ""}</span></h2>
-      <div className="mt-2 flex h-[min(78vh,680px)] overflow-hidden rounded-lg border" style={{ borderColor: "#d1d7db", background: "#fff" }}>
+      <div className="mt-2 flex h-[min(78dvh,680px)] overflow-hidden rounded-lg border" style={{ borderColor: "#d1d7db", background: "#fff" }}>
         <aside className={`${atual ? "hidden md:flex" : "flex"} w-full min-w-0 flex-col md:w-[360px] md:shrink-0 md:border-r`} style={{ borderColor: "#e9edef" }}>
           <div className="flex flex-col gap-2 px-3 py-2" style={{ background: "#fff" }}>
             <label className="flex items-center gap-3 rounded-lg px-3" style={{ background: "#f0f2f5" }}>

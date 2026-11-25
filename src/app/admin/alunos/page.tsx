@@ -42,7 +42,7 @@ export default async function StudentsPage() {
             ["Expirados", count.expirados],
           ] as const
         ).map(([label, n]) => (
-          <div key={label} className="rounded-lg border border-linha bg-superficie p-3">
+          <div key={label} className="rounded-lg border border-linha bg-superficie p-3 last:col-span-2 sm:last:col-span-1">
             <dt className="t-tiny font-semibold uppercase tracking-wide text-tinta-fraca">{label}</dt>
             <dd className="mt-1 text-2xl font-extrabold tabular-nums">{n}</dd>
           </div>
