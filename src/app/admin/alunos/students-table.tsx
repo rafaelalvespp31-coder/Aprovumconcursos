@@ -85,8 +85,8 @@ export function StudentsTable({ students, actions }: { students: StudentItem[]; 
   return (
     <div className="mt-5">
       <div className="flex flex-wrap gap-2" role="search">
-        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome, e-mail ou telefone" aria-label="Buscar por nome, e-mail ou telefone" className="min-h-10 min-w-[240px] flex-1 rounded-md border border-linha-forte px-3 t-small" />
-        <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} aria-label="Filtrar por plano" className="min-h-10 rounded-md border border-linha-forte px-3 t-small">
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Buscar por nome, e-mail ou telefone" aria-label="Buscar por nome, e-mail ou telefone" className="min-h-11 w-full min-w-0 flex-1 rounded-md border border-linha-forte bg-white px-3 text-base sm:min-w-[240px] sm:text-sm" />
+        <select value={filter} onChange={(e) => setFilter(e.target.value as typeof filter)} aria-label="Filtrar por plano" className="min-h-11 w-full rounded-md border border-linha-forte bg-white px-3 text-base sm:w-auto sm:text-sm">
           <option value="todos">Todos</option>
           <option value="gratuito">Gratuitos</option>
           <option value="pago">Pagos ativos</option>
@@ -97,8 +97,14 @@ export function StudentsTable({ students, actions }: { students: StudentItem[]; 
       <p className="mt-2 t-small text-tinta-suave" data-testid="alunos-contagem">
         {list.length} de {students.length} aluno{students.length === 1 ? "" : "s"}
       </p>
-      <div className="mt-2 overflow-x-auto rounded-lg border border-linha">
-        <table className="w-full min-w-[920px] t-small">
+      <ul className="mt-2 grid gap-3 md:hidden" data-testid="alunos-cards">
+        {list.map((s) => (
+          <StudentCard key={s.id} s={s} open={open === s.id} onToggle={() => setOpen((o) => (o === s.id ? null : s.id))} actions={actions} />
+        ))}
+        {!list.length && <li className="rounded-lg border border-linha bg-superficie px-3 py-6 text-center t-small text-tinta-suave">Nenhum aluno encontrado.</li>}
+      </ul>
+      <div className="mt-2 hidden overflow-x-auto rounded-lg border border-linha md:block">
+        <table className="w-full min-w-[820px] t-small">
           <thead className="bg-nevoa text-left">
             <tr>
               <th className="px-3 py-2">Aluno</th>
@@ -127,6 +133,49 @@ export function StudentsTable({ students, actions }: { students: StudentItem[]; 
         </table>
       </div>
     </div>
+  );
+}
+
+function StudentCard({ s, open, onToggle, actions }: { s: StudentItem; open: boolean; onToggle: () => void; actions: StudentActions }) {
+  const linha = (rotulo: string, valor: React.ReactNode) => (
+    <div className="flex items-baseline justify-between gap-3">
+      <dt className="shrink-0 t-tiny font-semibold uppercase tracking-wide text-tinta-fraca">{rotulo}</dt>
+      <dd className="min-w-0 text-right t-small">{valor}</dd>
+    </div>
+  );
+  return (
+    <li className="min-w-0 rounded-lg border border-linha bg-superficie p-3" data-testid="aluno-card" data-aluno={s.email ?? s.id}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="break-words font-semibold">
+            {s.name || "(sem nome)"} {s.isAdmin && <Tag tone="azul">Admin</Tag>} {s.isGhost && <Tag tone="neutro">Fantasma</Tag>}
+          </p>
+          <p className="break-all t-tiny text-tinta-fraca">
+            {s.email ?? "—"}
+            {!s.confirmed && " · e-mail não confirmado"}
+          </p>
+        </div>
+        <StatusTag s={s} />
+      </div>
+      <p className="mt-1 t-tiny text-tinta-fraca" data-testid="aluno-card-whatsapp">
+        WhatsApp: {s.whatsapp ? <a href={`https://wa.me/${s.whatsapp}`} target="_blank" rel="noopener noreferrer" className="font-semibold text-azul underline">{formatWhatsapp(s.whatsapp)}</a> : "não informado"}
+      </p>
+      <dl className="mt-2 grid gap-1 border-t border-linha pt-2">
+        {linha("Plano", <><span className="font-semibold">{offerName(studentOffer(s))}</span>{s.billingPeriod && s.planId !== "free" && <span className="text-tinta-fraca"> · {PERIOD_LABELS[s.billingPeriod]}</span>}</>)}
+        {linha("Cadastro", date(s.createdAt))}
+        {linha("Vence em", s.planId === "free" ? "—" : s.periodEnd ? date(s.periodEnd) : "sem vencimento")}
+        {linha("Último acesso", dateTime(s.lastSignInAt))}
+        {linha("Último pagto.", s.lastPayment ? `${date(s.lastPayment.paidAt)} · ${offerName(paymentOffer(s.lastPayment))} ${money(s.lastPayment.amountCents)}` : "—")}
+      </dl>
+      <button type="button" onClick={onToggle} aria-expanded={open} className="mt-3 min-h-11 w-full rounded-md border border-linha-forte t-small font-semibold text-destaque" data-testid="gerenciar-aluno-card">
+        {open ? "Fechar" : "Gerenciar"}
+      </button>
+      {open && (
+        <div className="-mx-3 -mb-3 mt-3 rounded-b-lg bg-nevoa px-3 py-4">
+          <ManagePanel s={s} actions={actions} />
+        </div>
+      )}
+    </li>
   );
 }
 

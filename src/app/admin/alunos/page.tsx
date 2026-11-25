@@ -32,7 +32,7 @@ export default async function StudentsPage() {
       <OnlineAgora />
       <AlunosNotificacoes initial={atividade} />
       <MensagensEquipe students={students.filter((s) => !s.isAdmin).map((s) => ({ id: s.id, name: s.name, email: s.email, ghost: s.isGhost }))} threads={threads} reply={replyTeamAction} markRead={markTeamReadAction} seen={seenTeamAction} />
-      <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-5" data-testid="alunos-resumo">
+      <dl className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5" data-testid="alunos-resumo">
         {(
           [
             ["Cadastrados", count.total],
@@ -42,7 +42,7 @@ export default async function StudentsPage() {
             ["Expirados", count.expirados],
           ] as const
         ).map(([label, n]) => (
-          <div key={label} className="rounded-lg border border-linha bg-superficie p-3">
+          <div key={label} className="min-w-0 rounded-lg border border-linha bg-superficie p-3 last:odd:col-span-2 sm:last:odd:col-span-1">
             <dt className="t-tiny font-semibold uppercase tracking-wide text-tinta-fraca">{label}</dt>
             <dd className="mt-1 text-2xl font-extrabold tabular-nums">{n}</dd>
           </div>

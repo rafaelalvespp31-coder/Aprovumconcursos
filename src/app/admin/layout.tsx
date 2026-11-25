@@ -35,17 +35,17 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const disciplines = await ensureDisciplines();
   return (
     <DisciplinesSync list={disciplines}>
-      <div className="min-h-dvh lg:flex">
+      <div className="min-h-dvh w-full max-w-[100vw] overflow-x-clip lg:flex">
         <Suspense fallback={<AdminNav badges={EMPTY_BADGES} />}>
           <MenuComAvisos />
         </Suspense>
-        <div className="adm min-w-0 flex-1">
-          <div className="flex items-center justify-end gap-3 border-b border-linha bg-white/80 px-5 py-2.5 backdrop-blur">
+        <div className="adm min-w-0 w-full flex-1">
+          <div className="flex items-center justify-end gap-3 border-b border-linha bg-white/80 px-4 py-2.5 backdrop-blur sm:px-5">
             <Suspense fallback={null}>
               <BarraSuperior />
             </Suspense>
           </div>
-          <main className="mx-auto max-w-6xl px-5 py-8">{children}</main>
+          <main className="mx-auto w-full min-w-0 max-w-6xl px-4 py-5 sm:px-5 sm:py-8">{children}</main>
         </div>
       </div>
     </DisciplinesSync>
