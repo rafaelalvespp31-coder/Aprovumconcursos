@@ -28,14 +28,13 @@
 /* cartão do Mentor */
 .at-mentor { cursor: default; border: 1.5px solid #e10600; background: #0b0506; box-shadow: 0 0 0 1px #000, 0 0 14px rgb(225 6 0 / 0.55), inset 0 0 14px rgb(225 6 0 / 0.3); }
 .at-mentor::after { display: none; }
-.at-mentor-arte { position: absolute; left: 0; top: 0; width: 100%; height: 74%; object-fit: cover; object-position: 50% 8%; }
+.at-mentor-arte { position: absolute; left: 0; top: 0; width: 100%; height: 76%; pointer-events: none; background: radial-gradient(circle at 50% 50%, rgb(225 6 0 / 0.22), transparent 70%); }
+.at-mentor-arte .mo-caixa { width: 100%; height: 100%; }
 .at-mentor::before { content: ""; position: absolute; inset: 40% 0 0; z-index: 0; background: linear-gradient(180deg, transparent, rgb(0 0 0 / 0.85)); pointer-events: none; }
 .at-mentor b { color: #fff; text-shadow: 0 1px 6px rgb(0 0 0 / 0.9); }
 .at-mentor .at-seta { color: #fff; background: radial-gradient(circle at 35% 30%, #ff4a3a, #d10a00 75%); border-color: #ff8a80; box-shadow: 0 0 8px rgb(255 30 20 / 0.7); cursor: pointer; }
 .at-mentor-orbe { position: absolute; left: 50%; top: 3px; z-index: 1; width: 50px; height: 50px; transform: translateX(-50%); display: grid; place-items: center; }
 .at-mentor-orbe > * { opacity: 0; }
-.at-mentor.is-on .at-mentor-orbe > * { opacity: 1; }
-.at-mentor.is-on .at-mentor-arte { filter: brightness(0.5); }
 .at-mentor-orbe button { cursor: pointer; }
 
 /* celular: os cinco cartões dividem a largura, sem rolar para o lado */
