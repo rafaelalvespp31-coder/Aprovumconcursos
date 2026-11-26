@@ -5,7 +5,6 @@ import { ArrowRight } from "lucide-react";
 import { formatHMS } from "@/domain/study-clock";
 import { useStudyClock } from "@/components/pastel/use-study-clock";
 import { VozOnda } from "./voz-onda";
-import { MentorOrbita } from "@/components/missao/mentor-orbita";
 import "./aula-topo.css";
 
 type Ferr = {
@@ -69,8 +68,8 @@ export const AulaFerramentas = forwardRef<HTMLDivElement, AulaFerramentasProps>(
         <Cartao f={pdf} />
         <Cartao f={lousas} />
         <div className={`at-cartao at-mentor ${mentorAtivo ? "is-on" : ""}`}>
-          {/* a mesma esfera da Central de Missão: disco preto com o anel de fogo, que acompanha a voz do Mentor */}
-          <div className="at-mentor-arte" aria-hidden><MentorOrbita energia={0} voz={0} conn="live" fonte={level} /></div>
+          {/* a mesma esfera da Central de Missão (gravada da própria cena: anel de fogo e fumaça), em laço contínuo */}
+          <video className={`at-esfera ${mentorFala ? "is-fala" : ""}`} src="/home/aula-topo/esfera.mp4" poster="/home/aula-topo/esfera.webp" autoPlay loop muted playsInline preload="auto" aria-hidden tabIndex={-1} />
           <div className="at-mentor-orbe">{mentor}</div>
           <b>Mentor</b>
           <button type="button" className="at-seta at-seta-v" onClick={onMentor} aria-label={mentorAtivo ? "Encerrar conversa com o Mentor" : "Falar com o Mentor"}><ArrowRight strokeWidth={2.4} aria-hidden /></button>
