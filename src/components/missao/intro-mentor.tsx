@@ -4,69 +4,14 @@ import { useCallback, useEffect, useRef, useState, type CSSProperties, type Poin
 import { COOKIE_INTRO } from "./intro-constantes";
 import "./intro-mentor.css";
 
-/** Neon do ícone de play: coordenadas em que o anel desenhado na arte tem raio 100 e o centro é (0,0). */
-function NeonPlay() {
-  return (
-    <svg className="hm-neon" viewBox="-125 -125 250 250" aria-hidden focusable="false">
-      <defs>
-        <filter id="hmn-glow" x="-60%" y="-60%" width="220%" height="220%" colorInterpolationFilters="sRGB">
-          <feGaussianBlur in="SourceGraphic" stdDeviation="1.4" result="a" />
-          <feGaussianBlur in="SourceGraphic" stdDeviation="4.5" result="b" />
-          <feGaussianBlur in="SourceGraphic" stdDeviation="11" result="c" />
-          <feMerge><feMergeNode in="c" /><feMergeNode in="b" /><feMergeNode in="a" /><feMergeNode in="SourceGraphic" /></feMerge>
-        </filter>
-        <radialGradient id="hmn-bloom" r="50%">
-          <stop offset="0" stopColor="#ff2a35" stopOpacity="0.34" />
-          <stop offset="0.55" stopColor="#ff2a35" stopOpacity="0.12" />
-          <stop offset="1" stopColor="#ff2a35" stopOpacity="0" />
-        </radialGradient>
-        <linearGradient id="hmn-radar" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0" stopColor="#ff3b44" stopOpacity="0" />
-          <stop offset="1" stopColor="#ff6a5c" stopOpacity="0.55" />
-        </linearGradient>
-        <linearGradient id="hmn-fill" x1="0" y1="0" x2="1" y2="0.4">
-          <stop offset="0" stopColor="#ff3b44" stopOpacity="0.05" />
-          <stop offset="1" stopColor="#ff6a5c" stopOpacity="0.4" />
-        </linearGradient>
-      </defs>
-
-      <circle className="hm-neon-bloom" r="165" fill="url(#hmn-bloom)" />
-      <circle className="hm-neon-pulso" r="64" />
-      <circle className="hm-neon-pulso hm-neon-pulso-2" r="64" />
-
-      {/* anel externo de marcas e arcos que giram em sentidos opostos */}
-      <circle className="hm-neon-marcas" r="116" pathLength="120" />
-      <circle className="hm-neon-arcos" r="109" pathLength="100" />
-
-      {/* radar interno, anel de segmentos e faíscas em órbitas diferentes */}
-      <path className="hm-neon-radar" d="M0 0 L88 0 A88 88 0 0 0 62.2 -62.2 Z" fill="url(#hmn-radar)" />
-      <circle className="hm-neon-segmentos" r="80" pathLength="100" />
-      <g className="hm-neon-faisca hm-neon-f1"><circle cx="92" cy="0" r="1.8" /></g>
-      <g className="hm-neon-faisca hm-neon-f2"><circle cx="-76" cy="0" r="1.4" /></g>
-      <g className="hm-neon-faisca hm-neon-f3"><circle cx="0" cy="-122" r="2" /></g>
-      <g className="hm-neon-faisca hm-neon-f4"><circle cx="0" cy="104" r="1.3" /></g>
-
-      {/* arco de varredura com cauda e o ponto que orbita */}
-      <g className="hm-neon-varre" filter="url(#hmn-glow)">
-        <circle className="hm-neon-cauda" r="100" pathLength="100" />
-        <circle className="hm-neon-arco" r="100" pathLength="100" />
-        <circle className="hm-neon-ponto" cx="100" cy="0" r="3.4" />
-      </g>
-
-      {/* triângulo em tubo de neon: contorno aceso, luz que corre e falha rara de tensão */}
-      <g className="hm-neon-play" filter="url(#hmn-glow)">
-        <polygon className="hm-neon-miolo" points="-15,-47 59,-5 -15,42" />
-        <polygon className="hm-neon-tubo" points="-15,-47 59,-5 -15,42" />
-        <polygon className="hm-neon-corre" points="-15,-47 59,-5 -15,42" pathLength="100" />
-      </g>
-    </svg>
-  );
-}
+/** Instante (s) em que a placa "Começar a estudar" já está inteira na tela e o botão passa a valer. */
+const PLACA_PRONTA = 5.4;
 
 /**
- * Abertura antes da Central: o retrato e o "Começar a estudar". O homem responde ao mouse e ao dedo (inclina em 3D, a luz
- * vermelha o acompanha, o toque solta uma onda) e o botão reage com luz, inclinação e ímã. Ao tocar no botão, a câmera
- * avança contra o rosto, a onda de choque sai do botão, o clarão vermelho cobre a tela e a Central emerge do preto.
+ * Abertura antes da Central, em vídeo (8 s): o Mentor de braços cruzados ergue a placa "Começar a estudar", que fica na tela.
+ * Entra em modo cinema (barras que abrem, vinheta, grão de filme, dolly lento). A placa é o botão: ao tocar nela, a câmera
+ * avança contra o rosto, a onda de choque sai da placa, o clarão vermelho cobre a tela e a Central (caveira com a esfera) emerge do preto.
+ * Sem autoplay (ou com movimento reduzido) mostra o último quadro, já com a placa ativa.
  */
 export function IntroMentor({ aoRevelar, aoFim }: { aoRevelar: () => void; aoFim: () => void }) {
   const [etapa, setEtapa] = useState<"espera" | "indo" | "revela">("espera");
@@ -74,6 +19,10 @@ export function IntroMentor({ aoRevelar, aoFim }: { aoRevelar: () => void; aoFim
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
   const cenaRef = useRef<HTMLDivElement>(null);
   const botaoRef = useRef<HTMLButtonElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [pronto, setPronto] = useState(false); // primeiro quadro do vídeo na tela: a abertura "acende"
+  const [placa, setPlaca] = useState(false); // placa inteira: o botão vale
+  const [estatico, setEstatico] = useState(false); // sem vídeo (movimento reduzido ou autoplay barrado): vale o último quadro
   const etapaRef = useRef(etapa);
   useEffect(() => { etapaRef.current = etapa; }, [etapa]);
   const idOnda = useRef(0);
@@ -108,6 +57,21 @@ export function IntroMentor({ aoRevelar, aoFim }: { aoRevelar: () => void; aoFim
     }
     if (!m.raf) m.raf = requestAnimationFrame(quadro);
   }, [pintar]);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    const parar = () => { v.pause(); setEstatico(true); setPronto(true); setPlaca(true); };
+    let t: ReturnType<typeof setTimeout>;
+    if (reduzido()) {
+      t = setTimeout(parar, 0);
+    } else {
+      v.muted = true;
+      v.play().catch(() => { t = setTimeout(parar, 0); }); // autoplay barrado: fica o último quadro, com a placa ativa
+      t = setTimeout(() => setPronto(true), 2800); // rede lenta: não segura a tela preta
+    }
+    return () => clearTimeout(t);
+  }, []);
 
   useEffect(() => {
     const t = timers.current;
@@ -193,7 +157,7 @@ export function IntroMentor({ aoRevelar, aoFim }: { aoRevelar: () => void; aoFim
   };
 
   return (
-    <div className="hm-intro" data-etapa={etapa} role="region" aria-label="Abertura">
+    <div className="hm-intro" data-etapa={etapa} data-pronto={pronto ? "" : undefined} data-estatico={estatico ? "" : undefined} role="region" aria-label="Abertura">
       <div className="hm-intro-fundo" aria-hidden />
       {/* só em tela larga: o lema à esquerda e o que o app faz à direita, para a abertura ocupar a tela toda */}
       <div className="hm-intro-lado hm-intro-lado-e" aria-hidden>
@@ -218,19 +182,40 @@ export function IntroMentor({ aoRevelar, aoFim }: { aoRevelar: () => void; aoFim
       >
         <div className="hm-intro-zoom">
           <div className="hm-intro-retrato">
-            {/* eslint-disable-next-line @next/next/no-img-element -- arte fixa da abertura; WebP já otimizado em public/home */}
-            <img className="hm-intro-arte" src="/home/intro-mentor.webp" alt="Mentor Aprovum, de braços cruzados, pronto para começar" width={941} height={1672} fetchPriority="high" decoding="async" draggable={false} />
+            <video
+              ref={videoRef}
+              className="hm-intro-arte"
+              src="/home/abertura/mentor.mp4"
+              poster="/home/abertura/poster.webp"
+              muted
+              playsInline
+              autoPlay
+              preload="auto"
+              aria-label="Mentor Aprovum ergue a placa Começar a estudar"
+              onLoadedData={() => setPronto(true)}
+              onTimeUpdate={(e) => { if (e.currentTarget.currentTime >= PLACA_PRONTA) setPlaca(true); }}
+              onEnded={() => setPlaca(true)}
+              onError={() => { setPronto(true); setPlaca(true); }}
+            />
+            {/* último quadro por baixo: se o vídeo falhar ou o navegador não tocar, a placa continua aparecendo */}
+            <div className="hm-intro-final" aria-hidden />
             <div className="hm-intro-luzhomem" aria-hidden />
           </div>
           {ondas.map((w) => <i key={w.id} className="hm-intro-toque" aria-hidden style={{ left: w.x, top: w.y }} />)}
-          <button ref={botaoRef} type="button" className="hm-intro-botao" onClick={comecar} disabled={etapa !== "espera"} aria-label="Começar a estudar"
+          <button ref={botaoRef} type="button" className="hm-intro-botao" data-pronto={placa ? "" : undefined} onClick={comecar} disabled={etapa !== "espera" || !placa} aria-label="Começar a estudar"
             onPointerMove={botaoMover} onPointerDown={botaoMover} onPointerLeave={botaoSair}>
             <span className="hm-intro-brilho" aria-hidden />
             <span className="hm-intro-luz" aria-hidden />
-            <span className="hm-intro-icone" aria-hidden><NeonPlay /></span>
+            <span className="hm-intro-pulso" aria-hidden />
           </button>
         </div>
       </div>
+      {/* modo cinema: vinheta, grão de filme, reflexo e barras que se abrem quando o primeiro quadro chega */}
+      <div className="hm-intro-cine" data-pronto={pronto ? "" : undefined} aria-hidden>
+        <i className="hm-cine-vinheta" /><i className="hm-cine-graos" /><i className="hm-cine-reflexo" />
+        <i className="hm-cine-faixa hm-cine-faixa-c" /><i className="hm-cine-faixa hm-cine-faixa-b" />
+      </div>
+      {etapa === "espera" && !placa && <button type="button" className="hm-intro-pular" onClick={() => setPlaca(true)}>Pular</button>}
       <div className="hm-intro-linhas" aria-hidden />
       <div className="hm-intro-onda" aria-hidden />
       <div className="hm-intro-clarao" aria-hidden />
