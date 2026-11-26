@@ -3,8 +3,6 @@ import type { Bands } from "@/components/mentor/skull-orb-fx";
 export interface AlvosVozRadio {
   /** raiz da barra: recebe --v (volume 0..1) e --b0..--b4 (energia por cartão, como um equalizador) */
   raiz: HTMLElement;
-  /** osciloscópio que atravessa os cartões */
-  canvas: HTMLCanvasElement;
   /** esfera do Mentor: escala, brilho e deformação seguem a voz */
   esfera: HTMLVideoElement | null;
   turbulencia: SVGFETurbulenceElement | null;
@@ -23,21 +21,29 @@ const HZ = 90; // amostras por segundo (velocidade com que a onda corre, igual e
  * para os cartões acenderem em vermelho no ritmo de cada faixa de frequência. Devolve a função que desliga tudo.
  */
 export function iniciarVozRadio(a: AlvosVozRadio): () => void {
-  const ctx = a.canvas.getContext("2d");
-  if (!ctx) return () => {};
   const reduzido = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-  let w = 0, h = 0, dpr = 1;
+  // um canvas dentro de cada cartão (atrás do texto): a onda é uma só, contínua, e cada cartão mostra o seu pedaço
+  const cards = Array.from(a.raiz.querySelectorAll<HTMLCanvasElement>("canvas.at-radio"));
+  if (!cards.length) return () => {};
+  type P = { cv: HTMLCanvasElement; ctx: CanvasRenderingContext2D; x0: number; w: number; h: number };
+  const parts: P[] = [];
+  for (const cv of cards) { const c = cv.getContext("2d"); if (c) parts.push({ cv, ctx: c, x0: 0, w: 0, h: 0 }); }
+  let totalW = 0, dpr = 1;
   const ajustar = () => {
-    const r = a.canvas.getBoundingClientRect();
     dpr = Math.min(2, window.devicePixelRatio || 1);
-    w = r.width; h = r.height;
-    a.canvas.width = Math.max(1, Math.round(w * dpr));
-    a.canvas.height = Math.max(1, Math.round(h * dpr));
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const gr = (a.raiz.querySelector(".at-grade") as HTMLElement).getBoundingClientRect();
+    totalW = gr.width;
+    for (const p of parts) {
+      const r = p.cv.getBoundingClientRect();
+      p.x0 = r.left - gr.left; p.w = r.width; p.h = r.height;
+      p.cv.width = Math.max(1, Math.round(r.width * dpr));
+      p.cv.height = Math.max(1, Math.round(r.height * dpr));
+      p.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
   };
   ajustar();
   const ro = new ResizeObserver(ajustar);
-  ro.observe(a.canvas);
+  ro.observe(a.raiz);
 
   // suavização: sobe rápido (ataque), desce devagar (soltura), para não "piscar"
   let vol = 0, low = 0, mid = 0, high = 0, picos = 0;
@@ -45,7 +51,6 @@ export function iniciarVozRadio(a: AlvosVozRadio): () => void {
   let acum = 0, total = 0, last = 0, raf = 0, t0 = 0, vivo = true;
   const suave = (atual: number, alvo: number, dt: number) => atual + (alvo - atual) * (1 - Math.exp(-dt * (alvo > atual ? 24 : 7)));
   // ruído determinístico barato (sem Math.random por amostra: o traçado não "tremelica" sozinho)
-  const ruido = (n: number) => { const x = Math.sin(n * 127.1 + 311.7) * 43758.5453; return (x - Math.floor(x)) * 2 - 1; };
 
   const frame = (ts: number) => {
     if (!vivo) return;
@@ -79,7 +84,7 @@ export function iniciarVozRadio(a: AlvosVozRadio): () => void {
 
     // ---- histórico do áudio: uma amostra por 1/HZ s (a onda corre da direita para a esquerda) ----
     acum += dt;
-    const n = Math.ceil(w / PASSO) + 2;
+    const n = Math.ceil(totalW / PASSO) + 2;
     while (acum >= 1 / HZ) {
       acum -= 1 / HZ;
       hist.push({ v: vol, l: low, m: mid, h: high });
@@ -87,46 +92,52 @@ export function iniciarVozRadio(a: AlvosVozRadio): () => void {
       if (hist.length > n) hist.shift();
     }
 
-    // ---- desenho ----
-    ctx.clearRect(0, 0, w, h);
-    const cy = h / 2;
-    const maxA = h * 0.46;
-    const tracado = (escala: number, fase: number, largura: number, cor: string, alfa: number, brilho: number) => {
-      ctx.beginPath();
-      const k0 = n - hist.length;
-      for (let i = 0; i < n; i++) {
-        const x = i * PASSO;
-        const smp = hist[i - k0];
-        const v = smp ? smp.v : 0, l = smp ? smp.l : 0, m = smp ? smp.m : 0, hh = smp ? smp.h : 0;
-        const ph = (i - k0 + total) + fase;
-        // sinal de rádio: três portadoras (grave larga, média, aguda fina) com modulação de amplitude pela voz + chiado
-        const sinal = l * 0.9 * Math.sin(ph * 0.17 + l * 2.2) + m * 0.75 * Math.sin(ph * 0.46 + 1.1) * (0.6 + 0.4 * Math.sin(ph * 0.05)) + hh * 0.55 * Math.sin(ph * 1.15 + 2.4) + ruido(ph) * (0.05 + hh * 0.35);
-        const env = Math.min(1, v * 1.5);
-        const y = cy + sinal * env * maxA * escala + ruido(ph * 0.37) * 0.5;
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      }
-      ctx.lineWidth = largura;
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = cor;
-      ctx.globalAlpha = alfa;
-      ctx.shadowColor = "rgba(255,40,24,0.9)";
-      ctx.shadowBlur = brilho;
-      ctx.stroke();
+    // ---- desenho: a mesma onda atravessa os cartões, por dentro de cada um (o vão entre eles fica vazio) ----
+    const fala = a.raiz.classList.contains("is-fala");
+    const nTot = Math.ceil(totalW / PASSO) + 2;
+    const k0 = nTot - hist.length;
+    const amostra = (i: number) => {
+      // média de 5 amostras vizinhas: traço suave, sem serrilhado
+      let v = 0, l = 0, m = 0, hh = 0, c = 0;
+      for (let d = -2; d <= 2; d++) { const q = hist[i + d - k0]; if (q) { v += q.v; l += q.l; m += q.m; hh += q.h; c++; } }
+      return c ? { v: v / 5, l: l / 5, m: m / 5, h: hh / 5 } : null;
     };
-    const ativo = vol > 0.015 || picos > 0.02;
-    // portadora parada (linha de rádio ligada, sem voz): linha fina com chiado
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
-    if (!ativo) {
-      ctx.beginPath();
-      for (let i = 0; i < n; i++) { const y = cy + ruido(i + total) * 0.9; if (i === 0) ctx.moveTo(0, y); else ctx.lineTo(i * PASSO, y); }
-      ctx.lineWidth = 1; ctx.strokeStyle = "rgba(120,0,0,0.55)"; ctx.stroke();
-    } else {
-      tracado(0.55, 37, 1, "#ffb4a8", 0.45, 6);          // eco fraco, fase deslocada
-      tracado(1, 0, 4.2, "rgba(110,0,0,1)", 0.5, 0);     // contorno escuro (aparece sobre o cartão claro e o vermelho)
-      tracado(1, 0, 2.2, "#ff2a1c", 1, 12);              // corpo vermelho com brilho
-      tracado(1, 0, 1, "#fff4f0", 0.95, 4);              // núcleo quente
+    const sinalEm = (i: number, escala: number, fase: number) => {
+      const smp = amostra(i);
+      const ph = i + total + fase;
+      const respira = Math.sin(ts / 900 + i * 0.03) * 0.05; // linha de rádio ligada, mesmo sem voz
+      if (!smp) return respira;
+      const sinal = smp.l * 0.95 * Math.sin(ph * 0.11 + smp.l * 1.6)
+        + smp.m * 0.7 * Math.sin(ph * 0.29 + 1.1) * (0.65 + 0.35 * Math.sin(ph * 0.045))
+        + smp.h * 0.4 * Math.sin(ph * 0.7 + 2.4);
+      return respira + sinal * Math.min(1, smp.v * 1.6) * escala;
+    };
+    for (const p of parts) {
+      const { ctx, w, h, x0 } = p;
+      ctx.clearRect(0, 0, w, h);
+      const cy = h * 0.46, maxA = h * 0.3;
+      const passo = Math.max(PASSO, 2);
+      const camada = (escala: number, fase: number, largura: number, cor: string, alfa: number, brilho: number, glow: string) => {
+        ctx.beginPath();
+        for (let x = 0; x <= w + 0.5; x += passo) {
+          const i = Math.round((x0 + x) / PASSO);
+          const y = cy + sinalEm(i, escala, fase) * maxA;
+          if (x === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.lineWidth = largura; ctx.lineJoin = "round"; ctx.lineCap = "round";
+        ctx.strokeStyle = cor; ctx.globalAlpha = alfa; ctx.shadowColor = glow; ctx.shadowBlur = brilho;
+        ctx.stroke();
+      };
+      const forte = Math.min(1, picos * 1.4);
+      if (fala) {
+        camada(1.25, 60, 7, "rgba(255,120,100,1)", 0.12 + forte * 0.12, 0, "transparent"); // halo largo e suave
+        camada(0.6, 140, 1, "rgba(255,225,215,1)", 0.45, 6, "rgba(255,150,130,0.8)");     // fio de eco
+        camada(1, 0, 2.2, "rgba(255,255,255,1)", 0.96, 10 + forte * 10, "rgba(255,140,120,0.95)"); // fio principal, quase branco
+      } else {
+        camada(1, 0, 1.6, "rgba(225,6,0,1)", 0.75, 6, "rgba(225,6,0,0.5)");
+      }
+      ctx.globalAlpha = 1; ctx.shadowBlur = 0;
     }
-    ctx.globalAlpha = 1; ctx.shadowBlur = 0;
     raf = requestAnimationFrame(frame);
   };
   raf = requestAnimationFrame(frame);
@@ -135,7 +146,7 @@ export function iniciarVozRadio(a: AlvosVozRadio): () => void {
     vivo = false;
     cancelAnimationFrame(raf);
     ro.disconnect();
-    ctx.clearRect(0, 0, w, h);
+    for (const p of parts) p.ctx.clearRect(0, 0, p.w, p.h);
     const s = a.raiz.style;
     s.removeProperty("--v");
     for (let i = 0; i < 5; i++) s.removeProperty(`--b${i}`);

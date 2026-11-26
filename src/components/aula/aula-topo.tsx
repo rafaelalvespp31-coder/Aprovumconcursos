@@ -42,9 +42,10 @@ const Img = ({ n, className }: { n: string; className?: string }) => (
   <img className={className} src={`/home/aula-topo/${n}.webp`} alt="" decoding="async" draggable={false} />
 );
 
-function Cartao({ f, i }: { f: Ferr; i: number }) {
+function Cartao({ f, i, radio }: { f: Ferr; i: number; radio?: boolean }) {
   return (
     <button type="button" className={`at-cartao ${f.ligado ? "is-on" : ""}`} style={{ "--bi": `var(--b${i}, 0)` } as React.CSSProperties} onMouseDown={(e) => e.preventDefault()} onClick={f.onClick} aria-label={f.aria} aria-expanded={f.expandido} title={f.tip} data-testid={f.testid}>
+      {radio ? <canvas className="at-radio" aria-hidden /> : null}
       <Img n={f.arte} className="at-cartao-arte" />
       <b>{f.titulo}</b>
       <span className="at-seta" aria-hidden><ArrowRight strokeWidth={2.4} /></span>
@@ -60,7 +61,6 @@ function Cartao({ f, i }: { f: Ferr; i: number }) {
  */
 export const AulaFerramentas = forwardRef<HTMLDivElement, AulaFerramentasProps>(function AulaFerramentas({ solta, postit, explicar, pdf, lousas, mentor, mentorAtivo, mentorFala, onMentor, level }, ref) {
   const raiz = useRef<HTMLDivElement | null>(null);
-  const canvas = useRef<HTMLCanvasElement>(null);
   const esfera = useRef<HTMLVideoElement>(null);
   const turb = useRef<SVGFETurbulenceElement>(null);
   const desloc = useRef<SVGFEDisplacementMapElement>(null);
@@ -72,8 +72,8 @@ export const AulaFerramentas = forwardRef<HTMLDivElement, AulaFerramentasProps>(
 
   // com o Mentor em conversa: a esfera, o sinal de rádio e os cartões seguem a voz (energia real do áudio)
   useEffect(() => {
-    if (!mentorAtivo || !raiz.current || !canvas.current) return;
-    return iniciarVozRadio({ raiz: raiz.current, canvas: canvas.current, esfera: esfera.current, turbulencia: turb.current, deslocamento: desloc.current, filtroId, level });
+    if (!mentorAtivo || !raiz.current) return;
+    return iniciarVozRadio({ raiz: raiz.current, esfera: esfera.current, turbulencia: turb.current, deslocamento: desloc.current, filtroId, level });
   }, [mentorAtivo, level, filtroId]);
 
   return (
@@ -86,11 +86,12 @@ export const AulaFerramentas = forwardRef<HTMLDivElement, AulaFerramentasProps>(
       </svg>
       <div className="at-ferr-t"><Img n="chave" className="at-chave" /><h2>Ferramentas</h2></div>
       <div className="at-grade" role="toolbar" aria-label="Barra de ferramentas de estudo">
-        <Cartao f={postit} i={0} />
-        <Cartao f={explicar} i={1} />
-        <Cartao f={pdf} i={2} />
-        <Cartao f={lousas} i={3} />
+        <Cartao f={postit} i={0} radio={mentorAtivo} />
+        <Cartao f={explicar} i={1} radio={mentorAtivo} />
+        <Cartao f={pdf} i={2} radio={mentorAtivo} />
+        <Cartao f={lousas} i={3} radio={mentorAtivo} />
         <div className={`at-cartao at-mentor ${mentorAtivo ? "is-on" : ""}`} style={{ "--bi": "var(--b4, 0)" } as React.CSSProperties}>
+          {mentorAtivo && <canvas className="at-radio" aria-hidden />}
           {/* a mesma esfera da Central de Missão (gravada da própria cena: anel de fogo e fumaça), em laço contínuo; com o Mentor falando ela pulsa e deforma com a voz */}
           <video ref={esfera} className="at-esfera" src="/home/aula-topo/esfera.mp4" poster="/home/aula-topo/esfera.webp" autoPlay loop muted playsInline preload="auto" aria-hidden tabIndex={-1} />
           <div className="at-mentor-orbe">{mentor}</div>
@@ -98,8 +99,6 @@ export const AulaFerramentas = forwardRef<HTMLDivElement, AulaFerramentasProps>(
           <button type="button" className="at-seta at-seta-v" onClick={onMentor} aria-label={mentorAtivo ? "Encerrar conversa com o Mentor" : "Falar com o Mentor"}><ArrowRight strokeWidth={2.4} aria-hidden /></button>
           <small className="at-so-leitor">Falar com o Mentor</small>
         </div>
-        {/* sinal de rádio sincronizado com a voz: atravessa os cinco cartões */}
-        {mentorAtivo && <canvas ref={canvas} className="at-radio" aria-hidden data-testid="st-onda" />}
       </div>
     </div>
   );

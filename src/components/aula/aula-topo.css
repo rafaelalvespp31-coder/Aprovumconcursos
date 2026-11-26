@@ -70,7 +70,8 @@
 
 /* ---- Mentor falando: sinal de rádio sobre os cartões + cartões vermelhos "ligados" no ritmo da voz ---- */
 .at-grade { position: relative; }
-.at-radio { position: absolute; left: -6px; right: -6px; top: 0; bottom: 0; width: calc(100% + 12px); height: 100%; z-index: 5; pointer-events: none; }
+.at-radio { position: absolute; inset: 0; z-index: 0; width: 100%; height: 100%; pointer-events: none; -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 16%, #000 84%, transparent 100%); mask-image: linear-gradient(90deg, transparent 0, #000 16%, #000 84%, transparent 100%); }
+.at-cartao-arte, .at-cartao b, .at-seta, .at-badge { z-index: 1; }
 .at-ferr .at-cartao { --bi: 0; }
 .at-ferr.is-fala .at-cartao { color: #fff; border-color: #ff3b2e; background: linear-gradient(180deg, rgb(255 58 44 / calc(0.55 + var(--bi) * 0.45)), rgb(150 0 0 / calc(0.85 + var(--bi) * 0.15))); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 -18px 28px -14px rgb(255 120 100 / calc(var(--bi) * 0.8)), 0 0 calc(6px + var(--bi) * 22px) rgb(255 30 20 / calc(0.35 + var(--bi) * 0.5)); transition: background 0.12s linear, box-shadow 0.12s linear, border-color 0.2s; }
 .at-ferr.is-fala .at-cartao-arte { mix-blend-mode: screen; filter: grayscale(1) contrast(1.3) invert(1); }
