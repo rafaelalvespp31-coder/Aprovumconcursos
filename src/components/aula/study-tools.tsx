@@ -4,15 +4,14 @@ import { MentorLousa } from "@/components/mentor/mentor-lousa";
 import { lousaSchema, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { Download, FileText, Lightbulb, Loader2, PenLine, StickyNote, Trash2, Wrench, X } from "lucide-react";
+import { Download, FileText, Loader2, PenLine, Trash2, X } from "lucide-react";
 import { VozOrbRepouso } from "@/components/mentor/voz-orb-solo";
 import type { Bands } from "@/components/mentor/voz-orbe";
-import { VozOnda } from "./voz-onda";
 import { MentorVoz } from "@/components/mentor/mentor-voz";
 import type { StudyContext } from "@/domain/mentor/study-context";
 import { createPostitAction, deletePostitAction, listPostitsAction, deletePostitPdfAction, generatePostitPdfAction, updatePostitNoteAction } from "@/app/(app)/aula/[id]/postit-actions";
 import { ToolsHint } from "./tools-hint";
-import { AulaTopo } from "./aula-topo";
+import { AulaFerramentas, AulaTempo } from "./aula-topo";
 import { PostitCard, type PostitView } from "./postit-card";
 import { matchKey } from "@/domain/study/postit-quote";
 import { caretAt, locateRange, readSelection, type Capture } from "./postit-dom";
@@ -145,16 +144,6 @@ export function StudyTools({
   const els = useRef(new Map<string, HTMLElement>());
   const popRef = useRef<HTMLDivElement | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
-  // Topo grande da aula (marca, ferramentas e relógio): enquanto está na tela, a barra compacta fica escondida; ao rolar, ela volta.
-  const topoRef = useRef<HTMLElement | null>(null);
-  const [topoVisivel, setTopoVisivel] = useState(true);
-  useEffect(() => {
-    const el = topoRef.current;
-    if (!el || typeof IntersectionObserver === "undefined") return;
-    const io = new IntersectionObserver(([e]) => setTopoVisivel(!!e?.isIntersecting), { rootMargin: "-96px 0px 0px 0px" });
-    io.observe(el);
-    return () => io.disconnect();
-  }, []);
   // A barra entra no cabeçalho fixo da página (logo abaixo da logo); sem cabeçalho, fica solta no topo.
   const host = useSyncExternalStore(() => () => {}, () => document.querySelector(".mv-cabecalho"), () => null);
   const armedRef = useRef(false);
@@ -560,56 +549,35 @@ export function StudyTools({
   return (
     <>
       {(() => {
-        const barra = (
-          <div ref={barRef} className={`st-bar ${host ? "" : "is-solta"} ${topoVisivel ? "is-oculta" : ""}`} data-st data-testid="st-dock-c">
-            <VozOnda level={levelRef} active={panel === "mentor" && mentorFala} />
-            <div className="st-bar-rotulo" aria-hidden><Wrench className="size-4" /><span className="st-rot-l">Barra de ferramentas</span><span className="st-rot-c">Ferramentas</span></div>
-            <div className="st-pilula" role="toolbar" aria-label="Barra de ferramentas de estudo">
-              <button type="button" className={`st-btn ${armed || panel === "lista" ? "is-on" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={onPostitButton} aria-label="Post-it de revisão" title="Post-it: toque e selecione o trecho" data-testid="st-postit-c">
-                <StickyNote className="size-5" aria-hidden /><span className="st-btn-txt"><b>Post-it</b><small>Marcar trecho</small></span>
-                {count > 0 && <span className="st-badge" aria-hidden>{count}</span>}
-              </button>
-              <button type="button" className="st-btn" onMouseDown={(e) => e.preventDefault()} onClick={explain} aria-label="Explicar o trecho selecionado" title="Explicar com IA: selecione uma palavra ou trecho" data-testid="st-explicar-c">
-                <Lightbulb className="size-5" aria-hidden /><span className="st-btn-txt"><b>Explicar</b><small>Tirar dúvida</small></span>
-              </button>
-              <button type="button" className={`st-btn ${panel === "pdf" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "pdf" ? null : "pdf"))} aria-label="Meu PDF de Revisão" aria-expanded={panel === "pdf"} title="Meu PDF de Revisão" data-testid="st-pdf-c">
-                <FileText className="size-5" aria-hidden /><span className="st-btn-txt"><b>Meu PDF</b><small>Gerar revisão</small></span>
-              </button>
-              <button type="button" className={`st-btn ${panel === "lousas" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "lousas" ? null : "lousas"))} aria-label="Lousas do Mentor salvas" aria-expanded={panel === "lousas"} title="Explicações do Mentor na lousa, salvas para rever" data-testid="st-lousas-c">
-                <PenLine className="size-5" aria-hidden /><span className="st-btn-txt"><b>Lousas</b><small>Rever explicação</small></span>
-              </button>
-              <div className="st-mentor-wrap">
-                <VozOrbRepouso size={46} onStart={() => { if (panel === "mentor") { setMentorFala(false); setPanel(null); } else { currentCapture(); setPanel("mentor"); } }} />
-                <span className="st-btn-txt st-mentor-txt" aria-hidden onClick={() => { if (panel !== "mentor") { currentCapture(); setPanel("mentor"); } }}><b>Mentor</b><small>Falar com o Mentor</small></span>
-              </div>
-            </div>
-          </div>
+        const ferr = (
+          <AulaFerramentas
+            ref={barRef}
+            solta={!host}
+          level={levelRef}
+          mentorAtivo={panel === "mentor"}
+          mentorFala={mentorFala}
+          onMentor={() => { if (panel === "mentor") { setMentorFala(false); setPanel(null); } else { currentCapture(); setPanel("mentor"); } }}
+          postit={{ arte: "bloco", titulo: "Marcar Trecho", sub: "Post-it", ligado: armed || panel === "lista", badge: count, aria: "Post-it de revisão", tip: "Post-it: toque e selecione o trecho", testid: "st-postit", onClick: onPostitButton }}
+          explicar={{ arte: "lampada", titulo: "Tirar Dúvida", sub: "Explicar o trecho selecionado", aria: "Explicar o trecho selecionado", tip: "Explicar com IA: selecione uma palavra ou trecho", testid: "st-explicar", onClick: explain }}
+          pdf={{ arte: "lista", titulo: "Gerar Revisão", sub: "Meu PDF de Revisão", ligado: panel === "pdf", expandido: panel === "pdf", aria: "Meu PDF de Revisão", tip: "Meu PDF de Revisão", testid: "st-pdf", onClick: () => setPanel((p) => (p === "pdf" ? null : "pdf")) }}
+          lousas={{ arte: "caneta", titulo: "Rever Explicação", sub: "Lousas do Mentor", ligado: panel === "lousas", expandido: panel === "lousas", aria: "Lousas do Mentor salvas", tip: "Explicações do Mentor na lousa, salvas para rever", testid: "st-lousas", onClick: () => setPanel((p) => (p === "lousas" ? null : "lousas")) }}
+          mentor={panel === "mentor"
+            ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={70} onSpeaking={setMentorFala} onLousa={(dados, sync, vivo) => setLousa((a) => (dados === "fechar" ? null : dados === null ? (a?.dados ? a : { id: a?.id ?? Date.now(), dados: LOUSA_ERRO }) : dados === "pendente" ? (a?.dados ? a : { id: Date.now(), dados: null }) : { id: a?.id ?? Date.now(), dados, sync, vivo }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setPanel(null); }} />
+            : <VozOrbRepouso size={70} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+          />
         );
         return (
           <>
-            {host ? createPortal(barra, host) : barra}
+            {host ? createPortal(ferr, host) : ferr}
             {lousa && createPortal(<MentorLousa key={lousa.id} lousa={lousa.dados} jaSalva={lousa.salva} onSalvar={salvarAberta} sync={lousa.sync} vivo={lousa.vivo} onClose={() => setLousa(null)} />, document.body)}
           </>
         );
       })()}
 
-      <AulaTopo
-        ref={topoRef}
-        level={levelRef}
-        mentorAtivo={panel === "mentor"}
-        mentorFala={mentorFala}
-        onMentor={() => { if (panel === "mentor") { setMentorFala(false); setPanel(null); } else { currentCapture(); setPanel("mentor"); } }}
-        postit={{ arte: "bloco", titulo: "Marcar Trecho", sub: "Post-it", ligado: armed || panel === "lista", badge: count, aria: "Post-it de revisão", tip: "Post-it: toque e selecione o trecho", testid: "st-postit", onClick: onPostitButton }}
-        explicar={{ arte: "lampada", titulo: "Tirar Dúvida", sub: "Explicar o trecho selecionado", aria: "Explicar o trecho selecionado", tip: "Explicar com IA: selecione uma palavra ou trecho", testid: "st-explicar", onClick: explain }}
-        pdf={{ arte: "lista", titulo: "Gerar Revisão", sub: "Meu PDF de Revisão", ligado: panel === "pdf", expandido: panel === "pdf", aria: "Meu PDF de Revisão", tip: "Meu PDF de Revisão", testid: "st-pdf", onClick: () => setPanel((p) => (p === "pdf" ? null : "pdf")) }}
-        lousas={{ arte: "caneta", titulo: "Rever Explicação", sub: "Lousas do Mentor", ligado: panel === "lousas", expandido: panel === "lousas", aria: "Lousas do Mentor salvas", tip: "Explicações do Mentor na lousa, salvas para rever", testid: "st-lousas", onClick: () => setPanel((p) => (p === "lousas" ? null : "lousas")) }}
-        mentor={panel === "mentor"
-          ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={70} onSpeaking={setMentorFala} onLousa={(dados, sync, vivo) => setLousa((a) => (dados === "fechar" ? null : dados === null ? (a?.dados ? a : { id: a?.id ?? Date.now(), dados: LOUSA_ERRO }) : dados === "pendente" ? (a?.dados ? a : { id: Date.now(), dados: null }) : { id: a?.id ?? Date.now(), dados, sync, vivo }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setPanel(null); }} />
-          : <VozOrbRepouso size={70} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
-      />
+      <AulaTempo />
 
       {/* Post-its colados na margem da folha, na altura do trecho */}
-      <ToolsHint barRef={topoRef as React.RefObject<HTMLElement | null>} />
+      <ToolsHint barRef={barRef} />
 
       {postits.length > 0 && toBody(
         <div className="st-trilho" data-st aria-label="Post-its desta aula" data-testid="st-trilho">

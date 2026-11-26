@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { forwardRef, type ComponentProps, type MouseEventHandler, type ReactNode } from "react";
-import { ArrowRight, Play } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { formatHMS } from "@/domain/study-clock";
 import { useStudyClock } from "@/components/pastel/use-study-clock";
 import { VozOnda } from "./voz-onda";
@@ -22,7 +21,9 @@ type Ferr = {
   onClick: MouseEventHandler<HTMLButtonElement>;
 };
 
-export interface AulaTopoProps {
+export interface AulaFerramentasProps {
+  /** sem cabeçalho fixo da página para acoplar: a barra fica presa ao topo da tela */
+  solta?: boolean;
   postit: Ferr;
   explicar: Ferr;
   pdf: Ferr;
@@ -53,57 +54,49 @@ function Cartao({ f }: { f: Ferr }) {
 }
 
 /**
- * Topo do modo aula (layout aprovado): marca, "Ferramentas" (post-it, explicar, PDF, lousas e Mentor) e o relógio
- * de estudo do dia com o botão "Estudo hoje". As ferramentas são as mesmas da barra compacta que aparece ao rolar.
+ * Barra de ferramentas da aula (layout aprovado), acoplada ao cabeçalho fixo da plataforma: post-it, explicar, PDF,
+ * lousas e Mentor. No celular os cinco cartões dividem a largura da tela, sem rolar para o lado.
  */
-export const AulaTopo = forwardRef<HTMLElement, AulaTopoProps>(function AulaTopo({ postit, explicar, pdf, lousas, mentor, mentorAtivo, mentorFala, onMentor, level }, ref) {
+export const AulaFerramentas = forwardRef<HTMLDivElement, AulaFerramentasProps>(function AulaFerramentas({ solta, postit, explicar, pdf, lousas, mentor, mentorAtivo, mentorFala, onMentor, level }, ref) {
+  return (
+    <div ref={ref} className={`at-ferr ${solta ? "is-solta" : ""}`} data-st data-testid="st-dock">
+      <VozOnda level={level} active={mentorAtivo && mentorFala} />
+      <div className="at-ferr-t"><Img n="chave" className="at-chave" /><h2>Ferramentas</h2></div>
+      <div className="at-grade" role="toolbar" aria-label="Barra de ferramentas de estudo">
+        <Cartao f={postit} />
+        <Cartao f={explicar} />
+        <Cartao f={pdf} />
+        <Cartao f={lousas} />
+        <div className={`at-cartao at-mentor ${mentorAtivo ? "is-on" : ""}`}>
+          <Img n="mentor" className="at-mentor-arte" />
+          <div className="at-mentor-orbe">{mentor}</div>
+          <b>Mentor</b>
+          <button type="button" className="at-seta at-seta-v" onClick={onMentor} aria-label={mentorAtivo ? "Encerrar conversa com o Mentor" : "Falar com o Mentor"}><ArrowRight strokeWidth={2.4} aria-hidden /></button>
+          <small className="at-so-leitor">Falar com o Mentor</small>
+        </div>
+      </div>
+    </div>
+  );
+});
+
+/** Tempo de estudo do dia (ampulheta, cronômetro, barra da hora e situação), em tamanho compacto. */
+export function AulaTempo() {
   const rel = useStudyClock();
   const hora = formatHMS(rel.seconds);
   // a barra enche a cada hora de estudo líquido (volta a zero na hora cheia)
   const pct = Math.max(3, Math.min(100, ((rel.seconds % 3600) / 3600) * 100));
-
   return (
-    <section ref={ref} className="at-topo" aria-label="Ferramentas de estudo e tempo de estudo" data-aula-topo data-st>
-      <header className="at-cab">
-        <Img n="caveira" className="at-marca-agua" />
-        <Img n="logo" className="at-logo" />
-        <p className="at-lema"><span>Disciplina hoje,</span><b>Aprovação</b> amanhã.</p>
-      </header>
-
-      <div className="at-ferr" data-testid="st-dock">
-        <VozOnda level={level} active={mentorAtivo && mentorFala} />
-        <div className="at-ferr-t"><Img n="chave" className="at-chave" /><h2>Ferramentas</h2><i aria-hidden /></div>
-        <div className="at-grade" role="toolbar" aria-label="Barra de ferramentas de estudo">
-          <Cartao f={postit} />
-          <Cartao f={explicar} />
-          <Cartao f={pdf} />
-          <Cartao f={lousas} />
-          <div className={`at-cartao at-mentor ${mentorAtivo ? "is-on" : ""}`}>
-            <Img n="mentor" className="at-mentor-arte" />
-            <div className="at-mentor-orbe">{mentor}</div>
-            <b>Mentor</b>
-            <button type="button" className="at-seta at-seta-v" onClick={onMentor} aria-label={mentorAtivo ? "Encerrar conversa com o Mentor" : "Falar com o Mentor"}><ArrowRight strokeWidth={2.4} aria-hidden /></button>
-            <small className="at-so-leitor">Falar com o Mentor</small>
-          </div>
-        </div>
-      </div>
-
-      <div className="at-tempo" data-testid="estudo-relogio" data-pausado={rel.paused || undefined}>
-        <Img n="ampulheta" className="at-ampulheta" />
-        <div className="at-relogio" role="timer" aria-live="off" aria-label={`Estudo líquido hoje: ${hora}${rel.paused ? ", pausado por inatividade" : ""}`}>
-          <p className="at-rot">
-            <svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="9.2" fill="none" stroke="#161616" strokeWidth="2.2" /><path d="M12 12 V4.6 A7.4 7.4 0 0 1 18.2 8 Z" fill="#e10600" /><circle cx="12" cy="12" r="1.6" fill="#161616" /></svg>
-            Tempo de estudo
-          </p>
-          <p className="at-hora">{hora}</p>
-          <span className="at-barra" aria-hidden><i style={{ width: `${pct}%` }} /></span>
-          <p className={`at-chip ${rel.paused ? "is-pausa" : ""}`}><i aria-hidden />{rel.paused ? "Pausado (inativo)" : "Estudando agora"}</p>
-        </div>
-        <div className="at-cta">
-          <Link href="/meu-plano-de-estudo" className="at-botao" data-testid="estudo-hoje"><Play aria-hidden fill="currentColor" strokeWidth={0} /><span>Estudo hoje</span></Link>
-          <p className="at-foque">Foque. Estude. Conquiste.</p>
-        </div>
+    <section className="at-tempo" aria-label="Tempo de estudo" data-aula-topo data-testid="estudo-relogio" data-pausado={rel.paused || undefined}>
+      <Img n="ampulheta" className="at-ampulheta" />
+      <div className="at-relogio" role="timer" aria-live="off" aria-label={`Estudo líquido hoje: ${hora}${rel.paused ? ", pausado por inatividade" : ""}`}>
+        <p className="at-rot">
+          <svg viewBox="0 0 24 24" aria-hidden><circle cx="12" cy="12" r="9.2" fill="none" stroke="#161616" strokeWidth="2.2" /><path d="M12 12 V4.6 A7.4 7.4 0 0 1 18.2 8 Z" fill="#e10600" /><circle cx="12" cy="12" r="1.6" fill="#161616" /></svg>
+          Tempo de estudo
+        </p>
+        <p className="at-hora">{hora}</p>
+        <span className="at-barra" aria-hidden><i style={{ width: `${pct}%` }} /></span>
+        <p className={`at-chip ${rel.paused ? "is-pausa" : ""}`}><i aria-hidden />{rel.paused ? "Pausado (inativo)" : "Estudando agora"}</p>
       </div>
     </section>
   );
-});
+}
