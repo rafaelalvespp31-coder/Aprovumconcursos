@@ -91,7 +91,6 @@ export const AulaFerramentas = forwardRef<HTMLDivElement, AulaFerramentasProps>(
         <Cartao f={pdf} i={2} radio={mentorAtivo} />
         <Cartao f={lousas} i={3} radio={mentorAtivo} />
         <div className={`at-cartao at-mentor ${mentorAtivo ? "is-on" : ""}`} style={{ "--bi": "var(--b4, 0)" } as React.CSSProperties}>
-          {mentorAtivo && <canvas className="at-radio" aria-hidden />}
           {/* a mesma esfera da Central de Missão (gravada da própria cena: anel de fogo e fumaça), em laço contínuo; com o Mentor falando ela pulsa e deforma com a voz */}
           <video ref={esfera} className="at-esfera" src="/home/aula-topo/esfera.mp4" poster="/home/aula-topo/esfera.webp" autoPlay loop muted playsInline preload="auto" aria-hidden tabIndex={-1} />
           <div className="at-mentor-orbe">{mentor}</div>

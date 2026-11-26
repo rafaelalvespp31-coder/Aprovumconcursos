@@ -32,10 +32,11 @@ export function iniciarVozRadio(a: AlvosVozRadio): () => void {
   const ajustar = () => {
     dpr = Math.min(2, window.devicePixelRatio || 1);
     const gr = (a.raiz.querySelector(".at-grade") as HTMLElement).getBoundingClientRect();
-    totalW = gr.width;
+    totalW = 0;
     for (const p of parts) {
       const r = p.cv.getBoundingClientRect();
       p.x0 = r.left - gr.left; p.w = r.width; p.h = r.height;
+      totalW = Math.max(totalW, p.x0 + p.w); // a onda nasce na borda direita do último cartão de ferramenta (ao lado do Mentor)
       p.cv.width = Math.max(1, Math.round(r.width * dpr));
       p.cv.height = Math.max(1, Math.round(r.height * dpr));
       p.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -97,20 +98,20 @@ export function iniciarVozRadio(a: AlvosVozRadio): () => void {
     const nTot = Math.ceil(totalW / PASSO) + 2;
     const k0 = nTot - hist.length;
     const amostra = (i: number) => {
-      // média de 5 amostras vizinhas: traço suave, sem serrilhado
+      // média de 11 amostras vizinhas: traço suave, sem serrilhado
       let v = 0, l = 0, m = 0, hh = 0, c = 0;
-      for (let d = -2; d <= 2; d++) { const q = hist[i + d - k0]; if (q) { v += q.v; l += q.l; m += q.m; hh += q.h; c++; } }
-      return c ? { v: v / 5, l: l / 5, m: m / 5, h: hh / 5 } : null;
+      for (let d = -5; d <= 5; d++) { const q = hist[i + d - k0]; if (q) { v += q.v; l += q.l; m += q.m; hh += q.h; c++; } }
+      return c ? { v: v / 11, l: l / 11, m: m / 11, h: hh / 11 } : null;
     };
     const sinalEm = (i: number, escala: number, fase: number) => {
       const smp = amostra(i);
       const ph = i + total + fase;
       const respira = Math.sin(ts / 900 + i * 0.03) * 0.05; // linha de rádio ligada, mesmo sem voz
       if (!smp) return respira;
-      const sinal = smp.l * 0.95 * Math.sin(ph * 0.11 + smp.l * 1.6)
-        + smp.m * 0.7 * Math.sin(ph * 0.29 + 1.1) * (0.65 + 0.35 * Math.sin(ph * 0.045))
-        + smp.h * 0.4 * Math.sin(ph * 0.7 + 2.4);
-      return respira + sinal * Math.min(1, smp.v * 1.6) * escala;
+      const sinal = smp.l * 0.95 * Math.sin(ph * 0.09 + smp.l * 1.6)
+        + smp.m * 0.7 * Math.sin(ph * 0.22 + 1.1) * (0.65 + 0.35 * Math.sin(ph * 0.045))
+        + smp.h * 0.4 * Math.sin(ph * 0.48 + 2.4);
+      return respira + sinal * Math.min(1, smp.v * 1.5) * escala;
     };
     for (const p of parts) {
       const { ctx, w, h, x0 } = p;
