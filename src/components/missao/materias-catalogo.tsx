@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties, type PointerEvent } from "react";
 import { createPortal } from "react-dom";
-import { BookMarked, Brain, Calculator, Car, ChevronRight, Gavel, Globe, HeartHandshake, Landmark, Laptop, MessageSquareMore, Play, Scale, Shield, X, type LucideIcon } from "lucide-react";
-import { ROTULO_GRUPO, dividirPorGrupo, filtrarMaterias, formatarDuracao, grupoDaMateria, type GrupoMateria, type MateriaCatalogo } from "@/domain/missao/materias";
+import { BookMarked, Brain, Calculator, Car, ChevronRight, ChevronUp, Ear, FileText, Gavel, Globe, HeartHandshake, Landmark, Laptop, Link2, ListChecks, MessageCircle, MessageSquareMore, Network, PenLine, Play, Scale, Shield, X, type LucideIcon } from "lucide-react";
+import { dividirPorGrupo, filtrarMaterias, formatarDuracao, type GrupoMateria, type MateriaCatalogo } from "@/domain/missao/materias";
 import "./materias-catalogo.css";
 import "./catalogo-pagina.css";
 
@@ -35,6 +35,9 @@ const CORES: Array<[string, string]> = [
   ["#ff5fa2", "#8a1450"],
   ["#9be53d", "#3b7510"],
 ];
+
+/** Ícones vermelhos da lista de assuntos do popup (repetem em ciclo, na ordem do layout aprovado). */
+const ICONES_ASSUNTO: LucideIcon[] = [MessageSquareMore, ListChecks, Network, Link2, Landmark, MessageCircle, Ear, PenLine];
 
 const plural = (n: number, um: string, varios: string) => `${n} ${n === 1 ? um : varios}`;
 export const estilo = (i: number): CSSProperties => ({ "--c1": CORES[i % CORES.length]![0], "--c2": CORES[i % CORES.length]![1], "--i": i }) as CSSProperties;
@@ -150,27 +153,47 @@ export function MateriasCatalogo({ materias, termo = "", grupos: mostrar = ["bas
       {m && createPortal(
         <div className="mc-fundo" onClick={() => setAberta(null)} data-testid="materia-fundo">
           <section className="mc-folha" role="dialog" aria-modal="true" aria-labelledby="mc-titulo" style={estilo(posicao.get(m.slug) ?? 0)} onClick={(e) => e.stopPropagation()}>
+            <button ref={fechar} type="button" className="mc-fechar" onClick={() => setAberta(null)} aria-label="Fechar">
+              <X aria-hidden size={20} strokeWidth={2.4} />
+            </button>
             <header className="mc-cabeca">
-              <span className="mc-icone mc-icone-g">{(() => { const I = iconeDaMateria(m.slug); return <I aria-hidden strokeWidth={2.2} />; })()}</span>
-              <div>
-                <p className="mc-cabeca-grupo">{ROTULO_GRUPO[grupoDaMateria(m.slug)]}</p>
-                <h2 id="mc-titulo">{m.nome}</h2>
-                <p>{plural(m.aulas, "aula pronta", "aulas prontas")} · {plural(m.assuntos.length, "assunto", "assuntos")}</p>
+              {/* eslint-disable-next-line @next/next/no-img-element -- recortes do layout aprovado (WebP em public/home/popup) */}
+              <img className="mc-caveira" src="/home/popup/caveira.webp" alt="" decoding="async" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img className="mc-logo" src="/home/popup/logo.webp" alt="Aprovum" decoding="async" />
+              <div className="mc-heroi">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img className="mc-livro" src="/home/popup/livro.webp" alt="" decoding="async" />
+                <div className="mc-titulos">
+                  <p className="mc-selo">Matéria</p>
+                  <h2 id="mc-titulo">{m.nome}</h2>
+                  <p className="mc-numeros">
+                    <span><i className="mc-pino"><Play aria-hidden fill="currentColor" strokeWidth={0} /></i>{plural(m.aulas, "Aula", "Aulas")}</span>
+                    <span className="mc-sep" aria-hidden />
+                    <span><FileText aria-hidden strokeWidth={1.8} />{plural(m.assuntos.length, "Assunto", "Assuntos")}</span>
+                  </p>
+                </div>
               </div>
-              <button ref={fechar} type="button" className="mc-fechar" onClick={() => setAberta(null)} aria-label="Fechar">
-                <X aria-hidden size={18} />
-              </button>
             </header>
-            <ul className="mc-assuntos">
-              {m.assuntos.map((a) => (
-                <li key={a.titulo} style={{ "--p": `${Math.max(6, Math.round((a.aulas / m.assuntos[0]!.aulas) * 100))}%` } as CSSProperties}>
-                  <span>{a.titulo}</span>
-                  <b>{plural(a.aulas, "aula", "aulas")}</b>
-                </li>
-              ))}
-            </ul>
+            <div className="mc-conteudo">
+              <p className="mc-conteudo-t"><span>Conteúdo da matéria</span><ChevronUp aria-hidden className="mc-seta" /></p>
+              <ul className="mc-assuntos">
+                {m.assuntos.map((a, i) => {
+                  const IA = ICONES_ASSUNTO[i % ICONES_ASSUNTO.length]!;
+                  return (
+                    <li key={a.titulo}>
+                      <span className="mc-ico" aria-hidden><IA strokeWidth={1.7} /></span>
+                      <span className="mc-tit">{a.titulo}</span>
+                      <b><Play aria-hidden fill="currentColor" strokeWidth={0} />{plural(a.aulas, "aula", "aulas")}</b>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
             <Link href={`/nova-trilha?modo=lista&materia=${encodeURIComponent(m.slug)}`} className="mc-estudar">
-              Estudar {m.nome}
+              <Play aria-hidden fill="currentColor" strokeWidth={0} className="mc-estudar-p" />
+              <span>Estudar {m.nome}</span>
+              <ChevronRight aria-hidden className="mc-estudar-s" strokeWidth={2.4} />
             </Link>
           </section>
         </div>,
