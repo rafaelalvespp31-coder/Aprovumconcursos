@@ -110,13 +110,13 @@ export function iniciarVozRadio(a: AlvosVozRadio): () => void {
       if (!smp) return respira;
       const sinal = smp.l * 0.95 * Math.sin(ph * 0.09 + smp.l * 1.6)
         + smp.m * 0.7 * Math.sin(ph * 0.22 + 1.1) * (0.65 + 0.35 * Math.sin(ph * 0.045))
-        + smp.h * 0.4 * Math.sin(ph * 0.48 + 2.4);
+        + smp.h * 0.32 * Math.sin(ph * 0.62 + 2.4) * (0.7 + 0.3 * Math.sin(ph * 0.13));
       return respira + sinal * Math.min(1, smp.v * 1.5) * escala;
     };
     for (const p of parts) {
       const { ctx, w, h, x0 } = p;
       ctx.clearRect(0, 0, w, h);
-      const cy = h * 0.46, maxA = h * 0.3;
+      const cy = h * 0.46, maxA = h * 0.32;
       const passo = Math.max(PASSO, 2);
       const camada = (escala: number, fase: number, largura: number, cor: string, alfa: number, brilho: number, glow: string) => {
         ctx.beginPath();
@@ -130,12 +130,14 @@ export function iniciarVozRadio(a: AlvosVozRadio): () => void {
         ctx.stroke();
       };
       const forte = Math.min(1, picos * 1.4);
+      // linha de base: fio finíssimo, sempre presente (como a linha de um osciloscópio ligado)
+      ctx.beginPath(); ctx.moveTo(0, cy); ctx.lineTo(w, cy);
+      ctx.lineWidth = 0.6; ctx.strokeStyle = fala ? "rgba(255,255,255,1)" : "rgba(225,6,0,1)"; ctx.globalAlpha = fala ? 0.18 : 0.22; ctx.shadowBlur = 0; ctx.stroke();
       if (fala) {
-        camada(1.25, 60, 7, "rgba(255,120,100,1)", 0.12 + forte * 0.12, 0, "transparent"); // halo largo e suave
-        camada(0.6, 140, 1, "rgba(255,225,215,1)", 0.45, 6, "rgba(255,150,130,0.8)");     // fio de eco
-        camada(1, 0, 2.2, "rgba(255,255,255,1)", 0.96, 10 + forte * 10, "rgba(255,140,120,0.95)"); // fio principal, quase branco
+        camada(0.55, 90, 0.7, "rgba(255,235,230,1)", 0.38, 0, "transparent");                     // traço-fantasma, finíssimo
+        camada(1, 0, 1.5, "rgba(255,255,255,1)", 0.97, 5 + forte * 7, "rgba(255,170,150,0.85)"); // traço principal: fino, nítido, brilho discreto
       } else {
-        camada(1, 0, 1.6, "rgba(225,6,0,1)", 0.75, 6, "rgba(225,6,0,0.5)");
+        camada(1, 0, 1.2, "rgba(225,6,0,1)", 0.7, 3, "rgba(225,6,0,0.4)");
       }
       ctx.globalAlpha = 1; ctx.shadowBlur = 0;
     }

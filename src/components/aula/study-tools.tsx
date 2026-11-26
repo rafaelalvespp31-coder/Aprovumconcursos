@@ -363,35 +363,20 @@ export function StudyTools({
   const [prof, setProf] = useState<"a" | "o">("o");
   const [escTop, setEscTop] = useState(170);
   const saudacao = () => { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; };
-  const falar = (t: string | null) => {
-    try {
-      const ss = window.speechSynthesis;
-      ss.cancel();
-      if (!t) return;
-      const u = new SpeechSynthesisUtterance(t);
-      u.lang = "pt-BR";
-      u.rate = 1.02;
-      const v = ss.getVoices().find((x) => /pt[-_]BR/i.test(x.lang));
-      if (v) u.voice = v;
-      ss.speak(u);
-    } catch { /* sem voz do navegador: a pergunta continua escrita na tela */ }
-  };
   const iniciarMentor = (p: "a" | "o") => {
     try { localStorage.setItem("aprovum.mentor.professor", p); } catch { /* sem armazenamento: pergunta de novo da próxima vez */ }
-    falar(null);
     setProf(p);
     currentCapture();
     setPanel("mentor");
   };
   const abrirMentor = () => {
     if (panel === "mentor") { setMentorFala(false); setPanel(null); return; }
-    if (panel === "escolha") { falar(null); setPanel(null); return; }
+    if (panel === "escolha") { setPanel(null); return; }
     let salvo: string | null = null;
     try { salvo = localStorage.getItem("aprovum.mentor.professor"); } catch { /* ignora */ }
     if (salvo === "a" || salvo === "o") { iniciarMentor(salvo); return; }
     setEscTop(Math.round((barRef.current?.getBoundingClientRect().bottom ?? 160) + 10));
     setPanel("escolha");
-    falar(`${saudacao()}! Você quer ter aula com o professor Aprovum, ou com a professora Aprovum?`);
   };
 
   // ---------- Post-its ----------
@@ -635,7 +620,7 @@ export function StudyTools({
             <button type="button" onClick={() => iniciarMentor("o")} data-testid="mentor-professor">Professor Aprovum</button>
             <button type="button" onClick={() => iniciarMentor("a")} data-testid="mentor-professora">Professora Aprovum</button>
           </div>
-          <button type="button" className="at-escolha-x" onClick={() => { falar(null); setPanel(null); }}>Agora não</button>
+          <button type="button" className="at-escolha-x" onClick={() => setPanel(null)}>Agora não</button>
         </div>,
       )}
       {armed && (
