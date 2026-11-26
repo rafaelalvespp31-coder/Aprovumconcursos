@@ -360,14 +360,27 @@ export function StudyTools({
     return {};
   }, []);
   // Professor ou Professora Aprovum: a primeira vez o Mentor dá boa noite e pergunta; a escolha fica salva neste aparelho
-  const [prof, setProf] = useState<"a" | "o">("o");
+  const prof = useSyncExternalStore(
+    (cb) => { window.addEventListener("storage", cb); window.addEventListener("aprovum-prof", cb); return () => { window.removeEventListener("storage", cb); window.removeEventListener("aprovum-prof", cb); }; },
+    () => { try { const v = localStorage.getItem("aprovum.mentor.professor"); return v === "a" || v === "o" ? v : null; } catch { return null; } },
+    () => null,
+  );
+  const guardarProf = (p: "a" | "o") => {
+    try { localStorage.setItem("aprovum.mentor.professor", p); } catch { /* sem armazenamento */ }
+    window.dispatchEvent(new Event("aprovum-prof"));
+  };
   const [escTop, setEscTop] = useState(170);
   const saudacao = () => { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; };
   const iniciarMentor = (p: "a" | "o") => {
-    try { localStorage.setItem("aprovum.mentor.professor", p); } catch { /* sem armazenamento: pergunta de novo da próxima vez */ }
-    setProf(p);
+    guardarProf(p);
     currentCapture();
     setPanel("mentor");
+  };
+  const trocarProfessor = (p: "a" | "o") => {
+    if (p === prof) return;
+    guardarProf(p);
+    // conversa em andamento: reinicia com a voz nova (a voz é definida ao abrir a conversa)
+    if (panel === "mentor") { setMentorFala(false); setPanel(null); setTimeout(() => { currentCapture(); setPanel("mentor"); }, 60); }
   };
   const abrirMentor = () => {
     if (panel === "mentor") { setMentorFala(false); setPanel(null); return; }
@@ -576,12 +589,14 @@ export function StudyTools({
           mentorAtivo={panel === "mentor"}
           mentorFala={mentorFala}
           onMentor={abrirMentor}
+          professor={prof}
+          onProfessor={trocarProfessor}
           postit={{ arte: "bloco", titulo: "Marcar Trecho", sub: "Post-it", ligado: armed || panel === "lista", badge: count, aria: "Post-it de revisão", tip: "Post-it: toque e selecione o trecho", testid: "st-postit", onClick: onPostitButton }}
           explicar={{ arte: "lampada", titulo: "Tirar Dúvida", sub: "Explicar o trecho selecionado", aria: "Explicar o trecho selecionado", tip: "Explicar com IA: selecione uma palavra ou trecho", testid: "st-explicar", onClick: explain }}
           pdf={{ arte: "lista", titulo: "Gerar Revisão", sub: "Meu PDF de Revisão", ligado: panel === "pdf", expandido: panel === "pdf", aria: "Meu PDF de Revisão", tip: "Meu PDF de Revisão", testid: "st-pdf", onClick: () => setPanel((p) => (p === "pdf" ? null : "pdf")) }}
           lousas={{ arte: "caneta", titulo: "Rever Explicação", sub: "Lousas do Mentor", ligado: panel === "lousas", expandido: panel === "lousas", aria: "Lousas do Mentor salvas", tip: "Explicações do Mentor na lousa, salvas para rever", testid: "st-lousas", onClick: () => setPanel((p) => (p === "lousas" ? null : "lousas")) }}
           mentor={panel === "mentor"
-            ? <MentorVoz professor={prof} getStudy={getStudy} autoStart orbOnly orbSize={70} onSpeaking={setMentorFala} onLousa={(dados, sync, vivo) => setLousa((a) => (dados === "fechar" ? null : dados === null ? (a?.dados ? a : { id: a?.id ?? Date.now(), dados: LOUSA_ERRO }) : dados === "pendente" ? (a?.dados ? a : { id: Date.now(), dados: null }) : { id: a?.id ?? Date.now(), dados, sync, vivo }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setPanel(null); }} />
+            ? <MentorVoz professor={prof ?? "o"} getStudy={getStudy} autoStart orbOnly orbSize={70} onSpeaking={setMentorFala} onLousa={(dados, sync, vivo) => setLousa((a) => (dados === "fechar" ? null : dados === null ? (a?.dados ? a : { id: a?.id ?? Date.now(), dados: LOUSA_ERRO }) : dados === "pendente" ? (a?.dados ? a : { id: Date.now(), dados: null }) : { id: a?.id ?? Date.now(), dados, sync, vivo }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setPanel(null); }} />
             : <VozOrbRepouso size={70} onStart={abrirMentor} />}
           />
         );

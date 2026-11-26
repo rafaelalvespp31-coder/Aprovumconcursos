@@ -34,6 +34,9 @@ export interface AulaFerramentasProps {
   mentorAtivo: boolean;
   mentorFala: boolean;
   onMentor: () => void;
+  /** Professor ("o") ou Professora ("a") Aprovum escolhido; null = ainda não escolheu. */
+  professor: "a" | "o" | null;
+  onProfessor: (p: "a" | "o") => void;
   level: MutableRefObject<(() => Bands) | null>;
 }
 
@@ -59,7 +62,7 @@ function Cartao({ f, i, radio }: { f: Ferr; i: number; radio?: boolean }) {
  * Barra de ferramentas da aula (layout aprovado), acoplada ao cabeçalho fixo da plataforma: post-it, explicar, PDF,
  * lousas e Mentor. No celular os cinco cartões dividem a largura da tela, sem rolar para o lado.
  */
-export const AulaFerramentas = forwardRef<HTMLDivElement, AulaFerramentasProps>(function AulaFerramentas({ solta, postit, explicar, pdf, lousas, mentor, mentorAtivo, mentorFala, onMentor, level }, ref) {
+export const AulaFerramentas = forwardRef<HTMLDivElement, AulaFerramentasProps>(function AulaFerramentas({ solta, postit, explicar, pdf, lousas, mentor, mentorAtivo, mentorFala, onMentor, level, professor, onProfessor }, ref) {
   const raiz = useRef<HTMLDivElement | null>(null);
   const esfera = useRef<HTMLVideoElement>(null);
   const turb = useRef<SVGFETurbulenceElement>(null);
@@ -90,13 +93,24 @@ export const AulaFerramentas = forwardRef<HTMLDivElement, AulaFerramentasProps>(
         <Cartao f={explicar} i={1} radio={mentorAtivo} />
         <Cartao f={pdf} i={2} radio={mentorAtivo} />
         <Cartao f={lousas} i={3} radio={mentorAtivo} />
-        <div className={`at-cartao at-mentor ${mentorAtivo ? "is-on" : ""}`} style={{ "--bi": "var(--b4, 0)" } as React.CSSProperties}>
-          {/* a mesma esfera da Central de Missão (gravada da própria cena: anel de fogo e fumaça), em laço contínuo; com o Mentor falando ela pulsa e deforma com a voz */}
-          <video ref={esfera} className="at-esfera" src="/home/aula-topo/esfera.mp4" poster="/home/aula-topo/esfera.webp" autoPlay loop muted playsInline preload="auto" aria-hidden tabIndex={-1} />
-          <div className="at-mentor-orbe">{mentor}</div>
-          <b>Mentor</b>
-          <button type="button" className="at-seta at-seta-v" onClick={onMentor} aria-label={mentorAtivo ? "Encerrar conversa com o Mentor" : "Falar com o Mentor"}><ArrowRight strokeWidth={2.4} aria-hidden /></button>
-          <small className="at-so-leitor">Falar com o Mentor</small>
+        <div className="at-mentor-col">
+          <div className={`at-cartao at-mentor ${mentorAtivo ? "is-on" : ""}`} style={{ "--bi": "var(--b4, 0)" } as React.CSSProperties}>
+            {/* a mesma esfera da Central de Missão (gravada da própria cena: anel de fogo e fumaça), em laço contínuo; com o Mentor falando ela pulsa e deforma com a voz */}
+            <video ref={esfera} className="at-esfera" src="/home/aula-topo/esfera.mp4" poster="/home/aula-topo/esfera.webp" autoPlay loop muted playsInline preload="auto" aria-hidden tabIndex={-1} />
+            <div className="at-mentor-orbe">{mentor}</div>
+            <b>Mentor</b>
+            <button type="button" className="at-seta at-seta-v" onClick={onMentor} aria-label={mentorAtivo ? "Encerrar conversa com o Mentor" : "Falar com o Mentor"}><ArrowRight strokeWidth={2.4} aria-hidden /></button>
+            <small className="at-so-leitor">Falar com o Mentor</small>
+          </div>
+          {/* escolha do professor, miniatura sob a esfera: o selecionado pisca em vermelho */}
+          <div className="at-prof" role="radiogroup" aria-label="Professor ou professora Aprovum">
+            {([["o", "Professor", "Prof."], ["a", "Professora", "Profa."]] as const).map(([k, longo, curto]) => (
+              <button key={k} type="button" role="radio" aria-checked={professor === k} className={`at-prof-b ${professor === k ? "is-sel" : ""}`} onClick={() => onProfessor(k)} data-testid={`prof-${k}`} title={`${longo} Aprovum`}>
+                <i aria-hidden />
+                <span className="at-prof-l">{longo}</span><span className="at-prof-c">{curto}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
