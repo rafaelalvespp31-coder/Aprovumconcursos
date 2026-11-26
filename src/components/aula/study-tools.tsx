@@ -12,6 +12,7 @@ import { MentorVoz } from "@/components/mentor/mentor-voz";
 import type { StudyContext } from "@/domain/mentor/study-context";
 import { createPostitAction, deletePostitAction, listPostitsAction, deletePostitPdfAction, generatePostitPdfAction, updatePostitNoteAction } from "@/app/(app)/aula/[id]/postit-actions";
 import { ToolsHint } from "./tools-hint";
+import { AulaTopo } from "./aula-topo";
 import { PostitCard, type PostitView } from "./postit-card";
 import { matchKey } from "@/domain/study/postit-quote";
 import { caretAt, locateRange, readSelection, type Capture } from "./postit-dom";
@@ -144,6 +145,16 @@ export function StudyTools({
   const els = useRef(new Map<string, HTMLElement>());
   const popRef = useRef<HTMLDivElement | null>(null);
   const barRef = useRef<HTMLDivElement | null>(null);
+  // Topo grande da aula (marca, ferramentas e relógio): enquanto está na tela, a barra compacta fica escondida; ao rolar, ela volta.
+  const topoRef = useRef<HTMLElement | null>(null);
+  const [topoVisivel, setTopoVisivel] = useState(true);
+  useEffect(() => {
+    const el = topoRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") return;
+    const io = new IntersectionObserver(([e]) => setTopoVisivel(!!e?.isIntersecting), { rootMargin: "-96px 0px 0px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
   // A barra entra no cabeçalho fixo da página (logo abaixo da logo); sem cabeçalho, fica solta no topo.
   const host = useSyncExternalStore(() => () => {}, () => document.querySelector(".mv-cabecalho"), () => null);
   const armedRef = useRef(false);
@@ -194,7 +205,7 @@ export function StudyTools({
    */
   const clip = useCallback(() => {
     const vh = window.innerHeight;
-    let top = Math.round((barRef.current?.getBoundingClientRect().bottom ?? 70));
+    let top = Math.round(((host ?? barRef.current)?.getBoundingClientRect().bottom ?? 70));
     // Qualquer cabeçalho/barra fixa ou grudada no topo também esconde o selinho que passa por baixo.
     for (const el of document.querySelectorAll("header, .lp-header, [data-st-topo]")) {
       const cs = getComputedStyle(el);
@@ -217,7 +228,7 @@ export function StudyTools({
       const cutBottom = Math.max(0, r.bottom - bottom);
       pop.style.clipPath = cutTop || cutBottom ? `inset(${cutTop}px -20px ${cutBottom}px -20px)` : "";
     }
-  }, []);
+  }, [host]);
 
   const layout = useCallback(() => {
     const vw = window.innerWidth;
@@ -227,7 +238,7 @@ export function StudyTools({
     const small = vw < 768;
     const stubX = small ? vw - 26 : fr ? Math.min(fr.right - 38, vw - 70) : vw - 100;
     // Limite de cima: logo abaixo da barra de ferramentas (que fica embaixo do cabeçalho).
-    const topo = Math.round((barRef.current?.getBoundingClientRect().bottom ?? 70) + 8);
+    const topo = Math.round(((host ?? barRef.current)?.getBoundingClientRect().bottom ?? 70) + 8);
     document.documentElement.style.setProperty("--st-base", `${topo}px`);
     // Coordenadas do DOCUMENTO (não da tela): o selinho rola junto com o texto, sem recalcular a cada rolagem.
     const sx = window.scrollX;
@@ -273,7 +284,7 @@ export function StudyTools({
       }
     }
     clip();
-  }, [clip]);
+  }, [clip, host]);
 
   const retryRef = useRef(0);
   const refresh = useCallback((): void => {
@@ -550,25 +561,25 @@ export function StudyTools({
     <>
       {(() => {
         const barra = (
-          <div ref={barRef} className={`st-bar ${host ? "" : "is-solta"}`} data-st data-testid="st-dock">
+          <div ref={barRef} className={`st-bar ${host ? "" : "is-solta"} ${topoVisivel ? "is-oculta" : ""}`} data-st data-testid="st-dock-c">
             <VozOnda level={levelRef} active={panel === "mentor" && mentorFala} />
             <div className="st-bar-rotulo" aria-hidden><Wrench className="size-4" /><span className="st-rot-l">Barra de ferramentas</span><span className="st-rot-c">Ferramentas</span></div>
             <div className="st-pilula" role="toolbar" aria-label="Barra de ferramentas de estudo">
-              <button type="button" className={`st-btn ${armed || panel === "lista" ? "is-on" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={onPostitButton} aria-label="Post-it de revisão" title="Post-it: toque e selecione o trecho" data-testid="st-postit">
+              <button type="button" className={`st-btn ${armed || panel === "lista" ? "is-on" : ""}`} onMouseDown={(e) => e.preventDefault()} onClick={onPostitButton} aria-label="Post-it de revisão" title="Post-it: toque e selecione o trecho" data-testid="st-postit-c">
                 <StickyNote className="size-5" aria-hidden /><span className="st-btn-txt"><b>Post-it</b><small>Marcar trecho</small></span>
                 {count > 0 && <span className="st-badge" aria-hidden>{count}</span>}
               </button>
-              <button type="button" className="st-btn" onMouseDown={(e) => e.preventDefault()} onClick={explain} aria-label="Explicar o trecho selecionado" title="Explicar com IA: selecione uma palavra ou trecho" data-testid="st-explicar">
+              <button type="button" className="st-btn" onMouseDown={(e) => e.preventDefault()} onClick={explain} aria-label="Explicar o trecho selecionado" title="Explicar com IA: selecione uma palavra ou trecho" data-testid="st-explicar-c">
                 <Lightbulb className="size-5" aria-hidden /><span className="st-btn-txt"><b>Explicar</b><small>Tirar dúvida</small></span>
               </button>
-              <button type="button" className={`st-btn ${panel === "pdf" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "pdf" ? null : "pdf"))} aria-label="Meu PDF de Revisão" aria-expanded={panel === "pdf"} title="Meu PDF de Revisão" data-testid="st-pdf">
+              <button type="button" className={`st-btn ${panel === "pdf" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "pdf" ? null : "pdf"))} aria-label="Meu PDF de Revisão" aria-expanded={panel === "pdf"} title="Meu PDF de Revisão" data-testid="st-pdf-c">
                 <FileText className="size-5" aria-hidden /><span className="st-btn-txt"><b>Meu PDF</b><small>Gerar revisão</small></span>
               </button>
-              <button type="button" className={`st-btn ${panel === "lousas" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "lousas" ? null : "lousas"))} aria-label="Lousas do Mentor salvas" aria-expanded={panel === "lousas"} title="Explicações do Mentor na lousa, salvas para rever" data-testid="st-lousas">
+              <button type="button" className={`st-btn ${panel === "lousas" ? "is-on" : ""}`} onClick={() => setPanel((p) => (p === "lousas" ? null : "lousas"))} aria-label="Lousas do Mentor salvas" aria-expanded={panel === "lousas"} title="Explicações do Mentor na lousa, salvas para rever" data-testid="st-lousas-c">
                 <PenLine className="size-5" aria-hidden /><span className="st-btn-txt"><b>Lousas</b><small>Rever explicação</small></span>
               </button>
               <div className="st-mentor-wrap">
-                {panel === "mentor" ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={46} onSpeaking={setMentorFala} onLousa={(dados, sync, vivo) => setLousa((a) => (dados === "fechar" ? null : dados === null ? (a?.dados ? a : { id: a?.id ?? Date.now(), dados: LOUSA_ERRO }) : dados === "pendente" ? (a?.dados ? a : { id: Date.now(), dados: null }) : { id: a?.id ?? Date.now(), dados, sync, vivo }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setPanel(null); }} /> : <VozOrbRepouso size={46} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+                <VozOrbRepouso size={46} onStart={() => { if (panel === "mentor") { setMentorFala(false); setPanel(null); } else { currentCapture(); setPanel("mentor"); } }} />
                 <span className="st-btn-txt st-mentor-txt" aria-hidden onClick={() => { if (panel !== "mentor") { currentCapture(); setPanel("mentor"); } }}><b>Mentor</b><small>Falar com o Mentor</small></span>
               </div>
             </div>
@@ -582,8 +593,23 @@ export function StudyTools({
         );
       })()}
 
+      <AulaTopo
+        ref={topoRef}
+        level={levelRef}
+        mentorAtivo={panel === "mentor"}
+        mentorFala={mentorFala}
+        onMentor={() => { if (panel === "mentor") { setMentorFala(false); setPanel(null); } else { currentCapture(); setPanel("mentor"); } }}
+        postit={{ arte: "bloco", titulo: "Marcar Trecho", sub: "Post-it", ligado: armed || panel === "lista", badge: count, aria: "Post-it de revisão", tip: "Post-it: toque e selecione o trecho", testid: "st-postit", onClick: onPostitButton }}
+        explicar={{ arte: "lampada", titulo: "Tirar Dúvida", sub: "Explicar o trecho selecionado", aria: "Explicar o trecho selecionado", tip: "Explicar com IA: selecione uma palavra ou trecho", testid: "st-explicar", onClick: explain }}
+        pdf={{ arte: "lista", titulo: "Gerar Revisão", sub: "Meu PDF de Revisão", ligado: panel === "pdf", expandido: panel === "pdf", aria: "Meu PDF de Revisão", tip: "Meu PDF de Revisão", testid: "st-pdf", onClick: () => setPanel((p) => (p === "pdf" ? null : "pdf")) }}
+        lousas={{ arte: "caneta", titulo: "Rever Explicação", sub: "Lousas do Mentor", ligado: panel === "lousas", expandido: panel === "lousas", aria: "Lousas do Mentor salvas", tip: "Explicações do Mentor na lousa, salvas para rever", testid: "st-lousas", onClick: () => setPanel((p) => (p === "lousas" ? null : "lousas")) }}
+        mentor={panel === "mentor"
+          ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={70} onSpeaking={setMentorFala} onLousa={(dados, sync, vivo) => setLousa((a) => (dados === "fechar" ? null : dados === null ? (a?.dados ? a : { id: a?.id ?? Date.now(), dados: LOUSA_ERRO }) : dados === "pendente" ? (a?.dados ? a : { id: Date.now(), dados: null }) : { id: a?.id ?? Date.now(), dados, sync, vivo }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setPanel(null); }} />
+          : <VozOrbRepouso size={70} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+      />
+
       {/* Post-its colados na margem da folha, na altura do trecho */}
-      <ToolsHint barRef={barRef} />
+      <ToolsHint barRef={topoRef as React.RefObject<HTMLElement | null>} />
 
       {postits.length > 0 && toBody(
         <div className="st-trilho" data-st aria-label="Post-its desta aula" data-testid="st-trilho">

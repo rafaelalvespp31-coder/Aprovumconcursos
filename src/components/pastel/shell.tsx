@@ -208,7 +208,7 @@ export function PastelShell({
 
   return (
     <ToastCtx.Provider value={setToast}>
-      {isStudy && <StudyClock />}
+      {isStudy && !isAula && <StudyClock />}
       <div className="mv-progresso" aria-hidden />
       <div className="pastel relative min-h-screen w-full overflow-x-clip font-[Inter,system-ui,sans-serif] text-[#0A0A0A] antialiased selection:bg-[#E10600]/25">
         <div className={`pointer-events-none fixed inset-0 max-w-[100vw] overflow-hidden ${dark ? "bg-[#070707]" : isNotebookRun ? "qz-fundo-shell" : "bg-white"}`} />

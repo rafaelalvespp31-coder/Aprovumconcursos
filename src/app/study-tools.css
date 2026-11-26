@@ -287,3 +287,5 @@ body:has(.st-bar) .mentor-flut { display: none !important; }
   .st-btn-txt small { font-size: 9.5px; letter-spacing: -0.01em; }
   .st-pilula .st-mentor-wrap { margin-left: 0; padding: 0; border-left: 0; }
 }
+/* com o topo grande da aula na tela, a barra compacta (que entra no cabeçalho fixo) fica escondida */
+.st-bar.is-oculta { display: none; }

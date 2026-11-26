@@ -1,75 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Timer, Pause } from "lucide-react";
-import { reportStudyTimeAction } from "@/app/(app)/study-time-actions";
-import { formatHMS, tickClock, touchClock, type ClockState } from "@/domain/study-clock";
+import { formatHMS } from "@/domain/study-clock";
+import { useStudyClock } from "./use-study-clock";
 
-const dayKey = () => `na:estudo-hoje:${new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" })}`;
-const read = (k: string) => {
-  try {
-    return Number(localStorage.getItem(k)) || 0;
-  } catch {
-    return 0;
-  }
-};
-
-/**
- * Horas líquidas de estudo do dia, no topo das telas de estudo. Só conta com a aba visível e com
- * interação (mouse, toque, teclado, rolagem); 10 min inerte para o relógio e desconta o tempo parado.
- * O total do dia fica neste aparelho (localStorage).
- */
+/** Horas líquidas de estudo do dia, no topo das telas de estudo (a conta está em useStudyClock; a aula tem o relógio no próprio painel). */
 export function StudyClock() {
-  const [key, setKey] = useState(dayKey);
-  const [state, setState] = useState<ClockState>({ seconds: 0, idleFor: 0, paused: false });
-  const ref = useRef(state);
-  // eslint-disable-next-line react-hooks/refs
-  ref.current = state;
-
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setState((s) => ({ ...s, seconds: read(key) }));
-  }, [key]);
-
-  useEffect(() => {
-    const touch = () => setState((s) => touchClock(s));
-    const evs = ["pointerdown", "pointermove", "keydown", "scroll", "wheel", "touchstart"] as const;
-    evs.forEach((e) => window.addEventListener(e, touch, { passive: true, capture: true }));
-    const id = setInterval(() => {
-      const k = dayKey();
-      if (k !== key) return setKey(k);
-      if (document.visibilityState !== "visible") return;
-      setState((s) => {
-        const n = tickClock(s);
-        if (n.seconds !== s.seconds) {
-          try {
-            localStorage.setItem(key, String(n.seconds));
-          } catch {
-            /* sem armazenamento: segue só em memória */
-          }
-        }
-        return n;
-      });
-    }, 1000);
-    return () => {
-      evs.forEach((e) => window.removeEventListener(e, touch, { capture: true }));
-      clearInterval(id);
-    };
-  }, [key]);
-
-  // Envia o total do dia ao servidor (a cada ~90 s e ao sair da aba), para o Mentor conhecer as horas de estudo.
-  useEffect(() => {
-    let last = 0;
-    const send = () => {
-      const s = ref.current.seconds;
-      if (s > 0 && s !== last) { last = s; void reportStudyTimeAction(s).catch(() => {}); }
-    };
-    const id = setInterval(send, 90_000);
-    const vis = () => { if (document.visibilityState === "hidden") send(); };
-    document.addEventListener("visibilitychange", vis);
-    return () => { clearInterval(id); document.removeEventListener("visibilitychange", vis); };
-  }, []);
+  const state = useStudyClock();
 
   // No celular o relógio entra no fluxo da página (espaço vazio no topo do conteúdo), sem cobrir banners.
   const [slot, setSlot] = useState<HTMLElement | null>(null);
