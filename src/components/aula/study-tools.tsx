@@ -391,7 +391,7 @@ export function StudyTools({
     if (salvo === "a" || salvo === "o") { iniciarMentor(salvo); return; }
     setEscTop(Math.round((barRef.current?.getBoundingClientRect().bottom ?? 160) + 10));
     setPanel("escolha");
-    falar(`${saudacao()}! Eu sou o Mentor da Aprovum. Quer que eu seja o professor Aprovum, ou a professora Aprovum?`);
+    falar(`${saudacao()}! Você quer ter aula com o professor Aprovum, ou com a professora Aprovum?`);
   };
 
   // ---------- Post-its ----------
@@ -630,7 +630,7 @@ export function StudyTools({
       {panel === "escolha" && toBody(
         <div className="at-escolha" style={{ top: escTop }} role="dialog" aria-label="Escolha o professor" data-st data-testid="mentor-escolha">
           <p className="at-escolha-t">{saudacao()}!</p>
-          <p className="at-escolha-p">Quer que eu seja o <b>Professor</b> ou a <b>Professora</b> Aprovum?</p>
+          <p className="at-escolha-p">Você quer ter aula com o <b>Professor</b> ou com a <b>Professora</b> Aprovum?</p>
           <div className="at-escolha-b">
             <button type="button" onClick={() => iniciarMentor("o")} data-testid="mentor-professor">Professor Aprovum</button>
             <button type="button" onClick={() => iniciarMentor("a")} data-testid="mentor-professora">Professora Aprovum</button>
