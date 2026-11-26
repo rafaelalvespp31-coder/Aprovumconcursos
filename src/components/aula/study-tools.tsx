@@ -32,7 +32,7 @@ export interface StudyApi {
 /** Mensagem que o servidor devolve para falhas inesperadas (vale tentar de novo). */
 const TRANSIENT = "Não foi possível concluir agora. Tente novamente.";
 const realApi: StudyApi = { create: createPostitAction, list: listPostitsAction, updateNote: updatePostitNoteAction, remove: deletePostitAction, generatePdf: generatePostitPdfAction, removePdf: deletePostitPdfAction };
-type Panel = null | "lista" | "pdf" | "mentor" | "lousas";
+type Panel = null | "lista" | "pdf" | "mentor" | "lousas" | "escolha";
 interface LousaSalva { id: string; titulo: string; pedido: string; criadaEm: string }
 
 const FRESH_MS = 12_000;
@@ -359,6 +359,40 @@ export function StudyTools({
     if (last && Date.now() - last.at < FRESH_MS) return { cap: last };
     return {};
   }, []);
+  // Professor ou Professora Aprovum: a primeira vez o Mentor dá boa noite e pergunta; a escolha fica salva neste aparelho
+  const [prof, setProf] = useState<"a" | "o">("o");
+  const [escTop, setEscTop] = useState(170);
+  const saudacao = () => { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; };
+  const falar = (t: string | null) => {
+    try {
+      const ss = window.speechSynthesis;
+      ss.cancel();
+      if (!t) return;
+      const u = new SpeechSynthesisUtterance(t);
+      u.lang = "pt-BR";
+      u.rate = 1.02;
+      const v = ss.getVoices().find((x) => /pt[-_]BR/i.test(x.lang));
+      if (v) u.voice = v;
+      ss.speak(u);
+    } catch { /* sem voz do navegador: a pergunta continua escrita na tela */ }
+  };
+  const iniciarMentor = (p: "a" | "o") => {
+    try { localStorage.setItem("aprovum.mentor.professor", p); } catch { /* sem armazenamento: pergunta de novo da próxima vez */ }
+    falar(null);
+    setProf(p);
+    currentCapture();
+    setPanel("mentor");
+  };
+  const abrirMentor = () => {
+    if (panel === "mentor") { setMentorFala(false); setPanel(null); return; }
+    if (panel === "escolha") { falar(null); setPanel(null); return; }
+    let salvo: string | null = null;
+    try { salvo = localStorage.getItem("aprovum.mentor.professor"); } catch { /* ignora */ }
+    if (salvo === "a" || salvo === "o") { iniciarMentor(salvo); return; }
+    setEscTop(Math.round((barRef.current?.getBoundingClientRect().bottom ?? 160) + 10));
+    setPanel("escolha");
+    falar(`${saudacao()}! Eu sou o Mentor da Aprovum. Quer que eu seja o professor Aprovum, ou a professora Aprovum?`);
+  };
 
   // ---------- Post-its ----------
   const goTo = useCallback((p: PostitView) => {
@@ -556,14 +590,14 @@ export function StudyTools({
           level={levelRef}
           mentorAtivo={panel === "mentor"}
           mentorFala={mentorFala}
-          onMentor={() => { if (panel === "mentor") { setMentorFala(false); setPanel(null); } else { currentCapture(); setPanel("mentor"); } }}
+          onMentor={abrirMentor}
           postit={{ arte: "bloco", titulo: "Marcar Trecho", sub: "Post-it", ligado: armed || panel === "lista", badge: count, aria: "Post-it de revisão", tip: "Post-it: toque e selecione o trecho", testid: "st-postit", onClick: onPostitButton }}
           explicar={{ arte: "lampada", titulo: "Tirar Dúvida", sub: "Explicar o trecho selecionado", aria: "Explicar o trecho selecionado", tip: "Explicar com IA: selecione uma palavra ou trecho", testid: "st-explicar", onClick: explain }}
           pdf={{ arte: "lista", titulo: "Gerar Revisão", sub: "Meu PDF de Revisão", ligado: panel === "pdf", expandido: panel === "pdf", aria: "Meu PDF de Revisão", tip: "Meu PDF de Revisão", testid: "st-pdf", onClick: () => setPanel((p) => (p === "pdf" ? null : "pdf")) }}
           lousas={{ arte: "caneta", titulo: "Rever Explicação", sub: "Lousas do Mentor", ligado: panel === "lousas", expandido: panel === "lousas", aria: "Lousas do Mentor salvas", tip: "Explicações do Mentor na lousa, salvas para rever", testid: "st-lousas", onClick: () => setPanel((p) => (p === "lousas" ? null : "lousas")) }}
           mentor={panel === "mentor"
-            ? <MentorVoz getStudy={getStudy} autoStart orbOnly orbSize={70} onSpeaking={setMentorFala} onLousa={(dados, sync, vivo) => setLousa((a) => (dados === "fechar" ? null : dados === null ? (a?.dados ? a : { id: a?.id ?? Date.now(), dados: LOUSA_ERRO }) : dados === "pendente" ? (a?.dados ? a : { id: Date.now(), dados: null }) : { id: a?.id ?? Date.now(), dados, sync, vivo }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setPanel(null); }} />
-            : <VozOrbRepouso size={70} onStart={() => { currentCapture(); setPanel("mentor"); }} />}
+            ? <MentorVoz professor={prof} getStudy={getStudy} autoStart orbOnly orbSize={70} onSpeaking={setMentorFala} onLousa={(dados, sync, vivo) => setLousa((a) => (dados === "fechar" ? null : dados === null ? (a?.dados ? a : { id: a?.id ?? Date.now(), dados: LOUSA_ERRO }) : dados === "pendente" ? (a?.dados ? a : { id: Date.now(), dados: null }) : { id: a?.id ?? Date.now(), dados, sync, vivo }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setPanel(null); }} />
+            : <VozOrbRepouso size={70} onStart={abrirMentor} />}
           />
         );
         return (
@@ -591,6 +625,17 @@ export function StudyTools({
       {openId && postits.some((p) => p.id === openId) && toBody(
         <div ref={popRef} className="st-pop" data-st-pop data-st data-testid="st-pop">
           {postits.map((p, i) => p.id === openId && <PostitCard key={p.id} p={p} n={i + 1} focused={false} inRail onNote={saveNote} onDelete={async (id) => { const ok = await remove(id); if (ok) setOpenId(null); return ok; }} onGo={goTo} />)}
+        </div>,
+      )}
+      {panel === "escolha" && toBody(
+        <div className="at-escolha" style={{ top: escTop }} role="dialog" aria-label="Escolha o professor" data-st data-testid="mentor-escolha">
+          <p className="at-escolha-t">{saudacao()}!</p>
+          <p className="at-escolha-p">Quer que eu seja o <b>Professor</b> ou a <b>Professora</b> Aprovum?</p>
+          <div className="at-escolha-b">
+            <button type="button" onClick={() => iniciarMentor("o")} data-testid="mentor-professor">Professor Aprovum</button>
+            <button type="button" onClick={() => iniciarMentor("a")} data-testid="mentor-professora">Professora Aprovum</button>
+          </div>
+          <button type="button" className="at-escolha-x" onClick={() => { falar(null); setPanel(null); }}>Agora não</button>
         </div>,
       )}
       {armed && (
