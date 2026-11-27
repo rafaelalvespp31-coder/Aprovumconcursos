@@ -226,7 +226,7 @@ export class Montador {
 /** Tamanho da letra: o maior que cabe na largura e na altura da lousa. */
 export function tamanhoPara(med: Medidor, larg: number, alt: number, unidLarg: number, unidAlt: number, fator: number, max = 44): number {
   const m0 = med("0");
-  return Math.max(18, Math.min(max, Math.floor((larg - 40) / (unidLarg * m0.w * fator)), Math.floor((alt - 36) / unidAlt)));
+  return Math.max(18, Math.min(larg >= 800 ? Math.round(max * 1.6) : max, Math.floor((larg - 40) / (unidLarg * m0.w * fator)), Math.floor((alt - 36) / unidAlt)));
 }
 
 // ---------------------------------------------------------------- contas armadas (colunas)

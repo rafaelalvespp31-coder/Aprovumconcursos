@@ -140,3 +140,21 @@
 @media (max-height: 700px) { .qb-grade { grid-auto-rows: 38px; } .qb-aba { min-height: 36px; } }
 @media (min-width: 900px) { .qb { padding-top: 18px; } .qb-janela { padding: 16px; gap: 12px; } }
 @media (prefers-reduced-motion: reduce) { .qb-ferr, .qb-tecla { transition: none; } }
+
+/* Desktop: a janela ocupa a página inteira; a lousa à esquerda e passo + teclado à direita */
+@media (min-width: 900px) {
+  .qb { padding: 0; align-items: stretch; }
+  .qb::before, .qb::after { display: none; }
+  .qb-janela { width: 100%; max-width: none; border-radius: 0; border: 0; padding: 12px 18px 10px; gap: 10px 16px;
+    display: grid; grid-template-columns: minmax(0, 1fr) clamp(380px, 31vw, 560px); grid-template-rows: auto auto minmax(0, 1fr); }
+  .qb-topo, .qb-barra { grid-column: 1 / -1; }
+  .qb-topo { gap: 14px; }
+  .qb-logo { height: 38px; width: auto; }
+  .qb-ferr { min-height: 54px; }
+  .qb-area { grid-column: 1; grid-row: 3; min-height: 0; }
+  .qb-teclado { grid-column: 2; grid-row: 3; display: flex; flex-direction: column; min-height: 0; gap: 10px; overflow-y: auto; }
+  .qb-pad { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 10px; }
+  .qb-grade { flex: 0 1 auto; min-height: 0; grid-auto-rows: minmax(42px, clamp(42px, 13vh, 118px)); }
+  .qb-passo { flex-wrap: wrap; }
+  .qb-rodape { width: 100%; padding: 6px 18px calc(env(safe-area-inset-bottom, 0px) + 8px); }
+}

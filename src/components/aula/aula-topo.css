@@ -143,3 +143,25 @@
   .at-ampulheta { width: 58px; }
   .at-hora { font-size: 21px; }
 }
+
+/* Desktop: a barra encaixa de ponta a ponta e fica mais baixa */
+@media (min-width: 900px) {
+  .at-ferr { width: 100%; max-width: none; margin: 0; padding: 4px 16px 10px 14px; border-radius: 0; gap: 16px; }
+  .at-ferr.is-solta { left: 0; right: 0; margin: 0; border-radius: 0; }
+  .at-ferr-t { gap: 6px; }
+  .at-chave { width: 24px; }
+  .at-grade { gap: 8px; }
+  .at-cartao { height: 56px; padding: 0 4px 5px; border-radius: 10px; }
+  .at-cartao-arte { width: 24px; top: 4px; }
+  .at-cartao b { font-size: 11px; }
+  .at-seta { display: none; }
+  .at-mentor-orbe { width: 30px; height: 30px; top: 3px; }
+  .at-esfera { width: 70px; height: 70px; margin-left: -35px; top: -8px; }
+}
+.at-mentor-col { height: 74px; }
+@media (max-width: 640px) { .at-mentor-col { height: 58px; } }
+@media (min-width: 900px) {
+  .at-mentor-col { height: 56px; }
+  .at-ferr { padding-bottom: 24px; }
+  .at-prof { top: calc(100% + 5px); }
+}
