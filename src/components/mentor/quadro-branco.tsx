@@ -4,12 +4,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Eraser, Pen, Trash2, Undo2, Wand2, X } from "lucide-react";
 import { apagar, CORES, interpretar, mesmaForma, promoverUns, type Cor, type Item, type Medidor } from "@/domain/mentor/quadro-motor";
 import type { Ponto, Traco } from "@/domain/mentor/quadro-modelos";
+import { perfilDaAula, type ContextoAula } from "@/domain/mentor/quadro-perfil";
 import "./quadro-branco.css";
 
 const FONTE = '"Courier Prime", "Courier New", Courier, ui-monospace, monospace';
 const BORRACHA = 16;
 const ESPERA_MS = 600;
-const CHAVE = "aprovum:quadro:v1";
+const CHAVE = "aprovum:quadro:v2";
 const CANETAS: { cor: Cor; nome: string }[] = [{ cor: "preto", nome: "Caneta preta" }, { cor: "azul", nome: "Caneta azul" }, { cor: "vermelho", nome: "Caneta vermelha" }];
 
 /** Mede cada caractere na fonte de máquina (subida, descida e largura por 1 de tamanho), com memória. */
@@ -28,13 +29,18 @@ function medidorDeFonte(): Medidor {
 }
 
 interface Props {
+  /** Aula aberta: a lousa se adapta ao assunto (símbolos esperados) e guarda o quadro daquela aula. */
+  aula?: ContextoAula & { id?: string | null };
   onClose: () => void;
   /** Abre a lista de explicações do Mentor já salvas (fecha o quadro). */
   onExplicacoes?: () => void;
 }
 
 /** Quadro branco de treino: o aluno escreve à mão e o quadro limpa tudo em letra de máquina. */
-export function QuadroBranco({ onClose, onExplicacoes }: Props) {
+export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
+  const perfil = useMemo(() => perfilDaAula(aula), [aula]);
+  const chave = `${CHAVE}:${aula?.id ?? "geral"}`;
+  const refTam = useRef<number | undefined>(undefined); // tamanho da primeira escrita: vale para tudo
   const area = useRef<HTMLDivElement>(null);
   const tela = useRef<HTMLCanvasElement>(null);
   const itens = useRef<Item[]>([]);
@@ -52,8 +58,8 @@ export function QuadroBranco({ onClose, onExplicacoes }: Props) {
   const [auto, setAuto] = useState(true);
   const [estado, setEstado] = useState({ vazio: true, pode: false });
   const [confirmaLimpar, setConfirmaLimpar] = useState(false);
-  const cfg = useRef({ caneta, ferramenta, auto });
-  useEffect(() => { cfg.current = { caneta, ferramenta, auto }; }, [caneta, ferramenta, auto]);
+  const cfg = useRef({ caneta, ferramenta, auto, perfil });
+  useEffect(() => { cfg.current = { caneta, ferramenta, auto, perfil }; }, [caneta, ferramenta, auto, perfil]);
 
   const medidor = useMemo<Medidor>(() => medidorDeFonte(), []);
 
@@ -84,8 +90,8 @@ export function QuadroBranco({ onClose, onExplicacoes }: Props) {
   }, []);
 
   const guardar = useCallback(() => {
-    try { localStorage.setItem(CHAVE, JSON.stringify(itens.current)); } catch { /* sem armazenamento: segue sem salvar */ }
-  }, []);
+    try { localStorage.setItem(chave, JSON.stringify({ itens: itens.current, ref: refTam.current })); } catch { /* sem armazenamento: segue sem salvar */ }
+  }, [chave]);
   const marcar = useCallback(() => {
     desfazer.current.push(JSON.stringify(itens.current));
     if (desfazer.current.length > 40) desfazer.current.shift();
@@ -101,8 +107,9 @@ export function QuadroBranco({ onClose, onExplicacoes }: Props) {
     pendente.current = [];
     marcar();
     if (cfg.current.auto) {
-      const novos = interpretar(g, cfg.current.caneta, medidor, itens.current).itens;
-      itens.current = promoverUns([...itens.current, ...novos], novos, medidor);
+      const r = interpretar(g, cfg.current.caneta, medidor, itens.current, { ref: refTam.current, perfil: cfg.current.perfil });
+      if (r.ref && !refTam.current) refTam.current = r.ref;
+      itens.current = promoverUns([...itens.current, ...r.itens], r.itens, medidor, refTam.current);
     } else {
       itens.current = [...itens.current, ...interpretar(g, cfg.current.caneta, () => ({ asc: 0.6, desc: 0, w: 0.6 }), []).itens.filter((i) => i.t === "tr")];
     }
@@ -120,12 +127,15 @@ export function QuadroBranco({ onClose, onExplicacoes }: Props) {
       cv.style.width = `${r.width}px`; cv.style.height = `${r.height}px`;
       desenhar();
     };
-    try { const s = localStorage.getItem(CHAVE); if (s) { const j = JSON.parse(s) as Item[]; if (Array.isArray(j)) itens.current = j; } } catch { /* ignora */ }
+    try {
+      const s = localStorage.getItem(chave);
+      if (s) { const j = JSON.parse(s) as { itens?: Item[]; ref?: number }; if (Array.isArray(j.itens)) { itens.current = j.itens; refTam.current = typeof j.ref === "number" ? j.ref : undefined; } }
+    } catch { /* ignora */ }
     ajustar();
     const raf = requestAnimationFrame(refletir);
     const ro = new ResizeObserver(ajustar); ro.observe(a);
     return () => { cancelAnimationFrame(raf); ro.disconnect(); if (timer.current) clearTimeout(timer.current); };
-  }, [desenhar, refletir]);
+  }, [desenhar, refletir, chave]);
 
   // Esc fecha
   useEffect(() => {
@@ -182,7 +192,7 @@ export function QuadroBranco({ onClose, onExplicacoes }: Props) {
     const t = atual.current; atual.current = null;
     if (!t) return;
     if (t.length < 2) t.push([t[0]![0] + 0.01, t[0]![1]]);
-    if (pendente.current.length && candidato.current && !mesmaForma(pendente.current, t)) fechar(); // eram dois símbolos: o anterior já está pronto
+    if (pendente.current.length && candidato.current && !mesmaForma(pendente.current, t, cfg.current.perfil)) fechar(); // eram dois símbolos: o anterior já está pronto
     candidato.current = false;
     pendente.current = [...pendente.current, t];
     ultimoSubir.current = performance.now();
@@ -198,11 +208,12 @@ export function QuadroBranco({ onClose, onExplicacoes }: Props) {
     const s = desfazer.current.pop();
     if (s === undefined) return;
     try { itens.current = JSON.parse(s) as Item[]; } catch { return; }
+    refTam.current = (itens.current.find((i) => i.t === "gl") as { size?: number } | undefined)?.size;
     mudou();
   };
   const limparTudo = () => {
     if (!confirmaLimpar) { setConfirmaLimpar(true); setTimeout(() => setConfirmaLimpar(false), 3000); return; }
-    fechar(); marcar(); itens.current = []; pendente.current = []; setConfirmaLimpar(false); mudou();
+    fechar(); marcar(); itens.current = []; pendente.current = []; refTam.current = undefined; setConfirmaLimpar(false); mudou();
   };
 
   const { vazio, pode: podeDesfazer } = estado;
@@ -210,7 +221,7 @@ export function QuadroBranco({ onClose, onExplicacoes }: Props) {
   return (
     <div className="qb" role="dialog" aria-modal="true" aria-label="Lousa de treino" data-testid="quadro-branco">
       <header className="qb-topo">
-        <h2>Lousa</h2>
+        <h2>Lousa<small className="qb-aula" data-testid="quadro-perfil">{perfil.modo === "calculo" ? `Aula: ${perfil.nome}` : perfil.nome}</small></h2>
         {onExplicacoes && <button type="button" className="qb-link" onClick={onExplicacoes} data-testid="quadro-explicacoes"><BookOpen size={16} aria-hidden /> Explicações do Mentor</button>}
         <button type="button" className="qb-x" onClick={onClose} aria-label="Fechar lousa"><X size={22} aria-hidden /></button>
       </header>

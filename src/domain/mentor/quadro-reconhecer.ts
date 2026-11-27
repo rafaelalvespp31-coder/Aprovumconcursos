@@ -91,15 +91,15 @@ function modelos(): Modelo[] {
 
 export interface Palpite { ch: string; dist: number }
 /** Melhores palpites (um por caractere), do mais para o menos parecido. Menor distância = mais parecido. */
-export function reconhecer(tracos: Traco[], quantos = 3): Palpite[] {
+export function reconhecer(tracos: Traco[], quantos = 3, vies: (ch: string) => number = (ch) => (/[0-9]/.test(ch) ? -0.25 : 0)): Palpite[] {
   const limpos = tracos.filter((t) => t.length > 0).map((t) => alisar(densificar(t, 3), 4)); // tira o tremor antes de comparar
   if (!limpos.length) return [];
   const c = normaliza(nuvem(limpos));
   const nt = limpos.length;
   const melhor = new Map<string, number>();
   for (const m of modelos()) {
-    // na hora de treinar contas, algarismo é mais provável que letra parecida (0/o, 2/z, 6/b, 9/q)
-    const d = cloudDist(c, m.pts) + 0.03 * Math.abs(nt - m.tracos) - (/[0-9]/.test(m.ch) ? 0.25 : 0);
+    // o assunto da aula pesa na escolha (ex.: em contas, algarismo é mais provável que a letra parecida: 0/o, 2/z, 6/b)
+    const d = cloudDist(c, m.pts) + 0.03 * Math.abs(nt - m.tracos) + vies(m.ch);
     if (d < (melhor.get(m.ch) ?? Infinity)) melhor.set(m.ch, d);
   }
   return [...melhor.entries()].map(([ch, dist]) => ({ ch, dist })).sort((a, b) => a.dist - b.dist).slice(0, quantos);
