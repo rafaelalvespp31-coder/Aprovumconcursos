@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Eraser, Pen, Trash2, Undo2, Wand2, X } from "lucide-react";
-import { apagar, CORES, interpretar, mesmaForma, type Cor, type Item, type Medidor } from "@/domain/mentor/quadro-motor";
+import { apagar, CORES, interpretar, mesmaForma, promoverUns, type Cor, type Item, type Medidor } from "@/domain/mentor/quadro-motor";
 import type { Ponto, Traco } from "@/domain/mentor/quadro-modelos";
 import "./quadro-branco.css";
 
@@ -101,7 +101,8 @@ export function QuadroBranco({ onClose, onExplicacoes }: Props) {
     pendente.current = [];
     marcar();
     if (cfg.current.auto) {
-      itens.current = [...itens.current, ...interpretar(g, cfg.current.caneta, medidor, itens.current).itens];
+      const novos = interpretar(g, cfg.current.caneta, medidor, itens.current).itens;
+      itens.current = promoverUns([...itens.current, ...novos], novos, medidor);
     } else {
       itens.current = [...itens.current, ...interpretar(g, cfg.current.caneta, () => ({ asc: 0.6, desc: 0, w: 0.6 }), []).itens.filter((i) => i.t === "tr")];
     }

@@ -9,7 +9,7 @@ import type { Ponto, Traco } from "./quadro-modelos";
 export type Cor = "preto" | "azul" | "vermelho";
 export const CORES: Record<Cor, string> = { preto: "#15151a", azul: "#1d4ed8", vermelho: "#dc2626" };
 
-export interface ItemTraco { t: "tr"; cor: Cor; w: number; segs: Traco[] }
+export interface ItemTraco { t: "tr"; cor: Cor; w: number; segs: Traco[]; /** Sinal que este desenho representa (+, =, ÷…), quando veio do reconhecimento. */ sim?: string }
 export interface ItemGlifo { t: "gl"; cor: Cor; ch: string; cx: number; base: number; size: number; caixa: { x0: number; y0: number; x1: number; y1: number } }
 export type Item = ItemTraco | ItemGlifo;
 
@@ -23,6 +23,7 @@ const VETOR = new Set(["-", "=", "+", "÷", "/", "(", ")", ".", ":", "<", ">", "
 const ALTOS = /[0-9A-Zbdfhkt!?%]/;
 
 const tr = (cor: Cor, ...segs: Traco[]): ItemTraco => ({ t: "tr", cor, w: ESPESSURA, segs: segs.map((s) => densificar(s, 4)) });
+const comSim = (itens: Item[], ch: string): Item[] => itens.map((i) => (i.t === "tr" ? { ...i, sim: ch } : i));
 const arco = (a: Ponto, b: Ponto, c: Ponto, n = 14): Traco => Array.from({ length: n + 1 }, (_, i) => { const t = i / n, u = 1 - t; return [u * u * a[0] + 2 * u * t * b[0] + t * t * c[0], u * u * a[1] + 2 * u * t * b[1] + t * t * c[1]] as Ponto; });
 const ponto = (x: number, y: number, r: number): Traco => Array.from({ length: 9 }, (_, i) => [x + r * Math.cos((i / 8) * 2 * Math.PI), y + r * Math.sin((i / 8) * 2 * Math.PI)] as Ponto);
 
@@ -70,6 +71,39 @@ function vetor(ch: string, b: ReturnType<typeof caixa>, cor: Cor): Item[] {
   }
 }
 
+/** Caixa de um item do quadro. */
+export function caixaItem(it: Item) {
+  if (it.t === "gl") return { x0: it.caixa.x0, y0: it.caixa.y0, x1: it.caixa.x1, y1: it.caixa.y1 };
+  const c = caixa(it.segs);
+  return { x0: c.x0, y0: c.y0, x1: c.x1, y1: c.y1 };
+}
+const tamanhoItem = (it: Item) => { const c = caixaItem(it); return Math.max(c.x1 - c.x0, c.y1 - c.y0); };
+/** Há, ao lado do traço, um caractere ou sinal de tamanho parecido (o que o torna parte de uma conta)? */
+function temVizinho(b: { cx: number; cy: number; h: number }, itens: Item[]): boolean {
+  return itens.some((v) => {
+    if (!(v.t === "gl" || v.sim)) return false;
+    const c = caixaItem(v), t = tamanhoItem(v);
+    const vx = (c.x0 + c.x1) / 2, vy = (c.y0 + c.y1) / 2;
+    return Math.abs(vx - b.cx) < Math.max(t, b.h) * 2.4 && Math.abs(vy - b.cy) < Math.max(t, b.h) * 0.7 && t > b.h * 0.45 && t < b.h * 2.4;
+  });
+}
+
+/**
+ * Depois de escrever um caractere, um traço vertical curto que estava ao lado dele (e foi deixado como linha por estar
+ * sozinho) passa a ser o algarismo 1 — como em "1 + 2". Linhas compridas ou isoladas nunca mudam.
+ */
+export function promoverUns(itens: Item[], novos: Item[], med: Medidor): Item[] {
+  const novosSet = new Set(novos);
+  return itens.map((it) => {
+    if (novosSet.has(it) || it.t !== "tr" || it.sim || it.segs.length !== 1) return it;
+    const seg = it.segs[0]!;
+    const b = caixa([seg]);
+    if (b.w > 6 || b.h < 14 || b.h > 110) return it; // não é um traço vertical curto
+    if (!temVizinho(b, itens.filter((x) => x !== it))) return it;
+    return glifo("1", b, it.cor, med, itens.filter((x) => x !== it));
+  });
+}
+
 export interface Resultado { itens: Item[]; palpites?: Palpite[]; reconhecido: boolean }
 
 /** Interpreta o que o aluno acabou de escrever (um ou mais traços que formam um único "símbolo"). */
@@ -96,9 +130,14 @@ export function interpretar(tracos: Traco[], cor: Cor, med: Medidor, vizinhos: I
         else if (vert) { const x = (p0[0] + p1[0]) / 2; p0[0] = x; p1[0] = x; }
         return { itens: [tr(cor, [p0, p1])], reconhecido: true };
       }
-      if (horiz) return { itens: vetor("-", b, cor), reconhecido: true };
-      if (vert) return { itens: [glifo("1", b, cor, med, vizinhos)], reconhecido: true };
-      return { itens: vetor("/", b, cor), reconhecido: true };
+      if (horiz) return { itens: comSim(vetor("-", b, cor), "-"), reconhecido: true };
+      if (vert) {
+        // traço vertical: é o algarismo 1 se estiver escrito junto de outros caracteres; sozinho, é uma linha reta
+        if (temVizinho(b, vizinhos)) return { itens: [glifo("1", b, cor, med, vizinhos)], reconhecido: true };
+        const x = (a[0] + z[0]) / 2;
+        return { itens: [tr(cor, [[x, a[1]], [x, z[1]]])], reconhecido: true };
+      }
+      return { itens: comSim(vetor("/", b, cor), "/"), reconhecido: true };
     }
     // círculo/elipse grandes
     const fechada = Math.hypot(t[0]![0] - t[t.length - 1]![0], t[0]![1] - t[t.length - 1]![1]) < len * 0.22;
@@ -112,7 +151,7 @@ export function interpretar(tracos: Traco[], cor: Cor, med: Medidor, vizinhos: I
   const palpites = reconhecer(limpos, 3);
   const [p1, p2] = palpites;
   if (p1 && (p1.dist < MUITO_BOM || (p1.dist < LIMITE && (!p2 || p2.dist / p1.dist >= RAZAO)))) {
-    const itens = VETOR.has(p1.ch) ? vetor(p1.ch, b, cor) : [glifo(p1.ch, b, cor, med, vizinhos)];
+    const itens = VETOR.has(p1.ch) ? comSim(vetor(p1.ch, b, cor), p1.ch) : [glifo(p1.ch, b, cor, med, vizinhos)];
     return { itens, palpites, reconhecido: true };
   }
   // não reconhecido: mantém o desenho, só que sem tremor

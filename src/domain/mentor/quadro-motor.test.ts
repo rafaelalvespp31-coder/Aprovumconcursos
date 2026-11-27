@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { MODELOS } from "./quadro-modelos";
-import { apagar, interpretar, mesmaForma, type Medidor } from "./quadro-motor";
+import { apagar, interpretar, mesmaForma, promoverUns, type Medidor } from "./quadro-motor";
 import { densificar, type Traco } from "./quadro-reconhecer";
 
 const med: Medidor = () => ({ asc: 0.6, desc: 0, w: 0.6 });
@@ -19,7 +19,12 @@ describe("motor do quadro", () => {
     const h: Traco = Array.from({ length: 10 }, (_, i) => [i * 3, 0]);
     expect(interpretar([h], "azul", med).itens[0]!.t).toBe("tr");
     const v: Traco = Array.from({ length: 10 }, (_, i) => [0, i * 5]);
-    const r = interpretar([v], "azul", med).itens[0]!;
+    // sozinho: é uma linha vertical, não o número 1
+    expect(interpretar([v], "azul", med).itens[0]!.t).toBe("tr");
+    // ao lado de outro algarismo, é o número 1
+    const sete = interpretar(escala(MODELOS["7"]![0]!, 50, 100, 100), "azul", med).itens;
+    const vv: Traco = Array.from({ length: 10 }, (_, i) => [60, 100 + i * 5]);
+    const r = interpretar([vv], "azul", med, sete).itens[0]!;
     expect(r.t === "gl" && r.ch).toBe("1");
   });
   it("algarismo escrito vira o caractere", () => {
@@ -64,5 +69,16 @@ describe("motor do quadro", () => {
       const A = escala(MODELOS[a]![0]!, 48, 100, 100), B = escala(MODELOS[b]![0]!, 48, 160, 100);
       expect(mesmaForma(A, B[0]!), a + b).toBe(false);
     }
+  });
+  it("linha vertical deixada antes vira 1 quando aparece um caractere ao lado", () => {
+    const linha = interpretar([Array.from({ length: 10 }, (_, i) => [100, 100 + i * 5] as [number, number])], "preto", med).itens;
+    expect(linha[0]!.t).toBe("tr");
+    const dois = interpretar(escala(MODELOS["2"]![0]!, 50, 130, 100), "preto", med, linha).itens;
+    const todos = promoverUns([...linha, ...dois], dois, med);
+    expect(todos.some((i) => i.t === "gl" && i.ch === "1")).toBe(true);
+    // linha comprida e isolada continua linha
+    const longa = interpretar([Array.from({ length: 40 }, (_, i) => [300, 100 + i * 5] as [number, number])], "preto", med).itens;
+    const outro = interpretar(escala(MODELOS["2"]![0]!, 50, 330, 100), "preto", med, longa).itens;
+    expect(promoverUns([...longa, ...outro], outro, med).some((i) => i.t === "gl" && i.ch === "1")).toBe(false);
   });
 });
