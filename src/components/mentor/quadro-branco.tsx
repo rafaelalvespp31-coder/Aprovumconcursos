@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Eraser, Keyboard, Pen, Trash2, Undo2, Wand2, X } from "lucide-react";
 import { apagar, CORES, ehSinalVetor, glifoEm, interpretar, mesmaForma, promoverUns, sinalNormalizado, type Cor, type Item, type Medidor } from "@/domain/mentor/quadro-motor";
-import { colocarNaCasa, conferir, exercicioAleatorio, montarEsqueleto, textoDaCasa, type Esqueleto, type TipoEsqueleto } from "@/domain/mentor/quadro-esqueleto";
+import { casaCerta, casaCompleta, colocarNaCasa, exercicioAleatorio, montarEsqueleto, ROTULOS, textoDaCasa, tiposDaAula, validarNums, type Esqueleto, type TipoEsqueleto } from "@/domain/mentor/quadro-esqueleto";
 import type { Ponto, Traco } from "@/domain/mentor/quadro-modelos";
 import { perfilDaAula, type ContextoAula } from "@/domain/mentor/quadro-perfil";
 import "./quadro-branco.css";
@@ -16,9 +16,8 @@ const TECLAS: { ch: string; rot?: string; k?: "apagar" | "prox" | "linha" }[] = 
   { ch: "7" }, { ch: "8" }, { ch: "9" }, { ch: "×" }, { ch: "÷" }, { ch: "⌫", k: "apagar" },
   { ch: "4" }, { ch: "5" }, { ch: "6" }, { ch: "+" }, { ch: "-", rot: "−" }, { ch: "→", k: "prox" },
   { ch: "1" }, { ch: "2" }, { ch: "3" }, { ch: "=" }, { ch: "," }, { ch: "↵", k: "linha" },
-  { ch: "0" }, { ch: "(" }, { ch: ")" }, { ch: "." }, { ch: "/", rot: "/" }, { ch: ":" },
+  { ch: "0" }, { ch: "(" }, { ch: ")" }, { ch: "." }, { ch: "/", rot: "/" }, { ch: "x" },
 ];
-const ROTULO_TIPO: Record<TipoEsqueleto, string> = { mmc: "MMC", mult: "Multiplicação" };
 const CANETAS: { cor: Cor; nome: string }[] = [{ cor: "preto", nome: "Caneta preta" }, { cor: "azul", nome: "Caneta azul" }, { cor: "vermelho", nome: "Caneta vermelha" }];
 
 /** Mede cada caractere na fonte de máquina (subida, descida e largura por 1 de tamanho), com memória. */
@@ -67,14 +66,17 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const [estado, setEstado] = useState({ vazio: true, pode: false });
   const [confirmaLimpar, setConfirmaLimpar] = useState(false);
   // teclado: números para tocar (em vez de desenhar) + esqueleto da conta já montado
-  const tipos = useMemo<TipoEsqueleto[]>(() => (perfil.modo !== "calculo" ? [] : /MMC/.test(perfil.nome) ? ["mmc", "mult"] : ["mult"]), [perfil]);
+  const tipos = useMemo<TipoEsqueleto[]>(() => (perfil.modo !== "calculo" ? [] : tiposDaAula(perfil.nome)), [perfil]);
   const [digitar, setDigitar] = useState(perfil.modo === "calculo");
   const [esq, setEsq] = useState<Esqueleto | null>(null);
   const [numsTxt, setNumsTxt] = useState("");
-  const [msg, setMsg] = useState("");
+  const [msgObj, setMsgObj] = useState<{ t: "ok" | "erro" | "info"; s: string } | null>(null);
+  const setMsg = useCallback((s: string, t: "ok" | "erro" | "info" = "info") => setMsgObj(s ? { t, s } : null), []);
+  const [passoUi, setPassoUi] = useState(0);
+  const passo = useRef(0);
   const esqRef = useRef<Esqueleto | null>(null);
   const cur = useRef<{ g: number | null; x: number; base: number }>({ g: null, x: 24, base: 90 });
-  const conf = useRef<boolean[] | null>(null);
+  const conf = useRef<(boolean | null)[] | null>(null);
   const cfg = useRef({ caneta, ferramenta, auto, perfil, digitar });
   useEffect(() => { cfg.current = { caneta, ferramenta, auto, perfil, digitar }; }, [caneta, ferramenta, auto, perfil, digitar]);
 
@@ -94,9 +96,12 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
       ctx.lineTo(t[t.length - 1]![0], t[t.length - 1]![1]); ctx.stroke();
     };
     const e = esqRef.current;
-    if (e && cfg.current.digitar) { // casas ainda vazias: sublinhado pontilhado (onde escrever)
+    if (e && cfg.current.digitar) { // casas do passo atual (e dos anteriores): faixa azul clara + sublinhado pontilhado; as dos próximos passos aparecem só quando chegar a vez
+      const ativas = e.casas.filter((c) => c.passo <= passo.current);
+      ctx.fillStyle = "rgba(29,78,216,.07)";
+      for (const c of ativas) if (c.passo === passo.current) ctx.fillRect(c.x0 - 3, c.y0, c.x1 - c.x0 + 6, c.y1 - c.y0);
       ctx.strokeStyle = "rgba(0,0,0,.22)"; ctx.lineWidth = 1.5; ctx.setLineDash([2, 4]);
-      for (const c of e.casas) { ctx.beginPath(); ctx.moveTo(c.x0, c.base + 6); ctx.lineTo(c.x1, c.base + 6); ctx.stroke(); }
+      for (const c of ativas) { ctx.beginPath(); ctx.moveTo(c.x0, c.base + 6); ctx.lineTo(c.x1, c.base + 6); ctx.stroke(); }
       ctx.setLineDash([]);
     }
     for (const it of [...(e?.fixos ?? []), ...itens.current]) {
@@ -104,7 +109,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
       else { ctx.fillStyle = CORES[it.cor]; ctx.font = `700 ${it.size}px ${FONTE}`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillText(it.ch, it.cx, it.base); }
     }
     if (e) {
-      conf.current?.forEach((ok, i) => { const c = e.casas[i]; if (!c) return; ctx.strokeStyle = ok ? "#16a34a" : "#dc2626"; ctx.lineWidth = 2.2; ctx.strokeRect(c.x0 - 3, c.y0, c.x1 - c.x0 + 6, c.y1 - c.y0); });
+      conf.current?.forEach((ok, i) => { const c = e.casas[i]; if (!c || ok === null) return; ctx.strokeStyle = ok ? "#16a34a" : "#dc2626"; ctx.lineWidth = 2.2; ctx.strokeRect(c.x0 - 3, c.y0, c.x1 - c.x0 + 6, c.y1 - c.y0); });
       const c = cur.current.g != null ? e.casas[cur.current.g] : undefined;
       if (cfg.current.digitar && c) { ctx.strokeStyle = "#1d4ed8"; ctx.lineWidth = 2; ctx.setLineDash([6, 4]); ctx.strokeRect(c.x0 - 3, c.y0, c.x1 - c.x0 + 6, c.y1 - c.y0); ctx.setLineDash([]); }
     }
@@ -119,7 +124,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   }, []);
 
   const guardar = useCallback(() => {
-    try { localStorage.setItem(chave, JSON.stringify({ itens: itens.current, ref: refTam.current, esq: esqRef.current })); } catch { /* sem armazenamento: segue sem salvar */ }
+    try { localStorage.setItem(chave, JSON.stringify({ itens: itens.current, ref: refTam.current, esq: esqRef.current, passo: passo.current })); } catch { /* sem armazenamento: segue sem salvar */ }
   }, [chave]);
   const marcar = useCallback(() => {
     desfazer.current.push(JSON.stringify(itens.current));
@@ -150,11 +155,12 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const altura = () => area.current?.clientHeight ?? 600;
   const aplicarEsq = useCallback((e: Esqueleto | null, limpar: boolean) => {
     esqRef.current = e; setEsq(e);
-    if (e) { setNumsTxt(e.nums.join(", ")); refTam.current = e.size; cur.current = { g: e.casas.length ? 0 : null, x: 24, base: e.size * 1.3 }; }
+    if (e) { setNumsTxt(e.nums.join(", ")); refTam.current = e.size; cur.current = { g: e.passos[0]?.casas[0] ?? null, x: 24, base: e.size * 1.3 }; }
+    passo.current = 0; setPassoUi(0);
     conf.current = null; setMsg("");
     if (limpar) { itens.current = []; pendente.current = []; }
     mudou();
-  }, [mudou]);
+  }, [mudou, setMsg]);
   const novoEsq = useCallback((tipo: TipoEsqueleto, nums?: number[]) => {
     marcar();
     aplicarEsq(montarEsqueleto(tipo, nums ?? exercicioAleatorio(tipo), largura(), medidor, altura()), true);
@@ -164,6 +170,27 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     if (!refTam.current) refTam.current = esqRef.current?.size ?? Math.max(28, Math.min(44, Math.floor(largura() / 12)));
     return refTam.current;
   };
+  /** Passo atual terminado? Confere, explica e (se acertou) passa para o próximo. */
+  const verificarPasso = useCallback((forcar = false) => {
+    const e = esqRef.current; if (!e) return;
+    const ps = e.passos[passo.current]; if (!ps) return;
+    const cs = ps.casas.map((i) => e.casas[i]!);
+    if (!forcar && !cs.every((c) => casaCompleta(itens.current, c))) return;
+    const certas = cs.map((c) => casaCerta(itens.current, c));
+    conf.current = e.casas.map((c) => (c.passo === passo.current ? casaCerta(itens.current, c) : null)); // verde/vermelho só nas casas deste passo
+    if (certas.every(Boolean)) {
+      const ultimo = passo.current >= e.passos.length - 1;
+      setMsg(ultimo ? `${ps.porque} Conta concluída! ${e.resposta}` : ps.porque, "ok");
+      if (!ultimo) {
+        passo.current += 1; setPassoUi(passo.current);
+        cur.current = { ...cur.current, g: e.passos[passo.current]!.casas[0] ?? null };
+      } else { passo.current = e.passos.length; setPassoUi(passo.current); }
+    } else {
+      setMsg(`Quase! ${ps.dica} Toque na casa vermelha e corrija.`, "erro");
+    }
+    desenhar();
+  }, [desenhar, setMsg]);
+
   const teclar = useCallback((ch: string, k?: "apagar" | "prox" | "linha") => {
     fechar();
     const e = esqRef.current, size = tamanho(), cor = cfg.current.caneta, g = cur.current.g;
@@ -171,15 +198,19 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     if (e && g != null) {
       const c = e.casas[g]!;
       const atual = textoDaCasa(itens.current, c);
-      if (k === "prox" || k === "linha") cur.current.g = Math.min(e.casas.length - 1, g + 1);
+      const doPasso = e.passos[c.passo]?.casas ?? [];
+      const prox = () => { const i = doPasso.indexOf(c.id); const n = doPasso[i + 1]; if (n !== undefined) cur.current.g = n; };
+      if (k === "prox" || k === "linha") prox();
       else if (k === "apagar") {
-        if (atual) { marcar(); itens.current = colocarNaCasa(itens.current, c, atual.slice(0, -1), cor, medidor, size); } else cur.current.g = Math.max(0, g - 1);
+        if (atual) { marcar(); itens.current = colocarNaCasa(itens.current, c, atual.slice(0, -1), cor, medidor, size); }
+        else { const i = doPasso.indexOf(c.id); if (i > 0) cur.current.g = doPasso[i - 1]!; }
       } else {
-        if (!/[0-9]/.test(ch) || atual.length >= c.slots) return;
+        if (!/[0-9x,]/.test(ch) || atual.length >= c.slots) return;
         marcar();
         const novo = atual + ch;
         itens.current = colocarNaCasa(itens.current, c, novo, cor, medidor, size);
-        if (novo.length >= c.esperado.length && g < e.casas.length - 1) cur.current.g = g + 1; // completou a casa: vai para a próxima
+        if (novo.length >= c.esperado.length) prox(); // completou a casa: vai para a próxima do passo
+        if (c.passo === passo.current) verificarPasso();
       }
     } else {
       const m0 = medidor("0"), cw = m0.w * size * 1.15;
@@ -196,38 +227,33 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
         cur.current.x += cw;
       }
     }
-    setMsg("");
     mudou();
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fechar, marcar, medidor, mudou]);
+  }, [fechar, marcar, medidor, mudou, verificarPasso]);
   const tocar = (x: number, y: number) => {
     const e = esqRef.current;
-    const i = e ? e.casas.findIndex((c) => x >= c.x0 - 8 && x <= c.x1 + 8 && y >= c.y0 - 6 && y <= c.y1 + 6) : -1;
+    const i = e ? e.casas.findIndex((c) => c.passo <= passo.current && x >= c.x0 - 8 && x <= c.x1 + 8 && y >= c.y0 - 6 && y <= c.y1 + 6) : -1;
     if (i >= 0) cur.current = { ...cur.current, g: i };
     else cur.current = { g: null, x: Math.max(12, x), base: y };
     desenhar();
   };
-  const conferirAgora = () => {
-    const e = esqRef.current; if (!e) return;
-    fechar();
-    const r = conferir(itens.current, e); conf.current = r;
-    const ok = r.filter(Boolean).length;
-    setMsg(ok === r.length ? `Tudo certo! ${e.resposta}` : `${ok} de ${r.length} casas certas. As vermelhas precisam de ajuste.`);
-    desenhar();
-  };
+  const conferirAgora = () => { fechar(); verificarPasso(true); };
   const verResposta = () => {
     const e = esqRef.current; if (!e) return;
+    const ps = e.passos[passo.current]; if (!ps) return;
     fechar(); marcar();
-    const r = conferir(itens.current, e);
-    e.casas.forEach((c, i) => { if (!r[i]) itens.current = colocarNaCasa(itens.current, c, c.esperado, "vermelho", medidor, e.size); });
-    conf.current = null; setMsg(`Resposta: ${e.resposta}`); mudou();
+    for (const i of ps.casas) { const c = e.casas[i]!; if (!casaCerta(itens.current, c)) itens.current = colocarNaCasa(itens.current, c, c.esperado, "vermelho", medidor, e.size); }
+    const ultimo = passo.current >= e.passos.length - 1;
+    setMsg(ultimo ? `${ps.porque} Conta concluída! ${e.resposta}` : ps.porque, "info");
+    if (!ultimo) { passo.current += 1; setPassoUi(passo.current); cur.current = { ...cur.current, g: e.passos[passo.current]!.casas[0] ?? null }; } else { passo.current = e.passos.length; setPassoUi(passo.current); }
+    conf.current = null; mudou();
   };
   const montarDoCampo = () => {
     const tipo = esqRef.current?.tipo ?? tipos[0];
     if (!tipo) return;
     const n = numsTxt.split(/[^0-9]+/).filter(Boolean).map(Number);
-    const ok = tipo === "mmc" ? n.length >= 2 && n.length <= 3 && n.every((v) => v >= 2 && v <= 999) : n.length === 2 && n[0]! >= 1 && n[0]! <= 9999 && n[1]! >= 1 && n[1]! <= 99;
-    if (!ok) { setMsg(tipo === "mmc" ? "Digite 2 ou 3 números, ex.: 12, 18" : "Digite 2 números, ex.: 23, 45 (o segundo até 99)"); return; }
+    const erro = validarNums(tipo, n);
+    if (erro) { setMsg(erro, "erro"); return; }
     novoEsq(tipo, n);
   };
 
@@ -266,20 +292,20 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     try {
       const s = localStorage.getItem(chave);
       if (s) {
-        const j = JSON.parse(s) as { itens?: Item[]; ref?: number; esq?: Esqueleto | null };
+        const j = JSON.parse(s) as { itens?: Item[]; ref?: number; esq?: Esqueleto | null; passo?: number };
         if (Array.isArray(j.itens)) { itens.current = j.itens; refTam.current = typeof j.ref === "number" ? j.ref : undefined; }
-        if (j.esq && Array.isArray(j.esq.casas)) { esqRef.current = j.esq; cur.current = { g: 0, x: 24, base: 90 }; }
+        if (j.esq && Array.isArray(j.esq.casas) && Array.isArray(j.esq.passos)) { esqRef.current = j.esq; passo.current = Math.min(Math.max(0, j.passo ?? 0), j.esq.passos.length); cur.current = { g: j.esq.passos[passo.current]?.casas[0] ?? null, x: 24, base: 90 }; }
       }
     } catch { /* ignora */ }
     ajustar();
     // lousa nova numa aula de cálculo: a conta já vem montada
     if (!esqRef.current && !itens.current.length && tipos.length) {
       esqRef.current = montarEsqueleto(tipos[0]!, exercicioAleatorio(tipos[0]!), a.clientWidth || 360, medidor, a.clientHeight || 600);
-      refTam.current = esqRef.current.size; cur.current = { g: 0, x: 24, base: 90 };
+      refTam.current = esqRef.current.size; passo.current = 0; cur.current = { g: esqRef.current.passos[0]?.casas[0] ?? null, x: 24, base: 90 };
       desenhar();
     }
     const raf = requestAnimationFrame(() => { // estado do React só depois do primeiro desenho
-      if (esqRef.current) { setEsq(esqRef.current); setNumsTxt(esqRef.current.nums.join(", ")); }
+      if (esqRef.current) { setEsq(esqRef.current); setPassoUi(passo.current); setNumsTxt(esqRef.current.nums.join(", ")); }
       refletir();
     });
     const ro = new ResizeObserver(ajustar); ro.observe(a);
@@ -363,7 +389,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   };
   const limparTudo = () => {
     if (!confirmaLimpar) { setConfirmaLimpar(true); setTimeout(() => setConfirmaLimpar(false), 3000); return; }
-    fechar(); marcar(); itens.current = []; pendente.current = []; conf.current = null; if (!esqRef.current) refTam.current = undefined; else cur.current.g = 0; setMsg(""); setConfirmaLimpar(false); mudou();
+    fechar(); marcar(); itens.current = []; pendente.current = []; conf.current = null; if (!esqRef.current) refTam.current = undefined; else { passo.current = 0; setPassoUi(0); cur.current.g = esqRef.current.passos[0]?.casas[0] ?? null; } setMsg(""); setConfirmaLimpar(false); mudou();
   };
 
   const { vazio, pode: podeDesfazer } = estado;
@@ -402,23 +428,33 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
       </div>
       {digitar && (
         <div className="qb-teclado" data-testid="quadro-teclado">
-          {(tipos.length > 0 || esq) && (
-            <div className="qb-esq">
+          {tipos.length > 0 && (
+            <div className="qb-esq" role="toolbar" aria-label="Tipos de conta">
               {tipos.map((t) => (
-                <button key={t} type="button" className={`qb-chip${esq?.tipo === t ? " is-on" : ""}`} data-testid={`esq-${t}`} onClick={() => novoEsq(t)}>{ROTULO_TIPO[t]}</button>
+                <button key={t} type="button" className={`qb-chip${esq?.tipo === t ? " is-on" : ""}`} data-testid={`esq-${t}`} onClick={() => novoEsq(t)}>{ROTULOS[t]}</button>
               ))}
-              {esq && (
-                <>
-                  <input className="qb-nums" value={numsTxt} onChange={(ev) => setNumsTxt(ev.target.value)} onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); montarDoCampo(); } }} aria-label="Números da conta" data-testid="esq-numeros" inputMode="numeric" />
-                  <button type="button" className="qb-chip" onClick={montarDoCampo} data-testid="esq-montar">Montar</button>
-                  <button type="button" className="qb-chip" onClick={() => novoEsq(esq.tipo)} data-testid="esq-novo">Novo</button>
-                  <button type="button" className="qb-chip qb-ok" onClick={conferirAgora} data-testid="esq-conferir">Conferir</button>
-                  <button type="button" className="qb-chip" onClick={verResposta} data-testid="esq-resposta">Ver resposta</button>
-                </>
-              )}
             </div>
           )}
-          {msg && <p className="qb-msg" role="status" data-testid="esq-msg">{msg}</p>}
+          {esq && (
+            <div className="qb-passo" data-testid="esq-passo">
+              {passoUi < esq.passos.length ? (
+                <>
+                  <b>Passo {passoUi + 1} de {esq.passos.length}: {esq.passos[passoUi]!.titulo}</b>
+                  <p>{esq.passos[passoUi]!.texto}</p>
+                </>
+              ) : <b>Conta concluída! {esq.resposta}</b>}
+            </div>
+          )}
+          {msgObj && <p className={`qb-msg is-${msgObj.t}`} role="status" data-testid="esq-msg">{msgObj.s}</p>}
+          {esq && (
+            <div className="qb-esq">
+              <input className="qb-nums" value={numsTxt} onChange={(ev) => setNumsTxt(ev.target.value)} onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); montarDoCampo(); } }} aria-label="Números da conta" data-testid="esq-numeros" inputMode="numeric" />
+              <button type="button" className="qb-chip" onClick={montarDoCampo} data-testid="esq-montar">Montar</button>
+              <button type="button" className="qb-chip" onClick={() => novoEsq(esq.tipo)} data-testid="esq-novo">Novo</button>
+              <button type="button" className="qb-chip qb-ok" onClick={conferirAgora} data-testid="esq-conferir">Conferir</button>
+              <button type="button" className="qb-chip" onClick={verResposta} data-testid="esq-resposta" disabled={passoUi >= esq.passos.length}>Mostrar o passo</button>
+            </div>
+          )}
           <div className="qb-teclas">
             {TECLAS.map((t) => (
               <button key={t.ch} type="button" className={`qb-tecla${t.k ? " is-ctrl" : ""}`} aria-label={t.k === "apagar" ? "Apagar último" : t.k === "prox" ? "Próxima casa" : t.k === "linha" ? "Próxima linha" : t.rot ?? t.ch}

@@ -25,7 +25,7 @@
 .qb-area canvas.is-borracha { cursor: none; }
 .qb-dica { position: absolute; inset: 0; display: grid; place-content: center; margin: 0; padding: 20px; text-align: center; color: rgb(0 0 0 / .32); font-size: 1rem; line-height: 1.5; pointer-events: none; }
 .qb-dica b { color: rgb(0 0 0 / .5); }
-.qb-teclado { display: grid; gap: 6px; padding: 6px 10px calc(env(safe-area-inset-bottom, 0px) + 8px); background: #fff; border-top: 1px solid rgb(0 0 0 / .1); }
+.qb-teclado { display: grid; gap: 6px; max-height: 58vh; overflow-y: auto; padding: 6px 10px calc(env(safe-area-inset-bottom, 0px) + 8px); background: #fff; border-top: 1px solid rgb(0 0 0 / .1); }
 .qb-esq { display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; }
 .qb-esq::-webkit-scrollbar { display: none; }
 .qb-chip { flex: none; min-height: 36px; padding: 0 12px; border: 1.5px solid rgb(0 0 0 / .16); border-radius: 999px; background: #fff; color: #222; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
@@ -33,7 +33,13 @@
 .qb-chip.qb-ok { border-color: #16a34a; background: #16a34a; color: #fff; }
 .qb-chip:focus-visible, .qb-tecla:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 2px; }
 .qb-nums { flex: none; width: 96px; min-height: 36px; padding: 0 10px; border: 1.5px solid rgb(0 0 0 / .16); border-radius: 10px; font: inherit; font-size: .9rem; font-weight: 600; }
-.qb-msg { margin: 0; font-size: .82rem; font-weight: 600; color: #333; }
+.qb-passo { padding: 8px 10px; border-radius: 10px; background: #eff4ff; color: #14306e; font-size: .8rem; line-height: 1.35; }
+.qb-passo b { display: block; font-size: .84rem; }
+.qb-passo p { margin: 2px 0 0; }
+.qb-chip:disabled { opacity: .45; cursor: default; }
+.qb-msg { margin: 0; padding: 7px 10px; border-radius: 10px; font-size: .8rem; font-weight: 600; line-height: 1.35; background: #f4f4f5; color: #333; }
+.qb-msg.is-ok { background: #e8f7ee; color: #14532d; }
+.qb-msg.is-erro { background: #fdecec; color: #991b1b; }
 .qb-teclas { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; max-width: 460px; width: 100%; margin: 0 auto; }
 .qb-tecla { min-height: 38px; border: 1.5px solid rgb(0 0 0 / .14); border-radius: 10px; background: #fafafa; color: #111; font: inherit; font-size: 1.15rem; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .12s, transform .1s; }
 .qb-tecla:active { transform: scale(.94); background: #e9eefc; }
