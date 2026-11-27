@@ -59,6 +59,8 @@ export async function importarAnaliseAction(contestId: string, texto: string): P
   if (!v.ok) return { ok: false, error: v.erros[0] ?? "Análise inválida." };
   try {
     const { id } = await importarAnaliseDoConcurso(admin.id, contestId, v.parsed, v.info, v.avisos);
+    // O mesmo texto (padrão PCMG) também publica a análise estratégica do concurso; se ela não puder ser lida, o catálogo já importado fica.
+    await salvarAnaliseDoConcurso(admin.id, contestId, texto).catch(() => undefined);
     revalidatePath("/admin/concursos");
     revalidatePath("/painel");
     return { ok: true, id, materias: v.resumo.materias, topicos: v.resumo.topicos };

@@ -21,6 +21,8 @@ export interface AnaliseDisciplina {
   descricao: string;
   focos: string[];
   estrategia: string;
+  /** Peso e assuntos mais cobrados pela banca (raio-x). */
+  incidencia?: string;
 }
 export interface AnaliseConcurso {
   versao: number;
@@ -32,21 +34,29 @@ export interface AnaliseConcurso {
   organizacao: { horas: Array<{ disciplina: string; horas: number }>; totalHoras: number | null; ciclo: Array<{ etapa: string; texto: string }>; notas: string[] };
   material: { itens: Array<{ titulo: string; texto: string }>; notas: string[] };
   conclusao: { decisoes: Array<{ titulo: string; texto: string }>; recomendacao: string[]; observacao: string | null; notas: string[] };
+  /** Nota de corte do concurso analisado e das últimas edições (raio-x). */
+  corte?: string[];
 }
 export interface ResumoAnalise { disciplinas: number; questoes: number | null; blocos: number; grupos: number; horas: number | null }
 export type ResultadoAnalise = { ok: true; analise: AnaliseConcurso; resumo: ResumoAnalise; avisos: string[] } | { ok: false; erros: string[] };
 
-/** O comando que o admin cola no ChatGPT junto com o PDF do edital. {CARGO} é trocado pelo cargo desejado. */
-export const COMANDO_ANALISE = `Você é um analista de editais de concursos públicos brasileiros. Leia o PDF do edital anexado, do início ao fim, e produza a ANÁLISE COMPLETA DO EDITAL do cargo: {CARGO}.
+/** O comando do RAIO-X: o modelo "ANÁLISE COMPLETA DO EDITAL" (padrão do concurso da PCMG) + incidência, conteúdo programático completo e nota de corte. {CARGO} é trocado pelo cargo. */
+export const COMANDO_ANALISE = `Você é um analista sênior de editais de concursos públicos brasileiros. Leia o PDF do edital anexado, do início ao fim, e produza o RAIO-X COMPLETO E MINUCIOSO do concurso para o cargo: {CARGO}. Se você tiver acesso à internet, pesquise também as provas anteriores da mesma banca para a incidência e a nota de corte; se não tiver, use só o edital e escreva NÃO ENCONTRADO onde não houver dado confiável.
 
 REGRAS:
-1. Use somente o que está no edital. Não invente número de questões, pesos ou datas. Se o edital não informar as questões por disciplina, escreva "QUESTÕES NÃO INFORMADAS" no lugar da quantidade e deixe de fora as tabelas de percentual.
-2. Inclua TODAS as disciplinas do cargo (conhecimentos básicos e específicos), na ordem do edital.
-3. Responda em texto simples, SEM markdown (sem #, sem **), seguindo EXATAMENTE este modelo e estes títulos. Tabelas com colunas separadas por TAB.
+1. Use somente fatos do edital e fontes que você consiga citar. Não invente número de questões, pesos, datas, incidência, nota de corte nem numeração. Se o edital não informar as questões por disciplina, escreva "QUESTÕES NÃO INFORMADAS" no lugar da quantidade e deixe de fora as contas que dependam dela.
+2. Inclua TODAS as disciplinas do cargo (conhecimentos básicos, gerais e específicos), na ordem do edital.
+3. Em cada disciplina, inclua TODO o conteúdo programático, item por item, na ordem do edital, copiado EXATAMENTE como está no edital (mesmas palavras e pontuação), um item por linha, com a numeração original (1., 1.1, 1.1.1, a)…). Não resuma, não agrupe, não pule nenhum item. Se o edital não numerar, numere 1., 2., 3. em sequência.
+4. Responda em texto simples, SEM markdown (sem #, sem **), sem JSON e sem blocos de código, seguindo EXATAMENTE este modelo e estes títulos. Tabelas com colunas separadas por TAB.
+5. Seja minucioso: cada disciplina precisa de prioridade, incidência, focos, estratégia e o conteúdo programático completo. Faça a leitura estratégica de verdade, citando o que a banca costuma cobrar.
 
 MODELO:
 
 ANÁLISE COMPLETA DO EDITAL — SIGLA DO ÓRGÃO | CARGO
+CONCURSO: nome completo do concurso
+BANCA: banca organizadora
+ANO: ano do edital
+EDITAL: número do edital
 
 1. ESTRUTURA GERAL DA PROVA
 (1 parágrafo sobre os blocos e a distribuição, citando o número do edital)
@@ -54,7 +64,7 @@ Bloco[TAB]Disciplinas[TAB]Questões[TAB]Percentual
 Conhecimentos Básicos[TAB]0[TAB]0[TAB]0,00%
 Conhecimentos Específicos[TAB]0[TAB]0[TAB]0,00%
 TOTAL[TAB]0[TAB]0[TAB]100%
-(1 a 2 parágrafos de leitura estratégica)
+(1 a 2 parágrafos de leitura estratégica, incluindo nota mínima por bloco e eliminações, se houver)
 
 ⸻
 
@@ -70,6 +80,14 @@ Principais focos de preparação:
 * foco 2.
 ESTRATÉGIA:
 (1 parágrafo: como estudar)
+INCIDÊNCIA:
+(o peso da disciplina na prova e os assuntos que a banca mais cobrou nas provas anteriores, do mais ao menos cobrado, com percentuais quando houver dado confiável; sem dado: NÃO ENCONTRADO)
+CONTEÚDO PROGRAMÁTICO COMPLETO:
+1. Título exato do item do edital
+1.1 Título exato do subitem
+1.1.1 Título exato do sub-subitem
+a) Título exato
+(se quiser marcar a incidência de um item, ponha no fim da linha [ALTA], [MÉDIA] ou [BAIXA]; marque só onde houver dado ou critério real)
 
 (repita para cada disciplina, numerando em sequência; ao mudar de bloco escreva CONHECIMENTOS ESPECÍFICOS em linha própria)
 
@@ -133,7 +151,14 @@ RECOMENDAÇÃO FINAL:
 * status de estudo.
 OBSERVAÇÃO: a distribuição de questões é a da prova do Edital nº X. Não deve ser atribuída a outro edital.
 
-Se a resposta for cortada, eu peço "continue"; retome do ponto exato onde parou, sem repetir o que já enviou.`;
+⸻
+
+8. NOTA DE CORTE
+NOTA DE CORTE DO CONCURSO ANALISADO: a nota de corte (ou nota mínima de aprovação) do concurso analisado, com a pontuação máxima, a fonte e o ano. Sem dado confiável: NÃO ENCONTRADO.
+ÚLTIMAS EDIÇÕES DA MESMA BANCA/CARGO: uma linha por edição, no formato "ANO — nota de corte de pontuação máxima (fonte)".
+LEITURA DA NOTA DE CORTE: 1 parágrafo sobre quantas questões é preciso acertar e onde estão os pontos mais fáceis de ganhar.
+
+Se a resposta for cortada, eu peço "continue"; retome do ponto exato onde parou, sem repetir o que já enviou, e escreva de novo o rótulo da disciplina em andamento (ex.: "3. INFORMÁTICA BÁSICA — 8 QUESTÕES") antes de seguir com os itens.`;
 
 export const comandoAnaliseParaCargo = (cargo: string): string => COMANDO_ANALISE.replace("{CARGO}", cargo.trim() || "(informe o cargo)");
 
@@ -160,7 +185,7 @@ const celulas = (t: string): string[] | null => {
   return null;
 };
 
-type Secao = "estrutura" | "disciplinas" | "distribuicao" | "dificuldades" | "organizacao" | "material" | "conclusao";
+type Secao = "estrutura" | "disciplinas" | "distribuicao" | "dificuldades" | "organizacao" | "material" | "conclusao" | "corte";
 const SECOES: Array<[Secao, RegExp]> = [
   ["estrutura", /^estrutura geral/],
   ["disciplinas", /^analise por disciplina/],
@@ -169,10 +194,11 @@ const SECOES: Array<[Secao, RegExp]> = [
   ["organizacao", /^como organizar/],
   ["material", /^o que deve entrar/],
   ["conclusao", /^conclusao/],
+  ["corte", /^notas? de corte/],
 ];
 
 /** Título de seção: "3. DISTRIBUIÇÃO…", "## 3. DISTRIBUIÇÃO…" ou só "DISTRIBUIÇÃO…" (linha curta, sem ponto final). */
-function secaoDaLinha(t: string): Secao | null {
+export function secaoDaLinha(t: string): Secao | null {
   if (t.length > 90 || /[.;]$/.test(t)) return null;
   const n = norm(t.replace(/^#+\s*/, "").replace(/^\d+\s*[.)]\s*/, ""));
   for (const [s, re] of SECOES) if (re.test(n)) return s;
@@ -189,10 +215,18 @@ export function lerAnalise(bruto: string): ResultadoAnalise {
   const partes = new Map<Secao, string[]>();
   let atual: Secao | null = null;
   let titulo = "";
+  // Dentro do "CONTEÚDO PROGRAMÁTICO COMPLETO" de uma disciplina, um item como "3. Distribuição de competências" não é título de seção:
+  // lá só vale título em MAIÚSCULAS, numerado ("3. DISTRIBUIÇÃO DE QUESTÕES…").
+  let emProg = false;
   for (const l of linhas) {
     if (!l) continue;
+    if (atual === "disciplinas") {
+      if (/^conteudo programatico/.test(norm(l)) && /:/.test(l)) emProg = true;
+      else if (/^\d+\s*[.)]\s+.+[—–-]\s*.*quest/i.test(l)) emProg = false;
+    } else emProg = false;
     const s = secaoDaLinha(l);
-    if (s && !partes.has(s)) {
+    const bloqueada = emProg && (/[a-zà-ú]/.test(l) || !/^\d+/.test(l));
+    if (s && !partes.has(s) && !bloqueada) {
       atual = s;
       partes.set(s, []);
       continue;
@@ -225,7 +259,7 @@ export function lerAnalise(bruto: string): ResultadoAnalise {
   {
     let bloco = "";
     let d: AnaliseDisciplina | null = null;
-    let modo: "desc" | "focos" | "estr" = "desc";
+    let modo: "desc" | "focos" | "estr" | "inc" | "prog" = "desc";
     for (const l of partes.get("disciplinas")!) {
       const m = l.match(/^(\d+)\s*[.)]\s+(.+)$/);
       if (m && (/[—–-]\s*.*quest/i.test(m[2]!) || (!/[a-zà-ú]/.test(m[2]!) && !/:/.test(m[2]!)))) {
@@ -243,6 +277,16 @@ export function lerAnalise(bruto: string): ResultadoAnalise {
         continue;
       }
       if (!d) continue;
+      if (/^incid[eê]ncia\s*:/i.test(norm(l).replace(/^incidencia/, "incidência"))) {
+        modo = "inc";
+        const resto = l.replace(/^incid[eê]ncia\s*:?\s*/i, "");
+        if (resto) d.incidencia = resto;
+        continue;
+      }
+      if (/^conteudo programatico/.test(norm(l)) && /:/.test(l)) {
+        modo = "prog";
+        continue;
+      }
       const pr = l.match(/^prioridade\s*:\s*(.+)$/i);
       if (pr) {
         d.prioridade = limpa(pr[1]!);
@@ -260,6 +304,8 @@ export function lerAnalise(bruto: string): ResultadoAnalise {
         continue;
       }
       const item = ehMarcador(l);
+      if (modo === "prog") continue; // o conteúdo programático completo é lido pela importação do catálogo
+      if (modo === "inc") { d.incidencia = d.incidencia ? `${d.incidencia} ${l}` : l; continue; }
       if (modo === "focos" && item) d.focos.push(semPonto(item));
       else if (modo === "estr") d.estrategia = d.estrategia ? `${d.estrategia} ${l}` : l;
       else if (modo === "focos") continue; // texto solto entre os focos: ignora
@@ -376,6 +422,8 @@ export function lerAnalise(bruto: string): ResultadoAnalise {
     }
   }
 
+  const corte = (partes.get("corte") ?? []).slice(0, 40);
+
   // ── conferência dos números (só avisos: o admin decide) ──
   const somaQuestoes = disciplinas.reduce((s, d) => s + (d.questoes ?? 0), 0);
   const algumaQuestao = disciplinas.some((d) => d.questoes != null);
@@ -402,7 +450,7 @@ export function lerAnalise(bruto: string): ResultadoAnalise {
   for (const d of disciplinas) d.percentual = totalBase && d.questoes != null ? arredonda((d.questoes / totalBase) * 100) : null;
   if (erros.length) return { ok: false, erros };
 
-  const analise: AnaliseConcurso = { versao: ANALISE_VERSAO, titulo, estrutura, disciplinas, distribuicao, dificuldades, organizacao, material, conclusao };
+  const analise: AnaliseConcurso = { versao: ANALISE_VERSAO, titulo, estrutura, disciplinas, distribuicao, dificuldades, organizacao, material, conclusao, ...(corte.length ? { corte } : {}) };
   return {
     ok: true,
     analise,

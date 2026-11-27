@@ -6,7 +6,7 @@ import { UFS } from "@/domain/concursos";
 import type { Contest } from "@/server/services/gamification";
 import type { VinculoEdital } from "@/server/services/concurso-edital";
 import { EditalDoConcurso } from "./edital-do-concurso";
-import { AnaliseEstrategica, type ImportarEstrategica, type RemoverEstrategica } from "./analise-estrategica";
+import type { ImportarEstrategica, RemoverEstrategica } from "./analise-estrategica";
 import type { ResumoAnaliseAdmin } from "@/server/services/concurso-analise";
 
 type Action = (id: string | null, form: FormData) => Promise<{ ok: boolean; error?: string }>;
@@ -109,7 +109,6 @@ export function ContestForm({ contest, action, vinculo = null, vincular, importa
       </div>
     </form>
     {c && vincular && importar && <EditalDoConcurso contestId={c.id} cargoSugerido={c.roleName ?? ""} vinculo={vinculo} vincular={vincular} importar={importar} />}
-    {c && importarEstrategica && removerEstrategica && <AnaliseEstrategica contestId={c.id} cargoSugerido={c.roleName ?? ""} atual={analise} importar={importarEstrategica} remover={removerEstrategica} />}
     </div>
   );
 }
