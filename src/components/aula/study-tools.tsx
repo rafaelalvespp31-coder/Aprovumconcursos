@@ -2,6 +2,7 @@
 
 import { MentorLousa } from "@/components/mentor/mentor-lousa";
 import { QuadroBranco } from "@/components/mentor/quadro-branco";
+import { materiaTemLousa } from "@/domain/mentor/quadro-perfil";
 import { lousaSchema, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
@@ -567,12 +568,14 @@ export function StudyTools({
   }, [currentCapture, lessonTitle, subject, lessonId]);
 
   /** Abre a lousa já ajustada ao assunto da aula (matéria, título, seção e o texto lido). */
+  const temLousa = materiaTemLousa(subject);
   const abrirQuadro = useCallback(() => {
+    if (!temLousa) return;
     const st = getStudy();
     const texto = Array.from(document.querySelectorAll(".ap-secao")).map((e) => e.textContent ?? "").join(" ").slice(0, 12000);
     setQuadroAula({ id: lessonId, materia: subject ?? "", aula: lessonTitle ?? "", secao: st.section ?? "", texto });
     setQuadro(true);
-  }, [getStudy, lessonId, lessonTitle, subject]);
+  }, [getStudy, lessonId, lessonTitle, subject, temLousa]);
 
   const explain = () => {
     window.dispatchEvent(new CustomEvent("aprovum:explicar"));
@@ -616,7 +619,9 @@ export function StudyTools({
           postit={{ arte: "bloco", titulo: "Marcar Trecho", sub: "Post-it", ligado: armed || panel === "lista", badge: count, aria: "Post-it de revisão", tip: "Post-it: toque e selecione o trecho", testid: "st-postit", onClick: onPostitButton }}
           explicar={{ arte: "lampada", titulo: "Tirar Dúvida", sub: "Explicar o trecho selecionado", aria: "Explicar o trecho selecionado", tip: "Explicar com IA: selecione uma palavra ou trecho", testid: "st-explicar", onClick: explain }}
           pdf={{ arte: "lista", titulo: "Gerar Revisão", sub: "Meu PDF de Revisão", ligado: panel === "pdf", expandido: panel === "pdf", aria: "Meu PDF de Revisão", tip: "Meu PDF de Revisão", testid: "st-pdf", onClick: () => setPanel((p) => (p === "pdf" ? null : "pdf")) }}
-          lousas={{ arte: "caneta", titulo: "Abrir Lousa", sub: "Quadro de treino", ligado: quadro, aria: "Abrir lousa de treino", tip: "Lousa para treinar cálculos: escreva à mão e ela vira letra de máquina", testid: "st-lousas", onClick: () => { setPanel(null); abrirQuadro(); } }}
+          lousas={temLousa
+            ? { arte: "caneta", titulo: "Abrir Lousa", sub: "Quadro de treino", ligado: quadro, aria: "Abrir lousa de treino", tip: "Lousa para treinar cálculos: escreva à mão e ela vira letra de máquina", testid: "st-lousas", onClick: () => { setPanel(null); abrirQuadro(); } }
+            : { arte: "caneta", titulo: "Rever Explicação", sub: "Lousas do Mentor", ligado: panel === "lousas", expandido: panel === "lousas", aria: "Lousas do Mentor salvas", tip: "Explicações do Mentor na lousa, salvas para rever", testid: "st-lousas", onClick: () => setPanel((p) => (p === "lousas" ? null : "lousas")) }}
           mentor={panel === "mentor"
             ? <MentorVoz professor={prof ?? "o"} getStudy={getStudy} autoStart orbOnly orbSize={70} onSpeaking={setMentorFala} onLousa={(dados, sync, vivo) => setLousa((a) => (dados === "fechar" ? null : dados === null ? (a?.dados ? a : { id: a?.id ?? Date.now(), dados: LOUSA_ERRO }) : dados === "pendente" ? (a?.dados ? a : { id: Date.now(), dados: null }) : { id: a?.id ?? Date.now(), dados, sync, vivo }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setPanel(null); }} />
             : <VozOrbRepouso size={70} onStart={abrirMentor} />}
@@ -625,8 +630,8 @@ export function StudyTools({
         return (
           <>
             {host ? createPortal(ferr, host) : ferr}
-            {quadro && createPortal(<QuadroBranco aula={quadroAula} onClose={() => setQuadro(false)} onExplicacoes={() => { setQuadro(false); setPanel("lousas"); }} />, document.body)}
-            {lousa && createPortal(<MentorLousa key={lousa.id} lousa={lousa.dados} jaSalva={lousa.salva} onSalvar={salvarAberta} onPraticar={abrirQuadro} sync={lousa.sync} vivo={lousa.vivo} onClose={() => setLousa(null)} />, document.body)}
+            {quadro && temLousa && createPortal(<QuadroBranco aula={quadroAula} onClose={() => setQuadro(false)} onExplicacoes={() => { setQuadro(false); setPanel("lousas"); }} />, document.body)}
+            {lousa && createPortal(<MentorLousa key={lousa.id} lousa={lousa.dados} jaSalva={lousa.salva} onSalvar={salvarAberta} onPraticar={temLousa ? abrirQuadro : undefined} sync={lousa.sync} vivo={lousa.vivo} onClose={() => setLousa(null)} />, document.body)}
           </>
         );
       })()}

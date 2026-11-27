@@ -20,7 +20,7 @@ export type Medidor = (ch: string) => { asc: number; desc: number; w: number };
 const ESPESSURA = 3.2;
 const LINHA_LONGA = 90;
 /** Caracteres desenhados em vetor (nítidos em qualquer tamanho); os demais saem em fonte de máquina de escrever. */
-const VETOR = new Set(["-", "=", "+", "÷", "×", "/", "(", ")", ".", ":", "<", ">", "√"]);
+const VETOR = new Set(["-", "=", "+", "÷", "×", "/", "(", ")", ".", ":", "<", ">", "√", "∧", "∨", "→", "↔", "~", "⊻"]);
 const ALTOS = /[0-9A-Zbdfhkt!?%]/;
 
 const tr = (cor: Cor, ...segs: Traco[]): ItemTraco => ({ t: "tr", cor, w: ESPESSURA, segs: segs.map((s) => densificar(s, 4)) });
@@ -52,7 +52,7 @@ function glifo(ch: string, b: ReturnType<typeof caixa>, cor: Cor, med: Medidor, 
 
 /** Caixa do sinal no tamanho dos algarismos da aula (h0 = altura de um algarismo), centrada onde o aluno escreveu. */
 function caixaDoSinal(ch: string, b: ReturnType<typeof caixa>, h0: number): ReturnType<typeof caixa> {
-  const dim: Record<string, [number, number]> = { "-": [0.62, 0], "=": [0.62, 0.36], "+": [0.7, 0.7], "÷": [0.62, 0.6], "×": [0.6, 0.6], "/": [0.45, 1], "(": [0.2, 1.15], ")": [0.2, 1.15], ".": [0.14, 0.14], ":": [0.14, 0.6], "<": [0.5, 0.6], ">": [0.5, 0.6], "√": [0.9, 1.1] };
+  const dim: Record<string, [number, number]> = { "-": [0.62, 0], "=": [0.62, 0.36], "+": [0.7, 0.7], "÷": [0.62, 0.6], "×": [0.6, 0.6], "/": [0.45, 1], "(": [0.2, 1.15], ")": [0.2, 1.15], ".": [0.14, 0.14], ":": [0.14, 0.6], "<": [0.5, 0.6], ">": [0.5, 0.6], "√": [0.9, 1.1], "∧": [0.62, 0.5], "∨": [0.62, 0.5], "→": [0.95, 0.5], "↔": [1, 0.5], "~": [0.62, 0.26], "⊻": [0.62, 0.62] };
   const [w, h] = dim[ch] ?? [b.w / h0, b.h / h0];
   const W = w * h0, Hh = h * h0;
   return { x0: b.cx - W / 2, x1: b.cx + W / 2, y0: b.cy - Hh / 2, y1: b.cy + Hh / 2, w: W, h: Hh, cx: b.cx, cy: b.cy };
@@ -68,6 +68,12 @@ function vetor(ch: string, b: ReturnType<typeof caixa>, cor: Cor, normal = false
     case "+": { const r = L / 2; return [tr(cor, [[cx - r, cy], [cx + r, cy]], [[cx, cy - r], [cx, cy + r]])]; }
     case "÷": { const r = Math.max(w, normal ? 0 : 20) / 2; const g = Math.max(h, normal ? 0 : 18) / 2; return [tr(cor, [[cx - r, cy], [cx + r, cy]], ponto(cx, cy - g, Math.max(1.8, r * 0.18)), ponto(cx, cy + g, Math.max(1.8, r * 0.18)))]; }
     case "×": return [tr(cor, [[x0, y0], [x1, y1]], [[x1, y0], [x0, y1]])];
+    case "∧": return [tr(cor, [[x0, y1], [cx, y0], [x1, y1]])];
+    case "∨": return [tr(cor, [[x0, y0], [cx, y1], [x1, y0]])];
+    case "⊻": return [tr(cor, [[x0, y0], [cx, y1 - h * 0.25], [x1, y0]], [[x0 + w * 0.15, y1], [x1 - w * 0.15, y1]])];
+    case "→": { const k = h * 0.45; return [tr(cor, [[x0, cy], [x1, cy]], [[x1 - k, cy - k], [x1, cy], [x1 - k, cy + k]])]; }
+    case "↔": { const k = h * 0.45; return [tr(cor, [[x0, cy], [x1, cy]], [[x1 - k, cy - k], [x1, cy], [x1 - k, cy + k]], [[x0 + k, cy - k], [x0, cy], [x0 + k, cy + k]])]; }
+    case "~": return [tr(cor, Array.from({ length: 13 }, (_, i) => [x0 + (w * i) / 12, cy - Math.sin((i / 12) * 2 * Math.PI) * (h / 2)] as Ponto))];
     case "/": return [tr(cor, [[x1, y0], [x0, y1]])];
     case "(": return [tr(cor, arco([x1, y0], [x0 - h * 0.08, cy], [x1, y1]))];
     case ")": return [tr(cor, arco([x0, y0], [x1 + h * 0.08, cy], [x0, y1]))];

@@ -21,7 +21,13 @@ const sem = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCas
 const OPS = "÷×=+-/:().,%";
 const DIG = "0123456789";
 
+/** A lousa de treino só existe para as matérias que exigem cálculo: Matemática e Raciocínio Lógico. */
+export function materiaTemLousa(materia: string | null | undefined): boolean {
+  return /matemat|racioc|logic/.test(sem(materia ?? ""));
+}
+
 const REGRAS: { re: RegExp; nome: string; vocab: string; xVezes: boolean }[] = [
+  { re: /(proposic|logica|tabela verdade|tautolog|contradic|conectivo|argument|silogism|raciocinio logico|quantificador|negac)/, nome: "Raciocínio lógico", vocab: DIG + "pqrstVF~∧∨→↔⊻()=<>,", xVezes: false },
   { re: /\b(mmc|mdc|minimo multiplo|maximo divisor|multiplos?|divisores|fatorac|fatoraca|numeros primos|primos|divisibilidade)\b/, nome: "MMC e MDC", vocab: DIG + "÷×=:./(),mdc", xVezes: true },
   { re: /(regra de (tres|3)|proporcional|proporcao|razao|grandezas)/, nome: "Regra de três e proporção", vocab: DIG + "=/:×x.,%", xVezes: false },
   { re: /(equacao|equacoes|incognita|algebra|inequacao|sistema de equac|funcao|polinomi)/, nome: "Equações", vocab: DIG + "=+-×÷/()xyabn.,", xVezes: false },
@@ -38,9 +44,11 @@ export function perfilDaAula(ctx: ContextoAula | null | undefined): PerfilQuadro
   const alvo = sem([ctx?.aula, ctx?.secao, ctx?.materia].filter(Boolean).join(" | "));
   const texto = ctx?.texto ?? "";
   const digitosDaAula = [...new Set(texto.match(/\d/g) ?? [])].join("");
+  if (ctx?.materia && !materiaTemLousa(ctx.materia)) return { nome: "Anotações", modo: "texto", vocab: "", digitosDaAula, xVezes: false }; // a lousa de treino é só de Matemática e Raciocínio Lógico
   for (const r of REGRAS) {
     if (r.re.test(alvo)) return { nome: r.nome, modo: "calculo", vocab: r.vocab, digitosDaAula, xVezes: r.xVezes };
   }
+  if (materiaTemLousa(ctx?.materia)) return { nome: /racioc|logic/.test(sem(ctx?.materia ?? "")) ? "Raciocínio lógico" : "Matemática", modo: "calculo", vocab: DIG + OPS + "√", digitosDaAula, xVezes: true };
   return { nome: "Anotações", modo: "texto", vocab: "", digitosDaAula, xVezes: false };
 }
 

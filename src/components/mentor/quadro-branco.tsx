@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Eraser, Keyboard, Pen, Trash2, Undo2, Wand2, X } from "lucide-react";
 import { apagar, CORES, ehSinalVetor, glifoEm, interpretar, mesmaForma, promoverUns, sinalNormalizado, type Cor, type Item, type Medidor } from "@/domain/mentor/quadro-motor";
-import { casaCerta, casaCompleta, colocarNaCasa, exercicioAleatorio, montarEsqueleto, ROTULOS, textoDaCasa, tiposDaAula, validarNums, type Esqueleto, type TipoEsqueleto } from "@/domain/mentor/quadro-esqueleto";
+import { casaCerta, casaCompleta, colocarNaCasa, ehLogica, exercicioAleatorio, lerExercicio, montarEsqueleto, ROTULOS, textoDaCasa, textoDoExercicio, tiposDaAula, TIPOS_TEXTO, type Esqueleto, type Exercicio, type TipoEsqueleto } from "@/domain/mentor/quadro-esqueleto";
 import type { Ponto, Traco } from "@/domain/mentor/quadro-modelos";
 import { perfilDaAula, type ContextoAula } from "@/domain/mentor/quadro-perfil";
 import "./quadro-branco.css";
@@ -17,6 +17,12 @@ const TECLAS: { ch: string; rot?: string; k?: "apagar" | "prox" | "linha" }[] = 
   { ch: "4" }, { ch: "5" }, { ch: "6" }, { ch: "+" }, { ch: "-", rot: "−" }, { ch: "→", k: "prox" },
   { ch: "1" }, { ch: "2" }, { ch: "3" }, { ch: "=" }, { ch: "," }, { ch: "↵", k: "linha" },
   { ch: "0" }, { ch: "(" }, { ch: ")" }, { ch: "." }, { ch: "/", rot: "/" }, { ch: "x" },
+];
+/** Teclado de lógica proposicional (aparece nas contas de Raciocínio Lógico). */
+const TECLAS_LOG: typeof TECLAS = [
+  { ch: "p" }, { ch: "q" }, { ch: "r" }, { ch: "V" }, { ch: "F" }, { ch: "⌫", k: "apagar" },
+  { ch: "~" }, { ch: "∧" }, { ch: "∨" }, { ch: "→" , rot: "→" }, { ch: "↔" }, { ch: "⊻" },
+  { ch: "(" }, { ch: ")" }, { ch: "=" }, { ch: "," }, { ch: ";" }, { ch: "↵", k: "linha" },
 ];
 const CANETAS: { cor: Cor; nome: string }[] = [{ cor: "preto", nome: "Caneta preta" }, { cor: "azul", nome: "Caneta azul" }, { cor: "vermelho", nome: "Caneta vermelha" }];
 
@@ -63,10 +69,10 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const [caneta, setCaneta] = useState<Cor>("preto");
   const [ferramenta, setFerramenta] = useState<"caneta" | "borracha">("caneta");
   const [auto, setAuto] = useState(true);
-  const [estado, setEstado] = useState({ vazio: true, pode: false });
+  const [estado, setEstado] = useState<{ vazio: boolean; pode: boolean; g: number | null }>({ vazio: true, pode: false, g: null });
   const [confirmaLimpar, setConfirmaLimpar] = useState(false);
   // teclado: números para tocar (em vez de desenhar) + esqueleto da conta já montado
-  const tipos = useMemo<TipoEsqueleto[]>(() => (perfil.modo !== "calculo" ? [] : tiposDaAula(perfil.nome)), [perfil]);
+  const tipos = useMemo<TipoEsqueleto[]>(() => (perfil.modo !== "calculo" ? [] : tiposDaAula(aula?.aula ?? "", aula?.materia)), [perfil, aula?.aula, aula?.materia]);
   const [digitar, setDigitar] = useState(perfil.modo === "calculo");
   const [esq, setEsq] = useState<Esqueleto | null>(null);
   const [numsTxt, setNumsTxt] = useState("");
@@ -81,6 +87,9 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   useEffect(() => { cfg.current = { caneta, ferramenta, auto, perfil, digitar }; }, [caneta, ferramenta, auto, perfil, digitar]);
 
   const medidor = useMemo<Medidor>(() => medidorDeFonte(), []);
+  const logica = !!esq && ehLogica(esq.tipo);
+  const casaAtual = esq && estado.g != null && passoUi < esq.passos.length ? esq.casas[estado.g] : undefined;
+  const opcoesAtuais = casaAtual?.opcoes ?? [];
 
   const desenhar = useCallback(() => {
     const cv = tela.current; const ctx = cv?.getContext("2d");
@@ -106,6 +115,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     }
     for (const it of [...(e?.fixos ?? []), ...itens.current]) {
       if (it.t === "tr") for (const s of it.segs) risca(s, it.w, CORES[it.cor]);
+      else if (ehSinalVetor(it.ch) && !/[0-9]/.test(it.ch)) { for (const v of sinalNormalizado(it.ch, it.cx, it.base - medidor(it.ch).asc * it.size * 0.5, medidor("0").asc * it.size, it.cor)) if (v.t === "tr") for (const sg of v.segs) risca(sg, v.w, CORES[v.cor]); }
       else { ctx.fillStyle = CORES[it.cor]; ctx.font = `700 ${it.size}px ${FONTE}`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillText(it.ch, it.cx, it.base); }
     }
     if (e) {
@@ -121,7 +131,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     if (cfg.current.ferramenta === "borracha" && mira.current) {
       ctx.strokeStyle = "rgba(0,0,0,.45)"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(mira.current.x, mira.current.y, BORRACHA, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
     }
-  }, []);
+  }, [medidor]);
 
   const guardar = useCallback(() => {
     try { localStorage.setItem(chave, JSON.stringify({ itens: itens.current, ref: refTam.current, esq: esqRef.current, passo: passo.current })); } catch { /* sem armazenamento: segue sem salvar */ }
@@ -130,7 +140,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     desfazer.current.push(JSON.stringify(itens.current));
     if (desfazer.current.length > 40) desfazer.current.shift();
   }, []);
-  const refletir = useCallback(() => setEstado({ vazio: itens.current.length === 0 && pendente.current.length === 0 && !atual.current, pode: desfazer.current.length > 0 || pendente.current.length > 0 }), []);
+  const refletir = useCallback(() => setEstado((a) => { const n = { vazio: itens.current.length === 0 && pendente.current.length === 0 && !atual.current, pode: desfazer.current.length > 0 || pendente.current.length > 0, g: cur.current.g }; return a.vazio === n.vazio && a.pode === n.pode && a.g === n.g ? a : n; }), []);
   const mudou = useCallback(() => { refletir(); guardar(); desenhar(); }, [desenhar, guardar, refletir]);
 
   /** Fecha o símbolo em escrita: reconhece e troca pelos traços limpos / caractere de máquina. */
@@ -155,15 +165,15 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const altura = () => area.current?.clientHeight ?? 600;
   const aplicarEsq = useCallback((e: Esqueleto | null, limpar: boolean) => {
     esqRef.current = e; setEsq(e);
-    if (e) { setNumsTxt(e.nums.join(", ")); refTam.current = e.size; cur.current = { g: e.passos[0]?.casas[0] ?? null, x: 24, base: e.size * 1.3 }; }
+    if (e) { setNumsTxt(textoDoExercicio(e)); refTam.current = e.size; cur.current = { g: e.passos[0]?.casas[0] ?? null, x: 24, base: e.size * 1.3 }; }
     passo.current = 0; setPassoUi(0);
     conf.current = null; setMsg("");
     if (limpar) { itens.current = []; pendente.current = []; }
     mudou();
   }, [mudou, setMsg]);
-  const novoEsq = useCallback((tipo: TipoEsqueleto, nums?: number[]) => {
+  const novoEsq = useCallback((tipo: TipoEsqueleto, ex?: Exercicio) => {
     marcar();
-    aplicarEsq(montarEsqueleto(tipo, nums ?? exercicioAleatorio(tipo), largura(), medidor, altura()), true);
+    aplicarEsq(montarEsqueleto(tipo, ex ?? exercicioAleatorio(tipo), largura(), medidor, altura()), true);
   }, [aplicarEsq, marcar, medidor]);
 
   const tamanho = () => {
@@ -188,8 +198,8 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     } else {
       setMsg(`Quase! ${ps.dica} Toque na casa vermelha e corrija.`, "erro");
     }
-    desenhar();
-  }, [desenhar, setMsg]);
+    desenhar(); refletir();
+  }, [desenhar, refletir, setMsg]);
 
   const teclar = useCallback((ch: string, k?: "apagar" | "prox" | "linha") => {
     fechar();
@@ -205,7 +215,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
         if (atual) { marcar(); itens.current = colocarNaCasa(itens.current, c, atual.slice(0, -1), cor, medidor, size); }
         else { const i = doPasso.indexOf(c.id); if (i > 0) cur.current.g = doPasso[i - 1]!; }
       } else {
-        if (!/[0-9x,]/.test(ch) || atual.length >= c.slots) return;
+        if (c.opcoes || !/[0-9a-zA-Z,;~∧∨→↔⊻()=<>\/√π-]/.test(ch) || atual.length >= c.slots) return;
         marcar();
         const novo = atual + ch;
         itens.current = colocarNaCasa(itens.current, c, novo, cor, medidor, size);
@@ -230,12 +240,22 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     mudou();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [fechar, marcar, medidor, mudou, verificarPasso]);
+  /** Casa de escolha (ex.: TAUTOLOGIA, SIM/NÃO): o aluno toca na opção. */
+  const escolher = (opcao: string) => {
+    const e = esqRef.current, g = cur.current.g; if (!e || g == null) return;
+    const c = e.casas[g]!; fechar(); marcar(); conf.current = null;
+    itens.current = colocarNaCasa(itens.current, c, opcao, cfg.current.caneta, medidor, tamanho());
+    const doPasso = e.passos[c.passo]?.casas ?? [], n = doPasso[doPasso.indexOf(c.id) + 1];
+    if (n !== undefined) cur.current.g = n;
+    mudou();
+    if (c.passo === passo.current) verificarPasso();
+  };
   const tocar = (x: number, y: number) => {
     const e = esqRef.current;
     const i = e ? e.casas.findIndex((c) => c.passo <= passo.current && x >= c.x0 - 8 && x <= c.x1 + 8 && y >= c.y0 - 6 && y <= c.y1 + 6) : -1;
     if (i >= 0) cur.current = { ...cur.current, g: i };
     else cur.current = { g: null, x: Math.max(12, x), base: y };
-    desenhar();
+    desenhar(); refletir();
   };
   const conferirAgora = () => { fechar(); verificarPasso(true); };
   const verResposta = () => {
@@ -251,10 +271,9 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const montarDoCampo = () => {
     const tipo = esqRef.current?.tipo ?? tipos[0];
     if (!tipo) return;
-    const n = numsTxt.split(/[^0-9]+/).filter(Boolean).map(Number);
-    const erro = validarNums(tipo, n);
-    if (erro) { setMsg(erro, "erro"); return; }
-    novoEsq(tipo, n);
+    const r = lerExercicio(tipo, numsTxt);
+    if ("erro" in r) { setMsg(r.erro, "erro"); return; }
+    novoEsq(tipo, r.ex);
   };
 
   // teclado físico (computador)
@@ -305,7 +324,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
       desenhar();
     }
     const raf = requestAnimationFrame(() => { // estado do React só depois do primeiro desenho
-      if (esqRef.current) { setEsq(esqRef.current); setPassoUi(passo.current); setNumsTxt(esqRef.current.nums.join(", ")); }
+      if (esqRef.current) { setEsq(esqRef.current); setPassoUi(passo.current); setNumsTxt(textoDoExercicio(esqRef.current)); }
       refletir();
     });
     const ro = new ResizeObserver(ajustar); ro.observe(a);
@@ -448,15 +467,20 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
           {msgObj && <p className={`qb-msg is-${msgObj.t}`} role="status" data-testid="esq-msg">{msgObj.s}</p>}
           {esq && (
             <div className="qb-esq">
-              <input className="qb-nums" value={numsTxt} onChange={(ev) => setNumsTxt(ev.target.value)} onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); montarDoCampo(); } }} aria-label="Números da conta" data-testid="esq-numeros" inputMode="numeric" />
+              <input className="qb-nums" value={numsTxt} onChange={(ev) => setNumsTxt(ev.target.value)} onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); montarDoCampo(); } }} aria-label="Números da conta" data-testid="esq-numeros" inputMode={esq && TIPOS_TEXTO.includes(esq.tipo) ? "text" : "numeric"} />
               <button type="button" className="qb-chip" onClick={montarDoCampo} data-testid="esq-montar">Montar</button>
               <button type="button" className="qb-chip" onClick={() => novoEsq(esq.tipo)} data-testid="esq-novo">Novo</button>
               <button type="button" className="qb-chip qb-ok" onClick={conferirAgora} data-testid="esq-conferir">Conferir</button>
               <button type="button" className="qb-chip" onClick={verResposta} data-testid="esq-resposta" disabled={passoUi >= esq.passos.length}>Mostrar o passo</button>
             </div>
           )}
-          <div className="qb-teclas">
-            {TECLAS.map((t) => (
+          {opcoesAtuais.length > 0 && (
+            <div className="qb-esq" role="group" aria-label="Escolha a resposta" data-testid="esq-opcoes">
+              {opcoesAtuais.map((o) => <button key={o} type="button" className="qb-chip qb-opcao" data-testid={`opcao-${o}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => escolher(o)}>{o}</button>)}
+            </div>
+          )}
+          <div className={`qb-teclas${logica ? " is-log" : ""}`}>
+            {(logica ? TECLAS_LOG : TECLAS).map((t) => (
               <button key={t.ch} type="button" className={`qb-tecla${t.k ? " is-ctrl" : ""}`} aria-label={t.k === "apagar" ? "Apagar último" : t.k === "prox" ? "Próxima casa" : t.k === "linha" ? "Próxima linha" : t.rot ?? t.ch}
                 data-testid={`tecla-${t.k ?? t.ch}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => teclar(t.ch, t.k)}>{t.rot ?? t.ch}</button>
             ))}
