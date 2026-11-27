@@ -92,7 +92,7 @@ export interface PrepStats {
   /** Cópia de um edital publicado pelo admin num concurso: a leitura é mantida pela equipe (o aluno não relê nem reanexa). */
   publicado?: InfoPublicado;
   /** Estrutura importada pelo admin a partir da análise do concurso feita no ChatGPT (sem PDF para reler). */
-  importado?: { em: string; contestId: string; avisos: string[] };
+  importado?: { em: string; contestId: string; avisos: string[]; raioX?: import("@/domain/edital/importacao").RaioXExtras };
   /** Como o conteúdo foi separado por cargo (PDF e texto colado). */
   roleFilter?: { role: string | null; pdf?: { applied: boolean; removed: number }; text?: { applied: boolean; removed: number } };
 }
@@ -836,7 +836,7 @@ export async function importarAnaliseDoConcurso(adminId: string, contestId: unkn
     status: "organizando",
     step: STEP_OF.organizando,
     extras_checked: true,
-    stats: { importado: { em: agora, contestId, avisos: avisos.slice(0, 20) } satisfies NonNullable<PrepStats["importado"]> },
+    stats: { importado: { em: agora, contestId, avisos: avisos.slice(0, 20), raioX: info.raioX } satisfies NonNullable<PrepStats["importado"]> },
   });
   if (ins.error) throw new Error(ins.error.message);
   try {

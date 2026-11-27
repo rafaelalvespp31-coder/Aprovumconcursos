@@ -52,7 +52,7 @@ export async function vincularEditalAction(contestId: string, prepId: string | n
   }
 }
 
-/** Importa a análise completa do concurso (JSON do ChatGPT): valida de novo no servidor, grava a estrutura e publica no concurso. */
+/** Importa o raio-x do concurso (texto do ChatGPT, sem JSON): valida de novo no servidor, grava a estrutura e publica no concurso. */
 export async function importarAnaliseAction(contestId: string, texto: string): Promise<{ ok: true; id: string; materias: number; topicos: number } | { ok: false; error: string }> {
   const admin = await requireAdmin();
   const v = validarImportacao(typeof texto === "string" ? texto : "");

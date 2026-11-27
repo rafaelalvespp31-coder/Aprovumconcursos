@@ -17,7 +17,7 @@ export default async function ContestsAdminPage() {
       <div>
         <h1 className="t-h1">Próximos concursos</h1>
         <p className="mt-1 max-w-3xl t-small text-tinta-suave">
-          Para o aluno estudar por aqui, cadastre o concurso, salve e, no cartão dele, importe a análise completa feita no ChatGPT (o comando está lá): o concurso aparece na página inicial do aluno. Cadastre só informações com fonte. Vagas, remuneração e data ficam em branco até serem confirmadas. A contagem regressiva aparece apenas quando a data da prova está marcada como confirmada; sem confirmação, o aluno vê o aviso “informação não confirmada”.
+          Para o aluno estudar por aqui, cadastre o concurso, salve e, no cartão dele, importe o raio-x feito no ChatGPT (copie o comando, cole a resposta em texto, sem JSON): o concurso aparece na página inicial do aluno. Cadastre só informações com fonte. Vagas, remuneração e data ficam em branco até serem confirmadas. A contagem regressiva aparece apenas quando a data da prova está marcada como confirmada; sem confirmação, o aluno vê o aviso “informação não confirmada”.
         </p>
       </div>
       <section>

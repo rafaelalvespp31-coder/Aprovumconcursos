@@ -1,85 +1,86 @@
 import { describe, expect, it } from "vitest";
-import { COMANDO_CHATGPT, comandoParaCargo, objetosJson, validarImportacao } from "./importacao";
+import { COMANDO_CHATGPT, comandoParaCargo, validarImportacao } from "./importacao";
 
-const base = {
-  versao: 1,
-  concurso: { nome: "Polícia Penal MG", orgao: "SEJUSP", cargo: "Policial Penal", banca: "Consulplan", ano: 2026 },
-  materias: [
-    { nome: "LÍNGUA PORTUGUESA", itens_no_edital: 3, topicos: [{ codigo: "1", titulo: "Compreensão e interpretação de textos", subtopicos: [{ codigo: "1.1", titulo: "Tipologia textual" }] }, { codigo: "2", titulo: "Ortografia" }] },
-    { nome: "INFORMÁTICA", topicos: [{ codigo: "", titulo: "Conceito de internet e intranet" }] },
-  ],
-};
+const texto = `RAIO-X DO CONCURSO
+CONCURSO: Polícia Penal MG
+ÓRGÃO: SEJUSP-MG
+CARGO: Policial Penal
+BANCA: Consulplan
+ANO: 2026
+EDITAL: 01/2026
+NOTA DE CORTE: 62 de 100 pontos na última prova (Consulplan, 2024).
+VISÃO GERAL: 80 questões, 2 blocos.
 
-describe("objetosJson", () => {
-  it("acha o JSON em meio a conversa e cercas de código", () => {
-    const t = "Claro! Aqui está:\n```json\n" + JSON.stringify(base) + "\n```\nQualquer ajuste, me avise.";
-    expect(objetosJson(t)).toHaveLength(1);
-  });
-  it("ignora chaves dentro de textos", () => {
-    const o = '{"a":"texto com } e { dentro","b":1}';
-    expect(objetosJson(`x ${o} y`)).toEqual([o]);
-  });
-  it("acha várias partes", () => {
-    expect(objetosJson('{"a":1} e depois {"b":2}')).toHaveLength(2);
-  });
-});
+MATÉRIA 1: LÍNGUA PORTUGUESA
+QUESTÕES: 10
+INCIDÊNCIA: Interpretação de texto é a mais cobrada (40%).
+Concordância vem em seguida.
+O QUE FOCAR: Interpretação e concordância.
+ITENS NO EDITAL: 4
+CONTEÚDO PROGRAMÁTICO:
+1. Compreensão e interpretação de textos [ALTA]
+1.1 Tipologia textual
+a) Textos narrativos
+2. Ortografia
 
-describe("validarImportacao", () => {
-  it("converte para matérias › tópicos com nível e modo", () => {
-    const r = validarImportacao(JSON.stringify(base));
+MATÉRIA 2: INFORMÁTICA
+QUESTÕES: NÃO ENCONTRADO
+INCIDÊNCIA: NÃO ENCONTRADO
+O QUE FOCAR: Segurança da informação.
+CONTEÚDO PROGRAMÁTICO:
+1. Conceito de internet e intranet`;
+
+describe("raio-x em texto (sem JSON)", () => {
+  it("lê cabeçalho, nota de corte, incidência, foco e o conteúdo em ordem e com hierarquia", () => {
+    const r = validarImportacao(texto);
     expect(r.ok).toBe(true);
     if (!r.ok) return;
-    expect(r.resumo).toEqual({ materias: 2, topicos: 4, porMateria: [{ nome: "LÍNGUA PORTUGUESA", topicos: 3 }, { nome: "INFORMÁTICA", topicos: 1 }] });
-    const lp = r.parsed.disciplines[0]!;
-    expect(lp.mode).toBe("lingua_portuguesa");
-    expect(lp.topics.map((t) => [t.code, t.depth])).toEqual([["1", 1], ["1.1", 2], ["2", 1]]);
-    expect(r.parsed.disciplines[1]!.topics[0]!.code).toBeNull();
-    expect(r.info).toEqual({ nome: "Polícia Penal MG", orgao: "SEJUSP", cargo: "Policial Penal", banca: "Consulplan", ano: 2026 });
-    expect(r.avisos).toEqual([]);
+    expect(r.info).toMatchObject({ nome: "Polícia Penal MG", cargo: "Policial Penal", banca: "Consulplan", ano: 2026 });
+    expect(r.info.notaCorte).toContain("62 de 100");
+    expect(r.resumo).toMatchObject({ materias: 2, topicos: 5 });
+    const [pt, inf] = r.parsed.disciplines;
+    expect(pt!.name).toBe("LÍNGUA PORTUGUESA");
+    expect(pt!.topics.map((t) => [t.code, t.depth, t.title])).toEqual([
+      ["1", 1, "Compreensão e interpretação de textos"],
+      ["1.1", 2, "Tipologia textual"],
+      ["a)", 3, "Textos narrativos"],
+      ["2", 1, "Ortografia"],
+    ]);
+    expect(inf!.topics).toHaveLength(1);
+    const m = r.info.raioX.materias;
+    expect(m[0]).toMatchObject({ questoes: 10, foco: "Interpretação e concordância." });
+    expect(m[0]!.incidencia).toContain("Concordância vem em seguida");
+    expect(m[0]!.incidenciaTopicos).toEqual([{ titulo: "Compreensão e interpretação de textos", nivel: "ALTA" }]);
+    expect(m[1]!.questoes).toBeNull();
+    expect(r.avisos.some((a) => a.includes("INFORMÁTICA") && a.includes("incidência"))).toBe(true);
+    expect(r.avisos.some((a) => a.includes("contou 4 itens") && a.includes("vieram 4"))).toBe(false);
   });
-  it("avisa quando vieram menos itens do que o ChatGPT contou", () => {
-    const r = validarImportacao(JSON.stringify({ ...base, materias: [{ nome: "DIREITO PENAL", itens_no_edital: 10, topicos: [{ titulo: "Princípios" }] }] }));
-    expect(r.ok && r.avisos[0]).toMatch(/contou 10 itens/);
-  });
-  it("junta matérias repetidas em partes", () => {
-    const p1 = JSON.stringify({ concurso: base.concurso, materias: [{ nome: "DIREITO PENAL", topicos: [{ titulo: "Parte um" }] }] });
-    const p2 = JSON.stringify({ materias: [{ nome: "Direito Penal", topicos: [{ titulo: "Parte dois" }] }, { nome: "INFORMÁTICA", topicos: [{ titulo: "Redes" }] }] });
-    const r = validarImportacao(`${p1}\n\ncontinuação:\n${p2}`);
+  it("aceita markdown solto e juntar partes da mesma matéria", () => {
+    const r = validarImportacao(`**MATÉRIA 1: DIREITO PENAL**\n**CONTEÚDO PROGRAMÁTICO:**\n1. Crime\n\nMATÉRIA 1: DIREITO PENAL\nCONTEÚDO PROGRAMÁTICO:\n2. Pena`);
     expect(r.ok).toBe(true);
     if (r.ok) {
-      expect(r.resumo.porMateria).toEqual([{ nome: "DIREITO PENAL", topicos: 2 }, { nome: "INFORMÁTICA", topicos: 1 }]);
-      expect(r.avisos.some((a) => /mais de uma parte/.test(a))).toBe(true);
+      expect(r.resumo.topicos).toBe(2);
+      expect(r.avisos.some((a) => a.includes("mais de uma parte"))).toBe(true);
     }
   });
-  it("erros em português", () => {
-    expect(validarImportacao("oi").ok).toBe(false);
-    expect(validarImportacao("sem json aqui, só conversa do chat sobre o edital").ok).toBe(false);
-    expect(validarImportacao('{"materias": [').ok).toBe(false);
-    const semTopicos = validarImportacao('{"materias":[{"nome":"DIREITO PENAL","topicos":[]}]}');
-    expect(!semTopicos.ok && semTopicos.erros[0]).toMatch(/não tem tópicos/);
-    const semNome = validarImportacao('{"materias":[{"topicos":[{"titulo":"x tópico"}]}]}');
-    expect(!semNome.ok && semNome.erros[0]).toMatch(/sem nome/);
-    const semLista = validarImportacao('{"concurso":{"nome":"x"},"outra":[1,2,3,4,5,6]}');
-    expect(!semLista.ok && semLista.erros[0]).toMatch(/materias/);
+  it("avisa quando faltou conteúdo em relação à contagem do edital", () => {
+    const r = validarImportacao(`MATÉRIA 1: DIREITO X\nITENS NO EDITAL: 5\nCONTEÚDO PROGRAMÁTICO:\n1. Alfa teste\n2. Beta teste`);
+    expect(r.ok && r.avisos.some((a) => a.includes("contou 5"))).toBe(true);
   });
-  it("hierarquia funda demais é recusada", () => {
-    let no: Record<string, unknown> = { titulo: "fundo" };
-    for (let i = 0; i < 8; i++) no = { titulo: `n${i}`, subtopicos: [no] };
-    const r = validarImportacao(JSON.stringify({ materias: [{ nome: "X MATERIA", topicos: [no] }] }));
-    expect(r.ok).toBe(false);
+  it("erra com mensagem clara: sem matéria, matéria sem conteúdo e JSON antigo", () => {
+    expect(validarImportacao("x".repeat(60))).toMatchObject({ ok: false });
+    const sem = validarImportacao(`MATÉRIA 1: DIREITO X\nQUESTÕES: 3\nINCIDÊNCIA: algo bem longo aqui para passar do mínimo`);
+    expect(!sem.ok && sem.erros[0]).toContain("não tem conteúdo programático");
+    const json = validarImportacao(`{"versao":1,"materias":[{"nome":"A","topicos":[]}]} e mais texto para passar do mínimo`);
+    expect(!json.ok && json.erros[0]).toContain("JSON do comando antigo");
   });
 });
 
-describe("comando", () => {
-  it("troca o cargo e traz o formato esperado", () => {
+describe("comando do raio-x", () => {
+  it("troca o cargo e pede texto simples, sem JSON, com tudo o que o admin precisa", () => {
     expect(comandoParaCargo("Policial Penal")).toContain("cargo: Policial Penal");
-    expect(COMANDO_CHATGPT).toContain('"materias"');
-    expect(COMANDO_CHATGPT).toContain('"subtopicos"');
-    expect(COMANDO_CHATGPT).toContain("itens_no_edital");
-  });
-  it("o exemplo do comando, preenchido, é aceito", () => {
-    const exemplo = COMANDO_CHATGPT.slice(COMANDO_CHATGPT.indexOf("{\n  \"versao\""), COMANDO_CHATGPT.lastIndexOf("}") + 1);
-    const preenchido = exemplo.replace(/"…"/g, '"Texto do tópico"').replace('"nome": ""', '"nome": "X"');
-    expect(validarImportacao(preenchido).ok).toBe(true);
+    expect(comandoParaCargo("  ")).toContain("(informe o cargo)");
+    for (const termo of ["NOTA DE CORTE", "INCIDÊNCIA", "O QUE FOCAR", "CONTEÚDO PROGRAMÁTICO", "MATÉRIA 1:", "Proibido JSON", "NÃO ENCONTRADO"]) expect(COMANDO_CHATGPT).toContain(termo);
+    expect(COMANDO_CHATGPT).not.toContain('"materias"');
   });
 });

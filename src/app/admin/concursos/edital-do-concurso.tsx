@@ -10,7 +10,7 @@ type Vincular = (contestId: string, prepId: string | null) => Promise<{ ok: bool
 type Importar = (contestId: string, texto: string) => Promise<{ ok: true; id: string; materias: number; topicos: number } | { ok: false; error: string }>;
 
 /**
- * Análise do concurso para os alunos: o admin roda o comando no ChatGPT com o PDF do edital, cola o JSON aqui,
+ * Análise do concurso para os alunos: o admin roda o comando no ChatGPT com o PDF do edital, cola o texto do raio-x aqui,
  * confere o resumo e importa. O concurso passa a aparecer na página inicial do aluno.
  */
 export function EditalDoConcurso({ contestId, cargoSugerido, vinculo, vincular, importar }: { contestId: string; cargoSugerido: string; vinculo: VinculoEdital | null; vincular: Vincular; importar: Importar }) {
@@ -49,7 +49,7 @@ export function EditalDoConcurso({ contestId, cargoSugerido, vinculo, vincular, 
   const campo = "mt-1 w-full rounded border border-linha bg-superficie px-2 py-1.5 text-sm";
   return (
     <div className="rounded-lg border border-linha bg-superficie p-4" data-testid={`concurso-edital-${contestId}`}>
-      <p className="t-small font-semibold">Análise do concurso para os alunos</p>
+      <p className="t-small font-semibold">Raio-X do concurso para os alunos</p>
       {vinculo ? (
         <div className="mt-2 flex flex-wrap items-center gap-3 text-sm">
           <span>
@@ -75,10 +75,10 @@ export function EditalDoConcurso({ contestId, cargoSugerido, vinculo, vincular, 
             <textarea readOnly rows={8} value={comandoParaCargo(cargo)} className={`${campo} font-mono text-xs`} aria-label="Comando para o ChatGPT" />
           </details>
         </li>
-        <li>No ChatGPT, anexe o PDF do edital, cole o comando e aguarde a resposta (JSON). Se ele cortar, peça “continue” e cole as partes juntas.</li>
+        <li>No ChatGPT, anexe o PDF do edital, cole o comando e aguarde o raio-x em texto (sem JSON). Se ele cortar, peça “continue” e cole as partes juntas.</li>
         <li>
-          <label className="block">Cole aqui a resposta do ChatGPT
-            <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={8} className={`${campo} font-mono text-xs`} placeholder='{ "versao": 1, "concurso": { … }, "materias": [ … ] }' data-testid={`importacao-texto-${contestId}`} />
+          <label className="block">Cole aqui o raio-x que o ChatGPT entregou
+            <textarea value={texto} onChange={(e) => setTexto(e.target.value)} rows={8} className={`${campo} font-mono text-xs`} placeholder="RAIO-X DO CONCURSO&#10;CONCURSO: …&#10;NOTA DE CORTE: …&#10;MATÉRIA 1: LÍNGUA PORTUGUESA&#10;QUESTÕES: 10&#10;INCIDÊNCIA: …&#10;O QUE FOCAR: …&#10;CONTEÚDO PROGRAMÁTICO:&#10;1. …" data-testid={`importacao-texto-${contestId}`} />
           </label>
           {v && !v.ok && (
             <ul role="alert" className="mt-2 list-disc pl-5 text-red-700">
@@ -92,8 +92,9 @@ export function EditalDoConcurso({ contestId, cargoSugerido, vinculo, vincular, 
                 {v.info.cargo ? ` · ${v.info.cargo}` : ""}
                 {v.info.banca ? ` · ${v.info.banca}` : ""}
               </p>
+              <p className="t-small">Nota de corte: {v.info.notaCorte ?? "não informada"}</p>
               <ul className="t-small text-tinta-suave">
-                {v.resumo.porMateria.map((m) => <li key={m.nome}>{m.nome}: {m.topicos}</li>)}
+                {v.resumo.porMateria.map((m) => <li key={m.nome}>{m.nome}: {m.topicos} itens</li>)}
               </ul>
               {v.avisos.length > 0 && (
                 <ul className="list-disc pl-5 text-amber-700">
