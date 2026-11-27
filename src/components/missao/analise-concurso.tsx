@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type PointerEvent } from "react";
-import { ArrowLeft, ArrowRight, BookOpenCheck, CalendarCheck, ChevronDown, Clock, Compass, Flag, Info, Layers, ListChecks, Loader2, Search, Target } from "lucide-react";
+import { ChevronDown, Clock, Compass, Flag, Info, ListChecks, Loader2, Search, Target } from "lucide-react";
 import { tomPrioridade, type AnaliseDisciplina } from "@/domain/edital/analise";
 import { agruparTopicos, combinarComEdital, resumoDisponibilidade, type AulasCatalogadas, type TopicoVisao } from "@/domain/missao/analise-conteudo";
 import type { AnaliseParaAluno } from "@/server/services/concurso-analise";
@@ -128,6 +128,36 @@ function Cartoes({ topicos, termo, aula }: { topicos: TopicoVisao[]; termo: stri
   );
 }
 
+/** Posição e tamanho em pixels do cartaz de referência (941 × 1672), convertidos em porcentagem para escalar com a largura. */
+const caixa = (x: number, y: number, w: number, h: number): CSSProperties => ({ left: `${(x / 941) * 100}%`, top: `${(y / 1672) * 100}%`, width: `${(w / 941) * 100}%`, height: `${(h / 1672) * 100}%` });
+/** Tamanho da fonte (em px do cartaz) do nome do concurso: o maior que cabe na faixa do título. */
+const tamNome = (nome: string) => Math.max(46, Math.min(150, Math.round(560 / Math.max(3, nome.trim().length) / 0.62)));
+
+/** Anel do cartaz: trilho cromado + arco vermelho com brilho; o arco cresce ao aparecer. */
+function AnelPoster({ ok, total }: { ok: number; total: number }) {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const r = requestAnimationFrame(() => setOn(true));
+    return () => cancelAnimationFrame(r);
+  }, []);
+  const r = 124;
+  const c = 2 * Math.PI * r;
+  const p = total ? Math.min(1, ok / total) : 0;
+  return (
+    <svg viewBox="0 0 304 304" role="img" aria-label={`${ok} de ${total} com aula`} className="ap-anel">
+      <defs>
+        <linearGradient id="ap-cromo" x1="0.1" y1="0" x2="0.9" y2="1"><stop offset="0" stopColor="#e9e9ec" /><stop offset="0.45" stopColor="#7d7d83" /><stop offset="1" stopColor="#2a2a2e" /></linearGradient>
+        <linearGradient id="ap-verm" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stopColor="#ff5a4d" /><stop offset="0.5" stopColor="#f01a10" /><stop offset="1" stopColor="#b80500" /></linearGradient>
+        <filter id="ap-brilho" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="5" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+      </defs>
+      <circle cx="152" cy="152" r={r} fill="none" stroke="url(#ap-cromo)" strokeWidth="38" />
+      <circle cx="152" cy="152" r={r + 20} fill="none" stroke="rgb(255 255 255 / .25)" strokeWidth="1.5" />
+      <circle cx="152" cy="152" r={r - 20} fill="none" stroke="rgb(255 255 255 / .12)" strokeWidth="1.5" />
+      {p > 0 && <circle className="ap-anel-arco" cx="152" cy="152" r={r} fill="none" stroke="url(#ap-verm)" strokeWidth="38" strokeDasharray={c} strokeDashoffset={on ? c * (1 - p) : c} transform="rotate(-90 152 152)" filter="url(#ap-brilho)" />}
+    </svg>
+  );
+}
+
 type Aba = "visao" | "conteudo" | "materias" | "dificuldades" | "rotina" | "conclusao";
 
 /** Análise do concurso: estrutura da prova, matérias, conteúdo completo com as aulas catalogadas, prioridades, dificuldades, rotina e conclusão. */
@@ -163,6 +193,10 @@ export function AnaliseConcurso({ dados, voltar, montar }: { dados: AnaliseParaA
   const marcaRef = useRef<HTMLDivElement>(null);
   const progresso = useRef<HTMLDivElement>(null);
 
+  // Textos do cabeçalho: cargos (divididos em dois) e a banca.
+  const cargos = (c.cargo ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+  const meio = Math.ceil(cargos.length / 2);
+  const infos = [cargos.slice(0, meio).join(", "), cargos.slice(meio).join(", "), c.banca ?? ""];
   const temAnalise = !!a && itens.length > 0;
   const abas: Array<[Aba, string]> = [["visao", "Visão geral"], ["conteudo", "Conteúdo programático"]];
   if (temAnalise) abas.push(["materias", "Análise por matéria"]);
@@ -265,46 +299,42 @@ export function AnaliseConcurso({ dados, voltar, montar }: { dados: AnaliseParaA
       <div className="an-progresso" ref={progresso} aria-hidden />
 
       <div className="an-pagina">
-        <header className="an-topo">
-          <Link href={voltar} className="an-voltar"><ArrowLeft size={16} aria-hidden /> Voltar</Link>
-          {/* eslint-disable-next-line @next/next/no-img-element -- logo oficial, versão para fundo escuro */}
-          <img className="an-logo" src="/images/aprovum-login-logo.png" alt="Aprovum" width={523} height={107} />
-        </header>
+        <section className="an-poster" aria-label={`Análise do concurso ${c.nome}`}>
+          <div className="an-poster-in" data-busy={montando || undefined}>
+            <Link href={voltar} className="ap-hit ap-voltar" style={caixa(36, 22, 160, 54)} aria-label="Voltar"><span className="ap-sr">Voltar</span></Link>
+            <p className="ap-sr">ANÁLISE DO CONCURSO</p>
+            <h1 className="ap-nome" style={{ ...caixa(48, 176, 580, 150), fontSize: `calc(var(--u) * ${tamNome(c.nome)})` }}><span>{c.nome}</span></h1>
+            {c.orgao && <p className="ap-orgao" style={caixa(57, 322, 560, 28)}>{c.orgao}</p>}
+            {infos[0] && <p className="ap-info" style={caixa(135, 398, 175, 66)}><span>{infos[0]}</span></p>}
+            {infos[1] && <p className="ap-info" style={caixa(404, 398, 135, 66)}><span>{infos[1]}</span></p>}
+            {infos[2] && <p className="ap-info" style={caixa(633, 398, 150, 66)}><span>{infos[2]}</span></p>}
 
-        <section className="an-hero">
-          <div className="an-hero-txt">
-            <p className="an-kicker">ANÁLISE DO CONCURSO</p>
-            <div className="an-titulo-linha">
-              <h1 className="an-titulo">{c.nome}</h1>
-              <button type="button" className="an-plano" onClick={() => void montarPlano()} disabled={montando} aria-busy={montando} data-testid="montar-plano">
-                <span className="an-plano-brilho" aria-hidden />
-                {montando ? <Loader2 size={18} className="an-gira" aria-hidden /> : <CalendarCheck size={18} className="an-plano-ico" aria-hidden />}
-                <span className="an-plano-txt">{montando ? "Montando seu plano…" : "Montar meu plano de estudo"}</span>
-                {!montando && <ArrowRight size={17} className="an-plano-seta" aria-hidden />}
-              </button>
-            </div>
-            <p className="an-plano-aviso" role="status" aria-live="polite" data-visivel={aviso ? "" : undefined}>{aviso ?? ""}</p>
-            <ul className="an-meta">{[c.cargo, c.orgao, c.banca].filter(Boolean).map((m) => <li key={m}>{m}</li>)}</ul>
-            <dl className="an-numeros">
-              {total > 0 && <div><dt><Flag size={13} aria-hidden /> Questões</dt><dd><Contador valor={total} /></dd></div>}
-              <div><dt><Layers size={13} aria-hidden /> Disciplinas</dt><dd><Contador valor={todas.length} /></dd></div>
-              {temConteudo && <div><dt><ListChecks size={13} aria-hidden /> {conteudoOrigem === "focos" ? "Itens de conteúdo" : "Tópicos"}</dt><dd><Contador valor={geral.total} /></dd></div>}
-              {a?.organizacao.totalHoras != null && <div><dt><Clock size={13} aria-hidden /> Horas/semana</dt><dd><Contador valor={a.organizacao.totalHoras} /></dd></div>}
+            <button type="button" className="ap-hit ap-plano" style={caixa(108, 497, 744, 126)} onClick={() => void montarPlano()} disabled={montando} aria-busy={montando} data-testid="montar-plano">
+              <span className="ap-sr">Montar meu plano de estudo</span>
+              <span className="ap-plano-cobre" aria-hidden>{montando && <><Loader2 className="an-gira" aria-hidden /> Montando seu plano…</>}</span>
+            </button>
+
+            <dl className="ap-cards">
+              {[
+                { x: 74, y: 752, v: total > 0 ? total : null },
+                { x: 518, y: 752, v: todas.length },
+                { x: 74, y: 968, v: temConteudo ? geral.total : null },
+                { x: 518, y: 968, v: a?.organizacao.totalHoras ?? null },
+              ].map((n, i) => (
+                <dd key={i} className="ap-num" style={caixa(n.x, n.y, 190, 84)}>{n.v == null ? "—" : <Contador valor={n.v} />}</dd>
+              ))}
             </dl>
-          </div>
-          {temConteudo && (
-            <div className="an-hero-cob" data-testid="cobertura-geral">
-              <Anel ok={geral.comAula} total={geral.total} tam={150} esp={14} />
-              <div className="an-hero-cob-txt">
-                <p><BookOpenCheck size={15} aria-hidden /> Aulas catalogadas neste concurso</p>
-                <ul className="an-legenda" aria-label="Legenda">
-                  <li><span className="an-dot an-ok" aria-hidden /> <b>{geral.comAula.toLocaleString("pt-BR")}</b> com aula no Aprovum</li>
-                  <li><span className="an-dot an-no" aria-hidden /> <b>{geral.semAula.toLocaleString("pt-BR")}</b> ainda sem aula</li>
-                </ul>
-                <button type="button" className="an-cta" onClick={() => irAba("conteudo")}>Ver conteúdo programático <ChevronDown size={15} aria-hidden /></button>
-              </div>
+            <p className="ap-sr">{total > 0 ? `${total} questões. ` : ""}{todas.length} disciplinas. {temConteudo ? `${geral.total} itens de conteúdo. ` : ""}{a?.organizacao.totalHoras != null ? `${a.organizacao.totalHoras} horas por semana.` : ""}</p>
+
+            <div className="ap-cob" data-testid="cobertura-geral" style={caixa(120, 1140, 304, 304)}>
+              <AnelPoster ok={geral.comAula} total={geral.total} />
+              <span className="ap-cob-txt"><b>{Math.round((geral.total ? geral.comAula / geral.total : 0) * 100)}%</b><small>com aula</small></span>
             </div>
-          )}
+            <p className="ap-cob-n ap-cob-ok" style={caixa(574, 1252, 80, 44)}>{geral.comAula.toLocaleString("pt-BR")}</p>
+            <p className="ap-cob-n ap-cob-no" style={caixa(574, 1302, 80, 44)}>{geral.semAula.toLocaleString("pt-BR")}</p>
+            <button type="button" className="ap-hit ap-cta" style={caixa(498, 1383, 394, 94)} onClick={() => irAba("conteudo")}><span className="ap-sr">Ver conteúdo programático</span></button>
+          </div>
+          <p className="an-plano-aviso" role="status" aria-live="polite" data-visivel={aviso ? "" : undefined}>{aviso ?? ""}</p>
         </section>
 
         <nav className="an-nav" role="tablist" aria-label="Seções da análise">
