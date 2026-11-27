@@ -101,6 +101,13 @@ export async function listarSalvas(userId: string): Promise<LousaSalva[]> {
   });
 }
 
+/** Tira a lousa da lista do aluno (a cópia compartilhada no cache continua para os outros alunos). */
+export async function removerSalva(userId: string, id: string): Promise<boolean> {
+  if (!/^[0-9a-f-]{36}$/i.test(id)) return false;
+  const { error, count } = await createAdminClient().from("mentor_lousa_salvas").delete({ count: "exact" }).eq("user_id", userId).eq("lousa_id", id);
+  return !error && (count ?? 0) > 0;
+}
+
 /** Abre uma lousa salva (só se estiver na lista do aluno). */
 export async function abrirSalva(userId: string, id: string): Promise<Lousa | null> {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;

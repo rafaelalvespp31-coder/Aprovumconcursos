@@ -1,6 +1,7 @@
 "use client";
 
 import { MentorLousa } from "@/components/mentor/mentor-lousa";
+import { QuadroBranco } from "@/components/mentor/quadro-branco";
 import { lousaSchema, type Lousa } from "@/domain/mentor/lousa";
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
@@ -94,6 +95,18 @@ export function StudyTools({
   const [pdfs, setPdfs] = useState<PdfInfo[]>(initialPdfs);
   const [panel, setPanel] = useState<Panel>(null);
   const [salvas, setSalvas] = useState<LousaSalva[] | null>(null);
+  const [quadro, setQuadro] = useState(false);
+  const [excluindo, setExcluindo] = useState<string | null>(null);
+  const [confirmaExcluir, setConfirmaExcluir] = useState<string | null>(null);
+  const excluirSalva = useCallback(async (id: string) => {
+    if (confirmaExcluir !== id) { setConfirmaExcluir(id); return; }
+    setExcluindo(id); setConfirmaExcluir(null);
+    try {
+      const r = await fetch(`/api/mentor/lousa/salvas?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+      if (r.ok) setSalvas((l) => (l ? l.filter((x) => x.id !== id) : l));
+    } catch { /* mantém na lista */ }
+    setExcluindo(null);
+  }, [confirmaExcluir]);
   const [abrindo, setAbrindo] = useState<string | null>(null);
   // Explicações do Mentor já vistas (ficam salvas): carrega ao abrir a aba e rever uma abre a lousa na hora
   useEffect(() => {
@@ -594,7 +607,7 @@ export function StudyTools({
           postit={{ arte: "bloco", titulo: "Marcar Trecho", sub: "Post-it", ligado: armed || panel === "lista", badge: count, aria: "Post-it de revisão", tip: "Post-it: toque e selecione o trecho", testid: "st-postit", onClick: onPostitButton }}
           explicar={{ arte: "lampada", titulo: "Tirar Dúvida", sub: "Explicar o trecho selecionado", aria: "Explicar o trecho selecionado", tip: "Explicar com IA: selecione uma palavra ou trecho", testid: "st-explicar", onClick: explain }}
           pdf={{ arte: "lista", titulo: "Gerar Revisão", sub: "Meu PDF de Revisão", ligado: panel === "pdf", expandido: panel === "pdf", aria: "Meu PDF de Revisão", tip: "Meu PDF de Revisão", testid: "st-pdf", onClick: () => setPanel((p) => (p === "pdf" ? null : "pdf")) }}
-          lousas={{ arte: "caneta", titulo: "Rever Explicação", sub: "Lousas do Mentor", ligado: panel === "lousas", expandido: panel === "lousas", aria: "Lousas do Mentor salvas", tip: "Explicações do Mentor na lousa, salvas para rever", testid: "st-lousas", onClick: () => setPanel((p) => (p === "lousas" ? null : "lousas")) }}
+          lousas={{ arte: "caneta", titulo: "Abrir Lousa", sub: "Quadro de treino", ligado: quadro, aria: "Abrir lousa de treino", tip: "Lousa para treinar cálculos: escreva à mão e ela vira letra de máquina", testid: "st-lousas", onClick: () => { setPanel(null); setQuadro(true); } }}
           mentor={panel === "mentor"
             ? <MentorVoz professor={prof ?? "o"} getStudy={getStudy} autoStart orbOnly orbSize={70} onSpeaking={setMentorFala} onLousa={(dados, sync, vivo) => setLousa((a) => (dados === "fechar" ? null : dados === null ? (a?.dados ? a : { id: a?.id ?? Date.now(), dados: LOUSA_ERRO }) : dados === "pendente" ? (a?.dados ? a : { id: Date.now(), dados: null }) : { id: a?.id ?? Date.now(), dados, sync, vivo }))} onLevel={(fn) => { levelRef.current = fn; }} onClose={() => { setMentorFala(false); setPanel(null); }} />
             : <VozOrbRepouso size={70} onStart={abrirMentor} />}
@@ -603,7 +616,8 @@ export function StudyTools({
         return (
           <>
             {host ? createPortal(ferr, host) : ferr}
-            {lousa && createPortal(<MentorLousa key={lousa.id} lousa={lousa.dados} jaSalva={lousa.salva} onSalvar={salvarAberta} sync={lousa.sync} vivo={lousa.vivo} onClose={() => setLousa(null)} />, document.body)}
+            {quadro && createPortal(<QuadroBranco onClose={() => setQuadro(false)} onExplicacoes={() => { setQuadro(false); setPanel("lousas"); }} />, document.body)}
+            {lousa && createPortal(<MentorLousa key={lousa.id} lousa={lousa.dados} jaSalva={lousa.salva} onSalvar={salvarAberta} onPraticar={() => setQuadro(true)} sync={lousa.sync} vivo={lousa.vivo} onClose={() => setLousa(null)} />, document.body)}
           </>
         );
       })()}
@@ -674,11 +688,14 @@ export function StudyTools({
               ) : (
                 <ul className="st-lousas" data-testid="st-lousas-lista">
                   {salvas.map((s) => (
-                    <li key={s.id}>
-                      <button type="button" onClick={() => void abrirSalva(s.id)} disabled={abrindo === s.id}>
+                    <li key={s.id} className="st-lousa-item">
+                      <button type="button" onClick={() => void abrirSalva(s.id)} disabled={abrindo === s.id || excluindo === s.id}>
                         <PenLine className="size-4" aria-hidden />
                         <span><b>{s.titulo}</b><small>{fmt(s.criadaEm)}</small></span>
                         {abrindo === s.id && <Loader2 className="size-4 animate-spin" aria-hidden />}
+                      </button>
+                      <button type="button" className={`st-lousa-del${confirmaExcluir === s.id ? " is-confirma" : ""}`} onClick={() => void excluirSalva(s.id)} disabled={excluindo === s.id} aria-label={confirmaExcluir === s.id ? `Confirmar: excluir ${s.titulo}` : `Excluir ${s.titulo}`} data-testid="st-lousa-excluir" onBlur={() => setConfirmaExcluir((c) => (c === s.id ? null : c))}>
+                        {excluindo === s.id ? <Loader2 className="size-4 animate-spin" aria-hidden /> : confirmaExcluir === s.id ? <span>Excluir?</span> : <Trash2 className="size-4" aria-hidden />}
                       </button>
                     </li>
                   ))}

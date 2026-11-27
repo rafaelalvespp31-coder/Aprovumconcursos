@@ -2,7 +2,7 @@
 
 import { IconeLousa, iconeDaLousa } from "@/components/aula/icone-lousa";
 import { createContext, memo, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Bookmark, BookmarkCheck, Loader2, RotateCcw, X } from "lucide-react";
+import { Bookmark, BookmarkCheck, Loader2, Pen, RotateCcw, X } from "lucide-react";
 import { LOUSA_H, LOUSA_W, type ItemDesenho, type LinhaLousa, type Lousa } from "@/domain/mentor/lousa";
 import { GLIFOS } from "./lousa-glifos";
 import "./mentor-lousa.css";
@@ -361,7 +361,7 @@ function Moldura({ onEncher, onFim }: { onEncher: () => void; onFim: () => void 
 
 const PENDENTE: Lousa = { mostrar: true, titulo: "", linhas: [], desenho: [] };
 
-export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClose }: { lousa: Lousa | null; /** Salva a lousa nas Ferramentas; devolve se deu certo. */ onSalvar?: () => Promise<boolean>; jaSalva?: boolean; /** Segue a voz: devolve quantas letras do roteiro já foram faladas. */ sync?: () => { c: number; fim: boolean }; /** Quadro escrito ao vivo: instante (relógio do áudio) em que cada linha começa a ser falada. */ vivo?: { quandos: number[]; agora: () => number }; onClose: () => void }) {
+export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, onPraticar, jaSalva, onClose }: { lousa: Lousa | null; /** Abre a lousa de treino para refazer o cálculo à mão. */ onPraticar?: () => void; /** Salva a lousa nas Ferramentas; devolve se deu certo. */ onSalvar?: () => Promise<boolean>; jaSalva?: boolean; /** Segue a voz: devolve quantas letras do roteiro já foram faladas. */ sync?: () => { c: number; fim: boolean }; /** Quadro escrito ao vivo: instante (relógio do áudio) em que cada linha começa a ser falada. */ vivo?: { quandos: number[]; agora: () => number }; onClose: () => void }) {
   const lousa = dados ?? PENDENTE;
   const linhas = lousa.linhas;
   const [baseVivo, setBaseVivo] = useState<number | null>(null);
@@ -494,6 +494,9 @@ export function MentorLousa({ lousa: dados, sync, vivo, onSalvar, jaSalva, onClo
             {salvo === "sim" ? <BookmarkCheck size={16} aria-hidden /> : salvo === "salvando" ? <Loader2 size={16} className="lz-gira" aria-hidden /> : <Bookmark size={16} aria-hidden />}
             <span>{salvo === "sim" ? "Salva" : salvo === "erro" ? "Tentar de novo" : "Salvar"}</span>
           </button>
+        )}
+        {onPraticar && dados && dados.linhas.length > 0 && (
+          <button type="button" className="lz-salvar" onClick={onPraticar} aria-label="Praticar na lousa" data-testid="lousa-praticar"><Pen size={16} aria-hidden /><span>Praticar</span></button>
         )}
         <button type="button" className="lz-bt" onClick={() => setRodada((r) => r + 1)} aria-label="Escrever de novo" title="Escrever de novo"><RotateCcw size={18} aria-hidden /></button>
         <button type="button" className="lz-bt" onClick={onClose} aria-label="Fechar quadro"><X size={20} aria-hidden /></button>

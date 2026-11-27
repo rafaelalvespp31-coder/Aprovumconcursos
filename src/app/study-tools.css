@@ -289,3 +289,11 @@ body:has(.st-bar) .mentor-flut { display: none !important; }
 }
 /* com o topo grande da aula na tela, a barra compacta (que entra no cabeçalho fixo) fica escondida */
 .st-bar.is-oculta { display: none; }
+
+/* Lousas salvas: item + botão de excluir (com confirmação em dois toques) */
+.st-lousa-item { display: flex; align-items: stretch; gap: 8px; }
+.st-lousa-item > button:first-child { flex: 1; min-width: 0; width: auto; }
+.st-lousas .st-lousa-del { flex: none; width: 52px; min-height: 52px; justify-content: center; padding: 0 8px; color: #6b6b72; }
+.st-lousas .st-lousa-del:hover { border-color: #e50914; background: #fff5f5; color: #e50914; }
+.st-lousas .st-lousa-del.is-confirma { width: auto; min-width: 84px; border-color: #e50914; background: #e50914; color: #fff; font-size: .78rem; font-weight: 700; }
+.st-lousas .st-lousa-del:disabled { opacity: .5; }
