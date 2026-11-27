@@ -56,7 +56,6 @@ export const TUTORIAIS: Tutorial[] = [
       { id: "jogo", titulo: "MODO JOGO", alvos: menu("/quiz"), lado: "right", texto: `No Modo Jogo você estuda jogando: completa a lei contra o relógio. No plano gratuito são ${FREE_LIMITS.gameQuestionsPerDay} questões por dia; nos pagos, sem limite.` },
       { id: "revisoes", titulo: "REVISÕES", alvos: menu("/revisoes", true), lado: "right", texto: "As revisões trazem de volta, na hora certa, o que você já estudou. As pendentes aparecem aqui; revisar é o que fixa o conteúdo." },
       { id: "concursos", titulo: "CONCURSOS", alvos: menu("/concursos", true), lado: "right", texto: "Aqui estão os concursos cadastrados, com vagas, datas de prova e informações dos editais." },
-      { id: "aprovum-ai", titulo: "APROVUM AI: SEU EDITAL", alvos: menu("/aprovum-ai", true), lado: "right", texto: "Envie o edital do concurso que você quer conquistar e a APROVUM organiza a sua preparação. O Raio-X mostra prioridades de estudo para o seu concurso." },
       { id: "desempenho", titulo: "DESEMPENHO", alvos: menu("/desempenho", true), lado: "right", texto: "Acompanhe suas respostas, seus acertos e sua evolução, e descubra em que assuntos você mais erra." },
       { id: "redacao", titulo: "REDAÇÃO ELITE", alvos: menu("/redacao", true), lado: "right", texto: "Escreva sua redação e receba correção. Aqui você também treina com propostas de tema e exercícios." },
       { id: "perfil", titulo: "PERFIL, NÍVEL E CONQUISTAS", rota: "/perfil", alvos: ['[data-testid="perfil-carteirinha"]', '[data-testid="nivel"]', '[data-testid="perfil-topo"]'], lado: "bottom", texto: "No Perfil ficam seus dados, suas metas, seu nível e suas conquistas. Cada medalha mostra o quanto falta para você ganhá-la." },
@@ -150,7 +149,6 @@ export const TUTORIAIS: Tutorial[] = [
     rota: "/concursos",
     passos: [
       { id: "lista", titulo: "CONCURSOS", rota: "/concursos", alvos: ['[data-testid="concursos-lista"]', '[data-testid="mapa-brasil"]', "#conteudo"], lado: "top", texto: "Veja os concursos cadastrados, as vagas e as datas de prova." },
-      { id: "edital", titulo: "ENVIE O SEU EDITAL", rota: "/concursos", alvos: menu("/aprovum-ai", true), lado: "right", texto: "Na APROVUM AI você envia o edital do concurso que quer conquistar e a plataforma organiza a sua preparação." },
     ],
   },
   {

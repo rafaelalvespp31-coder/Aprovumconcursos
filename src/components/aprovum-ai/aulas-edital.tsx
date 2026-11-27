@@ -119,7 +119,7 @@ export function AulasEdital({ tree, onLesson }: { tree: PreparationTree; onLesso
           )}
           <div className="rxp-acoes">
             <Link href={`/meu-concurso/${prep.id}/relatorio`} className="rxp-btn-r">VER RELATÓRIO COMPLETO DO EDITAL</Link>
-            <Link href="/aprovum-ai" className="rxp-btn-g">Enviar outro edital</Link>
+            <Link href="/concursos" className="rxp-btn-g">Escolher outro concurso</Link>
           </div>
         </Moldura>
       </section>

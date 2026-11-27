@@ -19,7 +19,7 @@ export default async function MeuConcursoPage({ params, searchParams }: { params
   const { aba, editar } = await searchParams;
   const tab: PrepTab = TABS.has(aba as PrepTab) ? (aba as PrepTab) : "visao";
   const user = await requireUser(`/meu-concurso/${id}`);
-  if (await reanalyzeIfStale(user.id, id).catch(() => false)) redirect(`/aprovum-ai/${id}`);
+  if (await reanalyzeIfStale(user.id, id).catch(() => false)) redirect("/meu-concurso");
   const tree = await getPreparationTree(user.id, id).catch(() => null);
   if (!tree) notFound();
   const rx = tab === "raiox" ? await getRaioX(user.id, id).catch(() => null) : null;

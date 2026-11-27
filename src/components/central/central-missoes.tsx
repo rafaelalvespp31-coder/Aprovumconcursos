@@ -71,7 +71,7 @@ export function CentralMissoesView({ cards, selecionado, limite, action }: Props
               <Plus aria-hidden /><span>LIMITE ATINGIDO</span>
             </span>
           ) : (
-            <Link href="/aprovum-ai" className="cm-novo" prefetch={false}>
+            <Link href="/concursos" className="cm-novo" prefetch={false}>
               <Plus aria-hidden /><span>ADICIONAR NOVO CONCURSO</span>
             </Link>
           )}

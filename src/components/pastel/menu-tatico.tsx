@@ -103,7 +103,7 @@ const ARTES: Record<string, ReactNode> = {
       </g>
     </svg>
   ),
-  "aprovum-ai": (
+  "meu-concurso": (
     <svg viewBox="0 0 200 64" preserveAspectRatio="xMaxYMid slice" aria-hidden>
       <defs>
         <radialGradient id="mtA2" cx="70%" cy="50%" r="55%">
@@ -344,17 +344,6 @@ export function MenuTatico({
             return (
               <div key={s.id} className="contents">
                 {Cartao}
-                {s.id === "aprovum-ai" && (
-                  <Link
-                    href={`${basePath}/meu-concurso`}
-                    onClick={onClose}
-                    aria-current={path.startsWith(`${basePath}/meu-concurso`) ? "page" : undefined}
-                    data-testid="nav-edital-verticalizado"
-                    className="mt-sublink"
-                  >
-                    <ListTree aria-hidden /> Edital Verticalizado <ChevronRight aria-hidden />
-                  </Link>
-                )}
                 {s.id === "questoes" && evolucao.length > 0 && (
                   <div className={`mt-grupo mt-grupo-arte ${evolucaoAberta ? "is-aberto" : ""}`} style={i()}>
                     <button type="button" aria-expanded={evolucaoAberta} data-testid={movel ? "evolucao-toggle-movel" : "evolucao-toggle"} onClick={onToggleEvolucao} className={`mt-card ${dentroEvolucao ? "is-dentro" : ""}`} data-id="evolucao">

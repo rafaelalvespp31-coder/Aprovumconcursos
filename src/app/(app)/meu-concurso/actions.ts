@@ -13,6 +13,6 @@ export async function deletePreparationAction(id: string): Promise<{ ok: boolean
     return { ok: false, error: "Não foi possível excluir agora. Tente novamente." };
   }
   revalidatePath("/meu-concurso");
-  revalidatePath("/aprovum-ai");
+  revalidatePath("/meu-concurso");
   return { ok: true };
 }

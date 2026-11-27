@@ -20,7 +20,7 @@ export async function updateInfoAction(id: string, form: FormData) {
     year: year && year >= 1990 && year <= 2100 ? year : null,
   });
   revalidatePath(`/meu-concurso/${id}`);
-  if (r.reanalyze) redirect(`/aprovum-ai/${id}`);
+  if (r.reanalyze) redirect("/meu-concurso");
 }
 
 export interface StartStudyState { error?: string }

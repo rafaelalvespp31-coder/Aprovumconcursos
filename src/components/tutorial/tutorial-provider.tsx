@@ -19,7 +19,6 @@ const FAQ: Array<{ p: string; r: string }> = [
   { p: "Quantas aulas e questões posso fazer por dia?", r: `No plano gratuito você estuda ${FREE_LIMITS.lessonsPerDay} aula e ${FREE_LIMITS.questionsPerDay} questões por dia; os planos pagos liberam sem limite, em Meu Plano. No Modo Jogo o gratuito faz ${FREE_LIMITS.gameQuestionsPerDay} questões por dia (libera de novo no dia seguinte); os planos pagos jogam sem limite.` },
   { p: "Como o Mentor pode me ajudar?", r: "Toque no Mentor para ver seu plano e suas prioridades, ou na aba Voz para conversar falando. Peça “mostra no quadro” para ele desenhar a explicação." },
   { p: "Onde vejo meu desempenho?", r: "Em Desempenho: suas respostas, seus acertos e a sua evolução ao longo dos dias." },
-  { p: "Como envio o edital do meu concurso?", r: "Em APROVUM AI você envia o edital e a plataforma organiza a sua preparação." },
   { p: "Como coloco o APROVUM como ícone no celular?", r: "Android: no Chrome, toque em ⋮ e em “Instalar app”. iPhone: no Safari, toque em Compartilhar e em “Adicionar à Tela de Início”. Depois abra pelo ícone novo." },
   { p: "Como ativo as notificações?", r: "Abra o Mentor e toque no sininho do topo (ou use Perfil → Avisos no celular). No iPhone, antes instale o app na Tela de Início. Depois disso os avisos chegam mesmo com o app fechado." },
   { p: "Posso rever o tour?", r: "Sempre. Abra esta central (botão ?) e toque em “Iniciar tour completo”." },

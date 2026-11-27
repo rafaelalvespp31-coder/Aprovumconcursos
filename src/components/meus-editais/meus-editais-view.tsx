@@ -19,7 +19,7 @@ export function MeusEditaisView({ data }: { data: EditaisOverview | null }) {
   // "Ver relatório": o Raio-X publicado mais recente; senão o Raio-X do edital pronto mais recente (mostra o status da análise).
   const withRaio = cards.find((c) => c.status === "concluido" && c.raioX.available);
   const firstReady = cards.find((c) => c.status === "concluido");
-  const strategyHref = withRaio ? `/meu-concurso/${withRaio.id}?aba=raiox` : firstReady ? `/meu-concurso/${firstReady.id}?aba=raiox` : "/aprovum-ai";
+  const strategyHref = withRaio ? `/meu-concurso/${withRaio.id}?aba=raiox` : firstReady ? `/meu-concurso/${firstReady.id}?aba=raiox` : "/concursos";
   const pendingHref = firstReady ? `/meu-concurso/${firstReady.id}?aba=visao` : "/trilhas";
 
   const kpis = [
@@ -75,15 +75,15 @@ export function MeusEditaisView({ data }: { data: EditaisOverview | null }) {
         <section className="me-vazio me-in" style={{ ["--d" as string]: ".2s" }}>
           <div className="me-vazio-arte" aria-hidden><FileText /><span /></div>
           <h2>Você ainda não possui editais analisados.</h2>
-          <p>Adicione seu primeiro edital e deixe a APROVUM organizar sua preparação.</p>
-          <Link href="/aprovum-ai" className="me-btn me-btn-vermelho">ENVIAR NOVO EDITAL <ChevronRight aria-hidden /></Link>
+          <p>Escolha um concurso e deixe a APROVUM organizar sua preparação.</p>
+          <Link href="/concursos" className="me-btn me-btn-vermelho">ESCOLHER CONCURSO <ChevronRight aria-hidden /></Link>
         </section>
       ) : (
         <section className="me-lista" aria-label="Seus editais">
           {cards.map((c, i) => <EditalCard key={c.id} c={c} index={i} />)}
           {data && (
-            <Link href="/aprovum-ai" className="me-novo me-in" style={{ ["--d" as string]: `${0.3 + cards.length * 0.07}s` }}>
-              <span aria-hidden><Plus /></span>ENVIAR NOVO EDITAL
+            <Link href="/concursos" className="me-novo me-in" style={{ ["--d" as string]: `${0.3 + cards.length * 0.07}s` }}>
+              <span aria-hidden><Plus /></span>ESCOLHER OUTRO CONCURSO
             </Link>
           )}
         </section>

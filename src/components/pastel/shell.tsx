@@ -15,12 +15,12 @@ import {
   CircleHelp,
   Clock3,
   Video,
-  BrainCircuit,
   ChevronRight,
   Landmark,
   LayoutGrid,
   Crown,
   House,
+  ListTree,
   Map as MapIcon,
   PenLine,
   Plus,
@@ -76,7 +76,7 @@ function navItems(s: ShellSummary, base: string): NavItem[] {
     { id: "revisoes", href: `${base}/revisoes`, label: "Revisões", icon: Clock3, num: "6", desc: plural(s.counts.dueReviews, "pendente", "pendentes"), title: "Revisões" },
     { id: "desempenho", href: `${base}/desempenho`, label: "Desempenho", short: "Evolução", icon: ChartColumn, num: "7", desc: plural(s.counts.answered, "resposta", "respostas"), title: "Desempenho" },
     { id: "concursos", href: `${base}/concursos`, label: "Concursos", icon: Landmark, num: "8", desc: "Editais e provas", title: "Concursos", subtitle: "Concursos cadastrados, vagas e datas de prova." },
-    { id: "aprovum-ai", href: `${base}/aprovum-ai`, label: "APROVUM AI", icon: BrainCircuit, num: "", desc: "Edital em preparação", title: "APROVUM AI", subtitle: "Seu concurso. Sua preparação. Nossa inteligência.", badge: "Novo" },
+    { id: "meu-concurso", href: `${base}/meu-concurso`, label: "Edital Verticalizado", icon: ListTree, num: "", desc: "Seu concurso em tópicos", title: "Edital Verticalizado" },
     { id: "redacao", href: `${base}/redacao`, label: "Redação Elite", short: "Redação", icon: PenLine, num: "", desc: "Escreva e seja corrigido", title: "APROVUM REDAÇÃO ELITE", subtitle: "ESCREVA. CORRIJA. EVOLUA. CONQUISTE.", badge: "Novo" },
     { id: "depoimentos", href: `${base}/depoimentos`, label: "Depoimentos", icon: Video, num: "9", desc: "Histórias de aprovados", title: "Depoimentos", subtitle: "Quem chegou lá conta como foi a trajetória até a aprovação." },
     { id: "perfil", href: `${base}/perfil`, label: "Perfil", icon: Settings, num: "0", desc: `Nível ${s.level}`, title: "Perfil" },
@@ -182,7 +182,7 @@ export function PastelShell({
     ? null
     : active && ["painel", "trilhas", "quiz", "questoes", "plano"].includes(active.id)
       ? (active.id as BottomNavId)
-      : active && ["area", "revisoes", "desempenho", "concursos", "aprovum-ai", "depoimentos", "perfil"].includes(active.id)
+      : active && ["area", "revisoes", "desempenho", "concursos", "meu-concurso", "depoimentos", "perfil"].includes(active.id)
         ? "area"
         : null;
   // Página de Estudos: cabeçalho com saudação (desktop) e logo + menu (celular).

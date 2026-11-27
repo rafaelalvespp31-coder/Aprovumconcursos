@@ -74,7 +74,7 @@ export function EditalCard({ c, index }: { c: Card; index: number }) {
 
   return (
     <article className="me-card me-in" data-capa={capa ? 1 : undefined} style={{ ["--d" as string]: `${0.12 + index * 0.07}s`, ...(org ? { ["--fundo" as string]: `url(${org.card})` } : {}) }} data-tone={st.tone} aria-labelledby={`ed-${c.id}`}>
-      <Link href={ready ? detail : `/aprovum-ai/${c.id}`} className="me-visual" data-capa={capa ? 1 : undefined} style={{ ["--arte" as string]: `url(${capa ?? `/meus-editais/ref-disc-${(index % 4) + 1}.webp`})` }} aria-label={`Abrir ${c.title}`} tabIndex={-1}>
+      <Link href={ready ? detail : "/meu-concurso"} className="me-visual" data-capa={capa ? 1 : undefined} style={{ ["--arte" as string]: `url(${capa ?? `/meus-editais/ref-disc-${(index % 4) + 1}.webp`})` }} aria-label={`Abrir ${c.title}`} tabIndex={-1}>
         <span className="me-visual-org" style={{ ["--n" as string]: Math.max(6, longest) }}>
           {lines.map((l, i) => <span key={i} data-ultima={i === lines.length - 1 && lines.length > 1 ? 1 : undefined}>{l}</span>)}
         </span>
@@ -83,7 +83,7 @@ export function EditalCard({ c, index }: { c: Card; index: number }) {
       </Link>
 
       <div className="me-info">
-        <h2 id={`ed-${c.id}`}><Link href={ready ? detail : `/aprovum-ai/${c.id}`}>{org?.nome ?? c.title}</Link></h2>
+        <h2 id={`ed-${c.id}`}><Link href={ready ? detail : "/meu-concurso"}>{org?.nome ?? c.title}</Link></h2>
         {c.roleName ? (
           <p className="me-cargo"><span><Briefcase aria-hidden />CARGO</span><b>{c.roleName}</b></p>
         ) : ready ? (
@@ -124,7 +124,7 @@ export function EditalCard({ c, index }: { c: Card; index: number }) {
         )}
       </div>
 
-      <Link href={ready ? detail : `/aprovum-ai/${c.id}`} className="me-go" aria-label={ready ? `Ver detalhes de ${c.title}` : `Acompanhar ${c.title}`}><ChevronRight aria-hidden /></Link>
+      <Link href={ready ? detail : "/meu-concurso"} className="me-go" aria-label={ready ? `Ver detalhes de ${c.title}` : `Acompanhar ${c.title}`}><ChevronRight aria-hidden /></Link>
 
       <div className="me-acoes">
         {ready ? (
@@ -134,7 +134,7 @@ export function EditalCard({ c, index }: { c: Card; index: number }) {
             {c.raioX.available && <Link href={`${detail}?aba=raiox`} className="me-btn me-btn-raio"><Radar aria-hidden /> Raio-X do edital</Link>}
           </>
         ) : (
-          <Link href={`/aprovum-ai/${c.id}`} className="me-btn me-btn-preto">{c.status === "conferencia" ? "Conferir agora" : c.status === "erro" ? "Ver o que houve" : "Acompanhar análise"} <ChevronRight aria-hidden /></Link>
+          <span className="me-btn me-btn-preto" aria-disabled="true">{c.status === "conferencia" ? "Conferir agora" : c.status === "erro" ? "Ver o que houve" : "Acompanhar análise"}</span>
         )}
       </div>
 

@@ -52,14 +52,14 @@ export function MentorGoalPlan({ goal, plan, name, onChange, base = "", onNaviga
         <p className="text-[14px] font-bold leading-snug">
           {ask ? <>{name ? `${name}, já` : "Já"} sabe qual concurso você quer ser aprovado?</> : <>Seu plano está pronto. Foco total!</>}
         </p>
-        {ask && <p className="mt-1 text-[12px] text-white/70">Escolha um dos seus editais cadastrados no Aprovum AI e aperte Ok. Eu monto o plano: o que estudar, quais dias, quantas horas e questões, seguindo as disciplinas desse edital.</p>}
+        {ask && <p className="mt-1 text-[12px] text-white/70">Escolha um dos seus editais no Edital Verticalizado e aperte Ok. Eu monto o plano: o que estudar, quais dias, quantas horas e questões, seguindo as disciplinas desse edital.</p>}
       </div>
 
       {ask && (
         <form onSubmit={(e) => { e.preventDefault(); if (podeOk) send(); }} className="flex flex-col gap-2.5">
           {options === null && <p className="text-[12.5px]" style={DIM}>Carregando seus editais…</p>}
           {options && options.length > 0 && (
-            <div role="radiogroup" aria-label="Seus editais cadastrados no Aprovum AI" className="flex flex-col gap-2" data-testid="mentor-objetivo-lista">
+            <div role="radiogroup" aria-label="Seus editais no Edital Verticalizado" className="flex flex-col gap-2" data-testid="mentor-objetivo-lista">
               {options.map((o) => {
                 const on = sel === o.id;
                 return (
@@ -79,7 +79,7 @@ export function MentorGoalPlan({ goal, plan, name, onChange, base = "", onNaviga
           {semLista && (
             <div className="rounded-xl border border-white/15 bg-white/5 p-3" data-testid="mentor-objetivo-sem-edital">
               <p className="text-[13px] font-bold" style={BRANCO}>Você ainda não tem edital cadastrado.</p>
-              <p className="mt-0.5 text-[12px]" style={DIM}>Envie o edital do seu concurso no Aprovum AI. Depois volte aqui e escolha-o para montar o plano.</p>
+              <p className="mt-0.5 text-[12px]" style={DIM}>Escolha o seu concurso em Concursos. Depois volte aqui e escolha-o para montar o plano.</p>
               <Link href={`${base}/meu-concurso`} onClick={onNavigate} className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-[#E10600] px-3.5 text-[13px] font-extrabold" style={BRANCO}>Cadastrar edital</Link>
             </div>
           )}

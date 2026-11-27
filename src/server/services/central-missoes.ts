@@ -32,7 +32,7 @@ export async function loadCentralMissoes(userId: string): Promise<CentralMissoes
     const p = c.progress;
     const pronto = c.status === "concluido";
     // "Vamos estudar" abre todas as matérias do edital, organizadas, para o aluno escolher por onde começar.
-    const href = pronto ? `/meu-concurso/${c.id}/materias` : `/aprovum-ai/${c.id}`;
+    const href = pronto ? `/meu-concurso/${c.id}/materias` : "/meu-concurso";
     return { id: c.id, sigla: v.sigla, nome: c.contestName ?? c.title, foto: v.foto, pct: pronto && p ? Math.round(p.pct) : null, href, pronto };
   });
   const id = (sel.data?.preparation_id as string | undefined) ?? null;
