@@ -376,7 +376,7 @@ function montarMmcMdc(tipo: "mmc" | "mdc", nums: number[], larg: number, med: Me
   let size = Math.min(44, Math.floor((larg - 40) / (Math.max(celulas, 10) * med("0").w * 1.15)));
   for (; size > 18; size--) {
     const cwx = med("0").w * size * 1.15, lhx = size * 1.55;
-    if (size * 1.3 + (ultima + 1.25) * lhx + empacotar(cwx).linhas * 2.7 * lhx + 1.3 * lhx <= alt - 12) break;
+    if (size * 1.3 + (ultima + 1.25) * lhx + empacotar(cwx).linhas * 3.1 * lhx + 1.3 * lhx <= alt - 12) break;
   }
   size = Math.max(18, size);
   const b = new Montador(med, size, med("0").w * size * 1.15);
@@ -410,19 +410,40 @@ function montarMmcMdc(tipo: "mmc" | "mdc", nums: number[], larg: number, med: Me
   const yCad = top + (ultima + 1.25) * lh;
   const emp = empacotar(cw);
   mults.forEach((m, j) => {
-    const w = larguraBloco(m), bx = ox0 + emp.pos[j]!.col * cw, by = yCad + emp.pos[j]!.lin * 2.7 * lh;
-    const p = b.passo(`Multiplicar ${j === 0 ? "os primos" : "pelo próximo primo"}`,
-      j === 0 ? `Hora de multiplicar os primos da coluna da direita (${primos.join(", ")}). Na conta armada, multiplique ${m.a} por ${m.f}.` : `Continue: multiplique o resultado anterior (${m.a}) pelo próximo primo (${m.f}) na conta armada.`,
-      `${m.a} × ${m.f} = ${m.res}.`, `Use a tabuada do ${m.f}: multiplique da direita para a esquerda, lembrando do vai-um.`);
-    b.grupo = p;
-    b.txt(String(m.a), bx + (w - digitos(m.a)) * cw, by);
-    b.txt("×", bx, by + lh);
-    b.txt(String(m.f), bx + (w - digitos(m.f)) * cw, by + lh);
-    b.linha(bx - 4, by + lh + 12, bx + w * cw + 4, by + lh + 12, 2 + j);
-    b.grupo = null;
-    b.casa(p, bx + cw, by + 2.05 * lh, w - 1, String(m.res), "dir").nota = `${m.a} × ${m.f} = ${m.res}.`;
+    const w = larguraBloco(m), bx = ox0 + emp.pos[j]!.col * cw, by = yCad + emp.pos[j]!.lin * 3.1 * lh, dir = bx + w * cw;
+    const ds = String(m.a).split("").map(Number).reverse(); // unidade primeiro
+    const desenho = (p: number) => {
+      b.grupo = p;
+      b.txt(String(m.a), bx + (w - digitos(m.a)) * cw, by);
+      b.txt("×", bx, by + lh);
+      b.txt(String(m.f), bx + (w - digitos(m.f)) * cw, by + lh);
+      b.linha(bx - 4, by + lh + 12, bx + w * cw + 4, by + lh + 12, 2 + j);
+      b.grupo = null;
+    };
+    if (ds.length === 1) {
+      const p = b.passo(`Multiplicar ${j === 0 ? "os primos" : "pelo próximo primo"}`,
+        j === 0 ? `Hora de multiplicar os primos da coluna da direita (${primos.join(", ")}). Na conta armada, multiplique ${m.a} por ${m.f}.` : `Continue: multiplique o resultado anterior (${m.a}) pelo próximo primo (${m.f}) na conta armada.`,
+        `${m.a} × ${m.f} = ${m.res}.`, `Use a tabuada do ${m.f}.`);
+      desenho(p);
+      b.casa(p, dir - digitos(m.res) * cw, by + 2.05 * lh, digitos(m.res), String(m.res), "esq").nota = `${m.a} × ${m.f} = ${m.res}.`;
+      return;
+    }
+    // vários algarismos: uma coluna por passo, da direita para a esquerda, com o vai-um
+    let vai = 0;
+    ds.forEach((d, k) => {
+      const total = d * m.f + vai, ultimo = k === ds.length - 1, saida = ultimo ? String(total) : String(total % 10), nc = ultimo ? 0 : Math.floor(total / 10);
+      const nome = NOME_POS[k] ?? `${k + 1}ª casa`;
+      const p = b.passo(`${m.a} × ${m.f}: coluna ${nome}`,
+        `${k === 0 ? `Multiplicando ${m.a} por ${m.f}, comece pela direita. ` : "Agora a coluna seguinte. "}Multiplique o algarismo ${d} (${nome}) por ${m.f}${vai ? ` e some o vai-um ${vai}` : ""}. ${ultimo ? "Como é a última coluna, escreva o número inteiro." : 'Escreva só o algarismo da direita (o resto é o "vai-um").'}`,
+        `${d} × ${m.f}${vai ? ` + ${vai}` : ""} = ${total}. ${ultimo ? `Escreva ${total}.` : nc ? `Escreva ${total % 10} e vai ${nc} para a próxima coluna.` : `Escreva ${total % 10}; não sobra vai-um.`}`,
+        `Tabuada do ${m.f}: ${d} × ${m.f} = ${d * m.f}${vai ? `, mais o vai-um ${vai}` : ""}.`);
+      if (k === 0) desenho(p);
+      const n = saida.length;
+      b.casa(p, dir - (k + n) * cw, by + 2.05 * lh, n, saida, "dir").nota = `${d} × ${m.f}${vai ? ` + ${vai}` : ""} = ${total}${ultimo ? "" : `: escreve ${total % 10}, vai ${nc}`}.`;
+      vai = nc;
+    });
   });
-  const yRes = yCad + emp.linhas * 2.7 * lh + (nMult ? 0.1 * lh : 0);
+  const yRes = yCad + emp.linhas * 3.1 * lh + (nMult ? 0.1 * lh : 0);
   b.txt(rot, ox, yRes);
   const p = b.passo("Resultado", tipo === "mmc" ? (nMult ? "Escreva o resultado da última multiplicação: é o MMC." : "Escreva o primo da coluna da direita: é o MMC.") : primos.length ? (nMult ? "Escreva o resultado da última multiplicação: é o MDC." : "Escreva o primo usado: é o MDC.") : "Nenhum primo divide todos os números, então o MDC é 1.",
     primos.length ? `${primos.join(" × ")} = ${r}.` : "Não há primo comum: MDC = 1.", "Use o resultado da última multiplicação.");

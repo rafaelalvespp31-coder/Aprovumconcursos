@@ -74,6 +74,18 @@ describe("esqueletos: todos os tipos", () => {
     expect(monta("ordem", [], "0,5;-2;3/4;1,2;-1,5").resposta).toBe("Em ordem: -2 < -1,5 < 0,5 < 0,75 < 1,2");
     expect(monta("classnum", [], "7;-3;0,5;√2;2/3").resposta).toBe("7: N; -3: Z; 0,5: Q; √2: I; 2/3: Q");
   });
+  it("MMC: a multiplicação com vários algarismos vai coluna por coluna (12 × 3: 2×3 e depois 1×3)", () => {
+    const e = monta("mmc", [9, 12, 18]);
+    const ts = e.passos.map((p) => p.titulo);
+    expect(ts).toContain("12 × 3: coluna das unidades");
+    expect(ts).toContain("12 × 3: coluna das dezenas");
+    const un = e.passos.find((p) => p.titulo === "12 × 3: coluna das unidades")!, dz = e.passos.find((p) => p.titulo === "12 × 3: coluna das dezenas")!;
+    expect(e.casas[un.casas[0]!]!.esperado).toBe("6");
+    expect(e.casas[dz.casas[0]!]!.esperado).toBe("3");
+    expect(e.resposta).toBe("MMC = 36");
+    const e2 = monta("mmc", [25, 30]); // 2×2=4, 4×3=12, 12×5=60: a última coluna passa de 9
+    expect(conferir(resolver(e2), e2).every(Boolean)).toBe(true);
+  });
   it("lógica: tabela-verdade, classificação, argumentos, negação", () => {
     expect(classificar(parse("p∨~p")!)).toBe("TAUTOLOGIA");
     expect(classificar(parse("p∧~p")!)).toBe("CONTRADIÇÃO");
