@@ -1,8 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, Eraser, Keyboard, Pen, Trash2, Undo2, Wand2, X } from "lucide-react";
-import { apagar, CORES, ehSinalVetor, glifoEm, interpretar, mesmaForma, promoverUns, sinalNormalizado, type Cor, type Item, type Medidor } from "@/domain/mentor/quadro-motor";
+import { BookOpen, Calculator, ChevronRight, CornerDownLeft, Delete, Eraser, Highlighter, Keyboard, Lightbulb, Maximize, Minus, Pen, Play, Plus, Redo2, Search, SquareDashed, SquarePen, SquarePlus, Trash2, Undo2, Wand2, X } from "lucide-react";
+import { apagar, COR_MARCA, CORES, LARGURA_MARCA, ehSinalVetor, glifoEm, interpretar, mesmaForma, promoverUns, sinalNormalizado, type Cor, type Item, type Medidor } from "@/domain/mentor/quadro-motor";
 import { casaCerta, casaCompleta, colocarNaCasa, ehLogica, exercicioAleatorio, lerExercicio, montarEsqueleto, ROTULOS, textoDaCasa, textoDoExercicio, tiposDoAssunto, TIPOS_TEXTO, type Esqueleto, type Exercicio, type TipoEsqueleto } from "@/domain/mentor/quadro-esqueleto";
 import type { Ponto, Traco } from "@/domain/mentor/quadro-modelos";
 import { perfilDaAula, type ContextoAula } from "@/domain/mentor/quadro-perfil";
@@ -12,21 +12,20 @@ const FONTE = '"Courier Prime", "Courier New", Courier, ui-monospace, monospace'
 const BORRACHA = 16;
 const ESPERA_MS = 600;
 const CHAVE = "aprovum:quadro:v2";
-type Tecla = { ch: string; rot?: string; k?: "apagar" | "prox" | "linha" };
+type Tecla = { ch: string; rot?: string };
 const t = (cs: string, rots: Record<string, string> = {}): Tecla[] => [...cs].map((ch) => ({ ch, rot: rots[ch] }));
-/** Teclado em abas: números, sinais e letras. Cada matéria mostra o que usa. */
+const NUM = t("789÷()456×,%123-0.", { "-": "−" }); // o teclado do desenho: 3 linhas de 6 + ⌫ e ↵
+/** Abas do teclado: Números, Sinais e Letras (Raciocínio Lógico abre com letras e símbolos lógicos). */
 const ABAS_MAT: { id: string; nome: string; teclas: Tecla[] }[] = [
-  { id: "num", nome: "Números", teclas: t("7894561230,") },
-  { id: "sin", nome: "Sinais", teclas: t("+-×÷=/()%√^:.", { "-": "−" }) },
-  { id: "let", nome: "Letras", teclas: t("xyzabcnmk") },
+  { id: "num", nome: "Números", teclas: NUM },
+  { id: "sin", nome: "Sinais", teclas: t("+-×÷=/()%√^:<>≤≥≠±", { "-": "−" }) },
+  { id: "let", nome: "Letras", teclas: t("xyzabcnmkpqrstuvwd") },
 ];
 const ABAS_LOG: { id: string; nome: string; teclas: Tecla[] }[] = [
-  { id: "let", nome: "Letras", teclas: t("pqrstVF") },
-  { id: "sin", nome: "Símbolos", teclas: t("~∧∨→↔⊻()=,;") },
-  { id: "num", nome: "Números", teclas: t("7894561230,") },
+  { id: "let", nome: "Letras", teclas: t("pqrstuVFabcdxynmkw") },
+  { id: "sin", nome: "Sinais", teclas: t("~∧∨→↔⊻()=,;[]≡⇒⇔≠") },
+  { id: "num", nome: "Números", teclas: NUM },
 ];
-const CONTROLES: Tecla[] = [{ ch: "⌫", k: "apagar", rot: "⌫" }, { ch: "›", k: "prox", rot: "→" }, { ch: "↵", k: "linha" }];
-const CANETAS: { cor: Cor; nome: string }[] = [{ cor: "preto", nome: "Caneta preta" }, { cor: "azul", nome: "Caneta azul" }, { cor: "vermelho", nome: "Caneta vermelha" }];
 
 /** Mede cada caractere na fonte de máquina (subida, descida e largura por 1 de tamanho), com memória. */
 function medidorDeFonte(): Medidor {
@@ -51,6 +50,14 @@ interface Props {
   onExplicacoes?: () => void;
 }
 
+function Ferr({ id, icone, nome, ativo, onClick, desabilitado, extra, testid }: { id: string; icone: React.ReactNode; nome: string; ativo?: boolean; onClick: () => void; desabilitado?: boolean; extra?: React.ReactNode; testid?: string }) {
+  return (
+    <button type="button" aria-pressed={ativo} aria-label={nome} data-testid={testid ?? id} className={`qb-ferr${ativo ? " is-on" : ""}`} onClick={onClick} disabled={desabilitado}>
+      {icone}<span>{nome}</span>{extra}
+    </button>
+  );
+}
+
 /** Quadro branco de treino: o aluno escreve à mão e o quadro limpa tudo em letra de máquina. */
 export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const perfil = useMemo(() => perfilDaAula(aula), [aula]);
@@ -69,9 +76,13 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const ultimoSubir = useRef(0);
   const candidato = useRef(false); // o traço em escrita pode continuar o símbolo anterior
   const [caneta, setCaneta] = useState<Cor>("preto");
-  const [ferramenta, setFerramenta] = useState<"caneta" | "borracha">("caneta");
+  const [ferramenta, setFerramenta] = useState<"caneta" | "marca" | "borracha" | "area">("caneta");
+  const [zoom, setZoom] = useState(1);
+  const [painel, setPainel] = useState(false); // exercício / opções (ícone no canto da lousa)
+  const [passoExp, setPassoExp] = useState(false); // card do passo aberto por inteiro (no celular ele vem resumido)
+  const [dicaVista, setDicaVista] = useState(-1); // passo em que o aluno pediu a dica
   const [auto, setAuto] = useState(true);
-  const [estado, setEstado] = useState<{ vazio: boolean; pode: boolean; g: number | null }>({ vazio: true, pode: false, g: null });
+  const [estado, setEstado] = useState<{ vazio: boolean; pode: boolean; refaz: boolean; g: number | null }>({ vazio: true, pode: false, refaz: false, g: null });
   const [confirmaLimpar, setConfirmaLimpar] = useState(false);
   // teclado: números para tocar (em vez de desenhar) + esqueleto da conta já montado
   const tipos = useMemo<TipoEsqueleto[]>(() => (perfil.modo !== "calculo" ? [] : tiposDoAssunto(aula?.aula ?? "", aula?.materia)), [perfil, aula?.aula, aula?.materia]);
@@ -84,7 +95,12 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const passo = useRef(0);
   const esqRef = useRef<Esqueleto | null>(null);
   const alturaMontada = useRef(0);
-  const vista = useRef({ s: 1, ox: 0 }); // a lousa se ajusta ao que já está escrito: nada fica cortado
+  const vista = useRef({ s: 1, ox: 0, oy: 0 });
+  const zoomRef = useRef(1);
+  const pan = useRef({ x: 0, y: 0 });
+  const ponteiros = useRef(new Map<number, { x: number; y: number }>());
+  const selecao = useRef<{ x0: number; y0: number; x1: number; y1: number } | null>(null);
+  const refazerPilha = useRef<string[]>([]); // a lousa se ajusta ao que já está escrito: nada fica cortado
   const cur = useRef<{ g: number | null; x: number; base: number }>({ g: null, x: 24, base: 90 });
   const conf = useRef<(boolean | null)[] | null>(null);
   const cfg = useRef({ caneta, ferramenta, auto, perfil, digitar });
@@ -113,9 +129,10 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
       const med1 = (it: Item) => { if (it.t === "tr") { for (const sg of it.segs) for (const q of sg) { if (q[1] > fundo) fundo = q[1]; if (q[0] > dir) dir = q[0]; } } else { if (it.base + it.size * 0.3 > fundo) fundo = it.base + it.size * 0.3; if (it.cx + it.size * 0.4 > dir) dir = it.cx + it.size * 0.4; } };
       if (e0) { for (const c of e0.casas) { if (c.y1 > fundo) fundo = c.y1; if (c.x1 > dir) dir = c.x1; } e0.fixos.forEach(med1); e0.fixosPasso?.forEach((f) => f.itens.forEach(med1)); }
       itens.current.forEach(med1);
-      const sc = Math.max(0.45, Math.min(1, (H - 8) / (fundo + 14), (W - 8) / (dir + 12)));
-      vista.current = { s: sc, ox: sc < 1 ? Math.max(0, (W - W * sc) / 2) : 0 };
-      ctx.setTransform(d * sc, 0, 0, d * sc, d * vista.current.ox, 0);
+      const auto = Math.max(0.45, Math.min(1, (H - 8) / (fundo + 14), (W - 8) / (dir + 12)));
+      const sc = auto * zoomRef.current;
+      vista.current = { s: sc, ox: (W - W * sc) / 2 + pan.current.x, oy: pan.current.y };
+      ctx.setTransform(d * sc, 0, 0, d * sc, d * vista.current.ox, d * vista.current.oy);
     }
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     const risca = (t: Traco, w: number, cor: string) => {
@@ -134,9 +151,10 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
       ctx.setLineDash([]);
     }
     const dosPassos = e && cfg.current.digitar ? e.fixosPasso?.filter((f) => f.passo <= passo.current).flatMap((f) => f.itens) ?? [] : [];
-    for (const it of [...(e?.fixos ?? []), ...dosPassos, ...itens.current]) {
-      if (it.t === "tr") for (const s of it.segs) risca(s, it.w, CORES[it.cor]);
-      else if (ehSinalVetor(it.ch) && !/[0-9]/.test(it.ch)) { for (const v of sinalNormalizado(it.ch, it.cx, it.base - medidor(it.ch).asc * it.size * 0.5, medidor("0").asc * it.size, it.cor)) if (v.t === "tr") for (const sg of v.segs) risca(sg, v.w, CORES[v.cor]); }
+    for (const it of itens.current) if (it.t === "tr" && it.cor === "marca") for (const sg of it.segs) risca(sg, it.w, COR_MARCA); // marca-texto fica por baixo
+    for (const it of [...(e?.fixos ?? []), ...dosPassos, ...itens.current.filter((x) => !(x.t === "tr" && x.cor === "marca"))]) {
+      if (it.t === "tr") for (const s of it.segs) risca(s, it.w, it.cor === "marca" ? COR_MARCA : CORES[it.cor]);
+      else if (ehSinalVetor(it.ch) && !/[0-9]/.test(it.ch)) { for (const v of sinalNormalizado(it.ch, it.cx, it.base - medidor(it.ch).asc * it.size * 0.5, medidor("0").asc * it.size, it.cor)) if (v.t === "tr") for (const sg of v.segs) risca(sg, v.w, v.cor === "marca" ? COR_MARCA : CORES[v.cor]); }
       else { ctx.fillStyle = CORES[it.cor]; ctx.font = `700 ${it.size}px ${FONTE}`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillText(it.ch, it.cx, it.base); }
     }
     if (e) {
@@ -148,7 +166,8 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     // traços ainda não "limpos" (o aluno acabou de escrever)
     const cor = CORES[cfg.current.caneta];
     for (const t of pendente.current) risca(t, 3.2, cor);
-    if (atual.current) risca(atual.current, 3.2, cor);
+    if (atual.current) { if (cfg.current.ferramenta === "marca") risca(atual.current, LARGURA_MARCA, COR_MARCA); else risca(atual.current, 3.2, cor); }
+    if (selecao.current) { const q = selecao.current; ctx.strokeStyle = "#e50914"; ctx.fillStyle = "rgba(229,9,20,.08)"; ctx.lineWidth = 1.6; ctx.setLineDash([6, 4]); ctx.fillRect(Math.min(q.x0, q.x1), Math.min(q.y0, q.y1), Math.abs(q.x1 - q.x0), Math.abs(q.y1 - q.y0)); ctx.strokeRect(Math.min(q.x0, q.x1), Math.min(q.y0, q.y1), Math.abs(q.x1 - q.x0), Math.abs(q.y1 - q.y0)); ctx.setLineDash([]); }
     if (cfg.current.ferramenta === "borracha" && mira.current) {
       ctx.strokeStyle = "rgba(0,0,0,.45)"; ctx.lineWidth = 1.5; ctx.setLineDash([4, 3]); ctx.beginPath(); ctx.arc(mira.current.x, mira.current.y, BORRACHA, 0, Math.PI * 2); ctx.stroke(); ctx.setLineDash([]);
     }
@@ -160,8 +179,9 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const marcar = useCallback(() => {
     desfazer.current.push(JSON.stringify(itens.current));
     if (desfazer.current.length > 40) desfazer.current.shift();
+    refazerPilha.current = [];
   }, []);
-  const refletir = useCallback(() => setEstado((a) => { const n = { vazio: itens.current.length === 0 && pendente.current.length === 0 && !atual.current, pode: desfazer.current.length > 0 || pendente.current.length > 0, g: cur.current.g }; return a.vazio === n.vazio && a.pode === n.pode && a.g === n.g ? a : n; }), []);
+  const refletir = useCallback(() => setEstado((a) => { const n = { vazio: itens.current.length === 0 && pendente.current.length === 0 && !atual.current, pode: desfazer.current.length > 0 || pendente.current.length > 0, refaz: refazerPilha.current.length > 0, g: cur.current.g }; return a.vazio === n.vazio && a.pode === n.pode && a.refaz === n.refaz && a.g === n.g ? a : n; }), []);
   const mudou = useCallback(() => { refletir(); guardar(); desenhar(); }, [desenhar, guardar, refletir]);
 
   /** Fecha o símbolo em escrita: reconhece e troca pelos traços limpos / caractere de máquina. */
@@ -172,9 +192,10 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     pendente.current = [];
     marcar();
     if (cfg.current.auto) {
-      const r = interpretar(g, cfg.current.caneta, medidor, itens.current, { ref: refTam.current, perfil: cfg.current.perfil });
+      const marcas = itens.current.filter((i) => i.t === "tr" && i.cor === "marca"), base = itens.current.filter((i) => !(i.t === "tr" && i.cor === "marca"));
+      const r = interpretar(g, cfg.current.caneta, medidor, base, { ref: refTam.current, perfil: cfg.current.perfil });
       if (r.ref && !refTam.current) refTam.current = r.ref;
-      itens.current = promoverUns([...itens.current, ...r.itens], r.itens, medidor, refTam.current);
+      itens.current = [...marcas, ...promoverUns([...base, ...r.itens], r.itens, medidor, refTam.current)];
     } else {
       itens.current = [...itens.current, ...interpretar(g, cfg.current.caneta, () => ({ asc: 0.6, desc: 0, w: 0.6 }), []).itens.filter((i) => i.t === "tr")];
     }
@@ -286,7 +307,14 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     else cur.current = { g: null, x: Math.max(12, x), base: y };
     desenhar(); refletir();
   };
-  const conferirAgora = () => { fechar(); verificarPasso(true); };
+  /** ↵ : passa para a próxima casa do passo; com o passo todo preenchido, confere. */
+  const entrar = () => {
+    const e = esqRef.current; if (!e) return;
+    fechar();
+    const ps = e.passos[passo.current]; if (!ps) return;
+    if (ps.casas.every((i) => casaCompleta(itens.current, e.casas[i]!))) { verificarPasso(true); return; }
+    teclar("›", "prox");
+  };
   const verResposta = () => {
     const e = esqRef.current; if (!e) return;
     const ps = e.passos[passo.current]; if (!ps) return;
@@ -372,7 +400,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k);
   }, [onClose]);
 
-  const pos = (e: React.PointerEvent): Ponto => { const r = tela.current!.getBoundingClientRect(); const v = vista.current; return [(e.clientX - r.left - v.ox) / v.s, (e.clientY - r.top) / v.s]; };
+  const pos = (e: React.PointerEvent): Ponto => { const r = tela.current!.getBoundingClientRect(); const v = vista.current; return [(e.clientX - r.left - v.ox) / v.s, (e.clientY - r.top - v.oy) / v.s]; };
 
   const apaga = (x: number, y: number) => {
     const r = apagar(itens.current, x, y, BORRACHA);
@@ -382,8 +410,12 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const descer = (e: React.PointerEvent<HTMLCanvasElement>) => {
     if (e.pointerType === "mouse" && e.button !== 0) return;
     const [x, y] = pos(e);
+    ponteiros.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ponteiros.current.size >= 2) { atual.current = null; selecao.current = null; borrando.current = false; return; } // dois dedos: movem a lousa (ver mover)
     if (cfg.current.digitar && cfg.current.ferramenta === "caneta") { fechar(); tocar(x, y); return; } // modo teclado: o toque só escolhe a casa
     e.currentTarget.setPointerCapture(e.pointerId);
+    if (cfg.current.ferramenta === "area") { fechar(); selecao.current = { x0: x, y0: y, x1: x, y1: y }; desenhar(); return; }
+    if (cfg.current.ferramenta === "marca") { fechar(); atual.current = [[x, y]]; desenhar(); return; }
     if (cfg.current.ferramenta === "borracha") {
       fechar(); marcar(); borrando.current = true; mira.current = { x, y }; apaga(x, y); desenhar(); return;
     }
@@ -404,9 +436,18 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     desenhar();
   };
   const mover = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const ant = ponteiros.current.get(e.pointerId);
+    if (ant) {
+      ponteiros.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+      if (ponteiros.current.size >= 2) { // dois dedos: arrasta a lousa (útil depois de aumentar o zoom)
+        pan.current = { x: pan.current.x + (e.clientX - ant.x) / 2, y: pan.current.y + (e.clientY - ant.y) / 2 };
+        desenhar(); return;
+      }
+    }
     const eventos = typeof e.nativeEvent.getCoalescedEvents === "function" ? e.nativeEvent.getCoalescedEvents() : [];
     const r = tela.current!.getBoundingClientRect();
-    const pts: Ponto[] = (eventos.length ? eventos : [e.nativeEvent]).map((p): Ponto => [(p.clientX - r.left - vista.current.ox) / vista.current.s, (p.clientY - r.top) / vista.current.s]);
+    const pts: Ponto[] = (eventos.length ? eventos : [e.nativeEvent]).map((p): Ponto => [(p.clientX - r.left - vista.current.ox) / vista.current.s, (p.clientY - r.top - vista.current.oy) / vista.current.s]);
+    if (cfg.current.ferramenta === "area") { if (selecao.current) { const u = pts[pts.length - 1]!; selecao.current = { ...selecao.current, x1: u[0], y1: u[1] }; desenhar(); } return; }
     if (cfg.current.ferramenta === "borracha") {
       const ultimo = pts[pts.length - 1]!; mira.current = { x: ultimo[0], y: ultimo[1] };
       if (borrando.current) for (const p of pts) apaga(p[0], p[1]);
@@ -418,6 +459,24 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   };
   const subir = (e: React.PointerEvent<HTMLCanvasElement>) => {
     try { e.currentTarget.releasePointerCapture(e.pointerId); } catch { /* já solto */ }
+    ponteiros.current.delete(e.pointerId);
+    if (selecao.current) { // Apagador: tira tudo o que o retângulo tocar
+      const q = selecao.current; selecao.current = null;
+      const [ax, bx, ay, by] = [Math.min(q.x0, q.x1), Math.max(q.x0, q.x1), Math.min(q.y0, q.y1), Math.max(q.y0, q.y1)];
+      if (bx - ax > 4 && by - ay > 4) {
+        const toca = (i: Item): boolean => {
+          if (i.t === "gl") return i.caixa.x1 >= ax && i.caixa.x0 <= bx && i.caixa.y1 >= ay && i.caixa.y0 <= by;
+          return i.segs.some((sg) => sg.some((pt) => pt[0] >= ax && pt[0] <= bx && pt[1] >= ay && pt[1] <= by));
+        };
+        marcar(); itens.current = itens.current.filter((i) => !toca(i)); conf.current = null;
+      }
+      mudou(); return;
+    }
+    if (atual.current && cfg.current.ferramenta === "marca") { // Marca texto: guarda o traço como está (não vira letra)
+      const t = atual.current; atual.current = null;
+      if (t.length < 2) t.push([t[0]![0] + 0.01, t[0]![1]]);
+      marcar(); itens.current = [...itens.current, { t: "tr", cor: "marca", w: LARGURA_MARCA, segs: [t] }]; mudou(); return;
+    }
     if (borrando.current) { borrando.current = false; mudou(); return; }
     const t = atual.current; atual.current = null;
     if (!t) return;
@@ -431,14 +490,31 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     if (timer.current) clearTimeout(timer.current);
     timer.current = setTimeout(fechar, ESPERA_MS);
   };
+  const rodar = (e: React.WheelEvent) => { // roda do mouse: rola a lousa; com Ctrl, aproxima e afasta
+    if (e.ctrlKey) { const z = Math.min(3, Math.max(0.5, zoomRef.current * (e.deltaY < 0 ? 1.1 : 1 / 1.1))); zoomRef.current = z; setZoom(z); } else pan.current = { x: pan.current.x - e.deltaX, y: pan.current.y - e.deltaY };
+    desenhar();
+  };
+  const mudarZoom = (f: number | null) => { // + / − / ajustar
+    const z = f === null ? 1 : Math.min(3, Math.max(0.5, zoomRef.current * f));
+    zoomRef.current = z; setZoom(z); if (f === null) pan.current = { x: 0, y: 0 };
+    desenhar();
+  };
   const sair = () => { if (cfg.current.ferramenta === "borracha") { mira.current = null; desenhar(); } };
 
   const desfazerUltimo = () => {
     if (pendente.current.length || atual.current) { pendente.current = []; atual.current = null; if (timer.current) clearTimeout(timer.current); refletir(); desenhar(); return; }
     const s = desfazer.current.pop();
     if (s === undefined) return;
+    refazerPilha.current.push(JSON.stringify(itens.current));
     try { itens.current = JSON.parse(s) as Item[]; } catch { return; }
     refTam.current = (itens.current.find((i) => i.t === "gl") as { size?: number } | undefined)?.size;
+    mudou();
+  };
+  const refazerUltimo = () => {
+    const s = refazerPilha.current.pop();
+    if (s === undefined) return;
+    desfazer.current.push(JSON.stringify(itens.current));
+    try { itens.current = JSON.parse(s) as Item[]; } catch { return; }
     mudou();
   };
   const limparTudo = () => {
@@ -446,93 +522,120 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     fechar(); marcar(); itens.current = []; pendente.current = []; conf.current = null; if (!esqRef.current) refTam.current = undefined; else { passo.current = 0; setPassoUi(0); cur.current.g = esqRef.current.passos[0]?.casas[0] ?? null; } setMsg(""); setConfirmaLimpar(false); mudou();
   };
 
-  const { vazio, pode: podeDesfazer } = estado;
+  const { vazio, pode: podeDesfazer, refaz: podeRefazer } = estado;
 
+  const dicaAberta = !!esq && dicaVista === passoUi && passoUi < esq.passos.length;
+  const aulaNome = perfil.modo === "calculo" ? `Aula: ${perfil.nome}` : perfil.nome;
   return (
     <div className="qb" role="dialog" aria-modal="true" aria-label="Lousa de treino" data-testid="quadro-branco">
-      <header className="qb-topo">
-        <h2>Lousa<small className="qb-aula" data-testid="quadro-perfil">{perfil.modo === "calculo" ? `Aula: ${perfil.nome}` : perfil.nome}</small></h2>
-        {onExplicacoes && <button type="button" className="qb-link" onClick={onExplicacoes} data-testid="quadro-explicacoes"><BookOpen size={16} aria-hidden /> Explicações do Mentor</button>}
-        <button type="button" className="qb-x" onClick={onClose} aria-label="Fechar lousa"><X size={22} aria-hidden /></button>
-      </header>
-      <div className="qb-barra" role="toolbar" aria-label="Ferramentas da lousa">
-        <div className="qb-grupo" role="radiogroup" aria-label="Canetas">
-          {CANETAS.map((c) => (
-            <button key={c.cor} type="button" role="radio" aria-checked={ferramenta === "caneta" && caneta === c.cor} aria-label={c.nome} data-testid={`caneta-${c.cor}`}
-              className={`qb-ferr qb-caneta${ferramenta === "caneta" && caneta === c.cor ? " is-on" : ""}`} style={{ color: CORES[c.cor] }}
-              onClick={() => { setCaneta(c.cor); setFerramenta("caneta"); }}>
-              <Pen size={22} aria-hidden strokeWidth={2.4} />
-              <i style={{ background: CORES[c.cor] }} aria-hidden />
-            </button>
-          ))}
+      <div className="qb-janela">
+        <header className="qb-topo">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img className="qb-logo" src="/images/aprovum-logo-escura.png" alt="APROVUM — Sua preparação. Seu próximo cargo." width={523} height={107} />
+          <span className="qb-div" aria-hidden />
+          <div className="qb-titulo">
+            <SquarePen className="qb-titulo-ico" size={40} strokeWidth={1.8} aria-hidden />
+            <h2>Lousa<small>Treine seus cálculos e anotações</small></h2>
+          </div>
+          <span className="qb-aula" data-testid="quadro-perfil">{aulaNome}</span>
+          {onExplicacoes && <button type="button" className="qb-link" onClick={onExplicacoes} data-testid="quadro-explicacoes"><BookOpen size={18} aria-hidden /> <span>Explicações do Mentor</span> <ChevronRight size={18} aria-hidden /></button>}
+          <button type="button" className="qb-x" onClick={onClose} aria-label="Fechar lousa"><X size={26} aria-hidden /></button>
+        </header>
+        <div className="qb-barra" role="toolbar" aria-label="Ferramentas da lousa">
+          <Ferr id="caneta" testid={`caneta-${caneta}`} nome="Caneta" ativo={ferramenta === "caneta"} icone={<Pen size={26} aria-hidden strokeWidth={2.2} />}
+            extra={<i className="qb-cor" style={{ background: CORES[caneta] }} aria-hidden />}
+            onClick={() => { fechar(); if (ferramenta === "caneta") setCaneta((c) => (c === "preto" ? "azul" : c === "azul" ? "vermelho" : "preto")); setFerramenta("caneta"); }} />
+          <Ferr id="marca" nome="Marca texto" ativo={ferramenta === "marca"} icone={<Highlighter size={26} aria-hidden strokeWidth={2.2} />} onClick={() => { fechar(); setFerramenta("marca"); }} />
+          <Ferr id="borracha" nome="Borracha" ativo={ferramenta === "borracha"} icone={<Eraser size={26} aria-hidden strokeWidth={2.2} />} onClick={() => { fechar(); setFerramenta("borracha"); }} />
+          <Ferr id="apagador" nome="Apagador" ativo={ferramenta === "area"} icone={<SquareDashed size={26} aria-hidden strokeWidth={2.2} />} onClick={() => { fechar(); setFerramenta("area"); }} />
+          <span className="qb-sep" aria-hidden />
+          <Ferr id="desfazer" nome="Desfazer" icone={<Undo2 size={26} aria-hidden strokeWidth={2.2} />} onClick={desfazerUltimo} desabilitado={!podeDesfazer} />
+          <Ferr id="refazer" nome="Refazer" icone={<Redo2 size={26} aria-hidden strokeWidth={2.2} />} onClick={refazerUltimo} desabilitado={!podeRefazer} />
+          <span className="qb-sep" aria-hidden />
+          <button type="button" aria-label={confirmaLimpar ? "Confirmar: limpar tudo" : "Limpar tudo"} data-testid="apagar-tudo" className={`qb-ferr${confirmaLimpar ? " is-perigo" : ""}`} onClick={limparTudo} disabled={vazio}><Trash2 size={26} aria-hidden strokeWidth={2.2} /><span>{confirmaLimpar ? "Confirmar?" : "Limpar tudo"}</span></button>
         </div>
-        <button type="button" aria-pressed={ferramenta === "borracha"} aria-label="Apagador" data-testid="apagador" className={`qb-ferr${ferramenta === "borracha" ? " is-on" : ""}`} onClick={() => { fechar(); setFerramenta("borracha"); }}>
-          <Eraser size={22} aria-hidden /><span>Apagador</span>
-        </button>
-        <span className="qb-sep" aria-hidden />
-        <button type="button" aria-label="Desfazer" className="qb-ferr" onClick={desfazerUltimo} disabled={!podeDesfazer}><Undo2 size={22} aria-hidden /><span>Desfazer</span></button>
-        <button type="button" aria-label={confirmaLimpar ? "Confirmar: apagar tudo" : "Apagar tudo"} data-testid="apagar-tudo" className={`qb-ferr${confirmaLimpar ? " is-perigo" : ""}`} onClick={limparTudo} disabled={vazio}><Trash2 size={22} aria-hidden /><span>{confirmaLimpar ? "Confirmar?" : "Apagar tudo"}</span></button>
-        <button type="button" aria-pressed={auto} aria-label="Letra de máquina automática" data-testid="auto-corrigir" className={`qb-ferr qb-auto${auto ? " is-on" : ""}`} onClick={() => { fechar(); setAuto((v) => !v); }}><Wand2 size={22} aria-hidden /><span>{auto ? "Auto ligado" : "Auto desligado"}</span></button>
-        <button type="button" aria-pressed={digitar} aria-label="Teclado de números" data-testid="teclado" className={`qb-ferr${digitar ? " is-on" : ""}`} onClick={() => { fechar(); setDigitar((v) => !v); }}><Keyboard size={22} aria-hidden /><span>{digitar ? "Teclado" : "À mão"}</span></button>
-      </div>
-      <div className="qb-area" ref={area}>
-        {vazio && !esq && !digitar && <p className="qb-dica">Escreva um número, uma letra ou um sinal.<br />Eu deixo tudo com <b>letra de máquina</b>.</p>}
-        <canvas ref={tela} className={ferramenta === "borracha" ? "is-borracha" : ""} role="img" aria-label="Quadro branco para escrever à mão"
-          onPointerDown={descer} onPointerMove={mover} onPointerUp={subir} onPointerCancel={subir} onPointerLeave={sair} data-testid="quadro-canvas" />
-      </div>
-      {digitar && (
-        <div className="qb-teclado" data-testid="quadro-teclado">
-          {tipos.length > 1 && (
-            <div className="qb-esq" role="toolbar" aria-label="Tipos de conta">
-              {tipos.map((t) => (
-                <button key={t} type="button" className={`qb-chip${esq?.tipo === t ? " is-on" : ""}`} data-testid={`esq-${t}`} onClick={() => novoEsq(t)}>{ROTULOS[t]}</button>
-              ))}
+        <div className="qb-area" ref={area}>
+          {vazio && !esq && !digitar && <p className="qb-dica">Escreva um número, uma letra ou um sinal.<br />Eu deixo tudo com <b>letra de máquina</b>.</p>}
+          <canvas ref={tela} className={ferramenta === "borracha" ? "is-borracha" : ""} role="img" aria-label="Quadro branco para escrever à mão"
+            onPointerDown={descer} onPointerMove={mover} onPointerUp={subir} onPointerCancel={subir} onPointerLeave={sair} onWheel={rodar} data-testid="quadro-canvas" />
+          <button type="button" className={`qb-canto${painel ? " is-on" : ""}`} aria-label="Escolher exercício e opções" aria-expanded={painel} data-testid="quadro-opcoes" onClick={() => setPainel((v) => !v)}><SquarePlus size={30} strokeWidth={1.6} aria-hidden /></button>
+          <div className="qb-zoom" role="group" aria-label="Zoom da lousa" data-testid="quadro-zoom">
+            <span className="qb-zoom-t"><Search size={20} aria-hidden /><b>Zoom</b></span>
+            <button type="button" aria-label="Aproximar" onClick={() => mudarZoom(1.25)} disabled={zoom >= 3}><Plus size={22} aria-hidden /></button>
+            <button type="button" aria-label="Afastar" onClick={() => mudarZoom(0.8)} disabled={zoom <= 0.5}><Minus size={22} aria-hidden /></button>
+            <button type="button" aria-label="Ajustar à tela" onClick={() => mudarZoom(null)}><Maximize size={20} aria-hidden /></button>
+          </div>
+          {painel && (
+            <div className="qb-painel" role="group" aria-label="Exercício e opções" data-testid="quadro-painel">
+              {tipos.length > 1 && (
+                <div className="qb-esq" role="toolbar" aria-label="Tipos de conta">
+                  {tipos.map((x) => <button key={x} type="button" className={`qb-chip${esq?.tipo === x ? " is-on" : ""}`} data-testid={`esq-${x}`} onClick={() => novoEsq(x)}>{ROTULOS[x]}</button>)}
+                </div>
+              )}
+              {esq && (
+                <div className="qb-esq">
+                  <input className="qb-nums" value={numsTxt} onChange={(ev) => setNumsTxt(ev.target.value)} onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); montarDoCampo(); } }} aria-label="Números da conta" data-testid="esq-numeros" inputMode={TIPOS_TEXTO.includes(esq.tipo) ? "text" : "numeric"} />
+                  <button type="button" className="qb-chip" onClick={montarDoCampo} data-testid="esq-montar">Montar</button>
+                  <button type="button" className="qb-chip" onClick={() => novoEsq(esq.tipo)} data-testid="esq-novo">Novo</button>
+                </div>
+              )}
+              <div className="qb-esq">
+                <button type="button" aria-pressed={auto} data-testid="auto-corrigir" className={`qb-chip${auto ? " is-on" : ""}`} onClick={() => { fechar(); setAuto((v) => !v); }}><Wand2 size={15} aria-hidden /> {auto ? "Letra de máquina ligada" : "Letra de máquina desligada"}</button>
+                <button type="button" aria-pressed={digitar} data-testid="teclado" className={`qb-chip${digitar ? " is-on" : ""}`} onClick={() => { fechar(); setDigitar((v) => !v); }}><Keyboard size={15} aria-hidden /> {digitar ? "Teclado ligado" : "Escrever à mão"}</button>
+              </div>
             </div>
           )}
-          {esq && (
-            <div className="qb-passo" data-testid="esq-passo">
-              {passoUi < esq.passos.length ? (
-                <>
-                  <b>Passo {passoUi + 1} de {esq.passos.length}: {esq.passos[passoUi]!.titulo}</b>
-                  <p>{esq.passos[passoUi]!.texto}</p>
-                </>
-              ) : <b>Conta concluída! {esq.resposta}</b>}
-            </div>
-          )}
-          {msgObj && <p className={`qb-msg is-${msgObj.t}`} role="status" data-testid="esq-msg">{msgObj.s}</p>}
-          {esq && (
-            <div className="qb-esq">
-              <input className="qb-nums" value={numsTxt} onChange={(ev) => setNumsTxt(ev.target.value)} onKeyDown={(ev) => { if (ev.key === "Enter") { ev.preventDefault(); montarDoCampo(); } }} aria-label="Números da conta" data-testid="esq-numeros" inputMode={esq && TIPOS_TEXTO.includes(esq.tipo) ? "text" : "numeric"} />
-              <button type="button" className="qb-chip" onClick={montarDoCampo} data-testid="esq-montar">Montar</button>
-              <button type="button" className="qb-chip" onClick={() => novoEsq(esq.tipo)} data-testid="esq-novo">Novo</button>
-              <button type="button" className="qb-chip qb-ok" onClick={conferirAgora} data-testid="esq-conferir">Conferir</button>
-              <button type="button" className="qb-chip" onClick={verResposta} data-testid="esq-resposta" disabled={passoUi >= esq.passos.length}>Mostrar o passo</button>
-            </div>
-          )}
-          {opcoesAtuais.length > 0 && (
-            <div className="qb-esq" role="group" aria-label="Escolha a resposta" data-testid="esq-opcoes">
-              {opcoesAtuais.map((o) => <button key={o} type="button" className="qb-chip qb-opcao" data-testid={`opcao-${o}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => escolher(o)}>{o}</button>)}
-            </div>
-          )}
-          <div className="qb-pad" data-testid="quadro-teclas">
-            <div className="qb-abas" role="tablist" aria-label="Tipo de tecla">
-              {abas.map((x) => <button key={x.id} type="button" role="tab" aria-selected={x.id === aba.id} className={`qb-aba${x.id === aba.id ? " is-on" : ""}`} data-testid={`aba-${x.id}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => setAbaSel({ passo: passoUi, id: x.id })}>{x.nome}</button>)}
-            </div>
-            <div className="qb-pad-corpo">
-              <div className="qb-teclas" role="group" aria-label={aba.nome}>
+        </div>
+        {digitar && (
+          <div className="qb-teclado" data-testid="quadro-teclado">
+            {esq && (
+              <div className={`qb-passo${passoExp ? " is-aberto" : ""}`} data-testid="esq-passo" onClick={() => setPassoExp((v) => !v)}>
+                <Lightbulb className="qb-lampada" size={42} strokeWidth={1.7} aria-hidden />
+                <div className="qb-passo-t">
+                  {passoUi < esq.passos.length ? (
+                    <>
+                      <b>Passo {passoUi + 1} de {esq.passos.length}: {esq.passos[passoUi]!.titulo}</b>
+                      <p>{esq.passos[passoUi]!.texto}</p>
+                    </>
+                  ) : <b>Conta concluída! {esq.resposta}</b>}
+                </div>
+                <span className="qb-barrinha" aria-hidden />
+                <button type="button" className="qb-dicabtn" data-testid="esq-dica" disabled={passoUi >= esq.passos.length} onClick={(ev) => { ev.stopPropagation(); setDicaVista(passoUi); }}><Play size={16} aria-hidden fill="currentColor" /> Dica</button>
+              </div>
+            )}
+            {dicaAberta && esq && (
+              <div className="qb-msg is-dica" role="status" data-testid="esq-dica-texto">
+                <p><b>Dica:</b> {esq.passos[passoUi]!.dica}</p>
+                <button type="button" className="qb-chip" onClick={verResposta} data-testid="esq-resposta">Mostrar o passo</button>
+              </div>
+            )}
+            {msgObj && <p className={`qb-msg is-${msgObj.t}`} role="status" data-testid="esq-msg">{msgObj.s}</p>}
+            {opcoesAtuais.length > 0 && (
+              <div className="qb-esq qb-opcoes" role="group" aria-label="Escolha a resposta" data-testid="esq-opcoes">
+                {opcoesAtuais.map((o) => <button key={o} type="button" className="qb-chip qb-opcao" data-testid={`opcao-${o}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => escolher(o)}>{o}</button>)}
+              </div>
+            )}
+            <div className="qb-pad" data-testid="quadro-teclas">
+              <div className="qb-abas" role="tablist" aria-label="Tipo de tecla">
+                {abas.map((x) => (
+                  <button key={x.id} type="button" role="tab" aria-selected={x.id === aba.id} className={`qb-aba${x.id === aba.id ? " is-on" : ""}`} data-testid={`aba-${x.id}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => setAbaSel({ passo: passoUi, id: x.id })}>
+                    {x.id === "num" ? <Calculator size={24} aria-hidden /> : x.id === "sin" ? <span className="qb-aba-ico" aria-hidden>+−<br />×÷</span> : <span className="qb-aba-aa" aria-hidden>Aa</span>}
+                    <span>{x.nome}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="qb-grade" role="group" aria-label={aba.nome}>
                 {aba.teclas.map((k) => (
                   <button key={k.ch} type="button" className="qb-tecla" aria-label={k.rot ?? k.ch} data-testid={`tecla-${k.ch}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => teclar(k.ch)}>{k.rot ?? k.ch}</button>
                 ))}
-              </div>
-              <div className="qb-ctrl" role="group" aria-label="Controles">
-                {CONTROLES.map((k) => (
-                  <button key={k.ch} type="button" className="qb-tecla is-ctrl" aria-label={k.k === "apagar" ? "Apagar último" : k.k === "prox" ? "Próxima casa" : "Próxima linha"} data-testid={`tecla-${k.k}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => teclar(k.ch, k.k)}>{k.rot ?? k.ch}</button>
-                ))}
+                <button type="button" className="qb-tecla is-apagar" aria-label="Apagar último" data-testid="tecla-apagar" onPointerDown={(ev) => ev.preventDefault()} onClick={() => teclar("⌫", "apagar")}><Delete size={26} aria-hidden /></button>
+                <button type="button" className="qb-tecla is-enter" aria-label={esq ? "Próxima casa ou conferir" : "Próxima linha"} data-testid="tecla-prox" onPointerDown={(ev) => ev.preventDefault()} onClick={() => (esq ? entrar() : teclar("↵", "linha"))}><CornerDownLeft size={30} aria-hidden /></button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
+      <footer className="qb-rodape" aria-hidden="true"><b>APROVUM</b><i>{"///"}</i><span>FOCO. DISCIPLINA. APROVAÇÃO.</span></footer>
     </div>
   );
 }

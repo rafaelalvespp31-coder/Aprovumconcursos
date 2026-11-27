@@ -9,8 +9,11 @@ import { viesDoPerfil, type PerfilQuadro } from "./quadro-perfil";
 
 export type Cor = "preto" | "azul" | "vermelho";
 export const CORES: Record<Cor, string> = { preto: "#15151a", azul: "#1d4ed8", vermelho: "#dc2626" };
+/** Marca-texto: traço largo e translúcido, não é reconhecido como letra nem número. */
+export const COR_MARCA = "rgba(250, 204, 21, 0.42)";
+export const LARGURA_MARCA = 20;
 
-export interface ItemTraco { t: "tr"; cor: Cor; w: number; segs: Traco[]; /** Sinal que este desenho representa (+, =, ÷…), quando veio do reconhecimento. */ sim?: string }
+export interface ItemTraco { t: "tr"; cor: Cor | "marca"; w: number; segs: Traco[]; /** Sinal que este desenho representa (+, =, ÷…), quando veio do reconhecimento. */ sim?: string }
 export interface ItemGlifo { t: "gl"; cor: Cor; ch: string; cx: number; base: number; size: number; caixa: { x0: number; y0: number; x1: number; y1: number } }
 export type Item = ItemTraco | ItemGlifo;
 
@@ -110,7 +113,7 @@ function temVizinho(b: { cx: number; cy: number; h: number }, itens: Item[]): bo
 export function promoverUns(itens: Item[], novos: Item[], med: Medidor, ref?: number): Item[] {
   const novosSet = new Set(novos);
   return itens.map((it) => {
-    if (novosSet.has(it) || it.t !== "tr" || it.sim || it.segs.length !== 1) return it;
+    if (novosSet.has(it) || it.t !== "tr" || it.cor === "marca" || it.sim || it.segs.length !== 1) return it;
     const seg = it.segs[0]!;
     const b = caixa([seg]);
     if (b.w > 6 || b.h < 14 || b.h > 110) return it; // não é um traço vertical curto

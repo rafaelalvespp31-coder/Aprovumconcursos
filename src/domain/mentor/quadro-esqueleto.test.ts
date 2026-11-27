@@ -86,6 +86,21 @@ describe("esqueletos: todos os tipos", () => {
     const e2 = monta("mmc", [25, 30]); // 2×2=4, 4×3=12, 12×5=60: a última coluna passa de 9
     expect(conferir(resolver(e2), e2).every(Boolean)).toBe(true);
   });
+  it("multiplicação armada como no caderno: vai-um pequeno, coluna por coluna, zero de deslocamento e soma", () => {
+    const e = monta("mult", [246, 24]);
+    expect(e.resposta).toBe("246 × 24 = 5904");
+    expect(e.casas.filter((c) => c.escala && c.escala < 1).map((c) => c.esperado).slice(0, 2)).toEqual(["2", "1"]); // os vai-uns da primeira linha (pequenos)
+    const t = e.passos.map((p) => p.titulo);
+    expect(t).toContain("Linha 1 (4 × 246): coluna das unidades");
+    expect(t).toContain("Linha 2 (2 × 246): zero de deslocamento");
+    expect(t).toContain("Somar as linhas: coluna das unidades");
+    const l1 = e.passos.filter((p) => p.titulo.startsWith("Linha 1")).map((p) => p.casas.map((i) => e.casas[i]!.esperado));
+    expect(l1[0]).toEqual(["4", "2"]); // 4×6=24: escreve 4, vai 2
+    expect(l1[1]).toEqual(["8", "1"]); // 4×4+2=18: escreve 8, vai 1
+    expect(l1[2]).toEqual(["9"]);      // 4×2+1=9
+    expect(conferir(resolver(e), e).every(Boolean)).toBe(true);
+    for (const [a, b] of [[7, 8], [99, 99], [305, 12], [1234, 56], [48, 100]]) { const x = monta("mult", [a!, b!]); expect(conferir(resolver(x), x).every(Boolean), `${a}x${b}`).toBe(true); }
+  });
   it("lógica: tabela-verdade, classificação, argumentos, negação", () => {
     expect(classificar(parse("p∨~p")!)).toBe("TAUTOLOGIA");
     expect(classificar(parse("p∧~p")!)).toBe("CONTRADIÇÃO");

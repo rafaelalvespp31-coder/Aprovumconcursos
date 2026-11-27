@@ -42,6 +42,8 @@ export interface Casa {
   cw: number; // largura de cada um
   /** Comentário que aparece quando o aluno acerta esta casa (o que ele acabou de fazer e por quê). */
   nota?: string;
+  /** Tamanho relativo da letra (1 = normal; o vai-um é pequeno). */
+  escala?: number;
   esperado: string;
   /** Casa de escolha: em vez de digitar, o aluno toca numa das opções. */
   opcoes?: string[];
@@ -194,6 +196,14 @@ export class Montador {
     this.passos[p]!.casas.push(c.id);
     return c;
   }
+  /** Casinha do "vai-um": letra pequena, escrita em cima do número. */
+  casaPequena(p: number, x0: number, base: number, slots: number, esperado: string, escala = 0.55): Casa {
+    const cw = this.cw * escala;
+    const c: Casa = { id: this.casas.length, passo: p, x0, x1: x0 + slots * cw, y0: base - this.m0.asc * this.size * escala - 6, y1: base + 8, base, slots, cw, esperado, alinha: "esq", escala };
+    this.casas.push(c);
+    this.passos[p]!.casas.push(c.id);
+    return c;
+  }
   txt(texto: string, x0: number, base: number, cw = this.cw): void {
     [...texto].forEach((ch, i) => {
       if (ch === " ") return;
@@ -279,39 +289,87 @@ function montarSub(nums: number[], larg: number, med: Medidor, alt: number): Esq
   return b.pronto("sub", nums, `${a} − ${bn}`, `${a} − ${bn} = ${res}`);
 }
 
+/** Altura da conta armada, em linhas (carry, multiplicando, multiplicador, linhas parciais, soma). */
+const alturaMultLinhas = (nm: number): number => 2.9 + 1.5 * (nm - 1) + (nm > 1 ? 1.05 : 0) + 0.6;
+
+/**
+ * Conta armada como no caderno: vai-um pequeno em cima, uma coluna por passo (da direita para a esquerda),
+ * zero de deslocamento nas linhas seguintes e soma das linhas coluna por coluna.
+ * Com `gate`, o desenho (números e traços) só aparece quando o primeiro passo dela chega.
+ */
+function multArmada(b: Montador, a: number, f: number, o: { x: number; y: number; W: number; lh: number; gate?: boolean; intro?: string }): void {
+  const { cw } = b, { lh } = o, dir = o.x + o.W * cw;
+  const ad = String(a).split("").map(Number).reverse(), fd = String(f).split("").map(Number).reverse();
+  const nm = fd.length, prod = a * f;
+  const yCarry0 = o.y, yA = o.y + 0.9 * lh, yF = yA + lh;
+  const colX = (k: number) => dir - (k + 1) * cw; // início da célula da coluna k (0 = unidades)
+  const linhasRes: string[][] = []; // algarismos de cada linha parcial, por coluna (0 = unidades da própria linha)
+  let y = yF + lh;
+  let primeiro = true;
+  const desenhar = (p: number) => {
+    if (o.gate) b.grupo = p;
+    b.txt(String(a), colX(ad.length - 1), yA);
+    b.txt("×", o.x, yF);
+    b.txt(String(f), colX(fd.length - 1), yF);
+    b.linha(o.x - 4, yF + 12, dir + 4, yF + 12, 2);
+    b.grupo = null;
+  };
+  const nomeCol = (k: number) => NOME_POS[k] ?? `${k + 1}ª casa`;
+  fd.forEach((d, i) => {
+    let yCar = yCarry0;
+    if (i >= 1) { y += 0.55 * lh; yCar = y; y += 0.95 * lh; }
+    const yRow = y;
+    const pref = nm > 1 ? `Linha ${i + 1} (${d} × ${a})` : `${a} × ${f}`;
+    if (i >= 1) {
+      const p = b.passo(`${pref}: zero de deslocamento`, `Esta é a linha ${i + 1}: ela vale ${d} × ${a} multiplicado por ${10 ** i}. Por isso comece colocando ${i === 1 ? "um zero" : `${i} zeros`} no(s) lugar(es) à direita (embaixo das casas já usadas).`, `${i === 1 ? "O zero" : "Os zeros"} seguram a posição: o ${d} é do algarismo das ${i === 1 ? "dezenas" : "casas seguintes"}, então a linha anda ${i} casa${i > 1 ? "s" : ""} para a esquerda.`, "Embaixo da linha de cima, a coluna das unidades já foi usada: ponha 0 ali.");
+      b.casa(p, dir - i * cw, yRow, i, "0".repeat(i), "dir").nota = `Zero de deslocamento: a linha começa ${i} casa${i > 1 ? "s" : ""} mais à esquerda.`;
+    }
+    let vai = 0;
+    const dig: string[] = [];
+    ad.forEach((x, k) => {
+      const total = x * d + vai, ultimo = k === ad.length - 1, saida = ultimo ? String(total) : String(total % 10), nc = ultimo ? 0 : Math.floor(total / 10);
+      const col = i + k;
+      const p = b.passo(`${pref}: coluna ${nomeCol(k)}`,
+        `${primeiro ? (o.intro ? `${o.intro} ` : "") + `Multiplique da direita para a esquerda. ` : ""}Multiplique o algarismo ${x} (${nomeCol(k)} de ${a}) por ${d}${vai ? ` e some o vai-um ${vai}` : ""}. ${ultimo ? "Última coluna: escreva o número inteiro." : "Escreva só o algarismo da direita; o resto é o vai-um (escreva em cima do próximo número)."}`,
+        `${x} × ${d}${vai ? ` + ${vai}` : ""} = ${total}. ${ultimo ? `Escreva ${total}.` : nc ? `Escreva ${total % 10} e vai ${nc} para a próxima coluna.` : `Escreva ${total % 10}; não sobra vai-um.`}`,
+        `Tabuada do ${d}: ${x} × ${d} = ${x * d}${vai ? `, mais o vai-um ${vai}` : ""}.`);
+      if (primeiro) { desenhar(p); primeiro = false; }
+      const n = saida.length;
+      b.casa(p, dir - (col + n) * cw, yRow, n, saida, "dir").nota = `${x} × ${d}${vai ? ` + ${vai}` : ""} = ${total}${ultimo ? "" : `: escreve ${total % 10}${nc ? `, vai ${nc}` : ""}`}.`;
+      if (nc) b.casaPequena(p, dir - (col + 2) * cw + cw * 0.225, yCar, 1, String(nc)).nota = `O vai-um ${nc} fica em cima do próximo número.`;
+      dig.push(...[...saida].reverse());
+      vai = nc;
+    });
+    linhasRes.push([...Array<string>(i).fill("0"), ...dig]);
+  });
+  if (nm === 1) return;
+  // soma das linhas, coluna por coluna
+  const larguraTotal = String(prod).length;
+  y += 1.05 * lh;
+  const yTot = y;
+  let vai = 0;
+  for (let c = 0; c < larguraTotal; c++) {
+    const ds = linhasRes.map((r) => r[c]).filter((x): x is string => x !== undefined).map(Number);
+    const total = ds.reduce((s2, x) => s2 + x, 0) + vai, ultimo = c === larguraTotal - 1, saida = ultimo ? String(total) : String(total % 10), nc = ultimo ? 0 : Math.floor(total / 10);
+    const p = b.passo(`Somar as linhas: coluna ${nomeCol(c)}`,
+      `${c === 0 ? "Agora some as linhas, coluna por coluna, da direita para a esquerda. " : ""}Some os algarismos da coluna ${nomeCol(c)}${vai ? ` e o vai-um ${vai}` : ""}. ${ultimo ? "Última coluna: escreva o número inteiro." : "Escreva o algarismo da direita."}`,
+      `${ds.join(" + ")}${vai ? ` + ${vai}` : ""} = ${total}.${ultimo ? "" : nc ? ` Escreva ${total % 10} e vai ${nc}.` : ` Escreva ${total % 10}.`}`,
+      `Some ${ds.join(" + ")}${vai ? ` + ${vai} (vai-um)` : ""}.`);
+    if (c === 0) { if (o.gate) b.grupo = p; b.linha(o.x - 4, yTot - lh + 12, dir + 4, yTot - lh + 12, 3); b.txt("+", o.x, yTot - lh); b.grupo = null; }
+    const n = saida.length;
+    b.casa(p, dir - (c + n) * cw, yTot, n, saida, "dir").nota = `${ds.join(" + ")}${vai ? ` + ${vai}` : ""} = ${total}.`;
+    vai = nc;
+  }
+}
+
 function montarMult(nums: number[], larg: number, med: Medidor, alt: number): Esqueleto {
   const [a, bn] = [nums[0]!, nums[1]!];
-  const prod = a * bn, bDig = String(bn);
-  const W = digitos(prod) + 1; // a coluna 0 fica livre para × e +
-  const linhasMult = 2 + (bDig.length > 1 ? bDig.length : 0) + 1;
-  const size = tamanhoPara(med, larg, alt, W, 1.3 + linhasMult * 1.6, 1.2, 46);
+  const prod = a * bn, nm = String(bn).length;
+  const W = digitos(prod) + 1; // a coluna 0 fica livre para ×
+  const size = tamanhoPara(med, larg, alt, W, 1.3 + alturaMultLinhas(nm) * 1.6, 1.2, 46);
   const b = new Montador(med, size, med("0").w * size * 1.2);
-  const { cw } = b, lh = size * 1.6, ox = Math.max(16, (larg - W * cw) / 2), top = size * 1.3;
-  const col = (j: number) => ox + j * cw;
-  b.txt(String(a), col(W - digitos(a)), top);
-  b.txt("×", col(0), top + lh);
-  b.txt(bDig, col(W - bDig.length), top + lh);
-  let y = top + lh;
-  b.linha(ox - 6, y + 12, ox + W * cw + 6, y + 12, 2);
-  if (bDig.length > 1) {
-    [...bDig].reverse().forEach((ch, i) => {
-      y += lh;
-      const parcial = a * Number(ch);
-      const p = b.passo(`Multiplicar pelo algarismo ${NOME_DIG[i] ?? i + 1}`,
-        `Multiplique ${a} pelo algarismo ${NOME_DIG[i] ?? ""} de ${bn} (o ${ch}).${i > 0 ? ` Como é a casa ${NOME_DIG[i]}, esta linha começa ${i} casa${i > 1 ? "s" : ""} mais à esquerda (o ${ch} vale ${Number(ch) * 10 ** i}).` : ""}`,
-        `${a} × ${ch} = ${parcial}${i > 0 ? ` (na verdade ${a} × ${Number(ch) * 10 ** i} = ${parcial * 10 ** i}; o zero final fica subentendido pelo deslocamento)` : ""}.`,
-        `Use a tabuada do ${ch}: multiplique cada algarismo de ${a} da direita para a esquerda, lembrando do vai-um.`);
-      b.casa(p, col(1), y, W - 1 - i, String(parcial), "dir");
-      if (i === bDig.length - 1) b.txt("+", col(0), y);
-    });
-    b.linha(ox - 6, y + 12, ox + W * cw + 6, y + 12, 3);
-  }
-  y += lh;
-  const p = b.passo(bDig.length > 1 ? "Somar as linhas" : `Multiplicar ${a} por ${bn}`,
-    bDig.length > 1 ? "Some as linhas de cima (cada uma no seu lugar, alinhadas à direita)." : `Multiplique ${a} por ${bn}, da direita para a esquerda, lembrando do vai-um.`,
-    bDig.length > 1 ? `Somando as linhas: ${[...bDig].reverse().map((ch, i) => a * Number(ch) * 10 ** i).join(" + ")} = ${prod}.` : `${a} × ${bn} = ${prod}.`,
-    "Confira a soma coluna por coluna (ou refaça a multiplicação).");
-  b.casa(p, col(1), y, W - 1, String(prod), "dir");
+  const { cw } = b, lh = size * 1.6, ox = Math.max(16, (larg - W * cw) / 2), top = size * 0.8;
+  multArmada(b, a, bn, { x: ox, y: top, W, lh });
   return b.pronto("mult", nums, `${a} × ${bn}`, `${a} × ${bn} = ${prod}`);
 }
 
@@ -366,17 +424,22 @@ function montarMmcMdc(tipo: "mmc" | "mdc", nums: number[], larg: number, med: Me
   { let acc = primos[0] ?? 1; for (let j = 1; j < primos.length; j++) { mults.push({ a: acc, f: primos[j]!, res: acc * primos[j]! }); acc *= primos[j]!; } }
   const nMult = mults.length;
   const larguraBloco = (m: { res: number }) => digitos(m.res) + 1; // coluna do × + algarismos
-  /** Encaixa as contas armadas lado a lado, quebrando linha quando não cabem. */
+  const alturaBloco = (m: { f: number }) => alturaMultLinhas(String(m.f).length);
+  /** Encaixa as contas armadas lado a lado, quebrando linha quando não cabem (alturas em linhas de texto). */
   const empacotar = (cwx: number) => {
-    const disp = Math.floor((larg - 28) / cwx), pos: { col: number; lin: number }[] = [];
-    let col = 0, lin = 0;
-    for (const m of mults) { const w = larguraBloco(m); if (col > 0 && col + w > disp) { col = 0; lin++; } pos.push({ col, lin }); col += w + 1.4; }
-    return { pos, linhas: nMult ? lin + 1 : 0 };
+    const disp = Math.floor((larg - 28) / cwx), pos: { col: number; y: number }[] = [];
+    let col = 0, y = 0, altLinha = 0;
+    for (const m of mults) {
+      const w = larguraBloco(m);
+      if (col > 0 && col + w > disp) { col = 0; y += altLinha; altLinha = 0; }
+      pos.push({ col, y }); col += w + 1.4; altLinha = Math.max(altLinha, alturaBloco(m));
+    }
+    return { pos, altura: y + altLinha };
   };
   let size = Math.min(44, Math.floor((larg - 40) / (Math.max(celulas, 10) * med("0").w * 1.15)));
   for (; size > 18; size--) {
     const cwx = med("0").w * size * 1.15, lhx = size * 1.55;
-    if (size * 1.3 + (ultima + 1.25) * lhx + empacotar(cwx).linhas * 3.1 * lhx + 1.3 * lhx <= alt - 12) break;
+    if (size * 1.3 + (ultima + 1.25) * lhx + empacotar(cwx).altura * lhx + 1.3 * lhx <= alt - 12) break;
   }
   size = Math.max(18, size);
   const b = new Montador(med, size, med("0").w * size * 1.15);
@@ -406,44 +469,14 @@ function montarMmcMdc(tipo: "mmc" | "mdc", nums: number[], larg: number, med: Me
     });
   }
   const rot = tipo === "mmc" ? "MMC =" : "MDC =";
-  // cada multiplicação: conta armada com espaço em branco, só no passo dela
+  // cada multiplicação: conta armada completa (vai-um, uma coluna por passo), que só aparece no passo dela
   const yCad = top + (ultima + 1.25) * lh;
   const emp = empacotar(cw);
   mults.forEach((m, j) => {
-    const w = larguraBloco(m), bx = ox0 + emp.pos[j]!.col * cw, by = yCad + emp.pos[j]!.lin * 3.1 * lh, dir = bx + w * cw;
-    const ds = String(m.a).split("").map(Number).reverse(); // unidade primeiro
-    const desenho = (p: number) => {
-      b.grupo = p;
-      b.txt(String(m.a), bx + (w - digitos(m.a)) * cw, by);
-      b.txt("×", bx, by + lh);
-      b.txt(String(m.f), bx + (w - digitos(m.f)) * cw, by + lh);
-      b.linha(bx - 4, by + lh + 12, bx + w * cw + 4, by + lh + 12, 2 + j);
-      b.grupo = null;
-    };
-    if (ds.length === 1) {
-      const p = b.passo(`Multiplicar ${j === 0 ? "os primos" : "pelo próximo primo"}`,
-        j === 0 ? `Hora de multiplicar os primos da coluna da direita (${primos.join(", ")}). Na conta armada, multiplique ${m.a} por ${m.f}.` : `Continue: multiplique o resultado anterior (${m.a}) pelo próximo primo (${m.f}) na conta armada.`,
-        `${m.a} × ${m.f} = ${m.res}.`, `Use a tabuada do ${m.f}.`);
-      desenho(p);
-      b.casa(p, dir - digitos(m.res) * cw, by + 2.05 * lh, digitos(m.res), String(m.res), "esq").nota = `${m.a} × ${m.f} = ${m.res}.`;
-      return;
-    }
-    // vários algarismos: uma coluna por passo, da direita para a esquerda, com o vai-um
-    let vai = 0;
-    ds.forEach((d, k) => {
-      const total = d * m.f + vai, ultimo = k === ds.length - 1, saida = ultimo ? String(total) : String(total % 10), nc = ultimo ? 0 : Math.floor(total / 10);
-      const nome = NOME_POS[k] ?? `${k + 1}ª casa`;
-      const p = b.passo(`${m.a} × ${m.f}: coluna ${nome}`,
-        `${k === 0 ? `Multiplicando ${m.a} por ${m.f}, comece pela direita. ` : "Agora a coluna seguinte. "}Multiplique o algarismo ${d} (${nome}) por ${m.f}${vai ? ` e some o vai-um ${vai}` : ""}. ${ultimo ? "Como é a última coluna, escreva o número inteiro." : 'Escreva só o algarismo da direita (o resto é o "vai-um").'}`,
-        `${d} × ${m.f}${vai ? ` + ${vai}` : ""} = ${total}. ${ultimo ? `Escreva ${total}.` : nc ? `Escreva ${total % 10} e vai ${nc} para a próxima coluna.` : `Escreva ${total % 10}; não sobra vai-um.`}`,
-        `Tabuada do ${m.f}: ${d} × ${m.f} = ${d * m.f}${vai ? `, mais o vai-um ${vai}` : ""}.`);
-      if (k === 0) desenho(p);
-      const n = saida.length;
-      b.casa(p, dir - (k + n) * cw, by + 2.05 * lh, n, saida, "dir").nota = `${d} × ${m.f}${vai ? ` + ${vai}` : ""} = ${total}${ultimo ? "" : `: escreve ${total % 10}, vai ${nc}`}.`;
-      vai = nc;
-    });
+    multArmada(b, m.a, m.f, { x: ox0 + emp.pos[j]!.col * cw, y: yCad + emp.pos[j]!.y * lh, W: larguraBloco(m), lh, gate: true,
+      intro: j === 0 ? `Hora de multiplicar os primos da coluna da direita (${primos.join(", ")}): ${m.a} × ${m.f}.` : `Continue: multiplique o resultado anterior (${m.a}) pelo próximo primo (${m.f}).` });
   });
-  const yRes = yCad + emp.linhas * 3.1 * lh + (nMult ? 0.1 * lh : 0);
+  const yRes = yCad + emp.altura * lh + (nMult ? 0.2 * lh : 0);
   b.txt(rot, ox, yRes);
   const p = b.passo("Resultado", tipo === "mmc" ? (nMult ? "Escreva o resultado da última multiplicação: é o MMC." : "Escreva o primo da coluna da direita: é o MMC.") : primos.length ? (nMult ? "Escreva o resultado da última multiplicação: é o MDC." : "Escreva o primo usado: é o MDC.") : "Nenhum primo divide todos os números, então o MDC é 1.",
     primos.length ? `${primos.join(" × ")} = ${r}.` : "Não há primo comum: MDC = 1.", "Use o resultado da última multiplicação.");
@@ -595,7 +628,7 @@ export function textoDaCasa(itens: Item[], c: Casa): string {
 export function colocarNaCasa(itens: Item[], c: Casa, texto: string, cor: Cor, med: Medidor, size: number): Item[] {
   const fora = itens.filter((i) => !dentro(i, c));
   const ini = c.alinha === "dir" ? c.slots - texto.length : 0;
-  const novos = [...texto].map((ch, i) => glifoEm(ch, c.x0 + (ini + i + 0.5) * c.cw, c.base, size, cor, med));
+  const novos = [...texto].map((ch, i) => glifoEm(ch, c.x0 + (ini + i + 0.5) * c.cw, c.base, size * (c.escala ?? 1), cor, med));
   return [...fora, ...novos];
 }
 
