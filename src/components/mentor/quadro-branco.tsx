@@ -12,18 +12,20 @@ const FONTE = '"Courier Prime", "Courier New", Courier, ui-monospace, monospace'
 const BORRACHA = 16;
 const ESPERA_MS = 600;
 const CHAVE = "aprovum:quadro:v2";
-const TECLAS: { ch: string; rot?: string; k?: "apagar" | "prox" | "linha" }[] = [
-  { ch: "7" }, { ch: "8" }, { ch: "9" }, { ch: "×" }, { ch: "÷" }, { ch: "⌫", k: "apagar" },
-  { ch: "4" }, { ch: "5" }, { ch: "6" }, { ch: "+" }, { ch: "-", rot: "−" }, { ch: "→", k: "prox" },
-  { ch: "1" }, { ch: "2" }, { ch: "3" }, { ch: "=" }, { ch: "," }, { ch: "↵", k: "linha" },
-  { ch: "0" }, { ch: "(" }, { ch: ")" }, { ch: "." }, { ch: "/", rot: "/" }, { ch: "x" },
+type Tecla = { ch: string; rot?: string; k?: "apagar" | "prox" | "linha" };
+const t = (cs: string, rots: Record<string, string> = {}): Tecla[] => [...cs].map((ch) => ({ ch, rot: rots[ch] }));
+/** Teclado em abas: números, sinais e letras. Cada matéria mostra o que usa. */
+const ABAS_MAT: { id: string; nome: string; teclas: Tecla[] }[] = [
+  { id: "num", nome: "Números", teclas: t("7894561230,") },
+  { id: "sin", nome: "Sinais", teclas: t("+-×÷=/()%√^:.", { "-": "−" }) },
+  { id: "let", nome: "Letras", teclas: t("xyzabcnmk") },
 ];
-/** Teclado de lógica proposicional (aparece nas contas de Raciocínio Lógico). */
-const TECLAS_LOG: typeof TECLAS = [
-  { ch: "p" }, { ch: "q" }, { ch: "r" }, { ch: "V" }, { ch: "F" }, { ch: "⌫", k: "apagar" },
-  { ch: "~" }, { ch: "∧" }, { ch: "∨" }, { ch: "→" , rot: "→" }, { ch: "↔" }, { ch: "⊻" },
-  { ch: "(" }, { ch: ")" }, { ch: "=" }, { ch: "," }, { ch: ";" }, { ch: "↵", k: "linha" },
+const ABAS_LOG: { id: string; nome: string; teclas: Tecla[] }[] = [
+  { id: "let", nome: "Letras", teclas: t("pqrstVF") },
+  { id: "sin", nome: "Símbolos", teclas: t("~∧∨→↔⊻()=,;") },
+  { id: "num", nome: "Números", teclas: t("7894561230,") },
 ];
+const CONTROLES: Tecla[] = [{ ch: "⌫", k: "apagar", rot: "⌫" }, { ch: "›", k: "prox", rot: "→" }, { ch: "↵", k: "linha" }];
 const CANETAS: { cor: Cor; nome: string }[] = [{ cor: "preto", nome: "Caneta preta" }, { cor: "azul", nome: "Caneta azul" }, { cor: "vermelho", nome: "Caneta vermelha" }];
 
 /** Mede cada caractere na fonte de máquina (subida, descida e largura por 1 de tamanho), com memória. */
@@ -90,14 +92,12 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const logica = !!esq && ehLogica(esq.tipo);
   const casaAtual = esq && estado.g != null && passoUi < esq.passos.length ? esq.casas[estado.g] : undefined;
   const opcoesAtuais = casaAtual?.opcoes ?? [];
-  /** Teclado enxuto: só números e os sinais que o passo atual pede (não deixa a calculadora tomar a lousa). */
-  const teclasAtuais = useMemo(() => {
-    if (logica) return TECLAS_LOG;
-    const extra = new Set<string>();
-    if (esq && passoUi < esq.passos.length) for (const i of esq.passos[passoUi]!.casas) for (const ch of (esq.casas[i]!.esperado + (esq.casas[i]!.alt ?? ""))) if (!/[0-9,]/.test(ch)) extra.add(ch === "x" ? "x" : ch);
-    const base = TECLAS.filter((t) => /[0-9]/.test(t.ch) || t.ch === "," || t.k === "apagar" || t.k === "prox");
-    return [...base, ...TECLAS.filter((t) => !t.k && !/[0-9,]/.test(t.ch) && extra.has(t.ch))];
-  }, [logica, esq, passoUi]);
+  const abas = logica ? ABAS_LOG : ABAS_MAT;
+  const [abaSel, setAbaSel] = useState<{ passo: number; id: string } | null>(null);
+  // a aba acompanha o que o passo pede (número, sinal ou letra); o aluno pode trocar à vontade dentro do passo
+  const primeiro = casaAtual && !casaAtual.opcoes ? casaAtual.esperado[0] ?? "" : "";
+  const idAuto = /[0-9,]/.test(primeiro) ? "num" : /[a-zA-Z]/.test(primeiro) ? "let" : primeiro ? "sin" : abas[0]!.id;
+  const aba = abas.find((x) => x.id === (abaSel && abaSel.passo === passoUi ? abaSel.id : idAuto)) ?? abas[0]!;
 
   const desenhar = useCallback(() => {
     const cv = tela.current; const ctx = cv?.getContext("2d");
@@ -224,7 +224,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
         if (atual) { marcar(); itens.current = colocarNaCasa(itens.current, c, atual.slice(0, -1), cor, medidor, size); }
         else { const i = doPasso.indexOf(c.id); if (i > 0) cur.current.g = doPasso[i - 1]!; }
       } else {
-        if (c.opcoes || !/[0-9a-zA-Z,;~∧∨→↔⊻()=<>\/√π-]/.test(ch) || atual.length >= c.slots) return;
+        if (c.opcoes || !ch.trim() || atual.length >= c.slots) return;
         marcar();
         const novo = atual + ch;
         itens.current = colocarNaCasa(itens.current, c, novo, cor, medidor, size);
@@ -488,11 +488,22 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
               {opcoesAtuais.map((o) => <button key={o} type="button" className="qb-chip qb-opcao" data-testid={`opcao-${o}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => escolher(o)}>{o}</button>)}
             </div>
           )}
-          <div className={`qb-teclas${logica ? " is-log" : ""}`}>
-            {teclasAtuais.map((t) => (
-              <button key={t.ch} type="button" className={`qb-tecla${t.k ? " is-ctrl" : ""}`} aria-label={t.k === "apagar" ? "Apagar último" : t.k === "prox" ? "Próxima casa" : t.k === "linha" ? "Próxima linha" : t.rot ?? t.ch}
-                data-testid={`tecla-${t.k ?? t.ch}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => teclar(t.ch, t.k)}>{t.rot ?? t.ch}</button>
-            ))}
+          <div className="qb-pad" data-testid="quadro-teclas">
+            <div className="qb-abas" role="tablist" aria-label="Tipo de tecla">
+              {abas.map((x) => <button key={x.id} type="button" role="tab" aria-selected={x.id === aba.id} className={`qb-aba${x.id === aba.id ? " is-on" : ""}`} data-testid={`aba-${x.id}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => setAbaSel({ passo: passoUi, id: x.id })}>{x.nome}</button>)}
+            </div>
+            <div className="qb-pad-corpo">
+              <div className="qb-teclas" role="group" aria-label={aba.nome}>
+                {aba.teclas.map((k) => (
+                  <button key={k.ch} type="button" className="qb-tecla" aria-label={k.rot ?? k.ch} data-testid={`tecla-${k.ch}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => teclar(k.ch)}>{k.rot ?? k.ch}</button>
+                ))}
+              </div>
+              <div className="qb-ctrl" role="group" aria-label="Controles">
+                {CONTROLES.map((k) => (
+                  <button key={k.ch} type="button" className="qb-tecla is-ctrl" aria-label={k.k === "apagar" ? "Apagar último" : k.k === "prox" ? "Próxima casa" : "Próxima linha"} data-testid={`tecla-${k.k}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => teclar(k.ch, k.k)}>{k.rot ?? k.ch}</button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       )}
