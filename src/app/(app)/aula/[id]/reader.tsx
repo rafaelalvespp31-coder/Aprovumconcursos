@@ -111,12 +111,12 @@ function Band({ children, id }: { children: ReactNode; id?: string }) {
  * início (capa, resumo do estudo e sumário), um módulo por página, questões por nível e,
  * por fim, pontos de revisão e referências. Concluir todos os módulos registra a leitura.
  */
-function TrIcone({ tipo }: { tipo: "casa" | "ok" | "play" | "lock" | "seta" }) {
-  if (tipo === "casa") return <svg viewBox="0 0 24 24" className="tr-ic tr-casa" aria-hidden><path d="M12 3.2 2.6 11.6a.9.9 0 0 0 .6 1.6H5V20a1 1 0 0 0 1 1h3.6v-5.4h4.8V21H18a1 1 0 0 0 1-1v-6.8h1.8a.9.9 0 0 0 .6-1.6z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" /></svg>;
-  if (tipo === "ok") return <svg viewBox="0 0 24 24" className="tr-ic" aria-hidden><path d="m5.5 12.8 4.2 4.2 8.8-9.2" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
-  if (tipo === "play") return <svg viewBox="0 0 24 24" className="tr-ic" aria-hidden><path d="M8.2 4.8v14.4a.8.8 0 0 0 1.2.7l11-7.2a.8.8 0 0 0 0-1.4l-11-7.2a.8.8 0 0 0-1.2.7z" fill="currentColor" /></svg>;
-  if (tipo === "lock") return <svg viewBox="0 0 24 24" className="tr-ic" aria-hidden><path d="M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" /><rect x="4.6" y="10.2" width="14.8" height="11" rx="2.6" fill="currentColor" /><circle cx="12" cy="15" r="1.5" fill="#fff" opacity=".9" /><rect x="11.2" y="15.5" width="1.6" height="3" rx=".8" fill="#fff" opacity=".9" /></svg>;
-  return <svg viewBox="0 0 24 24" className="tr-ic" aria-hidden><path d="m9 5.5 6.5 6.5L9 18.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+function TrSeta({ cor }: { cor: "cinza" | "vermelho" }) {
+  return (
+    <span className="tr-sep" data-cor={cor} aria-hidden>
+      <svg viewBox="0 0 24 24"><path d="m8.5 4.5 7.5 7.5-7.5 7.5" fill="none" stroke="currentColor" strokeWidth="4.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
+    </span>
+  );
 }
 
 export function LessonReader(props: ReaderProps) {
@@ -761,10 +761,13 @@ export function LessonReader(props: ReaderProps) {
             const feito = pageDone(p);
             const livre = isUnlocked(p);
             const atual = i === currentIdx;
-            const estado = atual ? "atual" : feito ? "feito" : !livre ? "trancado" : "livre";
+            const inicio = p.kind === "inicio";
+            const estado = inicio ? "inicio" : atual ? "atual" : feito ? "feito" : !livre ? "trancado" : "livre";
             const ultimo = i === pages.length - 1;
+            const peca = estado === "trancado" || estado === "livre" ? (ultimo ? `${estado}-fim` : estado) : estado;
             return (
-              <div key={pageKey(p)} className="tr-it" data-estado={estado} data-inicio={p.kind === "inicio" ? "1" : undefined} data-ultimo={ultimo ? "1" : undefined} data-prox={i + 1 === currentIdx ? "1" : undefined}>
+              <div key={pageKey(p)} className="tr-it" data-estado={estado} data-peca={peca} data-atual={atual ? "1" : undefined}>
+                {i >= 2 ? <TrSeta cor={i - 1 === currentIdx ? "vermelho" : "cinza"} /> : null}
                 <button
                   type="button"
                   className="tr-card"
@@ -775,24 +778,10 @@ export function LessonReader(props: ReaderProps) {
                   data-trancada={!livre ? "1" : undefined}
                   title={!livre ? "Conclua o módulo anterior para liberar" : p.kind === "modulo" ? modules[p.index]!.title : undefined}
                 >
-                  {p.kind === "inicio" ? (
-                    <TrIcone tipo="casa" />
-                  ) : feito ? (
-                    <span className="tr-selo tr-selo-ok" aria-hidden><TrIcone tipo="ok" /></span>
-                  ) : atual ? (
-                    <span className="tr-selo tr-selo-play" aria-hidden><TrIcone tipo="play" /></span>
-                  ) : !livre ? (
-                    <TrIcone tipo="lock" />
-                  ) : null}
                   <span className="tr-nome">{pageLabel(p)}</span>
-                  {p.kind !== "inicio" ? <span className="tr-sub">{feito && !atual ? "Concluído" : atual ? "Atual" : !livre ? "Bloqueado" : "Liberado"}</span> : null}
+                  {!inicio ? <span className="tr-sub">{atual ? "Atual" : feito ? "Concluído" : !livre ? "Bloqueado" : "Liberado"}</span> : null}
                 </button>
-                <span className="tr-trilho" aria-hidden>
-                  {p.kind !== "inicio" ? (
-                    <span className="tr-no">{feito && !atual ? <TrIcone tipo="ok" /> : atual ? <i /> : !livre ? <TrIcone tipo="lock" /> : null}</span>
-                  ) : null}
-                </span>
-                {!ultimo ? <span className="tr-sep" aria-hidden><TrIcone tipo="seta" /></span> : null}
+                {estado === "livre" ? <span className="tr-ponto" aria-hidden /> : null}
               </div>
             );
           })}
