@@ -84,6 +84,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const passo = useRef(0);
   const esqRef = useRef<Esqueleto | null>(null);
   const alturaMontada = useRef(0);
+  const vista = useRef({ s: 1, ox: 0 }); // a lousa se ajusta ao que já está escrito: nada fica cortado
   const cur = useRef<{ g: number | null; x: number; base: number }>({ g: null, x: 24, base: 90 });
   const conf = useRef<(boolean | null)[] | null>(null);
   const cfg = useRef({ caneta, ferramenta, auto, perfil, digitar });
@@ -106,6 +107,16 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     const d = dpr.current;
     ctx.setTransform(d, 0, 0, d, 0, 0);
     ctx.clearRect(0, 0, cv.width, cv.height);
+    { // encolhe (centralizado) só o quanto precisa para tudo ficar visível, e volta ao normal se sobrar espaço
+      const W = cv.width / d, H = cv.height / d, e0 = esqRef.current;
+      let fundo = 0, dir = 0;
+      const med1 = (it: Item) => { if (it.t === "tr") { for (const sg of it.segs) for (const q of sg) { if (q[1] > fundo) fundo = q[1]; if (q[0] > dir) dir = q[0]; } } else { if (it.base + it.size * 0.3 > fundo) fundo = it.base + it.size * 0.3; if (it.cx + it.size * 0.4 > dir) dir = it.cx + it.size * 0.4; } };
+      if (e0) { for (const c of e0.casas) { if (c.y1 > fundo) fundo = c.y1; if (c.x1 > dir) dir = c.x1; } e0.fixos.forEach(med1); e0.fixosPasso?.forEach((f) => f.itens.forEach(med1)); }
+      itens.current.forEach(med1);
+      const sc = Math.max(0.45, Math.min(1, (H - 8) / (fundo + 14), (W - 8) / (dir + 12)));
+      vista.current = { s: sc, ox: sc < 1 ? Math.max(0, (W - W * sc) / 2) : 0 };
+      ctx.setTransform(d * sc, 0, 0, d * sc, d * vista.current.ox, 0);
+    }
     ctx.lineCap = "round"; ctx.lineJoin = "round";
     const risca = (t: Traco, w: number, cor: string) => {
       if (t.length < 2) { if (t[0]) { ctx.fillStyle = cor; ctx.beginPath(); ctx.arc(t[0][0], t[0][1], w / 2, 0, Math.PI * 2); ctx.fill(); } return; }
@@ -230,7 +241,15 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
         const novo = atual + ch;
         itens.current = colocarNaCasa(itens.current, c, novo, cor, medidor, size);
         if (novo.length >= c.esperado.length) prox(); // completou a casa: vai para a próxima do passo
-        if (c.passo === passo.current) verificarPasso();
+        if (c.passo === passo.current) {
+          const doP = e.passos[c.passo]!.casas.map((i) => e.casas[i]!);
+          if (doP.every((x) => casaCompleta(itens.current, x))) verificarPasso();
+          else if (casaCompleta(itens.current, c)) { // casa pronta, passo ainda não: já comenta o que o aluno acabou de fazer
+            const ok = casaCerta(itens.current, c), faltam = doP.filter((x) => !casaCompleta(itens.current, x)).length;
+            conf.current = e.casas.map((x) => (x.id === c.id ? ok : null));
+            setMsg(ok ? `${c.nota ?? `Isso mesmo: ${c.esperado}.`} Faltam ${faltam} casa${faltam > 1 ? "s" : ""} neste passo.` : `${c.nota ? `Confira: ${c.nota}` : `Esse valor não bate.`} ${e.passos[c.passo]!.dica}`, ok ? "ok" : "erro");
+          }
+        }
       }
     } else {
       const m0 = medidor("0"), cw = m0.w * size * 1.15;
@@ -353,7 +372,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
     window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k);
   }, [onClose]);
 
-  const pos = (e: React.PointerEvent): Ponto => { const r = tela.current!.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; };
+  const pos = (e: React.PointerEvent): Ponto => { const r = tela.current!.getBoundingClientRect(); const v = vista.current; return [(e.clientX - r.left - v.ox) / v.s, (e.clientY - r.top) / v.s]; };
 
   const apaga = (x: number, y: number) => {
     const r = apagar(itens.current, x, y, BORRACHA);
@@ -387,7 +406,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const mover = (e: React.PointerEvent<HTMLCanvasElement>) => {
     const eventos = typeof e.nativeEvent.getCoalescedEvents === "function" ? e.nativeEvent.getCoalescedEvents() : [];
     const r = tela.current!.getBoundingClientRect();
-    const pts: Ponto[] = (eventos.length ? eventos : [e.nativeEvent]).map((p) => [p.clientX - r.left, p.clientY - r.top]);
+    const pts: Ponto[] = (eventos.length ? eventos : [e.nativeEvent]).map((p): Ponto => [(p.clientX - r.left - vista.current.ox) / vista.current.s, (p.clientY - r.top) / vista.current.s]);
     if (cfg.current.ferramenta === "borracha") {
       const ultimo = pts[pts.length - 1]!; mira.current = { x: ultimo[0], y: ultimo[1] };
       if (borrando.current) for (const p of pts) apaga(p[0], p[1]);

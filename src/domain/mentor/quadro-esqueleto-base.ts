@@ -40,6 +40,8 @@ export interface Casa {
   base: number; // linha de base dos caracteres
   slots: number; // quantos caracteres cabem
   cw: number; // largura de cada um
+  /** Comentário que aparece quando o aluno acerta esta casa (o que ele acabou de fazer e por quê). */
+  nota?: string;
   esperado: string;
   /** Casa de escolha: em vez de digitar, o aluno toca numa das opções. */
   opcoes?: string[];
@@ -396,9 +398,10 @@ function montarMmcMdc(tipo: "mmc" | "mdc", nums: number[], larg: number, med: Me
       `Procure o ${nome} da linha de cima (${linhas[i - 1]!.join(", ")}). Escreva o primo à direita da barra e depois a nova linha: o que for divisível é dividido, o que não for desce igual.`,
       `${primos[i - 1]} é o ${nome.replace("número primo", "primo")}. ${linhas[i - 1]!.join(", ")} ÷ ${primos[i - 1]} → ${linhas[i]!.join(", ")}.`,
       tipo === "mmc" ? "Teste os primos 2, 3, 5, 7… nessa ordem: o primeiro que dividir algum número é o certo." : "Só vale o primo que divide todos os números da linha ao mesmo tempo.");
-    b.casa(p, xPrimo, top + (i - 1) * lh, 2, String(primos[i - 1]), "esq");
+    b.casa(p, xPrimo, top + (i - 1) * lh, 2, String(primos[i - 1]), "esq").nota = `${primos[i - 1]} divide ${tipo === "mmc" ? "algum" : "todos"} dos números da linha de cima.`;
     linhas[i]!.forEach((v, k) => {
-      b.casa(p, xs[k]!, base, d, String(v), "dir");
+      const ant = linhas[i - 1]![k]!, pr = primos[i - 1]!;
+      b.casa(p, xs[k]!, base, d, String(v), "dir").nota = ant % pr === 0 ? `${ant} ÷ ${pr} = ${v}.` : `${ant} não é divisível por ${pr}, então desce igual (${v}).`;
       if (k < nums.length - 1) b.txt(",", xs[k]! + d * cw, base, cw * 1.1);
     });
   }
@@ -417,7 +420,7 @@ function montarMmcMdc(tipo: "mmc" | "mdc", nums: number[], larg: number, med: Me
     b.txt(String(m.f), bx + (w - digitos(m.f)) * cw, by + lh);
     b.linha(bx - 4, by + lh + 12, bx + w * cw + 4, by + lh + 12, 2 + j);
     b.grupo = null;
-    b.casa(p, bx + cw, by + 2.05 * lh, w - 1, String(m.res), "dir");
+    b.casa(p, bx + cw, by + 2.05 * lh, w - 1, String(m.res), "dir").nota = `${m.a} × ${m.f} = ${m.res}.`;
   });
   const yRes = yCad + emp.linhas * 2.7 * lh + (nMult ? 0.1 * lh : 0);
   b.txt(rot, ox, yRes);
