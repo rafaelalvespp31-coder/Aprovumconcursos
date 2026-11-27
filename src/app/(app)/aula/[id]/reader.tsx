@@ -111,7 +111,7 @@ function Band({ children, id }: { children: ReactNode; id?: string }) {
  * início (capa, resumo do estudo e sumário), um módulo por página, questões por nível e,
  * por fim, pontos de revisão e referências. Concluir todos os módulos registra a leitura.
  */
-function TrSeta({ cor }: { cor: "cinza" | "vermelho" }) {
+function TrSeta({ cor }: { cor: "cinza" | "azul" }) {
   return (
     <span className="tr-sep" data-cor={cor} aria-hidden>
       <svg viewBox="0 0 24 24"><path d="m8.5 4.5 7.5 7.5-7.5 7.5" fill="none" stroke="currentColor" strokeWidth="4.2" strokeLinecap="round" strokeLinejoin="round" /></svg>
@@ -767,7 +767,7 @@ export function LessonReader(props: ReaderProps) {
             const peca = estado === "trancado" || estado === "livre" ? (ultimo ? `${estado}-fim` : estado) : estado;
             return (
               <div key={pageKey(p)} className="tr-it" data-estado={estado} data-peca={peca} data-atual={atual ? "1" : undefined}>
-                {i >= 2 ? <TrSeta cor={i - 1 === currentIdx ? "vermelho" : "cinza"} /> : null}
+                {i >= 2 ? <TrSeta cor={i - 1 === currentIdx ? "azul" : "cinza"} /> : null}
                 <button
                   type="button"
                   className="tr-card"
