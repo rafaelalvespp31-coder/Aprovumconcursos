@@ -151,8 +151,10 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
       ctx.setLineDash([]);
     }
     const dosPassos = e && cfg.current.digitar ? e.fixosPasso?.filter((f) => f.passo <= passo.current).flatMap((f) => f.itens) ?? [] : [];
+    const apoio = e && cfg.current.digitar ? e.soNoPasso?.filter((f) => f.passo === passo.current).flatMap((f) => f.itens) ?? [] : [];
+    for (const it of apoio) if (it.t === "tr" && it.cor === "marca") for (const sg of it.segs) risca(sg, it.w, COR_MARCA);
     for (const it of itens.current) if (it.t === "tr" && it.cor === "marca") for (const sg of it.segs) risca(sg, it.w, COR_MARCA); // marca-texto fica por baixo
-    for (const it of [...(e?.fixos ?? []), ...dosPassos, ...itens.current.filter((x) => !(x.t === "tr" && x.cor === "marca"))]) {
+    for (const it of [...(e?.fixos ?? []), ...dosPassos, ...apoio.filter((x) => !(x.t === "tr" && x.cor === "marca")), ...itens.current.filter((x) => !(x.t === "tr" && x.cor === "marca"))]) {
       if (it.t === "tr") for (const s of it.segs) risca(s, it.w, it.cor === "marca" ? COR_MARCA : CORES[it.cor]);
       else if (ehSinalVetor(it.ch) && !/[0-9]/.test(it.ch)) { for (const v of sinalNormalizado(it.ch, it.cx, it.base - medidor(it.ch).asc * it.size * 0.5, medidor("0").asc * it.size, it.cor)) if (v.t === "tr") for (const sg of v.segs) risca(sg, v.w, v.cor === "marca" ? COR_MARCA : CORES[v.cor]); }
       else { ctx.fillStyle = CORES[it.cor]; ctx.font = `700 ${it.size}px ${FONTE}`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillText(it.ch, it.cx, it.base); }

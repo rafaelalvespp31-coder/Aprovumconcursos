@@ -69,6 +69,8 @@ export interface Esqueleto {
   fixos: Item[];
   /** Desenho que só aparece quando o passo chega (ex.: a multiplicação que o MMC pede no fim). */
   fixosPasso?: { passo: number; itens: Item[] }[];
+  /** Desenho de apoio (marca-texto, setas) que aparece só enquanto este passo é o atual. */
+  soNoPasso?: { passo: number; itens: Item[] }[];
   casas: Casa[];
   passos: Passo[];
   /** Resposta final em texto (ex.: "MMC = 36"). */
@@ -175,6 +177,9 @@ export class Montador {
   casas: Casa[] = [];
   fixos: Item[] = [];
   fixosPasso: { passo: number; itens: Item[] }[] = [];
+  soNoPasso: { passo: number; itens: Item[] }[] = [];
+  /** Desenho de apoio que vale só enquanto o passo p é o atual. */
+  destaque(p: number, itens: Item[]): void { this.soNoPasso.push({ passo: p, itens }); }
   /** Enquanto definido, o que for escrito entra só a partir deste passo. */
   grupo: number | null = null;
   passos: Passo[] = [];
@@ -214,7 +219,7 @@ export class Montador {
   }
   linha(x0: number, y0: number, x1: number, y1: number, seed = 1): void { this.alvo().push(linhaManual(x0, y0, x1, y1, seed)); }
   pronto(tipo: TipoEsqueleto, nums: number[], titulo: string, resposta: string): Esqueleto {
-    return { tipo, nums, titulo, size: this.size, fixos: this.fixos, ...(this.fixosPasso.length ? { fixosPasso: this.fixosPasso } : {}), casas: this.casas, passos: this.passos, resposta };
+    return { tipo, nums, titulo, size: this.size, fixos: this.fixos, ...(this.fixosPasso.length ? { fixosPasso: this.fixosPasso } : {}), ...(this.soNoPasso.length ? { soNoPasso: this.soNoPasso } : {}), casas: this.casas, passos: this.passos, resposta };
   }
 }
 
@@ -329,13 +334,32 @@ function multArmada(b: Montador, a: number, f: number, o: { x: number; y: number
     ad.forEach((x, k) => {
       const total = x * d + vai, ultimo = k === ad.length - 1, saida = ultimo ? String(total) : String(total % 10), nc = ultimo ? 0 : Math.floor(total / 10);
       const col = i + k;
+      const prox = ad[k + 1];
+      const feito = x * d;
+      const acao = ultimo ? `Última coluna: escreva ${total} inteiro embaixo.` : nc ? `Escreva ${total % 10} embaixo, na coluna ${nomeCol(k)}, e suba o ${nc} para cima do ${prox} (o próximo número, ${nomeCol(k + 1)}).` : `Escreva ${total % 10} embaixo; não sobra vai-um.`;
       const p = b.passo(`${pref}: coluna ${nomeCol(k)}`,
-        `${primeiro ? (o.intro ? `${o.intro} ` : "") + `Multiplique da direita para a esquerda. ` : ""}Multiplique o algarismo ${x} (${nomeCol(k)} de ${a}) por ${d}${vai ? ` e some o vai-um ${vai}` : ""}. ${ultimo ? "Última coluna: escreva o número inteiro." : "Escreva só o algarismo da direita; o resto é o vai-um (escreva em cima do próximo número)."}`,
-        `${x} × ${d}${vai ? ` + ${vai}` : ""} = ${total}. ${ultimo ? `Escreva ${total}.` : nc ? `Escreva ${total % 10} e vai ${nc} para a próxima coluna.` : `Escreva ${total % 10}; não sobra vai-um.`}`,
-        `Tabuada do ${d}: ${x} × ${d} = ${x * d}${vai ? `, mais o vai-um ${vai}` : ""}.`);
+        `${primeiro ? (o.intro ? `${o.intro} ` : "") + `Comece pela direita. ` : ""}Multiplique ${x} × ${d} = ${feito}.${vai ? ` Agora some o vai-um que subiu: ${feito} + ${vai} = ${total}.` : ""} ${acao}`,
+        `${x} × ${d} = ${feito}${vai ? `; ${feito} + ${vai} (o vai-um) = ${total}` : ""}. ${ultimo ? `Não há próximo número, então ${total} vai inteiro para o resultado.` : nc ? `${total} tem dois algarismos: o ${total % 10} fica nesta coluna e o ${nc} é uma dezena a mais, que sobe para ser somada ao próximo produto.` : `${total} cabe em um só algarismo, nada sobe.`}`,
+        `Tabuada do ${d}: ${x} × ${d} = ${feito}${vai ? `; depois some o vai-um ${vai}` : ""}.`);
+      // desenho de apoio: marca os dois algarismos que estão sendo multiplicados (e o vai-um que entra), e a seta do vai-um
+      {
+        const asc = b.m0.asc * b.size, wm = asc * 1.15;
+        const marca = (cx: number, yb: number, w: number, h: number): Item => ({ t: "tr", cor: "marca", w: h, segs: [[[cx - w / 2, yb - asc * 0.5], [cx + w / 2, yb - asc * 0.5]]] });
+        const cxK = colX(k) + cw / 2, cxF = colX(i) + cw / 2;
+        const ap: Item[] = [marca(cxK, yA, cw * 0.95, wm), marca(cxF, yF, cw * 0.95, wm)];
+        if (vai) ap.push({ t: "tr", cor: "marca", w: asc * 0.7, segs: [[[cxK - cw * 0.3, yCar - asc * 0.3], [cxK + cw * 0.3, yCar - asc * 0.3]]] });
+        const yTopo = yA - asc - 3, yFim = yCar + 14;
+        if (nc && yTopo - yFim >= 7) {
+          const x0 = cxK - cw * 0.1, x1 = colX(k + 1) + cw * 0.72, cxm = (x0 + x1) / 2, cym = yFim - 4;
+          const pts: [number, number][] = Array.from({ length: 11 }, (_, u) => { const t = u / 10, a2 = (1 - t) ** 2, b2 = 2 * t * (1 - t), c2 = t * t; return [a2 * x0 + b2 * cxm + c2 * x1, a2 * yTopo + b2 * cym + c2 * yFim] as [number, number]; });
+          const ang = Math.atan2(yFim - cym, x1 - cxm), ah = 7;
+          ap.push({ t: "tr", cor: "vermelho", w: 2.6, segs: [pts, [[x1 - ah * Math.cos(ang - 0.5), yFim - ah * Math.sin(ang - 0.5)], [x1, yFim], [x1 - ah * Math.cos(ang + 0.5), yFim - ah * Math.sin(ang + 0.5)]]] });
+        }
+        b.destaque(p, ap);
+      }
       if (primeiro) { desenhar(p); primeiro = false; }
       const n = saida.length;
-      b.casa(p, dir - (col + n) * cw, yRow, n, saida, "dir").nota = `${x} × ${d}${vai ? ` + ${vai}` : ""} = ${total}${ultimo ? "" : `: escreve ${total % 10}${nc ? `, vai ${nc}` : ""}`}.`;
+      b.casa(p, dir - (col + n) * cw, yRow, n, saida, "dir").nota = `${x} × ${d}${vai ? ` + ${vai}` : ""} = ${total}${ultimo ? "" : `: escreva ${total % 10}${nc ? ` embaixo e suba o ${nc}` : ""}`}.`;
       if (nc) b.casaPequena(p, dir - (col + 2) * cw + cw * 0.225, yCar, 1, String(nc)).nota = `O vai-um ${nc} fica em cima do próximo número.`;
       dig.push(...[...saida].reverse());
       vai = nc;
