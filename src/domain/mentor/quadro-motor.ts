@@ -170,7 +170,13 @@ export function interpretar(tracos: Traco[], cor: Cor, med: Medidor, vizinhos: I
 
   const palpites = reconhecer(limpos, 3, viesDoPerfil(perfil));
   const [p1, p2] = palpites;
-  if (p1 && (p1.dist < MUITO_BOM || (p1.dist < LIMITE && (!p2 || p2.dist / p1.dist >= RAZAO)))) {
+  // o assunto da aula só ajuda a escolher ENTRE caracteres; para ser caractere (e não desenho) vale a distância pura
+  const igual = (c: Palpite) => c.bruta < LIMITE;
+  // com o tamanho da aula definido: algo bem maior que um algarismo e só mais ou menos parecido é desenho, não caractere
+  const grandeDemais = !!ref && !VETOR.has(p1?.ch ?? "") && (p1?.bruta ?? 9) > MUITO_BOM && (b.h > h0 * 2.4 || b.w > h0 * 2.8);
+  // e algo do tamanho dos outros caracteres, parecido com um algarismo, é algarismo mesmo (escrita mais solta)
+  const dodigito = !!ref && perfil?.modo === "calculo" && !!p1 && /[0-9]/.test(p1.ch) && p1.bruta < 1.9 && b.h > h0 * 0.45 && b.h < h0 * 1.9 && b.w < h0 * 1.7;
+  if (p1 && !grandeDemais && ((igual(p1) && (p1.dist < MUITO_BOM || !p2 || p2.dist / p1.dist >= RAZAO || p2.dist - p1.dist > 0.04)) || dodigito)) {
     // em conta de multiplicar, o "x" é o sinal de vezes
     const ch = p1.ch === "x" && perfil?.modo === "calculo" && perfil.xVezes ? "×" : p1.ch;
     if (VETOR.has(ch)) return { itens: sinal(ch), palpites, reconhecido: true };
