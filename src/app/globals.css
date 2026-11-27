@@ -5463,3 +5463,11 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 .tr-it[data-peca="inicio"] .tr-nome { font-weight: 700; }
 .tr-it[data-estado="inicio"][data-atual] .tr-card { box-shadow: none; }
 .tr-it[data-estado="inicio"][data-atual] .tr-nome { color: #2250c8; }
+
+/* Módulo concluído: verde bem claro e suave */
+.tr-it[data-peca="feito"] { --cor-nome: #4f9c78; --cor-sub: #86c0a2; }
+.tr-it[data-peca="feito"]::after { background: #d6efe0; }
+.tr-it[data-peca="atual"]::after { background: linear-gradient(90deg, #d6efe0 50%, #c6d8fb 50%); }
+.tr-it[data-peca="feito"] .tr-card::before { color: #4aa575; background: #e4f6ec; }
+.tr-it[data-peca="feito"] .tr-card::after { background: #a6dcbf; box-shadow: 0 0 0 3px #fff, 0 0 0 4px #e4f6ec; }
+
