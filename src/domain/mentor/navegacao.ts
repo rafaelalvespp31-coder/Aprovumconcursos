@@ -20,7 +20,6 @@ export const PAGINAS: ReadonlyArray<{ id: PaginaId; rota: string; rotulo: string
   { id: "revisoes", rota: "/revisoes", rotulo: "as revisões", termos: ["revisoes", "revisao", "revisar"] },
   { id: "redacao", rota: "/redacao", rotulo: "a redação", termos: ["redacao"] },
   { id: "modo_jogo", rota: "/quiz", rotulo: "o modo jogo", termos: ["modo jogo", "quiz", "jogo"] },
-  { id: "meus_editais", rota: "/meu-concurso", rotulo: "os seus editais", termos: ["meus editais", "meu edital", "anexar edital", "meu concurso"] },
   { id: "meus_estudos", rota: "/trilhas", rotulo: "os seus estudos", termos: ["meus estudos", "minhas trilhas", "minhas aulas", "trilhas", "minhas trilhas de estudo"] },
   { id: "novo_estudo", rota: "/nova-trilha", rotulo: "o novo estudo", termos: ["novo estudo", "nova trilha", "mapa do conhecimento"] },
   { id: "perfil", rota: "/perfil", rotulo: "o seu perfil", termos: ["perfil", "configuracoes", "minha conta"] },

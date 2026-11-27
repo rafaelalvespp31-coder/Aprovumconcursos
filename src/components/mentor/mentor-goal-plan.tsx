@@ -80,7 +80,7 @@ export function MentorGoalPlan({ goal, plan, name, onChange, base = "", onNaviga
             <div className="rounded-xl border border-white/15 bg-white/5 p-3" data-testid="mentor-objetivo-sem-edital">
               <p className="text-[13px] font-bold" style={BRANCO}>Você ainda não tem edital cadastrado.</p>
               <p className="mt-0.5 text-[12px]" style={DIM}>Escolha o seu concurso em Concursos. Depois volte aqui e escolha-o para montar o plano.</p>
-              <Link href={`${base}/meu-concurso`} onClick={onNavigate} className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-[#E10600] px-3.5 text-[13px] font-extrabold" style={BRANCO}>Cadastrar edital</Link>
+              <Link href={`${base}/concursos`} onClick={onNavigate} className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-[#E10600] px-3.5 text-[13px] font-extrabold" style={BRANCO}>Cadastrar edital</Link>
             </div>
           )}
           <div className="flex items-center gap-2">
@@ -98,7 +98,7 @@ export function MentorGoalPlan({ goal, plan, name, onChange, base = "", onNaviga
         <div className="rounded-xl border border-white/15 bg-white/5 p-3" data-testid="mentor-sem-edital">
           <p className="text-[13px] font-bold" style={BRANCO}>Ainda não tenho o conteúdo programático de {goal.contest}.</p>
           <p className="mt-0.5 text-[12px]" style={DIM}>Envie o edital (PDF) em Meu concurso e eu monto o plano com as matérias dele, sem usar as de outro concurso.</p>
-          <Link href={`${base}/meu-concurso`} onClick={onNavigate} className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-[#E10600] px-3.5 text-[13px] font-extrabold" style={BRANCO}>Enviar o edital</Link>
+          <Link href={`${base}/concursos`} onClick={onNavigate} className="mt-2 inline-flex min-h-10 items-center rounded-lg bg-[#E10600] px-3.5 text-[13px] font-extrabold" style={BRANCO}>Enviar o edital</Link>
         </div>
       )}
       {!ask && !plan && !goal?.semEdital && <p className="text-[12.5px]" style={DIM}>Não consegui montar o plano agora. Tente de novo em instantes.</p>}

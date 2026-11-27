@@ -130,7 +130,7 @@ export function CardEdital({ tree, save, start, editing = false }: Props) {
           <button type="button" className="vc-btn vc-corrigir" style={{ backgroundImage: "url(/card-edital/bt1.webp)" }} onClick={() => setEdit((v) => !v)} aria-expanded={edit}>
             <Info aria-hidden /><span>{edit ? <>Fechar<br />edição</> : <>Corrigir<br />informações</>}</span>
           </button>
-          <div className="vc-del-box" style={{ backgroundImage: "url(/card-edital/bt2.webp)" }}><DeletePrep id={prep.id} redirectTo="/meu-concurso" tatico /></div>
+          <div className="vc-del-box" style={{ backgroundImage: "url(/card-edital/bt2.webp)" }}><DeletePrep id={prep.id} redirectTo="/concursos" tatico /></div>
           <Link href={`${base}?aba=aulas`} className="vc-btn vc-rapido" style={{ backgroundImage: "url(/card-edital/bt3.webp)" }}>
             <Zap aria-hidden /><span><b>Acesso rápido</b><small>Tudo em um só lugar</small></span><ArrowRight aria-hidden />
           </Link>

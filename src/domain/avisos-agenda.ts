@@ -53,7 +53,7 @@ export const NOVIDADES: ReadonlyArray<{ title: string; body: string; url: string
   { title: "Monte seu caderno de questões", body: "Filtre por banca, órgão, cargo e tópico e resolva só o que cai no seu concurso.", url: "/questoes" },
   { title: "Seu Mentor está de olho", body: "O Mentor APROVUM indica o que estudar hoje com base no seu desempenho. Toque e veja a prioridade.", url: "/mentor" },
   { title: "Revisão fixa o conteúdo", body: "Revisar no dia certo faz o conteúdo ficar. Veja o que está esperando por você.", url: "/revisoes" },
-  { title: "Acompanhe seu concurso", body: "Cadastre seu edital e veja o plano de estudo organizado por tópico.", url: "/meu-concurso" },
+  { title: "Acompanhe seu concurso", body: "Cadastre seu edital e veja o plano de estudo organizado por tópico.", url: "/concursos" },
   { title: "Concursos no radar", body: "Veja os concursos abertos e previstos e favorite os que combinam com você.", url: "/concursos" },
   { title: "Estude um pouquinho todo dia", body: "Constância vence maratona. Abra uma aula hoje, mesmo que seja curta.", url: "/painel" },
   { title: "Teste o que aprendeu", body: "Faça um quiz rápido e descubra o que ainda precisa reforçar.", url: "/quiz" },

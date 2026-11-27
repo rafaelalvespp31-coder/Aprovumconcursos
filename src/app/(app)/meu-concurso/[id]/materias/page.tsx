@@ -11,9 +11,9 @@ export const dynamic = "force-dynamic";
 export default async function MateriasPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser(`/meu-concurso/${id}/materias`);
-  if (await reanalyzeIfStale(user.id, id).catch(() => false)) redirect("/meu-concurso");
+  if (await reanalyzeIfStale(user.id, id).catch(() => false)) redirect("/concursos");
   const tree = await getPreparationTree(user.id, id).catch(() => null);
   if (!tree) notFound();
-  if (tree.prep.status !== "concluido") redirect("/meu-concurso");
+  if (tree.prep.status !== "concluido") redirect("/concursos");
   return <MateriasView tree={tree} />;
 }

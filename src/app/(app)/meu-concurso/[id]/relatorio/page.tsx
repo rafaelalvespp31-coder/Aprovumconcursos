@@ -19,7 +19,7 @@ const MARK: Record<TreeTopic["status"], { s: string; t: string }> = {
 export default async function RelatorioPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser(`/meu-concurso/${id}/relatorio`);
-  if (await reanalyzeIfStale(user.id, id).catch(() => false)) redirect("/meu-concurso");
+  if (await reanalyzeIfStale(user.id, id).catch(() => false)) redirect("/concursos");
   const tree = await getPreparationTree(user.id, id).catch(() => null);
   if (!tree) notFound();
   const { prep, disciplines, totals } = tree;

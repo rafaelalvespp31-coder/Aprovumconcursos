@@ -18,7 +18,7 @@ export default async function MeuPlanoDeEstudoPage() {
       <div className="mx-auto max-w-xl rounded-2xl border border-[#E4E4E7] bg-white p-6 text-center" data-testid="meu-plano-sem-edital">
         <h1 className="text-[20px] font-extrabold">Meu plano de estudo</h1>
         <p className="mt-2 text-[14px] text-[#64666D]">Ainda não tenho o conteúdo programático de {m.goal.contest}. O plano segue as matérias do edital do concurso, então envie o edital (PDF) e eu monto o seu calendário com elas.</p>
-        <Link href="/meu-concurso" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[#E10600] px-5 text-[14px] font-bold text-white">Enviar o edital</Link>
+        <Link href="/concursos" className="mt-4 inline-flex min-h-11 items-center rounded-xl bg-[#E10600] px-5 text-[14px] font-bold text-white">Enviar o edital</Link>
       </div>
     );
   }
