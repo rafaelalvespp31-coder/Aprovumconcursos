@@ -111,6 +111,14 @@ function Band({ children, id }: { children: ReactNode; id?: string }) {
  * início (capa, resumo do estudo e sumário), um módulo por página, questões por nível e,
  * por fim, pontos de revisão e referências. Concluir todos os módulos registra a leitura.
  */
+function TrIcone({ tipo }: { tipo: "casa" | "ok" | "play" | "lock" | "seta" }) {
+  if (tipo === "casa") return <svg viewBox="0 0 24 24" className="tr-ic tr-casa" aria-hidden><path d="M12 3.2 2.6 11.6a.9.9 0 0 0 .6 1.6H5V20a1 1 0 0 0 1 1h3.6v-5.4h4.8V21H18a1 1 0 0 0 1-1v-6.8h1.8a.9.9 0 0 0 .6-1.6z" fill="currentColor" stroke="currentColor" strokeWidth="1" strokeLinejoin="round" /></svg>;
+  if (tipo === "ok") return <svg viewBox="0 0 24 24" className="tr-ic" aria-hidden><path d="m5.5 12.8 4.2 4.2 8.8-9.2" fill="none" stroke="currentColor" strokeWidth="3.2" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+  if (tipo === "play") return <svg viewBox="0 0 24 24" className="tr-ic" aria-hidden><path d="M8.2 4.8v14.4a.8.8 0 0 0 1.2.7l11-7.2a.8.8 0 0 0 0-1.4l-11-7.2a.8.8 0 0 0-1.2.7z" fill="currentColor" /></svg>;
+  if (tipo === "lock") return <svg viewBox="0 0 24 24" className="tr-ic" aria-hidden><path d="M7.5 10.5V8a4.5 4.5 0 0 1 9 0v2.5" fill="none" stroke="currentColor" strokeWidth="2.6" strokeLinecap="round" /><rect x="4.6" y="10.2" width="14.8" height="11" rx="2.6" fill="currentColor" /><circle cx="12" cy="15" r="1.5" fill="#fff" opacity=".9" /><rect x="11.2" y="15.5" width="1.6" height="3" rx=".8" fill="#fff" opacity=".9" /></svg>;
+  return <svg viewBox="0 0 24 24" className="tr-ic" aria-hidden><path d="m9 5.5 6.5 6.5L9 18.5" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
 export function LessonReader(props: ReaderProps) {
   const api = useStudyApi();
   const { lesson, sections, nodes, questions, context } = props;
@@ -122,6 +130,7 @@ export function LessonReader(props: ReaderProps) {
   const remember = (o: AnswerOutcome) => setSessionAnswers((m) => ({ ...m, [o.questionId]: { choice: o.choice, feedback: o.feedback } }));
   const [completing, startCompleting] = useTransition();
   const notesRef = useRef<HTMLDialogElement>(null);
+  const navRef = useRef<HTMLElement>(null);
 
   // Registra a abertura da aula (máquina de estados no servidor).
   useEffect(() => {
@@ -186,6 +195,12 @@ export function LessonReader(props: ReaderProps) {
   // Página guardada que ainda está trancada (ex.: veio de outro aparelho): abre o módulo pendente.
   const current: ApostilaPage = isUnlocked(storedP) ? storedP : firstPending >= 0 ? { kind: "modulo", index: firstPending } : pages[0]!;
   const currentIdx = pages.findIndex((p) => pageKey(p) === pageKey(current));
+  useEffect(() => {
+    const nav = navRef.current;
+    const el = nav?.querySelector<HTMLElement>('[aria-current="page"]');
+    if (!nav || !el) return;
+    nav.scrollTo({ left: Math.max(0, el.offsetLeft - nav.clientWidth / 2 + el.offsetWidth / 2), behavior: "smooth" });
+  }, [currentIdx]);
   const [lockMsg, setLockMsg] = useState<string | null>(null);
   useEffect(() => {
     if (!lockMsg) return;
@@ -741,22 +756,46 @@ export function LessonReader(props: ReaderProps) {
           </div>
         </div>
         {props.topicSearch}
-        <nav className="ap-paginas" aria-label="Páginas da aula">
-          {pages.map((p, i) => (
-            <button
-              key={pageKey(p)}
-              type="button"
-              onClick={() => go(p)}
-              aria-current={i === currentIdx ? "page" : undefined}
-              aria-disabled={!isUnlocked(p) || undefined}
-              data-concluida={pageDone(p) ? "1" : undefined}
-              data-trancada={!isUnlocked(p) ? "1" : undefined}
-              title={!isUnlocked(p) ? "Conclua o módulo anterior para liberar" : p.kind === "modulo" ? modules[p.index]!.title : undefined}
-            >
-              {pageDone(p) ? <Icon name="check" className="size-3.5" /> : !isUnlocked(p) ? <Icon name="cadeado" className="size-3.5" /> : null}
-              {pageLabel(p)}
-            </button>
-          ))}
+        <nav className="ap-paginas" aria-label="Páginas da aula" ref={navRef}>
+          {pages.map((p, i) => {
+            const feito = pageDone(p);
+            const livre = isUnlocked(p);
+            const atual = i === currentIdx;
+            const estado = atual ? "atual" : feito ? "feito" : !livre ? "trancado" : "livre";
+            const ultimo = i === pages.length - 1;
+            return (
+              <div key={pageKey(p)} className="tr-it" data-estado={estado} data-inicio={p.kind === "inicio" ? "1" : undefined} data-ultimo={ultimo ? "1" : undefined} data-prox={i + 1 === currentIdx ? "1" : undefined}>
+                <button
+                  type="button"
+                  className="tr-card"
+                  onClick={() => go(p)}
+                  aria-current={atual ? "page" : undefined}
+                  aria-disabled={!livre || undefined}
+                  data-concluida={feito ? "1" : undefined}
+                  data-trancada={!livre ? "1" : undefined}
+                  title={!livre ? "Conclua o módulo anterior para liberar" : p.kind === "modulo" ? modules[p.index]!.title : undefined}
+                >
+                  {p.kind === "inicio" ? (
+                    <TrIcone tipo="casa" />
+                  ) : feito ? (
+                    <span className="tr-selo tr-selo-ok" aria-hidden><TrIcone tipo="ok" /></span>
+                  ) : atual ? (
+                    <span className="tr-selo tr-selo-play" aria-hidden><TrIcone tipo="play" /></span>
+                  ) : !livre ? (
+                    <TrIcone tipo="lock" />
+                  ) : null}
+                  <span className="tr-nome">{pageLabel(p)}</span>
+                  {p.kind !== "inicio" ? <span className="tr-sub">{feito && !atual ? "Concluído" : atual ? "Atual" : !livre ? "Bloqueado" : "Liberado"}</span> : null}
+                </button>
+                <span className="tr-trilho" aria-hidden>
+                  {p.kind !== "inicio" ? (
+                    <span className="tr-no">{feito && !atual ? <TrIcone tipo="ok" /> : atual ? <i /> : !livre ? <TrIcone tipo="lock" /> : null}</span>
+                  ) : null}
+                </span>
+                {!ultimo ? <span className="tr-sep" aria-hidden><TrIcone tipo="seta" /></span> : null}
+              </div>
+            );
+          })}
         </nav>
         <div className="ap-progresso" aria-hidden>
           <span style={{ width: `${Math.round((((readingDone ? 1 : sections.length ? seenCount / sections.length : 0) + levelsPassed) / 4) * 100)}%` }} />
