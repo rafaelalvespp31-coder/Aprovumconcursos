@@ -74,7 +74,7 @@ export function MeusEditaisView({ data }: { data: EditaisOverview | null }) {
       {data && cards.length === 0 ? (
         <section className="me-vazio me-in" style={{ ["--d" as string]: ".2s" }}>
           <div className="me-vazio-arte" aria-hidden><FileText /><span /></div>
-          <h2>Você ainda não escolheu nenhum concurso.</h2>
+          <h2>Você ainda não possui editais analisados.</h2>
           <p>Escolha, em Concursos, um dos concursos já cadastrados com o raio-x da APROVUM.</p>
           <Link href="/concursos" className="me-btn me-btn-vermelho">ESCOLHER CONCURSO <ChevronRight aria-hidden /></Link>
         </section>
