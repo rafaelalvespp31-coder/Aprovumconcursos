@@ -56,12 +56,14 @@ const fmt = (iso: string) => new Date(iso).toLocaleString("pt-BR", { timeZone: "
 const LOUSA_ERRO = lousaSchema.parse({ mostrar: true, titulo: "Quadro", linhas: [{ tipo: "texto", texto: "Não consegui montar o quadro agora.", cor: "vermelho" }, { tipo: "texto", texto: "Peça de novo que eu tento outra vez!", cor: "azul" }] });
 
 export function StudyTools({
-  lessonId, lessonTitle, subject, sectionOrder, initialPostits, initialPdfs, api = realApi,
+  lessonId, lessonTitle, subject, disciplina, sectionOrder, initialPostits, initialPdfs, api = realApi,
 }: {
   api?: StudyApi;
   lessonId: string;
   lessonTitle: string;
   subject: string | null;
+  /** Matéria cadastrada da trilha (ex.: "matematica", "raciocinio_logico"): decide se a lousa de treino existe. */
+  disciplina?: string | null;
   sectionOrder: string[];
   initialPostits: PostitView[];
   initialPdfs: PdfInfo[];
@@ -568,14 +570,15 @@ export function StudyTools({
   }, [currentCapture, lessonTitle, subject, lessonId]);
 
   /** Abre a lousa já ajustada ao assunto da aula (matéria, título, seção e o texto lido). */
-  const temLousa = materiaTemLousa(subject);
+  const materiaLousa = disciplina === "matematica" ? "Matemática" : disciplina === "raciocinio_logico" ? "Raciocínio Lógico" : materiaTemLousa(subject) ? subject : null;
+  const temLousa = !!materiaLousa;
   const abrirQuadro = useCallback(() => {
     if (!temLousa) return;
     const st = getStudy();
     const texto = Array.from(document.querySelectorAll(".ap-secao")).map((e) => e.textContent ?? "").join(" ").slice(0, 12000);
-    setQuadroAula({ id: lessonId, materia: subject ?? "", aula: lessonTitle ?? "", secao: st.section ?? "", texto });
+    setQuadroAula({ id: lessonId, materia: materiaLousa ?? "", aula: lessonTitle ?? "", secao: st.section ?? "", texto });
     setQuadro(true);
-  }, [getStudy, lessonId, lessonTitle, subject, temLousa]);
+  }, [getStudy, lessonId, lessonTitle, materiaLousa, temLousa]);
 
   const explain = () => {
     window.dispatchEvent(new CustomEvent("aprovum:explicar"));

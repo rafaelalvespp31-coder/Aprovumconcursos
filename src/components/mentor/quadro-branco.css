@@ -40,8 +40,8 @@
 .qb-msg { margin: 0; padding: 7px 10px; border-radius: 10px; font-size: .8rem; font-weight: 600; line-height: 1.35; background: #f4f4f5; color: #333; }
 .qb-msg.is-ok { background: #e8f7ee; color: #14532d; }
 .qb-msg.is-erro { background: #fdecec; color: #991b1b; }
-.qb-teclas { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; max-width: 460px; width: 100%; margin: 0 auto; }
-.qb-tecla { min-height: 38px; border: 1.5px solid rgb(0 0 0 / .14); border-radius: 10px; background: #fafafa; color: #111; font: inherit; font-size: 1.15rem; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .12s, transform .1s; }
+.qb-teclas { display: grid; grid-template-columns: repeat(auto-fit, minmax(40px, 1fr)); gap: 4px; max-width: 460px; width: 100%; margin: 0 auto; }
+.qb-tecla { min-height: 34px; border: 1.5px solid rgb(0 0 0 / .14); border-radius: 10px; background: #fafafa; color: #111; font: inherit; font-size: 1.15rem; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .12s, transform .1s; }
 .qb-tecla:active { transform: scale(.94); background: #e9eefc; }
 .qb-tecla.is-ctrl { background: #eef0f4; color: #3b3f4a; }
 @media (min-width: 700px) { .qb-area { margin: 14px 22px 22px; } .qb-barra { justify-content: center; } }

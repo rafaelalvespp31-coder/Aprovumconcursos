@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, Eraser, Keyboard, Pen, Trash2, Undo2, Wand2, X } from "lucide-react";
 import { apagar, CORES, ehSinalVetor, glifoEm, interpretar, mesmaForma, promoverUns, sinalNormalizado, type Cor, type Item, type Medidor } from "@/domain/mentor/quadro-motor";
-import { casaCerta, casaCompleta, colocarNaCasa, ehLogica, exercicioAleatorio, lerExercicio, montarEsqueleto, ROTULOS, textoDaCasa, textoDoExercicio, tiposDaAula, TIPOS_TEXTO, type Esqueleto, type Exercicio, type TipoEsqueleto } from "@/domain/mentor/quadro-esqueleto";
+import { casaCerta, casaCompleta, colocarNaCasa, ehLogica, exercicioAleatorio, lerExercicio, montarEsqueleto, ROTULOS, textoDaCasa, textoDoExercicio, tiposDoAssunto, TIPOS_TEXTO, type Esqueleto, type Exercicio, type TipoEsqueleto } from "@/domain/mentor/quadro-esqueleto";
 import type { Ponto, Traco } from "@/domain/mentor/quadro-modelos";
 import { perfilDaAula, type ContextoAula } from "@/domain/mentor/quadro-perfil";
 import "./quadro-branco.css";
@@ -72,7 +72,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const [estado, setEstado] = useState<{ vazio: boolean; pode: boolean; g: number | null }>({ vazio: true, pode: false, g: null });
   const [confirmaLimpar, setConfirmaLimpar] = useState(false);
   // teclado: números para tocar (em vez de desenhar) + esqueleto da conta já montado
-  const tipos = useMemo<TipoEsqueleto[]>(() => (perfil.modo !== "calculo" ? [] : tiposDaAula(aula?.aula ?? "", aula?.materia)), [perfil, aula?.aula, aula?.materia]);
+  const tipos = useMemo<TipoEsqueleto[]>(() => (perfil.modo !== "calculo" ? [] : tiposDoAssunto(aula?.aula ?? "", aula?.materia)), [perfil, aula?.aula, aula?.materia]);
   const [digitar, setDigitar] = useState(perfil.modo === "calculo");
   const [esq, setEsq] = useState<Esqueleto | null>(null);
   const [numsTxt, setNumsTxt] = useState("");
@@ -90,6 +90,14 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const logica = !!esq && ehLogica(esq.tipo);
   const casaAtual = esq && estado.g != null && passoUi < esq.passos.length ? esq.casas[estado.g] : undefined;
   const opcoesAtuais = casaAtual?.opcoes ?? [];
+  /** Teclado enxuto: só números e os sinais que o passo atual pede (não deixa a calculadora tomar a lousa). */
+  const teclasAtuais = useMemo(() => {
+    if (logica) return TECLAS_LOG;
+    const extra = new Set<string>();
+    if (esq && passoUi < esq.passos.length) for (const i of esq.passos[passoUi]!.casas) for (const ch of (esq.casas[i]!.esperado + (esq.casas[i]!.alt ?? ""))) if (!/[0-9,]/.test(ch)) extra.add(ch === "x" ? "x" : ch);
+    const base = TECLAS.filter((t) => /[0-9]/.test(t.ch) || t.ch === "," || t.k === "apagar" || t.k === "prox");
+    return [...base, ...TECLAS.filter((t) => !t.k && !/[0-9,]/.test(t.ch) && extra.has(t.ch))];
+  }, [logica, esq, passoUi]);
 
   const desenhar = useCallback(() => {
     const cv = tela.current; const ctx = cv?.getContext("2d");
@@ -113,7 +121,8 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
       for (const c of ativas) { ctx.beginPath(); ctx.moveTo(c.x0, c.base + 6); ctx.lineTo(c.x1, c.base + 6); ctx.stroke(); }
       ctx.setLineDash([]);
     }
-    for (const it of [...(e?.fixos ?? []), ...itens.current]) {
+    const dosPassos = e && cfg.current.digitar ? e.fixosPasso?.filter((f) => f.passo <= passo.current).flatMap((f) => f.itens) ?? [] : [];
+    for (const it of [...(e?.fixos ?? []), ...dosPassos, ...itens.current]) {
       if (it.t === "tr") for (const s of it.segs) risca(s, it.w, CORES[it.cor]);
       else if (ehSinalVetor(it.ch) && !/[0-9]/.test(it.ch)) { for (const v of sinalNormalizado(it.ch, it.cx, it.base - medidor(it.ch).asc * it.size * 0.5, medidor("0").asc * it.size, it.cor)) if (v.t === "tr") for (const sg of v.segs) risca(sg, v.w, CORES[v.cor]); }
       else { ctx.fillStyle = CORES[it.cor]; ctx.font = `700 ${it.size}px ${FONTE}`; ctx.textAlign = "center"; ctx.textBaseline = "alphabetic"; ctx.fillText(it.ch, it.cx, it.base); }
@@ -447,7 +456,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
       </div>
       {digitar && (
         <div className="qb-teclado" data-testid="quadro-teclado">
-          {tipos.length > 0 && (
+          {tipos.length > 1 && (
             <div className="qb-esq" role="toolbar" aria-label="Tipos de conta">
               {tipos.map((t) => (
                 <button key={t} type="button" className={`qb-chip${esq?.tipo === t ? " is-on" : ""}`} data-testid={`esq-${t}`} onClick={() => novoEsq(t)}>{ROTULOS[t]}</button>
@@ -480,7 +489,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
             </div>
           )}
           <div className={`qb-teclas${logica ? " is-log" : ""}`}>
-            {(logica ? TECLAS_LOG : TECLAS).map((t) => (
+            {teclasAtuais.map((t) => (
               <button key={t.ch} type="button" className={`qb-tecla${t.k ? " is-ctrl" : ""}`} aria-label={t.k === "apagar" ? "Apagar último" : t.k === "prox" ? "Próxima casa" : t.k === "linha" ? "Próxima linha" : t.rot ?? t.ch}
                 data-testid={`tecla-${t.k ?? t.ch}`} onPointerDown={(ev) => ev.preventDefault()} onClick={() => teclar(t.ch, t.k)}>{t.rot ?? t.ch}</button>
             ))}

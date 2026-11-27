@@ -63,6 +63,8 @@ export interface Esqueleto {
   titulo: string;
   size: number;
   fixos: Item[];
+  /** Desenho que só aparece quando o passo chega (ex.: a multiplicação que o MMC pede no fim). */
+  fixosPasso?: { passo: number; itens: Item[] }[];
   casas: Casa[];
   passos: Passo[];
   /** Resposta final em texto (ex.: "MMC = 36"). */
@@ -168,7 +170,16 @@ export function linhaManual(x0: number, y0: number, x1: number, y1: number, seed
 export class Montador {
   casas: Casa[] = [];
   fixos: Item[] = [];
+  fixosPasso: { passo: number; itens: Item[] }[] = [];
+  /** Enquanto definido, o que for escrito entra só a partir deste passo. */
+  grupo: number | null = null;
   passos: Passo[] = [];
+  private alvo(): Item[] {
+    if (this.grupo === null) return this.fixos;
+    let g = this.fixosPasso.find((f) => f.passo === this.grupo);
+    if (!g) { g = { passo: this.grupo, itens: [] }; this.fixosPasso.push(g); }
+    return g.itens;
+  }
   m0: ReturnType<Medidor>;
   constructor(public med: Medidor, public size: number, public cw: number) { this.m0 = med("0"); }
   passo(titulo: string, texto: string, porque: string, dica: string): number {
@@ -185,13 +196,13 @@ export class Montador {
     [...texto].forEach((ch, i) => {
       if (ch === " ") return;
       const cx = x0 + (i + 0.5) * cw;
-      if (ehSinalVetor(ch)) this.fixos.push(...sinalNormalizado(ch, cx, base - this.m0.asc * this.size * 0.5, this.m0.asc * this.size, COR));
-      else this.fixos.push(glifoEm(ch, cx, base, this.size, COR, this.med));
+      if (ehSinalVetor(ch)) this.alvo().push(...sinalNormalizado(ch, cx, base - this.m0.asc * this.size * 0.5, this.m0.asc * this.size, COR));
+      else this.alvo().push(glifoEm(ch, cx, base, this.size, COR, this.med));
     });
   }
-  linha(x0: number, y0: number, x1: number, y1: number, seed = 1): void { this.fixos.push(linhaManual(x0, y0, x1, y1, seed)); }
+  linha(x0: number, y0: number, x1: number, y1: number, seed = 1): void { this.alvo().push(linhaManual(x0, y0, x1, y1, seed)); }
   pronto(tipo: TipoEsqueleto, nums: number[], titulo: string, resposta: string): Esqueleto {
-    return { tipo, nums, titulo, size: this.size, fixos: this.fixos, casas: this.casas, passos: this.passos, resposta };
+    return { tipo, nums, titulo, size: this.size, fixos: this.fixos, ...(this.fixosPasso.length ? { fixosPasso: this.fixosPasso } : {}), casas: this.casas, passos: this.passos, resposta };
   }
 }
 
@@ -347,7 +358,9 @@ function montarMmcMdc(tipo: "mmc" | "mdc", nums: number[], larg: number, med: Me
   const d = Math.max(...nums.map(digitos));
   const celulas = nums.length * d + (nums.length - 1) * 1.1 + 1.2 + 2.6;
   const ultima = linhas.length - 1;
-  const size = tamanhoPara(med, larg, alt, celulas, 1.3 + (ultima + 1.6) * 1.55, 1.15, 44);
+  const r = tipo === "mmc" ? mmcDe(nums) : mdcDe(nums);
+  const nMult = Math.max(0, primos.length - 1); // multiplicações pedidas no fim (uma por passo)
+  const size = tamanhoPara(med, larg, alt, Math.max(celulas, 10), 1.3 + (ultima + 1.6 + nMult + 0.4) * 1.55, 1.15, 44);
   const b = new Montador(med, size, med("0").w * size * 1.15);
   const { cw } = b, ox = Math.max(16, (larg - celulas * cw) / 2), top = size * 1.3, lh = size * 1.55;
   let x = ox;
@@ -373,12 +386,26 @@ function montarMmcMdc(tipo: "mmc" | "mdc", nums: number[], larg: number, med: Me
       if (k < nums.length - 1) b.txt(",", xs[k]! + d * cw, base, cw * 1.1);
     });
   }
-  const r = tipo === "mmc" ? mmcDe(nums) : mdcDe(nums);
-  const yRes = top + (ultima + 1.35) * lh;
   const rot = tipo === "mmc" ? "MMC =" : "MDC =";
+  // a multiplicação só aparece quando o cálculo pede: um passo por multiplicação, com o espaço em branco para fazer
+  let acc = primos[0] ?? 1;
+  const yCad = top + (ultima + 1.25) * lh;
+  for (let j = 1; j < primos.length; j++) {
+    const f = primos[j]!, res = acc * f, base = yCad + (j - 1) * lh;
+    const p = b.passo(`Multiplicar ${j === 1 ? "os primos" : "o próximo primo"}`,
+      j === 1 ? `Hora de multiplicar os primos da coluna da direita (${primos.join(", ")}). Comece pelos dois primeiros: ${acc} × ${f}.` : `Continue: multiplique o resultado anterior (${acc}) pelo próximo primo (${f}).`,
+      `${acc} × ${f} = ${res}.`, `Calcule ${acc} × ${f}.`);
+    b.grupo = p;
+    const txt = `${acc} × ${f} =`;
+    b.txt(txt, ox, base);
+    b.grupo = null;
+    b.casa(p, ox + (txt.length + 0.6) * cw, base, digitos(res) + 1, String(res), "esq");
+    acc = res;
+  }
+  const yRes = yCad + Math.max(0, nMult) * lh + (nMult ? 0.2 * lh : 0);
   b.txt(rot, ox, yRes);
-  const p = b.passo("Resultado", tipo === "mmc" ? "Multiplique todos os primos da coluna da direita: é o MMC." : primos.length ? "Multiplique só os primos usados (eles dividiram todos os números): é o MDC." : "Nenhum primo divide todos os números, então o MDC é 1.",
-    primos.length ? `${primos.join(" × ")} = ${r}.` : "Não há primo comum: MDC = 1.", "Multiplique de novo os primos da coluna da direita.");
+  const p = b.passo("Resultado", tipo === "mmc" ? (nMult ? "Escreva o resultado da última multiplicação: é o MMC." : "Escreva o primo da coluna da direita: é o MMC.") : primos.length ? (nMult ? "Escreva o resultado da última multiplicação: é o MDC." : "Escreva o primo usado: é o MDC.") : "Nenhum primo divide todos os números, então o MDC é 1.",
+    primos.length ? `${primos.join(" × ")} = ${r}.` : "Não há primo comum: MDC = 1.", "Use o resultado da última multiplicação.");
   b.casa(p, ox + (rot.length + 0.6) * cw, yRes, 4, String(r), "esq");
   return b.pronto(tipo, nums, `${tipo === "mmc" ? "MMC" : "MDC"} (${nums.join(", ")})`, `${tipo === "mmc" ? "MMC" : "MDC"} = ${r}`);
 }

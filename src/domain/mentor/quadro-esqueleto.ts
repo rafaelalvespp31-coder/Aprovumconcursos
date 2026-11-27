@@ -81,8 +81,8 @@ const POR_ASSUNTO: [RegExp, TipoEsqueleto[]][] = [
   [/forma fracionaria e decimal|conversao entre fracoes e numeros decimais|fracao.*decimal/, ["convfd", "decimal"]],
   // ---- Múltiplos, divisores
   [/criterios de divisibilidade|divisibilidade/, ["divisib", "primo"]],
-  [/maximo divisor|\bmdc\b/, ["mdc", "mmc", "fat"]],
-  [/minimo multiplo|\bmmc\b/, ["mmc", "mdc", "fat"]],
+  [/maximo divisor|\bmdc\b/, ["mdc"]],
+  [/minimo multiplo|\bmmc\b/, ["mmc"]],
   [/multiplos e divisores/, ["divisores", "divisib"]],
   [/primos|fatores primos|decomposicao|fatoracao/, ["fat", "primo", "mmc"]],
   // ---- Porcentagem e matemática financeira
@@ -92,8 +92,8 @@ const POR_ASSUNTO: [RegExp, TipoEsqueleto[]][] = [
   [/variacoes percentuais sucessivas|sucessiv/, ["sucessivas", "variacao", "aumdesc"]],
   [/porcentagem aplicada|problemas de porcentagem/, ["pct", "pctqto", "aumdesc", "sucessivas", "regra3"]],
   [/conceito e calculo de porcentagem|porcentagem|percentual/, ["pct", "pctqto", "aumdesc"]],
-  [/juros compostos/, ["jurosc", "taxa"]],
-  [/juros simples|juros/, ["juros", "taxa", "jurosc"]],
+  [/juros compostos/, ["jurosc"]],
+  [/juros simples|juros/, ["juros", "taxa"]],
   // ---- Razão, proporção, regra de três
   [/regra de tres composta/, ["regra3c", "regra3", "regra3i"]],
   [/grandezas diretamente|inversamente/, ["regra3", "regra3i", "regra3c"]],
@@ -125,4 +125,11 @@ export function tiposDaAula(titulo: string, materia?: string | null): TipoEsquel
   const achou = POR_ASSUNTO.find(([re]) => re.test(t))?.[1] ?? [];
   const validos = achou.filter((x) => grupo.includes(x) || TIPOS_MAT.includes(x as never) || TIPOS_LOG.includes(x));
   return unico([...validos, ...grupo]);
+}
+
+/** Só as contas do assunto da aula (o aluno não vê as outras): se a aula é de MMC, só MMC. */
+export function tiposDoAssunto(titulo: string, materia?: string | null): TipoEsqueleto[] {
+  const t = sem(titulo ?? "");
+  const achou = POR_ASSUNTO.find(([re]) => re.test(t))?.[1];
+  return achou?.length ? unico(achou) : tiposDaAula(titulo, materia).slice(0, 1);
 }
