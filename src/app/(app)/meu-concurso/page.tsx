@@ -2,7 +2,7 @@ import { requireUser } from "@/server/auth";
 import { getEditaisOverview, type EditaisOverview } from "@/server/services/edital-overview";
 import { MeusEditaisView } from "@/components/meus-editais/meus-editais-view";
 
-export const metadata = { title: "Meus Editais" };
+export const metadata = { title: "Edital Verticalizado" };
 export const dynamic = "force-dynamic";
 
 export default async function MeusEditaisPage() {

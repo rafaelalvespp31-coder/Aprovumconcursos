@@ -41,7 +41,8 @@ const chunks = <T,>(xs: T[], n: number) => Array.from({ length: Math.ceil(xs.len
  * agrupadas (sem uma consulta por edital). Tudo filtrado pelo usuário autenticado.
  */
 export async function getEditaisOverview(userId: string): Promise<EditaisOverview> {
-  const preps = await listPreparations(userId);
+  // Só os concursos que o aluno escolheu na Central (cópias dos editais publicados com raio-x pela equipe); envios antigos por PDF não aparecem.
+  const preps = (await listPreparations(userId)).filter((p) => !!p.stats.publicado);
   const db = createAdminClient();
   const ready = preps.filter((p) => p.status === "concluido");
   const empty = { analyzed: ready.length, avgPct: null, evolution7d: null, questions: 0 };
