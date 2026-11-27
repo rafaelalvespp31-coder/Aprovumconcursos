@@ -25,5 +25,18 @@
 .qb-area canvas.is-borracha { cursor: none; }
 .qb-dica { position: absolute; inset: 0; display: grid; place-content: center; margin: 0; padding: 20px; text-align: center; color: rgb(0 0 0 / .32); font-size: 1rem; line-height: 1.5; pointer-events: none; }
 .qb-dica b { color: rgb(0 0 0 / .5); }
+.qb-teclado { display: grid; gap: 6px; padding: 6px 10px calc(env(safe-area-inset-bottom, 0px) + 8px); background: #fff; border-top: 1px solid rgb(0 0 0 / .1); }
+.qb-esq { display: flex; align-items: center; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.qb-esq::-webkit-scrollbar { display: none; }
+.qb-chip { flex: none; min-height: 36px; padding: 0 12px; border: 1.5px solid rgb(0 0 0 / .16); border-radius: 999px; background: #fff; color: #222; font: inherit; font-size: .78rem; font-weight: 700; cursor: pointer; }
+.qb-chip.is-on { border-color: #1d4ed8; background: #eff4ff; color: #1d4ed8; }
+.qb-chip.qb-ok { border-color: #16a34a; background: #16a34a; color: #fff; }
+.qb-chip:focus-visible, .qb-tecla:focus-visible { outline: 2px solid #1d4ed8; outline-offset: 2px; }
+.qb-nums { flex: none; width: 96px; min-height: 36px; padding: 0 10px; border: 1.5px solid rgb(0 0 0 / .16); border-radius: 10px; font: inherit; font-size: .9rem; font-weight: 600; }
+.qb-msg { margin: 0; font-size: .82rem; font-weight: 600; color: #333; }
+.qb-teclas { display: grid; grid-template-columns: repeat(6, 1fr); gap: 5px; max-width: 460px; width: 100%; margin: 0 auto; }
+.qb-tecla { min-height: 38px; border: 1.5px solid rgb(0 0 0 / .14); border-radius: 10px; background: #fafafa; color: #111; font: inherit; font-size: 1.15rem; font-weight: 700; cursor: pointer; -webkit-tap-highlight-color: transparent; transition: background-color .12s, transform .1s; }
+.qb-tecla:active { transform: scale(.94); background: #e9eefc; }
+.qb-tecla.is-ctrl { background: #eef0f4; color: #3b3f4a; }
 @media (min-width: 700px) { .qb-area { margin: 14px 22px 22px; } .qb-barra { justify-content: center; } }
 @media (prefers-reduced-motion: reduce) { .qb-ferr { transition: none; } }

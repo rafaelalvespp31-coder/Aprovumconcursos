@@ -228,3 +228,17 @@ export function mesmaForma(anteriores: Traco[], novo: Traco, perfil?: PerfilQuad
   // se o conjunto não casa melhor do que o traço anterior sozinho (ou casa mal), são símbolos diferentes
   return a.dist < 1.05 && (!b || b.dist / a.dist >= 1.15) && (!sozinho || a.dist < sozinho.dist + 0.35 || anteriores.length === 1);
 }
+
+/** Sinal em vetor (×, +, −, =, ÷, parênteses…) no tamanho dos algarismos, centrado em (cx, cy): para o teclado da lousa. */
+export function sinalNormalizado(ch: string, cx: number, cy: number, h0: number, cor: Cor): Item[] {
+  const b = { x0: cx, y0: cy, x1: cx, y1: cy, w: 0, h: 0, cx, cy };
+  return comSim(vetor(ch, caixaDoSinal(ch, b, h0), cor, true), ch);
+}
+export const ehSinalVetor = (ch: string): boolean => VETOR.has(ch);
+
+/** Caractere de máquina centrado em cx, com a linha de base dada. */
+export function glifoEm(ch: string, cx: number, base: number, size: number, cor: Cor, med: Medidor): ItemGlifo {
+  const m = med(ch);
+  const larg = m.w * size;
+  return { t: "gl", cor, ch, cx, base, size, caixa: { x0: cx - larg / 2, y0: base - m.asc * size, x1: cx + larg / 2, y1: base + m.desc * size } };
+}
