@@ -1,10 +1,12 @@
 import Link from "next/link";
 import { backfillExamLinks, isAwaiting, listExams, listRaioXRequests, STATUS_LABEL, studentLabel, type ExamListItem, type RaioXRequest } from "@/server/services/strategic";
 
+import { requireAdmin } from "@/server/services/catalog";
 export const metadata = { title: "Catálogo estratégico de concursos" };
 export const dynamic = "force-dynamic";
 
 export default async function EstrategicoPage() {
+  await requireAdmin();
   await backfillExamLinks().catch(() => 0);
   const all = await listExams().catch(() => [] as ExamListItem[]);
   const pedidos = await listRaioXRequests({ onlyPending: true }).catch(() => [] as RaioXRequest[]);

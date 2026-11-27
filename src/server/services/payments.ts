@@ -130,7 +130,7 @@ export async function createPayment(userId: string, input: CreateInput): Promise
   const db = createAdminClient();
   // Cupom de parceiro: conferido de novo aqui (nunca confia no valor que o navegador mostrou). Desconto só sobre o preço vigente do plano.
   const couponCode = typeof input.coupon === "string" ? input.coupon.trim() : "";
-  const resolved = couponCode ? await resolveCoupon(couponCode, offer) : null;
+  const resolved = couponCode ? await resolveCoupon(couponCode, offer, userId) : null;
   const amountCents = resolved ? resolved.quote.finalCents : price.cents;
   const ins = await db
     .from("mp_payments")

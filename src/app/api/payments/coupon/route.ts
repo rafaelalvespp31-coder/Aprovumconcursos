@@ -23,7 +23,7 @@ export async function POST(req: NextRequest) {
   if (!isOfferKey(body.offer)) return NextResponse.json({ error: "Plano inválido." }, { status: 400 });
   try {
     await enforceRateLimit(user.id, "coupon_check", 20);
-    const r = await resolveCoupon(body.code, body.offer);
+    const r = await resolveCoupon(body.code, body.offer, user.id);
     return NextResponse.json({
       coupon: { code: r.coupon.code, partner: r.coupon.partnerName, discountPct: r.coupon.discountPct },
       quote: { listCents: r.quote.listCents, discountCents: r.quote.discountCents, finalCents: r.quote.finalCents },

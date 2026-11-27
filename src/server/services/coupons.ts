@@ -31,7 +31,7 @@ interface CouponRow {
 const one = <T,>(v: T | T[] | null): T | null => (Array.isArray(v) ? (v[0] ?? null) : v);
 
 /** Confere o cupom para o plano escolhido e calcula o valor. Quem chama o checkout nunca decide o preço. */
-export async function resolveCoupon(rawCode: unknown, offer: OfferKey): Promise<ResolvedCoupon> {
+export async function resolveCoupon(rawCode: unknown, offer: OfferKey, userId?: string | null): Promise<ResolvedCoupon> {
   const code = normalizeCouponCode(rawCode);
   if (!code) throw new UserFacingError("Cupom inválido.", "coupon_invalid");
   const db = createAdminClient();
@@ -44,15 +44,26 @@ export async function resolveCoupon(rawCode: unknown, offer: OfferKey): Promise<
   const row = data as unknown as CouponRow | null;
   const partner = row ? one(row.partners) : null;
   if (!row || !partner) throw new UserFacingError("Cupom inválido.", "coupon_invalid");
+  // Conta usos aprovados e pagamentos em andamento (iniciados há menos de 2 horas); a trava definitiva está no banco (registrar_uso_cupom).
+  const recente = new Date(Date.now() - 2 * 3600_000).toISOString();
+  const aberto = `status.eq.aprovado,and(status.eq.iniciado,created_at.gt.${recente})`;
   let used = 0;
   if (row.max_uses !== null) {
-    const c = await db.from("partner_coupon_redemptions").select("id", { count: "exact", head: true }).eq("coupon_id", row.id).eq("status", "aprovado");
+    const c = await db.from("partner_coupon_redemptions").select("id", { count: "exact", head: true }).eq("coupon_id", row.id).or(aberto);
     used = c.count ?? 0;
+  }
+  let usedByUser = false;
+  if (userId) {
+    const curto = new Date(Date.now() - 15 * 60_000).toISOString();
+    const u = await db.from("partner_coupon_redemptions").select("id", { count: "exact", head: true }).eq("coupon_id", row.id).eq("user_id", userId).or(`status.eq.aprovado,and(status.eq.iniciado,created_at.gt.${curto})`);
+    usedByUser = (u.count ?? 0) > 0;
   }
   const problem = checkCoupon(
     { code: row.code, discountPct: Number(row.discount_pct), status: row.status, maxUses: row.max_uses, startsAt: row.starts_at, expiresAt: row.expires_at, eligibleOffers: row.eligible_offers ?? [], partnerActive: partner.status === "ativo" },
     offer,
     used,
+    new Date(),
+    usedByUser,
   );
   if (problem) throw new UserFacingError(COUPON_PROBLEM_TEXT[problem], "coupon_" + problem);
   const pct = Number(row.discount_pct);
@@ -64,21 +75,25 @@ export async function recordRedemption(paymentId: string, userId: string, r: Res
   // Prioridade: o cupom digitado decide; só herda a indicação do link se for o mesmo cupom e dentro da janela.
   const ref = await referralFor(visitorId, r.coupon.partnerId).catch(() => null);
   const attr = pickAttribution(r.coupon.code, storedRefCode ?? null, !!ref?.inWindow);
-  const { error } = await createAdminClient().from("partner_coupon_redemptions").insert({
-    coupon_id: r.coupon.id,
-    partner_id: r.coupon.partnerId,
-    user_id: userId,
-    payment_id: paymentId,
-    offer: r.quote.offer,
-    original_cents: r.quote.listCents,
-    discount_cents: r.quote.discountCents,
-    final_cents: r.quote.finalCents,
-    commission_pct: r.coupon.commissionPct,
-    commission_cents: 0,
-    source: attr.source,
-    referral_id: attr.useReferral ? (ref?.id ?? null) : null,
+  // Atômico no banco: trava o cupom, confere o limite e o uso por aluno e grava o uso.
+  const { error } = await createAdminClient().rpc("registrar_uso_cupom", {
+    p_coupon: r.coupon.id,
+    p_partner: r.coupon.partnerId,
+    p_user: userId,
+    p_payment: paymentId,
+    p_offer: r.quote.offer,
+    p_original: r.quote.listCents,
+    p_discount: r.quote.discountCents,
+    p_final: r.quote.finalCents,
+    p_commission_pct: r.coupon.commissionPct,
+    p_source: attr.source,
+    p_referral: attr.useReferral ? (ref?.id ?? null) : null,
   });
-  if (error && error.code !== "23505") throw new Error(error.message);
+  if (error) {
+    if (/cupom_esgotado/.test(error.message)) throw new UserFacingError(COUPON_PROBLEM_TEXT.esgotado, "coupon_esgotado");
+    if (/cupom_ja_usado/.test(error.message)) throw new UserFacingError(COUPON_PROBLEM_TEXT.ja_usado, "coupon_ja_usado");
+    throw new Error(error.message);
+  }
 }
 
 /** Acompanha o pagamento: aprovado, recusado, cancelado ou reembolsado. Nunca derruba o fluxo do pagamento. */

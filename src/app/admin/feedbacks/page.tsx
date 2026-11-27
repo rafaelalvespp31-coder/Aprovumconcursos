@@ -2,6 +2,7 @@ import { contarDispensas, listarFeedbacks } from "@/server/services/lesson-feedb
 import { evolucaoMensal, filtrarFeedbacks, porAula, porMateria, resumoGeral, MIN_AVALIACOES_ALERTA, MEDIA_ALERTA, type FiltroFeedback } from "@/domain/feedback/feedback";
 import { Estrelas, FeedbackLista } from "@/components/admin/feedback-lista";
 
+import { requireAdmin } from "@/server/services/catalog";
 export const metadata = { title: "Admin · Feedbacks dos alunos" };
 export const dynamic = "force-dynamic";
 
@@ -11,6 +12,7 @@ const mesBR = (m: string) => `${m.slice(5)}/${m.slice(0, 4)}`;
 
 /** Central de feedbacks pós-aula. Só administradores (layout) — dados reais, sem exemplos. */
 export default async function AdminFeedbacksPage({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  await requireAdmin();
   const sp = await searchParams;
   const [todos, dispensas] = await Promise.all([listarFeedbacks(), contarDispensas()]);
   const nota = Number(one(sp.nota));

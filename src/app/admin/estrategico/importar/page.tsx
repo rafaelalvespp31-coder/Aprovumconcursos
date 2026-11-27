@@ -4,10 +4,12 @@ import { examRequestInfo, loadExam } from "@/server/services/strategic";
 import { CopyPromptButton } from "./copy-prompt";
 import { ImportForm } from "./import-form";
 
+import { requireAdmin } from "@/server/services/catalog";
 export const metadata = { title: "Importar análise estratégica" };
 export const dynamic = "force-dynamic";
 
 export default async function ImportarPage({ searchParams }: { searchParams: Promise<{ exam?: string }> }) {
+  await requireAdmin();
   const { exam: examId } = await searchParams;
   const exam = examId ? await loadExam(examId, { onlyPublished: false }) : null;
   const req = exam ? await examRequestInfo(exam.id) : null;

@@ -22,7 +22,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sessão expirada. Entre novamente." }, { status: 401 });
   const db = await createUserClient();
-  const { data: lesson } = await db.from("lessons").select("id, title, trail_id, catalog_topic_id, study_trails(discipline_mode, scope_summary)").eq("id", id).maybeSingle();
+  const { data: lesson } = await db.from("lessons").select("id, title, trail_id, catalog_topic_id, study_trails(discipline_mode, scope_summary)").eq("id", id).eq("user_id", user.id).maybeSingle();
   if (!lesson) return NextResponse.json({ error: "Aula não encontrada." }, { status: 404 });
 
   const plan = await getTrailPlan(lesson.trail_id as string);

@@ -2,6 +2,7 @@ import { adminStats, listCategories } from "@/server/services/redacao";
 import { RUBRICAS_PADRAO } from "@/domain/redacao/rubricas";
 import { AlternarCategoria, NovaCategoria, NovoTema } from "@/components/redacao/admin-forms";
 
+import { requireAdmin } from "@/server/services/catalog";
 export const metadata = { title: "Admin · Redação Elite" };
 export const dynamic = "force-dynamic";
 
@@ -9,6 +10,7 @@ const dt = (iso: string) => new Date(iso).toLocaleString("pt-BR", { timeZone: "A
 
 /** Painel da equipe: indicadores agregados, falhas, uso de IA, categorias e propostas. Não exibe o texto privado das redações. */
 export default async function AdminRedacaoPage() {
+  await requireAdmin();
   const [s, cats] = await Promise.all([adminStats(), listCategories()]);
   return (
     <div className="mx-auto flex max-w-5xl flex-col gap-6 px-5 py-6" data-testid="admin-redacao">

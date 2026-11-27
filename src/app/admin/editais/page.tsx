@@ -1,9 +1,11 @@
 import { listCatalogGaps } from "@/server/services/edital-view";
 
+import { requireAdmin } from "@/server/services/catalog";
 export const metadata = { title: "Editais · lacunas do catálogo" };
 export const dynamic = "force-dynamic";
 
 export default async function AdminEditais() {
+  await requireAdmin();
   const { gaps, preparations } = await listCatalogGaps(150).catch(() => ({ gaps: [], preparations: 0 }));
   return (
     <div>

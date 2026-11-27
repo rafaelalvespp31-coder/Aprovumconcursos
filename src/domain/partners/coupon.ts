@@ -26,20 +26,22 @@ export interface CouponRule {
   partnerActive: boolean;
 }
 
-export type CouponProblem = "inativo" | "ainda_nao_vale" | "expirado" | "esgotado" | "plano_nao_elegivel";
+export type CouponProblem = "inativo" | "ainda_nao_vale" | "expirado" | "esgotado" | "plano_nao_elegivel" | "ja_usado";
 export const COUPON_PROBLEM_TEXT: Record<CouponProblem, string> = {
   inativo: "Este cupom não está ativo.",
   ainda_nao_vale: "Este cupom ainda não começou a valer.",
   expirado: "Este cupom expirou.",
   esgotado: "Este cupom atingiu o limite de utilizações.",
   plano_nao_elegivel: "Este cupom não vale para o plano escolhido.",
+  ja_usado: "Você já usou este cupom.",
 };
 
-/** Confere o cupom para o plano escolhido. `usedApproved` = utilizações já aprovadas (conta no limite). */
-export function checkCoupon(c: CouponRule, offer: OfferKey, usedApproved: number, now: Date = new Date()): CouponProblem | null {
+/** Confere o cupom para o plano escolhido. `usedApproved` = utilizações aprovadas + em andamento (contam no limite); `alreadyUsedByUser` = este aluno já usou o cupom. */
+export function checkCoupon(c: CouponRule, offer: OfferKey, usedApproved: number, now: Date = new Date(), alreadyUsedByUser = false): CouponProblem | null {
   if (c.status !== "ativo" || !c.partnerActive) return "inativo";
   if (c.startsAt && Date.parse(c.startsAt) > now.getTime()) return "ainda_nao_vale";
   if (c.expiresAt && Date.parse(c.expiresAt) <= now.getTime()) return "expirado";
+  if (alreadyUsedByUser) return "ja_usado";
   if (c.maxUses !== null && usedApproved >= c.maxUses) return "esgotado";
   if (!c.eligibleOffers.includes(offer)) return "plano_nao_elegivel";
   return null;

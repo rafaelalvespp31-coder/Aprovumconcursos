@@ -14,7 +14,7 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ id: string
   const user = await getSessionUser();
   if (!user) return NextResponse.json({ error: "Sessão expirada. Entre novamente." }, { status: 401 });
   const db = await createUserClient();
-  const { data } = await db.from("study_pdfs").select("id, pdf_version, snapshot, content_hash").eq("id", id).maybeSingle();
+  const { data } = await db.from("study_pdfs").select("id, pdf_version, snapshot, content_hash").eq("id", id).eq("user_id", user.id).maybeSingle();
   if (!data) return NextResponse.json({ error: "PDF não encontrado." }, { status: 404 });
   try {
     const snapshot = data.snapshot as PdfSnapshot;

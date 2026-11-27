@@ -5,12 +5,14 @@ import { denominator } from "@/domain/strategic/analysis";
 import { deleteExamAction, setStatusAction } from "../actions";
 import { redirect } from "next/navigation";
 
+import { requireAdmin } from "@/server/services/catalog";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Concurso estratégico" };
 
 const KIND: Record<string, string> = { minima_aprovacao: "Nota mínima para aprovação", corte_primeira_fase: "Corte da 1ª fase", ultimo_classificado: "Último classificado", ultimo_convocado: "Último convocado", ultimo_dentro_vagas: "Último dentro das vagas" };
 
 export default async function ExamAdminPage({ params }: { params: Promise<{ id: string }> }) {
+  await requireAdmin();
   const { id } = await params;
   const exam = await loadExam(id, { onlyPublished: false });
   if (!exam) notFound();

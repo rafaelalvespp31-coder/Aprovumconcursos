@@ -30,6 +30,7 @@ describe("cupom", () => {
     expect(checkCoupon({ ...rule, expiresAt: "2026-11-01T00:00:00Z" }, "anual", 0, now)).toBe("expirado");
     expect(checkCoupon({ ...rule, startsAt: "2026-12-01T00:00:00Z" }, "anual", 0, now)).toBe("ainda_nao_vale");
     expect(checkCoupon({ ...rule, maxUses: 5 }, "anual", 5, now)).toBe("esgotado");
+    expect(checkCoupon(rule, "anual", 0, now, true)).toBe("ja_usado");
     expect(checkCoupon({ ...rule, eligibleOffers: ["anual"] }, "mensal", 0, now)).toBe("plano_nao_elegivel");
   });
   it("comissão 0% não gera valor", () => {
