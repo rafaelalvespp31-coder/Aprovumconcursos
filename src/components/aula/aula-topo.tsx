@@ -87,7 +87,7 @@ export const AulaFerramentas = forwardRef<HTMLDivElement, AulaFerramentasProps>(
           <feDisplacementMap ref={desloc} in="SourceGraphic" in2="n" scale="0" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </svg>
-      <div className="at-ferr-t"><Img n="chave" className="at-chave" /><h2>Ferramentas</h2></div>
+      <div className="at-ferr-t"><Img n="chave" className="at-chave" /><h2>Barra de ferramentas</h2></div>
       <div className="at-grade" role="toolbar" aria-label="Barra de ferramentas de estudo">
         <Cartao f={postit} i={0} radio={mentorAtivo} />
         <Cartao f={explicar} i={1} radio={mentorAtivo} />

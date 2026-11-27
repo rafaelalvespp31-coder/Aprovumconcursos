@@ -5471,3 +5471,4 @@ dialog[data-testid="feedback-aula"]::backdrop { background: rgb(10 10 10 / 0.5);
 .tr-it[data-peca="feito"] .tr-card::before { color: #4aa575; background: #e4f6ec; }
 .tr-it[data-peca="feito"] .tr-card::after { background: #a6dcbf; box-shadow: 0 0 0 3px #fff, 0 0 0 4px #e4f6ec; }
 
+
