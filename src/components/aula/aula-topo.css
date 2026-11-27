@@ -112,3 +112,34 @@
   .at-prof-c { display: inline; }
 }
 @media (prefers-reduced-motion: reduce) { .at-prof-b.is-sel { animation: none; } }
+
+/* Mais compactos: cartões das ferramentas e cartão do tempo de estudo */
+.at-ferr { padding: 6px 10px 20px 8px; margin: 4px auto 6px; gap: 10px; border-radius: 16px; }
+.at-chave { width: 30px; }
+.at-ferr-t h2 { font-size: 11.5px; }
+.at-grade { gap: 6px; }
+.at-cartao { height: 74px; padding: 0 3px 7px; border-radius: 12px; }
+.at-cartao-arte { width: 29px; top: 6px; }
+.at-cartao b { font-size: 11px; }
+.at-seta { width: 14px; height: 14px; }
+.at-mentor-orbe { width: 40px; height: 40px; }
+.at-esfera { width: 88px; height: 88px; margin-left: -44px; top: -7px; }
+.at-tempo { grid-template-columns: 68px minmax(0, 1fr); max-width: 340px; margin: 0 0 10px; padding: 3px 14px 3px 0; border-radius: 15px; }
+.at-ampulheta { width: 68px; margin: -3px 0; }
+.at-relogio { padding: 3px 0; }
+.at-rot { font-size: 9.5px; gap: 5px; }
+.at-rot svg { width: 12px; height: 12px; }
+.at-hora { font-size: 24px; margin: 1px 0 4px; }
+.at-barra { height: 3px; max-width: 170px; }
+.at-chip { margin: 4px 0 0; padding: 2px 9px 2px 7px; font-size: 10px; }
+@media (max-width: 640px) {
+  .at-ferr { margin: 3px 8px 5px; padding: 5px 5px 17px; }
+  .at-cartao { height: 58px; padding: 0 2px 5px; }
+  .at-cartao-arte { width: 22px; top: 4px; }
+  .at-cartao b { font-size: 8.5px; }
+  .at-mentor-orbe { width: 32px; height: 32px; }
+  .at-esfera { width: 58px; height: 58px; margin-left: -29px; top: -3px; }
+  .at-tempo { max-width: none; grid-template-columns: 58px minmax(0, 1fr); border-radius: 13px; }
+  .at-ampulheta { width: 58px; }
+  .at-hora { font-size: 21px; }
+}
