@@ -165,3 +165,25 @@
   .at-ferr { padding-bottom: 24px; }
   .at-prof { top: calc(100% + 5px); }
 }
+
+/* ===== Minimalista: barra de ferramentas da aula (celular e desktop) ===== */
+.at-ferr { background: #fff; border: 1px solid #ececef; box-shadow: none; }
+.at-ferr-t h2 { color: #6b6d76; font-weight: 700; letter-spacing: 0.12em; }
+.at-chave { opacity: 0.55; }
+.at-cartao { background: transparent; border: 0; box-shadow: none; border-radius: 12px; overflow: visible; }
+.at-cartao::after { left: 30%; right: 30%; height: 2px; box-shadow: none; opacity: 0.35; transition: opacity 0.2s, left 0.2s, right 0.2s; }
+.at-cartao:hover { transform: none; box-shadow: none; background: #f6f6f8; }
+.at-cartao:hover::after, .at-cartao.is-on::after { opacity: 1; left: 18%; right: 18%; }
+.at-cartao.is-on { box-shadow: none; background: #fdf1f0; }
+.at-cartao b { font-weight: 600; color: #2a2b31; }
+@media (max-width: 640px) {
+  .at-ferr { margin: 4px 8px 6px; padding: 4px 4px 18px; border-radius: 14px; }
+  .at-grade { gap: 2px; }
+  .at-cartao { height: 56px; padding: 0 1px 6px; }
+  .at-cartao-arte { width: 22px; top: 5px; }
+  .at-cartao b { font-size: 9.5px; letter-spacing: -0.02em; }
+  .at-mentor-col { height: 56px; }
+  .at-prof { left: auto; right: 0; width: max-content; max-width: 100%; }
+}
+.at-cartao.at-mentor, .at-cartao.at-mentor:hover { border: 1.5px solid #e10600; background: #0b0506; overflow: hidden; box-shadow: 0 0 0 1px #000, 0 0 10px rgb(225 6 0 / 0.4), inset 0 0 12px rgb(225 6 0 / 0.25); }
+.at-cartao.at-mentor b { color: #fff; }
