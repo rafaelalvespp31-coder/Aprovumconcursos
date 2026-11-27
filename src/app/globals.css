@@ -2587,7 +2587,7 @@ dialog[open][data-testid="level-up"] { animation: lvl-in-k 0.3s ease-out; }
 
 .ap-kicker { margin: 0; font-size: 10.5px; font-weight: 700; letter-spacing: .22em; text-transform: uppercase; color: var(--ap-red); }
 .ap-kicker-claro { color: #ff4d4d; }
-.ap-faixa { position: relative; display: flex; align-items: center; gap: 8px; margin: 28px 0 18px; padding: 13px 18px 13px 22px; background: var(--ap-ink); color: #fff; font-size: 15px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
+.ap-faixa { position: relative; display: flex; align-items: center; gap: 8px; margin: 22px 0 14px; padding: 9px 16px 9px 20px; background: var(--ap-ink); color: #fff; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; }
 .ap-faixa::before { content: ""; position: absolute; inset: 0 auto 0 0; width: 7px; background: var(--ap-red); }
 .ap-faixa-barras { color: var(--ap-red); font-style: italic; font-weight: 400; letter-spacing: 0; }
 .ap-folha > .ap-faixa:first-child { margin-top: 0; }

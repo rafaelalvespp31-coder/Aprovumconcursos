@@ -297,3 +297,15 @@ body:has(.st-bar) .mentor-flut { display: none !important; }
 .st-lousas .st-lousa-del:hover { border-color: #e50914; background: #fff5f5; color: #e50914; }
 .st-lousas .st-lousa-del.is-confirma { width: auto; min-width: 84px; border-color: #e50914; background: #e50914; color: #fff; font-size: .78rem; font-weight: 700; }
 .st-lousas .st-lousa-del:disabled { opacity: .5; }
+
+/* Barra do modo estudo mais compacta (desktop) */
+@media (min-width: 640px) {
+  .st-bar { min-height: 46px; padding: 4px 10px; gap: 10px; }
+  .st-bar-rotulo { padding: 5px 10px; font-size: 10.5px; }
+  .st-btn { height: 38px; padding: 0 11px; font-size: 12px; border-radius: 11px; }
+  .st-btn-txt b { font-size: 12px; }
+  .st-btn-txt small { font-size: 9.5px; }
+  .st-pilula { gap: 10px; }
+  .st-pilula .st-mentor-wrap { padding: 2px 12px 1px; }
+  .st-mentor { width: 44px; height: 44px; }
+}
