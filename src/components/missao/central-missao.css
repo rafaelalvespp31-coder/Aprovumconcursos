@@ -240,7 +240,6 @@
 
 /* Menu inferior do celular na home: fica por cima do rodapé; os cards ganham espaço para não ficarem escondidos. */
 .hm-menu { display: contents; }
-@media (min-width: 1024px) { .hm-menu { display: none; } }
 @media (max-width: 1023px) {
   .hm[data-menu="1"] { --hm-menu-h: 84px; }
   .hm[data-menu="1"] .hm-cards { padding-bottom: calc(var(--hm-menu-h) + 6px); }
@@ -248,3 +247,18 @@
   /* as folhas (lista de concursos e matérias) cobrem a tela toda, inclusive o menu */
   .hm-folha { z-index: 40; }
 }
+
+/* Computador: o menu inferior também aparece na central, centralizado, maior e sem tapar os cards */
+@media (min-width: 1024px) {
+  .hm[data-menu="1"] { --hm-menu-h: 108px; }
+  .hm[data-menu="1"] .hm-cards { padding-bottom: calc(var(--hm-menu-h) + 10px); }
+  .hm[data-menu="1"] .hm-abrindo { bottom: calc(var(--hm-menu-h) + 14px); }
+  .hm-folha { z-index: 40; }
+  .hm-menu .bn-wrap { position: fixed; inset: auto 0 0 0; padding: 0 clamp(24px, 4vw, 64px) 16px; }
+  .hm-menu .bn-moldura { max-width: min(920px, 92vw); }
+  .hm-menu .bn { --pad: 8px; border-radius: 30px; }
+  .hm-menu .bn-item { min-height: 70px; gap: 6px; }
+  .hm-menu .bn-ico { width: 27px; height: 27px; }
+  .hm-menu .bn-txt { font-size: 12px; letter-spacing: 0; }
+}
+@media (min-width: 1700px) { .hm-menu .bn-moldura { max-width: 1040px; } .hm-menu .bn-item { min-height: 76px; } .hm-menu .bn-txt { font-size: 13px; } }
