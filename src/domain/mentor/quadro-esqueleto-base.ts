@@ -359,10 +359,26 @@ function montarMmcMdc(tipo: "mmc" | "mdc", nums: number[], larg: number, med: Me
   const celulas = nums.length * d + (nums.length - 1) * 1.1 + 1.2 + 2.6;
   const ultima = linhas.length - 1;
   const r = tipo === "mmc" ? mmcDe(nums) : mdcDe(nums);
-  const nMult = Math.max(0, primos.length - 1); // multiplicações pedidas no fim (uma por passo)
-  const size = tamanhoPara(med, larg, alt, Math.max(celulas, 10), 1.3 + (ultima + 1.6 + nMult + 0.4) * 1.55, 1.15, 44);
+  // multiplicações dos primos: cada uma é uma conta armada (como na multiplicação), que só aparece no passo dela
+  const mults: { a: number; f: number; res: number }[] = [];
+  { let acc = primos[0] ?? 1; for (let j = 1; j < primos.length; j++) { mults.push({ a: acc, f: primos[j]!, res: acc * primos[j]! }); acc *= primos[j]!; } }
+  const nMult = mults.length;
+  const larguraBloco = (m: { res: number }) => digitos(m.res) + 1; // coluna do × + algarismos
+  /** Encaixa as contas armadas lado a lado, quebrando linha quando não cabem. */
+  const empacotar = (cwx: number) => {
+    const disp = Math.floor((larg - 28) / cwx), pos: { col: number; lin: number }[] = [];
+    let col = 0, lin = 0;
+    for (const m of mults) { const w = larguraBloco(m); if (col > 0 && col + w > disp) { col = 0; lin++; } pos.push({ col, lin }); col += w + 1.4; }
+    return { pos, linhas: nMult ? lin + 1 : 0 };
+  };
+  let size = Math.min(44, Math.floor((larg - 40) / (Math.max(celulas, 10) * med("0").w * 1.15)));
+  for (; size > 18; size--) {
+    const cwx = med("0").w * size * 1.15, lhx = size * 1.55;
+    if (size * 1.3 + (ultima + 1.25) * lhx + empacotar(cwx).linhas * 2.7 * lhx + 1.3 * lhx <= alt - 12) break;
+  }
+  size = Math.max(18, size);
   const b = new Montador(med, size, med("0").w * size * 1.15);
-  const { cw } = b, ox = Math.max(16, (larg - celulas * cw) / 2), top = size * 1.3, lh = size * 1.55;
+  const { cw } = b, ox = Math.max(16, (larg - celulas * cw) / 2), ox0 = 16, top = size * 1.3, lh = size * 1.55;
   let x = ox;
   const xs: number[] = [];
   nums.forEach((n, k) => {
@@ -387,22 +403,23 @@ function montarMmcMdc(tipo: "mmc" | "mdc", nums: number[], larg: number, med: Me
     });
   }
   const rot = tipo === "mmc" ? "MMC =" : "MDC =";
-  // a multiplicação só aparece quando o cálculo pede: um passo por multiplicação, com o espaço em branco para fazer
-  let acc = primos[0] ?? 1;
+  // cada multiplicação: conta armada com espaço em branco, só no passo dela
   const yCad = top + (ultima + 1.25) * lh;
-  for (let j = 1; j < primos.length; j++) {
-    const f = primos[j]!, res = acc * f, base = yCad + (j - 1) * lh;
-    const p = b.passo(`Multiplicar ${j === 1 ? "os primos" : "o próximo primo"}`,
-      j === 1 ? `Hora de multiplicar os primos da coluna da direita (${primos.join(", ")}). Comece pelos dois primeiros: ${acc} × ${f}.` : `Continue: multiplique o resultado anterior (${acc}) pelo próximo primo (${f}).`,
-      `${acc} × ${f} = ${res}.`, `Calcule ${acc} × ${f}.`);
+  const emp = empacotar(cw);
+  mults.forEach((m, j) => {
+    const w = larguraBloco(m), bx = ox0 + emp.pos[j]!.col * cw, by = yCad + emp.pos[j]!.lin * 2.7 * lh;
+    const p = b.passo(`Multiplicar ${j === 0 ? "os primos" : "pelo próximo primo"}`,
+      j === 0 ? `Hora de multiplicar os primos da coluna da direita (${primos.join(", ")}). Na conta armada, multiplique ${m.a} por ${m.f}.` : `Continue: multiplique o resultado anterior (${m.a}) pelo próximo primo (${m.f}) na conta armada.`,
+      `${m.a} × ${m.f} = ${m.res}.`, `Use a tabuada do ${m.f}: multiplique da direita para a esquerda, lembrando do vai-um.`);
     b.grupo = p;
-    const txt = `${acc} × ${f} =`;
-    b.txt(txt, ox, base);
+    b.txt(String(m.a), bx + (w - digitos(m.a)) * cw, by);
+    b.txt("×", bx, by + lh);
+    b.txt(String(m.f), bx + (w - digitos(m.f)) * cw, by + lh);
+    b.linha(bx - 4, by + lh + 12, bx + w * cw + 4, by + lh + 12, 2 + j);
     b.grupo = null;
-    b.casa(p, ox + (txt.length + 0.6) * cw, base, digitos(res) + 1, String(res), "esq");
-    acc = res;
-  }
-  const yRes = yCad + Math.max(0, nMult) * lh + (nMult ? 0.2 * lh : 0);
+    b.casa(p, bx + cw, by + 2.05 * lh, w - 1, String(m.res), "dir");
+  });
+  const yRes = yCad + emp.linhas * 2.7 * lh + (nMult ? 0.1 * lh : 0);
   b.txt(rot, ox, yRes);
   const p = b.passo("Resultado", tipo === "mmc" ? (nMult ? "Escreva o resultado da última multiplicação: é o MMC." : "Escreva o primo da coluna da direita: é o MMC.") : primos.length ? (nMult ? "Escreva o resultado da última multiplicação: é o MDC." : "Escreva o primo usado: é o MDC.") : "Nenhum primo divide todos os números, então o MDC é 1.",
     primos.length ? `${primos.join(" × ")} = ${r}.` : "Não há primo comum: MDC = 1.", "Use o resultado da última multiplicação.");

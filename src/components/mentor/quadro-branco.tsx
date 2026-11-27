@@ -83,6 +83,7 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
   const [passoUi, setPassoUi] = useState(0);
   const passo = useRef(0);
   const esqRef = useRef<Esqueleto | null>(null);
+  const alturaMontada = useRef(0);
   const cur = useRef<{ g: number | null; x: number; base: number }>({ g: null, x: 24, base: 90 });
   const conf = useRef<(boolean | null)[] | null>(null);
   const cfg = useRef({ caneta, ferramenta, auto, perfil, digitar });
@@ -315,6 +316,12 @@ export function QuadroBranco({ aula, onClose, onExplicacoes }: Props) {
       dpr.current = Math.min(3, window.devicePixelRatio || 1);
       cv.width = Math.round(r.width * dpr.current); cv.height = Math.round(r.height * dpr.current);
       cv.style.width = `${r.width}px`; cv.style.height = `${r.height}px`;
+      const e0 = esqRef.current; // a lousa mudou de tamanho (ex.: o teclado abriu) e a conta ainda não foi mexida: remonta para caber
+      if (e0 && passo.current === 0 && itens.current.length === 0 && Math.abs(r.height - (alturaMontada.current || r.height)) > 8) {
+        const e1 = montarEsqueleto(e0.tipo, { nums: e0.nums, entrada: e0.entrada }, r.width, medidor, r.height);
+        esqRef.current = e1; refTam.current = e1.size; setEsq(e1); cur.current = { ...cur.current, g: e1.passos[0]?.casas[0] ?? null };
+      }
+      alturaMontada.current = r.height;
       desenhar();
     };
     try {
