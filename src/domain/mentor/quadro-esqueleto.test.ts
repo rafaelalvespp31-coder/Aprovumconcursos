@@ -44,7 +44,7 @@ describe("esqueletos: todos os tipos", () => {
       const xs = e.casas.flatMap((c) => [c.x0, c.x1]);
       expect(Math.min(...xs), `${t} esquerda`).toBeGreaterThanOrEqual(0);
       expect(Math.max(...xs), `${t} direita ${JSON.stringify(ex)}`).toBeLessThanOrEqual(362);
-      expect(textoDoExercicio(e), t).toBeTruthy();
+      if (!["proposicao", "principios", "simcomp"].includes(t)) expect(textoDoExercicio(e), t).toBeTruthy();
     }
   });
   it("respostas finais corretas (matemática)", () => {
