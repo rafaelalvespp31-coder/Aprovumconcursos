@@ -39,6 +39,8 @@ export const AnaliseSchema = z.object({
     observacao: txt(500),
   }),
   nota_zero: z.object({ aplica: z.boolean(), motivo: opt(400) }),
+  /** Identificação automática do gênero (a modalidade informada pelo aluno é conferida contra o texto). */
+  genero: z.object({ detectado: txt(80), compativelComModalidade: z.boolean(), observacao: opt(400) }).nullish(),
 });
 export type Analise = z.infer<typeof AnaliseSchema>;
 
@@ -57,6 +59,10 @@ export const ApontamentosSchema = z.object({
         explicacao: txt(700),
         regra: opt(400),
         sugestao: opt(500),
+        /** Versão corrigida do trecho (somente o trecho, nunca o texto todo). */
+        corrigido: opt(500),
+        /** Como evitar o mesmo erro em outra redação. */
+        comoEvitar: opt(500),
         exemplo: opt(400),
       }),
     )
@@ -69,6 +75,13 @@ export const PontuacaoSchema = z.object({
   criterios: z.array(z.object({ key: txt(60), pontuacao: z.number().min(0), justificativa: txt(900) })).min(1).max(12),
 });
 export type Pontuacao = z.infer<typeof PontuacaoSchema>;
+
+/** Auditoria (3º processo): decide só os critérios em que os dois avaliadores divergiram de forma relevante. */
+export const AuditoriaSchema = z.object({
+  criterios: z.array(z.object({ key: txt(60), pontuacao: z.number().min(0), motivo: txt(700), descontoSemEvidencia: z.boolean(), penalidadeDuplicada: z.boolean() })).max(12),
+  erroDeInterpretacao: opt(600),
+});
+export type Auditoria = z.infer<typeof AuditoriaSchema>;
 
 /** Extração dos critérios do edital/espelho informados pelo aluno. */
 export const CriteriosEditalSchema = z.object({

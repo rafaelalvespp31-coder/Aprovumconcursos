@@ -145,11 +145,11 @@ export async function getSubmission(userId: string, id: string): Promise<Submiss
   return r.data ? subView(r.data) : null;
 }
 
-export interface ErroView { id: string; category: string; kind: string; severity: string; start: number; end: number; paragraph: number | null; excerpt: string; issue: string; explanation: string; rule: string | null; suggestion: string | null; example: string | null }
+export interface ErroView { id: string; category: string; kind: string; severity: string; start: number; end: number; paragraph: number | null; excerpt: string; issue: string; explanation: string; rule: string | null; suggestion: string | null; corrected: string | null; avoidTip: string | null; example: string | null }
 export interface CompetenciaView { key: string; label: string; score: number; max: number; level: number | null; justification: string }
 export interface EvaluationView {
   id: string; status: string; stage: string | null; error: string | null; rubricKey: string; rubricVersion: number; modality: string; estimated: boolean; model: string | null;
-  score: number | null; max: number | null; zeroReason: string | null; classification: string | null; analysis: unknown; diagnostic: unknown; notes: string[]; createdAt: string; finishedAt: string | null;
+  score: number | null; max: number | null; zeroReason: string | null; classification: string | null; analysis: unknown; diagnostic: unknown; notes: string[]; humanReview: boolean; audit: unknown; createdAt: string; finishedAt: string | null;
   competencies: CompetenciaView[]; errors: ErroView[];
 }
 
@@ -169,16 +169,16 @@ export async function getEvaluation(userId: string, submissionId: string): Promi
   const [c, x] = r.status === "concluida"
     ? await Promise.all([
         admin.from("writing_competencies").select("key, label, score, max_score, level, justification").eq("evaluation_id", r.id as string).eq("user_id", userId).order("position"),
-        admin.from("writing_errors").select("id, category, kind, severity, start_offset, end_offset, paragraph, excerpt, issue, explanation, rule, suggestion, example").eq("evaluation_id", r.id as string).eq("user_id", userId).order("start_offset"),
+        admin.from("writing_errors").select("id, category, kind, severity, start_offset, end_offset, paragraph, excerpt, issue, explanation, rule, suggestion, corrected, avoid_tip, example").eq("evaluation_id", r.id as string).eq("user_id", userId).order("start_offset"),
       ])
     : [null, null];
   const score = r.score === null ? null : Number(r.score);
   const max = r.max_score === null ? null : Number(r.max_score);
   return {
     id: r.id as string, status: r.status as string, stage: (r.stage as string | null) ?? null, error: (r.error as string | null) ?? null, rubricKey: r.rubric_key as string, rubricVersion: r.rubric_version as number, modality: r.modality as string, estimated: r.estimated as boolean, model: (r.model as string | null) ?? null,
-    score, max, zeroReason: (r.zero_reason as string | null) ?? null, classification: score !== null && max ? classificar(score, max) : null, analysis: r.analysis ?? null, diagnostic: r.diagnostic ?? null, notes: ((r.consistency_notes as string[] | null) ?? []).filter((n) => !n.startsWith("técnico:")), createdAt: r.created_at as string, finishedAt: (r.finished_at as string | null) ?? null,
+    score, max, zeroReason: (r.zero_reason as string | null) ?? null, classification: score !== null && max ? classificar(score, max) : null, analysis: r.analysis ?? null, diagnostic: r.diagnostic ?? null, notes: ((r.consistency_notes as string[] | null) ?? []).filter((n) => !n.startsWith("técnico:")), humanReview: r.human_review === true, audit: r.audit ?? null, createdAt: r.created_at as string, finishedAt: (r.finished_at as string | null) ?? null,
     competencies: ((c?.data ?? []) as Record<string, unknown>[]).map((k) => ({ key: k.key as string, label: k.label as string, score: Number(k.score), max: Number(k.max_score), level: (k.level as number | null) ?? null, justification: k.justification as string })),
-    errors: ((x?.data ?? []) as Record<string, unknown>[]).map((k) => ({ id: k.id as string, category: k.category as string, kind: k.kind as string, severity: k.severity as string, start: k.start_offset as number, end: k.end_offset as number, paragraph: (k.paragraph as number | null) ?? null, excerpt: k.excerpt as string, issue: k.issue as string, explanation: k.explanation as string, rule: (k.rule as string | null) ?? null, suggestion: (k.suggestion as string | null) ?? null, example: (k.example as string | null) ?? null })),
+    errors: ((x?.data ?? []) as Record<string, unknown>[]).map((k) => ({ id: k.id as string, category: k.category as string, kind: k.kind as string, severity: k.severity as string, start: k.start_offset as number, end: k.end_offset as number, paragraph: (k.paragraph as number | null) ?? null, excerpt: k.excerpt as string, issue: k.issue as string, explanation: k.explanation as string, rule: (k.rule as string | null) ?? null, suggestion: (k.suggestion as string | null) ?? null, corrected: (k.corrected as string | null) ?? null, avoidTip: (k.avoid_tip as string | null) ?? null, example: (k.example as string | null) ?? null })),
   };
 }
 

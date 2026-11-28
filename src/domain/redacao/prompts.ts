@@ -15,6 +15,18 @@ PRINCÍPIOS:
 - Português do Brasil, linguagem clara e respeitosa.
 ${UNTRUSTED_RULES}`;
 
+/** Avaliador 1: especialista em língua portuguesa e estrutura textual. Pontua SEM ver a nota do outro avaliador. */
+export const AVALIADOR_LINGUA = `${PROFESSOR}
+PAPEL NESTA TAREFA — AVALIADOR 1 (independente): especialista em língua portuguesa, gramática, sintaxe, ortografia, acentuação, pontuação e estrutura textual. Atribua as pontuações com foco no domínio da norma culta e na articulação textual, ancorado nos apontamentos localizados. Você NÃO conhece a nota do outro avaliador; pontue de forma independente.`;
+
+/** Avaliador 2: especialista em critérios de banca, argumentação, conteúdo e gênero. */
+export const AVALIADOR_BANCA = `${PROFESSOR}
+PAPEL NESTA TAREFA — AVALIADOR 2 (independente): especialista em critérios de banca examinadora, argumentação, conteúdo, adequação ao tema e ao gênero textual, e atendimento à proposta. Atribua as pontuações com foco nesses aspectos. Você NÃO conhece a nota do outro avaliador; pontue de forma independente.`;
+
+/** Auditor: compara os dois avaliadores e investiga as divergências; nunca faz média automática. */
+export const AUDITOR = `${PROFESSOR}
+PAPEL NESTA TAREFA — AUDITOR: você recebe as pontuações de dois avaliadores independentes e investiga APENAS as divergências relevantes. Procure: descontos sem evidência no texto, erros de interpretação da proposta ou da rubrica, penalidades duplicadas pelo mesmo problema. NUNCA faça média das notas: decida cada critério com base em evidência do texto e da rubrica, e a nota decidida deve estar entre as duas notas dos avaliadores.`;
+
 const modLabel = (m: string) => MODALIDADES.find((x) => x.id === m)?.label ?? m;
 
 export interface Contexto {
@@ -41,6 +53,7 @@ export function promptAnalise(c: Contexto, rubrica: Rubrica): string {
   return `ETAPAS 1, 2, 3, 5 e 6 — Identifique a modalidade, interprete o tema, analise estrutura, coesão/coerência e argumentação.
 Critérios que serão usados na nota: ${rubrica.criteria.map((x) => x.label).join("; ")}.
 ${rubrica.key === "enem" ? "Avalie também a proposta de intervenção (agente, ação, meio/modo, finalidade, detalhamento) e se respeita os direitos humanos. Marque nota_zero.aplica=true SOMENTE em situações oficiais de nota zero (fuga total ao tema, não atendimento ao tipo dissertativo-argumentativo, texto com até 7 linhas, cópia dos textos motivadores, impropérios, parte deliberadamente desconectada)." : "Se o gênero não exige proposta de intervenção, marque exigida=false. Marque nota_zero.aplica=true somente em fuga total ao tema, texto insuficiente ou desrespeito evidente às regras da prova."}
+Identifique também o gênero textual produzido (campo "genero.detectado") e se ele é compatível com a modalidade informada (campo "genero.compativelComModalidade"); se não for, explique em "genero.observacao". Não cobre estrutura dissertativa (introdução, desenvolvimento, conclusão) de um gênero que não a exige.
 Não use médias: apenas descreva e classifique cada aspecto.
 
 ${contextoTexto(c)}`;
@@ -50,7 +63,9 @@ export function promptApontamentos(c: Contexto, analise: Analise): string {
   return `ETAPA 4 (e marcações das etapas 3, 5 e 6) — Liste os apontamentos do texto, do mais importante ao menos importante (máximo 40).
 Categorias permitidas: ${CATEGORIAS_ERRO.map((x) => `${x.id} (${x.label})`).join(", ")}.
 Verifique individualmente: ortografia, acentuação, pontuação, concordância verbal e nominal, regência verbal e nominal, crase, colocação pronominal, tempos e modos verbais, estrutura sintática, pronomes, conjunções, preposições, ambiguidade, pleonasmos, redundâncias, vícios de linguagem, inadequação vocabular, paralelismo, propriedade vocabular — e também problemas de coesão, coerência, estrutura e argumentação.
-Para cada apontamento: trecho (EXATO e curto), categoria, tipo, gravidade, problema (frase curta), explicacao (gramatical/pedagógica), regra aplicável, sugestao (forma corrigida ou caminho de melhoria, sem reescrever o texto todo) e exemplo (outra frase mostrando o uso correto).
+Revise o texto INTEIRO, parágrafo por parágrafo e período por período, sem pular trechos.
+Para cada apontamento: trecho (EXATO e curto), categoria, tipo, gravidade, problema (frase curta), explicacao (o que está errado e POR QUÊ, técnica e didática), regra aplicável (nome da regra gramatical/textual), corrigido (a versão corrigida DO TRECHO, não do texto todo), sugestao (orientação pedagógica de melhoria), comoEvitar (como não repetir o erro em outra redação) e exemplo (outra frase mostrando o uso correto).
+Se o trecho estiver correto, NÃO aponte. Use "sintaxe" para problemas sintáticos (ambiguidade, construção truncada, paralelismo, fragmentação de período) e "genero" para inadequação ao gênero textual.
 Não aponte o mesmo trecho duas vezes pelo mesmo motivo. Não invente erro. Se não houver problemas relevantes, devolva lista vazia ou curta.
 
 Resumo da análise já feita (para consistência): aderência ao tema = ${analise.tema.aderencia}; tese presente = ${analise.estrutura.tese.presente}; coesão/coerência = ${analise.coesaoCoerencia.nivel}; argumentação = ${analise.argumentacao.nivel}.
@@ -130,3 +145,14 @@ ${wrapUntrusted(args.depois, "dados_aluno").text}`;
 
 export const PROFESSOR_CHAT = `${PROFESSOR}
 Você agora conversa com o aluno. Responda em texto corrido (sem JSON), em até 6 parágrafos curtos, usando SEMPRE o contexto da redação corrigida e do diagnóstico abaixo; cite trechos e notas reais. Se a pergunta for sobre Língua Portuguesa em geral, responda tecnicamente e conecte ao caso do aluno. Se faltar contexto, diga o que falta. Não entregue redação pronta.`;
+
+export function promptAuditoria(c: Contexto, rubrica: Rubrica, a1: { key: string; pontuacao: number; justificativa: string }[], a2: { key: string; pontuacao: number; justificativa: string }[], keys: string[], resumoErros: string): string {
+  const alvo = rubrica.criteria.filter((x) => keys.includes(x.key));
+  const linha = (p: { key: string; pontuacao: number; justificativa: string } | undefined) => (p ? `${p.pontuacao} — ${p.justificativa}` : "sem nota");
+  return `AUDITORIA — investigue SOMENTE os critérios abaixo, em que os avaliadores divergiram de forma relevante. Decida a pontuação de cada um com base em evidência do texto e da rubrica. A nota decidida deve ficar ENTRE as duas notas (inclusive). Não faça média.
+${alvo.map((x) => `- key="${x.key}" · ${x.label} (0 a ${x.max}${x.steps ? `; valores permitidos: ${x.steps.join(", ")}` : ""}): ${x.description}\n  Avaliador 1 (língua portuguesa): ${linha(a1.find((p) => p.key === x.key))}\n  Avaliador 2 (banca/argumentação): ${linha(a2.find((p) => p.key === x.key))}`).join("\n")}
+Para cada critério informe também: descontoSemEvidencia (true se algum desconto não tem base no texto), penalidadeDuplicada (true se o mesmo problema foi penalizado duas vezes) e, em erroDeInterpretacao, qualquer erro de leitura da proposta ou da rubrica que você tenha detectado.
+APONTAMENTOS LOCALIZADOS NO TEXTO: ${resumoErros}
+
+${contextoTexto(c)}`;
+}

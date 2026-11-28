@@ -6,7 +6,8 @@ import { useRouter } from "next/navigation";
 import { PenLine, MessageCircle, Dumbbell, RotateCcw } from "lucide-react";
 import type { ComparisonView, EvaluationView, ErroView, SubmissionView } from "@/server/services/redacao";
 import type { Analise, Diagnostico } from "@/domain/redacao/schemas";
-import { categoriaLabel, tipoLabel } from "@/domain/redacao/rubricas";
+import { categoriaLabel, classeDoProblema, CLASSES_PROBLEMA, tipoLabel } from "@/domain/redacao/rubricas";
+import { linhaDe } from "@/domain/redacao/texto";
 import { compararAction, reescreverAction } from "@/app/(app)/redacao/actions";
 import { Aviso, Lista, MODALIDADE_LABEL, Secao, dataBR } from "./ui";
 
@@ -60,6 +61,7 @@ export function Relatorio({ sub, ev, cmp }: { sub: SubmissionView; ev: Evaluatio
   const painelRef = useRef<HTMLDivElement>(null);
   const analise = ev.analysis as Analise | null;
   const diag = ev.diagnostic as Diagnostico | null;
+  const auditoria = ev.audit as { divergencias: { key: string; label: string; avaliador1: number | null; avaliador2: number | null; gravidade: string; final: number; motivo: string }[] } | null;
   const erroSel = ev.errors.find((e) => e.id === sel) ?? null;
   const pct = ev.score !== null && ev.max ? Math.round((ev.score / ev.max) * 100) : 0;
   const porCat = useMemo(() => {
@@ -110,6 +112,7 @@ export function Relatorio({ sub, ev, cmp }: { sub: SubmissionView; ev: Evaluatio
           </p>
           {ev.estimated && <Aviso tom="alerta">Avaliação pedagógica <b>estimada</b>: esta metodologia pode não reproduzir a correção oficial da banca. Para uma correção alinhada ao edital, cole os critérios oficiais ao escrever.</Aviso>}
           {ev.rubricKey === "enem" && <Aviso>Nota pedagógica automatizada pelas 5 competências do ENEM. Não é a nota oficial do INEP e não tem precisão de 100%: use como guia de estudo.</Aviso>}
+          {ev.humanReview && <Aviso tom="alerta">Os dois avaliadores automáticos <b>divergiram de forma relevante</b> em algum critério. A nota acima passou por auditoria, mas recomendamos revisão humana (por exemplo, com seu professor) antes de confiar nela.</Aviso>}
           {ev.zeroReason && <Aviso tom="erro">Situação de nota zero: {ev.zeroReason}</Aviso>}
           <div className="flex flex-wrap gap-2 pt-1">
             <button type="button" onClick={reescrever} disabled={pend} className="pc-botao" data-testid="redacao-reescrever"><RotateCcw className="h-4 w-4" aria-hidden /> Reescrever redação</button>
@@ -173,6 +176,20 @@ export function Relatorio({ sub, ev, cmp }: { sub: SubmissionView; ev: Evaluatio
             <div className="mt-2"><Lista itens={ev.notes} /></div>
           </details>
         )}
+        {auditoria && auditoria.divergencias.length > 0 && (
+          <details className="mt-3 rounded-[10px] border border-[#E6E7EB] p-2.5" data-testid="redacao-dupla-avaliacao">
+            <summary className="cursor-pointer text-[12.5px] font-semibold text-[#3A3C42]">Dupla avaliação e auditoria</summary>
+            <p className="mt-2 text-[12px] text-[#64666D]">Dois avaliadores automáticos pontuam de forma independente (língua portuguesa × banca/argumentação). Só as divergências relevantes passam por auditoria; nunca se faz média cega.</p>
+            <ul className="mt-2 flex flex-col gap-1.5 text-[12.5px]">
+              {auditoria.divergencias.map((d) => (
+                <li key={d.key} className="rounded-[8px] bg-[#FAFAFB] px-2.5 py-1.5">
+                  <b>{d.label}</b>: avaliador 1 = {d.avaliador1 ?? "—"} · avaliador 2 = {d.avaliador2 ?? "—"} · final = {d.final}
+                  {d.gravidade !== "nenhuma" && <span className="text-[#64666D]"> — {d.motivo}</span>}
+                </li>
+              ))}
+            </ul>
+          </details>
+        )}
       </Secao>
 
       {/* Correção linha por linha */}
@@ -190,15 +207,17 @@ export function Relatorio({ sub, ev, cmp }: { sub: SubmissionView; ev: Evaluatio
           <div ref={painelRef} className="min-w-0 self-start rounded-[12px] border border-[#E6E7EB] bg-[#FAFAFB] p-4 lg:sticky lg:top-4" data-testid="redacao-painel-erro">
             {erroSel ? (
               <div className="flex flex-col gap-2 text-[13.5px]">
-                <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#E50914]">{tipoLabel(erroSel.kind)} · {categoriaLabel(erroSel.category)} · {GRAVIDADE[erroSel.severity]}</p>
+                <p className="text-[11px] font-bold uppercase tracking-[0.06em] text-[#E50914]">{CLASSES_PROBLEMA[classeDoProblema(erroSel.category, erroSel.kind)]} · {tipoLabel(erroSel.kind)} · {categoriaLabel(erroSel.category)} · {GRAVIDADE[erroSel.severity]}</p>
+                <p className="text-[11.5px] text-[#64666D]">Linha ~{linhaDe(sub.body, erroSel.start)} (estimada){erroSel.paragraph ? ` · parágrafo ${erroSel.paragraph}` : ""}</p>
                 <p className="rounded-[8px] bg-white px-2.5 py-1.5 font-semibold [overflow-wrap:anywhere]">“{erroSel.excerpt}”</p>
                 <p className="font-bold text-[#08090B]">{erroSel.issue}</p>
                 <p className="leading-snug text-[#2B2D33]">{erroSel.explanation}</p>
                 {erroSel.rule && <p><b>Regra:</b> {erroSel.rule}</p>}
-                {erroSel.suggestion && <p><b>Sugestão:</b> {erroSel.suggestion}</p>}
+                {erroSel.corrected && <p className="rounded-[8px] bg-[#E8F7EE] px-2.5 py-1.5 [overflow-wrap:anywhere]"><b>Versão corrigida:</b> “{erroSel.corrected}”</p>}
+                {erroSel.suggestion && <p><b>Orientação:</b> {erroSel.suggestion}</p>}
+                {erroSel.avoidTip && <p><b>Como evitar:</b> {erroSel.avoidTip}</p>}
                 {erroSel.example && <p className="text-[#3A3C42]"><b>Outro exemplo:</b> {erroSel.example}</p>}
-                {erroSel.paragraph && <p className="text-[12px] text-[#64666D]">Parágrafo {erroSel.paragraph}</p>}
-              </div>
+                              </div>
             ) : (
               <p className="text-[13px] text-[#64666D]">{ev.errors.length ? "Selecione um trecho marcado no texto para ler a explicação, a regra e a sugestão de correção." : "Nenhuma marcação relevante neste texto."}</p>
             )}

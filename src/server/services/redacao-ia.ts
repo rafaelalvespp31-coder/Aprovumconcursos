@@ -5,10 +5,11 @@ import { createAdminClient } from "../supabase";
 import { logEvent } from "../observability";
 import { brDay } from "@/domain/plans/limits";
 import { RUBRICAS_PADRAO, rubricaDaModalidade, rubricaPersonalizada, type Criterio, type Rubrica } from "@/domain/redacao/rubricas";
-import { AnaliseSchema, ApontamentosSchema, CriteriosEditalSchema, DiagnosticoSchema, PontuacaoSchema } from "@/domain/redacao/schemas";
+import { AnaliseSchema, ApontamentosSchema, AuditoriaSchema, CriteriosEditalSchema, DiagnosticoSchema, PontuacaoSchema } from "@/domain/redacao/schemas";
 import { contaDesviosObjetivos, revisarPontuacao } from "@/domain/redacao/consistencia";
+import { criteriosParaAuditar, descontosSemJustificativa, reconciliar } from "@/domain/redacao/auditoria";
 import { localizar, paragrafoDe, type Trecho } from "@/domain/redacao/texto";
-import { PROFESSOR, promptAnalise, promptApontamentos, promptCriteriosEdital, promptDiagnostico, promptPontuacao, type Contexto } from "@/domain/redacao/prompts";
+import { AUDITOR, AVALIADOR_BANCA, AVALIADOR_LINGUA, promptAnalise, promptApontamentos, promptAuditoria, promptCriteriosEdital, promptDiagnostico, promptPontuacao, PROFESSOR, type Contexto } from "@/domain/redacao/prompts";
 import type { AITask, StructuredResult } from "@/ai/provider";
 
 /** Motor de correção em etapas independentes (cada uma com saída estruturada validada) + revisão de consistência em código. */
@@ -168,14 +169,43 @@ export async function executarCorrecao(evalId: string): Promise<void> {
     const desvios = contaDesviosObjetivos(localizados.map((l) => ({ tipo: l.a.tipo, categoria: l.a.categoria })));
     const resumoErros = localizados.length ? localizados.slice(0, 30).map((l) => `[${l.a.tipo}/${l.a.categoria}] "${l.excerpt.slice(0, 80)}" — ${l.a.problema}`).join("; ") : "nenhum apontamento relevante";
 
-    await etapa(evalId, "Aplicando a rubrica de avaliação");
-    const pontR = await chamarIA(sub.user_id, "redacao.pontuacao", { task: "writing_correction", schema: PontuacaoSchema, schemaName: "pontuacao", prompt: promptPontuacao(ctx, rubrica, analise, resumoErros, esc.criteriosTexto), maxOutputTokens: 4000 });
-    soma(pontR);
+    await etapa(evalId, "Dupla avaliação independente (língua portuguesa e banca/argumentação)");
+    const promptNota = promptPontuacao(ctx, rubrica, analise, resumoErros, esc.criteriosTexto);
+    const [p1, p2] = await Promise.all([
+      chamarIA(sub.user_id, "redacao.avaliador1", { task: "writing_correction", system: AVALIADOR_LINGUA, schema: PontuacaoSchema, schemaName: "pontuacao_avaliador1", prompt: promptNota, maxOutputTokens: 4000 }),
+      chamarIA(sub.user_id, "redacao.avaliador2", { task: "writing_correction", system: AVALIADOR_BANCA, schema: PontuacaoSchema, schemaName: "pontuacao_avaliador2", prompt: promptNota, maxOutputTokens: 4000 }),
+    ]);
+    soma(p1);
+    soma(p2);
+    const a1 = p1.data.criterios.map((c) => ({ key: c.key, pontuacao: c.pontuacao, justificativa: c.justificativa }));
+    const a2 = p2.data.criterios.map((c) => ({ key: c.key, pontuacao: c.pontuacao, justificativa: c.justificativa }));
+
+    await etapa(evalId, "Auditando as divergências entre os avaliadores");
+    const divergentes = criteriosParaAuditar(rubrica, a1, a2);
+    let vereditos: { key: string; pontuacao: number; motivo: string; descontoSemEvidencia: boolean; penalidadeDuplicada: boolean }[] = [];
+    let erroInterpretacao: string | null = null;
+    let auditoriaFalhou = false;
+    if (divergentes.length) {
+      try {
+        const audR = await chamarIA(sub.user_id, "redacao.auditoria", { task: "writing_correction", system: AUDITOR, schema: AuditoriaSchema, schemaName: "auditoria", prompt: promptAuditoria(ctx, rubrica, a1, a2, divergentes, resumoErros), maxOutputTokens: 3000 });
+        soma(audR);
+        vereditos = audR.data.criterios.filter((v) => divergentes.includes(v.key));
+        erroInterpretacao = audR.data.erroDeInterpretacao ?? null;
+      } catch (e) {
+        if (e instanceof AIError && e.kind === "budget_exceeded") throw e;
+        auditoriaFalhou = true; // sem veredito: reconciliar() adota a menor nota e pede revisão humana
+      }
+    }
+    const rec = reconciliar(rubrica, a1, a2, vereditos);
 
     await etapa(evalId, "Revisando a consistência da pontuação");
-    const nota = revisarPontuacao({ rubrica, pontuacoes: pontR.data.criterios.map((c) => ({ key: c.key, pontuacao: c.pontuacao, justificativa: c.justificativa })), analise, desviosObjetivos: desvios });
-    const notas = [...esc.avisos, ...nota.notes];
+    const nota = revisarPontuacao({ rubrica, pontuacoes: rec.pontuacoes, analise, desviosObjetivos: desvios });
+    const notas = [...esc.avisos, ...rec.notas, ...descontosSemJustificativa(rubrica, rec.pontuacoes), ...nota.notes];
+    if (auditoriaFalhou) notas.push("A auditoria automática não pôde ser concluída; nas divergências relevantes foi adotada a menor nota.");
+    if (erroInterpretacao) notas.push(`Auditoria: ${erroInterpretacao}`);
+    if (analise.genero && !analise.genero.compativelComModalidade) notas.push(`Atenção: o texto parece ser do gênero "${analise.genero.detectado}", que pode não corresponder à modalidade informada. ${analise.genero.observacao ?? ""}`.trim());
     if (descartados) notas.push(`${descartados} apontamento(s) da IA foram descartados por não corresponderem a um trecho real do seu texto.`);
+    const auditoria = { versao: 1, avaliador1: a1, avaliador2: a2, divergencias: rec.divergencias, auditados: divergentes, erroInterpretacao };
 
     await etapa(evalId, "Elaborando o diagnóstico final e o plano de evolução");
     const notaTxt = `${nota.total}/${nota.max}${nota.zeroReason ? ` (nota zero: ${nota.zeroReason})` : ""}; critérios: ${nota.criterios.map((c) => `${c.label} ${c.score}/${c.max}`).join("; ")}`;
@@ -186,7 +216,7 @@ export async function executarCorrecao(evalId: string): Promise<void> {
     const uid = sub.user_id;
     if (localizados.length) {
       const ins = await db.from("writing_errors").insert(
-        localizados.map((l, i) => ({ evaluation_id: evalId, user_id: uid, category: l.a.categoria, kind: l.a.tipo, severity: l.a.gravidade, start_offset: l.start, end_offset: l.end, paragraph: paragrafoDe(sub.body, l.start) + 1, excerpt: l.excerpt, issue: l.a.problema, explanation: l.a.explicacao, rule: l.a.regra ?? null, suggestion: l.a.sugestao ?? null, example: l.a.exemplo ?? null, position: i })),
+        localizados.map((l, i) => ({ evaluation_id: evalId, user_id: uid, category: l.a.categoria, kind: l.a.tipo, severity: l.a.gravidade, start_offset: l.start, end_offset: l.end, paragraph: paragrafoDe(sub.body, l.start) + 1, excerpt: l.excerpt, issue: l.a.problema, explanation: l.a.explicacao, rule: l.a.regra ?? null, suggestion: l.a.sugestao ?? null, corrected: l.a.corrigido ?? null, avoid_tip: l.a.comoEvitar ?? null, example: l.a.exemplo ?? null, position: i })),
       );
       if (ins.error) throw new Error(ins.error.message);
     }
@@ -194,7 +224,7 @@ export async function executarCorrecao(evalId: string): Promise<void> {
     if (comp.error) throw new Error(comp.error.message);
     const up = await db
       .from("writing_evaluations")
-      .update({ status: "concluida", stage: null, model: acc.model, provider: acc.provider, score: nota.total, max_score: nota.max, zero_reason: nota.zeroReason, analysis: analise, diagnostic: diagR.data, plan: diagR.data.plano, consistency_notes: notas, attempts: acc.tentativas, tokens_in: acc.i, tokens_out: acc.o, cost_usd: acc.c || null, finished_at: new Date().toISOString() })
+      .update({ status: "concluida", stage: null, model: acc.model, provider: acc.provider, score: nota.total, max_score: nota.max, zero_reason: nota.zeroReason, analysis: analise, diagnostic: diagR.data, plan: diagR.data.plano, consistency_notes: notas, audit: auditoria, human_review: rec.revisaoHumana, attempts: acc.tentativas, tokens_in: acc.i, tokens_out: acc.o, cost_usd: acc.c || null, finished_at: new Date().toISOString() })
       .eq("id", evalId);
     if (up.error) throw new Error(up.error.message);
     await db.from("writing_submissions").update({ status: "concluida", updated_at: new Date().toISOString() }).eq("id", sub.id);

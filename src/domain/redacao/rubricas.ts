@@ -119,6 +119,8 @@ export const CATEGORIAS_ERRO: { id: string; label: string }[] = [
   { id: "estrutura", label: "Estrutura" },
   { id: "adequacao_tema", label: "Adequação ao tema" },
   { id: "vocabulario", label: "Vocabulário" },
+  { id: "sintaxe", label: "Sintaxe" },
+  { id: "genero", label: "Adequação ao gênero" },
 ];
 export const CATEGORIA_IDS = CATEGORIAS_ERRO.map((c) => c.id) as [string, ...string[]];
 export const categoriaLabel = (id: string) => CATEGORIAS_ERRO.find((c) => c.id === id)?.label ?? id;
@@ -140,4 +142,35 @@ export function rubricaDaModalidade(modality: string): Rubrica {
 /** Rubrica dinâmica criada a partir dos critérios do edital/espelho (extraídos e validados antes). */
 export function rubricaPersonalizada(criteria: Criterio[], base: Rubrica): Rubrica {
   return { ...base, key: "edital_personalizado", version: 1, name: "Critérios do edital informado pelo aluno", criteria, max: criteria.reduce((s, c) => s + c.max, 0), estimated: false, note: "Corrigido pelos critérios que você informou do edital/espelho. A fidelidade depende de o texto colado estar completo e correto." };
+}
+
+/** Classes de problema (A–K) do professor APROVUM. Derivadas de categoria + tipo no código, nunca pedidas à IA. */
+export const CLASSES_PROBLEMA: Record<string, string> = {
+  A: "Erro gramatical efetivo",
+  B: "Erro ortográfico",
+  C: "Erro de pontuação",
+  D: "Problema sintático",
+  E: "Problema de coesão",
+  F: "Problema de coerência",
+  G: "Fragilidade argumentativa",
+  H: "Inadequação ao tema",
+  I: "Inadequação ao gênero textual",
+  J: "Problema de estrutura",
+  K: "Sugestão de aprimoramento estilístico",
+};
+
+export function classeDoProblema(categoria: string, tipo: string): string {
+  if (tipo === "estilistica" || tipo === "oportunidade") return "K";
+  switch (categoria) {
+    case "ortografia": return "B";
+    case "pontuacao": return "C";
+    case "sintaxe": return "D";
+    case "coesao": return "E";
+    case "coerencia": return "F";
+    case "argumentacao": return "G";
+    case "adequacao_tema": return "H";
+    case "genero": return "I";
+    case "estrutura": return "J";
+    default: return tipo === "fragilidade_argumentativa" ? "G" : "A";
+  }
 }

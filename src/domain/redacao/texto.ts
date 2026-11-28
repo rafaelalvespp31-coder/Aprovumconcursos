@@ -29,6 +29,23 @@ export function paragrafoDe(text: string, offset: number): number {
   return Math.max(0, idx);
 }
 
+/** Linha estimada (1-based) em que o deslocamento cai, na mesma convenção de `linhasEstimadas`. NÃO é a contagem oficial de prova. */
+export function linhaDe(text: string, offset: number, charsPorLinha = 75): number {
+  let linhas = 0;
+  let pos = 0;
+  for (const part of text.split("\n")) {
+    const t = part.trim();
+    const len = part.length;
+    if (offset <= pos + len) {
+      const dentro = Math.max(0, offset - pos - (part.length - part.trimStart().length));
+      return linhas + (t ? Math.floor(dentro / charsPorLinha) : 0) + 1;
+    }
+    if (t) linhas += Math.max(1, Math.ceil(t.length / charsPorLinha));
+    pos += len + 1;
+  }
+  return Math.max(1, linhas);
+}
+
 export function paragrafos(text: string): string[] {
   return text.split("\n").map((p) => p.trim()).filter(Boolean);
 }
