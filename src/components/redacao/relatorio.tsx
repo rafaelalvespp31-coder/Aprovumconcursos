@@ -7,6 +7,7 @@ import { PenLine, MessageCircle, Dumbbell, RotateCcw } from "lucide-react";
 import type { ComparisonView, EvaluationView, ErroView, SubmissionView } from "@/server/services/redacao";
 import type { Analise, Diagnostico } from "@/domain/redacao/schemas";
 import { categoriaLabel, classeDoProblema, CLASSES_PROBLEMA, tipoLabel } from "@/domain/redacao/rubricas";
+import { Folha, LINHA_PX } from "./folha";
 import { linhaDe } from "@/domain/redacao/texto";
 import { compararAction, reescreverAction } from "@/app/(app)/redacao/actions";
 import { Aviso, Lista, MODALIDADE_LABEL, Secao, dataBR } from "./ui";
@@ -36,19 +37,19 @@ function Marcado({ texto, erros, selecionado, onSelect }: { texto: string; erros
     });
   }, [texto, erros]);
   return (
-    <p className="whitespace-pre-wrap text-[15px] leading-[1.9] text-[#08090B] [overflow-wrap:anywhere]" data-testid="redacao-texto-marcado">
+    <Folha minLinhas={12} testId="redacao-folha-corrigida"><p className="whitespace-pre-wrap text-[15px] text-[#08090B] [overflow-wrap:anywhere]" style={{ lineHeight: `${LINHA_PX}px` }} data-testid="redacao-texto-marcado">
       {segs.map((s) => {
         const t = texto.slice(s.a, s.b);
         const e = s.cobre[0];
         if (!e) return <span key={s.a}>{t}</span>;
         const on = s.cobre.some((x) => x.id === selecionado);
         return (
-          <button key={s.a} type="button" onClick={() => onSelect(e.id)} className={`inline cursor-pointer rounded-[3px] px-[1px] text-left font-[inherit] ${COR[e.kind] ?? ""} ${on ? "outline outline-2 outline-[#08090B]" : ""}`} aria-label={`${tipoLabel(e.kind)}, ${categoriaLabel(e.category)}: ${e.issue}`} data-testid="redacao-marca">
+          <button key={s.a} type="button" onClick={() => onSelect(e.id)} className={`inline cursor-pointer rounded-[3px] px-[1px] text-left font-[inherit] [line-height:inherit] ${COR[e.kind] ?? ""} ${on ? "outline outline-2 outline-[#08090B]" : ""}`} aria-label={`${tipoLabel(e.kind)}, ${categoriaLabel(e.category)}: ${e.issue}`} data-testid="redacao-marca">
             {t}
           </button>
         );
       })}
-    </p>
+    </p></Folha>
   );
 }
 
@@ -200,7 +201,7 @@ export function Relatorio({ sub, ev, cmp }: { sub: SubmissionView; ev: Evaluatio
           ))}
         </div>
         <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
-          <div className="min-w-0 rounded-[12px] border border-[#E6E7EB] bg-white p-4">
+          <div className="min-w-0 rounded-[12px] border border-[#E6E7EB] bg-white p-3">
             <Marcado texto={sub.body} erros={ev.errors} selecionado={sel} onSelect={escolher} />
             <p className="mt-3 text-[11.5px] text-[#8A8C93]">Seu texto original não é alterado. Toque em um trecho marcado para ver a explicação.</p>
           </div>

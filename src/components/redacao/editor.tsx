@@ -8,6 +8,7 @@ import { MODALIDADES, BANCAS } from "@/domain/redacao/rubricas";
 import { MAX_CHARS, MIN_WORDS, contar, linhasEstimadas, validarParaEnvio } from "@/domain/redacao/texto";
 import { enviarAction, extrairArquivoAction, salvarRascunhoAction } from "@/app/(app)/redacao/actions";
 import { Aviso } from "./ui";
+import { Folha, LINHA_PX } from "./folha";
 
 export interface EditorInicial {
   id: string | null;
@@ -36,6 +37,7 @@ export function Editor({ inicial, temaDaProposta }: { inicial: EditorInicial; te
   const idRef = useRef(inicial.id);
   const versao = useRef(0);
   const arquivoRef = useRef<HTMLInputElement>(null);
+  const taRef = useRef<HTMLTextAreaElement>(null);
 
   const c = contar(s.body);
   const linhas = linhasEstimadas(s.body);
@@ -110,6 +112,20 @@ export function Editor({ inicial, temaDaProposta }: { inicial: EditorInicial; te
     if (arquivoRef.current) arquivoRef.current.value = "";
   };
 
+  // A folha cresce com o texto (sem barra de rolagem interna) para a numeração das linhas acompanhar.
+  useEffect(() => {
+    const el = taRef.current;
+    if (!el) return;
+    const ajustar = () => {
+      el.style.height = "auto";
+      el.style.height = `${el.scrollHeight}px`;
+    };
+    ajustar();
+    const ro = new ResizeObserver(ajustar);
+    ro.observe(el.parentElement ?? el);
+    return () => ro.disconnect();
+  }, [s.body]);
+
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]" data-testid="redacao-editor">
       <section className="pc flex min-w-0 flex-col gap-3 p-4 sm:p-5">
@@ -125,7 +141,19 @@ export function Editor({ inicial, temaDaProposta }: { inicial: EditorInicial; te
               {salvo === "salvando" ? "Salvando…" : salvo === "salvo" ? "Rascunho salvo" : salvo === "erro" ? "Falha ao salvar" : "Alterações não salvas"}
             </span>
           </span>
-          <textarea className={`${campo} min-h-[420px] resize-y leading-relaxed`} value={s.body} onChange={(e) => mudar({ body: e.target.value })} placeholder="Escreva aqui. Separe os parágrafos com uma linha em branco ou quebra de linha." data-testid="redacao-texto" aria-describedby="redacao-contagem" />
+          <Folha minLinhas={24} testId="redacao-folha">
+            <textarea
+              ref={taRef}
+              rows={1}
+              className="block w-full resize-none overflow-hidden border-0 bg-transparent p-0 text-[15px] text-[#08090B] outline-none placeholder:text-[#9A9CA3]"
+              style={{ lineHeight: `${LINHA_PX}px`, minHeight: LINHA_PX * 24 }}
+              value={s.body}
+              onChange={(e) => mudar({ body: e.target.value })}
+              placeholder="Escreva aqui. Separe os parágrafos com uma linha em branco ou quebra de linha."
+              data-testid="redacao-texto"
+              aria-describedby="redacao-contagem"
+            />
+          </Folha>
         </label>
         <div id="redacao-contagem" className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[12.5px] text-[#3A3C42]" data-testid="redacao-contagem">
           <span><b>{c.words}</b> palavras</span>
