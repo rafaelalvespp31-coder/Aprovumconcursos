@@ -83,6 +83,11 @@ export const AuditoriaSchema = z.object({
 });
 export type Auditoria = z.infer<typeof AuditoriaSchema>;
 
+/** Checagem de evidência: para cada desconto sem apontamento que o sustente, a IA cita o trecho ou devolve a nota. */
+export const EvidenciaSchema = z.object({
+  criterios: z.array(z.object({ key: txt(60), pontuacao: z.number().min(0), trecho: opt(300), motivo: txt(500) })).max(12),
+});
+
 /** Extração dos critérios do edital/espelho informados pelo aluno. */
 export const CriteriosEditalSchema = z.object({
   encontrou: z.boolean(),

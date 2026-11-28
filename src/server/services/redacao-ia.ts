@@ -5,11 +5,11 @@ import { createAdminClient } from "../supabase";
 import { logEvent } from "../observability";
 import { brDay } from "@/domain/plans/limits";
 import { RUBRICAS_PADRAO, rubricaDaModalidade, rubricaPersonalizada, type Criterio, type Rubrica } from "@/domain/redacao/rubricas";
-import { AnaliseSchema, ApontamentosSchema, AuditoriaSchema, CriteriosEditalSchema, DiagnosticoSchema, PontuacaoSchema } from "@/domain/redacao/schemas";
+import { AnaliseSchema, ApontamentosSchema, AuditoriaSchema, EvidenciaSchema, CriteriosEditalSchema, DiagnosticoSchema, PontuacaoSchema } from "@/domain/redacao/schemas";
 import { contaDesviosObjetivos, revisarPontuacao } from "@/domain/redacao/consistencia";
-import { criteriosParaAuditar, descontosSemJustificativa, reconciliar } from "@/domain/redacao/auditoria";
+import { aplicarEvidencias, criteriosParaAuditar, criteriosSemEvidencia, descontosSemJustificativa, reconciliar } from "@/domain/redacao/auditoria";
 import { localizar, paragrafoDe, type Trecho } from "@/domain/redacao/texto";
-import { AUDITOR, AVALIADOR_BANCA, AVALIADOR_LINGUA, promptAnalise, promptApontamentos, promptAuditoria, promptCriteriosEdital, promptDiagnostico, promptPontuacao, PROFESSOR, type Contexto } from "@/domain/redacao/prompts";
+import { AUDITOR, AVALIADOR_BANCA, AVALIADOR_LINGUA, promptAnalise, promptApontamentos, promptAuditoria, promptEvidencia, promptCriteriosEdital, promptDiagnostico, promptPontuacao, PROFESSOR, type Contexto } from "@/domain/redacao/prompts";
 import type { AITask, StructuredResult } from "@/ai/provider";
 
 /** Motor de correção em etapas independentes (cada uma com saída estruturada validada) + revisão de consistência em código. */
@@ -198,9 +198,26 @@ export async function executarCorrecao(evalId: string): Promise<void> {
     }
     const rec = reconciliar(rubrica, a1, a2, vereditos);
 
+    // Regra de evidência: perda de nota sem apontamento que a sustente é checada (ou desfeita).
+    const semEvid = criteriosSemEvidencia(rubrica, rec.pontuacoes, localizados.map((l) => ({ categoria: l.a.categoria, tipo: l.a.tipo })));
+    const notasEvidencia: string[] = [];
+    if (semEvid.length) {
+      await etapa(evalId, "Checando a evidência dos descontos");
+      try {
+        const evR = await chamarIA(sub.user_id, "redacao.evidencia", { task: "writing_correction", system: AUDITOR, schema: EvidenciaSchema, schemaName: "evidencia", prompt: promptEvidencia(ctx, rubrica, rec.pontuacoes.filter((p) => semEvid.includes(p.key))), maxOutputTokens: 2000 });
+        soma(evR);
+        const ap = aplicarEvidencias(rubrica, rec.pontuacoes, evR.data.criterios.filter((v) => semEvid.includes(v.key)), (t) => localizar(sub.body, t) !== null);
+        rec.pontuacoes = ap.pontuacoes;
+        notasEvidencia.push(...ap.notas);
+      } catch (e) {
+        if (e instanceof AIError && e.kind === "budget_exceeded") throw e;
+        notasEvidencia.push("A checagem de evidência dos descontos não pôde ser concluída.");
+      }
+    }
+
     await etapa(evalId, "Revisando a consistência da pontuação");
     const nota = revisarPontuacao({ rubrica, pontuacoes: rec.pontuacoes, analise, desviosObjetivos: desvios });
-    const notas = [...esc.avisos, ...rec.notas, ...descontosSemJustificativa(rubrica, rec.pontuacoes), ...nota.notes];
+    const notas = [...esc.avisos, ...rec.notas, ...notasEvidencia, ...descontosSemJustificativa(rubrica, rec.pontuacoes), ...nota.notes];
     if (auditoriaFalhou) notas.push("A auditoria automática não pôde ser concluída; nas divergências relevantes foi adotada a menor nota.");
     if (erroInterpretacao) notas.push(`Auditoria: ${erroInterpretacao}`);
     if (analise.genero && !analise.genero.compativelComModalidade) notas.push(`Atenção: o texto parece ser do gênero "${analise.genero.detectado}", que pode não corresponder à modalidade informada. ${analise.genero.observacao ?? ""}`.trim());

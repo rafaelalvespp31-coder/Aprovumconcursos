@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { autoridadeDe, criteriosParaAuditar, descontosSemJustificativa, gravidadeDaDivergencia, reconciliar } from "./auditoria";
+import { aplicarEvidencias, autoridadeDe, criteriosParaAuditar, criteriosSemEvidencia, descontosSemJustificativa, gravidadeDaDivergencia, reconciliar } from "./auditoria";
 import { classeDoProblema, RUBRICA_CONCURSO, RUBRICA_ENEM } from "./rubricas";
 import { linhaDe } from "./texto";
 
@@ -79,5 +79,31 @@ describe("classes de problema (A–K) e linha estimada", () => {
     expect(linhaDe(t, 0)).toBe(1);
     expect(linhaDe(t, 80)).toBe(2);
     expect(linhaDe(t, t.indexOf("segundo"))).toBe(3);
+  });
+});
+
+describe("regra de evidência dos descontos", () => {
+  const finais = enem([160, 160, 160, 160, 200]); // C4 = 160, como na redação de referência 880 (C4 = 200)
+  it("sinaliza C4 abaixo do máximo sem apontamento de coesão", () => {
+    const ap = [{ categoria: "gramatica", tipo: "erro_objetivo" }, { categoria: "regencia", tipo: "erro_objetivo" }];
+    expect(criteriosSemEvidencia(RUBRICA_ENEM, finais, ap)).toEqual(["c4"]);
+  });
+  it("não sinaliza quando há apontamento real de coesão; oportunidade/estilo não contam como evidência", () => {
+    expect(criteriosSemEvidencia(RUBRICA_ENEM, finais, [{ categoria: "coesao", tipo: "problema_construcao" }])).toEqual([]);
+    expect(criteriosSemEvidencia(RUBRICA_ENEM, finais, [{ categoria: "coesao", tipo: "oportunidade" }])).toEqual(["c4"]);
+  });
+  it("não sinaliza critério na nota máxima nem critérios holísticos", () => {
+    expect(criteriosSemEvidencia(RUBRICA_ENEM, enem([160, 120, 120, 200, 160]), [])).toEqual([]);
+  });
+  it("sem trecho real no texto, o desconto é desfeito (nota máxima)", () => {
+    const r = aplicarEvidencias(RUBRICA_ENEM, finais, [{ key: "c4", pontuacao: 160, trecho: "trecho inventado", motivo: "x" }], () => false);
+    expect(r.pontuacoes.find((x) => x.key === "c4")!.pontuacao).toBe(200);
+    expect(r.notas.join(" ")).toMatch(/desconto desfeito/);
+  });
+  it("com trecho real, mantém a perda; nunca rebaixa além da nota original", () => {
+    const manter = aplicarEvidencias(RUBRICA_ENEM, finais, [{ key: "c4", pontuacao: 160, trecho: "e que, infelizmente", motivo: "conjunção mal empregada" }], () => true);
+    expect(manter.pontuacoes.find((x) => x.key === "c4")!.pontuacao).toBe(160);
+    const nao = aplicarEvidencias(RUBRICA_ENEM, finais, [{ key: "c4", pontuacao: 80, trecho: "ok", motivo: "x" }], () => true);
+    expect(nao.pontuacoes.find((x) => x.key === "c4")!.pontuacao).toBe(160);
   });
 });

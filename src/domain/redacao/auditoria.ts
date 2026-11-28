@@ -122,3 +122,49 @@ export function descontosSemJustificativa(rubrica: Rubrica, finais: PontuacaoAva
     })
     .map((p) => `${rubrica.criteria.find((x) => x.key === p.key)!.label}: desconto sem justificativa suficiente.`);
 }
+
+/**
+ * Regra de evidência: um critério só perde nota se houver base concreta no texto. Aqui ficam as categorias de
+ * apontamento que sustentam cada critério ligado a problemas localizáveis (coesão). Critérios holísticos
+ * (tema, argumentação, proposta) e a norma culta (que tem teto próprio por desvios) ficam de fora.
+ */
+const EVIDENCIA_POR_CRITERIO: Record<string, string[]> = {
+  c4: ["coesao"],
+  coesao: ["coesao"],
+  coesao_coerencia: ["coesao", "coerencia"],
+};
+
+export interface ApontamentoResumo { categoria: string; tipo: string }
+
+/** Critérios com nota abaixo do máximo e NENHUM apontamento localizado que sustente a perda (desconto sem evidência). */
+export function criteriosSemEvidencia(rubrica: Rubrica, finais: PontuacaoAvaliador[], apontamentos: ApontamentoResumo[]): string[] {
+  const reais = apontamentos.filter((a) => a.tipo === "erro_objetivo" || a.tipo === "problema_construcao");
+  return finais
+    .filter((p) => {
+      const cats = EVIDENCIA_POR_CRITERIO[p.key];
+      const c = rubrica.criteria.find((x) => x.key === p.key);
+      return cats && c && p.pontuacao < c.max && !reais.some((a) => cats.includes(a.categoria));
+    })
+    .map((p) => p.key);
+}
+
+export interface VereditoEvidencia { key: string; pontuacao: number; trecho?: string | null; motivo: string }
+
+/**
+ * Aplica o resultado da checagem de evidência. A nota só se mantém abaixo do máximo se a IA citou um trecho que EXISTE no texto
+ * (`trechoExiste`); do contrário o desconto é desfeito (nota máxima). A nota nunca desce além da original.
+ */
+export function aplicarEvidencias(rubrica: Rubrica, finais: PontuacaoAvaliador[], vereditos: VereditoEvidencia[], trechoExiste: (t: string) => boolean): { pontuacoes: PontuacaoAvaliador[]; notas: string[] } {
+  const mv = new Map(vereditos.map((v) => [v.key, v]));
+  const notas: string[] = [];
+  const pontuacoes = finais.map((p) => {
+    const v = mv.get(p.key);
+    const c = rubrica.criteria.find((x) => x.key === p.key);
+    if (!v || !c) return p;
+    const comEvidencia = !!v.trecho && trechoExiste(v.trecho);
+    const nova = comEvidencia ? Math.max(p.pontuacao, Math.min(c.max, v.pontuacao)) : c.max;
+    if (nova !== p.pontuacao) notas.push(`${c.label}: ${p.pontuacao} → ${nova} (${comEvidencia ? "desconto parcialmente revisto na checagem de evidência" : "desconto desfeito: nenhum trecho do texto sustentou a perda de nota"}).`);
+    return nova === p.pontuacao ? p : { key: p.key, pontuacao: nova, justificativa: comEvidencia ? v.motivo : `${p.justificativa} (Sem evidência localizada no texto para descontar neste critério.)` };
+  });
+  return { pontuacoes, notas };
+}
