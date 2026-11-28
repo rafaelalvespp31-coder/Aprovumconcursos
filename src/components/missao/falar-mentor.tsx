@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type PointerEvent as PE, type RefObject } from "react";
-import { Loader2, Mic, PhoneOff } from "lucide-react";
+import { ChevronRight, Loader2, Mic, PhoneOff } from "lucide-react";
 import { MentorVoz, type EstadoVoz, type ResultadoComando } from "@/components/mentor/mentor-voz";
 import type { Comando } from "@/domain/mentor/navegacao";
 import type { Bands, Conexao } from "@/components/mentor/skull-orb-fx";
@@ -53,7 +53,6 @@ export function FalarComMentor({ navegacao, ativo, onAtivo, onNivel, onConn, onF
         />
       )}
       <div className="hm-falar-linha">
-        <OndaVoz lado="e" fonte={fonteRef} ativo={aoVivo} />
         <button
           type="button"
           className="hm-falar"
@@ -89,14 +88,20 @@ export function FalarComMentor({ navegacao, ativo, onAtivo, onNivel, onConn, onF
           <span className="hm-falar-borda" aria-hidden />
           <span className="hm-falar-face" aria-hidden ref={caixaRef} />
           <span className="hm-falar-conteudo">
-            {conectando ? <Loader2 size={18} className="hm-gira" aria-hidden /> : aoVivo ? <PhoneOff size={18} aria-hidden /> : <Mic size={18} aria-hidden />}
-            <span className="hm-falar-texto">{conectando ? "Conectando" : aoVivo ? "Encerrar" : "Falar com o Mentor"}</span>
+            <span className="hm-falar-mic" aria-hidden>
+              {conectando ? <Loader2 className="hm-gira" /> : aoVivo ? <PhoneOff /> : <Mic />}
+            </span>
+            <span className="hm-falar-col">
+              <span className="hm-falar-texto">{conectando ? "Conectando" : aoVivo ? "Encerrar conversa" : "Falar com o Mentor IA"}</span>
+              <span className="hm-falar-sub">{aoVivo ? (e?.speaking ? "Mentor falando…" : "Mentor ouvindo…") : "Tire suas dúvidas, peça orientações e evolua ainda mais."}</span>
+            </span>
+            {/* com a conversa aberta, a frequência real da voz do Mentor aparece no lugar da seta */}
+            {aoVivo ? <OndaVoz lado="d" fonte={fonteRef} ativo={aoVivo} /> : <ChevronRight className="hm-falar-seta" aria-hidden />}
           </span>
         </button>
-        <OndaVoz lado="d" fonte={fonteRef} ativo={aoVivo} />
       </div>
       <p className="hm-falar-info" role="status" aria-live="polite">
-        {aoVivo ? (e?.speaking ? "Mentor falando" : "Mentor ouvindo") : ativo ? null : aviso}
+        {aoVivo ? null : ativo ? null : aviso}
       </p>
     </div>
   );
