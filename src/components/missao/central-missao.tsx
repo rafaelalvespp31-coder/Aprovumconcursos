@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useRef, useState, type ComponentType } from "react";
-import { ArrowLeft, Bell, BookOpen, ChartNoAxesColumnIncreasing, ChevronDown, ChevronRight, ClipboardCheck, Clock3, Gamepad2, House, Loader2, PenLine, PlayCircle, Settings, Target, Trophy } from "lucide-react";
+import { ArrowLeft, Bell, BookOpen, ChevronDown, ChevronRight, Clock3, Gamepad2, Loader2, PlayCircle, SquareCheckBig, SquarePen, Target, Trophy } from "lucide-react";
 import type { ConcursoCard, MateriaCatalogo } from "@/domain/missao/materias";
 import type { Bands } from "@/components/mentor/skull-orb-fx";
 import { FalarComMentor, type FaseMentor } from "./falar-mentor";
@@ -44,6 +44,9 @@ const FOLHAS: Record<Folha, { titulo: string; kicker: string; sub: string }> = {
   materias: { titulo: "Matérias", kicker: "Escolha a matéria", sub: "Organize seus estudos e domine cada conteúdo da sua preparação." },
 };
 
+/** Brasas que sobem pela arte (posição e tempo fixos: nada aleatório no render). */
+const BRASAS = Array.from({ length: 14 }, (_, i) => ({ x: 6 + ((i * 53) % 88), d: ((i * 0.83) % 7).toFixed(2), t: (6 + ((i * 5) % 6)).toString() }));
+
 const fmt = (n: number) => n.toLocaleString("pt-BR");
 
 type Icone = ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
@@ -51,10 +54,10 @@ interface CardDef { id: string; titulo: string; texto: string; icone: Icone; art
 const CARDS: CardDef[] = [
   { id: "concursos", titulo: "CONCURSOS", texto: "Editais, cargos, oportunidades e objetivos.", icone: Target, arte: "concursos", folha: "concursos" },
   { id: "materias", titulo: "MATÉRIAS", texto: "Conteúdo organizado por disciplinas.", icone: BookOpen, arte: "materias", folha: "materias" },
-  { id: "redacao", titulo: "LABORATÓRIO DE REDAÇÃO", texto: "Escrita, correção técnica e evolução.", icone: PenLine, arte: "redacao", href: "/redacao" },
+  { id: "redacao", titulo: "LABORATÓRIO\nDE REDAÇÃO", texto: "Escrita, correção técnica e evolução.", icone: SquarePen, arte: "redacao", href: "/redacao" },
   { id: "aulas", titulo: "MINHAS AULAS", texto: "Aulas, revisões e videoaulas.", icone: PlayCircle, arte: "aulas", href: "/trilhas" },
   { id: "jogo", titulo: "MODO JOGO", texto: "Aprendizado gamificado e desafios.", icone: Gamepad2, arte: "jogo", href: "/quiz" },
-  { id: "questoes", titulo: "QUESTÕES E SIMULADOS", texto: "Treinamento, provas e avaliação.", icone: ClipboardCheck, arte: "questoes", href: "/questoes" },
+  { id: "questoes", titulo: "QUESTÕES E\nSIMULADOS", texto: "Treinamento, provas e avaliação.", icone: SquareCheckBig, arte: "questoes", href: "/questoes" },
 ];
 
 /** Home pós-login (celular): saudação com os números reais, Mentor por voz, seis caminhos e menu técnico inferior. */
@@ -111,44 +114,50 @@ export function CentralMissao({ primeiroNome, email, materias, concursos, intro:
         <div className="hm-col">
           <section className="hm-heroi" aria-label="Início">
             {/* eslint-disable-next-line @next/next/no-img-element -- arte do Mentor com a esfera; WebP já otimizado em public/home */}
-            <img className="hm-heroi-arte" src="/home/ref-hero.webp" alt="" width={553} height={598} fetchPriority="high" decoding="async" />
-            {/* esfera viva sobre a esfera da arte: pulsa em repouso e reage à conversa */}
+            <img className="hm-heroi-arte" src="/home/n-hero.webp" alt="" width={941} height={1010} fetchPriority="high" decoding="async" />
+            {/* olhos e esfera vivos por cima da arte: respiram em repouso e reagem à conversa por voz */}
+            <span className="hm-olho hm-olho-e" aria-hidden />
+            <span className="hm-olho hm-olho-d" aria-hidden />
             <span className="hm-esfera" aria-hidden><i /><i /></span>
+            <span className="hm-brasas" aria-hidden>{BRASAS.map((b, i) => <i key={i} style={{ left: `${b.x}%`, animationDelay: `${b.d}s`, animationDuration: `${b.t}s` }} />)}</span>
 
-            <header className="hm-topo">
-              {/* eslint-disable-next-line @next/next/no-img-element -- logo oficial, versão para fundo claro */}
-              <img className="hm-logo" src="/images/aprovum-logo-escura.png" alt="Aprovum" width={523} height={107} />
-              <div className="hm-conta">
-                <Link href="/perfil" className="hm-sino" aria-label="Avisos e notificações"><Bell aria-hidden /></Link>
-                <Link href="/perfil" className="hm-perfil" aria-label={`Perfil${nome ? ` de ${nome}` : ""}`}>
-                  <span className="hm-perfil-foto" aria-hidden>{(nome ?? "A").slice(0, 1).toUpperCase()}</span>
-                  <ChevronDown className="hm-perfil-seta" aria-hidden />
-                </Link>
+            <div className="hm-ui">
+              <header className="hm-topo">
+                {/* eslint-disable-next-line @next/next/no-img-element -- logo oficial (recorte da arte de referência) */}
+                <img className="hm-logo" src="/home/n-logo.webp" alt="Aprovum — Sua missão é a aprovação" width={311} height={86} />
+                <div className="hm-conta">
+                  <Link href="/perfil" className="hm-sino" aria-label="Avisos e notificações"><Bell aria-hidden /></Link>
+                  <Link href="/perfil" className="hm-perfil" aria-label={`Perfil${nome ? ` de ${nome}` : ""}`}>
+                    <span className="hm-perfil-foto" aria-hidden>{(nome ?? "A").slice(0, 1).toUpperCase()}</span>
+                    <ChevronDown className="hm-perfil-seta" aria-hidden />
+                  </Link>
+                </div>
+              </header>
+
+              <div className="hm-saudacao">
+                <h1 className="hm-ola">Olá,<br /><em>Guerreiro!</em></h1>
+                <p className="hm-frase">Disciplina hoje te<br />aproxima da aprovação.</p>
+                <span className="hm-traco" aria-hidden />
               </div>
-            </header>
 
-            <div className="hm-saudacao">
-              <h1 className="hm-ola">Olá,<br />{nome ? nome : "Guerreiro"}!</h1>
-              <p className="hm-frase">Disciplina hoje te<br /><span>aproxima</span> da aprovação.</p>
-            </div>
-
-            <div className="hm-metricas">
-              <div className="hm-anel" role="img" aria-label={`${pct}% concluído`}>
-                <svg viewBox="0 0 100 100" aria-hidden>
-                  <circle className="trilho" cx="50" cy="50" r="43" pathLength="100" />
-                  <circle className="prog" cx="50" cy="50" r="43" pathLength="100" style={{ ["--p" as string]: pct }} />
-                </svg>
-                <div className="hm-anel-txt"><b>{pct}%</b><span>Concluído <i aria-hidden>↑</i></span></div>
+              <div className="hm-metricas">
+                <div className="hm-anel" role="img" aria-label={`${pct}% concluído`}>
+                  <svg viewBox="0 0 100 100" aria-hidden>
+                    <circle className="trilho" cx="50" cy="50" r="44" pathLength="100" />
+                    <circle className="prog" cx="50" cy="50" r="44" pathLength="100" style={{ ["--p" as string]: pct }} />
+                  </svg>
+                  <div className="hm-anel-txt"><b>{pct}%</b><span>Concluído <i aria-hidden>↑</i></span></div>
+                </div>
+                <ul className="hm-numeros">
+                  <li><Clock3 aria-hidden /><div><b>{indicadores ? `${fmt(indicadores.horas)}h` : "—"}</b><span>Estudadas</span></div></li>
+                  <li><SquareCheckBig aria-hidden /><div><b>{indicadores ? fmt(indicadores.questoes) : "—"}</b><span>Questões</span></div></li>
+                  <li><Trophy aria-hidden /><div><b>{indicadores?.aproveitamento != null ? `${indicadores.aproveitamento}%` : "—"}</b><span>Aproveitamento</span></div></li>
+                </ul>
               </div>
-              <ul className="hm-numeros">
-                <li><Clock3 aria-hidden /><div><b>{indicadores ? `${fmt(indicadores.horas)}h` : "—"}</b><span>Estudadas</span></div></li>
-                <li><ClipboardCheck aria-hidden /><div><b>{indicadores ? fmt(indicadores.questoes) : "—"}</b><span>Questões</span></div></li>
-                <li><Trophy aria-hidden /><div><b>{indicadores?.aproveitamento != null ? `${indicadores.aproveitamento}%` : "—"}</b><span>Aproveitamento</span></div></li>
-              </ul>
-            </div>
 
-            <div className="hm-voz">
-              <FalarComMentor navegacao={navegar} ativo={falando} onAtivo={setFalando} onNivel={(fn) => { nivel.current = fn; }} onConn={() => {}} onFase={aoFase} />
+              <div className="hm-voz">
+                <FalarComMentor navegacao={navegar} ativo={falando} onAtivo={setFalando} onNivel={(fn) => { nivel.current = fn; }} onConn={() => {}} onFase={aoFase} />
+              </div>
             </div>
           </section>
 
@@ -161,8 +170,8 @@ export function CentralMissao({ primeiroNome, email, materias, concursos, intro:
                   <span className="hm-card-borda" aria-hidden />
                   <span className="hm-card-face">
                     {/* eslint-disable-next-line @next/next/no-img-element -- arte do card, WebP em public/home */}
-                    <img className="hm-card-arte" src={`/home/ref-card-${c.arte}.webp`} alt="" width={200} height={232} loading={i < 2 ? "eager" : "lazy"} decoding="async" />
-                    <Ic className="hm-card-ico" aria-hidden />
+                    <img className="hm-card-arte" src={`/home/n-card-${c.arte}.webp`} alt="" width={232} height={180} loading={i < 2 ? "eager" : "lazy"} decoding="async" />
+                    <span className="hm-card-ico" aria-hidden><Ic /></span>
                     {chip && <span className="hm-card-chip">{chip}</span>}
                     <span className="hm-card-texto">
                       <span className="hm-card-titulo">{c.titulo}</span>
@@ -185,18 +194,14 @@ export function CentralMissao({ primeiroNome, email, materias, concursos, intro:
 
       {intro === "fim" && (
         <nav className="hm-menu" aria-label="Menu principal">
-          {/* eslint-disable-next-line @next/next/no-img-element -- cenário decorativo do menu */}
-          <img className="hm-menu-cenario" src="/home/ref-cenario.webp" alt="" width={853} height={135} decoding="async" />
-          <div className="hm-menu-corpo">
-            <Link href="/painel" className="hm-menu-item" aria-current="page"><House aria-hidden /><span>Início</span></Link>
-            <Link href="/desempenho" className="hm-menu-item"><ChartNoAxesColumnIncreasing aria-hidden /><span>Desempenho</span></Link>
-            <Link href="/painel" className="hm-menu-nucleo" aria-label="Central APROVUM">
-              {/* eslint-disable-next-line @next/next/no-img-element -- núcleo do menu */}
-              <img src="/home/ref-nucleo.webp" alt="" width={150} height={150} decoding="async" />
-            </Link>
-            <Link href="/perfil#perfil-conquistas" className="hm-menu-item"><Trophy aria-hidden /><span>Conquistas</span></Link>
-            <Link href="/perfil" className="hm-menu-item"><Settings aria-hidden /><span>Configurações</span></Link>
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element -- menu inferior (arte enviada), os links ficam por cima de cada botão */}
+          <img className="hm-menu-arte" src="/home/n-menu.webp" alt="" width={1290} height={354} decoding="async" />
+          <span className="hm-menu-pulso" aria-hidden />
+          <Link href="/painel" className="hm-mb hm-mb-1" aria-label="Início" aria-current="page" />
+          <Link href="/desempenho" className="hm-mb hm-mb-2" aria-label="Desempenho" />
+          <Link href="/painel" className="hm-mb hm-mb-3" aria-label="Central APROVUM" />
+          <Link href="/perfil#perfil-conquistas" className="hm-mb hm-mb-4" aria-label="Conquistas" />
+          <Link href="/perfil" className="hm-mb hm-mb-5" aria-label="Configurações" />
         </nav>
       )}
 
